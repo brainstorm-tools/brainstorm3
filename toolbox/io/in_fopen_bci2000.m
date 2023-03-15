@@ -104,7 +104,7 @@ for iTrig = 1:length(trigNames)
         iOcc = iSmp(Value == uniqueVal(iVal));
         sFile.events(iEvt).epochs   = ones(length(iOcc), 1);
         sFile.events(iEvt).times    = iOcc ./ sFile.prop.sfreq;
-        sFile.events(iEvt).channels = cell(length(iOcc), 1);
-        sFile.events(iEvt).notes    = cell(length(iOcc), 1);
+        sFile.events(iEvt).channels = [];
+        sFile.events(iEvt).notes    = [];
     end
 end

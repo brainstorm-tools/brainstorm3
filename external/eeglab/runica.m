@@ -1,4 +1,4 @@
-% runica() - Perform Independent Component Analysis (ICA) decomposition
+% RUNICA - Perform Independent Component Analysis (ICA) decomposition
 %            of input data using the logistic infomax ICA algorithm of 
 %            Bell & Sejnowski (1995) with the natural gradient feature 
 %            of Amari, Cichocki & Yang, or optionally the extended-ICA 
@@ -17,15 +17,15 @@
 %                  >> data = rmbase(data,frames,basevector);
 %
 % Optional keywords [argument]:
-% 'extended'  = [N] perform tanh() "extended-ICA" with sign estimation 
+% 'extended'  = [N] perform TANH "extended-ICA" with sign estimation 
 %               N training blocks. If N > 0, automatically estimate the 
 %               number of sub-Gaussian sources. If N < 0, fix number of 
 %               sub-Gaussian comps to -N [faster than N>0] (default|0 -> off)
 % 'pca'       = [N] decompose a principal component     (default -> 0=off)
 %               subspace of the data. Value is the number of PCs to retain.
 % 'sphering'  = ['on'/'off'] flag sphering of data      (default -> 'on')
-% 'weights'   = [W] initial weight matrix               (default -> eye())
-%                            (Note: if 'sphering' 'off', default -> spher())
+% 'weights'   = [W] initial weight matrix               (default -> EYE)
+%                            (Note: if 'sphering' 'off', default -> SPHER)
 % 'lrate'     = [rate] initial ICA learning rate (<< 1) (default -> heuristic)
 % 'block'     = [N] ICA block size (<< datalength)      (default -> heuristic)
 % 'anneal'    = annealing constant (0,1] (defaults -> 0.90, or 0.98, extended)
@@ -40,12 +40,14 @@
 %               transform of the data - though not optimally. (Note: winframes must 
 %               divide frames) (defaults [srate 0 srate/2 size(data,2) size(data,2)])
 % 'posact'    = make all component activations net-positive(default 'off'}
-%               Requires time and memory; posact() may be applied separately.
+%               Requires time and memory; POSACT may be applied separately.
 % 'verbose'   = give ascii messages ('on'/'off')        (default -> 'on')
 % 'logfile'   = [filename] save all message in a log file in addition to showing them
 %               on screen (default -> none)
-% 'interupt'  = ['on'|'off'] interrupt drawing of figure. Default is off.
-% 'reset_randomseed' - ['on'|'off'] reset random seed for each call. Default is on.
+% 'interrupt' = ['on'|'off'] draw interrupt figure. Default is off.
+% 'rndreset'  = ['on'|'off'] reset the random seed. Default is off (although it
+%               used to be on prior to 2015. This means that ICA will always return.
+%               the same decomposition unless this option is set to 'on'.
 %
 % Outputs:    [Note: RO means output in reverse order of projected mean variance
 %                    unless starting weight matrix passed ('weights' above)]
@@ -53,8 +55,8 @@
 % sphere      = data sphering matrix (chans,chans) = spher(data)
 %               Note that unmixing_matrix = weights*sphere {if sphering off -> eye(chans)}
 % compvars    = back-projected component variances   [RO]
-% bias        = vector of final (ncomps) online bias [RO]    (default = zeros())
-% signs       = extended-ICA signs for components    [RO]    (default = ones())
+% bias        = vector of final (ncomps) online bias [RO]    (default = ZEROS)
+% signs       = extended-ICA signs for components    [RO]    (default = ONES)
 %                   [ -1 = sub-Gaussian; 1 = super-Gaussian]
 % lrates      = vector of learning rates used at each training step [RO]
 % activations = activation time courses of the output components (ncomps,frames*epochs)
@@ -63,7 +65,7 @@
 % Tzyy-Ping Jung, Sigurd Enghoff, Michael Zibulevsky, Delorme Arnaud,
 % CNL/The Salk Institute, La Jolla, 1996-
 
-% Uses: posact()
+% Uses: POSACT
 
 % 'ncomps'    = [N] number of ICA components to compute (default -> chans or 'pca' arg) 
 %               using rectangular ICA decomposition. This parameter may return 
@@ -91,39 +93,50 @@
 
 % Copyright (C) 1996 Scott Makeig et al, SCCN/INC/UCSD, scott@sccn.ucsd.edu
 %
-% This program is free software; you can redistribute it and/or modify
-% it under the terms of the GNU General Public License as published by
-% the Free Software Foundation; either version 2 of the License, or
-% (at your option) any later version.
+% This file is part of EEGLAB, see http://www.eeglab.org
+% for the documentation and details.
 %
-% This program is distributed in the hope that it will be useful,
-% but WITHOUT ANY WARRANTY; without even the implied warranty of
-% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-% GNU General Public License for more details.
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
 %
-% You should have received a copy of the GNU General Public License
-% along with this program; if not, write to the Free Software
-% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+% 1. Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer.
+%
+% 2. Redistributions in binary form must reproduce the above copyright notice,
+% this list of conditions and the following disclaimer in the documentation
+% and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+% ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+% LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+% CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+% SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+% INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+% CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+% ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+% THE POSSIBILITY OF SUCH DAMAGE.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% Edit history %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%  runica()  - by Scott Makeig with contributions from Tony Bell, Te-Won Lee 
+%  RUNICA  - by Scott Makeig with contributions from Tony Bell, Te-Won Lee 
 %              Tzyy-Ping Jung, Sigurd Enghoff, Michael Zibulevsky et al.
 %                            CNL / Salk Institute 1996-00
 %  04-30-96 built from icatest.m and ~jung/.../wtwpwica.m -sm
-%  07-28-97 new runica(), adds bias (default on), momentum (default off), 
+%  07-28-97 new RUNICA, adds bias (default on), momentum (default off), 
 %           extended-ICA (Lee & Sejnowski, 1997), cumulative angledelta 
 %           (until lrate drops), keywords, signcount for speeding extended-ICA
-%  10-07-97 put acos() outside verbose loop; verbose 'off' wasn't stopping -sm
+%  10-07-97 put ACOS outside verbose loop; verbose 'off' wasn't stopping -sm
 %  11-11-97 adjusted help msg -sm
 %  11-30-97 return eye(chans) if sphering 'off' or 'none' (undocumented option) -sm
-%  02-27-98 use pinv() instead of inv() to rank order comps if ncomps < chans -sm
+%  02-27-98 use PINV instead of INV to rank order comps if ncomps < chans -sm
 %  04-28-98 added 'posact' and 'pca' flags  -sm
-%  07-16-98 reduced length of randperm() for kurtosis subset calc. -se & sm
+%  07-16-98 reduced length of RANDPERM for kurtosis subset calc. -se & sm
 %  07-19-98 fixed typo in weights def. above -tl & sm
 %  12-21-99 added 'specgram' option suggested by Michael Zibulevsky, UNM -sm
-%  12-22-99 fixed rand() sizing inefficiency on suggestion of Mike Spratling, UK -sm
-%  01-11-00 fixed rand() sizing bug on suggestion of Jack Foucher, Strasbourg -sm
+%  12-22-99 fixed RAND sizing inefficiency on suggestion of Mike Spratling, UK -sm
+%  01-11-00 fixed RAND sizing bug on suggestion of Jack Foucher, Strasbourg -sm
 %  12-18-00 test for existence of Sig Proc Tlbx function 'specgram'; improve
 %           'specgram' option arguments -sm
 %  01-25-02 reformated help & license -ad 
@@ -185,7 +198,7 @@ SIGNCOUNT_STEP       = 2;         % extblocks increment factor
 
 DEFAULT_SPHEREFLAG   = 'on';      % use the sphere matrix as the default
                                   %   starting weight matrix
-DEFAULT_INTERUPT     = 'off';     % figure interuption
+DEFAULT_INTERRUPT    = 'off';     % figure interruption
 DEFAULT_PCAFLAG      = 'off';     % don't use PCA reduction
 DEFAULT_POSACTFLAG   = 'off';     % don't use posact(), to save space -sm 7/05
 DEFAULT_VERBOSE      = 1;         % write ascii info to calling screen
@@ -219,7 +232,7 @@ weights    = 0;                      % defaults defined below
 ncomps     = chans;
 biasflag   = DEFAULT_BIASFLAG;
 
-interupt   = DEFAULT_INTERUPT;
+interrupt  = DEFAULT_INTERRUPT;
 extended   = DEFAULT_EXTENDED;
 extblocks  = DEFAULT_EXTBLOCKS;
 kurtsize   = MAX_KURTSIZE;
@@ -233,354 +246,311 @@ reset_randomseed = DEFAULT_RESETRANDOMSEED;
 %
 %%%%%%%%%% Collect keywords and values from argument list %%%%%%%%%%%%%%%
 %
-   if (nargin> 1 & rem(nargin,2) == 0)
-      fprintf('runica(): Even number of input arguments???')
-      return
-   end
-   for i = 1:2:length(varargin) % for each Keyword
-      Keyword = varargin{i};
-      Value = varargin{i+1};
-      if ~isstr(Keyword)
-         fprintf('runica(): keywords must be strings')
-         return
-      end
-      Keyword = lower(Keyword); % convert upper or mixed case to lower
+if (nargin> 1 && rem(nargin,2) == 0)
+    error('runica(): Even number of input arguments???')
+end
+for i = 1:2:length(varargin) % for each Keyword
+    Keyword = varargin{i};
+    Value = varargin{i+1};
+    if ~ischar(Keyword)
+        error('runica(): keywords must be strings')
+    end
+    Keyword = lower(Keyword); % convert upper or mixed case to lower
 
-      if strcmp(Keyword,'weights') | strcmp(Keyword,'weight')
-         if isstr(Value)
-            fprintf(...
-      'runica(): weights value must be a weight matrix or sphere')
-            return
-         else
-           weights = Value;
-           wts_passed =1;
-         end
-      elseif strcmp(Keyword,'ncomps')
-         if isstr(Value)
-            fprintf('runica(): ncomps value must be an integer')
-            return
-         end
-         if ncomps < urchans & ncomps ~= Value
-            fprintf('runica(): Use either PCA or ICA dimension reduction');
-            return
-         end
-         fprintf('*****************************************************************************************');
-         fprintf('************** WARNING: NCOMPS OPTION OFTEN DOES NOT RETURN ACCURATE RESULTS ************');
-         fprintf('************** WARNING: IF YOU FIND THE PROBLEM, PLEASE LET US KNOW          ************');
-         fprintf('*****************************************************************************************');
-         ncomps = Value;
-         if ~ncomps,
+    if strcmp(Keyword,'weights') || strcmp(Keyword,'weight')
+        if ischar(Value)
+            error('runica(): weights value must be a weight matrix or sphere')
+        else
+            weights = Value;
+            wts_passed =1;
+        end
+    elseif strcmp(Keyword,'ncomps')
+        if ischar(Value)
+            error('runica(): ncomps value must be an integer')
+        end
+        if ncomps < urchans && ncomps ~= Value
+            error('runica(): Use either PCA or ICA dimension reduction');
+        end
+        fprintf('*****************************************************************************************');
+        fprintf('************** WARNING: NCOMPS OPTION OFTEN DOES NOT RETURN ACCURATE RESULTS ************');
+        fprintf('************** WARNING: IF YOU FIND THE PROBLEM, PLEASE LET US KNOW          ************');
+        fprintf('*****************************************************************************************');
+        ncomps = Value;
+        if ~ncomps
             ncomps = chans;
-         end
-      elseif strcmp(Keyword,'pca') 
-         if ncomps < urchans & ncomps ~= Value
-            fprintf('runica(): Use either PCA or ICA dimension reduction');
-            return
-         end
-         if isstr(Value)
-            fprintf(...
-'runica(): pca value should be the number of principal components to retain')
-            return
-         end
-         pcaflag = 'on';
-         ncomps = Value;
-         if ncomps > chans | ncomps < 1,
-            fprintf('runica(): pca value must be in range [1,%d]\n',chans)
-            return
-         end
-         chans = ncomps;
-       elseif strcmp(Keyword,'interupt') 
-         if ~isstr(Value)
-           fprintf('runica(): interupt value must be on or off')
-           return
-         else 
-           Value = lower(Value);
-           if ~strcmp(Value,'on') & ~strcmp(Value,'off'),
-             fprintf('runica(): interupt value must be on or off')
-             return
-           end
-           interupt = Value;
-         end
-     elseif strcmp(Keyword,'posact') 
-         if ~isstr(Value)
-           fprintf('runica(): posact value must be on or off')
-           return
-         else 
-           Value = lower(Value);
-           if ~strcmp(Value,'on') & ~strcmp(Value,'off'),
-             fprintf('runica(): posact value must be on or off')
-             return
-           end
-           posactflag = Value;
-         end
-      elseif strcmp(Keyword,'lrate')
-         if isstr(Value)
-            fprintf('runica(): lrate value must be a number')
-            return
-         end
-         lrate = Value;
-         if lrate>MAX_LRATE | lrate <0,
-           fprintf('runica(): lrate value is out of bounds'); 
-           return
-         end
-         if ~lrate,
+        end
+    elseif strcmp(Keyword,'pca')
+        if ncomps < urchans && ncomps ~= Value
+            error('runica(): Use either PCA or ICA dimension reduction');
+        end
+        if ischar(Value)
+            error('runica(): pca value should be the number of principal components to retain')
+        end
+        pcaflag = 'on';
+        ncomps = Value;
+        if ncomps > chans || ncomps < -1
+            error('runica(): pca value must be in range [%d,%d]\n',-chans+1, chans)
+        end
+        if ncomps < 0
+            ncomps = size(data,1)+ncomps;
+        end
+        chans = ncomps;
+    elseif strcmp(Keyword,'interupt') || strcmp(Keyword,'interrupt')
+        if ~ischar(Value)
+            error('runica(): interrupt value must be on or off')
+        else
+            Value = lower(Value);
+            if ~strcmp(Value,'on') && ~strcmp(Value,'off')
+                error('runica(): interrupt value must be on or off')
+            end
+            interrupt = Value;
+        end
+    elseif strcmp(Keyword,'posact')
+        if ~ischar(Value)
+            error('runica(): posact value must be on or off')
+        else
+            Value = lower(Value);
+            if ~strcmp(Value,'on') && ~strcmp(Value,'off'),
+                error('runica(): posact value must be on or off')
+            end
+            posactflag = Value;
+        end
+    elseif strcmp(Keyword,'lrate')
+        if ischar(Value)
+            error('runica(): lrate value must be a number')
+        end
+        lrate = Value;
+        if lrate>MAX_LRATE || lrate <0
+            error('runica(): lrate value is out of bounds');
+        end
+        if ~lrate
             lrate = DEFAULT_LRATE;
-         end
-      elseif strcmp(Keyword,'block') | strcmp(Keyword,'blocksize')
-         if isstr(Value)
-            fprintf('runica(): block size value must be a number')
-            return
-         end
-         block = floor(Value);
-         if ~block,
-           block = DEFAULT_BLOCK; 
-         end
-      elseif strcmp(Keyword,'stop') | strcmp(Keyword,'nochange') ...
-                    | strcmp(Keyword,'stopping')
-         if isstr(Value)
-            fprintf('runica(): stop wchange value must be a number')
-            return
-         end
-         nochange = Value;
-      elseif strcmp(Keyword,'logfile')
-         if ~isstr(Value)
-            fprintf('runica(): logfile value must be a string')
-            return
-         end
-         logfile = Value;
-      elseif strcmp(Keyword,'maxsteps') | strcmp(Keyword,'steps')
-         if isstr(Value)
-            fprintf('runica(): maxsteps value must be an integer')
-            return
-         end
-         maxsteps = Value;
-         if ~maxsteps,
+        end
+    elseif strcmp(Keyword,'block') || strcmp(Keyword,'blocksize')
+        if ischar(Value)
+            error('runica(): block size value must be a number')
+        end
+        block = floor(Value);
+        if ~block
+            block = DEFAULT_BLOCK;
+        end
+    elseif strcmp(Keyword,'stop') || strcmp(Keyword,'nochange') ...
+            || strcmp(Keyword,'stopping')
+        if ischar(Value)
+            error('runica(): stop wchange value must be a number')
+        end
+        nochange = Value;
+    elseif strcmp(Keyword,'logfile')
+        if ~ischar(Value)
+            error('runica(): logfile value must be a string')
+        end
+        logfile = Value;
+    elseif strcmp(Keyword,'maxsteps') || strcmp(Keyword,'steps')
+        if ischar(Value)
+            error('runica(): maxsteps value must be an integer')
+        end
+        maxsteps = Value;
+        if ~maxsteps
             maxsteps   = DEFAULT_MAXSTEPS;
-         end
-         if maxsteps < 0
-            fprintf('runica(): maxsteps value (%d) must be a positive integer',maxsteps)
-            return
-         end
-      elseif strcmp(Keyword,'anneal') | strcmp(Keyword,'annealstep')
-         if isstr(Value)
-            fprintf('runica(): anneal step value (%2.4f) must be a number (0,1)',Value)
-            return
-         end
-         annealstep = Value;
-         if annealstep <=0 | annealstep > 1,
-            fprintf('runica(): anneal step value (%2.4f) must be (0,1]',annealstep)
-            return
-         end
-      elseif strcmp(Keyword,'annealdeg') | strcmp(Keyword,'degrees')
-         if isstr(Value)
-            fprintf('runica(): annealdeg value must be a number')
-            return
-         end
-         annealdeg = Value;
-         if ~annealdeg,
-             annealdeg = DEFAULT_ANNEALDEG;
-         elseif annealdeg > 180 | annealdeg < 0
-          fprintf('runica(): annealdeg (%3.1f) is out of bounds [0,180]',...
-                annealdeg);
-          return
-                                              
-         end
-      elseif strcmp(Keyword,'momentum')
-         if isstr(Value)
-            fprintf('runica(): momentum value must be a number')
-            return
-         end
-         momentum = Value;
-         if momentum > 1.0 | momentum < 0
-          fprintf('runica(): momentum value is out of bounds [0,1]')
-          return
-         end
-      elseif strcmp(Keyword,'sphering') | strcmp(Keyword,'sphereing') ...
-                | strcmp(Keyword,'sphere')
-         if ~isstr(Value)
-           fprintf('runica(): sphering value must be on, off, or none')
-           return
-         else 
-           Value = lower(Value);
-           if ~strcmp(Value,'on') & ~strcmp(Value,'off') & ~strcmp(Value,'none'),
-             fprintf('runica(): sphering value must be on or off')
-             return
-           end
-           sphering = Value;
-         end
-      elseif strcmp(Keyword,'bias')
-         if ~isstr(Value)
-           fprintf('runica(): bias value must be on or off')
-           return
-         else 
-           Value = lower(Value);
-           if strcmp(Value,'on') 
-              biasflag = 1;
-           elseif strcmp(Value,'off'),
-              biasflag = 0;
-           else
-              fprintf('runica(): bias value must be on or off')
-              return
-           end
-         end
-      elseif strcmp(Keyword,'specgram') | strcmp(Keyword,'spec')
+        end
+        if maxsteps < 0
+            error('runica(): maxsteps value (%d) must be a positive integer',maxsteps)
+        end
+    elseif strcmp(Keyword,'anneal') || strcmp(Keyword,'annealstep')
+        if ischar(Value)
+            error('runica(): anneal step value (%2.4f) must be a number (0,1)',Value)
+        end
+        annealstep = Value;
+        if annealstep <=0 || annealstep > 1
+            error('runica(): anneal step value (%2.4f) must be (0,1]',annealstep)
+        end
+    elseif strcmp(Keyword,'annealdeg') || strcmp(Keyword,'degrees')
+        if ischar(Value)
+            error('runica(): annealdeg value must be a number')
+        end
+        annealdeg = Value;
+        if ~annealdeg
+            annealdeg = DEFAULT_ANNEALDEG;
+        elseif annealdeg > 180 || annealdeg < 0
+            error('runica(): annealdeg (%3.1f) is out of bounds [0,180]',annealdeg);
+        end
+    elseif strcmp(Keyword,'momentum')
+        if ischar(Value)
+            error('runica(): momentum value must be a number')
+        end
+        momentum = Value;
+        if momentum > 1.0 || momentum < 0
+            error('runica(): momentum value is out of bounds [0,1]')
+        end
+    elseif strcmp(Keyword,'sphering') || strcmp(Keyword,'sphereing') ...
+            || strcmp(Keyword,'sphere')
+        if ~ischar(Value)
+            error('runica(): sphering value must be on, off, or none')
+        else
+            Value = lower(Value);
+            if ~strcmp(Value,'on') && ~strcmp(Value,'off') && ~strcmp(Value,'none'),
+                error('runica(): sphering value must be on or off')
+            end
+            sphering = Value;
+        end
+    elseif strcmp(Keyword,'bias')
+        if ~ischar(Value)
+            error('runica(): bias value must be on or off')
+        else
+            Value = lower(Value);
+            if strcmp(Value,'on')
+                biasflag = 1;
+            elseif strcmp(Value,'off'),
+                biasflag = 0;
+            else
+                error('runica(): bias value must be on or off')
+            end
+        end
+    elseif strcmp(Keyword,'specgram') || strcmp(Keyword,'spec')
 
-         if ~exist('specgram') < 2 % if ~exist or defined workspace variable
-           fprintf(...
-   'runica(): MATLAB Sig. Proc. Toolbox function "specgram" not found.\n')
-           return
-         end
-         if isstr(Value)
-           fprintf('runica(): specgram argument must be a vector')
-           return
-         end
-         srate = Value(1);
-         if (srate < 0)
-             fprintf('runica(): specgram srate (%4.1f) must be >=0',srate)
-             return
-           end
-         if length(Value)>1
-           loHz = Value(2);
-           if (loHz < 0 | loHz > srate/2)
-             fprintf('runica(): specgram loHz must be >=0 and <= srate/2 (%4.1f)',srate/2)
-             return
-           end
-         else
-           loHz = 0; % default
-         end
-         if length(Value)>2
-           hiHz = Value(3);
-           if (hiHz < loHz | hiHz > srate/2)
-             fprintf('runica(): specgram hiHz must be >=loHz (%4.1f) and <= srate/2 (%4.1f)',loHz,srate/2)
-             return
-           end
-         else
-           hiHz = srate/2; % default
-         end
-         if length(Value)>3
-           Hzframes = Value(5);
-           if (Hzframes<0 | Hzframes > size(data,2))
-             fprintf('runica(): specgram frames must be >=0 and <= data length (%d)',size(data,2))
-             return
-           end
-         else
-           Hzframes = size(data,2); % default
-         end
-         if length(Value)>4
-           Hzwinlen = Value(4);
-           if rem(Hzframes,Hzwinlen) % if winlen doesn't divide frames
-             fprintf('runica(): specgram Hzinc must divide frames (%d)',Hzframes)
-             return
-           end
-         else
-           Hzwinlen = Hzframes; % default
-         end
-         Specgramflag = 1; % set flag to perform specgram()
+        if ~exist('specgram') < 2 % if ~exist or defined workspace variable
+            error('runica(): MATLAB Sig. Proc. Toolbox function "specgram" not found.\n')
+        end
+        if ischar(Value)
+            error('runica(): specgram argument must be a vector')
+        end
+        srate = Value(1);
+        if (srate < 0)
+            fprintf('runica(): specgram srate (%4.1f) must be >=0',srate)
+        end
+        if length(Value)>1
+            loHz = Value(2);
+            if (loHz < 0 || loHz > srate/2)
+                error('runica(): specgram loHz must be >=0 and <= srate/2 (%4.1f)',srate/2)
+            end
+        else
+            loHz = 0; % default
+        end
+        if length(Value)>2
+            hiHz = Value(3);
+            if (hiHz < loHz || hiHz > srate/2)
+                error('runica(): specgram hiHz must be >=loHz (%4.1f) and <= srate/2 (%4.1f)',loHz,srate/2)
+            end
+        else
+            hiHz = srate/2; % default
+        end
+        if length(Value)>3
+            Hzframes = Value(5);
+            if (Hzframes<0 || Hzframes > size(data,2))
+                error('runica(): specgram frames must be >=0 and <= data length (%d)',size(data,2))
+            end
+        else
+            Hzframes = size(data,2); % default
+        end
+        if length(Value)>4
+            Hzwinlen = Value(4);
+            if rem(Hzframes,Hzwinlen) % if winlen doesn't divide frames
+                error('runica(): specgram Hzinc must divide frames (%d)',Hzframes)
+            end
+        else
+            Hzwinlen = Hzframes; % default
+        end
+        Specgramflag = 1; % set flag to perform specgram()
 
-      elseif strcmp(Keyword,'extended') | strcmp(Keyword,'extend')
-         if isstr(Value)
-           fprintf('runica(): extended value must be an integer (+/-)')
-           return
-         else
-           extended = 1;      % turn on extended-ICA
-           extblocks = fix(Value); % number of blocks per kurt() compute
-           if extblocks < 0
+    elseif strcmp(Keyword,'extended') || strcmp(Keyword,'extend')
+        if ischar(Value)
+            error('runica(): ''extended'' parameter value must be an integer (+/-)')
+        else
+            extended = 1;      % turn on extended-ICA
+            extblocks = fix(Value); % number of blocks per kurt() compute
+            if extblocks < 0
                 nsub = -1*fix(extblocks);  % fix this many sub-Gauss comps
-           elseif ~extblocks,
+            elseif ~extblocks
                 extended = 0;             % turn extended-ICA off
-           elseif kurtsize>frames,   % length of kurtosis calculation
+            elseif kurtsize>frames   % length of kurtosis calculation
                 kurtsize = frames;
                 if kurtsize < MIN_KURTSIZE
-                   fprintf(...
-   'runica() warning: kurtosis values inexact for << %d points.\n',...
-                                                         MIN_KURTSIZE);
+                    warning('runica() warning: kurtosis values inexact for << %d points.\n', MIN_KURTSIZE);
                 end
-           end
-         end
-      elseif strcmp(Keyword,'verbose') 
-         if ~isstr(Value)
-            fprintf('runica(): verbose flag value must be on or off')
-            return
-         elseif strcmp(Value,'on'),
-             verbose = 1; 
-         elseif strcmp(Value,'off'),
-             verbose = 0; 
-         else
-             fprintf('runica(): verbose flag value must be on or off')
-             return
-         end
-      elseif strcmp(Keyword,'reset_randomseed')
-         if ischar(Value)
-           if strcmp(Value,'yes') || strcmp(Value,'on')
-             reset_randomseed = true;
-           elseif strcmp(Value,'no') || strcmp(Value,'off')
-             reset_randomseed = false;
-           else
-             fprintf('runica(): not using the reset_randomseed flag, it should be ''yes'',''on'',''no'', ''off'',0, or 1');
-           end
-         else
-           reset_randomseed = Value;
-         end
-      else
-         fprintf('runica(): unknown flag')
-         return
-      end
-   end
+            end
+        end
+    elseif strcmp(Keyword,'verbose')
+        if ~ischar(Value)
+            error('runica(): verbose flag value must be on or off')
+        elseif strcmp(Value,'on')
+            verbose = 1;
+        elseif strcmp(Value,'off')
+            verbose = 0;
+        else
+            error('runica(): verbose flag value must be on or off')
+        end
+    elseif strcmp(Keyword,'rndreset')
+        if ischar(Value)
+            if strcmp(Value,'yes')
+                reset_randomseed = true;
+            elseif strcmp(Value,'no')
+                reset_randomseed = false;
+            else
+                error('runica(): not using the reset_randomseed flag, it should be ''yes'',''no'',0, or 1');
+            end
+        else
+            reset_randomseed = Value;
+        end
+    else
+        fprintf(2, 'runica(): unknown flag')
+        return
+    end
+end
 
 %
 %%%%%%%%%%%%%%%%%%%%%%%% Initialize weights, etc. %%%%%%%%%%%%%%%%%%%%%%%%
 %
-if ~annealstep,
-  if ~extended,
+if ~annealstep
+  if ~extended
     annealstep = DEFAULT_ANNEALSTEP;     % defaults defined above
   else
     annealstep = DEFAULT_EXTANNEAL;       % defaults defined above
   end
 end % else use annealstep from commandline
 
-if ~annealdeg, 
+if ~annealdeg
     annealdeg  = DEFAULT_ANNEALDEG - momentum*90; % heuristic
-    if annealdeg < 0,
+    if annealdeg < 0
         annealdeg = 0;
     end
 end
-if ncomps >  chans | ncomps < 1
+if ncomps >  chans || ncomps < 1
     fprintf('runica(): number of components must be 1 to %d.\n',chans);
     return
 end
 %
 %%%%%%%%%%%%%%%%%%%%% Check keyword values %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-if frames<chans,
+if frames<chans
     fprintf('runica(): data length (%d) < data channels (%d)!\n',frames,chans)
     return
-elseif block < 2,
+elseif block < 2
     fprintf('runica(): block size %d too small!\n',block)
     return
-elseif block > frames, 
+elseif block > frames
     fprintf('runica(): block size exceeds data length!\n');
     return
-elseif floor(epochs) ~= epochs,
+elseif floor(epochs) ~= epochs
     fprintf('runica(): data length is not a multiple of the epoch length!\n');
     return
 elseif nsub > ncomps
     fprintf('runica(): there can be at most %d sub-Gaussian components!\n',ncomps);
     return
-end;
+end
 
 if ~isempty(logfile)
     fid = fopen(logfile, 'w');
-    if fid == -1, error('Cannot open logfile for writing'); end;
+    if fid == -1, error('Cannot open logfile for writing'); end
 else
     fid = [];
-end;
+end
 verb = verbose;
 
-if weights ~= 0,                    % initialize weights
+if weights ~= 0                    % initialize weights
   % starting weights are being passed to runica() from the commandline
-    if  chans>ncomps & weights ~=0,
+    if  chans>ncomps && weights ~=0
         [r,c]=size(weights);
-        if r~=ncomps | c~=chans,
+        if r~=ncomps || c~=chans
             fprintf('runica(): weight matrix must have %d rows, %d columns.\n', ...
                     chans,ncomps);
             return;
@@ -599,10 +569,10 @@ if isnan(nochange)
     else
         nochangeupdated = 1; % for fprinting purposes
         nochange = DEFAULT_STOP;
-    end;
+    end
 else 
     nochangeupdated = 0;
-end;
+end
 
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Process the data %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -638,7 +608,7 @@ icaprintf(verb,fid,'Learning rate will be multiplied by %g whenever angledelta >
 
 if nochangeupdated 
     icaprintf(verb,fid,'More than 32 channels: default stopping weight change 1E-7\n');
-end;
+end
 icaprintf(verb,fid,'Training will end when wchange < %g or after %d steps.\n', nochange,maxsteps);
 if biasflag,
     icaprintf(verb,fid,'Online bias adjustment will be used.\n');
@@ -803,7 +773,7 @@ signs = ones(1,ncomps);    % initialize signs to nsub -1, rest +1
 for k=1:nsub
     signs(k) = -1;
 end
-if extended & extblocks < 0,
+if extended && extblocks < 0,
     icaprintf(verb,fid,'Fixed extended-ICA sign assignments:  ');
     for k=1:ncomps
         icaprintf(verb,fid,'%d ',signs(k));
@@ -829,39 +799,51 @@ step=0;
 laststep=0;
 blockno = 1;  % running block counter for kurtosis interrupts
 
+warning('off', 'MATLAB:RandStream:ActivatingLegacyGenerators')
 if reset_randomseed
     rand('state',sum(100*clock));  % set the random number generator state to
+else
+    rand('state', 0);
 end                                % a position dependent on the system clock
+warning('on', 'MATLAB:RandStream:ActivatingLegacyGenerators')
 
 % interrupt figure
 % --------------- 
-if strcmpi(interupt, 'on')
+if strcmpi(interrupt, 'on')
     fig = figure('visible', 'off');
     supergui( fig, {1 1}, [], {'style' 'text' 'string' 'Press button to interrupt runica()' }, ...
-              {'style' 'pushbutton' 'string' 'Interupt' 'callback' 'setappdata(gcf, ''run'', 0);' } );
+              {'style' 'pushbutton' 'string' 'Interrupt' 'callback' 'setappdata(gcf, ''run'', 0);' } );
     set(fig, 'visible', 'on');
     setappdata(gcf, 'run', 1);
     
-    if strcmpi(interupt, 'on')
-        drawnow;
-    end;
-end;
+    if strcmpi(interrupt, 'on')
+        try
+            drawnow limitrate;
+        catch
+            drawnow;
+        end
+    end
+end
 
 
 %% Compute ICA Weights
-if biasflag & extended
+if biasflag && extended
     while step < maxsteps, %%% ICA step = pass through all the data %%%%%%%%%
         timeperm=randperm(datalength); % shuffle data order at each step
 
         for t=1:block:lastt, %%%%%%%%% ICA Training Block %%%%%%%%%%%%%%%%%%%
-            if strcmpi(interupt, 'on')
-                drawnow;
+            if strcmpi(interrupt, 'on')
+                try
+                    drawnow limitrate;
+                catch
+                    drawnow;
+                end
                 flag = getappdata(fig, 'run');
                 if ~flag,
-                    if ~isempty(fid), fclose(fid); end;
+                    if ~isempty(fid), fclose(fid); end
                     close; error('USER ABORT');
-                end;
-            end;
+                end
+            end
             
             %% promote data block (only) to double to keep u and weights double
             u=weights*double(data(:,timeperm(t:t+block-1))) + bias*onesrow;
@@ -884,11 +866,11 @@ if biasflag & extended
                 %
                 %%%%%%%%%%% Extended-ICA kurtosis estimation %%%%%%%%%%%%%%%%%%%%%
                 %while step < maxsteps
-                if extblocks > 0 & rem(blockno,extblocks) == 0,
+                if extblocks > 0 && rem(blockno,extblocks) == 0,
                     % recompute signs vector using kurtosis
                     if kurtsize < frames % 12-22-99 rand() size suggestion by M. Spratling
                         rp = fix(rand(1,kurtsize)*datalength);  % pick random subset
-                        % Accout for the possibility of a 0 generation by rand
+                        % Account for the possibility of a 0 generation by rand
                         ou = find(rp == 0);
                         while ~isempty(ou) % 1-11-00 suggestion by J. Foucher
                             rp(ou) = fix(rand(1,length(ou))*datalength);
@@ -939,7 +921,7 @@ if biasflag & extended
         %
         %%%%%%%%%%%%%%%%%%%%%% Restart if weights blow up %%%%%%%%%%%%%%%%%%%%
         %
-        if wts_blowup | isnan(change)|isinf(change),  % if weights blow up,
+        if wts_blowup || isnan(change)|isinf(change),  % if weights blow up,
             icaprintf(verb,fid,'');
             step = 0;                          % start again
             change = nochange;
@@ -1009,7 +991,7 @@ if biasflag & extended
             %
             %%%%%%%%%%%%%%%%%%%% Apply stopping rule %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            if step >2 & change < nochange,      % apply stopping rule
+            if step >2 && change < nochange,      % apply stopping rule
                 laststep=step;
                 step=maxsteps;                  % stop when weights stabilize
             elseif change > DEFAULT_BLOWUP,      % if weights blow up,
@@ -1021,19 +1003,23 @@ if biasflag & extended
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 %% Compute ICA Weights
-if biasflag & ~extended
+if biasflag && ~extended
     while step < maxsteps, %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         timeperm=randperm(datalength); % shuffle data order at each step
 
         for t=1:block:lastt, %%%%%%%%% ICA Training Block %%%%%%%%%%%%%%%%%%%
-            if strcmpi(interupt, 'on')
-                drawnow;
+            if strcmpi(interrupt, 'on')
+                try
+                    drawnow limitrate;
+                catch
+                    drawnow;
+                end
                 flag = getappdata(fig, 'run');
                 if ~flag,
-                    if ~isempty(fid), fclose(fid); end;
+                    if ~isempty(fid), fclose(fid); end
                     close; error('USER ABORT');
-                end;
-            end;
+                end
+            end
             
             u=weights*double(data(:,timeperm(t:t+block-1))) + bias*onesrow;
             y=1./(1+exp(-u));                                                
@@ -1070,7 +1056,7 @@ if biasflag & ~extended
         %
         %%%%%%%%%%%%%%%%%%%%%% Restart if weights blow up %%%%%%%%%%%%%%%%%%%%
         %
-        if wts_blowup | isnan(change)|isinf(change),  % if weights blow up,
+        if wts_blowup || isnan(change)|isinf(change),  % if weights blow up,
             icaprintf(verb,fid,'');
             step = 0;                          % start again
             change = nochange;
@@ -1129,7 +1115,7 @@ if biasflag & ~extended
             %
             %%%%%%%%%%%%%%%%%%%% Apply stopping rule %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            if step >2 & change < nochange,      % apply stopping rule
+            if step >2 && change < nochange,      % apply stopping rule
                 laststep=step;
                 step=maxsteps;                  % stop when weights stabilize
             elseif change > DEFAULT_BLOWUP,      % if weights blow up,
@@ -1141,19 +1127,23 @@ if biasflag & ~extended
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 %% Compute ICA Weights
-if ~biasflag & extended
+if ~biasflag && extended
     while step < maxsteps, %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         timeperm=randperm(datalength); % shuffle data order at each step through data
 
         for t=1:block:lastt, %%%%%%%%% ICA Training Block %%%%%%%%%%%%%%%%%%%
-            if strcmpi(interupt, 'on')
-                drawnow;
+            if strcmpi(interrupt, 'on')
+                try
+                    drawnow limitrate;
+                catch
+                    drawnow;
+                end
                 flag = getappdata(fig, 'run');
                 if ~flag,
-                    if ~isempty(fid), fclose(fid); end;
+                    if ~isempty(fid), fclose(fid); end
                     close; error('USER ABORT');
-                end;
-            end;
+                end
+            end
             
             u=weights*double(data(:,timeperm(t:t+block-1))); % promote block to dbl
             y=tanh(u);                                                       %
@@ -1173,11 +1163,11 @@ if ~biasflag & extended
                 %
                 %%%%%%%%%%% Extended-ICA kurtosis estimation %%%%%%%%%%%%%%%%%%%%%
                 %while step < maxsteps
-                if extblocks > 0 & rem(blockno,extblocks) == 0,
+                if extblocks > 0 && rem(blockno,extblocks) == 0,
                     % recompute signs vector using kurtosis
                     if kurtsize < frames % 12-22-99 rand() size suggestion by M. Spratling
                         rp = fix(rand(1,kurtsize)*datalength);  % pick random subset
-                        % Accout for the possibility of a 0 generation by rand
+                        % Account for the possibility of a 0 generation by rand
                         ou = find(rp == 0);
                         while ~isempty(ou) % 1-11-00 suggestion by J. Foucher
                             rp(ou) = fix(rand(1,length(ou))*datalength);
@@ -1228,7 +1218,7 @@ if ~biasflag & extended
         %
         %%%%%%%%%%%%%%%%%%%%%% Restart if weights blow up %%%%%%%%%%%%%%%%%%%%
         %
-        if wts_blowup | isnan(change)|isinf(change),  % if weights blow up,
+        if wts_blowup || isnan(change)|isinf(change),  % if weights blow up,
             icaprintf(verb,fid,'');
             step = 0;                          % start again
             change = nochange;
@@ -1296,7 +1286,7 @@ if ~biasflag & extended
             %
             %%%%%%%%%%%%%%%%%%%% Apply stopping rule %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            if step >2 & change < nochange,      % apply stopping rule
+            if step >2 && change < nochange,      % apply stopping rule
                 laststep=step;
                 step=maxsteps;                  % stop when weights stabilize
             elseif change > DEFAULT_BLOWUP,      % if weights blow up,
@@ -1308,19 +1298,23 @@ if ~biasflag & extended
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Compute ICA Weights
-if ~biasflag & ~extended
+if ~biasflag && ~extended
     while step < maxsteps, %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         timeperm=randperm(datalength); % shuffle data order at each step
 
         for t=1:block:lastt, %%%%%%%%% ICA Training Block %%%%%%%%%%%%%%%%%%%
-            if strcmpi(interupt, 'on')
-                drawnow;
+            if strcmpi(interrupt, 'on')
+                try
+                    drawnow limitrate;
+                catch
+                    drawnow;
+                end
                 flag = getappdata(fig, 'run');
                 if ~flag,
-                    if ~isempty(fid), fclose(fid); end;
+                    if ~isempty(fid), fclose(fid); end
                     close; error('USER ABORT');
-                end;
-            end;
+                end
+            end
             u=weights*double(data(:,timeperm(t:t+block-1)));
             y=1./(1+exp(-u));                                                %
             weights = weights + lrate*(BI+(1-2*y)*u')*weights;
@@ -1356,7 +1350,7 @@ if ~biasflag & ~extended
         %
         %%%%%%%%%%%%%%%%%%%%%% Restart if weights blow up %%%%%%%%%%%%%%%%%%%%
         %
-        if wts_blowup | isnan(change)|isinf(change),  % if weights blow up,
+        if wts_blowup || isnan(change)|isinf(change),  % if weights blow up,
             icaprintf(verb,fid,'');
             step = 0;                          % start again
             change = nochange;
@@ -1419,7 +1413,7 @@ if ~biasflag & ~extended
             %
             %%%%%%%%%%%%%%%%%%%% Apply stopping rule %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             %
-            if step >2 & change < nochange,      % apply stopping rule
+            if step >2 && change < nochange,      % apply stopping rule
                 laststep=step;
                 step=maxsteps;                  % stop when weights stabilize
             elseif change > DEFAULT_BLOWUP,      % if weights blow up,
@@ -1432,20 +1426,20 @@ if ~biasflag & ~extended
 end
 %% Finalize Computed Data for Output
   
-if strcmpi(interupt, 'on')
+if strcmpi(interrupt, 'on')
     close(fig);
-end;
+end
 
 
   if ~laststep
     laststep = step;
-  end;
+  end
   lrates = lrates(1,1:laststep);           % truncate lrate history vector
 
   %
   %%%%%%%%%%%%%% Orient components towards max positive activation %%%%%%
   %
-  if nargout > 6 | strcmp(posactflag,'on')
+  if nargout > 6 || strcmp(posactflag,'on')
       % make activations from sphered and pca'd data; -sm 7/05
       % add back the row means removed from data before sphering
       if strcmp(pcaflag,'off')
@@ -1460,7 +1454,7 @@ end;
               data(r,:) = data(r,:)+ser(r); % add back row means 
           end
           data = weights*data; % OK in single
-      end;
+      end
   end
   %
   % NOTE: Now 'data' are the component activations = weights*sphere*raw_data
@@ -1554,4 +1548,4 @@ function icaprintf(verb,fid, varargin);
             fprintf(fid, varargin{:});
         end;        
         fprintf(varargin{:});
-    end;
+    end

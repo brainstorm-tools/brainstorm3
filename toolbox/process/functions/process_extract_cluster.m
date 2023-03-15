@@ -26,7 +26,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
     sProcess.Comment     = 'Clusters time series';
     sProcess.Category    = 'Custom';
@@ -34,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 351;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelClusters';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'matrix'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'matrix', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     
@@ -80,7 +80,7 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     % Initialize returned variable
     OutputFiles = {};
     % REDIRECTING SCOUT CALLS TO PROCESS_EXTRACT_SCOUTS
@@ -122,15 +122,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
-        sResults = [];
-        
-        % === READ FILES ===
-        % Load recordings
-        sMat = in_bst_data(sInputs(iInput).FileName);
-        matValues = sMat.F;
-        stdValues = sMat.Std;
-        % Input filename
-        condComment = sInputs(iInput).FileName;
+        % === READ CHANNEL FILE ===
         % Check for channel file
         if isempty(sInputs(iInput).ChannelFile)
             bst_report('Error', sProcess, sInputs(iInput), 'This process requires a channel file.');
@@ -143,8 +135,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             return;
         end
 
+        % === READ RECORDINGS ===
+        % Load data file
+        sMat = in_bst_data(sInputs(iInput).FileName);
+        % Raw file
+        isRaw = strcmpi(sInputs(iInput).FileType, 'raw');
+        if isRaw
+            % Convert time bounds into samples
+            sFile = sMat.F;
+            if ~isempty(TimeWindow)
+                SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(TimeWindow, sMat.Time) - 1;
+            else
+                SamplesBounds = [];
+            end
+            % Read data
+            [matValues, sMat.Time] = in_fread(sFile, ChannelMat, 1, SamplesBounds, []);
+            stdValues = [];
+            % Remember that time selection is already applied
+            TimeWindow = [];
+        % Epoched data file
+        else
+            matValues = sMat.F;
+            stdValues = sMat.Std;
+        end
         % Nothing loaded
-        if isempty(sMat) || (isempty(matValues) && (isempty(sResults) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
+        if isempty(sMat) || isempty(matValues)
             bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
             return;
         end
@@ -272,9 +287,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             scoutStds = cat(1, scoutStds, tmpStd);
             for iRow = 1:size(tmpScout,1)
                 if ~isempty(RowNames)
-                    Description = cat(1, Description, [sClusters(iClust).Label '.' RowNames{iRow} ' @ ' condComment]);
+                    Description = cat(1, Description, [sClusters(iClust).Label '.' RowNames{iRow} ' @ ' sInputs(iInput).FileName]);
                 else
-                    Description = cat(1, Description, [sClusters(iClust).Label ' @ ' condComment]);
+                    Description = cat(1, Description, [sClusters(iClust).Label ' @ ' sInputs(iInput).FileName]);
                 end
             end
         end

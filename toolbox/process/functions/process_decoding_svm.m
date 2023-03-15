@@ -158,6 +158,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('start', 'Decoding', 'Decoding with max-correlation model...');
         d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1, 'kfold', kFold);
     else
+        % Check installation of libsvm
+        if isempty(which('svmtrain'))
+            bst_report('Error', sProcess, [], ['Could not find function: svmtrain.' mexext 10 'The library libsvm is not installed or not compiled yet.' 10 ...
+                'See instructions in the online tutorial: ' 10 'https://neuroimage.usc.edu/brainstorm/Tutorials/Decoding#Download_and_installation']);
+            return;
+        end
         % Default: basic SVM model
         modelName = 'SVM';
         bst_progress('start', 'Decoding', 'Decoding with SVM model...');

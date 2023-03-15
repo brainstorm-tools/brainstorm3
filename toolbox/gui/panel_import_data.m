@@ -1083,8 +1083,12 @@ function s = GetPanelContents() %#ok<DEFNU>
         for iEvent = 1:length(s.events)
             s.events(iEvent).epochs   = s.events(iEvent).epochs(iSelSmp{iEvent});
             s.events(iEvent).times    = s.events(iEvent).times(:, iSelSmp{iEvent});
-            s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
-            s.events(iEvent).notes    = s.events(iEvent).notes(iSelSmp{iEvent});
+            if ~isempty(s.events(iEvent).channels)
+                s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
+            end
+            if ~isempty(s.events(iEvent).notes)
+                s.events(iEvent).notes = s.events(iEvent).notes(iSelSmp{iEvent});
+            end
         end
         % Import mode
         s.ImportMode = 'Event';

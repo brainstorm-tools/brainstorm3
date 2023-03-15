@@ -128,6 +128,13 @@ for i = 1:length(dirTxt)
     AllFiles{end+1} = bst_fullfile(SubjectPath, dirTxt(i).name);
 end
 
+% Add extra nii files
+SubjectPath = bst_fileparts(AllFiles{1});
+dirNii = dir(bst_fullfile(SubjectPath, '*.nii*'));
+for i = 1:length(dirTxt)
+    AllFiles{end+1} = bst_fullfile(SubjectPath, dirNii(i).name);
+end
+
 % Get channel files associated with this subject
 iChanStudies = bst_get('ChannelStudiesWithSubject', iSubject);
 ChannelFiles = {};

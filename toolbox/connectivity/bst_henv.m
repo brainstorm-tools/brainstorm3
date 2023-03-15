@@ -190,7 +190,7 @@ for f = 1:nfBins
         end
         if sameInp
             % No auto-correlation
-            CorrMat(logical(eye(nX))) = 0 ;
+%            CorrMat(logical(eye(nX))) = 0 ;
             % We assume all measures are real, non-negative, and symmetric
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
         else

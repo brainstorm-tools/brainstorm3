@@ -122,8 +122,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput.Events.color    = [.8 0 0];
         sInput.Events.epochs   = [1 1];
         sInput.Events.times    = round(trans .* sfreq) ./ sfreq;
-        sInput.Events.channels = cell(1, size(sInput.Events.times, 2));
-        sInput.Events.notes    = cell(1, size(sInput.Events.times, 2));
+        sInput.Events.channels = [];
+        sInput.Events.notes    = [];
     end
     
     % Comment

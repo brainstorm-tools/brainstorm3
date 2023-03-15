@@ -244,8 +244,8 @@ for iEvt = 1:length(jnirs.nirs.stim)
 
     DataMat.Events(iEvt).times      = evtTime;
     DataMat.Events(iEvt).epochs     = ones(1, size(evtTime,2));
-    DataMat.Events(iEvt).channels   = cell(1, size(evtTime,2));
-    DataMat.Events(iEvt).notes      = cell(1, size(evtTime,2));
+    DataMat.Events(iEvt).channels   = [];
+    DataMat.Events(iEvt).notes      = [];
     DataMat.Events(iEvt).reactTimes = [];
 end   
 end

@@ -104,8 +104,8 @@ events.reactTimes = [];
 events.select     = 1;
 events.times      = evtTimes;
 events.epochs     = ones(1, length(evtTimes));  % Epoch: set as 1 for all the occurrences
-events.channels   = cell(1, size(events.times, 2));
-events.notes      = cell(1, size(events.times, 2));
+events.channels   = [];
+events.notes      = [];
 
 
 

@@ -405,13 +405,6 @@ if isfield(header, 'process') && isfield(header.process, 'type')
                 iOcc = length(sFile.events(iEvent).times) + 1;
                 sFile.events(iEvent).epochs(iOcc)   = 1;
                 sFile.events(iEvent).times(iOcc)    = round(evtTime .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
-                if (iOcc == 1)
-                    sFile.events(iEvent).channels = {{}};
-                    sFile.events(iEvent).notes    = {[]};
-                else
-                    sFile.events(iEvent).channels{iOcc} = {};
-                    sFile.events(iEvent).notes{iOcc}    = [];
-                end
             end
         end
     end

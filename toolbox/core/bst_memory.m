@@ -746,6 +746,9 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     if ~isempty(iDS) && ~isReloadForced
         if ~isempty(sStudy.BrainStormSubject) && ~file_compare(sStudy.BrainStormSubject, GlobalData.DataSet(iDS).SubjectFile)
             iDS = [];
+        % Check time window
+        elseif ~isStatic && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (Measures.NumberOfSamples > 2) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples ~= Measures.NumberOfSamples)
+            error('Time definition is incompatible with previously loaded data.');
         else
             GlobalData.DataSet(iDS).Measures.DataType    = Measures.DataType;
             GlobalData.DataSet(iDS).Measures.ChannelFlag = Measures.ChannelFlag;

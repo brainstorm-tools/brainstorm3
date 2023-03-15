@@ -169,8 +169,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     nTimes = numel(sEvents.B{iTrialB}(iEventB).times);
                     sEvents.B{iTrialB}(iEventB).times    = nan(1,nTimes);
                     sEvents.B{iTrialB}(iEventB).epochs   = ones(1,nTimes)*currentEpoch;
-                    sEvents.B{iTrialB}(iEventB).channels = cell(1,nTimes);
-                    sEvents.B{iTrialB}(iEventB).notes    = cell(1,nTimes);
+                    sEvents.B{iTrialB}(iEventB).channels = [];
+                    sEvents.B{iTrialB}(iEventB).notes    = [];
                 else % label found, use existing event                    
                     iEventB = find(strcmp(sEvents.A{iTrialA}(iEventA).label, {sEvents.B{iTrialB}(:).label}));
                     nEvtExst = numel(sEvents.B{iTrialB}(iEventB).times);
@@ -178,8 +178,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     nTimes = numel(sEvents.A{iTrialA}(iEventA).times);
                     sEvents.B{iTrialB}(iEventB).times    = [sEvents.B{iTrialB}(iEventB).times,    nan(1,nTimes)];
                     sEvents.B{iTrialB}(iEventB).epochs   = [sEvents.B{iTrialB}(iEventB).epochs,   ones(1,nTimes)*currentEpoch];
-                    sEvents.B{iTrialB}(iEventB).channels = [sEvents.B{iTrialB}(iEventB).channels, cell(1,nTimes)]; 
-                    sEvents.B{iTrialB}(iEventB).notes    = [sEvents.B{iTrialB}(iEventB).notes,    cell(1,nTimes)]; 
+                    sEvents.B{iTrialB}(iEventB).channels = []; 
+                    sEvents.B{iTrialB}(iEventB).notes    = []; 
                 end
                 
                 for iTime = 1:numel(sEvents.A{iTrialA}(iEventA).times)
@@ -198,8 +198,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     invalidEvts = find(isnan(sEvents.B{iTrialB}(iEventB).times)); % out of time window
                     sEvents.B{iTrialB}(iEventB).times(invalidEvts) = [];
                     sEvents.B{iTrialB}(iEventB).epochs(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).channels(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).notes(invalidEvts) = [];
                 end
            end 
 

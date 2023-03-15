@@ -1,9 +1,9 @@
 function OutputFiles = db_set_headmodel(HeadModelFile, Target)
 % DB_SET_HEADMODEL: Copy a head model node to other studies
 %
-% USAGE:  OutputFiles = db_set_headmodel(iSrcStudy, iDestStudies)   : Apply to the target studies
-%         OutputFiles = db_set_headmodel(iSrcStudy, 'AllConditions'): Apply to all the conditons in the same subject
-%         OutputFiles = db_set_headmodel(iSrcStudy, 'AllSubjects')  : Apply to all the conditons in all the subjects
+% USAGE:  OutputFiles = db_set_headmodel(HeadModelFile, iDestStudies)   : Apply to the target studies
+%         OutputFiles = db_set_headmodel(HeadModelFile, 'AllConditions'): Apply to all the conditons in the same subject
+%         OutputFiles = db_set_headmodel(HeadModelFile, 'AllSubjects')  : Apply to all the conditons in all the subjects
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

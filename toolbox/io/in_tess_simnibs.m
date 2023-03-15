@@ -1,4 +1,4 @@
-function MeshMat = in_tess_simnibs(MeshFile)
+function MeshMat = in_tess_simnibs(MeshFile, FileFormat)
 % IN_TESS_SIMNIBS: Reads a 3D mesh from a gmsh4 file generated with SimNIBS
 
 % @=============================================================================
@@ -19,7 +19,7 @@ function MeshMat = in_tess_simnibs(MeshFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Takfarinas Medani, Francois Tadel, 2020
+% Authors: Takfarinas Medani, Francois Tadel, 2022-2023
 
 % Read mesh
 m = mesh_load_gmsh4(MeshFile);
@@ -34,25 +34,33 @@ MeshMat.Vertices = m.nodes(:,1:3);
 MeshMat.Elements = double(m.tetrahedra(:,1:4));
 MeshMat.Tissue   = double(m.tetrahedron_regions);
 
-% Replace the eyes with scalp (not used for now)
-MeshMat.Tissue(MeshMat.Tissue==6) = 5;
-            
 % Swap tetrahedrons orientation
 MeshMat.Elements = MeshMat.Elements(:, [2 1 3 4]);
 
-% Default tissue labels
-switch length(unique(MeshMat.Tissue))
-    case 3
-        MeshMat.TissueLabels = {'brain', 'skull', 'scalp'};
-    case 4
-        MeshMat.TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
-    case 5
-        MeshMat.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp'};
-    otherwise
-        uniqueLabels = unique(MeshMat.Tissue);
-        for i = 1:length(uniqueLabels)
-             MeshMat.TissueLabels{i} = num2str(uniqueLabels(i));
+switch (FileFormat)
+    case 'SIMNIBS3'
+        % Replace the eyes with scalp (not used for now)
+        % MeshMat.Tissue(MeshMat.Tissue==6) = 5;
+
+        % Default tissue labels
+        switch length(unique(MeshMat.Tissue))
+            case 3
+                MeshMat.TissueLabels = {'brain', 'skull', 'scalp'};
+            case 4
+                MeshMat.TissueLabels = {'brain', 'csf', 'skull', 'scalp'};
+            case 5
+                MeshMat.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp'};
+            otherwise
+                uniqueLabels = unique(MeshMat.Tissue);
+                for i = 1:length(uniqueLabels)
+                     MeshMat.TissueLabels{i} = num2str(uniqueLabels(i));
+                end
         end
+
+    case 'SIMNIBS4'
+        % Relabel the electrodes and gel
+        MeshMat.Tissue(MeshMat.Tissue==100) = 11;
+        MeshMat.Tissue(MeshMat.Tissue==500) = 12;
+        % Default tissue labels (from file: final_tissues_LUT.txt)
+        MeshMat.TissueLabels = {'white', 'gray', 'csf', 'skull', 'scalp', 'eyes', 'compact', 'spongy', 'blood', 'muscle', 'electrode', 'gel'};
 end
-
-

@@ -175,8 +175,8 @@ if (hdr.nsmpl >= 1)
         events(iEvt).select     = 1;
         events(iEvt).times      = allStart(iOcc) ./ sFile.prop.sfreq;  % Get time and samples  (considering that samples are zero-based)
         events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
-        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
     end
     % Import this list
     sFile = import_events(sFile, [], events);

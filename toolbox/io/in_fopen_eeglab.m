@@ -28,7 +28,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2023
 
 % ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -65,6 +65,11 @@ if isfield(hdr.EEG, 'srate') && ~isempty(hdr.EEG.srate)
     hdr.Time = hdr.EEG.xmin + (0:nTime-1) ./ hdr.EEG.srate;
 else
     hdr.Time = linspace(hdr.EEG.xmin, hdr.EEG.xmax, nTime);
+    if (nTime > 1)
+        hdr.EEG.srate = 1 ./ (hdr.Time(2) - hdr.Time(1));
+    else
+        hdr.EEG.srate = 1000;
+    end
 end
 
 % ===== LIST BAD TRIALS =====
@@ -296,8 +301,12 @@ sFile.format     = 'EEG-EEGLAB';
 sFile.device     = 'EEGLAB';
 sFile.byteorder  = 'l';
 % Properties of the recordings
-sFile.prop.times = [hdr.Time(1), hdr.Time(end)];
-sFile.prop.sfreq = 1 ./ (hdr.Time(2) - hdr.Time(1));
+if (nTime == 1)
+    sFile.prop.times = hdr.Time(1) + [0, 1./hdr.EEG.srate];
+else
+    sFile.prop.times = [hdr.Time(1), hdr.Time(end)];
+end
+sFile.prop.sfreq = hdr.EEG.srate;
 sFile.prop.nAvg  = 1;
 sFile.header = hdr;
 % Channel file
@@ -422,8 +431,8 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) && isfield(hdr.EEG.event
         % Compute times
         events(iEvt).times = samples ./ sFile.prop.sfreq;
         % Additional fields
-        events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels = [];
+        events(iEvt).notes    = [];
     end
     % Save structure
     sFile.events = events;

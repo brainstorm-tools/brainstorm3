@@ -533,8 +533,8 @@ for iEvt = 1:length(uniqueEvt)
     sFile.events(iEvt).times    = (sort(allSmp(iOcc)) - 1 + hdr.smp_offset) ./ sFile.prop.sfreq; % Samples are 1-based in the file, I guess?
     sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
     sFile.events(iEvt).select   = 1;
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 % Add events to mark discontinuities (reduced files)
 if ~isempty(hdr.segment)
@@ -549,8 +549,8 @@ if ~isempty(hdr.segment)
     sFile.events(iEvt).times    = ([hdr.segment.sample] + hdr.smp_offset) ./ sFile.prop.sfreq;
     sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
     sFile.events(iEvt).select   = 1;
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 
 

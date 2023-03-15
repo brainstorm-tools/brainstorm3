@@ -93,26 +93,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events');
+            sEvents = DataMat.Events;
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Call the detection function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, dt, isDelete);
+        [sEvents, isModified] = Compute(sInputs(iFile), sEvents, evtA, evtB, dt, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);
@@ -167,8 +168,12 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, dt, isDel
         eventsNew(iEvtRm).color    = [1 0 0];
         eventsNew(iEvtRm).times    = eventsNew(iEvtA).times(:,iRemoveA);
         eventsNew(iEvtRm).epochs   = eventsNew(iEvtA).epochs(iRemoveA);
-        eventsNew(iEvtRm).channels = eventsNew(iEvtA).channels(iRemoveA);
-        eventsNew(iEvtRm).notes    = eventsNew(iEvtA).notes(iRemoveA);
+        if ~isempty(eventsNew(iEvtA).channels)
+            eventsNew(iEvtRm).channels = eventsNew(iEvtA).channels(iRemoveA);
+        end
+        if ~isempty(eventsNew(iEvtA).notes)
+            eventsNew(iEvtRm).notes = eventsNew(iEvtA).notes(iRemoveA);
+        end
     end
     % Remove occurrences / remove event
     if isequal(iRemoveA, 1:size(eventsNew(iEvtA).times,2))
@@ -176,8 +181,12 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, dt, isDel
     else
         eventsNew(iEvtA).times(:,iRemoveA)  = [];
         eventsNew(iEvtA).epochs(iRemoveA)   = [];
-        eventsNew(iEvtA).channels(iRemoveA) = [];
-        eventsNew(iEvtA).notes(iRemoveA)    = [];
+        if ~isempty(eventsNew(iEvtA).channels)
+            eventsNew(iEvtA).channels(iRemoveA) = [];
+        end
+        if ~isempty(eventsNew(iEvtA).notes)
+            eventsNew(iEvtA).notes(iRemoveA) = [];
+        end
     end
     isModified = 1;
 end

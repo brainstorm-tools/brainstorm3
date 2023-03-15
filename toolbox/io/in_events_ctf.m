@@ -87,8 +87,8 @@ for i = 1:nMarkers
         events(iEvt).times      = trial_time(:,2)';
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
         % Color
         if (length(marker_colors{i}) == 13) && (marker_colors{i}(1) == '#')
             events(iEvt).color = [hex2dec(marker_colors{i}(2:5)), hex2dec(marker_colors{i}(6:9)), hex2dec(marker_colors{i}(10:13))] ./ (256 * 256 - 1);
@@ -122,8 +122,12 @@ if (length(sFile.epochs) > 1)
             if ~isempty(events(iEvt).reactTimes)
                 events(iEvt).reactTimes(iDouble) = [];
             end
-            events(iEvt).channels(iDouble) = [];
-            events(iEvt).notes(iDouble) = [];
+            if ~isempty(events(iEvt).channels)
+                events(iEvt).channels(iDouble) = [];
+            end
+            if ~isempty(events(iEvt).notes)
+                events(iEvt).notes(iDouble) = [];
+            end
             % Display message
             disp(['CTF> Removed ' num2str(length(iDouble)) ' x "' events(iEvt).label, '": ', sprintf('%d(%1.3fs) ', tRemoved)]);
         end

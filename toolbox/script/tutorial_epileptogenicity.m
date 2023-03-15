@@ -122,12 +122,12 @@ bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensorty
 sEvt1 = db_template('event');
 sEvt1(1).label   = 'Onset';
 sEvt1(1).epochs  = 1;
-sEvt1(1).channels= {{}};
-sEvt1(1).notes   = {[]};
+sEvt1(1).channels= [];
+sEvt1(1).notes   = [];
 sEvt1(2).label   = 'Baseline';
 sEvt1(2).epochs  = 1;
-sEvt1(2).channels= {{}};
-sEvt1(2).notes   = {[]};
+sEvt1(2).channels= [];
+sEvt1(2).notes   = [];
 % SZ1
 sEvt1(1).times   = 120.800;
 sEvt1(2).times   = [72.800; 77.800];

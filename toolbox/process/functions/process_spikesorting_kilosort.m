@@ -471,11 +471,11 @@ function ImportKilosortEvents(sFile, ChannelMat, parentPath, rez)
         events_spikes(index).times      = spikeTimes(selectedSpikes)'./sFile.prop.sfreq + sFile.prop.times(1);
         events_spikes(index).reactTimes = [];
         events_spikes(index).select     = 1;
-        events_spikes(index).notes      = cell(1, size(events_spikes(index).times, 2));
+        events_spikes(index).notes      = [];
         
         if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
             events_spikes(index).label    = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
-            events_spikes(index).channels = cell(1, size(events_spikes(index).times, 2));
+            events_spikes(index).channels = [];
         else
             events_spikes(index).label    = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
             events_spikes(index).channels = repmat({{ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name}}, 1, size(events_spikes(index).times, 2));
@@ -573,11 +573,11 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
         events(index).epochs     = ones(1,length(events(index).times));
         events(index).reactTimes = [];
         events(index).select     = 1;
-        events(index).notes      = cell(1, size(events(index).times, 2));
+        events(index).notes      = [];
         
         if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
             events(index).label    = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
-            events(index).channels = cell(1, size(events(index).times, 2));
+            events(index).channels = [];
         else
             events(index).label    = [spikesPrefix ' ' ChannelsInMontage(iElectrode).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
             events(index).channels = repmat({{ChannelsInMontage(iElectrode).Name}}, 1, size(events(index).times, 2));

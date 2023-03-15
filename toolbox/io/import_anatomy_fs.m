@@ -424,7 +424,8 @@ if ~isempty(errorMsg)
     else
         disp(['ERROR: ' errorMsg]);
     end
-    return;
+    % Keep importing, as missing atlases or spheres do not block the rest of the process
+    % return;
 end
 % Inner skull
 if ~isempty(TessInnerFile)
@@ -437,16 +438,28 @@ end
 
 
 %% ===== GENERATE MID-SURFACE =====
+BstTessLmFile = [];
+BstTessRmFile = [];
 % Do not compute without volume atlases, to make a very light default import
 if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
     bst_progress('start', 'Import FreeSurfer folder', 'Generating mid-surface...');
     % Average pial and white surfaces
-    BstTessLmFile = tess_average({BstTessLhFile, BstTessLwFile});
-    BstTessRmFile = tess_average({BstTessRhFile, BstTessRwFile});
-    % Downsample
-    bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
-    [BstTessLmLowFile, iLmLow, xLmLow] = tess_downsize(BstTessLmFile, nVertHemi, 'reducepatch');
-    [BstTessRmLowFile, iRmLow, xRmLow] = tess_downsize(BstTessRmFile, nVertHemi, 'reducepatch');
+    [BstTessLmFile, ~, errMsgL] = tess_average({BstTessLhFile, BstTessLwFile});
+    [BstTessRmFile, ~, errMsgR] = tess_average({BstTessRhFile, BstTessRwFile});
+    % If computed: downsample the surfaces
+    if ~isempty(BstTessLmFile) && ~isempty(BstTessRmFile)
+        bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
+        [BstTessLmLowFile, iLmLow, xLmLow] = tess_downsize(BstTessLmFile, nVertHemi, 'reducepatch');
+        [BstTessRmLowFile, iRmLow, xRmLow] = tess_downsize(BstTessRmFile, nVertHemi, 'reducepatch');
+    else
+        errorMsg = [errorMsg 10 'Could not compute mid-surfaces: ' 10 errMsgL 10 errMsgR];
+        if isInteractive
+            bst_error(errorMsg, 'Import FreeSurfer folder', 0);
+        else
+            disp(['ERROR: ' errorMsg]);
+        end
+        % Not a blocking error: No need to have the mid-surface to keep going
+    end
 end
 
 
@@ -468,7 +481,7 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     oldCortexLowFile = file_fullpath(CortexLowFile);
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
     file_move(oldCortexLowFile, CortexLowFile);
-    CortexHiFile = file_short(CortexHiFile);
+    CortexLowFile = file_short(CortexLowFile);
 else
     CortexHiFile = [];
     CortexLowFile = [];
@@ -490,7 +503,7 @@ if ~isempty(TessLwFile) && ~isempty(TessRwFile)
     file_move(oldWhiteLowFile, WhiteLowFile);
 end
 % Merge hemispheres: mid-surface (do not compute without volume atlases, to make a very light default import)
-if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
+if ~isempty(BstTessLmFile) && ~isempty(BstTessRmFile)
     % Hi-resolution surface
     MidHiFile  = tess_concatenate({BstTessLmFile,    BstTessRmFile},    sprintf('mid_%dV', nVertOrigL + nVertOrigR), 'Cortex');
     MidLowFile = tess_concatenate({BstTessLmLowFile, BstTessRmLowFile}, sprintf('mid_%dV', length(xLmLow) + length(xRmLow)), 'Cortex');

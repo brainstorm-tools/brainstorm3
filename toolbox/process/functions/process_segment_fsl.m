@@ -24,6 +24,7 @@ function varargout = process_segment_fsl( varargin )
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2022
+%          Francois Tadel, 2022-2023
 
 eval(macro_method);
 end
@@ -157,10 +158,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
 
     % ===== SAVE MRI AS NII =====
     bst_progress('text', 'Saving temporary files...');
-    % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
     % Temporay folder for FSL output
-    TmpDir = bst_get('BrainstormTmpDir');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'fsl');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
     NiiFile = bst_fullfile(TmpDir, [subjid, '.nii']);
@@ -221,7 +220,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
 
     % Create head surface
     tess_isohead(sSubject.Anatomy(iAnatomy).FileName, nVertices, erodeFactor, fillFactor);
-
+    
+    % Delete temporary folder
+    file_delete(TmpDir, 1, 1);
     % Return success
     isOk = 1;
 end

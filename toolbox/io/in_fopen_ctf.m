@@ -176,8 +176,8 @@ if ~isempty(badseg_file)
         sFile.events(iEvt).times      = badsegment(:,2:3)';
         sFile.events(iEvt).reactTimes = [];
         sFile.events(iEvt).select     = 1;
-        sFile.events(iEvt).channels   = cell(1, size(badsegment,1));
-        sFile.events(iEvt).notes      = cell(1, size(badsegment,1));
+        sFile.events(iEvt).channels   = [];
+        sFile.events(iEvt).notes      = [];
     end
 end
 

@@ -4812,7 +4812,11 @@ function PlotEventsDots_EventsBar(hFig)
             end
         end
         iOccChannels = find(~cellfun(@isempty, iLines));
-        iOccGlobal = find(cellfun(@isempty, iLines) & cellfun(@isempty, events(iEvt).channels));
+        if ~isempty(events(iEvt).channels)
+            iOccGlobal = find(cellfun(@isempty, iLines) & cellfun(@isempty, events(iEvt).channels));
+        else
+            iOccGlobal = find(cellfun(@isempty, iLines));
+        end
                
         % === CHANNEL EVENTS ===
         % Where to display the notes and events labels by default
@@ -5006,7 +5010,7 @@ function PlotEventsDots_EventsBar(hFig)
         end
         
         % === EVENT NOTES ===
-        if ~strcmpi(TsInfo.ShowEventsMode, 'none')
+        if ~strcmpi(TsInfo.ShowEventsMode, 'none') && ~isempty(events(iEvt).notes)
             for iOcc = 1:nOccur
                 % No notes attached to this event, skip
                 if isempty(events(iEvt).notes{iOcc})

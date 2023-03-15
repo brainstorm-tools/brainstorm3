@@ -70,28 +70,27 @@ isAccepted = 1;
 switch (panelName)
     case 'ChannelEditor'
         isAccepted = panel_channel_editor('PanelHidingCallback');
+    case 'Coordinates'
+        if gui_brainstorm('isTabVisible', 'Coordinates')
+            panel_coordinates('RemoveSelection');
+        end
+    case 'Digitize'
+        isAccepted = panel_digitize('PanelHidingCallback');
+    case 'Dipinfo'
+        if gui_brainstorm('isTabVisible', 'Dipinfo')
+            panel_dipinfo('RemoveSelection');
+        end
     case 'EditBfs'
         % Close BFS check 3D viz
         close(findobj(0, '-depth', 1, 'Tag', 'SphereVisuFigure'));
         % Release mutex
         bst_mutex('release', 'EditBfs');
-    case 'Coordinates'
-        if gui_brainstorm('isTabVisible', 'Coordinates')
-            panel_coordinates('RemoveSelection');
-        end
-    case 'Dipinfo'
-        if gui_brainstorm('isTabVisible', 'Dipinfo')
-            panel_dipinfo('RemoveSelection');
-        end
-    case 'Command'
-        
-    case 'Record'
-        panel_record('PanelHidingCallback');
+
     case 'EditSsp'
         panel_ssp_selection('PanelHidingCallback');
-    case 'Digitize'
-        isAccepted = panel_digitize('PanelHidingCallback');
-    otherwise
+    case 'Record'
+        panel_record('PanelHidingCallback');
+    otherwise    % Most panels
         bst_mutex('release', panelName);
 end
 % If closing was not accepted

@@ -761,6 +761,7 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
     % Get cortex surface
     CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
     HeadFile = sSubject.Surface(sSubject.iScalp).FileName;
+    InnerSkullFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
     OutSurfaceFile = CortexFile;
     
     % ===== GET GRID ====
@@ -774,23 +775,20 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
         % Get the options the user selected
         GridLoc = sGrid.GridLoc;
         GridOptions = sGrid.GridOptions;
-        % If using the full head volume: change the surface file that is used as a reference
-        if strcmpi(GridOptions.Method, 'isohead')
-            OutSurfaceFile = HeadFile;
-        end
     else
         % Get the saved options of the computation of the Grid
         GridOptions = bst_get('GridOptions_headmodel');
         % Compute the grid with these options
-        if strcmpi(GridOptions.Method, 'isohead')
-            GridLoc = panel_sourcegrid('GetGrid', GridOptions, HeadFile);
-            OutSurfaceFile = HeadFile;
-        else
-            GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
-        end
+        GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
     end
     if isempty(GridLoc)
         return;
+    end
+    % If using the full head volume: change the surface file that is used as a reference
+    if strcmpi(GridOptions.Method, 'isohead')
+        OutSurfaceFile = HeadFile;
+    elseif strcmpi(GridOptions.Method, 'isokull')
+        OutSurfaceFile = InnerSkullFile;
     end
 
     % ===== SAVE FILE =====

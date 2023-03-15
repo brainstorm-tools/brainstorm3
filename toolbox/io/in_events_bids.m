@@ -103,7 +103,7 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
     events(iEvt).channels   = channels;
-    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = [];
 end
 
 

@@ -1,2 +1,4 @@
 *.asv
 java/brainstorm.jar
+defaults/anatomy/*
+.DS_Store

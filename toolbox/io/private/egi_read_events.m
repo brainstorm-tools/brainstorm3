@@ -152,8 +152,8 @@ for iEvt = 1:sFile.header.numEvents
     end
     % Set the times
     events(iEvt).times    = samples ./ sFile.prop.sfreq;
-    events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
-    events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).channels = [];
+    events(iEvt).notes    = [];
 end
 
 % %% ===== DELETE EMPTY EVENTS =====

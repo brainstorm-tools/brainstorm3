@@ -23,7 +23,7 @@ function varargout = process_convert_raw_to_lfp( varargin )
 % =============================================================================@
 %
 % Authors: Konstantinos Nasiotis 2018
-%          Francois Tadel, 2022
+%          Francois Tadel, 2022-2023
 
 eval(macro_method);
 end
@@ -103,7 +103,6 @@ function OutputFiles = Run(sProcess, sInput)
     UseSsp = sProcess.options.usessp.Value;
     % Get protocol info
     ProtocolInfo = bst_get('ProtocolInfo');
-    BrainstormTmpDir = bst_get('BrainstormTmpDir');
     
     % ===== DEPENDENCIES =====
     % Not available in the compiled version
@@ -138,8 +137,10 @@ function OutputFiles = Run(sProcess, sInput)
         % This should never be an issue. Never heard of an acquisition system that doesn't record in multiples of 1kHz.
         bst_report('Warning', sProcess, sInput, ['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(LFP_fs) ' Hz']);
     end
+    % Create temporary folder
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'raw2lfp');
     % Demultiplex channels
-    demultiplexDir = bst_fullfile(BrainstormTmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
+    demultiplexDir = bst_fullfile(TmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
     ElecFiles = out_demultiplex(sInput.FileName, sInput.ChannelFile, demultiplexDir, UseSsp, BinSize * 1e9, isParallel);
     % Load channel file
     ChannelMat = in_bst_channel(sInput.ChannelFile);
@@ -214,6 +215,9 @@ function OutputFiles = Run(sProcess, sInput)
     [tmp, iSubject] = bst_get('Subject', sStudyInput.BrainStormSubject, 1);
     % Import the output RAW file in the database
     OutputFiles = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
+
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
 end
 
 

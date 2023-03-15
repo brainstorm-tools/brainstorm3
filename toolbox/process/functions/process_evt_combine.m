@@ -21,7 +21,7 @@ function varargout = process_evt_combine( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2023
 
 eval(macro_method);
 end
@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 53;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers?highlight=%28Combine+stim%2Fresponse%29#Events';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
@@ -208,6 +208,33 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % If some couples stim/response were detected: create or udpate the correpsonding events
             if ~isempty(iNewStim)
                 isModified = 1;
+
+                % Should the events include channels
+                if ~isempty(sFile.events(iEvtStim).channels) || ~isempty(sFile.events(iEvtResp).channels)
+                    isChannels = 1;
+                    if isempty(sFile.events(iEvtStim).channels)
+                        sFile.events(iEvtStim).channels = cell(1, size(sFile.events(iEvtStim).times,2));
+                    end
+                    if isempty(sFile.events(iEvtResp).channels)
+                        sFile.events(iEvtResp).channels = cell(1, size(sFile.events(iEvtResp).times,2));
+                    end
+                else
+                    isChannels = 0;
+                end
+
+                % Should the events include notes
+                if ~isempty(sFile.events(iEvtStim).notes) || ~isempty(sFile.events(iEvtResp).notes)
+                    isNotes = 1;
+                    if isempty(sFile.events(iEvtStim).notes)
+                        sFile.events(iEvtStim).notes = cell(1, size(sFile.events(iEvtStim).times,2));
+                    end
+                    if isempty(sFile.events(iEvtResp).notes)
+                        sFile.events(iEvtResp).notes = cell(1, size(sFile.events(iEvtResp).times,2));
+                    end
+                else
+                    isNotes = 0;
+                end
+
                 % === NEW STIM ===
                 % Only create new stim event if name is not "ignore"
                 if ~strcmpi(evtNewStimName, 'ignore')
@@ -226,19 +253,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     if ~strcmpi(evtNewRespName, 'extend')
                         sFile.events(iEvtNewStim).times    = [sFile.events(iEvtNewStim).times,   sFile.events(iEvtStim).times(iNewStim)];
                         sFile.events(iEvtNewStim).epochs   = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
-                        sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
-                        sFile.events(iEvtNewStim).notes    = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
                         % Sort
                         [sFile.events(iEvtNewStim).times, indSort] = unique(sFile.events(iEvtNewStim).times);
                         sFile.events(iEvtNewStim).epochs   = sFile.events(iEvtNewStim).epochs(indSort);
-                        sFile.events(iEvtNewStim).channels = sFile.events(iEvtNewStim).channels(indSort);
-                        sFile.events(iEvtNewStim).notes    = sFile.events(iEvtNewStim).notes(indSort);
+                        % Channels
+                        if isChannels
+                            sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
+                            sFile.events(iEvtNewStim).channels = sFile.events(iEvtNewStim).channels(indSort);
+                        end
+                        % Notes
+                        if isNotes
+                            sFile.events(iEvtNewStim).notes = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
+                            sFile.events(iEvtNewStim).notes = sFile.events(iEvtNewStim).notes(indSort);
+                        end
                     % Add extended events
                     else
                         sFile.events(iEvtNewStim).times    = [sFile.events(iEvtNewStim).times,   [sFile.events(iEvtStim).times(iNewStim); sFile.events(iEvtResp).times(iNewResp)]];
                         sFile.events(iEvtNewStim).epochs   = [sFile.events(iEvtNewStim).epochs,  sFile.events(iEvtStim).epochs(iNewStim)];
-                        sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
-                        sFile.events(iEvtNewStim).notes    = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
+                        if isChannels
+                            sFile.events(iEvtNewStim).channels = [sFile.events(iEvtNewStim).channels,sFile.events(iEvtStim).channels(iNewStim)];
+                        end
+                        if isNotes
+                            sFile.events(iEvtNewStim).notes    = [sFile.events(iEvtNewStim).notes,   sFile.events(iEvtStim).notes(iNewStim)];
+                        end
                     end
                 end
                 
@@ -259,13 +296,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Add occurrences
                     sFile.events(iEvtNewResp).times    = [sFile.events(iEvtNewResp).times,    sFile.events(iEvtResp).times(iNewResp)];
                     sFile.events(iEvtNewResp).epochs   = [sFile.events(iEvtNewResp).epochs,   sFile.events(iEvtResp).epochs(iNewResp)];
-                    sFile.events(iEvtNewResp).channels = [sFile.events(iEvtNewResp).channels, sFile.events(iEvtResp).channels(iNewResp)];
-                    sFile.events(iEvtNewResp).notes    = [sFile.events(iEvtNewResp).notes,    sFile.events(iEvtResp).notes(iNewResp)];
                     % Sort
                     [sFile.events(iEvtNewResp).times, indSort] = unique(sFile.events(iEvtNewResp).times);
                     sFile.events(iEvtNewResp).epochs   = sFile.events(iEvtNewResp).epochs(indSort);
-                    sFile.events(iEvtNewResp).channels = sFile.events(iEvtNewResp).channels(indSort);
-                    sFile.events(iEvtNewResp).notes    = sFile.events(iEvtNewResp).notes(indSort);
+                    % Channels
+                    if isChannels
+                        sFile.events(iEvtNewResp).channels = [sFile.events(iEvtNewResp).channels, sFile.events(iEvtResp).channels(iNewResp)];
+                        sFile.events(iEvtNewResp).channels = sFile.events(iEvtNewResp).channels(indSort);
+                    end
+                    % Notes
+                    if isNotes
+                        sFile.events(iEvtNewResp).notes = [sFile.events(iEvtNewResp).notes,    sFile.events(iEvtResp).notes(iNewResp)];
+                        sFile.events(iEvtNewResp).notes = sFile.events(iEvtNewResp).notes(indSort);
+                    end
                 end
             end
         end

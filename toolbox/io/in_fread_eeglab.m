@@ -23,7 +23,7 @@ function F = in_fread_eeglab(sFile, iEpoch, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel 2013
+% Author: Francois Tadel 2013-2023
 
 %% ===== PARSE INPUTS =====
 nChannels = sFile.header.EEG.nbchan;
@@ -33,25 +33,33 @@ nEpochs   = sFile.header.EEG.trials;
 if (nargin < 2)
     iEpoch = 1;
 end
-% Samples not specified: read the entire epoch
-if (nargin < 3) || isempty(SamplesBounds)
-    if ~isempty(sFile.epochs)
-        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
-    else
-        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+% If only one sample in file
+isSingleSample = (nTime == 1);
+if isSingleSample
+    SamplesBounds = [0, 0];
+% Multiple samples
+else
+    % Samples not specified: read the entire epoch
+    if (nargin < 3) || isempty(SamplesBounds)
+        if ~isempty(sFile.epochs)
+            SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
+        else
+            SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+        end
     end
+    % Rectify samples to read with the first sample number
+    SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 end
-% Rectify samples to read with the first sample number
-SamplesBounds = SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq);
 F = [];
+
 
 
 %% ===== READ DATA =====
 % Data saved in the .set file
 if isfield(sFile.header, 'EEGDATA') && ~isempty(sFile.header.EEGDATA)
     iTimes = (SamplesBounds(1):SamplesBounds(2)) + 1;
-    F = double(sFile.header.EEGDATA(:, iTimes, iEpoch));
-    
+    F = double(sFile.header.EEGDATA(:, iTimes, iEpoch));   
+
 % Data saved in a separate binary file
 elseif isfield(sFile.header.EEG, 'data') && ~isempty(sFile.header.EEG.data) && ischar(sFile.header.EEG.data)
     % Get link path and extension
@@ -146,7 +154,10 @@ end
 
 % Convert from microVolts to Volts
 F = 1e-6 * F;
-        
+% If there is one single sample: duplicate it
+if isSingleSample
+    F = repmat(F, 1, 2);
+end
 
 % === APPLY ICA MATRIX ===
 if isfield(sFile.header.EEG, 'icaweights') && ~isempty(sFile.header.EEG.icaweights)

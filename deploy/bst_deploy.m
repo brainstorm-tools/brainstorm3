@@ -146,12 +146,13 @@ disp(['DEPLOY>  - Lines of comment : ' num2str(nComment)]);
 if ~isempty(GitDir)
     disp('DEPLOY> Copying to GIT folder...');
     system(['xcopy ' fullfile(bstDir, 'brainstorm.m') ' ' fullfile(GitDir, 'brainstorm.m') '/y /q']);
-    system(['xcopy ' fullfile(bstDir, 'defaults')     ' ' fullfile(GitDir, 'defaults')     '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'deploy')       ' ' fullfile(GitDir, 'deploy')       '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'doc')          ' ' fullfile(GitDir, 'doc')          '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'external')     ' ' fullfile(GitDir, 'external')     '/s /e /y /q']);
-    % system(['xcopy ' fullfile(bstDir, 'java')         ' ' fullfile(GitDir, 'java')         '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'toolbox')      ' ' fullfile(GitDir, 'toolbox')      '/s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'defaults', 'eeg')     ' ' fullfile(GitDir, 'defaults', 'eeg')   ' /s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'defaults', 'meg')     ' ' fullfile(GitDir, 'defaults', 'meg')   ' /s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'deploy')              ' ' fullfile(GitDir, 'deploy')            ' /s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'doc')                 ' ' fullfile(GitDir, 'doc')               ' /s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'external')            ' ' fullfile(GitDir, 'external')          ' /s /e /y /q']);
+    % system(['xcopy ' fullfile(bstDir, 'java')              ' ' fullfile(GitDir, 'java')              ' /s /e /y /q']);
+    system(['xcopy ' fullfile(bstDir, 'toolbox')             ' ' fullfile(GitDir, 'toolbox')           ' /s /e /y /q']);
     % Start GIT GUI in the deployment folder
     system(['start /b cmd /c ""' GitExe '" --working-dir "' GitDir '""']);
 end

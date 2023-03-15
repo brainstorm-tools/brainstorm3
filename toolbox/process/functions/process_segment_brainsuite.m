@@ -23,7 +23,7 @@ function varargout = process_segment_brainsuite( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021
+% Authors: Francois Tadel, 2021-2023
 
 eval(macro_method);
 end
@@ -171,17 +171,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
 
     % ===== SAVE MRI AS NII =====
     bst_progress('text', 'Saving temporary files...');
-    % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
     % Create temporay folder for BrainSuite output
-    procDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'brainsuite');
-    if file_exist(procDir)
-        file_delete(procDir, 1, 3);
-    end
-    mkdir(procDir);
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'brainsuite');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
-    NiiFile = bst_fullfile(procDir, [subjid, '.nii']);
+    NiiFile = bst_fullfile(TmpDir, [subjid, '.nii']);
     out_mri_nii(sMri, NiiFile);
     % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
@@ -232,12 +226,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     % Import BrainSuite anatomy folder
     isKeepMri = 1;
     isVolumeAtlas = 1;
-    errMsg = import_anatomy_bs(iSubject, procDir, nVertices, 0, [], isVolumeAtlas, isKeepMri);
+    errMsg = import_anatomy_bs(iSubject, TmpDir, nVertices, 0, [], isVolumeAtlas, isKeepMri);
     if ~isempty(errMsg)
         return;
     end
     % Delete temporary folder
-    % file_delete(procDir, 1, 3);
+    file_delete(TmpDir, 1, 1);
     % Return success
     isOk = 1;
 end
