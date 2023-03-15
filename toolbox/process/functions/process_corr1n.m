@@ -230,8 +230,8 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
             if isConnNN
                 OPTIONS.TargetB = OPTIONS.TargetA;
             end
-            % Connectivity 1xN: Can allow only one scout at a time
-            if ~isConnNN && (size(AtlasList,2) > 2) && (length(AtlasList{1,2}) > 1)
+            % Connectivity 1xN: Can allow only one scout at a time. Check for multiple atlases and then multiple scouts.
+            if ~isConnNN && (size(AtlasList,1) > 1 || ((size(AtlasList,2) >= 2) && (length(AtlasList{1,2}) > 1)))
                 bst_report('Error', sProcess, [], 'Connectivity [1xN]: Please select only one scout at a time.');
                 OPTIONS = [];
                 return;
