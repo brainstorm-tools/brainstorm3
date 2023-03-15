@@ -475,8 +475,12 @@ if isRaw
             DataMat.Events(iEvtData).color    = sFile.events(iEvt).color;
             DataMat.Events(iEvtData).times    = newEvtTimes;
             DataMat.Events(iEvtData).epochs   = sFile.events(iEvt).epochs(iOccur);
-            DataMat.Events(iEvtData).channels = sFile.events(iEvt).channels(iOccur);
-            DataMat.Events(iEvtData).notes    = sFile.events(iEvt).notes(iOccur);
+            if ~isempty(sFile.events(iEvt).channels)
+                DataMat.Events(iEvtData).channels = sFile.events(iEvt).channels(iOccur);
+            end
+            if ~isempty(sFile.events(iEvt).notes)
+                DataMat.Events(iEvtData).notes = sFile.events(iEvt).notes(iOccur);
+            end
             if ~isempty(sFile.events(iEvt).reactTimes)
                 DataMat.Events(iEvtData).reactTimes = sFile.events(iEvt).reactTimes(iOccur);
             end

@@ -178,8 +178,16 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
     AllEvt    = AllEvt(iSort);
     AllOcc    = AllOcc(iSort);
     AllEpochs = AllEpochs(iSort);
-    AllChannels = AllChannels(iSort);
-    AllNotes    = AllNotes(iSort);
+    if length(AllChannels) == length(AllEvt)
+        AllChannels = AllChannels(iSort);
+    else
+        AllChannels = [];   % Not all events have channels defined: remove them all
+    end
+    if length(AllNotes) == length(AllEvt)
+        AllNotes = AllNotes(iSort);
+    else
+        AllNotes = [];   % Not all events have notes defined: remove them all
+    end
     % Compute distance matrix
     dist = ones(length(AllTimes), 1) * round(AllTimes .* sfreq);
     dist = dist - dist';
@@ -229,8 +237,12 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
         eventsNew(iEvtRm).color  = [1 0 0];
         eventsNew(iEvtRm).times  = AllTimes(iRemove);
         eventsNew(iEvtRm).epochs = AllEpochs(iRemove);
-        eventsNew(iEvtRm).channels = AllChannels(iRemove);
-        eventsNew(iEvtRm).notes    = AllNotes(iRemove);
+        if ~isempty(AllChannels)
+            eventsNew(iEvtRm).channels = AllChannels(iRemove);
+        end
+        if ~isempty(AllNotes)
+            eventsNew(iEvtRm).notes = AllNotes(iRemove);
+        end
     end
     % Get all the events in which cuts are necessary
     iEvts = unique(AllEvt(iRemove));
@@ -240,8 +252,12 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
         iOcc = AllOcc(iRemove(iRmEvt));
         eventsNew(iEvts(i)).times(:,iOcc) = [];
         eventsNew(iEvts(i)).epochs(iOcc)  = [];
-        eventsNew(iEvts(i)).channels(iOcc)= [];
-        eventsNew(iEvts(i)).notes(iOcc)   = [];
+        if ~isempty(eventsNew(iEvts(i)).channels)
+            eventsNew(iEvts(i)).channels(iOcc)= [];
+        end
+        if ~isempty(eventsNew(iEvts(i)).notes)
+            eventsNew(iEvts(i)).notes(iOcc) = [];
+        end
     end
     isModified = 1;
 end

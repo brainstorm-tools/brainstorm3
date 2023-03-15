@@ -70,6 +70,6 @@ events.epochs     = ones(1, length(eveTimes)); % Epoch: set as 1 for all the occ
 events.color      = [];
 events.reactTimes = [];
 events.select     = 1;
-events.channels   = cell(1, size(events.times, 2));
-events.notes      = cell(1, size(events.times, 2));
+events.channels   = [];
+events.notes      = [];
 

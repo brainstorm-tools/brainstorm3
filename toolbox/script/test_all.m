@@ -152,8 +152,8 @@ DataMat.Events.label   = 'sin+';
 DataMat.Events.color   = [0 1 0];
 DataMat.Events.times   = round((.5:1:nfiles) * sfreq) ./ sfreq;
 DataMat.Events.epochs  = ones(size(DataMat.Events.times));
-DataMat.Events.channels = cell(1, size(DataMat.Events.times, 2));
-DataMat.Events.notes    = cell(1, size(DataMat.Events.times, 2));
+DataMat.Events.channels = [];
+DataMat.Events.notes    = [];
 bst_save(file_fullpath(sSimData.FileName), DataMat, 'v6', 1);
 % Save as an EGI raw file
 RawFile = bst_fullfile(test_dir, 'run01.raw');

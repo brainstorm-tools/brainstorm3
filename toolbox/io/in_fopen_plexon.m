@@ -181,8 +181,8 @@ if ~isempty(iPresentEvents)
         events(iEvt).epochs     = ones(1, size(events(iEvt).times, 2));
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
     end
     % Import this list
     sFile = import_events(sFile, [], events);
@@ -224,7 +224,7 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
                 events(iEnteredEvent).epochs     = ones(1, size(events(iEnteredEvent).times, 2));
                 events(iEnteredEvent).reactTimes = [];
                 events(iEnteredEvent).select     = 1;
-                events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).notes      = [];
                 events(iEnteredEvent).channels   = repmat({{all_Channel_names{iChannels_selected(iChannel)}}}, 1, size(events(iEnteredEvent).times, 2));
 
                 iEnteredEvent = iEnteredEvent + 1;

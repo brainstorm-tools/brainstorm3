@@ -232,8 +232,8 @@ if ~isempty(hdr.Events)
         sFile.events(iEvt).times    = sample ./ sFile.prop.sfreq;
         sFile.events(iEvt).epochs   = [hdr.Events(iOcc).iEpoch];
         sFile.events(iEvt).select   = 1;
-        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).channels = [];
+        sFile.events(iEvt).notes    = [];
     end
 end
 % Save file header

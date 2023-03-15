@@ -431,8 +431,8 @@ if isfield(hdr.EEG, 'event') && ~isempty(hdr.EEG.event) && isfield(hdr.EEG.event
         % Compute times
         events(iEvt).times = samples ./ sFile.prop.sfreq;
         % Additional fields
-        events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels = [];
+        events(iEvt).notes    = [];
     end
     % Save structure
     sFile.events = events;

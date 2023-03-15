@@ -419,8 +419,8 @@ if ~isempty(hdr.events)
         sFile.events(iEvt).times    = smp ./ sFile.prop.sfreq;
         sFile.events(iEvt).epochs   = 1 + 0*smp(1,:);
         sFile.events(iEvt).select   = 1;
-        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).channels = [];
+        sFile.events(iEvt).notes    = [];
     end
     
     % Handle Epoched Datasets

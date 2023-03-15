@@ -21,7 +21,7 @@ function varargout = process_evt_groupname( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2020
+% Authors: Francois Tadel, 2013-2023
 
 eval(macro_method);
 end
@@ -273,8 +273,16 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
                 if (i == 1)
                     newTime     = events(iEvts(i)).times(iOcc);
                     newEpoch    = events(iEvts(i)).epochs(iOcc);
-                    newChannels = events(iEvts(i)).channels(iOcc);
-                    newNotes    = events(iEvts(i)).notes(iOcc);
+                    if ~isempty(events(iEvts(i)).channels)
+                        newChannels = events(iEvts(i)).channels(iOcc);
+                    else
+                        newChannels = [];
+                    end
+                    if ~isempty(events(iEvts(i)).notes)
+                        newNotes = events(iEvts(i)).notes(iOcc);
+                    else
+                        newNotes = [];
+                    end
                 end
                 % Remove this occurrence
                 if isDelete
@@ -303,14 +311,26 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             end
             % Add occurrences
             eventsNew(iNewEvt).times    = [eventsNew(iNewEvt).times,    newTime];
-            eventsNew(iNewEvt).epochs   = [eventsNew(iNewEvt).epochs,   newEpoch];
-            eventsNew(iNewEvt).channels = [eventsNew(iNewEvt).channels, newChannels];
-            eventsNew(iNewEvt).notes    = [eventsNew(iNewEvt).notes,    newNotes];            
+            eventsNew(iNewEvt).epochs   = [eventsNew(iNewEvt).epochs,   newEpoch];          
             % Sort
             [eventsNew(iNewEvt).times, indSort] = unique(eventsNew(iNewEvt).times);
             eventsNew(iNewEvt).epochs   = eventsNew(iNewEvt).epochs(indSort);
-            eventsNew(iNewEvt).channels = eventsNew(iNewEvt).channels(indSort);
-            eventsNew(iNewEvt).notes    = eventsNew(iNewEvt).notes(indSort);
+            % Channels
+            if ~isempty(newChannels)
+                if isempty(eventsNew(iNewEvt).channels) 
+                    eventsNew(iNewEvt).channels = cell(1, size(eventsNew(iNewEvt).times,2) - size(newTime,2));
+                end
+                eventsNew(iNewEvt).channels = [eventsNew(iNewEvt).channels, newChannels];
+                eventsNew(iNewEvt).channels = eventsNew(iNewEvt).channels(indSort);
+            end
+            % Notes
+            if ~isempty(newNotes)
+                if isempty(eventsNew(iNewEvt).notes) 
+                    eventsNew(iNewEvt).notes = cell(1, size(eventsNew(iNewEvt).times,2) - size(newTime,2));
+                end
+                eventsNew(iNewEvt).notes = [eventsNew(iNewEvt).notes, newNotes];  
+                eventsNew(iNewEvt).notes = eventsNew(iNewEvt).notes(indSort);
+            end
             isModified = 1;
         end
     end
@@ -322,8 +342,12 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             iOcc = removeEvt(removeEvt(:,1)==iEvt,2)';
             eventsNew(iEvt).times(iOcc)    = [];
             eventsNew(iEvt).epochs(iOcc)   = [];
-            eventsNew(iEvt).channels(iOcc) = [];
-            eventsNew(iEvt).notes(iOcc)    = [];
+            if ~isempty(eventsNew(iEvt).channels)
+                eventsNew(iEvt).channels(iOcc) = [];
+            end
+            if ~isempty(eventsNew(iEvt).notes)
+                eventsNew(iEvt).notes(iOcc) = [];
+            end
         end
         % Remove empty categories
         iEmptyEvt = find(cellfun(@isempty, {eventsNew.times}));

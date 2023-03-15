@@ -489,8 +489,8 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 sFile.events(iEvt).times    = round(t .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
                 sFile.events(iEvt).epochs   = 1 + 0*t(1,:);
                 sFile.events(iEvt).select   = 1;
-                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-                sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+                sFile.events(iEvt).channels = [];
+                sFile.events(iEvt).notes    = [];
             end
         end
         

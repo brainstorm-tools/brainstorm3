@@ -184,13 +184,6 @@ if ~isempty(hdr.events)
         sFile.events(iEvtGroup).times(iEvt)      = evtTime;
         sFile.events(iEvtGroup).reactTimes(iEvt) = reactTime;
         sFile.events(iEvtGroup).select           = select;
-        if (iEvt == 1)
-            sFile.events(iEvtGroup).channels = {{}};
-            sFile.events(iEvtGroup).notes    = {[]};
-        else
-            sFile.events(iEvtGroup).channels{iEvt} = {};
-            sFile.events(iEvtGroup).notes{iEvt}    = [];
-        end
     end
     
     % Get events groups that have no multiple responses
@@ -220,8 +213,8 @@ if ~isempty(hdr.rejected_segments)
     badEvt.epochs   = ones(1, size(hdr.rejected_segments,1));
     badEvt.times    = hdr.rejected_segments' ./ sFile.prop.sfreq;
     badEvt.select   = 0;
-    badEvt.channels = cell(1, size(badEvt.times, 2));
-    badEvt.notes    = cell(1, size(badEvt.times, 2));
+    badEvt.channels = [];
+    badEvt.notes    = [];
     sFile.events(iEvtGroup) = badEvt;
 end
 

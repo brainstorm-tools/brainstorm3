@@ -471,14 +471,12 @@ switch lower(structureName)
         template = struct(...
             'label',      '', ...      % str, label of the event group. Should not be empty.
             'color',      [], ...      % array of double (R,G,B): color triplet, size: (1, 3). Values btwn 0 and 1. Cannot be empty.
-            'epochs',     [], ...      % array of int (epochs indices), size: (1, nb of event items). Cannot be empty.
+            'epochs',     [], ...      % empty, or array of int (epochs indices), size: (1, nb of event items).
             'times',      [], ...      % array of double (time values), size: (1 or 2, nb of event items). Cannot be empty.
-            'reactTimes', [], ...      % array of double (reaction times), size: (1, nb of event items). Can be empty.
+            'reactTimes', [], ...      % empty, or array of double (reaction times), size: (1, nb of event items).
             'select',     1, ...       % int: display flag (0 or 1).
-            'channels',   [], ...      % see below
-            'notes',      []);         % see below
-        template.channels = {};        % cell array of cell arrays of str, size: (1, nb of event items:(1, nb of associated channels)). Cannot be empty.
-        template.notes = {};           % cell array of str, size: (1, nb of event items). Cannot be empty.
+            'channels',   [], ...      % empty, or cell array of cell arrays of str, size: (1, nb of event items:(1, nb of associated channels))
+            'notes',      []);         % empty, cell array of str, size: (1, nb of event items)
         
     % ==== EPOCH ====
     case 'epoch'

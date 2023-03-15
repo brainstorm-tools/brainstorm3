@@ -349,8 +349,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             % Get the selected occurrences
             newEvt.times    = newEvt.times(:, iOcc);
             newEvt.epochs   = newEvt.epochs(iOcc);
-            newEvt.channels = newEvt.channels(iOcc);
-            newEvt.notes    = newEvt.notes(iOcc);
+            if ~isempty(newEvt.channels)
+                newEvt.channels = newEvt.channels(iOcc);
+            end
+            if ~isempty(newEvt.notes)
+                newEvt.notes = newEvt.notes(iOcc);
+            end
             % Add to the list of events to import
             events(end+1) = newEvt;
         end

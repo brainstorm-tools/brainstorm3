@@ -105,8 +105,8 @@ if ~isempty(Fevt) && any(Fevt ~= 0)
         events(iEvt).epochs     = ones(size(samples));
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
     end
     % Save in file structure
     sFile.events = events;

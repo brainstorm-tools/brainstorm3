@@ -168,8 +168,12 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, dt, isDel
         eventsNew(iEvtRm).color    = [1 0 0];
         eventsNew(iEvtRm).times    = eventsNew(iEvtA).times(:,iRemoveA);
         eventsNew(iEvtRm).epochs   = eventsNew(iEvtA).epochs(iRemoveA);
-        eventsNew(iEvtRm).channels = eventsNew(iEvtA).channels(iRemoveA);
-        eventsNew(iEvtRm).notes    = eventsNew(iEvtA).notes(iRemoveA);
+        if ~isempty(eventsNew(iEvtA).channels)
+            eventsNew(iEvtRm).channels = eventsNew(iEvtA).channels(iRemoveA);
+        end
+        if ~isempty(eventsNew(iEvtA).notes)
+            eventsNew(iEvtRm).notes = eventsNew(iEvtA).notes(iRemoveA);
+        end
     end
     % Remove occurrences / remove event
     if isequal(iRemoveA, 1:size(eventsNew(iEvtA).times,2))
@@ -177,8 +181,12 @@ function [eventsNew, isModified] = Compute(sInput, events, evtA, evtB, dt, isDel
     else
         eventsNew(iEvtA).times(:,iRemoveA)  = [];
         eventsNew(iEvtA).epochs(iRemoveA)   = [];
-        eventsNew(iEvtA).channels(iRemoveA) = [];
-        eventsNew(iEvtA).notes(iRemoveA)    = [];
+        if ~isempty(eventsNew(iEvtA).channels)
+            eventsNew(iEvtA).channels(iRemoveA) = [];
+        end
+        if ~isempty(eventsNew(iEvtA).notes)
+            eventsNew(iEvtA).notes(iRemoveA) = [];
+        end
     end
     isModified = 1;
 end

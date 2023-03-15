@@ -1,5 +1,6 @@
 March 2023
 - Parallel computing: Handle temporary files per process, to avoid conflicts
+- Recordings: Optional storage of events channels and notes
 --------------------------------------------------------------
 February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)

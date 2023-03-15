@@ -155,9 +155,17 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     newEvent.label      = NewName;
     newEvent.times      = [events(iEvents).times];
     newEvent.epochs     = [events(iEvents).epochs];
-    newEvent.channels   = [events(iEvents).channels];
-    newEvent.notes      = [events(iEvents).notes];
-    % Reaction time: only if all the events have reaction time set
+    % Reaction time, channels, notes: only if all the events have them
+    if all(~cellfun(@isempty, {events(iEvents).channels}))
+        newEvent.channels = [events(iEvents).channels];
+    else
+        newEvent.channels = [];
+    end
+    if all(~cellfun(@isempty, {events(iEvents).notes}))
+        newEvent.notes = [events(iEvents).notes];
+    else
+        newEvent.notes = [];
+    end
     if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
         newEvent.reactTimes = [events(iEvents).reactTimes];
     else
@@ -167,8 +175,12 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
     newEvent.times    = newEvent.times(:,iSort);
     newEvent.epochs   = newEvent.epochs(iSort);
-    newEvent.channels = newEvent.channels(iSort);
-    newEvent.notes    = newEvent.notes(iSort);
+    if ~isempty(newEvent.channels)
+        newEvent.channels = newEvent.channels(iSort);
+    end
+    if ~isempty(newEvent.notes)
+        newEvent.notes = newEvent.notes(iSort);
+    end
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end

@@ -238,8 +238,12 @@ for iNew = 1:length(newEvents)
             if ~isempty(sFile.events(iEvt).reactTimes)
                 sFile.events(iEvt).reactTimes = sFile.events(iEvt).reactTimes(iSort);
             end
-            sFile.events(iEvt).channels = sFile.events(iEvt).channels(iSort);
-            sFile.events(iEvt).notes = sFile.events(iEvt).notes(iSort);
+            if ~isempty(sFile.events(iEvt).channels)
+                sFile.events(iEvt).channels = sFile.events(iEvt).channels(iSort);
+            end
+            if ~isempty(sFile.events(iEvt).notes)
+                sFile.events(iEvt).notes = sFile.events(iEvt).notes(iSort);
+            end
         end
     end
     % Add color if does not exist yet
