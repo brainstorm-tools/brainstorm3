@@ -4442,7 +4442,7 @@ function ScaleToFitY(hFig, ev)
     if YLimInit(1) == 0
         YLim(1) = 0;
     end
-    % Keep YLim symetric if it was initially symetric
+    % Keep YLim symmetric if it was initially symmetric
     if YLimInit(1) == -YLimInit(2)
         [tmp, imax] = max(abs(YLim));
         [tmp, imin] = min(abs(YLim));
