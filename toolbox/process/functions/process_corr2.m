@@ -64,6 +64,29 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
+    % Extract scouts with PCA, save to temp files.
+    isTempPcaA = false;
+    isTempPcaB = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
+            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+        if isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)
+            if isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)
+                % A and B, call together in case same scouts: common PCA
+                [sInputA, sInputB] = process_extract_scout('RunTempPca', sProcess, sInputA, sInputB);
+                isTempPcaA = true;
+                isTempPcaB = true;
+            else % A only
+                sInputA = process_extract_scout('RunTempPca', sProcess, sInputA);
+                isTempPcaA = true;
+            end
+        elseif isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)
+            % B only
+            sInputB = process_extract_scout('RunTempPca', sProcess, sInputB);
+            isTempPcaB = true;
+        end
+    end
+
     % Input options
     OPTIONS = process_corr2('GetConnectOptions', sProcess, sInputA, sInputB);
     if isempty(OPTIONS)
@@ -78,8 +101,15 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
-end
 
+    % Delete temp PCA files
+    if isTempPcaA
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+    end
+    if isTempPcaB
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputB);
+    end
+end
 
 
 %% =================================================================================================
@@ -118,11 +148,20 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.dest_scouts.InputTypesB = {'results'};
     sProcess.options.dest_scouts.Group       = 'input';
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment     = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
-    sProcess.options.scoutfunc.Type        = 'radio_line';
-    sProcess.options.scoutfunc.Value       = 1;
-    sProcess.options.scoutfunc.InputTypes  = {'results'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+                                             'mean', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value      = 'mean';
+    sProcess.options.scoutfunc.InputTypes = {'results'};
     sProcess.options.scoutfunc.InputTypesB = {'results'};
+    sProcess.options.scoutfunc.Group      = 'input';
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
+    % Options: PCA
+    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
+    sProcess.options.pcaedit.Type    = 'editpref';
+    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.Group   = 'input';
+    sProcess.options.pcaedit.Class   = 'pca';
     sProcess.options.scoutfunc.Group       = 'input';
     % === SCOUT TIME ===
     sProcess.options.scouttime.Comment     = {'Before', 'After', 'When to apply the scout function:'};
@@ -152,7 +191,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
 end
 
 
-%% ===== GET SCOUTS OPTIONS =====
+%% ===== GET METRIC OPTIONS =====
 function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % Default options structure
     OPTIONS = bst_connectivity();
@@ -163,16 +202,27 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
     end
-    
-    % === SCOUT FUNCTION ===
+    % === FROM: REFERENCE CHANNELS ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
+        OPTIONS.TargetA = sProcess.options.src_channel.Value;
+    end
+    % === FROM: ROW NAME ===
+    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
+        OPTIONS.TargetA = sProcess.options.src_rowname.Value;
+    end
+    % === SCOUTS ===
     if isfield(sProcess.options, 'scoutfunc') && isfield(sProcess.options.scoutfunc, 'Value') && isfield(sProcess.options, 'scouttime') && isfield(sProcess.options.scouttime, 'Value')
         % Override scouts function
         switch (sProcess.options.scoutfunc.Value)
-            case 1, OPTIONS.ScoutFunc = 'mean';
-            case 2, OPTIONS.ScoutFunc = 'max';
-            case 3, OPTIONS.ScoutFunc = 'pca';
-            case 4, OPTIONS.ScoutFunc = 'std';
-            case 5, OPTIONS.ScoutFunc = 'all';
+            case {1, 'mean'}, OPTIONS.ScoutFunc = 'mean';
+            case {2, 'max'},  OPTIONS.ScoutFunc = 'max';
+            case {3, 'pca'},  OPTIONS.ScoutFunc = 'pca';
+            case {4, 'std'},  OPTIONS.ScoutFunc = 'std';
+            case {5, 'all'},  OPTIONS.ScoutFunc = 'all';
+            otherwise 
+                bst_report('Error', sProcess, [], 'Invalid scout function.'); 
+                OPTIONS = [];
+                return;
         end
         % Scout function order
         switch (sProcess.options.scouttime.Value)
@@ -190,15 +240,6 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
             OPTIONS = [];
             return;
         end
-    end
-    
-    % === FROM: REFERENCE CHANNELS ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
-        OPTIONS.TargetA = sProcess.options.src_channel.Value;
-    end
-    % === FROM: ROW NAME ===
-    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
-        OPTIONS.TargetA = sProcess.options.src_rowname.Value;
     end
     % === FROM: SCOUTS ===
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'src_scouts') && isfield(sProcess.options.src_scouts, 'Value') && ~isempty(sProcess.options.src_scouts.Value)

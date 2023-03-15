@@ -343,8 +343,6 @@ for iResFile = 1:length(ResultsFiles)
         % Keep track of how many components are available
         allComponents(end+1) = nComponents;
         
-        %% TODO Possible bug: iTrace should depend on previous regions' nComponents in mixed models
-        %% TODO Change scout PCA absolute to nComp=1 to do PCA on scout & components at the same time.
         % Only one component
         if (nComponents == 1)
             % Get meaningful tags in the results file name (without folders)
@@ -369,6 +367,12 @@ for iResFile = 1:length(ResultsFiles)
             if ScoutsOptions.displayAbsolute
                 scoutsActivity{iResFile,iTrace} = abs(scoutsActivity{iResFile,iTrace});
             end
+        % More than one component and PCA: do PCA on scout & components at the same time.
+        elseif strncmpi(ScoutFunction, 'pca', 3) 
+            iTrace = k;
+            scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction);
+            % It doesn't make sense to run pca on std.
+            scoutsStd{iResFile,iTrace} = [];
         % More than one component & Absolute: Display the norm
         elseif ScoutsOptions.displayAbsolute
             iTrace = k;
@@ -380,6 +384,8 @@ for iResFile = 1:length(ResultsFiles)
             end
         % More than one component & Relative: Display the three components
         else
+            % For mixed models, this is bugged: iTrace should depend on previous regions' nComponents.
+            % But that case (mixed and relative) is flagged and an error is generated below (Legend section).
             iTrace = nComponents * (k-1) + (1:nComponents);
             tmp = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, 'none');
             for iComp = 1:nComponents

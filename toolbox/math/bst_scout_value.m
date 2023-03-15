@@ -13,7 +13,7 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - isSignFlip    : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - ScoutName     : Name of the scout or cluster you're extracting
 %     - Covar         : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA.
-%                       For PCA ScoutFunction: [Nrows x Nrows], for PCA XyzFunction only (no ScoutFunction): [3 x 3 x Nsources] 3 source orientations at each location
+%                       For PCA ScoutFunction: [Nrows x Nrows]; for PCA XyzFunction only (no ScoutFunction): [3 x 3 x Nsources] 3 source orientations at each location
 %     - PcaReference  : Reference PCA components (see PcaFirstComp below for possible sizes) pre-computed across epochs, used to pick consistent sign for each epoch
 %
 % OUTPUTS:
@@ -21,9 +21,12 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - PcaFirstComp : First mode of the PCA, as column(s). [Nsources, Ncomponents] for ScoutFunction only, [3 x Nsources] for XyzFunction, or [Nsources * Ncomponents, 1] for both.
 %
 % NOTES: 
-%     ScoutFunction is applied before XyzFunction. 
+%     ScoutFunction is applied before XyzFunction. But when both are PCA, they are done simultaneously.
 %     For XyzFunction 'pca' or 'pcaa', it should be applied before extracting scouts, or at the same time with the same PCA function.
-%     For ScoutFunction 'pca' or 'pcaa' with nComponents > 1, XyzFunction must match.
+%     For ScoutFunction 'pca' or 'pcaa' with nComponents > 1, XyzFunction must match, unless the old
+%     'pca' deprecated behavior is desired where scouts are extracted separately on x,y,z.
+%     For ScoutFunction 'pca' or 'pcaa', the PCA component (combination of sources) is scaled to
+%     1/sqrt(nVertices), to match the scaling of 'mean', and be more easily comparable between scouts.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -69,13 +72,6 @@ if (nargin < 3) || isempty(Orient)
 end
 % Initialize return values
 PcaFirstComp = [];
-
-% Enforce limitations on combining PCA on scout or xyz with other functions.
-if strncmpi(ScoutFunction, 'pca', 3) && nComponents > 1 && ~strcmpi(ScoutFunction, XyzFunction)
-    error('For PCA ScoutFunction with nComponents > 1, XyzFunction must match.');
-elseif nComponents > 1 && strncmpi(XyzFunction, 'pca', 3) && ~ismember(ScoutFunction, {'all', 'none'})
-    error('For PCA XyzFunction, it should be applied before extracting scouts, or at the same time with the same PCA function.');
-end
 
 % ===== ORIENTATION SIGN FLIP =====
 % PCA & orientation sign flipping: if we flip here, the resulting component sign is as if the activity
@@ -142,19 +138,42 @@ if (strcmpi(ScoutFunction, 'none') || strcmpi(ScoutFunction, 'all')) && strcmpi(
 end
 
 % ===== MULTIPLE COMPONENTS =====
-% Reshape F matrix in 3D: [nRow, nTime, nComponents]
+% Enforce limitations on combining PCA on scout or xyz with other functions.
+% But still allow deprecated previous behavior of doing 'pca' on scouts for x,y,z separately, with warning.
+if nComponents > 1 && ~strcmpi(ScoutFunction, XyzFunction)
+   if strcmpi(ScoutFunction, 'pca')
+       disp('BST> Warning: Extracting scouts on x,y,z separately is not recommended.');
+   elseif ismember(ScoutFunction, {'pcaa', 'pcai'})
+       error('For PCA ScoutFunction with nComponents > 1, XyzFunction must match.');
+   elseif strncmpi(XyzFunction, 'pca', 3)  && ~ismember(ScoutFunction, {'all', 'none'})
+       error('For PCA XyzFunction, it should be applied before extracting scouts, or at the same time with the same PCA function.');
+   end
+end
+if strncmpi(ScoutFunction, 'pca', 3)
+    % Store nComp for rescaling, in case we're doing combined scout and xyz PCA.
+    nCompPcaCombined = nComponents;
+    if strcmpi(ScoutFunction, XyzFunction)
+        % In this case, XyzFunction is also pca and we'll compute it on all sources (locations and orientations) at once.
+        nComponents = 1;
+    end
+end
+% Reshape F matrix in 3D: [nRow, nTime, nComponents], where nRow is the number of source locations (vertices for surface models).
 switch (nComponents)
     case 0,     error('You should call this function for each region individually.');
     case 1      % Nothing to do
     case {2,3} 
-        if strncmpi(ScoutFunction, 'pca', 3) 
-            % In this case, XyzFunction is also pca and we'll compute it on all sources (locations and orientations) at once.
-            nComponents = 1; 
-        else
-            F = permute(reshape(F, nComponents, [], size(F,2)), [2, 3, 1]); % permute/reshape faster than cat
-        end
+        F = permute(reshape(F, nComponents, size(F,1)/nComponents, size(F,2)), [2, 3, 1]); % permute/reshape faster than cat
 end
-nRow  = size(F,1);
+% F might be empty for PCA. Use Covar in that case.
+if size(F,1) == 0
+    if ndims(Covar) == 3
+        nRow = size(Covar, 3);
+    else
+        nRow = size(Covar, 1);
+    end
+else
+    nRow = size(F,1);
+end
 nTime = size(F,2);
 explained = 0;
 
@@ -214,6 +233,7 @@ switch (lower(ScoutFunction))
         end
 
     % PCA : Display first mode of PCA of time series within each scout region
+    % This per-file method, in particular the original 'pca', still allows keeping 3 orientation components.
     case {'pca', 'pcai'}
         % Signal decomposition
         PcaFirstComp = zeros(nRow, nComponents);
@@ -243,13 +263,22 @@ switch (lower(ScoutFunction))
             CompSign = nzsign(sum(PcaFirstComp));
         end
         PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
-        Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); % dot product of Comp with F on 1st dim, gives size (1, nTime, nComponents)
-        % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
-        if isSignFlip
-            PcaFirstComp = bsxfun(@times, PcaFirstComp, FlipMask);
+        % Rescale before applying component to timeseries. (nComp/nComp is for when we're doing
+        % scout and xyz combined, to recover the real number of vertices.)
+        PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
+        if ~isempty(F)
+            Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); % dot product of Comp with F on 1st dim, gives size (1, nTime, nComponents)
+            % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
+            if isSignFlip
+                PcaFirstComp = bsxfun(@times, PcaFirstComp, FlipMask);
+            end
+        else
+            % Covar was not sign-flipped if F is empty.
+            Fs = [];
         end
        
     % PCA computed on all data (all epochs/files) 
+    % Here, all sources are treated equally (vertices and orientations).
     case 'pcaa'
         % Covar is size (nRow,nRow), where nRow can be nVertex or nVertex*nComponents
         [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
@@ -261,9 +290,12 @@ switch (lower(ScoutFunction))
         % Orientation-based sign flipping was applied above, if orientations available.
         CompSign = nzsign(sum(PcaFirstComp));
         PcaFirstComp = CompSign * PcaFirstComp;
-        % F could be empty here if 
+        % Rescale before applying component to timeseries. (nComp/nComp is for when we're doing
+        % scout and xyz combined, to recover the real number of vertices.)
+        PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
+        % F could be empty here, e.g. if only getting the reference PCA component across files.
         if ~isempty(F)
-            Fs = U' * F; % (1, nTime)
+            Fs = PcaFirstComp' * F; % (1, nTime)
             % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
             if isSignFlip
                 PcaFirstComp = PcaFirstComp .* FlipMask;
@@ -274,7 +306,8 @@ switch (lower(ScoutFunction))
         end
         
     % FAST PCA : Display first mode of PCA of time series within each scout region
-    case 'fastpca' % no component returned or "% explained" message
+    % no component returned or "% explained" message, but deprecated.
+    case 'fastpca'
         % Reduce dimensions first
         nMax = 50; % Maximum number of variables to run the PCA on
         if nRow > nMax
@@ -318,9 +351,9 @@ end
 %% ===== COMBINE ALL ORIENTATIONS =====
 % If there are more than one component in output
 if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
-    nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
-    % Start from the scouts time series, but they can be empty for pcaa.
-    F = Fs;
+    if ~isempty(Fs)
+        nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
+    end
     % Different options to combine the three orientations
     switch lower(XyzFunction)
         % Compute the PCA of all the components
@@ -329,12 +362,12 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             % For each vertex: Signal decomposition
             explained = 0;
             for i = 1:nRow
-                Fi = permute(F(i,:,:), [3,2,1]); % permute faster than squeeze
-                % Use trial data covariance if provided
+                % Use trial data covariance if provided. This only happens if there were no scout extraction.
                 if ~isempty(Covar)
                     [U, S] = eig((Covar(:,:,i) + Covar(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
                     [S, iSort] = sort(S, 'descend');
                 else % use data
+                    Fi = permute(Fs(i,:,:), [3,2,1]); % permute faster than squeeze
                     % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
                     % Keeping offset removal as before for now.
                     [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ', 'vector'); % sum faster than mean
@@ -353,10 +386,13 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                 CompSign = nzsign(sum(PcaFirstComp));
             end
             PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
-            Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), F), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
-
+            if ~isempty(Fs)
+                Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), Fs), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
+            end
+            
         case 'pcaa'
-            % Here, F may be empty, if we save the result as a shared kernel.
+            % Only possible to get here if there were no scout extraction done.
+            % Here, F may be empty, e.g. if we save the result as a shared kernel.
             % Get number of sources from covariance.
             nRow = size(Covar, 3);
             PcaFirstComp = zeros(nComponents, nRow);
@@ -375,8 +411,8 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             % case, e.g. different conditions run separately, inconsistencies are still possible.
             CompSign = nzsign(sum(PcaFirstComp));
             PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
-            if ~isempty(F)
-                Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), F), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
+            if ~isempty(Fs)
+                Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), Fs), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
             end
             
         % Compute the norm across the directions
@@ -398,7 +434,7 @@ end
 %% Display percentage of signal explained by 1st component of PCA
 % This is somewhat incomplete: doesn't combine scout and xyz, or components of scout (loop).
 if explained
-    msg = sprintf('BST> First PCA component captures %1.1f%% of the signal', explained * 100);
+    msg = sprintf('BST> First PCA component captures %1.1f%% of signal power', explained * 100);
     if ScoutName
         msg = [msg ' in ' ScoutName];
     end

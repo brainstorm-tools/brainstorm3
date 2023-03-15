@@ -60,8 +60,18 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
 end
 
+
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
+    % Extract scouts with PCA, save to temp files.
+    isTempPca = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit.Value) && ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') && ...
+            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value)
+        sInputA = process_extract_scout('RunTempPca', sProcess, sInputA);
+        isTempPca = true;
+    end
+    
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
@@ -76,6 +86,11 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
 
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+
+    % Delete temp PCA files
+    if isTempPca
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+    end
 end
 
 
@@ -105,6 +120,37 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
         sProcess.options.src_rowname.InputTypes = {'timefreq', 'matrix'};
         sProcess.options.src_rowname.Group      = 'input';
     end
+    % === SCOUTS ===
+    sProcess.options.scouts.Comment = 'Use scouts';
+    if isConnNN
+        sProcess.options.scouts.Type = 'scout_confirm';
+    else
+        sProcess.options.scouts.Type = 'scout';
+    end
+    sProcess.options.scouts.Value      = {};
+    sProcess.options.scouts.InputTypes = {'results'};
+    sProcess.options.scouts.Group      = 'input';
+    % === SCOUT FUNCTION ===
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+                                             'mean', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value      = 'mean';
+    sProcess.options.scoutfunc.InputTypes = {'results'};
+    sProcess.options.scoutfunc.Group      = 'input';
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
+    % Options: PCA
+    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
+    sProcess.options.pcaedit.Type    = 'editpref';
+    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.Group   = 'input';
+    sProcess.options.pcaedit.Class   = 'pca';
+    % === SCOUT TIME ===
+    sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'};
+    sProcess.options.scouttime.Type       = 'radio_line';
+    sProcess.options.scouttime.Value      = 2;
+    sProcess.options.scouttime.InputTypes = {'results'};
+    sProcess.options.scouttime.Group      = 'input';
+    %sProcess.options.scouttime.Class      = 'notpca';
     % === TO: SENSOR SELECTION ===
     sProcess.options.dest_sensors.Comment    = 'Sensor types or names (empty=all): ';
     sProcess.options.dest_sensors.Type       = 'text';
@@ -117,32 +163,11 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.includebad.Value      = 1;
     sProcess.options.includebad.InputTypes = {'data'};
     sProcess.options.includebad.Group      = 'input';
-    % === SCOUTS ===
-    sProcess.options.scouts.Comment = 'Use scouts';
-    if isConnNN
-        sProcess.options.scouts.Type = 'scout_confirm';
-    else
-        sProcess.options.scouts.Type = 'scout';
-    end
-    sProcess.options.scouts.Value      = {};
-    sProcess.options.scouts.InputTypes = {'results'};
-    sProcess.options.scouts.Group      = 'input';
-    % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
-    sProcess.options.scoutfunc.Type       = 'radio_line';
-    sProcess.options.scoutfunc.Value      = 1;
-    sProcess.options.scoutfunc.InputTypes = {'results'};
-    sProcess.options.scoutfunc.Group      = 'input';
-    % === SCOUT TIME ===
-    sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'};
-    sProcess.options.scouttime.Type       = 'radio_line';
-    sProcess.options.scouttime.Value      = 2;
-    sProcess.options.scouttime.InputTypes = {'results'};
-    sProcess.options.scouttime.Group      = 'input';
 end
 
 
 %% ===== GET METRIC OPTIONS =====
+% Note: Scout PCA options are not needed in bst_connectivity. bst_pca must be called by the process_ function, before bst_connectivity.
 function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     % Default options structure
     OPTIONS = bst_connectivity();
@@ -163,20 +188,8 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         OPTIONS.TargetA = sProcess.options.src_channel.Value;
     end
     % === FROM: ROW NAME ===
-    if any(strcmpi(sInputA(1).FileType, {'timefreq','matrix'})) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
+    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
         OPTIONS.TargetA = sProcess.options.src_rowname.Value;
-    end
-    % === TO: SENSOR SELECTION ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'dest_sensors') && isfield(sProcess.options.dest_sensors, 'Value')
-        if isConnNN
-            OPTIONS.TargetA = sProcess.options.dest_sensors.Value;
-        else
-            OPTIONS.TargetB = sProcess.options.dest_sensors.Value;
-        end
-    end
-    % === TO: INCLUDE BAD CHANNELS ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'includebad') && isfield(sProcess.options.includebad, 'Value')
-        OPTIONS.IgnoreBad = ~sProcess.options.includebad.Value;
     end
     % === SCOUTS ===
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'scouts') && isfield(sProcess.options.scouts, 'Value')
@@ -184,11 +197,15 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         AtlasList = sProcess.options.scouts.Value;
         % Override scouts function
         switch (sProcess.options.scoutfunc.Value)
-            case 1, OPTIONS.ScoutFunc = 'mean';
-            case 2, OPTIONS.ScoutFunc = 'max';
-            case 3, OPTIONS.ScoutFunc = 'pca';
-            case 4, OPTIONS.ScoutFunc = 'std';
-            case 5, OPTIONS.ScoutFunc = 'all';
+            case {1, 'mean'}, OPTIONS.ScoutFunc = 'mean';
+            case {2, 'max'},  OPTIONS.ScoutFunc = 'max';
+            case {3, 'pca'},  OPTIONS.ScoutFunc = 'pca';
+            case {4, 'std'},  OPTIONS.ScoutFunc = 'std';
+            case {5, 'all'},  OPTIONS.ScoutFunc = 'all';
+            otherwise 
+                bst_report('Error', sProcess, [], 'Invalid scout function.'); 
+                OPTIONS = [];
+                return;
         end
         % Scout function order
         switch (sProcess.options.scouttime.Value)
@@ -220,6 +237,19 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
                 return;
             end
         end
+    end
+
+    % === TO: SENSOR SELECTION ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'dest_sensors') && isfield(sProcess.options.dest_sensors, 'Value')
+        if isConnNN
+            OPTIONS.TargetA = sProcess.options.dest_sensors.Value;
+        else
+            OPTIONS.TargetB = sProcess.options.dest_sensors.Value;
+        end
+    end
+    % === TO: INCLUDE BAD CHANNELS ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'includebad') && isfield(sProcess.options.includebad, 'Value')
+        OPTIONS.IgnoreBad = ~sProcess.options.includebad.Value;
     end
     
     % === OUTPUT ===

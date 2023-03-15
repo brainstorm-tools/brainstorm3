@@ -3296,9 +3296,6 @@ switch contextName
     
     case 'PcaOptions'
         defPref.Method         = 'pcaa'; % across epochs
-%         defPref.AvgType        = 2; % by subject
-%         defPref.Weighted       = 1; % across condition weighted averaging by file count? yes 
-%         defPref.UseDataCov     = 1; % Use data covariance (from files) if all kernel files
         defPref.Baseline       = [-.1, 0];
         defPref.DataTimeWindow = [0, 1];
         defPref.RemoveDcOffset = 'file';

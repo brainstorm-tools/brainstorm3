@@ -63,6 +63,15 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
+    % Extract scouts with PCA, save to temp files.
+    isTempPca = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit.Value) && ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') && ...
+            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value)
+        sInputA = process_extract_scout('RunTempPca', sProcess, sInputA);
+        isTempPca = true;
+    end
+    
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
@@ -77,6 +86,11 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
 
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
+
+    % Delete temp PCA files
+    if isTempPca
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+    end
 end
 
 

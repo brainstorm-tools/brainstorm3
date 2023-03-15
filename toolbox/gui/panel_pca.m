@@ -34,7 +34,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     bstPanelNew = [];
 
     PcaOptions = sProcess.options.pcaedit.Value;
-    %% TODO: Load user preferences.
     nInputs = numel(sInputs);
     % Progress bar
     bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, nInputs);
@@ -138,7 +137,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             ['<HTML><B>across all epochs/files</B>: Generally recommended, especially for within subject comparisons.<BR>' ...
             'Much faster with kernel link source files.<BR>' ... %  and using pre-computed data covariance
             'Can save shared kernels.'], [], [], @RadioPca_Callback);
-        jRadioPcaa.setSelected(1);
         jButtonGroupMethod.add(jRadioPcaa);
         % Per epoch, with sign consistency
         jRadioPcai = gui_component('radio', jPanelOptions, 'br', ...
@@ -152,6 +150,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.<BR>' ...
             '<I>The covariance options below cannot be modified.</I></FONT>'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPca);
+        switch lower(PcaOptions.Method)
+            case 'pca'
+                jRadioPca.setSelected(1);
+            case 'pcai'
+                jRadioPcai.setSelected(1);
+            otherwise % 'pcaa' as default
+                jRadioPcaa.setSelected(1);
+        end
     jPanelNew.add('hfill', jPanelOptions);
         
     jPanelCov = gui_river([5,2], [0,10,15,0], 'Data covariance options');
@@ -423,6 +429,8 @@ function s = GetPanelContents()
     else
         s.RemoveDcOffset = 'none';
     end
+    % Save panel preferences.
+    bst_set('PcaOptions', s);
 end
 
 

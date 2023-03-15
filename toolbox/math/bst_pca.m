@@ -1,27 +1,55 @@
-function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix)
-    %PcaOptions = sProcess.options.edit.Value;
+function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix, OutTimeWindow)
+    % BST_PCA: Dimension reduction with principal component analysis (PCA) for scouts, or unconstrained sources.
+    %
+    % USAGE:  OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix, OutTimeWindow)
+    %
+    % INPUTS:
+    % - PcaOptions: Specifies PCA method and covariance settings, usually obtained in the calling 
+    %   process through the PcaOptions panel, with defaults/preferences from bst_get('PcaOptions').
+    %   3 available PCA methods (PcaOptions.Method): 
+    %       'pca'  : old approach (pre 2023-03), separately for each file, resulting in sign inconsistencies 
+    %                between files.
+    %       'pcaa' : *Across* files.  Computes a single "reference" component based on all the source data
+    %                concatenated (per subject).
+    %       'pcai' : *Individual* files.  Computes a separate PCA component for each file, but correcting 
+    %                the sign so it aligns (positive projection) with the 'pcaa' reference component.
+    % - AtlasList: If provided, run PCA to extract one time series per scout; if empty: flatten
+    %   unconstrained sources instead.  Both scout extraction and flattening cannot be run from the
+    %   same bst_pca call, it returns an error. 
+    % - isOutMatrix: If true, force scout PCA to save 'matrix' type files; otherwise, saves 'results',
+    %   in kernel form when possible (when all inputs from a condition are kernel links).
+    % - OutTimeWindow: Requested time window for output time series when isOutMatrix is true. It is
+    %   widened if needed to include baseline and data time windows that are used to compute the PCA
+    %   (in PcaOptions).
+    %
+    % OUTPUTS:
+    % - OutputFiles: This function can save and return deprecated atlas-based result files (full or
+    % kernel), when provided with an AtlasList and isOutMatrix is false. These files can only be
+    % read properly by process_extract_scout. By extension, they can be read by processes that use
+    % bst_process('LoadInputFile', Target) with a scouts-type "Target" (e.g. bst_connectivity and
+    % process_pac), or that call directly process_extract_scout (e.g. process_timefreq). These files
+    % are deprecated but some Brainstorm processes create them through bst_pca temporarily, deleting
+    % them after use (e.g. bst_connectivity).
+
+    % IMPLEMENTATION NOTES:
+    % Scout extraction (when non empty AtlasList provided) would work with constrained or
+    % unconstrained sources; not requiring to flatten separately first. However, to simplify the
+    % possible workflows, for now we do them sequentially, flat then scout, such that the results
+    % are the same as if a user did flattening as a separate process first.  
+    % (Note that for viewing scout timeseries through the GUI, this function is bypassed and PCA is
+    % applied for both scouts and flattening together in view_scouts.)
+    %
+    % Scout PCA components (and so also the timeseries or kernel) are rescaled to have norm
+    % 1/sqrt(nVertices) instead of 1, to match the scale of the 'mean' component and be more
+    % comparable to it, and to other scouts.  By definition, PCA will still always give timeseries
+    % with more power than 'mean'.  This is done in bst_scout_value.  
     
-    % AtlasList: If provided, run PCA to extract one time series per scout; if empty: flatten
-    % unconstrained sources instead.  Both scout extraction and flattening cannot be run from the
-    % same bst_pca call, it returns an error. 
-    % 
-    % isOutMatrix: If true, force scout PCA to save 'matrix' type files; otherwise, saves 'results',
-    % in kernel form when possible (when all inputs from a condition are kernel links).
-
-    % 3 available PCA methods: 
-    %   'pca'  : old approach, separately for each file, resulting in sign inconsistencies between files.
-    %   'pcaa' : *Across* files.  Computes a single "reference" component based on all the source data
-    %            concatenated (per subject).
-    %   'pcai' : *Individual* files.  Computes a separate PCA component for each file, but correcting 
-    %            the sign so it aligns (positive projection) with the 'pcaa' reference component.
-
-    % isScout would work with constrained or unconstrained sources; not requiring to flatten separately first.
-    % However, to simplify the possible workflows, for now we do them sequentially, flat then scout,
-    % such that the results are the same as if a user did flattening as a separate process first.
-
     OutputFiles = {};
     AvgType = 2; % group by subject
 
+    if nargin < 6 || isempty(OutTimeWindow)
+        OutTimeWindow = [];
+    end
     if nargin < 5 || isempty(isOutMatrix)
         isOutMatrix = false;
     end
@@ -30,6 +58,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
     else
         isScout = true;
     end
+    % PcaOptions = sProcess.options.pcaedit.Value;
     if nargin < 3 || isempty(PcaOptions) || isempty(sInputs)
         error('Missing inputs');
     end
@@ -55,17 +84,29 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
     % Run on one subject.
     nInputs = numel(sInputs);
 
-    %________________________________________________________
-    % Checks and initializations. 
-    % Time window needed for baseline and data.
-    TimeWindow = [min(PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1)), max(PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2))];
+    %____________________________________________________________________________________________
+    % Checks and initializations
+
+    % Time window needed for baseline and data, as well as requested output window.
+    if isOutMatrix
+        TimeWindow = [min(PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1)), max(PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2))];
+        % Warn if we must widen requested output.
+        if ~isempty(OutTimeWindow) && (TimeWindow(1) > OutTimeWindow(1) || TimeWindow(2) < OutTimeWindow(2))
+            Message = 'Widening requested output time window to include PCA baseline and data windows.';
+            bst_report('Warning', sProcess, sInputs, Message);
+            TimeWindow = [min(TimeWindow(1), OutTimeWindow(1)), max(TimeWindow(2), OutTimeWindow(2))];
+        end
+    else
+        % Keep full time window, since we need the full data file time vector when saving kernels.
+        % Warning given later if requested window doesn't match full window.
+        TimeWindow = [];
+    end
 
     % Check all files are same type.
     FileType = unique({sInputs.FileType});
     if numel(FileType) > 1
         Message = 'Multiple file types detected.';
         bst_report('Error', sProcess, sInputs, Message);
-        OutputFiles = {};
         return;
     end
     % Checks for timefreq files.
@@ -73,7 +114,6 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         if ~isScout % should not occur
             Message = 'No scout list provided, and inputs are non-result files. Incompatible options for PCA.';
             bst_report('Error', sProcess, sInputs, Message);
-            OutputFiles = {};
             return;
         end
         if ~isOutMatrix
@@ -88,32 +128,28 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
     end
 
     % Load first file.
-    [sResults, matSourceValues, matDataValues] = process_extract_scout('LoadFile', sProcess, sInputs(1), TimeWindow);
+    [sResults, matSourceValues, matDataValues, FileComment] = process_extract_scout('LoadFile', sProcess, sInputs(1), TimeWindow);
     if isempty(sResults)
-        OutputFiles = {};
         return; % Error already reported.
     end
-    isLink = strcmpi(file_gettype(sInputs(1).FileName), 'link');
-
+    isKernel = isempty(matSourceValues);
+    
     nFreq = size(matSourceValues,3);
     if nFreq > 1
         Message = 'PCA not available for files with multiple frequencies.';
         bst_report('Error', sProcess, sInputs, Message);
-        OutputFiles = {};
         return;
     end
 
     % Check if unconstrained sources.
     [isUnconstrained, nComponents] = process_extract_scout('CheckUnconstrained', sProcess, sInputs(1), sResults);
     if isempty(isUnconstrained)
-        OutputFiles = {};
         return; % Error already reported.
     end
     % Refuse scout PCA on unconstrained sources.  Just require separate calls to bst_pca for now.
     if any(isUnconstrained) && isScout
         Message = 'Unconstrained sources detected, flatten sources before PCA for scouts.';
         bst_report('Error', sProcess, sInputs, Message);
-        OutputFiles = {};
         return;
         % Could otherwise have recursive call to do flattening first.
     elseif all(~isUnconstrained) && ~isScout
@@ -122,16 +158,19 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         return;
     end
 
+    % Keep surface file for compatibility check on each file.
+    SurfaceFile = sResults.SurfaceFile;
+    DisplayUnits = sResults.DisplayUnits;
+
     % Progress bar
     if isScout
-        bst_progress('start', 'Extracting scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 2*nInputs);
+        bst_progress('start', 'Extract scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 2*nInputs);
     else
         bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nInputs), 0, 2*nInputs);
     end
 
-    % Keep surface file for compatibility check on each file.
-    SurfaceFile = sResults.SurfaceFile;
-    DisplayUnits = sResults.DisplayUnits;
+    %____________________________________________________________________________________________
+    % Prepare scouts list, and some output fields common across files
 
     % Build scouts list.  For flattening mixed models, it's the source regions list.  For flattening
     % simple model, no list (single region).  
@@ -146,17 +185,25 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         isSignFlip = true;
         [sScouts, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', ...
             sProcess, sInputs(1), sResults.SurfaceFile, AtlasList, sResults.Atlas);
+        if isempty(sScouts)
+            return; % Error already reported.
+        end
         nScouts = numel(sScouts);
+        % Apply selected scout function (override the one from the scout panel).
+        for iScout = 1:nScouts
+            sScouts(iScout).Function = ScoutFunction;
+        end
         % Already checked all constrained sources for scouts.
         nComp = 1;
         % Prepare output atlas.
-        OutAtlas = db_template('atlas');
+        % If saving a result file, it is then a deprecated atlas-based result file.
+        sResultsOut.Atlas = db_template('atlas');
         if size(AtlasList,1) == 1
-            OutAtlas.Name = AllAtlasNames{1};
+            sResultsOut.Atlas.Name = AllAtlasNames{1};
         else
-            OutAtlas.Name = 'process_extract_scout';
+            sResultsOut.Atlas.Name = 'process_extract_scout';
         end
-        OutAtlas.Scouts = sScouts;
+        sResultsOut.Atlas.Scouts = sScouts;
     else
         ScoutFunction = [];
         XyzFunction = PcaOptions.Method;
@@ -171,9 +218,57 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
             nScouts = 1;
             nComp = nComponents; % 3, otherwise there was nothing to do and returned already.
         end
-        OutAtlas = [];
+        sResultsOut.Atlas = [];
     end
 
+    % History
+    if isScout
+        % History: process name
+        % Need sProcess.options.scouts here, so options.src_scouts needs to be copied in processes that use source/destination scouts.
+        if ~isfield(sProcess.options, 'scouts') && isfield(sProcess.options, 'src_scouts')
+            error('Calling process must rename scout options');
+        end
+        sResultsOut = bst_history('add', sResultsOut, 'process', process_extract_scout('FormatComment', sProcess));
+        % History: File name added later for matrix file type.
+    else
+        sResultsOut = bst_history('add', sResultsOut, 'flat', ['Convert unconstrained sources to a flat map with option: ' PcaOptions.Method]);
+    end
+    % Comment
+    if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
+        % Forced in the options
+        isForceComment = true;
+        sResultsOut.Comment = sProcess.options.Comment.Value;
+    else
+        isForceComment = false;
+        sResultsOut.Comment = [' | ' PcaOptions.Method];
+        if isScout
+            % Make single string of all scout names.
+            ScoutNames = {sScouts.Label};
+            if ~isempty(ScoutNames) % because of use of (end), though probably never empty.
+                ScoutNames(2,:) = {' '};
+                ScoutNames = [ScoutNames{:}];
+                ScoutNames(end) = '';
+            end
+            % Limit size of scout comment
+            if length(ScoutNames) > 20
+                sResultsOut.Comment = [sResultsOut.Comment, ' ' num2str(nScouts) ' scouts'];
+            elseif ~isempty(ScoutNames)
+                sResultsOut.Comment = [sResultsOut.Comment, ' scouts (' ScoutNames ')'];
+            else
+                sResultsOut.Comment = [sResultsOut.Comment, ' scouts'];
+            end
+        else
+            % Flattening
+            sResultsOut.Comment = [sResultsOut.Comment, ' flat'];
+        end
+    end
+    % Update number of components when flattening
+    if ~isOutMatrix && nComponents > 1
+        sResultsOut.nComponents = 1;
+    else
+        sResultsOut.nComponents = nComponents;
+    end
+    
     % Initialize source space covariance, and PCA components.
     if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
         SourceCov = cell(nScouts, 1);
@@ -183,9 +278,8 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         PcaComp = cell(nInputs, nScouts);
     end
     OutField = cell(nInputs, 1);
-    if isLink
+    if isKernel
         nSource = size(sResults.ImagingKernel, 1);
-%         PcaOptions.ChannelTypes = sResults.Options.DataTypes;
     else
         nSource = size(matSourceValues, 1);
     end
@@ -220,6 +314,15 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         end
     end
 
+    % Atlas-based files: no PCA needed.
+    % GetScoutRows already checked that scout function was PCA (in first file). 
+    % Warn and return input files.
+    if isScout && ~isempty(sResults.Atlas)
+        Message = 'Scout PCA already present in first input file. Returning all inputs unchanged.';
+        bst_report('Warning', sProcess, sInputs, Message);
+        OutputFiles = {sInputs.FileName};
+    end
+    
     %____________________________________________________________________________________________
     % First loop over files for 2 reasons: for pcaa and pcai we accumulate covariances in source
     % space (NxN for scouts or 3x3 xyz covariance matrices) across files for the reference
@@ -234,13 +337,13 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                 OutputFiles = {};
                 return; % Error already reported.
             end
-            isLink = strcmpi(file_gettype(sInputs(iInput).FileName), 'link');
+            isKernel = isempty(matSourceValues);
         end
         % Do some basic compatibility checks.  While these are not required for old per-file 'pca'
         % method, probably good to flag these and require users to run separately for files with
         % different dimensions, surfaces or units.
         if (isfield(sResults, 'nComponents') && nComponents ~= sResults.nComponents) || ...
-                (isLink && nSource ~= size(sResults.ImagingKernel, 1)) || (~isLink && nSource ~= size(matSourceValues, 1))
+                (isKernel && nSource ~= size(sResults.ImagingKernel, 1)) || (~isKernel && nSource ~= size(matSourceValues, 1))
             Message = 'Incompatible result dimensions (number of sources or orientations).';
             bst_report('Error', sProcess, sInputs, Message);
             OutputFiles = {};
@@ -257,7 +360,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
             OutputFiles = {};
             return;
         end
-        if isLink
+        if isKernel
             % Compute data covariance for this file only.
             DataCov = ComputeCovariance(matDataValues(sResults.GoodChannel,:), sResults.Time, PcaOptions);
             %DataCov = GetDataCovariance(sResults.DataFile, PcaOptions, sInputs(iInput).iStudy);
@@ -266,7 +369,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         end
         for iScout = 1:nScouts
             % Get source covariance
-            if isLink
+            if isKernel
                 if isScout
                     % add K * DataCov * K' with appropriate kernel rows for this scout
                     FileSourceCov{iScout} = sResults.ImagingKernel(sScouts(iScout).iRows, :) * DataCov * sResults.ImagingKernel(sScouts(iScout).iRows, :)';
@@ -293,24 +396,16 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
             end
         end % scouts loop
 
-        % Use single file covariance(s) to get single file PCA component(s). Full or kernel.
-        % Prepare output field
+        % Main values array field name
         if isOutMatrix % forced for timefreq inputs
             OutField{iInput} = 'Value';
-        elseif isLink
+        elseif isKernel
             OutField{iInput} = 'ImagingKernel';
         else % not link
             OutField{iInput} = 'ImageGridAmp';
         end
-        % Prepare output history.
-        if isScout
-            % History: process name
-            sResults = bst_history('add', sResults, 'process', process_extract_scout('FormatComment', sProcess));
-            % History: File name
-            sResults = bst_history('add', sResults, 'process', [' - File: ' sInputs(iInput).FileName]);
-        else
-            sResults = bst_history('add', sResults, 'flat', ['Convert unconstrained sources to a flat map with option: ' PcaOptions.Method]);
-        end            
+
+        % Use single file covariance(s) to get single file PCA component(s). Full or kernel.
         if ismember(PcaOptions.Method, {'pca', 'pcai'}) 
             if isScout
                 sResults.(OutField{iInput}) = zeros(nScouts, size(matSourceValues, 2));
@@ -319,7 +414,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                         ScoutFunction, sScouts(iScout).ScoutOrient, nComp, XyzFunction, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
                 end
                 % Project data if we want to save timeseries
-                if isLink && isOutMatrix
+                if isKernel && isOutMatrix
                     sResults.(OutField{iInput}) = sResults.(OutField{iInput}) * matDataValues(sResults.GoodChannel,:);
                 end
             else
@@ -328,19 +423,15 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                     nComponents, sResults.GridAtlas, matSourceValues, XyzFunction, [], [], FileSourceCov); % PcaReference not yet available
             end
 
-            % Set the number of components
-            if ~isOutMatrix && nComponents > 1
-                sResults.nComponents = 1;
-            end
-
             % Save individual files.  We still need to correct the sign later for pcai.
+            sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
             if isOutMatrix % forced for timefreq inputs
-                OutputFiles{iInput} = SaveMatrixFile(sProcess, sInputs(iInput), sResults, OutAtlas, PcaOptions.Method, FileComment);
+                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment);
             else
                 % Save single-file result file, full or kernel. For scouts, this is a deprecated
                 % atlas-based result file, meant only to be used temporarily and then deleted by the
                 % calling process.
-                OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, OutAtlas, PcaOptions.Method);
+                OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, PcaOptions.Method);
             end
         end
         if strcmpi(PcaOptions.Method, 'pca')
@@ -386,7 +477,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         case 'pcai'
             for iInput = 1:nInputs
                 % Which scouts/sources need sign correction?  Check before loading file.
-                isSignCorrect = [];
+                isSignCorrect = false(0);
                 for iScout = 1:nScouts
                     % Skip untouched regions of mixed model.
                     if ~isScout && ~isUnconstrained(iScout)
@@ -417,9 +508,9 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
         % pcaa: project sources (possibly kernel) with common reference components.
         case 'pcaa'
             PrevCond = '';
+            isOutSharedKernel = false;
             for iInput = 1:nInputs
                 % If saving shared kernels, only one per condition (files already sorted).
-                isOutSharedKernel = false;
                 if ~isOutMatrix && ~strcmp(sInputs(iInput).Condition, PrevCond) %&& ~strcmp(sInputs(iInput).SubjectName, PrevSub)
                     % We just changed condition.
                     PrevCond = sInputs(iInput).Condition;
@@ -435,7 +526,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                             break;
                         end
                     end
-                elseif isOutSharedKernel
+                elseif isOutSharedKernel % implies ~isOutMatrix and same condition
                     % Already saved a flattened version of this kernel.
                     % Find new link for this data file.
                     OutputFiles{iInput} = FindLinkFile(sInputs(iInput).DataFile, SharedFile, LinkFiles); %#ok<*AGROW>
@@ -451,9 +542,8 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
 
                 % Load file
                 [sResults, matSourceValues, matDataValues, FileComment] = process_extract_scout('LoadFile', sProcess, sInputs(iInput), TimeWindow);
-                %sResults = in_bst_results(sInputs(iInput).FileName, 0); % LoadFull=0 applies to kernel only.
-                isLink = strcmpi(file_gettype(sInputs(iInput).FileName), 'link');
-                if isLink
+                isKernel = isempty(matSourceValues);
+                if isKernel
                     % Copy kernel for convenience.
                     matSourceValues = sResults.ImagingKernel;
                 end
@@ -464,7 +554,7 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                         sResults.(OutField{iInput})(iScout, :) = PcaReference{iScout}' * matSourceValues(sScouts(iScout).iRows, :);
                     end
                     % Project data if we want to save timeseries
-                    if isLink && isOutMatrix
+                    if isKernel && isOutMatrix
                         sResults.(OutField{iInput}) = sResults.(OutField{iInput}) * matDataValues(sResults.GoodChannel,:);
                     end
                 else
@@ -477,8 +567,9 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                 end
 
                 % Save individual files, or shared kernel.
+                sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
                 if isOutMatrix % forced for timefreq inputs
-                    OutputFiles{iInput} = SaveMatrixFile(sProcess, sInputs(iInput), sResults, OutAtlas, PcaOptions.Method, FileComment);
+                    OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment);
                 elseif isOutSharedKernel
                     % Save shared kernel and find link.  We only get here for the first file in this
                     % condition.
@@ -493,12 +584,15 @@ function [OutputFiles] = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOut
                     % Save single-file result file, full or kernel. For scouts, this is a deprecated
                     % atlas-based result file, meant only to be used temporarily and then deleted by the
                     % calling process.
-                    OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, OutAtlas, PcaOptions.Method);
+                    OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, PcaOptions.Method);
                 end
 
                 bst_progress('inc', 1);
             end
     end
+
+    % Don't update the tree here since the files may be temporary (e.g. flattening from process_extract_scout).
+    %     panel_protocols('UpdateNode', 'Study', unique([sInputs.iStudy]));
 end
 
 %____________________________________________________________________________________________
@@ -566,65 +660,57 @@ end
 
 %____________________________________________________________________________________________
 % ===== SAVE FILE =====
-function OutputFile = SaveMatrixFile(sProcess, sInput, sResults, OutAtlas, Method, FileComment)
+function sResults = MergeFields(sInput, sResults, sResultsOut, isForceComment, isOutMatrix)
+    % Copy fields that were prepared, common to all files.
+    % History
+    sResults = bst_history('add', sResults, sResultsOut.History);
+    % Comment
+    if isForceComment
+        sResults.Comment = sResultsOut.Comment;
+    elseif isOutMatrix
+        % Append to original comment.
+        sResults.Comment = [sResults.Comment sResultsOut.Comment];
+    else % result
+        % Replace with results comment. (LoadFile changed it to the data file comment for matrix output)
+        sResults.Comment = [sInput.Comment sResultsOut.Comment];
+    end
+    % Atlas
+    sResults.Atlas = sResultsOut.Atlas;
+    % Components
+    sResults.nComponents = sResultsOut.nComponents;
+end
+
+function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileComment)
     % Create output structure
     sMatrix = db_template('matrixmat');
     % List of fields to copy from sResults to new matrix file.
-    Fields = {'Value', 'Time', 'ChannelFlag', 'SurfaceFile', 'DisplayUnits', 'nAvg', 'Leff', 'History'};
+    Fields = {'Value', 'Atlas', 'Time', 'SurfaceFile', 'DisplayUnits', 'nAvg', 'Leff', 'ChannelFlag', 'History', 'Comment'};
     for iF = 1:numel(Fields)
         if isfield(sResults, Fields{iF}) && ~isempty(sResults.(Fields{iF}))
             sMatrix.(Fields{iF}) = sResults.(Fields{iF});
         end
     end
-
-    % Save the atlas, which makes this a deprecated atlas-based result file.
-    sMatrix.Atlas = OutAtlas;
-    % History: process name
-    sMatrix = bst_history('add', sMatrix, 'process', process_extract_scout('FormatComment', sProcess));
+    % Description: cell array of 'ScoutName @ File' strings.
+    sMatrix.Description = cellfun(@(c) [c ' @ ' FileComment], ScoutNames', 'UniformOutput', false);
     % History: File name
     sMatrix = bst_history('add', sMatrix, 'process', [' - File: ' sInput.FileName]);
-
-    % Cell array of 'ScoutName @ File' strings.
-    ScoutNames = {OutAtlas.Scouts.Label};
-    sMatrix.Description = cellfun(@(c) [c ' @ ' FileComment], ScoutNames', 'UniformOutput', false);
-
-    % Comment
-    % Single string of all scout names.
-    nScouts = numel(ScoutNames);
-    if ~isempty(ScoutNames)
-        ScoutNames(2,:) = {' '};
-        ScoutNames = [ScoutNames{:}];
-        ScoutNames(end) = '';
-    end
-    % Comment: forced in the options
-    if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
-        sMatrix.Comment = sProcess.options.Comment.Value;
-    % Comment: Process default (limit size of scout comment)
-    elseif length(ScoutNames) > 20
-        sMatrix.Comment = [FileComment, ' | ' num2str(nScouts) ' scouts'];
-    elseif ~isempty(ScoutNames)
-        sMatrix.Comment = [FileComment, ' | scouts (' ScoutNames ')'];
-    else
-        sMatrix.Comment = [FileComment, ' | scouts'];
-    end
-
     % Output study = input study
-    [sStudy, iStudy] = bst_get('Study', sInput.iStudy);
+    sStudy = bst_get('Study', sInput.iStudy);
     % Output filename
-    OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'matrix_scout');
+    OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), ['matrix_scout_' Method]);
     % Save on disk
     bst_save(OutputFile, sMatrix, 'v6');
     % Register in database
-    db_add_data(iStudy, OutputFile, sMatrix);
+    db_add_data(sInput.iStudy, OutputFile, sMatrix);
 end
 
-function OutputFile = SaveResultFile(sInput, sResults, sScouts, Method)
+function OutputFile = SaveResultFile(sInput, sResults, Method)
     % Get study description
     sStudy = bst_get('Study', sInput.iStudy);
-    % Make comment unique (for this data file)
-    iResults = ~cellfun(@isempty, strfind({sStudy.Result.FileName}, sInput.DataFile));
-    sResults.Comment = [sResults.Comment ' | ' Method];
-    sResults.Comment = file_unique(sResults.Comment, {sStudy.Result(iResults).Comment});
+%     % Make comment unique (for this data file)
+%     %% This happens in db_add_data anyway.  Verify.
+%     iResults = ~cellfun(@isempty, strfind({sStudy.Result.FileName}, sInput.DataFile));
+%     sResults.Comment = file_unique(sResults.Comment, {sStudy.Result(iResults).Comment});
     % File tag
     if ~isempty(strfind(sInput.FileName, '_abs_zscore'))
         FileType = 'results_abs_zscore';
@@ -643,14 +729,13 @@ end
 
 function [OutputFile, SharedFile, LinkFiles] = SaveKernelFile(sInput, sResults, Method)
     sResults.DataFile = '';
-    sResults.Comment = [sResults.Comment ' | ' Method];
     % Keep original kernel file name, but ensure unique.
     [KernelPath, KernelName] = bst_fileparts(file_resolve_link(sInput.FileName));
     iK = strfind(KernelName, '_KERNEL_');
     SharedFile = bst_process('GetNewFilename', KernelPath, [KernelName(1:iK) 'KERNEL_' Method]);
     bst_save(SharedFile, sResults, 'v6');
     db_add_data(sInput.iStudy, SharedFile, sResults);
-    panel_protocols('UpdateNode', 'Study', sInput.iStudy);
+    %panel_protocols('UpdateNode', 'Study', sInput.iStudy);
     % Find link to the result kernel that was just created for this data file.
     LinkFiles = db_links('Study', sInput.iStudy);
     OutputFile = FindLinkFile(sInput.DataFile, SharedFile, LinkFiles);
