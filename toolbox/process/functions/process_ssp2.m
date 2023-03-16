@@ -686,7 +686,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             else
                 W = jadeR(F);
             end
-            Y = W * F;
             % Error handling
             if isempty(W)
                 bst_report('Error', sProcess, sInputsA, 'Function "jadeR" did not return any results.');
@@ -711,7 +710,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             end
             % Reconstruct mixing matrix
             W = icaweights * icasphere;
-            Y = W * F;
             
         % === ICA: PICARD ===
         case 'ICA_picard'
@@ -740,10 +738,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             F = F ./ mean(abs(F(:)));
             % Run decomposition
             if ~isempty(nIcaComp) && (nIcaComp ~= 0)
-                [Y,W] = fastica(F, 'numOfIC', nIcaComp);
+                [M,W] = fastica(F, 'numOfIC', nIcaComp);
             else
-                [Y,W] = fastica(F);
+                [M,W] = fastica(F);
             end
+            Y = W * F;
 
         otherwise
             bst_report('Error', sProcess, sInputsA, ['Invalid method: "' Method '".']);
@@ -767,10 +766,13 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         % Sort ICA components
         if ~isempty(icaSort)
+            Y = W * F;
             % By correlation with reference channel
             C = bst_corrn(Fref, Y);
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
-        else
+            proj.Components = proj.Components(:,iSort);
+        elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
+            Y = W * F;
             % By explained variance
             if diff(size(W)) == 0
                 M = inv(W);
@@ -779,8 +781,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             end
             var = sum(M.^2, 1) .* sum(Y.^2, 2)';
             [var, iSort] = sort(var, 'descend');
+            proj.Components = proj.Components(:,iSort);
         end
-        proj.Components = proj.Components(:,iSort);
     end
     
     % Modality used in the end
