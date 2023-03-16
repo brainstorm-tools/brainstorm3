@@ -772,7 +772,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
         else
             % By explained variance
-            M = inv(W);
+            if diff(size(W)) == 0
+                M = inv(W);
+            else
+                M = pinv(W);
+            end
             var = sum(M.^2, 1) .* sum(Y.^2, 2)';
             [var, iSort] = sort(var, 'descend');
         end
