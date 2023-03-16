@@ -29,7 +29,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
     % bst_process('LoadInputFile', Target) with a scouts-type "Target" (e.g. bst_connectivity and
     % process_pac), or that call directly process_extract_scout (e.g. process_timefreq). These files
     % are deprecated but some Brainstorm processes create them through bst_pca temporarily, deleting
-    % them after use (e.g. bst_connectivity).
+    % them after use (e.g. connectivity processes).
 
     % IMPLEMENTATION NOTES:
     % Scout extraction (when non empty AtlasList provided) would work with constrained or
@@ -42,7 +42,11 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
     % Scout PCA components (and so also the timeseries or kernel) are rescaled to have norm
     % 1/sqrt(nVertices) instead of 1, to match the scale of the 'mean' component and be more
     % comparable to it, and to other scouts.  By definition, PCA will still always give timeseries
-    % with more power than 'mean'.  This is done in bst_scout_value.  
+    % with more power than 'mean'.  This is done in bst_scout_value. 
+    %
+    % The differences between the 3 methods are all dealt with within this function (with one
+    % exception pushed to bst_source_orient for convenience for now).  As such, except for file
+    % comments, 'pca' is used for all 3 cases in other processes and functions.
     
     OutputFiles = {};
     AvgType = 2; % group by subject
@@ -175,7 +179,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
     % Build scouts list.  For flattening mixed models, it's the source regions list.  For flattening
     % simple model, no list (single region).  
     if isScout
-        ScoutFunction = PcaOptions.Method;
+        ScoutFunction = 'pca'; % don't use 4-letter pcaa or pcai outside this function.
         XyzFunction = [];
         % For scouts, we decided to keep sign flipping for all PCA methods.  For pcaa/pcai, it still
         % affects the overall sign of the reference component to be based on the geometry of the
@@ -184,15 +188,12 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
         % to be picked for consistency/reproducibility, we kept the previous choice.)
         isSignFlip = true;
         [sScouts, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', ...
-            sProcess, sInputs(1), sResults.SurfaceFile, AtlasList, sResults.Atlas);
+            sProcess, sInputs(1), sResults.SurfaceFile, AtlasList, sResults.Atlas, ScoutFunction);
+        % Selected scout function now applied in GetScoutInfo (overrides the one from the scout panel).
         if isempty(sScouts)
             return; % Error already reported.
         end
         nScouts = numel(sScouts);
-        % Apply selected scout function (override the one from the scout panel).
-        for iScout = 1:nScouts
-            sScouts(iScout).Function = ScoutFunction;
-        end
         % Already checked all constrained sources for scouts.
         nComp = 1;
         % Prepare output atlas.
@@ -206,7 +207,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
         sResultsOut.Atlas.Scouts = sScouts;
     else
         ScoutFunction = [];
-        XyzFunction = PcaOptions.Method;
+        XyzFunction = 'pca'; % don't use 4-letter pcaa or pcai outside this function.
         % Sign flipping does not apply to flattening unconstrained sources.
         isSignFlip = false;
         if nComponents == 0
@@ -558,8 +559,11 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
                         sResults.(OutField{iInput}) = sResults.(OutField{iInput}) * matDataValues(sResults.GoodChannel,:);
                     end
                 else
+                    % TODO: Might be better to keep this simple projection as a subfunction here.
+                    % But easier for now to let source_orient deal with mixed models.  But this is
+                    % the only place where a 4-letter pca method 'pcaa' is passed ouside bst_pca.
                     [sResults.(OutField{iInput}), sResults.GridAtlas] = bst_source_orient([], ...
-                        nComponents, sResults.GridAtlas, matSourceValues, XyzFunction, [], [], [], PcaReference);
+                        nComponents, sResults.GridAtlas, matSourceValues, 'pcaa', [], [], [], PcaReference);
                 end
                 % Set the number of components
                 if nComponents > 1
@@ -590,6 +594,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
                 bst_progress('inc', 1);
             end
     end
+    bst_progress('stop');
 
     % Don't update the tree here since the files may be temporary (e.g. flattening from process_extract_scout).
     %     panel_protocols('UpdateNode', 'Study', unique([sInputs.iStudy]));

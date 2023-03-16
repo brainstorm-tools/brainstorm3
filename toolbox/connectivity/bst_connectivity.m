@@ -310,9 +310,10 @@ for iFile = 1:length(FilesA)
     
     % ===== GET SCOUTS SCTRUCTURES =====
     % Save scouts structures in the options
+    % Selected scout function now applied in GetScoutInfo (overrides the one from the scout panel), to save function that was actually applied in output.
     % Scouts for FilesA
     if OPTIONS.isScoutA
-        OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA);
+        OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA, [], OPTIONS.ScoutFunc);
     else
         OPTIONS.sScoutsA = [];
     end
@@ -321,7 +322,7 @@ for iFile = 1:length(FilesA)
     OPTIONS.sScoutsAtlasB = [];
     OPTIONS.sScoutsGridLocB = [];
     if OPTIONS.isScoutB
-        [OPTIONS.sScoutsB, AtlasNames] = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB);
+        [OPTIONS.sScoutsB, AtlasNames] = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB, [], OPTIONS.ScoutFunc);
         % Get atlas name
         uniqueAtlasNames = unique(AtlasNames);
         if (length(uniqueAtlasNames) == 1)
@@ -748,10 +749,12 @@ for iFile = 1:length(FilesA)
     % Comment
     % 1xN and AxB
     if ~isConnNN
-        % Seed (scout)
+        % Seed(s) (scout)
         if OPTIONS.isScoutA
             if (length(OPTIONS.sScoutsA) == 1)
                 Comment = [Comment, OPTIONS.sScoutsA.Label];
+            else
+                Comment = [Comment, num2str(length(OPTIONS.sScoutsA))];
             end
         % Seed (sensor or row)
         elseif (length(sInputA.RowNames) == 1)

@@ -63,20 +63,21 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
-    % Extract scouts with PCA, save to temp files.
-    isTempPca = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit.Value) && ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') && ...
-            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value)
-        sInputA = process_extract_scout('RunTempPca', sProcess, sInputA);
-        isTempPca = true;
-    end
-    
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
         OutputFiles = {};
         return
+    end
+    
+    % Extract scouts with PCA, save to temp files.
+    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
+    isTempPcaA = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
+            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
     end
     
     % Metric options
@@ -88,7 +89,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
 
     % Delete temp PCA files
-    if isTempPca
+    if isTempPcaA
         process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
     end
 end
@@ -236,6 +237,10 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
                 OPTIONS = [];
                 return;
             end
+        end
+        % Scout PCA options: copy only so they are saved in output files, for documentation; OPTIONS not actually used for PCA computation.
+        if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
+            OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
         end
     end
 

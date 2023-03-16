@@ -107,6 +107,17 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+    
+    % Extract scouts with PCA, save to temp files.
+    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
+    isTempPcaA = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
+            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
+    end
+
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
@@ -125,7 +136,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     sfreq      = round(1/(TimeVector(2) - TimeVector(1)));
     % Get time window of first fileA if none specified in parameters
     if isempty(OPTIONS.TimeWindow)
-        OPTIONS.TimeWindow = TimeVectorA([1, end]);
+        OPTIONS.TimeWindow = TimeVector([1, end]);
     end
     % Select input time window
     TimeVector = TimeVector((TimeVector >= OPTIONS.TimeWindow(1)) & (TimeVector <= OPTIONS.TimeWindow(2)));
@@ -185,6 +196,11 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     bst_save(OutputFiles{1}, NewMat, 'v6');
     % Add file to database structure
     db_add_data(OPTIONS.iOutputStudy, OutputFiles{1}, NewMat);
+    
+    % Delete temp PCA files
+    if isTempPcaA
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+    end
 end
 
 

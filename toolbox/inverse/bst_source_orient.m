@@ -196,7 +196,6 @@ if ~isempty(RowNames) && ~iscell(RowNames)
     RowNames = 1:size(SourceValues,1);
 end
 
-
 end
 
 
@@ -248,7 +247,7 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
             else
                 Values = abs(Values(i1,:,:,:)).^2 + abs(Values(i2,:,:,:)).^2;
             end
-        case {'pca', 'pcaa', 'pcai'}
+        case {'pca', 'pcaa'}
             % Values could be empty here. 
             if ~isempty(PcaOrient)
                 nComp = size(PcaOrient, 1);
@@ -269,7 +268,7 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
                     permute(PcaOrient, [2, 3, 1]) ), 3); % [nSource, (nTime or nChan)]
             % Compute and project on first PCA orientation at each location.
             else
-                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], nComp, Function, 0, [], OrientCov, PcaOrient);
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], nComp, 'pca', 0, [], OrientCov, PcaOrient);
             end
         case 'none'
             % Nothing to do
