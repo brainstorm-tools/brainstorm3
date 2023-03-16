@@ -708,7 +708,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_report('Error', sProcess, sInputsA, 'Function "runica" did not return any results.');
                 return;
             end
-            % Reconstruct mixing matrix
+            % Reconstruct unmixing matrix
             W = icaweights * icasphere;
             
         % === ICA: PICARD ===
