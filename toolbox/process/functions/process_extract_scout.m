@@ -649,9 +649,11 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
             % KERNEL ONLY
             elseif isfield(sResults, 'ImagingKernel') && ~isempty(sResults.ImagingKernel) && nargout > 1
                 matDataValues = sMat.F;
-                % sResults already has a copy of the sMat (data file) fields: Time, nAvg, Leff, ChannelFlag. 
+                % sResults already has a copy of the sMat (data file) fields: Time, nAvg, Leff, ChannelFlag.
                 matSourceValues = [];
             end
+            % Keep both data file and inverse model histories. 
+            sResults.History = cat(1, sMat.History, sResults.History);
             % Input filename
             if isfield(sResults, 'DataFile') && ~isempty(sResults.DataFile)
                 fileComment = [file_short(sResults.DataFile) '/' sInputs(iInput).Comment];
