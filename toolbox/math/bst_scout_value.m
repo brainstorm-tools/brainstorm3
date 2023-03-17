@@ -189,6 +189,10 @@ switch (lower(ScoutFunction))
         else
             PcaFirstComp = ones(nRow, 1) ./ nRow;
         end
+        % This would be the value comparable to the PCA component "explained variance" / kept power.
+        % Uncomment to compare with PCA.
+        explained = sum(Fs(:).^2) * nRow / sum(F(:).^2);
+
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
         Fs = std(F,[],1);
@@ -233,6 +237,8 @@ switch (lower(ScoutFunction))
         else
             Fs = mean(sum(F.^2, 3), 1);
         end
+        % This would be the value comparable to the PCA component "explained variance" / kept power.
+        % PowerKept = sum(Fs(:)) * nRow / sum(F(:).^2);
 
     % PCA : First mode of PCA of time series within each scout region
     % This case now works for all 3 'pca' choices: the original deprecated per-file method, the
@@ -241,28 +247,35 @@ switch (lower(ScoutFunction))
     % As the original method is still supported, we still allows keeping 3 separate orientation components.
     case 'pca' % {'pca', 'pcai', 'pcaa'}
         % Signal decomposition
-        PcaFirstComp = zeros(nRow, nComponents);
-        explained = [0, 0];
-        for i = 1:nComponents % nComponents should now always be 1 here, but keep code compatible with more for now
-            % Use trial data covariance if provided
-            if ~isempty(Covar)
-                [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
-                [S, iSort] = sort(S, 'descend');
-                explained = explained + [S(1), sum(S)];
-            else % use data
-                % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
-                % Keeping offset removal as before for now.
-                [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ', 'vector'); % sum faster than mean
-                iSort = 1;
-                explained = explained + [S(1).^2, sum(S.^2)];
+        % Use trial data covariance if provided
+        if ~isempty(Covar)
+            % safety check
+            if nComponents > 1
+                error('Scout Covar provided but nComponents > 1');
             end
-            PcaFirstComp(:,i) = U(:, iSort(1));
+            [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
+            [S, iSort] = sort(S, 'descend');
+            PcaFirstComp = U(:, iSort(1));
+            explained = S(1) / sum(S);
+        else % use data
+            % This is a deprecated case, but still used for display. It's not taking into account
+            % baseline and data time windows like when we compute the covariance (outside this
+            % function). nComponents should now always be 1 here, but keep code compatible for
+            % non-standard calls and testing old behaviour.
+            explained = [0, 0];
+            PcaFirstComp = zeros(nRow, nComponents);
+            for i = 1:nComponents
+                % Keeping offset removal as before: whole trial.
+                [U, S] = svd(bsxfun(@minus, F(:,:,i), sum(F(:,:,i),2)./size(F,2)), 'econ', 'vector'); % sum faster than mean
+                explained = explained + [S(1).^2, sum(S.^2)];
+                PcaFirstComp(:,i) = U(:, 1);
+            end
+            explained = explained(1) / explained(2);
         end
-        explained = explained(1) / explained(2);
         % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility.
         if ~isempty(PcaReference)
             % Make projection onto reference component positive.
-            CompSign = nzsign(sum(PcaFirstComp .* PcaReference));
+            CompSign = nzsign(PcaReference' * PcaFirstComp);
         else
             % Keep sum of component elements (coefficients for the weighted sum of timeseries) positive.
             % Orientation-based sign flipping was applied above, if orientations available.
@@ -353,6 +366,16 @@ switch (lower(ScoutFunction))
         error(['Unknown scout function: ' ScoutFunction]);
 end
 
+% Display percentage of signal explained by 1st component(s) of PCA
+% Now properly combines multiple orientations if present.
+if explained
+    msg = sprintf('BST> First PCA component captures %1.1f%% of signal power', explained * 100);
+    if ScoutName
+        msg = [msg ' in ' ScoutName];
+    end
+    disp([msg '.']);
+end
+
 
 %% ===== COMBINE ALL ORIENTATIONS =====
 % If there are more than one component in output
@@ -360,6 +383,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     if ~isempty(Fs)
         nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
     end
+    explained = 0;
     % Different options to combine the three orientations
     switch lower(XyzFunction)
         % Compute the PCA of all the components
@@ -434,23 +458,26 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             
     % Otherwise: error
     otherwise
-        error(['Unknown scout function: ' ScoutFunction]);
+        error(['Unknown flattening function: ' XyzFunction]);
+    end
+
+    % Display percentage of signal explained by 1st component(s) of PCA
+    % Now displayed separately from scout PCA. They shouldn't occur together anymore in recommended
+    % usage: scout pca (or other scout function) followed by orient pca is deprecated. 
+    if explained
+        msg = sprintf('BST> First PCA orientation captures %1.1f%% of signal power', explained * 100);
+        if ScoutName
+            msg = [msg ' in ' ScoutName];
+        end
+        disp([msg '.']);
     end
 end
 
-%% Display percentage of signal explained by 1st component(s) of PCA
-% This is somewhat incomplete: doesn't combine scout and xyz, or components of scout (loop).
-if explained
-    msg = sprintf('BST> First PCA component captures %1.1f%% of signal power', explained * 100);
-    if ScoutName
-        msg = [msg ' in ' ScoutName];
-    end
-    disp([msg '.']);
-end
 end
 
 
 %% ===== PCA: FIRST MODE =====
+% Now only used for 'fastpca'.
 function [F, explained] = PcaFirstMode(F)
     % Signal decomposition / Remove average over time for each row
     [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ', 'vector'); %sum(F,2)./size(F,2)

@@ -168,50 +168,56 @@ function OutputFiles = Run(sProcess, sInputs)
     % bst_process('LoadInputFile'). In that case, go through usual process below, which is
     % appropriate for old deprecated 'pca' method, or for temporary atlas-based files (already
     % scouts) that only need to be loaded.
-    if strcmpi(ScoutFunc, 'pca') && isSave && isfield(sProcess.options, 'pcaedit') && ...
+    if strcmpi(ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && ...
             ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value)
-        % Don't allow concatenating, for now. Option disabled in panel.
-        % The other output options above are not used for PCA: isNorm=false (uses pca for
-        % flattening), isFlip=true, AddRowComment n/a, AddFileComment=true.
-        
         PcaOptions = sProcess.options.pcaedit.Value;
-        % Check if we have to first flatten unconstrained sources. We only check first file. Other
-        % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
-        isUnconstrained = any(CheckUnconstrained(sProcess, sInputs(1))); % any() needed for mixed models
-        if isempty(isUnconstrained)
-            return; % Error already reported;
-        elseif isUnconstrained
-            % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files.
-            FlatOutputFiles = bst_pca(sProcess, sInputs, PcaOptions, [], false);
-            if isempty(FlatOutputFiles)
-                return; % Error already reported.
+        if isSave % && ~strcmpi(PcaOptions.Method, 'pca')
+            %% TESTING OLD PCA through extract_scout vs bst_pca
+            % Don't allow concatenating, for now. Option disabled in panel.
+            % The other output options above are not used for PCA: isNorm=false (uses pca for
+            % flattening), isFlip=true, AddRowComment n/a, AddFileComment=true.
+
+            % Check if we have to first flatten unconstrained sources. We only check first file. Other
+            % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
+            isUnconstrained = any(CheckUnconstrained(sProcess, sInputs(1))); % any() needed for mixed models
+            if isempty(isUnconstrained)
+                return; % Error already reported;
+            elseif isUnconstrained
+                % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files.
+                FlatOutputFiles = bst_pca(sProcess, sInputs, PcaOptions, [], false);
+                if isempty(FlatOutputFiles)
+                    return; % Error already reported.
+                end
+                % Convert flattened files list back to input structure for second call.
+                sInputs = bst_process('GetInputStruct', FlatOutputFiles);
+                % isUnconstrained = false;
             end
-            % Convert flattened files list back to input structure for second call.
-            sInputs = bst_process('GetInputStruct', FlatOutputFiles);
-            % isUnconstrained = false;
-        end
-        % Run PCA scout extraction on all files.
-        % This process always saves matrix outputs: isOutMatrix=true
-        OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, true); 
-        % Delete temporary flattened files.
-        if isUnconstrained
-            DeleteTempResultFiles(sProcess, sInputs);
-        end
-        return;
-    elseif strcmpi(ScoutFunc, 'pca') && ~isSave
-        % Verify that the files are atlas-based result files (already scouts).
-        isAtlasBased = false;
-        if strcmpi(sInputs(1).FileType, 'results')
-            sResults = in_bst_results(sInputs(1).FileName, 0);
-            if ~isempty(sResults.Atlas)
-                isAtlasBased = true;
+            % Run PCA scout extraction on all files.
+            % This process always saves matrix outputs: isOutMatrix=true
+            OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, true);
+            % Delete temporary flattened files.
+            if isUnconstrained
+                DeleteTempResultFiles(sProcess, sInputs);
             end
-        end
-        % Otherwise, PCA requires saving files. 
-        if ~isAtlasBased
-            bst_report('Error', sProcess, sInputs, 'PCA for scouts requires saving files.');
             return;
-            % Else, proceed below where the atlas-based files will be loaded.
+        elseif ~strcmpi(PcaOptions.Method, 'pca') % ~isSave
+            % With the exception of the old deprecated per-file PCA method, which can be done in
+            % this function, files should be already scouts if isSave is false.
+            % Verify that the files are atlas-based result files.
+            isAtlasBased = false;
+            if strcmpi(sInputs(1).FileType, 'results')
+                sResults = in_bst_results(sInputs(1).FileName, 0);
+                if ~isempty(sResults.Atlas)
+                    isAtlasBased = true;
+                end
+            end
+            % Otherwise, PCA requires saving files.
+            if ~isAtlasBased
+                bst_report('Error', sProcess, sInputs, 'PCA for scouts requires saving files.');
+                return;
+            % else, proceed below where the atlas-based files will be loaded.
+            end
+        % else, proceed below with the deprecated pca method, without saving files.
         end
     end
 

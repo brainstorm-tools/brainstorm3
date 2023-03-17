@@ -108,6 +108,18 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         return
     end
 
+    % Keep original files for B side: where we're not using scouts.
+    sInputB = sInputA;
+    % Extract scouts with PCA, save to temp files.
+    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
+    isTempPcaA = false;
+    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
+            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
+            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
+            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
+    end
+
     % === Metric options
     OPTIONS.Method        = 'henv';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
@@ -155,5 +167,10 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isParallel = sProcess.options.parallel.Value ; 
 
     % === Computing connectivity matrix
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
+
+    % Delete temp PCA files
+    if isTempPcaA
+        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+    end
 end

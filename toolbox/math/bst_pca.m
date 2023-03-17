@@ -594,7 +594,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
                 bst_progress('inc', 1);
             end
     end
-    bst_progress('stop');
+    %bst_progress('stop');
 
     % Don't update the tree here since the files may be temporary (e.g. flattening from process_extract_scout).
     %     panel_protocols('UpdateNode', 'Study', unique([sInputs.iStudy]));
