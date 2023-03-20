@@ -161,6 +161,7 @@ if ~isempty(NevFile)
             eventCodes = double(nev.Data.SerialDigitalIO.UnparsedData);
             eventCodes = eventCodes - min(eventCodes);
             eventCodes(eventCodes == 0) = [];
+            nev.Data.SerialDigitalIO.TimeStamp(eventCodes == 0) = [];
             allTypes = repmat(eventCodes(:), 1, 2);
             isUnparsed = 1;
         else
