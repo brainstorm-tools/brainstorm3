@@ -603,6 +603,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     end
             
     % ===== COMPUTE PROJECTORS =====
+    Y = [];
     bst_progress('text', 'Computing projector...');
     switch (Method)
         
@@ -708,7 +709,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_report('Error', sProcess, sInputsA, 'Function "runica" did not return any results.');
                 return;
             end
-            % Reconstruct mixing matrix
+            % Reconstruct unmixing matrix
             W = icaweights * icasphere;
             
         % === ICA: PICARD ===
@@ -738,9 +739,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             F = F ./ mean(abs(F(:)));
             % Run decomposition
             if ~isempty(nIcaComp) && (nIcaComp ~= 0)
-                [Y,W] = fastica(F, 'numOfIC', nIcaComp);
+                [M,W] = fastica(F, 'numOfIC', nIcaComp);
             else
-                [Y,W] = fastica(F);
+                [M,W] = fastica(F);
             end
 
         otherwise
@@ -763,11 +764,25 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if ~isempty(SelectComp)
             proj.CompMask(SelectComp) = 1;
         end
+        % Compute IC
+        if isempty(Y)
+            Y = W * F;
+        end
         % Sort ICA components
         if ~isempty(icaSort)
-            y = W * F;
-            C = bst_corrn(Fref, y);
+            % By correlation with reference channel
+            C = bst_corrn(Fref, Y);
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
+            proj.Components = proj.Components(:,iSort);
+        elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
+            % By explained variance
+            if diff(size(W)) == 0
+                M = inv(W);
+            else
+                M = pinv(W);
+            end
+            var = sum(M.^2, 1) .* sum(Y.^2, 2)';
+            [var, iSort] = sort(var, 'descend');
             proj.Components = proj.Components(:,iSort);
         end
     end
@@ -1060,4 +1075,3 @@ function proj = ConvertOldFormat(OldProj)
         proj = OldProj;
     end
 end
-
