@@ -61,6 +61,9 @@ end
 if (nargin < 6) || isempty(DataType)
 	DataType = [];
 end
+if (nargin < 5) || isempty(Function)
+	Function = 'none';
+end
 if (nargin < 4) || isempty(SourceValues)
 	SourceValues = [];
 end
@@ -115,7 +118,6 @@ if (nComponents == 0)
         if isempty(iVertSource) && isempty(OrientCov)
             continue;
         end
-        
         % Get correpsonding row indices based on the type of region (constrained or unconstrained)
         switch (GridAtlas.Scouts(iScout).Region(3))
             case 'C'
@@ -201,9 +203,6 @@ end
 
 %% ====== APPLY FUNCTION =====
 function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, OrientCov, PcaOrient)
-    if nargin < 7
-        PcaOrient = [];
-    end
     switch (Function)
         case 'max'
             if ~isempty(i3)

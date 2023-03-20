@@ -46,7 +46,7 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sylvain Baillet, Francois Tadel, John Mosher, Marc Lalancette, 2010-2022
+% Authors: Sylvain Baillet, Francois Tadel, John Mosher, Marc Lalancette, 2010-2023
 
 % ===== PARSE INPUTS =====
 if (nargin < 9) || isempty(PcaReference)
@@ -104,20 +104,6 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
         if all(FlipMask == 1)
             FlipMask = [];
         else
-            % DATA-DEPENDENT CANCELATION: REMOVED ON 14-APR-2016 AFTER SKYPE DISCUSSION WITH RL, JM, DP
-            %         % Multiply the values by FlipMask
-            %         tmpF = bst_bsxfun(@times, F, FlipMask);
-            %         % Evaluate if the maximum of the average increased
-            %         maxOld = max(abs(mean(F,1)));
-            %         maxNew = max(abs(mean(tmpF,1)));
-            %         ratioMax = maxNew(1) ./ maxOld(1);
-            %         % If ratio is > 1: the sign flip had a positive effect, keep it
-            %         if (ratioMax > 1)
-            %             disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
-            %             F = tmpF;
-            %         else
-            %             disp(['BST> Sign flipping cancelled because it decreases the signal amplitude (ratio=' num2str(ratioMax) ').']);
-            %         end
             % Multiply the values by FlipMask
             if ~isempty(F)
                 F = bsxfun(@times, F, FlipMask);
@@ -145,8 +131,6 @@ end
 if nComponents > 1 && ~strcmpi(ScoutFunction, XyzFunction)
    if strcmpi(ScoutFunction, 'pca')
        disp('BST> Warning: Extracting scouts on x,y,z separately is not recommended.');
-%    elseif ismember(ScoutFunction, {'pcaa', 'pcai'})
-%        error('For PCA ScoutFunction with nComponents > 1, XyzFunction must match.');
    elseif strcmpi(XyzFunction, 'pca')  && ~ismember(ScoutFunction, {'all', 'none'})
        error('For PCA XyzFunction, it should be applied before extracting scouts, or at the same time with the same PCA function.');
    end
@@ -179,6 +163,7 @@ end
 nTime = size(F,2);
 explained = 0;
 
+
 %% ===== COMBINE ALL VERTICES =====
 switch (lower(ScoutFunction))       
     % MEAN : Average of the patch activity at each time instant
@@ -191,7 +176,7 @@ switch (lower(ScoutFunction))
         end
         % This would be the value comparable to the PCA component "explained variance" / kept power.
         % Uncomment to compare with PCA.
-        explained = sum(Fs(:).^2) * nRow / sum(F(:).^2);
+        %explained = sum(Fs(:).^2) * nRow / sum(F(:).^2);
 
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
@@ -340,9 +325,8 @@ switch (lower(ScoutFunction))
             % Find the nMax most powerful/spiky source time series
             %powF = sum(F.*F,2);
             powF = max(Fn,[],2) ./ (mean(Fn,2) + eps*min(Fn(:)));
-            [~, iF] = sort(powF, 'descend');
-            iF = iF(1:nMax);
-            F = F(iF,:,:);
+            [~, iF] = sort(powF,'descend');
+            F = F(iF(1:nMax),:,:);
         end
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);

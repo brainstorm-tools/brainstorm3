@@ -221,7 +221,6 @@ switch (lower(commandName))
         java_call(pBar.jWindow, 'setVisible', 'Z', 1);
         % Set watch cursor
         jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
-        % Bug (in Linux at least): msg doesn't show. Previous message is displayed instead.
         
     % ==== STOP ====
     case 'stop'

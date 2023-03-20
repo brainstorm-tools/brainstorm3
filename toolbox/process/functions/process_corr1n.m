@@ -60,7 +60,6 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
 end
 
-
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Input options
@@ -121,6 +120,18 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
         sProcess.options.src_rowname.InputTypes = {'timefreq', 'matrix'};
         sProcess.options.src_rowname.Group      = 'input';
     end
+    % === TO: SENSOR SELECTION ===
+    sProcess.options.dest_sensors.Comment    = 'Sensor types or names (empty=all): ';
+    sProcess.options.dest_sensors.Type       = 'text';
+    sProcess.options.dest_sensors.Value      = 'MEG, EEG';
+    sProcess.options.dest_sensors.InputTypes = {'data'};
+    sProcess.options.dest_sensors.Group      = 'input';
+    % === TO: INCLUDE BAD CHANNELS ===
+    sProcess.options.includebad.Comment    = 'Include bad channels';
+    sProcess.options.includebad.Type       = 'checkbox';
+    sProcess.options.includebad.Value      = 1;
+    sProcess.options.includebad.InputTypes = {'data'};
+    sProcess.options.includebad.Group      = 'input';
     % === SCOUTS ===
     sProcess.options.scouts.Comment = 'Use scouts';
     if isConnNN
@@ -151,19 +162,6 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scouttime.Value      = 2;
     sProcess.options.scouttime.InputTypes = {'results'};
     sProcess.options.scouttime.Group      = 'input';
-    %sProcess.options.scouttime.Class      = 'notpca';
-    % === TO: SENSOR SELECTION ===
-    sProcess.options.dest_sensors.Comment    = 'Sensor types or names (empty=all): ';
-    sProcess.options.dest_sensors.Type       = 'text';
-    sProcess.options.dest_sensors.Value      = 'MEG, EEG';
-    sProcess.options.dest_sensors.InputTypes = {'data'};
-    sProcess.options.dest_sensors.Group      = 'input';
-    % === TO: INCLUDE BAD CHANNELS ===
-    sProcess.options.includebad.Comment    = 'Include bad channels';
-    sProcess.options.includebad.Type       = 'checkbox';
-    sProcess.options.includebad.Value      = 1;
-    sProcess.options.includebad.InputTypes = {'data'};
-    sProcess.options.includebad.Group      = 'input';
 end
 
 
@@ -189,8 +187,20 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         OPTIONS.TargetA = sProcess.options.src_channel.Value;
     end
     % === FROM: ROW NAME ===
-    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
+    if any(strcmpi(sInputA(1).FileType, {'timefreq','matrix'})) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
         OPTIONS.TargetA = sProcess.options.src_rowname.Value;
+    end
+    % === TO: SENSOR SELECTION ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'dest_sensors') && isfield(sProcess.options.dest_sensors, 'Value')
+        if isConnNN
+            OPTIONS.TargetA = sProcess.options.dest_sensors.Value;
+        else
+            OPTIONS.TargetB = sProcess.options.dest_sensors.Value;
+        end
+    end
+    % === TO: INCLUDE BAD CHANNELS ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'includebad') && isfield(sProcess.options.includebad, 'Value')
+        OPTIONS.IgnoreBad = ~sProcess.options.includebad.Value;
     end
     % === SCOUTS ===
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'scouts') && isfield(sProcess.options.scouts, 'Value')
@@ -242,19 +252,6 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
             OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
         end
-    end
-
-    % === TO: SENSOR SELECTION ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'dest_sensors') && isfield(sProcess.options.dest_sensors, 'Value')
-        if isConnNN
-            OPTIONS.TargetA = sProcess.options.dest_sensors.Value;
-        else
-            OPTIONS.TargetB = sProcess.options.dest_sensors.Value;
-        end
-    end
-    % === TO: INCLUDE BAD CHANNELS ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'includebad') && isfield(sProcess.options.includebad, 'Value')
-        OPTIONS.IgnoreBad = ~sProcess.options.includebad.Value;
     end
     
     % === OUTPUT ===

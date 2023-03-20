@@ -90,7 +90,7 @@ else
     strComment = 'Noise covariance';
 end
 
-% Don't show progress bar if called with 1 file (PCA)
+% Don't show progress bar if called with 1 file
 isProgress = length(DataFiles) > 1;
 
 %% ===== GET DATA CHANNELS =====

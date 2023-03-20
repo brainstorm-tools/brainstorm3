@@ -45,7 +45,6 @@ function sProcess = GetDescription()
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
-    %sProcess.options.timewindow.Class   = 'notpca';
     % === SCOUTS
     sProcess.options.scouts.Comment = '';
     sProcess.options.scouts.Type    = 'scout';
@@ -403,7 +402,6 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                     scoutStd = cat(1, scoutStd, tmpScoutStd);
                 end
-
                 % Loop on the rows to comment them
                 for iRow = 1:size(tmpScout,1)
                     % Start with the scout name

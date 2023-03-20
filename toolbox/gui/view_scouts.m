@@ -384,7 +384,7 @@ for iResFile = 1:length(ResultsFiles)
             end
         % More than one component & Relative: Display the three components
         else
-            % For mixed models, this is bugged: iTrace should depend on previous regions' nComponents.
+            % This doesn't work for mixed models: iTrace should depend on previous regions' nComponents.
             % But that case (mixed and relative) is flagged and an error is generated below (Legend section).
             iTrace = nComponents * (k-1) + (1:nComponents);
             tmp = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, 'none');

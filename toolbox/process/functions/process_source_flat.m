@@ -23,7 +23,7 @@ function varargout = process_source_flat( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2013-2015
-%          Marc Lalancette, 2022
+%          Marc Lalancette, 2023
 
 eval(macro_method);
 end

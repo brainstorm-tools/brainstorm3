@@ -191,14 +191,7 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
     end
-    % === FROM: REFERENCE CHANNELS ===
-    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
-        OPTIONS.TargetA = sProcess.options.src_channel.Value;
-    end
-    % === FROM: ROW NAME ===
-    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
-        OPTIONS.TargetA = sProcess.options.src_rowname.Value;
-    end
+
     % === SCOUTS ===
     if isfield(sProcess.options, 'scoutfunc') && isfield(sProcess.options.scoutfunc, 'Value') && isfield(sProcess.options, 'scouttime') && isfield(sProcess.options.scouttime, 'Value')
         % Override scouts function
@@ -233,6 +226,14 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
         if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
             OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
         end
+    
+    % === FROM: REFERENCE CHANNELS ===
+    if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
+        OPTIONS.TargetA = sProcess.options.src_channel.Value;
+    end
+    % === FROM: ROW NAME ===
+    if ismember(sInputA(1).FileType, {'timefreq','matrix'}) && isfield(sProcess.options, 'src_rowname') && isfield(sProcess.options.src_rowname, 'Value')
+        OPTIONS.TargetA = sProcess.options.src_rowname.Value;
     end
     % === FROM: SCOUTS ===
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'src_scouts') && isfield(sProcess.options.src_scouts, 'Value') && ~isempty(sProcess.options.src_scouts.Value)
