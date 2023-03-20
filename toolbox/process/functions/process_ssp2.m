@@ -603,6 +603,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     end
             
     % ===== COMPUTE PROJECTORS =====
+    Y = [];
     bst_progress('text', 'Computing projector...');
     switch (Method)
         
@@ -742,7 +743,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             else
                 [M,W] = fastica(F);
             end
-            Y = W * F;
 
         otherwise
             bst_report('Error', sProcess, sInputsA, ['Invalid method: "' Method '".']);
@@ -764,15 +764,17 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if ~isempty(SelectComp)
             proj.CompMask(SelectComp) = 1;
         end
+        % Compute IC
+        if isempty(Y)
+            Y = W * F;
+        end
         % Sort ICA components
         if ~isempty(icaSort)
-            Y = W * F;
             % By correlation with reference channel
             C = bst_corrn(Fref, Y);
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
             proj.Components = proj.Components(:,iSort);
         elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
-            Y = W * F;
             % By explained variance
             if diff(size(W)) == 0
                 M = inv(W);
@@ -1073,4 +1075,3 @@ function proj = ConvertOldFormat(OldProj)
         proj = OldProj;
     end
 end
-
