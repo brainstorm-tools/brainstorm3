@@ -28,6 +28,14 @@
     @SET "MATLABROOT=C:\Program Files (x86)\MATLAB\MATLAB Runtime\%MCR_FOLDER%"
     @GOTO :TEST_JAVA
 )
+@IF EXIST "C:\Program Files\MATLAB\MATLAB Runtime\%VER_NAME%\sys\java\jre" (
+    @SET "MATLABROOT=C:\Program Files\MATLAB\MATLAB Runtime\%VER_NAME%"
+    @GOTO :TEST_JAVA
+)
+@IF EXIST "C:\Program Files (x86)\MATLAB\MATLAB Runtime\%VER_NAME%\sys\java\jre" (
+    @SET "MATLABROOT=C:\Program Files (x86)\MATLAB\MATLAB Runtime\%VER_NAME%"
+    @GOTO :TEST_JAVA
+)
 
 @REM ===== CHECK REGISTRY: MATLAB 64bit =====
 @SET MKEY="HKLM\SOFTWARE\MathWorks\MATLAB\%VER_NUMBER%"
