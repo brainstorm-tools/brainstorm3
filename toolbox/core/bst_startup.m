@@ -456,7 +456,7 @@ panel_process_select('ParseProcessFolder', 1);
 % Download ICBM152 template if missing (e.g. when cloning from GitHub)
 TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
 if ~isCompiled && ~exist(TemplateDir, 'file')
-    TemplateName = 'ICBM152_2023';
+    TemplateName = 'ICBM152_2023b';
     isSkipTemplate = 0;
     % Template file
     ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);
