@@ -285,12 +285,12 @@ switch action
             % Start brainstorm in server mode (local database or not)
             % With extra parameters
             if (length(varargin) > 1)
+                params = varargin(2:end);
                 if any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
                     brainstorm server local;
-                    params = setdiff(varargin(2:end), 'local');
+                    params(cellfun(@(c)isequal(c,'local'), params)) = [];
                 else
                     brainstorm server;
-                    params = varargin(2:end);
                 end
             % Without extra parameters
             else
