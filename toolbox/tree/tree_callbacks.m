@@ -1016,7 +1016,7 @@ switch (lower(action))
                 for iFile = 1:length(bstNodes)
                     iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
-                mriComment = char(bstNodes(1).getComment());
+                mriComment = lower(char(bstNodes(1).getComment()));
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     
                 if (length(bstNodes) == 1)
@@ -3114,7 +3114,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         end
           
     % === TISSUE SEGMENTATION ===
-    elseif (length(iAnatomy) == 1) && ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, 'tissues'))
+    elseif (length(iAnatomy) == 1) && ~isempty(strfind(lower(sSubject.Anatomy(iAnatomy).Comment), 'tissues'))
         gui_component('MenuItem', jPopup, [], 'Generate triangular meshes', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@tess_meshlayer, sSubject.Anatomy(iAnatomy).FileName));
         gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));
     end

@@ -40,7 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.InputTypes  = {'import', 'data'};
     sProcess.OutputTypes = {'import', 'data'};
     sProcess.nInputs     = 1;
-    sProcess.nMinFiles   = 1;
+    sProcess.nMinFiles   = 0;
     % Option: Subject name
     sProcess.options.subjectname.Comment    = 'Subject name:';
     sProcess.options.subjectname.Type       = 'subjectname';
