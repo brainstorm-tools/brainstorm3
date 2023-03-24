@@ -89,7 +89,7 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
     else
         % Take the SVD to get the dominant orientation in this patch
         % U(:,1) is the dominant orientation
-        [U,S] = svd(Orient, 'econ', 'vector');
+        [U,S] = svd(Orient, 'econ');
         % Get the flip mask for the data values
         FlipMask = sign(U(:,1)); % careful: sign(0) == 0
         % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility. 
@@ -251,7 +251,8 @@ switch (lower(ScoutFunction))
             PcaFirstComp = zeros(nRow, nComponents);
             for i = 1:nComponents
                 % Keeping offset removal as before: whole trial.
-                [U, S] = svd(bsxfun(@minus, F(:,:,i), sum(F(:,:,i),2)./size(F,2)), 'econ', 'vector'); % sum faster than mean
+                [U, S] = svd(bsxfun(@minus, F(:,:,i), sum(F(:,:,i),2)./size(F,2)), 'econ'); % sum faster than mean
+                S = diag(S);
                 explained = explained + [S(1).^2, sum(S.^2)];
                 PcaFirstComp(:,i) = U(:, 1);
             end
@@ -386,7 +387,8 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                     Fi = permute(Fs(i,:,:), [3,2,1]); % permute faster than squeeze
                     % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
                     % Keeping offset removal as before for now.
-                    [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ', 'vector'); % sum faster than mean
+                    [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ'); % sum faster than mean
+                    S = diag(S);
                     iSort = 1;
                     explained = explained + [S(1).^2, sum(S.^2)];
                 end
@@ -465,8 +467,8 @@ end
 % Now only used for 'fastpca'.
 function [F, explained] = PcaFirstMode(F)
     % Signal decomposition / Remove average over time for each row
-    [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ', 'vector'); %sum(F,2)./size(F,2)
-    %S = diag(S);
+    [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ'); %sum(F,2)./size(F,2)
+    S = diag(S);
     explained = S(1).^2 / sum(S.^2);
     U = U(:,1);
     % Remove ambiguity of arbitrary component sign for consistency across files/epochs (as best we can here with single trial data) and reproducibility.

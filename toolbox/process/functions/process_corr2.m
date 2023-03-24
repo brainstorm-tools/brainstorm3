@@ -226,7 +226,7 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
         if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
             OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
         end
-    
+    end
     % === FROM: REFERENCE CHANNELS ===
     if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
         OPTIONS.TargetA = sProcess.options.src_channel.Value;

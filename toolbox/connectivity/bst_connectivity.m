@@ -310,7 +310,7 @@ for iFile = 1:length(FilesA)
     
     % ===== GET SCOUTS SCTRUCTURES =====
     % Save scouts structures in the options
-    % Selected scout function now applied in GetScoutInfo (overrides the one from the scout panel), to save function that was actually applied in output.
+    % Selected scout function now applied in GetScoutInfo (overrides the one stored in the SurfaceFile, to use scout function requested in the process options).
     % Scouts for FilesA
     if OPTIONS.isScoutA
         OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA, [], OPTIONS.ScoutFunc);
