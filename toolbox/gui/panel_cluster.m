@@ -72,6 +72,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             gui_component('MenuItem', jMenu, [], 'Remove   [DEL]',          IconLoader.ICON_DELETE,  [], @(h,ev)RemoveClusters);
             gui_component('MenuItem', jMenu, [], 'Deselect all  [ESC]',     IconLoader.ICON_RELOAD,  [], @(h,ev)SetSelectedClusters(0));
             jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportClustersToMatlab));
+            gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportClustersFromMatlab));
+            jMenu.addSeparator();
             gui_component('MenuItem', jMenu, [], 'Copy to other folders', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllConditions'));
             gui_component('MenuItem', jMenu, [], 'Copy to other subjects', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllSubjects'));
 
@@ -468,7 +471,7 @@ function ClustersOptions = GetClusterOptions() %#ok<DEFNU>
         ClustersOptions = [];
         return;
     end
-    % Get current scouts
+    % Get current clusters
     sClusters = GetClusters();
     % If at least one of the cluster functions is "All", ignore the overlay checkboxes
     if any(strcmpi({sClusters.Function}, 'All'))
@@ -700,7 +703,7 @@ end
 
 %% ===== EDIT CLUSTER COLOR =====
 function EditClusterColor(newColor)
-    % Get selected scouts
+    % Get selected clusters
     [sSelClusters, iSelClusters] = GetSelectedClusters();
     if isempty(iSelClusters)
         java_dialog('warning', 'No cluster selected.', 'Edit cluster color');
@@ -713,13 +716,13 @@ function EditClusterColor(newColor)
             return
         end
     end
-    % Update scouts color
+    % Update cluster color
     for i = 1:length(sSelClusters)
         sSelClusters(i).Color = newColor;
     end
-    % Save scouts
+    % Save clusters
     SetClusters(iSelClusters, sSelClusters);
-    % Update scouts list
+    % Update clusters list
     UpdateClustersList();
 end
 
@@ -822,4 +825,49 @@ function CopyClusters(Target)
     end
     % Copy clusters
     db_set_clusters(GlobalData.DataSet(iDSall(1)).ChannelFile, Target, sClusters);
+end
+
+
+%% ===== EXPORT CLUSTERS TO MATLAB =====
+function ExportClustersToMatlab()
+    % Get selected clusters
+    sClusters = GetSelectedClusters();
+    % If nothing selected, take all clusters
+    if isempty(sClusters)
+        sClusters = GetClusters();
+    end
+    % If nothing: exit
+    if isempty(sClusters)
+        return;
+    end
+    % Export to the base workspace
+    export_matlab(sClusters, []);
+    % Display in the command window the selected clusters
+    disp([10 'List of sensors for each cluster:']);
+    for i = 1:length(sClusters)
+        disp(['   ' sClusters(i).Label ': ' sprintf('%s ', sClusters(i).Sensors{:})]);
+    end
+    disp(' ');
+end
+
+
+%% ===== IMPORT CLUSTERS FROM MATLAB =====
+function ImportClustersFromMatlab()
+    % Export to the base workspace
+    sClusters = in_matlab_var([], 'struct');
+    if isempty(sClusters)
+        return;
+    end
+    % Check structure
+    sTemplate = db_template('cluster');
+    if isempty(sClusters) || ~isequal(fieldnames(sClusters), fieldnames(sTemplate))
+        bst_error('Invalid clusters structure.', 'Import from Matlab', 0);
+        return;
+    end
+    % Save new cluster
+    iNewCluster = SetClusters('Add', sClusters);
+    % Update "Clusters Manager" panel
+    UpdateClustersList();
+    % Select last cluster in list (new cluster)
+    SetSelectedClusters(iNewCluster);
 end
