@@ -70,18 +70,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         OutputFiles = {};
         return
     end
-    
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    isTempPcaB = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            ( (isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)) || ...
-              (isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)) ) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, sInputB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', sProcess, sInputA, sInputB);
-    end
 
     % Metric options
     OPTIONS.Method     = 'corr';
@@ -89,16 +77,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
     
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
-
-    % Delete temp PCA files
-    if isTempPcaA && isTempPcaB % Need to be combined in case of same files on both sides.
-        process_extract_scout('DeleteTempResultFiles', sProcess, [sInputA, sInputB]);
-    elseif isTempPcaA 
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    elseif isTempPcaB
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputB);
-    end    
+    OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end
 
 
@@ -188,7 +167,9 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS = bst_connectivity();
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
-    
+    % Get all process info
+    OPTIONS.sProcess = sProcess;
+
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};

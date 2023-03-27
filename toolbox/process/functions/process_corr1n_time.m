@@ -97,16 +97,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         return
     end
 
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
-    end
-        
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method     = 'corr';
@@ -140,7 +130,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
         OPTIONS.TimeWindow = TimeVector(iTimes([1,end]));
         % Compute metric
-        ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+        ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)
             bst_report('Error', sProcess, sInputA, 'Correction for the selected time segment could not be calculated.');
@@ -174,11 +164,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     bst_save(OutputFiles{1}, NewMat, 'v6');
     % Add file to database structure
     db_add_data(OPTIONS.iOutputStudy, OutputFiles{1}, NewMat);
-
-    % Delete temp PCA files
-    if isTempPcaA
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    end
 end
 
 

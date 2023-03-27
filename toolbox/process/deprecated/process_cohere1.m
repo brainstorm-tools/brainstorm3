@@ -114,7 +114,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
 
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputA, OPTIONS);
 end
 
 

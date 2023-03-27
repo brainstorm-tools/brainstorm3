@@ -73,16 +73,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         return
     end
 
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
-    end
-
     % Metric options
     OPTIONS.Method = 'granger';
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
@@ -91,7 +81,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.Freqs        = 0;
     
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
 end
 
 
@@ -116,11 +106,6 @@ function Test() %#ok<DEFNU>
     % Save and display report
     ReportFile = bst_report('Save', sFile);
     bst_report('Open', ReportFile);
-
-    % Delete temp PCA files
-    if isTempPcaA
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    end
 end
 
 
