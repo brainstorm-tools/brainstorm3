@@ -138,20 +138,22 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.dest_scouts.InputTypesB = {'results'};
     sProcess.options.dest_scouts.Group       = 'input';
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+    sProcess.options.scoutfunc.Comment     = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
                                              'mean', 'max', 'pca', 'std', 'all', ''};
-    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
-    sProcess.options.scoutfunc.Value      = 'mean';
-    sProcess.options.scoutfunc.InputTypes = {'results'};
+    sProcess.options.scoutfunc.Type        = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value       = 'mean';
+    sProcess.options.scoutfunc.InputTypes  = {'results'};
     sProcess.options.scoutfunc.InputTypesB = {'results'};
-    sProcess.options.scoutfunc.Group      = 'input';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
+    sProcess.options.scoutfunc.Group       = 'input';
+    sProcess.options.scoutfunc.Controller  = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
     % Options: PCA
-    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
-    sProcess.options.pcaedit.Type    = 'editpref';
-    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
-    sProcess.options.pcaedit.Group   = 'input';
-    sProcess.options.pcaedit.Class   = 'pca';
+    sProcess.options.pcaedit.Comment     = {'panel_pca', ' PCA options: '};
+    sProcess.options.pcaedit.Type        = 'editpref';
+    sProcess.options.pcaedit.Value       = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.InputTypes  = {'results'};
+    sProcess.options.pcaedit.InputTypesB = {'results'};
+    sProcess.options.pcaedit.Group       = 'input';
+    sProcess.options.pcaedit.Class       = 'pca';
     % === SCOUT TIME ===
     sProcess.options.scouttime.Comment     = {'Before', 'After', 'When to apply the scout function:'};
     sProcess.options.scouttime.Type        = 'radio_line';

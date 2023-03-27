@@ -151,11 +151,12 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scoutfunc.Group      = 'input';
     sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
     % Options: PCA
-    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
-    sProcess.options.pcaedit.Type    = 'editpref';
-    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
-    sProcess.options.pcaedit.Group   = 'input';
-    sProcess.options.pcaedit.Class   = 'pca';
+    sProcess.options.pcaedit.Comment    = {'panel_pca', ' PCA options: '};
+    sProcess.options.pcaedit.Type       = 'editpref';
+    sProcess.options.pcaedit.Value      = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.InputTypes = {'results'};
+    sProcess.options.pcaedit.Group      = 'input';
+    sProcess.options.pcaedit.Class      = 'pca';
     % === SCOUT TIME ===
     sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'};
     sProcess.options.scouttime.Type       = 'radio_line';
