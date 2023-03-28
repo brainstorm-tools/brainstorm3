@@ -1,4 +1,4 @@
-function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
+function OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS)
 % BST_CONNECTIVITY: Computes a connectivity metric between two files A and B
 %
 % USAGE:  OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
@@ -31,6 +31,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 %% ===== DEFAULT OPTIONS =====
 Def_OPTIONS.Method        = 'corr';
 Def_OPTIONS.ProcessName   = '';
+Def_OPTIONS.sProcess      = [];
 Def_OPTIONS.TargetA       = [];
 Def_OPTIONS.TargetB       = [];
 Def_OPTIONS.Freqs         = 0;
@@ -62,13 +63,6 @@ end
 
 
 %% ===== INITIALIZATIONS =====
-% Parse inputs
-if ischar(FilesA)
-    FilesA = {FilesA};
-end
-if ischar(FilesB) && ~isempty(FilesB)
-    FilesB = {FilesB};
-end
 % Copy default options to OPTIONS structure (do not replace defined values)
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Initialize output variables
@@ -77,6 +71,54 @@ AllComments = {};
 Ravg = [];
 nAvg = 0;
 nTime = 1;
+
+% Get connectivity type: '1' (1xN), '1n' (NxN) or '2' (AxB)
+connType = regexp(OPTIONS.ProcessName, '(?<=process_\w*)[12][^_]*', 'match', 'once');
+
+% Extract scouts with PCA with 'pcaa' or 'pcai' methods, and save scout time series as temp files
+% See: bst_pca.m for more info on PCA methods
+sInputToDel = [];
+switch connType
+    case {'1', '1n'}
+        if isfield(OPTIONS.sProcess.options, 'scoutfunc') && strcmpi(OPTIONS.sProcess.options.scoutfunc.Value, 'pca') && ...
+                isfield(OPTIONS.sProcess.options, 'scouts') && ~isempty(OPTIONS.sProcess.options.scouts.Value) && ...
+                isfield(OPTIONS.sProcess.options, 'pcaedit') && ~isempty(OPTIONS.sProcess.options.pcaedit) && ~isempty(OPTIONS.sProcess.options.pcaedit.Value) && ...
+                ~strcmpi(OPTIONS.sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+            [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', OPTIONS.sProcess, sInputA);
+            if isTempPcaA
+               sInputToDel = sInputA;
+            end
+        end
+
+    case {'2'}
+        if isfield(OPTIONS.sProcess.options, 'scoutfunc') && strcmpi(OPTIONS.sProcess.options.scoutfunc.Value, 'pca') && ...
+                ( (isfield(OPTIONS.sProcess.options, 'src_scouts')  && ~isempty(OPTIONS.sProcess.options.src_scouts.Value)) || ...
+                  (isfield(OPTIONS.sProcess.options, 'dest_scouts') && ~isempty(OPTIONS.sProcess.options.dest_scouts.Value)) ) && ...
+                isfield(OPTIONS.sProcess.options, 'pcaedit') && ~isempty(OPTIONS.sProcess.options.pcaedit) && ~isempty(OPTIONS.sProcess.options.pcaedit.Value) && ...
+                ~strcmpi(OPTIONS.sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
+            [sInputA, sInputB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.sProcess, sInputA, sInputB);
+            if isTempPcaA
+               sInputToDel = sInputA;
+            end
+            if isTempPcaB
+               sInputToDel = [sInputToDel, sInputB];
+            end
+        end
+
+    otherwise
+        bst_report('Error', OPTIONS.ProcessName, [], 'Invalid connectivity type in connectivity process.');
+end
+
+% Get filenames
+FilesA = [];
+if ~isempty(sInputA)
+    FilesA = {sInputA.FileName};
+end
+FilesB = [];
+if ~isempty(sInputB)
+    FilesB = {sInputB.FileName};
+end
+
 % Initialize progress bar
 if bst_progress('isVisible')
     startValue = bst_progress('get');
@@ -310,7 +352,7 @@ for iFile = 1:length(FilesA)
     
     % ===== GET SCOUTS SCTRUCTURES =====
     % Save scouts structures in the options
-    % Selected scout function now applied in GetScoutInfo (overrides the one from the scout panel), to save function that was actually applied in output.
+    % Selected scout function now applied in GetScoutInfo (overrides the one stored in the SurfaceFile, to use scout function requested in the process options).
     % Scouts for FilesA
     if OPTIONS.isScoutA
         OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA, [], OPTIONS.ScoutFunc);
@@ -800,6 +842,11 @@ for iFile = 1:length(FilesA)
     end
 end
 
+%% ===== DELETE TEMP PCA FILES =====
+if ~isempty(sInputToDel)
+    process_extract_scout('DeleteTempResultFiles', OPTIONS.sProcess, sInputToDel);
+end
+
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
@@ -906,8 +953,8 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', ['Connectivity measure: ', OPTIONS.Method, ' (see the field "Options" for input parameters)']);
-    % Save options structure
-    FileMat.Options = OPTIONS;
+    % Save options structure (without sProcess)
+    FileMat.Options = rmfield(OPTIONS, 'sProcess');
     % Apply time and frequency bands
     if ~isempty(FreqBands)
         FileMat = process_tf_bands('Compute', FileMat, FreqBands, []);

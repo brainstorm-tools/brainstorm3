@@ -108,18 +108,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         return
     end
      
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    isTempPcaB = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            ( (isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)) || ...
-              (isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)) ) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, sInputB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', sProcess, sInputA, sInputB);
-    end
-
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
@@ -175,9 +163,9 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         OPTIONS.TimeWindow = TimeVectorA(iTimes([1,end]));
         % Compute metric
         if ~isempty(sInputB)
-            ConnectMat = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
+            ConnectMat = bst_connectivity(sInputA, sInputB, OPTIONS);
         else
-            ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+            ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         end
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)
@@ -218,15 +206,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     bst_save(OutputFiles{1}, NewMat, 'v6');
     % Add file to database structure
     db_add_data(OPTIONS.iOutputStudy, OutputFiles{1}, NewMat);
-
-    % Delete temp PCA files
-    if isTempPcaA && isTempPcaB % Need to be combined in case of same files on both sides.
-        process_extract_scout('DeleteTempResultFiles', sProcess, [sInputA, sInputB]);
-    elseif isTempPcaA 
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    elseif isTempPcaB
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputB);
-    end    
 end
 
 

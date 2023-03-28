@@ -70,18 +70,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         OutputFiles = {};
         return
     end
-    
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    isTempPcaB = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            ( (isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)) || ...
-              (isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)) ) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, sInputB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', sProcess, sInputA, sInputB);
-    end
 
     % Metric options
     OPTIONS.Method     = 'corr';
@@ -89,16 +77,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
     
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
-
-    % Delete temp PCA files
-    if isTempPcaA && isTempPcaB % Need to be combined in case of same files on both sides.
-        process_extract_scout('DeleteTempResultFiles', sProcess, [sInputA, sInputB]);
-    elseif isTempPcaA 
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    elseif isTempPcaB
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputB);
-    end    
+    OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end
 
 
@@ -138,20 +117,22 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.dest_scouts.InputTypesB = {'results'};
     sProcess.options.dest_scouts.Group       = 'input';
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+    sProcess.options.scoutfunc.Comment     = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
                                              'mean', 'max', 'pca', 'std', 'all', ''};
-    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
-    sProcess.options.scoutfunc.Value      = 'mean';
-    sProcess.options.scoutfunc.InputTypes = {'results'};
+    sProcess.options.scoutfunc.Type        = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value       = 'mean';
+    sProcess.options.scoutfunc.InputTypes  = {'results'};
     sProcess.options.scoutfunc.InputTypesB = {'results'};
-    sProcess.options.scoutfunc.Group      = 'input';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
+    sProcess.options.scoutfunc.Group       = 'input';
+    sProcess.options.scoutfunc.Controller  = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
     % Options: PCA
-    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
-    sProcess.options.pcaedit.Type    = 'editpref';
-    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
-    sProcess.options.pcaedit.Group   = 'input';
-    sProcess.options.pcaedit.Class   = 'pca';
+    sProcess.options.pcaedit.Comment     = {'panel_pca', ' PCA options: '};
+    sProcess.options.pcaedit.Type        = 'editpref';
+    sProcess.options.pcaedit.Value       = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.InputTypes  = {'results'};
+    sProcess.options.pcaedit.InputTypesB = {'results'};
+    sProcess.options.pcaedit.Group       = 'input';
+    sProcess.options.pcaedit.Class       = 'pca';
     % === SCOUT TIME ===
     sProcess.options.scouttime.Comment     = {'Before', 'After', 'When to apply the scout function:'};
     sProcess.options.scouttime.Type        = 'radio_line';
@@ -186,7 +167,9 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS = bst_connectivity();
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
-    
+    % Get all process info
+    OPTIONS.sProcess = sProcess;
+
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
@@ -226,7 +209,7 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
         if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
             OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
         end
-    
+    end
     % === FROM: REFERENCE CHANNELS ===
     if strcmpi(sInputA(1).FileType, 'data') && isfield(sProcess.options, 'src_channel') && isfield(sProcess.options.src_channel, 'Value')
         OPTIONS.TargetA = sProcess.options.src_channel.Value;

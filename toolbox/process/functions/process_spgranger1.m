@@ -89,18 +89,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         return
     end
 
-    % Keep original files for B side: where we're not using scouts.
-    sInputB = sInputA;
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, ~, isTempPcaA] = process_extract_scout('RunTempPca', sProcess, sInputA);
-    end
-
     % Metric options
     OPTIONS.Method = 'spgranger';
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
@@ -112,16 +100,11 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OutputFiles = {};
     if ismember(sProcess.options.direction.Value, [1 3])
         OPTIONS.GrangerDir = 'out';
-        OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
+        OutputFiles = cat(2, OutputFiles, bst_connectivity(sInputA, sInputA, OPTIONS));
     end
     if ismember(sProcess.options.direction.Value, [2 3])
         OPTIONS.GrangerDir = 'in';
-        OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
-    end
-
-    % Delete temp PCA files
-    if isTempPcaA
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
+        OutputFiles = cat(2, OutputFiles, bst_connectivity(sInputA, sInputA, OPTIONS));
     end
 end
 
