@@ -269,8 +269,7 @@ switch (lower(ScoutFunction))
         PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
         % Rescale before applying component to timeseries. (nComp/nComp is for when we're doing
         % scout and xyz combined, to recover the real number of vertices.)
-        %% TESTING WITHOUT THIS CHANGE vs old code
-        %PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
+        PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
         if ~isempty(F)
             Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); % dot product of Comp with F on 1st dim, gives size (1, nTime, nComponents)
         else
