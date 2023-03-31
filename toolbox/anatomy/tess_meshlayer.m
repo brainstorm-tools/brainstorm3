@@ -111,6 +111,11 @@ for iTissue = 1:length(TissueLabels)
     bst_progress('text', ['Layer #' num2str(iTissue) ': Filling holes...']);
     mask = (mri_fillholes(mask, 1) & mri_fillholes(mask, 2) & mri_fillholes(mask, 3));
     bst_progress('inc', 10);
+    % Error if mask is empty
+    if (nnz(mask) == 0)
+        bst_error(['Layer is empty after eroding: ' TissueLabels{iTissue}], 'Generate mesh', 0);
+        return;
+    end
 
     % view_mri_slices(mask, 'x', 20)
 

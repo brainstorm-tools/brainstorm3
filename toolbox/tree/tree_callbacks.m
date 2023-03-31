@@ -1171,7 +1171,7 @@ switch (lower(action))
                     % No read-only
                     if ~bst_get('ReadOnly')
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(filenameFull, [], []));
-                        gui_component('MenuItem', jPopup, [], 'Remesh...', IconLoader.ICON_FLIP, [], @(h,ev)tess_remesh(filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Remesh...', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@tess_remesh, filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Swap faces', IconLoader.ICON_FLIP, [], @(h,ev)SurfaceSwapFaces_Callback(filenameFull));
                         if strcmpi(nodeType, 'scalp')
                             gui_component('MenuItem', jPopup, [], 'Fill holes', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceFillHoles_Callback(filenameFull));

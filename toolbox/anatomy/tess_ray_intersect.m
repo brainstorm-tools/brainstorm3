@@ -1,7 +1,7 @@
-function [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull)
+function [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull, isOrient)
 % TESS_RAY_INTERSECT: find intersection of a ray with a set of faces.
 %
-% USAGE:  [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull)
+% USAGE:  [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull, isOrient=0)
 %
 % INPUT:
 %     - Vertices : Mx3 double matrix
@@ -10,6 +10,7 @@ function [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull
 %     - d        : Unit directional vector (from point r)
 %                  (will be automatically scaled to unity in the program)
 %     - cull     : One of 'i', 'o', or 'b', for inside (backside), outside (frontside), or both sides.
+%     - isOrient : If 1, returns only the interections in the direction FROM r TO d
 %
 % OUTPUT:
 %    - indx  : index such that Faces(INDX,:) gives the triangles intersected.
@@ -70,9 +71,12 @@ function [intersect,indx,t,u,v] = tess_ray_intersect(Vertices, Faces, r, d, cull
 % =============================================================================@
 %
 % Authors: John C. Mosher, 2001
-%          Francois Tadel, 2008-2010
+%          Francois Tadel, 2008-2023
 
 % Parse inputs
+if (nargin < 6) || isempty(isOrient)
+    isOrient = 0;
+end
 if (nargin < 5) || isempty(cull)
     cull = 'o'; % outside
 else
@@ -201,3 +205,17 @@ intersect = (1-U-V) .* Vertices(Faces(indx,1),:) + ...
 
 intersect = intersect'; % one intersection per column
 
+% If orientation is important
+if isOrient
+    % Compute the scalar product to make sure the interestion is on the same side as the target 
+    scalProd = sum(bst_bsxfun(@times, bst_bsxfun(@minus, intersect, r(:)), d(:)), 1);
+    % Remove the intersection points on the incorrect side
+    iRemove = find(scalProd < 0);
+    if ~isempty(iRemove)
+        intersect(:,iRemove) = [];
+        indx(iRemove) = [];
+        t(iRemove) = [];
+        u(iRemove) = [];
+        v(iRemove) = [];
+    end
+end

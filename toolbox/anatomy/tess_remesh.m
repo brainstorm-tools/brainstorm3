@@ -39,12 +39,13 @@ end
 % Number of vertices
 if (nargin < 2) || isempty(nvert)
     % Ask user the new number of vertices
-    nvert = java_dialog('input', ['Deform a sphere to map a simple closed surface.' 10 10 ...
+    VertList = {'162', '273', '362', '482', '642', '812', '1082', '1442', '1922', '2432', '2562', '3242', '4322', '5762', '7682', '7292', '9722', '10242', '12962'};
+    nvert = java_dialog('combo', ['Deform a sphere to map a simple closed surface.' 10 10 ...
                                   'Warning: The surface has to be parametrizable in spherical coordinates.' 10 ...
                                   'If the surface is not a simple envelope, the output will be wrong.' 10 ...
                                   'Do not apply to cortex surfaces: use the "Less vertices" menu instead.' 10 10 ...
                                   'Number of vertices:'], ...
-                                 'Remesh surface', [], '1922');
+                                 'Remesh surface', [], VertList, '1922');
     if isempty(nvert) || isnan(str2double(nvert))
         return
     end
@@ -81,7 +82,8 @@ if ~isProgress
 end
 % Center surface on its center of mass
 if isCenter
-    center = mean(vert);
+    %center = mean(vert);
+    center = bst_bfs(vert)';
     vert = bst_bsxfun(@minus, vert, center);
 end
 % Compute an apolar sphere
