@@ -2186,7 +2186,7 @@ function strList = List(Target, isGui)
         ' | ', bstGit, repmat(' ', 1, maxVer-length(bstGit)), ...
         strBstVer, strBstDir, ...
         ' | ' bstURL 10];
-
+    T = cell2table({'* brainstorm', (bstGit),(strBstVer),(strBstDir), (bstURL)}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
     % Print installed plugins to standard output
     for iPlug = 1:length(PlugDesc)
         % Loaded plugin
@@ -2215,6 +2215,9 @@ function strList = List(Target, isGui)
         else
             plugVer = PlugDesc(iPlug).Version;
         end
+
+        T(end+1,:) = cell2table({[strLoaded PlugDesc(iPlug).Name], (plugVer),(plugDate),PlugDesc(iPlug).Path, PlugDesc(iPlug).URLzip}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
+
         % Assemble plugin text row
         strList = [strList strLoaded, ...
             PlugDesc(iPlug).Name, repmat(' ', 1, maxName-length(PlugDesc(iPlug).Name)) ...
@@ -2224,7 +2227,7 @@ function strList = List(Target, isGui)
     end
     % Display output
     if isGui
-        view_text(strList, strTitle);
+        ViewTable(T, T.Properties.VariableNames, [], strTitle)
     % No string returned: display it in the command window
     elseif (nargout == 0)
         disp([10 strTitle 10 10 strList]);
