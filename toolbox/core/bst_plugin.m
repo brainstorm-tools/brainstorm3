@@ -2186,7 +2186,7 @@ function strList = List(Target, isGui)
         ' | ', bstGit, repmat(' ', 1, maxVer-length(bstGit)), ...
         strBstVer, strBstDir, ...
         ' | ' bstURL 10];
-    T = cell2table({'* brainstorm', (bstGit),(strBstVer),(strBstDir), (bstURL)}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
+    T = cell2table({'* Brainstorm', (bstGit),strrep(strBstVer,' | ',''),strrep(strBstDir,' | ',''), (bstURL)}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
     % Print installed plugins to standard output
     for iPlug = 1:length(PlugDesc)
         % Loaded plugin
@@ -2195,6 +2195,9 @@ function strList = List(Target, isGui)
         else
             strLoaded = '  ';
         end
+
+        plugName    = PlugDesc(iPlug).Name;
+        plugName(1) = upper(plugName(1));
         % Cut installation date: Only date, no time
         if (length(PlugDesc(iPlug).InstallDate) > 11)
             plugDate = PlugDesc(iPlug).InstallDate(1:11);
@@ -2216,7 +2219,7 @@ function strList = List(Target, isGui)
             plugVer = PlugDesc(iPlug).Version;
         end
 
-        T(end+1,:) = cell2table({[strLoaded PlugDesc(iPlug).Name], (plugVer),(plugDate),PlugDesc(iPlug).Path, PlugDesc(iPlug).URLzip}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
+        T(end+1,:) = cell2table({[strLoaded plugName], (plugVer),(plugDate),PlugDesc(iPlug).Path, PlugDesc(iPlug).URLzip}, 'VariableNames',{'Name','Version','Install date','Install path','Downloaded from'});
 
         % Assemble plugin text row
         strList = [strList strLoaded, ...
