@@ -1251,7 +1251,10 @@ function PlotFigure(hFig, isForced, isSpectrum, Time, Freqs, TfInfo, TF, RowName
     end
     if isempty(DisplayUnits)
         % Get signal units and display factor 
-        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        if ~isempty(regexp(TfInfo.FileName, '_connect[1n]', 'once'))
+            DisplayUnits  = 'No units';
+            DisplayFactor = 1;
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
         else
             DisplayUnits = 'signal units';
