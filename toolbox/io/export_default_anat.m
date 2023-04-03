@@ -93,7 +93,7 @@ for i = 1:length(sSubject.Surface)
     % Copy to new structure
     sTessNew = db_template('surfacemat');
     sTessNew.Comment  = sTess.Comment;
-    sTessNew.Vertices = double(sTess.Vertices);
+    sTessNew.Vertices = double(single(sTess.Vertices));
     % Copy other fields
     for f = {'Faces', 'Atlas', 'Reg', 'Elements', 'Tissue', 'TissueLabels', 'Tensors'}
         if isfield(sTess, f{1}) && ~isempty(sTess.(f{1}))
@@ -112,6 +112,9 @@ for i = 1:length(sSubject.Surface)
     if isfield(sTessNew, 'Reg') && isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
         sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
     end
+    if isfield(sTessNew, 'Reg') && isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
+        sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
+    end
     % Save file back
     bst_save(TessFile, sTessNew, 'v7');
     % Add file to export list
@@ -123,6 +126,13 @@ SubjectPath = bst_fileparts(AllFiles{1});
 dirTxt = dir(bst_fullfile(SubjectPath, '*.txt'));
 for i = 1:length(dirTxt)
     AllFiles{end+1} = bst_fullfile(SubjectPath, dirTxt(i).name);
+end
+
+% Add extra nii files
+SubjectPath = bst_fileparts(AllFiles{1});
+dirNii = dir(bst_fullfile(SubjectPath, '*.nii*'));
+for i = 1:length(dirTxt)
+    AllFiles{end+1} = bst_fullfile(SubjectPath, dirNii(i).name);
 end
 
 % Get channel files associated with this subject

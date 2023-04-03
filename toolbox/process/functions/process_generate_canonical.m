@@ -23,7 +23,7 @@ function varargout = process_generate_canonical( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2019
+% Authors: Francois Tadel, 2017-2023
 
 eval(macro_method);
 end
@@ -136,9 +136,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
 
     % ===== CALL SPM FUNCTIONS =====
     % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'spmcanonical');
     % Save MRI in .nii format
-    NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_canonical.nii');
+    NiiFile = bst_fullfile(TmpDir, 'spm_canonical.nii');
     out_mri_nii(sMri, NiiFile);
     % Call SPM function
     switch (Resolution)
@@ -178,6 +178,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     bst_save(SpmCortexFile, sCortex, 'v7');
     db_add_surface(iSubject, SpmCortexFile, sCortex.Comment);
     
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
     % Remove logo
     bst_plugin('SetProgressLogo', []);
     isOk = 1;

@@ -119,7 +119,7 @@ if isMatchRows && ismember(file_gettype(FilesListA{1}), {'matrix','timefreq','pm
     end
     if isempty(DestRowNames)
         Messages = [Messages, 'AVG> Could not find a common list of rows: Trying to average directly the matrices...' 10 ...
-                              'AVG> To avoid this warning, uncheck the option "Match signals" in the process options.'];
+                              'AVG> To avoid this warning, uncheck the option "Match signals" in the process options.' 10];
     end
 else
     DestRowNames = [];
@@ -180,6 +180,11 @@ for iFile = 1:nFiles
     if strcmpi(matName, 'ImageGridAmp') && (sMat.nComponents ~= 1) && ismember(Function, {'norm', 'rms', 'normdiff', 'normdiffnorm'})
         sMat = process_source_flat('Compute', sMat, 'rms');
     end
+    % Connectivity matrix: unpack NxN matrices
+    if strcmpi(matName, 'TF') && (length(sMat.RefRowNames) > 1) && isfield(sMat, 'Options') && isfield(sMat.Options, 'isSymmetric') && isequal(sMat.Options.isSymmetric, 1)
+        sMat.TF = process_compress_sym('Expand', sMat.TF, length(sMat.RowNames));
+        sMat.Options.isSymmetric = 0;
+    end
     
     % Copy additional fields
     if isfield(sMat, 'nComponents') && ~isempty(sMat.nComponents)
@@ -219,7 +224,7 @@ for iFile = 1:nFiles
         % Apply default function
         [matValues, isError] = process_tf_measure('Compute', matValues, sMat.Measure, defMeasure);
         if isError
-            Messages = [Messages, 'Error: Invalid measure conversion: ' sMat.Measure ' => ' defMeasure];
+            Messages = [Messages, 'Error: Invalid measure conversion: ' sMat.Measure ' => ' defMeasure, 10];
             continue;
         end
     end
@@ -239,7 +244,11 @@ for iFile = 1:nFiles
         RowNames = [];
     end
     if isfield(sMat, 'RefRowNames') && ~isempty(sMat.RefRowNames)
-        RefRowNames = sMat.RefRowNames;
+        if ~isempty(DestRowNames) && (length(sMat.RefRowNames) == length(sMat.RowNames))
+            RefRowNames = DestRowNames;
+        else
+            RefRowNames = sMat.RefRowNames;
+        end
     end
     if isfield(sMat, 'Events') && ~isempty(sMat.Events)
         Events = sMat.Events;
@@ -250,9 +259,21 @@ for iFile = 1:nFiles
     % === CHANNEL ORDER ===
     % Re-order rows in matrix/timefreq files
     if ~isempty(DestRowNames) && ~isequal(AllRowNames{iFile}, DestRowNames)
-        tmpValues = zeros(length(DestRowNames), size(matValues,2), size(matValues,3));
-        tmpValues(iRowsDest{iFile},:,:) = matValues(iRowsSrc{iFile},:,:);
-        matValues = tmpValues;
+        nTime = size(matValues, 2);
+        nFreq = size(matValues, 3);
+        % Connectivity files
+        if ~isempty(RefRowNames)
+            % Reshape TF matrix: [Nrow x Ncol x Ntime x nFreq]
+            R = reshape(matValues, [length(sMat.RefRowNames), length(sMat.RowNames), nTime, nFreq]);
+            tmpValues = zeros(length(DestRowNames), length(DestRowNames), size(matValues,2), size(matValues,3));
+            tmpValues(iRowsDest{iFile},iRowsDest{iFile},:,:) = R(iRowsSrc{iFile},iRowsSrc{iFile},:,:);
+            matValues = reshape(tmpValues, [], nTime, nFreq);
+        % Other files
+        else
+            tmpValues = zeros(length(DestRowNames), nTime, nFreq);
+            tmpValues(iRowsDest{iFile},:,:) = matValues(iRowsSrc{iFile},:,:);
+            matValues = tmpValues;
+        end
     end
     % Remove the @filename at the end of the row names (if DestRowNames, this had been done already in process_stdrow)
     if ~isempty(RowNames) && iscell(RowNames) && isempty(DestRowNames)
@@ -305,6 +326,12 @@ for iFile = 1:nFiles
         if strcmpi(matName, 'ImageGridAmp') && (sMat2.nComponents ~= 1) && ismember(Function, {'norm', 'rms', 'normdiff', 'normdiffnorm'})
             sMat2 = process_source_flat('Compute', sMat2, 'rms');
         end
+        % Connectivity matrix: unpack NxN matrices
+        if strcmpi(matName, 'TF') && (length(sMat2.RefRowNames) > 1) && isfield(sMat2, 'Options') && isfield(sMat2.Options, 'isSymmetric') && isequal(sMat2.Options.isSymmetric, 1)
+            sMat2.TF = process_compress_sym('Expand', sMat2.TF, length(sMat2.RowNames));
+            sMat2.Options.isSymmetric = 0;
+        end
+
         % Re-order rows in matrix/timefreq files
         if ~isempty(DestRowNames) && ~isequal(AllRowNames{nFiles + iFile}, DestRowNames)
             tmpValues = zeros(length(DestRowNames), size(sMat2.(matName),2), size(sMat2.(matName),3));
@@ -416,13 +443,14 @@ for iFile = 1:nFiles
         initRowNames = RowNames;
     % All other files
     else
-        % If current matrix has not the same size than the others
+        % If current matrix has not the same size as the others
         if ~isequal([size(MeanValues,1),size(MeanValues,2),size(MeanValues,3)], [size(matValues,1),size(matValues,2),size(matValues,3)])
             Messages = [Messages, sprintf('Error: File #%d contains a data matrix that has a different size:\n', iFile)];
             if ischar(FilesListA{iFile})
                 Messages = [Messages, FilesListA{iFile}, 10];
             end
-            continue;
+            MeanValues = [];
+            break;
         elseif ~strcmpi(MeanMatName, matName)
             Messages = [Messages, sprintf('Error: File #%d has a different type. All the result files should be of the same type (full results or kernel-only):\n', iFile)];
             if ischar(FilesListA{iFile})

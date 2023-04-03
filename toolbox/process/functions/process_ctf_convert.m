@@ -194,8 +194,12 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
                 % Remove the events occurrences
                 sFile.events(iEvt).times(:,iDouble)  = [];
                 sFile.events(iEvt).epochs(:,iDouble) = [];
-                sFile.events(iEvt).channels(iDouble) = [];
-                sFile.events(iEvt).notes(iDouble)    = [];
+                if ~isempty(sFile.events(iEvt).channels)
+                    sFile.events(iEvt).channels(iDouble) = [];
+                end
+                if ~isempty(sFile.events(iEvt).notes)
+                    sFile.events(iEvt).notes(iDouble) = [];
+                end
                 if ~isempty(sFile.events(iEvt).reactTimes)
                     sFile.events(iEvt).reactTimes(iDouble) = [];
                 end

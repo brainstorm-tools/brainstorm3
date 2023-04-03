@@ -554,6 +554,8 @@ function SetShowSulci(hFig, iSurfaces, status)
     end
     % Update figure's AppData (surfaces configuration)
     setappdata(hFig, 'Surface', TessInfo);
+    % Update panel controls
+    UpdateSurfaceProperties();
     % Update surface display
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
@@ -1290,7 +1292,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         end
         
     % === FEM ===
-    else
+    else % TODO: Check for FEM fileType explicitly
         view_surface_fem(surfaceFile, [], [], [], hFig);
     end
     % Update default surface
@@ -1490,11 +1492,11 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
 
         case 'HeadModel'
             setappdata(hFig, 'HeadModelFile', dataFile);
-            ColormapType = '';
+            ColormapType = 'source';
             DisplayUnits = [];
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
-            
+
         otherwise
             ColormapType = '';
             DisplayUnits = [];
@@ -1612,7 +1614,15 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 iResult = bst_memory('GetResultInDataSet', iDS, TessInfo(iTess).DataSource.FileName);
                 % If Results file is not found in GlobalData structure
                 if isempty(iResult)
-                    isOk = 0;
+                    % Check whether the figure is showing a leadfield
+                    if strcmp(file_gettype(TessInfo(iTess).DataSource.FileName), 'headmodel')
+                        UpdateCallback = getappdata(hFig, 'UpdateCallback');
+                        if ~isempty(UpdateCallback)
+                            UpdateCallback();
+                        end
+                    else
+                        isOk = 0;
+                    end
                     return
                 end
                 % If data matrix is not loaded for this file
@@ -1667,7 +1677,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
-                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) 
+                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
                                   'Please compute the sources again.'], size(TessInfo(iTess).Data, 1), TessInfo(iTess).DataSource.Atlas.Scouts), 'Data mismatch', 0);
@@ -1764,7 +1774,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
-                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) 
+                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
                                   'Please compute the sources again.'], size(TessInfo(iTess).Data, 1), length(TessInfo(iTess).DataSource.Atlas.Scouts)), 'Data mismatch', 0);
@@ -1901,19 +1911,19 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
             (size(TessInfo.DataWmat,2) ~= length(selChan)) || ...
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
         % EEG: Use smoothed display, as in 2D/3D topography
-        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'eeg')
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'EEG')
             TopoInfo.UseSmoothing = 1;
             TopoInfo.Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
             Faces = get(TessInfo.hPatch, 'Faces');
             [bfs_center, bfs_radius] = bst_bfs(Vertices);
             TessInfo.DataWmat = figure_topo('GetInterpolation', iDS, iFig, TopoInfo, Vertices, Faces, bfs_center, bfs_radius, chan_loc);
         else
-            switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
-                case 'eeg',       excludeParam = .3;
-                case 'ecog',      excludeParam = -.015;
-                case 'seeg',      excludeParam = -.015;
-                case 'ecog+seeg', excludeParam = -.015;
-                case 'meg',       excludeParam = .5;
+            switch (GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+                case 'EEG',       excludeParam = bst_get('ElecInterpDist', 'EEG');   % Should never reach this statement, already taken care of above
+                case 'ECOG',      excludeParam = -bst_get('ElecInterpDist', 'ECOG');
+                case 'SEEG',      excludeParam = -bst_get('ElecInterpDist', 'SEEG');
+                case 'ECOG+SEEG', excludeParam = -bst_get('ElecInterpDist', 'ECOG+SEEG');
+                case 'MEG',       excludeParam = bst_get('ElecInterpDist', 'MEG');
                 otherwise,        excludeParam = 0;
             end
             nbNeigh = 4;
@@ -2037,13 +2047,39 @@ end
 
 %% ===== GET SURFACE =====
 % Find a surface in a given 3DViz figure
-function iTess = GetSurface(hFig, SurfaceFile)
-    % Check whether filename is an absolute or relative path
-    SurfaceFile = file_short(SurfaceFile);
+% Usage:  [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, SurfaceFile)
+%         [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, [], SurfaceType)
+function [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, SurfaceFile, SurfaceType)
+    iTess = [];
+    sSurf = [];
     % Get figure appdata (surfaces configuration)
     TessInfo = getappdata(hFig, 'Surface');
-    % Find the surface in the 3DViz figure
-    iTess = find(file_compare({TessInfo.SurfaceFile}, SurfaceFile));
+    if nargin < 3 || (isempty(SurfaceType) && isempty(SurfaceFile))
+        return;
+    end
+    if isempty(SurfaceFile)
+        % Search by type.
+        iTess = find(strcmpi({TessInfo.Name}, SurfaceType));
+        if isempty(iTess)
+            return;
+        elseif numel(iTess) > 1
+            % See if selected is one of them, otherwise return last.
+            iTessSel = getappdata(hFig, 'iSurface');
+            if ismember(iTessSel, iTess)
+                iTess = iTessSel;
+            else
+                iTess = iTess(end);
+            end
+        end
+    else
+        % Check whether filename is an absolute or relative path
+        SurfaceFile = file_short(SurfaceFile);
+        % Find the surface in the 3DViz figure
+        iTess = find(file_compare({TessInfo.SurfaceFile}, SurfaceFile));
+    end
+    if (nargout >= 4) && ~isempty(TessInfo) && ~isempty(iTess)
+        sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
+    end
 end
 
 
@@ -2365,7 +2401,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
             MriInterp = tess2mri_interp;
         end
         % === ATLAS SOURCES ===
-        if ~isempty(TessInfo(iTess).DataSource.Atlas)
+        if ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
             % Initialize full cortical map
             DataScout = TessInfo(iTess).Data;
             DataSurf = zeros(size(MriInterp,2),1);
@@ -2416,10 +2452,10 @@ function SetDataThreshold(hFig, iSurf, value) %#ok<DEFNU>
     % Get surface info
     TessInfo = getappdata(hFig, 'Surface');
     % Get file in database
-    if isempty(TessInfo.DataSource) || isempty(TessInfo.DataSource.FileName)
+    if isempty(TessInfo(iSurf).DataSource) || isempty(TessInfo.DataSource(iSurf).FileName)
         return;
     end
-    isStat = any(strcmpi(file_gettype(TessInfo.DataSource.FileName), {'pdata', 'presults', 'ptimefreq'}));
+    isStat = any(strcmpi(file_gettype(TessInfo.DataSource(iSurf).FileName), {'pdata', 'presults', 'ptimefreq'}));
     if isStat
         return;
     end

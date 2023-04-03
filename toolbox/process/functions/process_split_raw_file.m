@@ -226,8 +226,12 @@ function [sFileOut, iFile, sOutputFiles] = SaveBlock(SamplesBounds, ...
             if ~isempty(sOutMat.F.events(iEvent).reactTimes)
                 sOutMat.F.events(iEvent).reactTimes = sOutMat.F.events(iEvent).reactTimes(iKeepEvents);
             end
-            sOutMat.F.events(iEvent).channels = sOutMat.F.events(iEvent).channels(iKeepEvents);
-            sOutMat.F.events(iEvent).notes    = sOutMat.F.events(iEvent).notes(iKeepEvents);
+            if ~isempty(sOutMat.F.events(iEvent).channels)
+                sOutMat.F.events(iEvent).channels = sOutMat.F.events(iEvent).channels(iKeepEvents);
+            end
+            if ~isempty(sOutMat.F.events(iEvent).notes)
+                sOutMat.F.events(iEvent).notes = sOutMat.F.events(iEvent).notes(iKeepEvents);
+            end
         end
 
         % Save new file

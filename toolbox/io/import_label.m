@@ -66,6 +66,16 @@ if isempty(LabelFiles)
     % Save default export format
     DefaultFormats.LabelIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+    % Warning if trying to import volume atlases on surfaces
+    if isempty(GridLoc) && ismember(FileFormat, {'MRI-MASK', 'MRI-MASK-MNI', 'MRI-MASK-NOOVERLAP', 'MRI-MASK-NOOVERLAP-MNI'})
+        isConfirm = java_dialog('confirm', ['You are trying to import a volume parcellation on a cortex surface.' 10 ...
+            'This usually results in very poor results, with incomplete cortex parcels.' 10 ...
+            'Using volume parcellations is only recommended with volume source models.' 10 10 ...
+            'Proceed anyways?'], 'Warning');
+        if ~isConfirm
+            return;
+        end
+    end
 % CALL: import_label(SurfaceFile, LabelFiles, ...)
 else
     % Force cell input
@@ -698,7 +708,7 @@ function AtlasName = GetAtlasName(fBase)
         case {'lh.myaparc_250', 'rh.myaparc_250'}
             AtlasName = 'Lausanne-S250';
         case {'lh.bn_atlas', 'rh.bn_atlas'}
-            AtlasName = 'Braintomme';
+            AtlasName = 'Brainnetome';
         case {'lh.oasis.chubs', 'rh.oasis.chubs'}
             AtlasName = 'OASIS cortical hubs';
         case {'lh.mpm.vpnl', 'rh.mpm.vpnl'}

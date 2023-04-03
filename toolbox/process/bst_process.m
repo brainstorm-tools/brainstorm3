@@ -79,6 +79,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         bst_report('Start', sInputAll);
     end
     UseProgress = 1;
+    isProgress = ~bst_progress('isVisible');
     % Group some processes together to optimize the pipeline speed
     sProcesses = OptimizePipeline(sProcesses);
     
@@ -334,7 +335,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         end
     end
     % Close progress bar (unless the last process does not use the progress bar)
-    if UseProgress
+    if UseProgress && isProgress
         bst_progress('stop');
     end
     % Report processing
@@ -2270,7 +2271,9 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
             updateVal{1} = newVal;
         elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+            updateVal{1} = newVal;
+        elseif ismember(lower(defType), {'combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ismember(newVal, defVal{2})
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else

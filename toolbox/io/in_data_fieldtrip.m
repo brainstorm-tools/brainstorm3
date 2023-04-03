@@ -77,11 +77,20 @@ elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
     % === GET TRIAL INFO ===
     % Get trial info, if available
     trialId = ones(length(ftMat.trial), 1);
+    trialinfoClean = [];
+    % Cleanup trialinfo
     if isfield(ftMat, 'trialinfo') && (size(ftMat.trialinfo,1) == length(ftMat.trial)) && isnumeric(ftMat.trialinfo)
+        iGoodCol = find(~any(isnan(ftMat.trialinfo),1) & ~all(bst_bsxfun(@minus, ftMat.trialinfo, ftMat.trialinfo(1,:)) == 0, 1));
+        if ~isempty(iGoodCol)
+            trialinfoClean = ftMat.trialinfo(:, iGoodCol);
+        end
+    end
+    % Select columns of trial ID
+    if ~isempty(trialinfoClean)
         % Ask the user for confirmation
         if isInteractive
             % Ask which column to use in the trialinfo field
-            nCol = size(ftMat.trialinfo,2);
+            nCol = size(trialinfoClean,2);
             res = java_dialog('question', [...
                 'A field "trialinfo" with ' num2str(nCol) ' column(s) is avaiable in the file.' 10 10 ...
                 'Which column to use to label the imported trials?'], ...
@@ -92,11 +101,11 @@ elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
                 return;
             end
             if ~isequal(res, 'None')
-                trialId = ftMat.trialinfo(:, str2double(res));
+                trialId = trialinfoClean(:, str2double(res));
             end
         % Automatic: use the first column only
         else
-            trialId = ftMat.trialinfo(:,1);
+            trialId = trialinfoClean(:,1);
         end
     end
     

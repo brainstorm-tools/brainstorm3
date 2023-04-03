@@ -43,6 +43,7 @@ function bst_set( varargin )
 %    - bst_set('InterfaceScaling',      InterfaceScaling)
 %    - bst_set('TSDisplayMode',         TSDisplayMode)    : {'butterfly','column'}
 %    - bst_set('ElectrodeConfig',       ElectrodeConfig, Modality)
+%    - bst_set('ElecInterpDist',        ElecInterpDist, Modality)
 %    - bst_set('DefaultFormats'         defaultFormats)
 %    - bst_set('BFSProperties',         [scalpCond,skullCond,brainCond,scalpThick,skullThick])
 %    - bst_set('ImportEegRawOptions',   ImportEegRawOptions)
@@ -247,11 +248,23 @@ switch contextName
     case 'ElectrodeConfig'
         Modality = varargin{2};
         ElectrodeConf = varargin{3};
-        if ~ismember(Modality, {'EEG','SEEG','ECOG'})
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif ~ismember(Modality, {'EEG','SEEG','ECOG','MEG'})
             error(['Invalid modality: ' Modality]);
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
-        
+
+    case 'ElecInterpDist'
+        Modality = varargin{2};
+        ElecInterpDist = varargin{3};
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif ~ismember(Modality, {'EEG','SEEG','ECOG','MEG'})
+            error(['Invalid modality: ' Modality]);
+        end
+        GlobalData.Preferences.(contextName).(Modality) = ElecInterpDist;
+
     case {'UniformizeTimeSeriesScales', 'XScale', 'YScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
           'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
           'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...

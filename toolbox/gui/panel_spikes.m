@@ -587,7 +587,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             newEvents(1).times      = tmpEvents(1).times;
             newEvents(1).reactTimes = [];
             newEvents(1).select     = 1;
-            newEvents(1).notes      = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).notes      = [];
             newEvents(1).channels   = repmat({{electrodeName}}, 1, size(newEvents(1).times, 2));
 
             
@@ -599,7 +599,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
                 newEvents(iNeuron).times      = tmpEvents(iNeuron).times;
                 newEvents(iNeuron).reactTimes = [];
                 newEvents(iNeuron).select     = 1;
-                newEvents(iNeuron).notes      = cell(1, size(newEvents(iNeuron).times, 2));
+                newEvents(iNeuron).notes      = [];
                 newEvents(iNeuron).channels   = repmat({{electrodeName}}, 1, size(newEvents(iNeuron).times, 2));
 
             end
@@ -611,8 +611,8 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             newEvents(1).times      = [];
             newEvents(1).reactTimes = [];
             newEvents(1).select     = 1;
-            newEvents(1).channels = cell(1, size(newEvents(1).times, 2));
-            newEvents(1).notes    = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).channels = [];
+            newEvents(1).notes    = [];
         end
     end
 

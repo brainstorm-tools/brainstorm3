@@ -1,12 +1,14 @@
-function [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters, hFig, ClustersOptions)
+function [hFig, iDS, iFig] = view_clusters(DataFiles, ClusterLabels, hFig, ClustersOptions)
 % VIEW_CLUSTERS: Display time series for all the clusters selected in the JList.
 %
-% USAGE:  [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters=[selected], hFig=[], ClustersOptions=[]) : Specify the figure to use for the display
-%
+% USAGE:  [hFig, iDS, iFig] = view_clusters(DataFiles, ClusterLabels=[selected], hFig=[], ClustersOptions=[])
+%         [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters, hFig=[], ClustersOptions=[])
+
 % INPUTS:
-%    - DataFiles : String of cell-array of input data files
-%    - iClusters : Indices of the clusters to display
-%    - hFig      : Re-use existing figure
+%    - DataFiles     : Cell-array of input data files
+%    - ClusterLabels : Cell-array of labels of the clusters to display
+%    - iClusters     : Indices of the clusters to display from the list in the Clusters tab
+%    - hFig          : Re-use existing figure
 %    - ClustersOptions: struct()
 %        |- function          : {'Mean','Max','Power','PCA','FastPCA', 'All'} ?
 %        |- overlayClusters   : {0, 1}
@@ -30,7 +32,7 @@ function [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters, hFig, ClustersO
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2023
 
 global GlobalData;  
 
@@ -43,40 +45,53 @@ end
 if (nargin < 3) || isempty(hFig)
     hFig = [];
 end
+% Get clusters currently loaded in the Clusters tab
+sClustersTab = panel_cluster('GetClusters');
 % No cluster in input: get selected clusters
-if (nargin < 2) || isempty(iClusters)
-    % Get selected clusters
-    [sClusters, iClusters] = panel_cluster('GetSelectedClusters');
-else
-    % Get clusters
-    sClusters = panel_cluster('GetClusters', iClusters);
+if (nargin < 2) || isempty(ClusterLabels)
+    sClustersSel = panel_cluster('GetSelectedClusters');
+    if ~isempty(sClustersSel)
+        ClusterLabels = {sClustersSel.Label};
+    else
+        ClusterLabels = {};
+    end
+% Clusters passed as indices (iCluster)
+elseif isnumeric(ClusterLabels)
+    iClusters = ClusterLabels;
+    ClusterLabels = {sClustersTab(iClusters).Label};
 end
 % Warning message if no cluster selected
-if isempty(sClusters)
+if isempty(ClusterLabels)
     java_dialog('warning', 'No cluster selected.', 'Display clusters time series');
     return;
 end
 
 
 %% ===== GET DATA FILES =====
-% Look for the loaded datasets with data files and the selected sensors names available
+% Look for the loaded datasets with data files and the selected clusters available
 if (nargin == 0) || isempty(DataFiles)
     DataFiles = {};
-    for i = 1:length(GlobalData.DataSet)
-        if ~isempty(GlobalData.DataSet(i).DataFile) && ...
-           ~isempty(GlobalData.DataSet(i).Channel) && ...
-           ~isempty(GlobalData.DataSet(i).Figure) && ...
-           all(ismember([sClusters.Sensors], {GlobalData.DataSet(i).Channel.Name}))
-            % Validate this DataSet: store the data file name
-            DataFiles{end + 1} = GlobalData.DataSet(i).DataFile;
+    for iDS = 1:length(GlobalData.DataSet)
+        if isempty(GlobalData.DataSet(iDS).DataFile) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Figure)
+            continue;
+        end
+        % Cluster label is found directly in the loaded dataset
+        if ~isempty(GlobalData.DataSet(iDS).Clusters) && all(ismember(ClusterLabels, {GlobalData.DataSet(iDS).Clusters.Label}))
+            DataFiles{end+1} = GlobalData.DataSet(iDS).DataFile;
+        % Otherwise, look in the clusters loaded in the Cluster tab
+        else
+            % Get selected clusters
+            iClustersSel = find(ismember({sClustersTab.Label}, ClusterLabels));
+            % All the sensors of all these clusters must be available in the channel file
+            if all(ismember([sClustersTab(iClustersSel).Sensors], {GlobalData.DataSet(iDS).Channel.Name}))
+                DataFiles{end+1} = GlobalData.DataSet(iDS).DataFile;
+            end
         end
     end
 end
 % No dataset loaded with selected sensors
 if isempty(DataFiles)
-    % Try displaying clusters from tree selection
-    tree_view_clusters();
-    return
+    error('No data files can be found with the selected channels.');
 end
 
 
@@ -93,17 +108,18 @@ StudyFile      = '*';
 if isempty(ClustersOptions)
     ClustersOptions = panel_cluster('GetClusterOptions');
 end
-if (length(iClusters) == 1)
+if (length(ClusterLabels) == 1)
     ClustersOptions.overlayClusters = 0;
 end
 if (length(DataFiles) == 1)
     ClustersOptions.overlayConditions = 0;
 end
 % Initialize data to display
-clustersActivity = cell(length(DataFiles), length(iClusters));
-clustersStd      = cell(length(DataFiles), length(iClusters));
-clustersLabels   = cell(length(DataFiles), length(iClusters));
-axesLabels       = cell(length(DataFiles), length(iClusters));
+clustersActivity = cell(length(DataFiles), length(ClusterLabels));
+clustersStd      = cell(length(DataFiles), length(ClusterLabels));
+clustersLabels   = cell(length(DataFiles), length(ClusterLabels));
+clustersColors   = cell(length(DataFiles), length(ClusterLabels));
+axesLabels       = cell(length(DataFiles), length(ClusterLabels));
 % Process each Data file
 for iFile = 1:length(DataFiles)
     % ===== GET/CREATE DATASET =====
@@ -142,10 +158,29 @@ for iFile = 1:length(DataFiles)
     end
    
     % ===== Prepare cell array containing time series to display =====
-    for k = 1:length(sClusters)
+    for k = 1:length(ClusterLabels)
         % ===== GET DATA TO DISPLAY =====
+        sCluster = [];
+        % Look for the cluster in the loaded dataset
+        if ~isempty(GlobalData.DataSet(iDS).Clusters)
+            iCluster = find(strcmp(ClusterLabels{k}, {GlobalData.DataSet(iDS).Clusters.Label}));
+            if ~isempty(iCluster)
+                sCluster = GlobalData.DataSet(iDS).Clusters(iCluster(1));
+            end
+        end
+        % If cluster is not defined in the dataset, look for the clusters available in the Cluster tab
+        if isempty(sCluster)
+            iCluster = find(ismember({sClustersTab.Label}, ClusterLabels{k}));
+            if ~isempty(iCluster)
+                sCluster = sClustersTab(iCluster(1));
+            end
+        end
+        if isempty(sCluster)
+            error(['Cluster "' ClusterLabels{k} '" not found in data file: ' GlobalData.DataSet(iDS).DataFile]);
+        end
+
         % Get cluster channels
-        [iChannel, Modality] = panel_cluster('GetChannelsInCluster', sClusters(k), GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag);
+        [iChannel, Modality] = panel_cluster('GetChannelsInCluster', sCluster, GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag);
         if isempty(iChannel)
             return;
         end
@@ -155,7 +190,7 @@ for iFile = 1:length(DataFiles)
         [DataToPlot, DataStd] = bst_memory('GetRecordingsValues', iDS, iChannel, iTime);       
         % Compute the cluster values
         if ~isStat
-            ClusterFunction = sClusters(k).Function;
+            ClusterFunction = sCluster.Function;
         else
             ClusterFunction = 'stat';
         end
@@ -201,8 +236,9 @@ for iFile = 1:length(DataFiles)
         end
         axesLabels{iFile,k} = strAxes;
 
-        % === CLUSTERS LABELS ===
-        clustersLabels{iFile,k} = sClusters(k).Label;
+        % === CLUSTERS LABELS/COLORS ===
+        clustersLabels{iFile,k} = sCluster.Label;
+        clustersColors{iFile,k} = sCluster.Color;
     end
 end
 
@@ -233,8 +269,7 @@ if (~ClustersOptions.overlayClusters && ~ClustersOptions.overlayConditions)
     axesLabels = axesLabels(:)';
     % Clusters labels = cell-array of strings {1, Ngraph}
     clustersLabels = clustersLabels(:)';
-  %  clustersColors = repmat({.2*[1,1,1]}, size(clustersLabels));
-    clustersColors = [];
+    clustersColors = clustersColors(:)';
     
 % === OVERLAY CLUSTERS AND CONDITIONS ===
 elseif (ClustersOptions.overlayClusters && ClustersOptions.overlayConditions)
@@ -273,7 +308,7 @@ elseif ClustersOptions.overlayClusters
     axesLabels   = axesLabels(:,1)';
     % Clusters labels = cell-array of strings {Ncluster, Ncond} 
     clustersLabels = clustersLabels';
-    clustersColors = [];
+    clustersColors = clustersColors';
     
 % === OVERLAY CONDITIONS ONLY ===
 elseif ClustersOptions.overlayConditions
@@ -302,7 +337,7 @@ end
 [hFig, iDS, iFig] = view_timeseries_matrix(DataFiles{1}, clustersActivity, [], ['$' Modality], axesLabels, clustersLabels, clustersColors, hFig, clustersStd);
 % Store results files in figure appdata
 setappdata(hFig, 'DataFiles', DataFiles);
-setappdata(hFig, 'iClusters', iClusters);
+setappdata(hFig, 'ClusterLabels', ClusterLabels);
 % Update figure name
 bst_figures('UpdateFigureName', hFig);
 % Set the time label visible

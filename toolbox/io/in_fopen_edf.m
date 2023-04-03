@@ -232,12 +232,12 @@ for i = 1:hdr.nsignal
         signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
         % Find space chars (label format "Type Name")
         iSpace = find(signalLabel == ' ');
-        % Only if there is one space only
-        if (length(iSpace) == 1) && (iSpace >= 3)
+        % Only if there is one space only, and what is after the space is not only made of numbers
+        if (length(iSpace) == 1) && (iSpace >= 3) && ~all(ismember(signalLabel(iSpace+1:end), '0123456789'))
             SplitName{i} = signalLabel(iSpace+1:end);
             SplitType{i} = signalLabel(1:iSpace-1);
         % Accept also 2 spaces
-        elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+        elseif (length(iSpace) == 2) && (iSpace(1) >= 3) && ~all(ismember(signalLabel(iSpace(1)+1:end), ' 0123456789'))
             SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
             SplitType{i} = signalLabel(1:iSpace(1)-1);
         end
@@ -342,6 +342,7 @@ iChanWrongRate = find([sFile.header.signal.sfreq] ~= sFile.header.signal(iChanFr
 iChanWrongRate = intersect(iChanWrongRate, iOtherChan);
 if ~isempty(iChanWrongRate)
     sFile.channelflag(iChanWrongRate) = -1;
+    disp([sprintf('EDF> WARNING: Excluding channels with sampling rates other than %.3f Hz : ', hdr.signal(iChanFreqRef).sfreq), sprintf('%s ', ChannelMat.Channel(iChanWrongRate).Name)]);
 end
 
 % Consider that the sampling rate of the file is the sampling rate of the first signal
@@ -386,6 +387,9 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 for iAnnot = 1:length(iSeparator)-1
                     % Get annotation
                     strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
+                    if isempty(strAnnot) || (strAnnot(1) == 20)
+                        continue;
+                    end
                     % Split in blocks with [20]
                     splitAnnot = str_split(strAnnot, 20, 0);
                     % The first TAL in a record should be indicating the timing of the first sample of the record (empty annotation)
@@ -401,8 +405,8 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         end
                         if (irec == 1)
                             t0_file = t0_rec;
-                        % Find discontinuities larger than 1 sample
-                        elseif abs(t0_rec - prev_rec - (irec - prev_irec) * hdr.reclen) > (1 / sFile.prop.sfreq)
+                        % Find discontinuities equal or larger than 2 samples (1 is expected)
+                        elseif abs(t0_rec - prev_rec - (irec - prev_irec) * hdr.reclen) >= (2 / sFile.prop.sfreq)
                             % Brainstorm fills partial/interrupted records with zeros
                             bstTime = prev_rec + hdr.reclen;
                             timeDiff = bstTime - t0_rec;
@@ -418,7 +422,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                             end
                             startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
                             endTime  = max(t0_rec - t0_file - [0, timeDiff]);
-                            fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
+                            fprintf('WARNING: Found discontinuity between %.3fs and %.3fs (%d samples), expect %s in between.\n', startTime, endTime, round(abs(timeDiff).*sFile.prop.sfreq), expectMsg);
                             % Create event for users information
                             if timeDiff < 0
                                 endTime = startTime; % no extent in this case, there is skipped time.
@@ -485,8 +489,8 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 sFile.events(iEvt).times    = round(t .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
                 sFile.events(iEvt).epochs   = 1 + 0*t(1,:);
                 sFile.events(iEvt).select   = 1;
-                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-                sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+                sFile.events(iEvt).channels = [];
+                sFile.events(iEvt).notes    = [];
             end
         end
         

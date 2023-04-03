@@ -191,8 +191,8 @@ if are_there_events
             events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset';
             events(iindex).reactTimes = [];
             events(iindex).select     = 1;
-            events(iindex).channels   = cell(1, size(events(iindex).times, 2));
-            events(iindex).notes      = cell(1, size(events(iindex).times, 2));
+            events(iindex).channels   = [];
+            events(iindex).notes      = [];
         else
             conditions_in_event = unique(NO_data.epocs.(all_event_Labels{iEvent}).data);
             
@@ -213,8 +213,8 @@ if are_there_events
                 events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)';
                 events(iindex).reactTimes = [];
                 events(iindex).select     = 1;
-                events(iindex).channels   = cell(1, size(events(iindex).times, 2));
-                events(iindex).notes      = cell(1, size(events(iindex).times, 2));
+                events(iindex).channels   = [];
+                events(iindex).notes      = [];
             end
         end
     end
@@ -292,7 +292,7 @@ if are_there_spikes
                     events(last_event_index).reactTimes = [];
                     events(last_event_index).select     = 1;
                     events(last_event_index).channels   = repmat({{ChannelMat.Channel(channels_are_EEG_on_selected_RIG(iChannel)).Name}}, 1, size(events(last_event_index).times, 2));
-                    events(last_event_index).notes      = cell(1, size(events(last_event_index).times, 2));
+                    events(last_event_index).notes      = [];
                 end
             end
         end

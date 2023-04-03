@@ -32,7 +32,7 @@ function [sMriT1, errMsg] = bst_normalize_mni(T1File, Method, T2File)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2021
+% Authors: Francois Tadel, 2015-2023
 
 %% ===== PARSE INPUTS =====
 % Inializations
@@ -236,6 +236,8 @@ if ~isempty(TpmFiles) && ~isempty(T1File)
     [sSubject, iSubject] = bst_get('MriFile', T1File);
     % Import tissue classification
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
+    % Delete the temporary folder
+    file_delete(bst_fileparts(TpmFiles{1}), 1, 1);
 end
 
 % Close progress bar

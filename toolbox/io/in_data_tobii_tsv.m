@@ -269,12 +269,12 @@ for iSes = 1:length(uniqueSesId)
                 DataMat(iFile).Events(iEvt).times    = round([tNew(iOcc) ; tNew(iOcc+1)-T] .* sfreq) ./ sfreq;   % Extended events
                 DataMat(iFile).Events(iEvt).epochs   = ones(1, length(iOcc));
                 DataMat(iFile).Events(iEvt).select   = 1;
-                DataMat(iFile).Events(iEvt).channels = cell(1, length(iOcc));
+                DataMat(iFile).Events(iEvt).channels = [];
                 % Fixation event: Save fixation point
                 if (uniqueVal(iEvt) == sum('Fixation'))
                     DataMat(iFile).Events(iEvt).notes = cellfun(@(c1,c2)sprintf('%dx%d', c1, c2), sesTsv(iRows(iNew(iOcc)), iColFixX), sesTsv(iRows(iNew(iOcc)), iColFixY), 'UniformOutput', 0)';
                 else
-                    DataMat(iFile).Events(iEvt).notes = cell(1, size(DataMat(iFile).Events(iEvt).times, 2));
+                    DataMat(iFile).Events(iEvt).notes = [];
                 end
             end
         end

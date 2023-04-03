@@ -28,7 +28,7 @@ function bst_userstat(isSave, PlugName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2022
+% Authors: Francois Tadel, 2012-2023
 
 % Parse inputs
 if (nargin < 2) || isempty(PlugName)
@@ -113,9 +113,9 @@ end
 % ===== PUBLICATIONS =====
 if isempty(PlugName)
     % Hard coded list of publications
-    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021]; 
-    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  392];
-    nPubliCurYear = 289;
+    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022]; 
+    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
+    nPubliCurYear = 15;
     % Plot figure
     hFig(end+1) = fig_report(year, nPubli, 1, ...
                [2000 max(year)], [], ...
@@ -129,7 +129,7 @@ if ~isempty(PlugName)
     url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
     str =  bst_webread(url);
     % Process report
-    str = str_split(str, newline);
+    str = str_split(str, char(10));
     nTotal = length(str);
     dates = cellfun(@(x)str_split(x,':'), str, 'UniformOutput', 0);
     year = cellfun(@(x)str2double(x{1}(1:4)), dates);

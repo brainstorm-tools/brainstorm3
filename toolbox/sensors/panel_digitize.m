@@ -1329,6 +1329,8 @@ function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
                 if strcmp(DigitizeOptions.UnitType,'fastrak')
                     % Set units to centimeters
                     fprintf(SerialConnection,'%s','u');
+                    % Force ASCII output format
+                    fprintf(SerialConnection,'%s','F');
                 elseif strcmp(DigitizeOptions.UnitType,'patriot')
                     % request input from stylus
                     fprintf(SerialConnection,'%s\r','L1,1');

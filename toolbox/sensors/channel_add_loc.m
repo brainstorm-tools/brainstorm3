@@ -1,8 +1,8 @@
-function channel_add_loc(iStudies, LocChannelFile, isInteractive)
+function channel_add_loc(iStudies, LocChannelFile, isInteractive, isMni)
 % CHANNEL_ADD_LOC: Add the positions of the EEG electrodes from a another channel file.
 % 
-% USAGE:  channel_add_loc(iStudies, LocChannelFile=[ask], isInteractive=0)
-%         channel_add_loc(iStudies, LocChannelMat,        isInteractive=0)
+% USAGE:  channel_add_loc(iStudies, LocChannelFile=[ask], isInteractive=0, isMni=0)
+%         channel_add_loc(iStudies, LocChannelMat,        isInteractive=0, isMni=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,9 +22,12 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2019
+% Authors: Francois Tadel, 2014-2022
 
 % Parse inputs
+if (nargin < 4) || isempty(isMni)
+    isMni = 0;
+end
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 0;
 end
@@ -78,6 +81,25 @@ for is = 1:length(iStudies)
         Messages = [Messages, 'No channel file available.', 10];
         continue;
     end
+    % If MNI coordinates in input
+    if isMni
+        % If subject is not using default anatomy: Convert MNI coordinates to subject space
+        [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+        if ~sSubject.UseDefaultAnat && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.iAnatomy)
+            % Ask confirmation if interactive mode
+            if isInteractive
+                isMni = java_dialog('confirm', 'Convert EEG coordinates from MNI to subject space?', 'MNI template');
+            end
+            % Load subject MRI
+            if isMni
+                sSubjectMni = bst_get('Subject', 0);
+                sMriMni = in_mri_bst(sSubjectMni.Anatomy(sSubjectMni.iAnatomy).FileName);
+                sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            end
+        else
+            isMni = 0;
+        end
+    end
     % Get channel file
     ChannelFile = sStudy.Channel(1).FileName;
     ChannelMat = in_bst_channel(ChannelFile);
@@ -87,18 +109,39 @@ for is = 1:length(iStudies)
     % For all the channels, look for its definition in the LOC EEG cap
     for ic = 1:length(ChannelMat.Channel)
         chName = ChannelMat.Channel(ic).Name;
-        % Replace "'" with "p"
-        chName = strrep(chName, '''', 'p');
-        % Look for the exact channel name
-        idef = find(strcmpi(chName, locChanNames));
-        % If not found, look for an alternate version (with or without trailing zeros...)
-        if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
-            [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
-            % Look for "A01"
-            idef = find(strcmpi(sprintf('%s%02d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+
+        if strcmp(ChannelMat.Channel(ic).Type,'NIRS')
+            toks = regexp(chName, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');            
+            
+            idef = find(strcmpi(sprintf('S%s', toks{1}{1}) , locChanNames));
+            if ~isempty(idef)
+                ChannelMat.Channel(ic).Loc(:,1)    = LocChannelMat.Channel(idef).Loc;
+                nUpdated = nUpdated + 1;
+            end
+            idef = find(strcmpi(sprintf('D%s', toks{1}{2}) , locChanNames));
+            if ~isempty(idef)
+                ChannelMat.Channel(ic).Loc(:,2)    = LocChannelMat.Channel(idef).Loc;
+                nUpdated = nUpdated + 1;
+            end
+        else
+            % Replace "'" with "p"
+            chName = strrep(chName, '''', 'p');
+            % Look for the exact channel name
+            idef = find(strcmp(chName, locChanNames));
+            % If channel name not found, search with different case
             if isempty(idef)
-                % Look for "A1"
-                idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+                idef = find(strcmpi(chName, locChanNames));
+            end
+        
+            % If not found, look for an alternate version (with or without trailing zeros...)
+            if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
+                [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
+                % Look for "A01"
+                idef = find(strcmpi(sprintf('%s%02d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+                if isempty(idef)
+                    % Look for "A1"
+                    idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+                end
             end
         end
         % If the channel is found has a valid 3D position
@@ -111,8 +154,22 @@ for is = 1:length(iStudies)
             end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
-            ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            if ~isempty(LocChannelMat.Channel(idef).Weight)
+                ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            end
             nUpdated = nUpdated + 1;
+
+            % Convert from MNI to subject space, if needed
+            if isMni
+                P = ChannelMat.Channel(ic).Loc';
+                P = cs_convert(sMriMni, 'scs', 'mni', P);
+                P = cs_convert(sMriSubj, 'mni', 'scs', P);
+                if isempty(P)
+                    Messages = [Messages, 'Compute the MNI normalization for the subject MRI before importing MNI coordinates.', 10];
+                    continue;
+                end
+                ChannelMat.Channel(ic).Loc = P';
+            end
             % If not a template: add head points
             if ~isTemplate
                 % Initialize list of head points as cell arrays (if not it concatenate as strings)
@@ -121,7 +178,7 @@ for is = 1:length(iStudies)
                     ChannelMat.HeadPoints.Type = {};
                 end
                 % Add as head points (if doesn't exist yet)
-                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)
+                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001)
                     ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
                     ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
                     ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
@@ -160,6 +217,7 @@ for is = 1:length(iStudies)
             ChannelMat = panel_ieeg('DetectElectrodes', ChannelMat, Modality{1}, [], 1);
         end
     end
+    
     % History: Added channel locations
     ChannelMat = bst_history('add', ChannelMat, 'addloc', ['Added EEG positions from "' LocChannelMat.Comment '"']);
     % Save modified file
@@ -169,8 +227,10 @@ for is = 1:length(iStudies)
 end
 % Message: Summary
 if isInteractive
+    % Recommendation to project electrodes on surface
+    Messages = [Messages 10 'Consider projecting the electrodes on the head surface before source estimation.'];
     java_dialog('msgbox', Messages, 'Add EEG positions');
 end
 
-
+end
 

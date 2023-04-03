@@ -68,7 +68,7 @@ function varargout = bst_colormaps( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -376,12 +376,25 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        DataFig = TessInfo.DataMinMax;
-                        if ~isempty(TessInfo.DataSource.Type)
-                            DataType = TessInfo.DataSource.Type;
-                            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo.DataSource.FileName), 'sloreta'));
-                            if isSLORETA 
+                        % Find 1st surface that match this ColormapType
+                        iTess = find(strcmpi({TessInfo.ColormapType}, ColormapType), 1);
+                        DataFig = [];
+                        if ~isempty(iTess) && ~isempty(TessInfo(iTess).DataSource.Type)
+                            DataFig = TessInfo(iTess).DataMinMax;
+                            DataType = TessInfo(iTess).DataSource.Type;
+                            % For Data: use the modality instead
+                            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                DataType = upper(ColormapInfo.Type);
+                            % sLORETA: Do not use regular source scaling (pAm)
+                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                 DataType = 'sLORETA';
+                            end
+                        end
+                        if isempty(DataFig)
+                            % If displaying color-coded head points (see channel_align_manual)
+                            HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
+                            if ~isempty(HeadpointsDistMax)
+                                DataFig = [0, HeadpointsDistMax * 1000];
                             end
                         end
                         
@@ -443,7 +456,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         if isinf(amplitudeMax)
             fFactor = 1;
             fUnits = 'Inf';
-        elseif isequal(DisplayUnits, '%')
+        elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
         else
@@ -623,7 +636,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                     IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_ROYAL_GRAMMA, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_DORY];
     for i = 1:length(cmapList_seq)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_seq{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_seq{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_seq{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuSeq, [], cmapDispName, iconList_seq(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_seq{i}));
@@ -635,7 +648,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                     IconLoader.ICON_COLORMAP_MANDRILL,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
     for i = 1:length(cmapList_div)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_div{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_div{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_div{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuDiv, [], cmapDispName, iconList_div(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_div{i}));
@@ -647,7 +660,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                         IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS, IconLoader.ICON_COLORMAP_TURBO];
     for i = 1:length(cmapList_rainbow)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_rainbow{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_rainbow{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_rainbow{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuRainbow, [], cmapDispName, iconList_rainbow(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_rainbow{i}));
@@ -662,7 +675,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     isCustom = 0;
     for i = 1:length(CustomColormaps)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(CustomColormaps(i).Name, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(CustomColormaps(i).Name, sColormap.Name);
         if isSelected
             isCustom = 1;
         end
@@ -1469,8 +1482,12 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 elseif strcmp(DisplayUnits,'a.u.')
                     fmax = max(abs(dataBounds));
                     [fScaled, fFactor, fUnits] = bst_getunits(fmax, DisplayUnits);
+                elseif strcmp(DisplayUnits,'fT/nAm')    % MEG leadfield sensitivity
+                    fFactor = 1e6;
+                elseif strcmp(DisplayUnits,'\muV/nAm')  % EEG leadfield sensitivity
+                    fFactor = 1e-3;
                 else
-                     fFactor = 1;
+                    fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum

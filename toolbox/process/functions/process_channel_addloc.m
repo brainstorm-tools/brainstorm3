@@ -19,7 +19,7 @@ function varargout = process_channel_addloc( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2022
+% Authors: Francois Tadel, 2015-2023
 
 eval(macro_method);
 end
@@ -65,8 +65,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ChannelIn'};                          % DefaultFormats
     % Option: Default channel files
     sProcess.options.usedefault.Comment = 'Or use default:';
-    sProcess.options.usedefault.Type    = 'combobox';
-    sProcess.options.usedefault.Value   = {1, strList};
+    sProcess.options.usedefault.Type    = 'combobox_label';
+    sProcess.options.usedefault.Value   = {'', cat(1, strList, strList)};
     % Fix units
     sProcess.options.fixunits.Comment = 'Fix distance units automatically';
     sProcess.options.fixunits.Type    = 'checkbox';
@@ -115,6 +115,25 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get filename to import
     ChannelFile = sProcess.options.channelfile.Value{1};
     FileFormat  = sProcess.options.channelfile.Value{2};
+
+    % HANDLING ISSUE #591: https://github.com/brainstorm-tools/brainstorm3/issues/591
+    % The list of default caps is changing between versions of Brainstorm, therefore the index of a "combobox" option can't be considered a reliable information.
+    % On 6-Jan-2022: The option "usedefault" was changed from type "combobox" to "combobox_label" and the use of previous syntax is now an error.
+    % Users with existing scripts will get an error and will be requested to update their scripts.
+    if isempty(ChannelFile) && ~ischar(sProcess.options.usedefault.Value{1})
+        bst_report('Error', sProcess, [], [...
+            'On 6-Jan-2023, the option "usedefault" of process_channel_add loc was changed from type "combobox" to "combobox_label".' 10 ...
+            'This parameter was previously an integer, indicating an index in a list that unfortunately changes across versions of Brainstorm.' 10 ...
+            'The value now must be a string, which points at a specific default EEG cap with no amibiguity.' 10 10 ...
+            'Scripts generated before 30-Jun-2022 and executed with a version of Brainstorm posterior to 30-Jun-2022' 10 ...
+            'might have been selecting the wrong EEG cap, and should be fixed and executed again.' 10 10 ...
+            'If you get this error, you must edit your processing script (or saved pipeline):' 10 ...
+            'Use the pipeline editor to generate a new script to call the process "Add EEG position".' 10 10 ...
+            'More information in GitHub issue #591: ' 10 ...
+            'https://github.com/brainstorm-tools/brainstorm3/issues/591']);
+        return
+    end
+
     % Get other options
     if isfield(sProcess.options, 'fixunits') && isfield(sProcess.options.fixunits, 'Value')
         isFixUnits = sProcess.options.fixunits.Value;
@@ -160,8 +179,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get registered Brainstorm EEG defaults
         bstDefaults = bst_get('EegDefaults');
         % Get default channel file
-        iSel   = sProcess.options.usedefault.Value{1};
-        strDef = sProcess.options.usedefault.Value{2}{iSel};
+        strDef = sProcess.options.usedefault.Value{1};
         % If there is something selected
         if ~isempty(strDef)
             % Format: "group: name"
@@ -175,6 +193,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If default was found
                 if ~isempty(iDef)
                     ChannelFile = bstDefaults(iGroup).contents(iDef).fullpath;
+                    isMni = strcmpi(bstDefaults(iGroup).name, 'ICBM152');
                 end
             end
         end
@@ -185,12 +204,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Load channel file
         ChannelMat = in_bst_channel(ChannelFile);
+    else
+        isMni = 0;
     end
 
     % ===== ADD POSITIONS =====
     % Add channel positions
     if ~isempty(ChannelMat)
-        channel_add_loc(iChanStudies, ChannelMat, 0);
+        channel_add_loc(iChanStudies, ChannelMat, 0, isMni);
     else
         bst_report('Warning', sProcess, [], 'No channel positions added.');
     end

@@ -37,7 +37,7 @@ function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== PARSE INPUTS =====
 if (nargin < 3) || isempty(FileFormat)
@@ -105,10 +105,12 @@ if isempty(MriFile)
 end
 
 %% ===== DICOM CONVERTER =====
+TmpDir = [];
 if strcmpi(FileFormat, 'DICOM-SPM')
     % Convert DICOM to NII
     DicomFiles = MriFile;
-    MriFile = in_mri_dicom_spm(DicomFiles, bst_get('BrainstormTmpDir'), isInteractive);
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'dicom');
+    MriFile = in_mri_dicom_spm(DicomFiles, TmpDir, isInteractive);
     if isempty(MriFile)
         return;
     end
@@ -158,6 +160,12 @@ else
 end
 
 
+%% ===== DELETE TEMPORARY FILES =====
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
+end
+
+
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
 if isempty(Labels) && ~iscell(MriFile)
@@ -180,7 +188,7 @@ if isAtlas && isempty(Comment) && ~iscell(MriFile)
         case 'aseg'
             Comment = 'ASEG';
         case 'aparc+aseg'
-            Comment = 'Deskian-Killiany';
+            Comment = 'Desikan-Killiany';
         case 'aparc.a2009s+aseg'
             Comment = 'Destrieux';
         case {'aparc.DKTatlas+aseg', 'aparc.mapped+aseg'}  % FreeSurfer, FastSurfer

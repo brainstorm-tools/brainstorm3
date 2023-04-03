@@ -29,7 +29,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 % 
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2022
 
 %% ===== PARSE INPUT =====
 if (nargin < 5) || isempty(DateOfStudy)
@@ -119,14 +119,21 @@ end
 iOutputStudy = [];
 isSSP = 0;
 Tolerance = [];
+% Start progress bar
+isProgress = ~bst_progress('isVisible');
+if isProgress
+    bst_progress('start', 'Open raw EEG/MEG recordings', 'Initializing...');
+end
 % Loop on the files to import
 for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
-    bst_progress('start', 'Open raw EEG/MEG recordings', 'Reading file header...');
+    bst_progress('text', 'Reading file header...');
     % Open file
     [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(RawFiles{iFile}, FileFormat, ImportOptions);
     if isempty(sFile)
-        bst_progress('stop');
+        if isProgress
+            bst_progress('stop');
+        end
         return;
     end
     % Files not read correctly
@@ -384,7 +391,8 @@ if isSSP
     end
 end
 
-bst_progress('stop');
-
+if isProgress
+    bst_progress('stop');
+end
 
 

@@ -150,8 +150,8 @@ for iStream = find(srates == 0)
         events(iEvt).times      = samples ./ maxRate;
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
     end
 end
 if ~isempty(events)

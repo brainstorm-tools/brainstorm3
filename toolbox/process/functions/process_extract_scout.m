@@ -261,7 +261,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     bst_report('Error', sProcess, sInputs(iInput), 'This file does not contain any valid cortical maps.');
                     continue;
                 end
-                % Make sure 
+                % Do not accept complex values
                 if strcmpi(sMat.Measure, 'none')
                     bst_report('Error', sProcess, sInputs(iInput), 'Please apply a measure on these complex values first.');
                     continue;

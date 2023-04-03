@@ -31,7 +31,7 @@ function out_figure_movie( hFig, defaultFile, movieType, OPTIONS )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 
 global prevTimeSelection;
                           
@@ -67,13 +67,15 @@ else
 end
 
 % == DEFAULT TIME ==
-% Get figure description
-[hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-if isempty(iDS)
-    return
+if strcmpi(movieType, 'time') || strcmpi(movieType, 'allfig')
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return
+    end
+    % Get time vector for this Dataset
+    TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
 end
-% Get time vector for this Dataset
-TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
 
 % === MOVIE OPTIONS ===
 if (nargin < 4)

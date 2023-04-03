@@ -133,10 +133,12 @@ for iFile = 1:length(FemFiles)
         % Remove small elements
         [Vertices, Faces] = tess_remove_small(Vertices, Faces);
         
-        % call meshfixe via iso2mesh to remove the inner islandes
+        % Call meshfixe via iso2mesh to remove the inner islandes
         if exist('meshcheckrepair', 'file')
              [Vertices, Faces] = meshcheckrepair(Vertices, Faces, 'meshfix');
         end
+        % Flip triangles order
+        Faces = Faces(:, [1 3 2]);
         
         % ===== NEW STRUCTURE =====
         NewTess = db_template('surfacemat');

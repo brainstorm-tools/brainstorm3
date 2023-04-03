@@ -421,15 +421,13 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
                 events(iEvent).times      = [];
                 events(iEvent).reactTimes = [];
                 events(iEvent).select     = 1;
-                events(iEvent).channels   = {};
-                events(iEvent).notes      = {};
+                events(iEvent).channels   = [];
+                events(iEvent).notes      = [];
             end
             % Add occurrence of this event
             iOcc = length(events(iEvent).times) + 1;
             events(iEvent).epochs(iOcc)   = 1;
             events(iEvent).times(iOcc)    = (tracks_smps{iTrack}(ixs(i))-1) ./ sFile.prop.sfreq;
-            events(iEvent).channels{iOcc} = {};
-            events(iEvent).notes{iOcc}    = [];
         end
     end
     % Display warning with removed events

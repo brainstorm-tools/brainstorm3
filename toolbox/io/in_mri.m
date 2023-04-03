@@ -48,7 +48,7 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
@@ -71,16 +71,16 @@ vox2ras = [];
 tReorient = [];
 
 % ===== GUNZIP FILE =====
-gunzippedFile = [];
+TmpDir = [];
 if ~iscell(MriFile)
     % Get file extension
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     % If file is gzipped
     if strcmpi(fExt, '.gz')
         % Get temporary folder
-        tmpDir = bst_get('BrainstormTmpDir');
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'importmri');
         % Target file
-        gunzippedFile = bst_fullfile(tmpDir, fBase);
+        gunzippedFile = bst_fullfile(TmpDir, fBase);
         % Unzip file
         res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
         if ~res
@@ -254,7 +254,7 @@ if ~isempty(fPath)
         json = bst_jsondecode(jsonFile);
         [sFid, msg] = process_import_bids('GetFiducials', json, 'voxel');
         if ~isempty(msg)
-            Messages = [Messages, 10, msg];
+            disp(['BIDS> ' jsonFile ': ' msg]);
         end
         % If there are fiducials defined in the json file
         if ~isempty(sFid)
@@ -264,17 +264,31 @@ if ~isempty(fPath)
                 tReorient = MRI.InitTransf{iTransf(1),2};  % Voxel 0-based transformation, from original to Brainstorm
                 fidNames = fieldnames(sFid);
                 for f = fidNames(:)'
-                    sFid.(f{1}) = (tReorient * [sFid.(f{1}), 1]')';
-                    sFid.(f{1}) = sFid.(f{1})(1:3);
+                    if ~isempty(sFid.(f{1}))
+                        sFid.(f{1}) = (tReorient * [sFid.(f{1}), 1]')';
+                        sFid.(f{1}) = sFid.(f{1})(1:3);
+                    end
                 end
             end
             % Convert from (0-based VOXEL) to (1-based voxel) to (MRI)
-            MRI.SCS.NAS = (sFid.NAS + 1) .* MRI.Voxsize;
-            MRI.SCS.LPA = (sFid.LPA + 1) .* MRI.Voxsize;
-            MRI.SCS.RPA = (sFid.RPA + 1) .* MRI.Voxsize;
-            MRI.NCS.AC = (sFid.AC + 1) .* MRI.Voxsize;
-            MRI.NCS.PC = (sFid.PC + 1) .* MRI.Voxsize;
-            MRI.NCS.IH = (sFid.IH + 1) .* MRI.Voxsize;
+            if ~isempty(sFid.NAS)
+                MRI.SCS.NAS = (sFid.NAS + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.LPA)
+                MRI.SCS.LPA = (sFid.LPA + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.RPA)
+                MRI.SCS.RPA = (sFid.RPA + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.AC)
+                MRI.NCS.AC = (sFid.AC + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.PC)
+                MRI.NCS.PC = (sFid.PC + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.IH)
+                MRI.NCS.IH = (sFid.IH + 1) .* MRI.Voxsize;
+            end
         end
     end
 end
@@ -317,7 +331,7 @@ end
 
 
 %% ===== DELETE TEMPORARY FILE =====
-if ~isempty(gunzippedFile)
-    file_delete(gunzippedFile, 1, 3);
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
 end
 

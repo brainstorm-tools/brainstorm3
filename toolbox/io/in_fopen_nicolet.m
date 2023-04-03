@@ -153,8 +153,8 @@ for iEvt = 1:length(uniqueEvt)
         sFile.events(iEvt).epochs  = [sFile.events(iEvt).epochs,  iEpoch * ones(size(allTime))];
     end
     % Add channels and notes fields
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 
 

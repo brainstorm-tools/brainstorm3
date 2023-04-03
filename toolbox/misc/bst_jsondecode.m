@@ -143,7 +143,7 @@ for iChar = 1:length(inString)
         end
         
         % Ignore all white space outside strings.
-    elseif c == newline
+    elseif c == char(10)
         % Increment line number if we have a line break
         lineNum = lineNum + 1;
         lineChar = 0;

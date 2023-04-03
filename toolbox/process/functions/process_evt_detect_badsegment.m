@@ -324,8 +324,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 %sEvent.times    = (detectedEvt{i} + TimeSamples(1)) ./ sfreq - sFile.prop.times(1);
                 sEvent.times    = detectedEvt{i} ./ sfreq;
                 sEvent.epochs   = ones(1, size(sEvent.times,2));
-                sEvent.channels = cell(1, size(sEvent.times, 2));
-                sEvent.notes    = cell(1, size(sEvent.times, 2));
+                sEvent.channels = [];
+                sEvent.notes    = [];
                 % Add to events structure
                 sFile.events(iEvt) = sEvent;
                 nEvents = nEvents + 1;

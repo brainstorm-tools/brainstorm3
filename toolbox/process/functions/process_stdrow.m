@@ -179,11 +179,6 @@ function [DestRowNames, AllRowNames, iRowsSrc, iRowsDest, msgError] = GetUniform
     msgError      = [];
     % Check all the input files
     for iInput = 1:length(FileNames)
-        % Cannot process connectivity files
-        if ischar(FileNames{iInput}) && ~isempty(strfind(FileNames{iInput}, '_connectn'))
-            msgError = 'STDROW> Cannot process connectivity [NxN] results.';
-            return;
-        end
         % Load row names
         switch (file_gettype(FileNames{iInput}))
             case 'timefreq'
@@ -196,8 +191,8 @@ function [DestRowNames, AllRowNames, iRowsSrc, iRowsDest, msgError] = GetUniform
                 if strcmpi(fileMat.DataType, 'results') || ~iscell(fileMat.RowNames)
                     msgError = 'STDROW> Cannot process source maps, or any file that does not have explicit row names.';
                     return;
-                elseif (length(fileMat.RefRowNames) > 1)
-                    msgError = 'STDROW> Cannot process connectivity [NxN] results.';
+                elseif (length(fileMat.RefRowNames) > 1) && ~isequal(fileMat.RowNames, fileMat.RefRowNames)
+                    msgError = 'STDROW> Cannot process connectivity [AxB] results.';
                     return;
                 end
                 % Add row names to the list

@@ -8,7 +8,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormHomeDir')     : Application directory of brainstorm
 %    - bst_get('BrainstormUserDir')     : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
-%    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
+%    - bst_get('BrainstormTmpDir', isForcedDefault=0, SubDir=[])   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/SubDir)
 %    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('BrainstormDefaultsDir') : Defaults folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
@@ -108,7 +108,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('Subject')                         : Get current subject in current protocol
 %    - bst_get('SubjectCount')                    : Get number of studies in the current protocol
 %    - bst_get('NormalizedSubjectName')           : Name of the subject with a normalized anatomy
-%    - bst_get('NormalizedSubject')               : Get groupd analysis subject for the current protocol
+%    - bst_get('NormalizedSubject')               : Get group analysis subject for the current protocol
 %    - bst_get('ConditionsForSubject', SubjectFile)           : Find all conditions for a given subject
 %    - bst_get('SurfaceFile',          SurfaceFile)           : Find a surface in current protocol
 %    - bst_get('SurfaceFileByType',    iSubject,    SurfaceType) : Find surfaces with given type for subject #i (default only)
@@ -145,8 +145,9 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('SystemMemory')          : Amount of memory available, in Mb
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
-%    - bst_get('ElectrodeConfig', Modality)  : Structure describing the current display values for SEEG/ECOG/EEG contacts
-%    - bst_get('AutoUpdates')                : {0,1} - If 1, check automatically for updates at startup
+%    - bst_get('ElectrodeConfig', Modality) : Structure describing the display values for SEEG/ECOG/EEG contacts
+%    - bst_get('ElecInterpDist', Modality)  : Structure describing the maximum distance for interpolating SEEG/ECOG/EEG values onto a surface
+%    - bst_get('AutoUpdates')           : {0,1} - If 1, check automatically for updates at startup
 %    - bst_get('ForceMatCompression')   : {0,1} - If 1, always save mat-files using the v7 format instead of v6
 %    - bst_get('IgnoreMemoryWarnings')  : {0,1} - If 1, do not display memory warnings at the Brainstorm startup
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
@@ -222,8 +223,9 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 %          Martin Cousineau, 2017
+%          Raymundo Cassani, 2021-2023
 
 %% ==== PARSE INPUTS ====
 global GlobalData;
@@ -337,7 +339,27 @@ switch contextName
         
     case 'BrainstormTmpDir'
         tmpDir = '';
-        isForcedDefault = ((nargin >= 2) && varargin{2});
+        isForcedDefault = ((nargin >= 2) && ~isempty(varargin{2}) && varargin{2});
+        % Subdirectory
+        if (nargin >= 3) && ~isempty(varargin{3})
+            SubDir = varargin{3};
+
+            % % Add PID of MATLAB process to the temporary folder
+            % try
+            %     pid = feature('getpid');
+            % catch
+            %     pid = [];
+            % end
+            % if ~isempty(pid)
+            %     SubDir = sprintf('%s_%d', SubDir, feature('getpid'));
+            % end
+
+            % Add date+time of MATLAB process to the temporary folder
+            c = clock;
+            SubDir = sprintf('%s_%02.0f%02.0f%02.0f_%02.0f%02.0f%02.0f', SubDir, c(1)-2000, c(2:6));
+        else
+            SubDir = [];
+        end
         % Default folder: userdir/tmp
         defDir = bst_fullfile(bst_get('BrainstormUserDir'), 'tmp');
         % If temporary directory is set in the preferences
@@ -365,6 +387,17 @@ switch contextName
             % Error: cannot create any temporary folder
             if ~res
                 error(['Cannot create Brainstorm temporary directory: "' tmpDir '".']); 
+            end
+        end
+        % Add sub-directory
+        if ~isempty(SubDir)
+            tmpDir = bst_fullfile(tmpDir, SubDir);
+            % Create directory if it does not exist yet
+            if ~isdir(tmpDir)
+                res = mkdir(tmpDir);
+                if ~res
+                    error(['Cannot create Brainstorm temporary directory: "' tmpDir '".']); 
+                end
             end
         end
         argout1 = tmpDir;
@@ -2227,8 +2260,16 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember('icbm152', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023';
             sTemplates(end).Name = 'ICBM152';
+        end
+        if ~ismember('icbm152_2022', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
+            sTemplates(end).Name = 'ICBM152_2022';
+        end
+        if ~ismember('icbm152_2023', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023';
+            sTemplates(end).Name = 'ICBM152_2023';
         end
         if ~ismember('icbm152_2019', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
@@ -2766,14 +2807,14 @@ switch contextName
         tpmUser = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
         if file_exist(tpmUser)
             argout1 = tpmUser;
-            disp(['SPM12 template found: ' tpmUser]);
+            disp(['BST> SPM12 template found: ' tpmUser]);
             return;
         end
         % If it does not exist: check in brainstorm3 folder
         tpmDistrib = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
         if file_exist(tpmDistrib)
             argout1 = tpmDistrib;
-            disp(['SPM12 template found: ' tpmDistrib]);
+            disp(['BST> SPM12 template found: ' tpmDistrib]);
             return;
         end
         % If it does not exist: check in spm12 folder
@@ -2782,7 +2823,7 @@ switch contextName
             tpmSpm = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'tpm', 'TPM.nii');
             if file_exist(tpmSpm)
                 argout1 = tpmSpm;
-                disp(['SPM12 template found: ' tpmSpm]);
+                disp(['BST> SPM12 template found: ' tpmSpm]);
                 return;
             end
         else
@@ -2823,9 +2864,10 @@ switch contextName
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};
-        if isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG','ECOG+SEEG'})
-            disp(['GET> Invalid modality: ' Modality]);
-            Modality = 'EEG';
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG'})
+            error(['Invalid modality: ' Modality]);
         end
         % Value was saved previously
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality) && isfield(GlobalData.Preferences.ElectrodeConfig.(Modality), 'ContactDiameter')
@@ -2845,7 +2887,7 @@ switch contextName
                     ElectrodeConfig.ContactLength   = 0.001;
                     ElectrodeConfig.ElecDiameter    = 0.0005;
                     ElectrodeConfig.ElecLength      = [];
-                case {'SEEG','ECOG+SEEG'}
+                case {'SEEG','ECOG_SEEG'}
                     ElectrodeConfig.Type            = 'seeg';
                     ElectrodeConfig.ContactDiameter = 0.0008;
                     ElectrodeConfig.ContactLength   = 0.002;
@@ -2855,15 +2897,37 @@ switch contextName
             argout1 = ElectrodeConfig;
         end
         
+    case 'ElecInterpDist'
+        % Get modality
+        Modality = varargin{2};
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG','MEG'})
+            error(['Invalid modality: ' Modality]);
+        end
+        % Value was saved previously
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElecInterpDist') && isfield(GlobalData.Preferences.ElecInterpDist, Modality)
+            argout1 = GlobalData.Preferences.ElecInterpDist.(Modality);
+        % Get default value
+        else
+            switch (Modality)
+                case 'EEG',       argout1 = .3;
+                case 'ECOG',      argout1 = .015;
+                case 'SEEG',      argout1 = .015;
+                case 'ECOG_SEEG', argout1 = .015;
+                case 'MEG',       argout1 = .5;
+            end
+        end
+
     case 'UseSigProcToolbox'
         % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
         if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')
-            argout1 = exist('fir2', 'file');
+            argout1 = exist('kaiserord', 'file');
         else
             % Save the result of the check for the SigProc tb
             if isempty(GlobalData.Program.HasSigProcToolbox)
                 % Check if Signal Processing Toolbox is installed
-                GlobalData.Program.HasSigProcToolbox = (exist('fir2', 'file') == 2);
+                GlobalData.Program.HasSigProcToolbox = (exist('kaiserord', 'file') == 2);
             end
             % Return user preferences
             if ~GlobalData.Program.HasSigProcToolbox
@@ -3433,7 +3497,8 @@ switch contextName
                     {'.gii'},   'GIfTI / World coordinates (*.gii)', 'GII-WORLD'; ...
                     {'.fif'},   'MNE (*.fif)',             'FIF'; ...
                     {'.obj'},   'MNI OBJ (*.obj)',         'MNIOBJ'; ...
-                    {'.msh'},   'SimNIBS Gmsh4 (*.msh)',   'SIMNIBS'; ...
+                    {'.msh'},   'SimNIBS3/headreco Gmsh4 (*.msh)', 'SIMNIBS3'; ...
+                    {'.msh'},   'SimNIBS4/charm Gmsh4 (*.msh)', 'SIMNIBS4'; ...
                     {'.tri'},   'TRI (*.tri)',             'TRI'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (subject space)', 'MRI-MASK'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (MNI space)',     'MRI-MASK-MNI'; ...
@@ -3586,8 +3651,8 @@ switch contextName
                     {'.mat'},   'MEG/EEG: SPM (*.mat/.dat)',                   'SPM-DAT'; ...
                     {'.eeg'},   'EEG: BrainVision BrainAmp (*.eeg)',           'EEG-BRAINAMP'; ...
                     {'.eph'},   'EEG: Cartool EPH (*.eph)',                    'EEG-CARTOOL-EPH'; ...
+                    {'.edf'},   'EEG: EDF+ (*.edf)',                           'EEG-EDF'; ...
                     {'.raw'},   'EEG: EGI NetStation RAW (*.raw)',             'EEG-EGI-RAW'; ...
-                    {'.edf'},   'EEG: European Data Format (*.edf)',           'EEG-EDF'; ...
                     {'.snirf'}, 'NIRS: SNIRF (*.snirf)',                       'NIRS-SNIRF'; ...
                     {'.txt'},   'ASCII: Space-separated, fixed column size (*.txt)', 'ASCII-SPC'; ...
                     {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
@@ -3606,8 +3671,8 @@ switch contextName
                     {'.bst'},   'MEG/EEG: Brainstorm binary (*.bst)',  'BST-BIN'; ...
                     {'.mat'},   'MEG/EEG: SPM (*.mat/.dat)',           'SPM-DAT'; ...
                     {'.eeg'},   'EEG: BrainVision BrainAmp (*.eeg)',   'EEG-BRAINAMP'; ...
+                    {'.edf'},   'EEG: EDF+ (*.edf)',                   'EEG-EDF'; ...
                     {'.raw'},   'EEG: EGI NetStation RAW (*.raw)',     'EEG-EGI-RAW'; ...
-                    {'.edf'},   'EEG: European Data Format (*.edf)',   'EEG-EDF'; ...
                     {'.snirf'}, 'NIRS: SNIRF (*.snirf)',               'NIRS-SNIRF'; ...
                    };
             case 'events'
@@ -3668,6 +3733,9 @@ switch contextName
                     {'.bvef','.bvct','.txt'},      'EEG: BrainVision electrode file (*.bvef,*.bvct,*.txt)', 'BRAINVISION'; ...
                     {'.tsv'},                      'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',    'BIDS-SCANRAS-MM'; ...
                     {'.tsv'},                      'EEG: BIDS electrodes.tsv, MNI space mm (*.tsv)',        'BIDS-MNI-MM'; ...
+                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, ACPC space mm (*.tsv)',       'BIDS-ACPC-MM'; ...
+                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, ALS/SCS/CTF space mm (*.tsv)','BIDS-ALS-MM'; ...
+                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, CapTrak space mm (*.tsv)',    'BIDS-CAPTRAK-MM'; ...
                     {'.els','.xyz'},               'EEG: Cartool (*.els;*.xyz)',          'CARTOOL'; ...
                     {'.eeg'},                      'EEG: MegDraw (*.eeg)',                'MEGDRAW'; ...
                     {'.res','.rs3','.pom'},        'EEG: Curry (*.res;*.rs3;*.pom)',      'CURRY'; ...
@@ -3712,6 +3780,7 @@ switch contextName
                     {'.elp'}, 'EEG: BESA (*.elp)',                   'BESA-ELP'; ...
                     {'.tsv'}, 'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',  'BIDS-SCANRAS-MM'; ...
                     {'.tsv'}, 'EEG: BIDS electrodes.tsv, MNI space mm (*.tsv)',      'BIDS-MNI-MM'; ...
+                    {'.tsv'}, 'EEG: BIDS electrodes.tsv, ALS/SCS/CTF space mm (*.tsv)',  'BIDS-ALS-MM'; ...
                     {'.xyz'}, 'EEG: Cartool (*.xyz)',                'CARTOOL-XYZ'; ...
                     {'.res'}, 'EEG: Curry (*.res)',                  'CURRY-RES'; ...
                     {'.xyz'}, 'EEG: EEGLAB (*.xyz)',                 'EEGLAB-XYZ'; ...
@@ -3774,7 +3843,9 @@ switch contextName
             case 'matrixout'
                 argout1 = {...
                     {'_matrix'}, 'Brainstorm structure (*matrix*.mat)',        'BST'; ...
+                    {'.bst'},   'MEG/EEG: Brainstorm binary (*.bst)',          'BST-BIN'; ...
                     {'.mat'},   'FieldTrip timelock (*.mat)',                  'FT-TIMELOCK'; ...
+                    {'.edf'},   'EEG: EDF+ (*.edf)',                           'EEG-EDF'; ...
                     {'.txt'},   'ASCII: Space-separated, fixed columns size (*.txt)', 'ASCII-SPC'; ...
                     {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
                     {'.tsv'},   'ASCII: Tab-separated (*.tsv)',                'ASCII-TSV'; ...
@@ -3791,13 +3862,16 @@ switch contextName
                     {'.sel'},     'MNE selection files (*.sel)',              'MNE'; ...
                     {'.mon'},     'Text montage files (*.mon)',               'MON'; ...
                     {'_montage'}, 'Brainstorm montage files (montage_*.mat)', 'BST';
-                    {'.csv'},     'Comma-separated montage files (*.csv)',    'CSV'; ...
-                    {'.xml'},     'Compumedics ProFusion montages (*.xml)',   'EEG-COMPUMEDICS-PFS'};
+                    {'.csv'},     'Comma-separated montage files (*.csv)',    'CSV'};
             case 'montageout'
                 argout1 = {...
                     {'.sel'},     'MNE selection files (*.sel)',              'MNE'; ...
                     {'.mon'},     'Text montage files (*.mon)',               'MON'; ...
                     {'_montage'}, 'Brainstorm montage files (montage_*.mat)', 'BST'};
+            case 'clusterin'
+                argout1 = {...
+                    {'_cluster'}, 'Brainstorm clusters file (*cluster*.mat)', 'BST'; ...
+                    {'.sel'},     'MNE selection files (*.sel)',              'MNE'};
             case 'fibers'
                 argout1 = {...
                     {'.trk'},    'TrackVis (*.trk)',                       'TRK'; ...

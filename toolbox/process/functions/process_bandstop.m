@@ -122,8 +122,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput.Events.color    = [.8 0 0];
         sInput.Events.epochs   = [1 1];
         sInput.Events.times    = round(trans .* sfreq) ./ sfreq;
-        sInput.Events.channels = cell(1, size(sInput.Events.times, 2));
-        sInput.Events.notes    = cell(1, size(sInput.Events.times, 2));
+        sInput.Events.channels = [];
+        sInput.Events.notes    = [];
     end
     
     % Comment
@@ -143,6 +143,14 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
     if (nargin < 4) || isempty(FreqWidth) || isempty(method)
         method = 'fieldtrip_butter';
         FreqWidth = 1.5;
+    end
+    % Use the signal processing toolbox?
+    if bst_get('UseSigProcToolbox')
+        filtfilt_fcn = @filtfilt;
+        butter_fcn = @butter;
+    else
+        filtfilt_fcn = @oc_filtfilt;
+        butter_fcn = @oc_butter;
     end
     % Check list of freq to remove
     if isempty(FreqList) || isequal(FreqList, 0)
@@ -168,16 +176,12 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
                 % Filter order
                 N = 4;
                 % Butterworth filter
-                if bst_get('UseSigProcToolbox')
-                    [B,A] = butter(N, FreqBand ./ Fnyq, 'stop');
-                else
-                    [B,A] = oc_butter(N, FreqBand ./ Fnyq, 'stop');
-                end
+                [B,A] = butter_fcn(N, FreqBand ./ Fnyq, 'stop');
                 FiltSpec.b(ifreq,:) = B;
                 FiltSpec.a(ifreq,:) = A;
                 % Filter signal
                 if ~isempty(x)
-                    x = filtfilt(B, A, x')';
+                    x = filtfilt_fcn(B, A, x')';
                 end
 
             % Source: FieldTrip toolbox

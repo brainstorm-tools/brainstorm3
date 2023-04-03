@@ -6,8 +6,8 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 %
 % INPUT: 
 %     - sMri         : Brainstorm MRI structure
-%     - src          : Current coordinate system {'voxel','mri','scs','mni','acpc','world'}
-%     - dest         : Target coordinate system {'voxel','mri','scs','mni','acpc','world'}
+%     - src          : Current coordinate system {'voxel','mri','scs','mni','acpc','world','captrak'}
+%     - dest         : Target coordinate system {'voxel','mri','scs','mni','acpc','world','captrak'}
 %     - P            : a Nx3 matrix of point coordinates to convert
 %     - isNanAllowed : If 0, throw an error and if the conversion of some points P leads to NaN,
 %                      and if there is no linear MNI registration to be used instead
@@ -29,6 +29,10 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 %               Axis Y: Negative y-axis is passing from AC through PC
 %               Axis Z: Passing through a mid-hemispheric point in the superior direction
 %     - world : Transformation available in the initial file loaded as the default MRI (vox2ras/qform/world transformation)
+%     - captrak: RAS orientation and the origin approximately between LPA and RPA
+%               Axis X: From LPA through RPA exactly
+%               Axis Y: Orthogonal to the X-axis through the nasion (NAS)
+%               Axis Z: Orthogonal to the XY-plane through the vertex of the head
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -54,10 +58,6 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 if (nargin < 5) || isempty(isNanAllowed)
     isNanAllowed = 0;
 end
-% Keep track of points that cannot be transformed
-iMissing = [];
-isApplied = 0;
-Porig = P;
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
     P = [];
@@ -70,6 +70,10 @@ end
 if strcmpi(src, dest)
     return;
 end
+% Keep track of points that cannot be transformed
+iMissing = [];
+isApplied = 0;
+Porig = P;
 % Transform to homogeneous coordinates
 if ~isempty(P)
     P = [P'; ones(1,size(P,1))];
@@ -106,6 +110,16 @@ if strcmpi(src, 'acpc') || strcmpi(dest, 'acpc')
         return;
     end
     scs2acpc = [tACPC.R, tACPC.T; 0 0 0 1];
+end
+
+% ===== COMPUTE CAPTRAK TRANSFORMATION =====
+if strcmpi(src, 'captrak') || strcmpi(dest, 'captrak')
+    tCapTrak = cs_compute(sMri, 'captrak');
+    if isempty(tCapTrak) || isempty(tCapTrak.R)
+        P = [];
+        return;
+    end
+    scs2captrak = [tCapTrak.R, tCapTrak.T; 0 0 0 1];
 end
 
 % ===== CONVERT SRC => MRI =====
@@ -151,6 +165,9 @@ switch lower(src)
     case 'acpc'
         % ACPC => SCS => MRI
         RT1 = inv(scs2acpc);
+    case 'captrak'
+        % CapTrak => SCS => MRI
+        RT1 = inv(scs2captrak);
     case 'world'
         RT1 = world2mri;
     otherwise
@@ -196,6 +213,9 @@ switch lower(dest)
     case 'acpc'
         % MRI => SCS => ACPC
         RT2 = scs2acpc;
+    case 'captrak'
+        % MRI => SCS => CapTrak
+        RT2 = scs2captrak;
     case 'world'
         RT2 = mri2world;
     otherwise

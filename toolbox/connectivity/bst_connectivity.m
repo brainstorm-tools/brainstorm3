@@ -753,6 +753,10 @@ for iFile = 1:nFiles
         % ==== henv ====
         case 'henv'
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, size(sInputA.Data,1), size(sInputB.Data,1)));
+            % Warning when using the split option
+            if (OPTIONS.tfSplit > 1)
+                bst_report('Warning', OPTIONS.ProcessName, [], ['Using the option "Split large data" should be avoided until fixed.' 10 'See: https://neuroimage.usc.edu/forums/t/37624']);
+            end
             % Process options
             OPTIONS.SampleRate = sfreq;
             OPTIONS.Freqs      = OPTIONS.Freqrange;

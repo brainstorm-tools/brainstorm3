@@ -77,8 +77,8 @@ for i = 1:length(uniqueEvents)
     events(i).epochs     = ones(1, length(iSmp));  % Epoch: set as 1 for all the occurrences
     events(i).reactTimes = [];
     events(i).select     = 1;
-    events(i).channels   = cell(1, size(events(i).times, 2));
-    events(i).notes      = cell(1, size(events(i).times, 2));
+    events(i).channels   = [];
+    events(i).notes      = [];
 end
 
 

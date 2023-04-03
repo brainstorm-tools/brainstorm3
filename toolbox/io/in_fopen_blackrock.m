@@ -90,7 +90,7 @@ sFile.byteorder = 'l';
 sFile.filename  = DataFile;
 sFile.format    = 'EEG-BLACKROCK';
 sFile.device    = 'Blackrock';
-sFile.header    = hdr;
+sFile.header    = [];   % Not saving header, it can save a few Gb
 sFile.comment   = [fBase, fExt];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFreq;
@@ -99,15 +99,16 @@ sFile.prop.nAvg    = 1;
 % Acquisition time
 sFile.acq_date = datestr(datenum(hdr.DateTime), 'dd-mmm-yyyy');
 % No info on bad channels
-sFile.channelflag = ones(hdr.ChannelCount, 1);
+nChannels = hdr.ChannelCount;
+sFile.channelflag = ones(nChannels, 1);
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'Blackrock channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 % For each channel
-for i = 1:hdr.ChannelCount
+for i = 1:nChannels
     chname = rec.ElectrodesInfo(i).Label;
     chname(chname == 0) = [];
     ChannelMat.Channel(i).Name    = strtrim(chname);
@@ -144,16 +145,25 @@ if ~isempty(NevFile)
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
             events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.Spikes.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
-            events(iEvt).epochs     = ones(1, length(iOcc));
-            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).epochs     = ones(1, size(events(iEvt).times, 2));
+            events(iEvt).channels   = [];
+            events(iEvt).notes      = [];
         end
     end
     
     % Use digitial IO
     if ~isempty(nev.Data.SerialDigitalIO.TimeStamp)
-        % Get on which electrode the spike is happening
-        allTypes = [nev.Data.SerialDigitalIO.Type', nev.Data.SerialDigitalIO.Value'];
+        % Get events
+        if ~isempty(nev.Data.SerialDigitalIO.Value) && ~isempty(nev.Data.SerialDigitalIO.Type)
+            allTypes = [nev.Data.SerialDigitalIO.Type', nev.Data.SerialDigitalIO.Value'];
+        elseif ~isempty(nev.Data.SerialDigitalIO.UnparsedData)
+            eventCodes = double(nev.Data.SerialDigitalIO.UnparsedData);
+            eventCodes = eventCodes - min(eventCodes);
+            eventCodes(eventCodes == 0) = [];
+            allTypes = [eventCodes(:), ones(length(eventCodes), 1)];
+        else
+            allTypes = [];
+        end
         uniqueType = unique(allTypes, 'rows');
         % Create one group per electrode
         for i = 1:size(uniqueType,1)
@@ -164,9 +174,9 @@ if ~isempty(NevFile)
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
             events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.SerialDigitalIO.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
-            events(iEvt).epochs     = ones(1, length(iOcc));
-            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).epochs     = ones(1, size(events(iEvt).times, 2));
+            events(iEvt).channels   = [];
+            events(iEvt).notes      = [];
         end
     end
     
@@ -190,9 +200,9 @@ if ~isempty(NevFile)
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
             events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.Comments.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
-            events(iEvt).epochs     = ones(1, length(iOcc));
-            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).epochs     = ones(1, size(events(iEvt).times, 2));
+            events(iEvt).channels   = [];
+            events(iEvt).notes      = [];
         end
     end
     
@@ -209,9 +219,9 @@ if ~isempty(NevFile)
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
             events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.PatientTrigger.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
-            events(iEvt).epochs     = ones(1, length(iOcc));
-            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).epochs     = ones(1, size(events(iEvt).times, 2));
+            events(iEvt).channels   = [];
+            events(iEvt).notes      = [];
         end
     end
 
@@ -233,8 +243,8 @@ if (length(hdr.DataPoints) > 1)
         events(iEvt).select     = 1;
         events(iEvt).times      = timeBlocks(iEvt);
         events(iEvt).epochs     = 1;
-        events(iEvt).channels   = {[]};
-        events(iEvt).notes      = {[]};
+        events(iEvt).channels   = [];
+        events(iEvt).notes      = [];
     end
     sFile = import_events(sFile, [], events);
 end

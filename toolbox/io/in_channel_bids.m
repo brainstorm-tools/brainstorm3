@@ -45,7 +45,7 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChan]);
 for iChan = 1:nChan
     % Name
     if ~isempty(tsvValues{iChan,1})
-        ChannelMat.Channel(iChan).Name = tsvValues{iChan,1};
+        ChannelMat.Channel(iChan).Name = strtrim(tsvValues{iChan,1});
     else
         ChannelMat.Channel(iChan).Name = sprintf('E%03d', iChan);
     end
@@ -65,6 +65,8 @@ for iChan = 1:nChan
         ChannelMat.Channel(iChan).Type = 'ECOG';
     elseif ~isempty(strfind(ChannelFile, '/ieeg/')) || ~isempty(strfind(ChannelFile, '\\ieeg\\'))
         ChannelMat.Channel(iChan).Type = 'SEEG';
+    elseif isequal(chType, 'source') || isequal(chType, 'detector')
+        ChannelMat.Channel(iChan).Type = 'NIRS';
     else 
         ChannelMat.Channel(iChan).Type = 'EEG';
     end

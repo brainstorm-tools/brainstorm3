@@ -169,6 +169,11 @@ function ColormapChangedCallback(iDS, iFig) %#ok<DEFNU>
     if ~isempty(getappdata(hFig, 'Dipoles')) && gui_brainstorm('isTabVisible', 'Dipoles')
         panel_dipoles('PlotSelectedDipoles', hFig);
     end
+    % If displaying color-coded head points (see channel_align_manual)
+    HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
+    if ~isempty(HeadpointsDistMax)
+        UpdateHeadPointsColormap(hFig);
+    end
 end
 
 
@@ -489,10 +494,8 @@ function FigureMouseMoveCallback(hFig, varargin)
                                     sign(motionAxes(1,moveAxis)) .* ...
                                     moveDirection(1);
                     % Save the detected movement direction and orientation
-                    if ismember(moveDirection, [1 2 3])
-                        setappdata(hFig, 'moveAxis',      moveAxis);
-                        setappdata(hFig, 'moveDirection', moveDirection);
-                    end
+                    setappdata(hFig, 'moveAxis',      moveAxis);
+                    setappdata(hFig, 'moveDirection', moveDirection);
                 % === MOVE SLICE ===
                 else                
                     % Get saved information about current motion
@@ -1142,6 +1145,21 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         out_figure_image(hFig, 'Viewer');
                     end
+                % CTRL+L : SEEG/ECOG electrodes
+                case 'l'
+                    if ~isAlignFig && ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+                        AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
+                        if ~isempty(AllTypes)
+                            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+                            if ismember('ECOG', AllTypes) && ismember('SEEG', AllTypes)
+                                view_channels(ChannelFile, 'ECOG+SEEG', 1, 0, hFig, 1);
+                            elseif ismember('ECOG', AllTypes)
+                                view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1);
+                            elseif ismember('SEEG', AllTypes)
+                                view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1);
+                            end
+                        end
+                    end
                 % CTRL+F : Open as figure
                 case 'f'
                     if ismember('control', keyEvent.Modifier)
@@ -1747,18 +1765,31 @@ function DisplayFigurePopup(hFig)
             AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
             if ~isempty(AllTypes) && ismember('ECOG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
             if ~isempty(AllTypes) && ismember('SEEG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
+            end
+            % Edit interpolation distance
+            if ~isempty(Modality) && ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'}) && ~isempty(TessInfo(1).DataSource.Type) && ismember(TessInfo(1).DataSource.Type, {'Data', 'Timefreq'})
+                jMenuChannels.addSeparator();
+                gui_component('MenuItem', jMenuChannels, [], 'Edit interpolation distance', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)EditInterpDist(Modality));
             end
         end
+    end
 
-        % Show Head points
+    % Show Head points
+    if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
         isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
         if isHeadPoints && ~strcmpi(FigureType, 'Topography')
-            jMenuChannels.addSeparator();
+            if isAlignFig
+                jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
+            else
+                jMenuChannels.addSeparator();
+            end
             % Are head points visible
             hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
@@ -1772,7 +1803,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
         end
     end
-    
+
     % ==== MENU: MONTAGE ====
     if strcmpi(FigureType, 'Topography') && ~isempty(Modality) && (Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
         jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
@@ -1816,7 +1847,7 @@ function DisplayFigurePopup(hFig)
             % MENU: Interpolation MRI/sources
             % Interpolate values
             jMenuInterp = gui_component('Menu', jMenuMri, [], 'Interpolation sources>MRI', IconLoader.ICON_ANATOMY);
-            jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Grid interpolation', [], [], @(h,ev)SetGridSmooth(hFig, ~TessInfo(1).DataSource.GridSmooth));
+            jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Interpolate values', [], [], @(h,ev)SetGridSmooth(hFig, ~TessInfo(1).DataSource.GridSmooth));
             jCheck.setSelected(TessInfo(1).DataSource.GridSmooth);
             % Distance threshold
             jMenuInterp.addSeparator();
@@ -1828,13 +1859,14 @@ function DisplayFigurePopup(hFig)
             jItem2.setSelected(MriOptions.DistanceThresh == 4);
             jItem3.setSelected(MriOptions.DistanceThresh == 6);
             jItem4.setSelected(MriOptions.DistanceThresh == 9);
-%             jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
-%             jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)SetMriResolution(hFig, 1));
-%             jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)SetMriResolution(hFig, 2));
-%             jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)SetMriResolution(hFig, 3));
-%             jItem1.setSelected(MriOptions.InterpDownsample == 1);
-%             jItem2.setSelected(MriOptions.InterpDownsample == 2);
-%             jItem3.setSelected(MriOptions.InterpDownsample == 3);
+            % Resolution
+            jMenuInterp.addSeparator();
+            jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 1 voxel',  [], [], @(h,ev)SetMriResolution(hFig, 1));
+            jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 2 voxels', [], [], @(h,ev)SetMriResolution(hFig, 2));
+            jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 3 voxels', [], [], @(h,ev)SetMriResolution(hFig, 3));
+            jItem1.setSelected(MriOptions.InterpDownsample == 1);
+            jItem2.setSelected(MriOptions.InterpDownsample == 2);
+            jItem3.setSelected(MriOptions.InterpDownsample == 3);
         end
         jMenuMri.addSeparator();
         % Upsample image
@@ -2098,8 +2130,8 @@ function SetDistanceThresh(hFig, DistanceThresh)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 % RADIO: MRI RESOLUTION
@@ -2115,8 +2147,8 @@ function SetMriResolution(hFig, InterpDownsample)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 % CHECKBOX: GRID SMOOTH
@@ -2135,8 +2167,8 @@ function SetGridSmooth(hFig, GridSmooth)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 
@@ -3716,7 +3748,15 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
     % Parse inputs
     if (nargin < 3) || isempty(isColorDist)
         isColorDist = 0;
+    elseif isColorDist
+        % Find scalp surface
+        [iTess, ~, hFig, sSurf] = panel_surface('GetSurface', hFig, '', 'Scalp');
+        if isempty(iTess)
+            % Can't use color distance without scalp surface.
+            isColorDist = 0;
+        end
     end
+
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     if isempty(iDS)
@@ -3745,7 +3785,7 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         [HeadPoints.Loc(1,iDupli), HeadPoints.Loc(2,iDupli), HeadPoints.Loc(3,iDupli)] = sph2cart(th, phi, r - 0.0001);
     end
     
-    % Else, get previous head points
+    % Look for previous head points
     hHeadPointsMarkers = findobj(hAxes, 'Tag', 'HeadPointsMarkers');
     hHeadPointsLabels  = findobj(hAxes, 'Tag', 'HeadPointsLabels');
     % If head points graphic objects already exist: set the "Visible" property
@@ -3760,23 +3800,19 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         ColormapType = 'stat1';
         if isColorDist && ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
             % Color points according to distance to surface
-            % Get selected surface
-            [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+            % Get scalp surface
             if ~isempty(sSurf) && isfield(sSurf, 'Vertices') && ~isempty(sSurf.Vertices)
-                if ~ismember(ColormapType, ColormapInfo.AllTypes)
-                    % Add missing colormap (color was toggled after points were displayed)
-                    bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
-                    ColormapInfo = getappdata(hFig, 'Colormap');
-                    ColormapChangedCallback(iDS, iFig);
-                end
                 % Compute the distance
                 Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
                 set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
                     'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
-                if strcmpi(ColormapInfo.Type, ColormapType)
-                    bst_colormaps('SetColorbarVisible', hFig, 1);
-                    bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
+                if ~ismember(ColormapType, ColormapInfo.AllTypes)
+                    % Add missing colormap (color was toggled after points were displayed)
+                    bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
                 end
+                ColormapChangedCallback(iDS, iFig);
+                bst_colormaps('SetColorbarVisible', hFig, 1);
             end
         elseif ~isColorDist && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
             % Conventional fixed color
@@ -3863,15 +3899,13 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         if ~isempty(iExtra)
             % Color code points by distance
             if isColorDist
-                % Get selected surface
-                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
                 % Compute the distance
                 Dist = bst_surfdist(digLoc(iExtra, :), sSurf.Vertices, sSurf.Faces);
                 CData = Dist * 1000; % mm
+                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
                 MarkerFaceColor = 'flat';
                 MarkerEdgeColor = 'flat';
-                ColormapType = 'stat1';
-                bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+                bst_colormaps('AddColormapToFigure', hFig, 'stat1', 'mm');
             else
                 CData = 'w'; % any color, not displayed
                 MarkerFaceColor = [.3 1 .3];
@@ -3890,11 +3924,31 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
                 'Tag',             'HeadPointsMarkers');
             if isColorDist
                 ColormapChangedCallback(iDS, iFig);
-%                 bst_colormaps('SetColorbarVisible', hFig, 1);
-%                 bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
             end
         end
     end
+end
+
+
+%% ===== UPDATE HEADPOINTS COLORMAP =====
+function UpdateHeadPointsColormap(hFig)
+    % If not using color-coded display
+    hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
+    if ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+        return;
+    end
+    % Get colormap configuration
+    sColormap = bst_colormaps('GetColormap', 'stat1');
+    % Update axes color limits, which will update de colorbar
+    hAxes = get(hHeadPointsMarkers, 'Parent');
+    if strcmpi(sColormap.MaxMode, 'custom')
+        set(hAxes, 'CLim', [sColormap.MinValue, sColormap.MaxValue]);
+    else
+        HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
+        set(hAxes, 'CLim', [0, HeadpointsDistMax * 1000]);
+    end
+    % Update colorbar
+    bst_colormaps('ConfigureColorbar', hFig, 'stat1', 'stat', 'mm');
 end
 
 
@@ -4554,6 +4608,34 @@ function [hNet, hOrient] = PlotSensorsNet( hAxes, vertices, isFaces, isMesh, ori
 %     else
 %         hOrient = [];
 %     end
+end
+
+
+%% ===== EDIT INTERPOLATION ELECTRODE-SURFACE DISTANCE =====
+function EditInterpDist(Modality)
+    % Get current value
+    val = bst_get('ElecInterpDist', Modality);
+    % Ask new value to user
+    newVal = java_dialog('input', ['Maximum distance when interpolating ' Modality ' on surface (millimeters):'], 'Interpolation distance', [], num2str(val * 1000));
+    if isempty(newVal) || isnan(str2double(newVal)) || (str2double(newVal) <= 0) 
+        return;
+    end
+    val = str2double(newVal) / 1000;
+    % Set value
+    bst_set('ElecInterpDist', Modality, val);
+    % Update figures
+    hFigures = bst_figures('GetFiguresByType', '3DViz');
+    for iFig = 1:length(hFigures)
+        TessInfo = getappdata(hFigures(iFig), 'Surface');
+        for iTess = 1:length(TessInfo)
+            if ~isempty(TessInfo(iTess).DataSource.Type) && ismember(TessInfo(iTess).DataSource.Type, {'Data', 'Timefreq'}) && ~isempty(TessInfo(iTess).DataWmat)
+                % Remove interpolation and recompute it
+                TessInfo(iTess).DataWmat = [];
+                setappdata(hFigures(iFig), 'Surface', TessInfo);
+                panel_surface('UpdateSurfaceData', hFigures(iFig), iTess);
+            end
+        end
+    end
 end
 
 

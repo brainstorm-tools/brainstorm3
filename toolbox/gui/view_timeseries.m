@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== INITIALIZATION =====
 global GlobalData;
@@ -312,6 +312,10 @@ if isNewFig
 else
     % Update figure name
     bst_figures('UpdateFigureName', hFig);
+end
+% Open Cluster tab
+if ~isempty(GlobalData.DataSet(iDS).Clusters)
+    gui_brainstorm('ShowToolTab', 'Cluster');
 end
 % Close progress bar
 drawnow;

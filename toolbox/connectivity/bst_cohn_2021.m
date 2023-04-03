@@ -90,6 +90,8 @@ nWin = 0;
 nFFT = [];
 Messages = [];
 
+% Get Matlab version, for local replacement for pagemtimes for older versions of Matlab
+MatlabVersion = bst_get('MatlabVersion');
 % Get current progress bar position
 waitStart = bst_progress('get');
 
@@ -199,7 +201,14 @@ for iFile = 1 : nFiles
                 Syy = zeros(size(ImagingKernel,1), length(freq));
             end
             % Auto-spectrum (PSD) of y (sources)
-            epYSource = pagemtimes(ImagingKernel, epY);
+            if MatlabVersion >= 909  %  >= Matlab 2020b
+                epYSource = pagemtimes(ImagingKernel, epY);
+            else  % Local replacement for older Matlab versions 
+                epYSource = zeros(size(ImagingKernel,1), size(epY,2), size(epY,3));
+                for k = 1:size(epY,3)
+                    epYSource(:,:,k) = ImagingKernel * epY(:,:,k);
+                end
+            end
             Syy = Syy + sum(epYSource .* conj(epYSource), 3);
         end   
 
@@ -371,5 +380,3 @@ function epx = epoching(x, nEpochLen, nOverlap)
         epx(:,:,iEpoch) = x(:, markers(iEpoch) : markers(iEpoch) + nEpochLen - 1);
     end
 end
-
-

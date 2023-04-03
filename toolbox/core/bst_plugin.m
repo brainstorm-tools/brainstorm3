@@ -105,7 +105,7 @@ function [varargout] = bst_plugin(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel 2021-2022
+% Authors: Francois Tadel 2021-2023
 
 eval(macro_method);
 end
@@ -174,8 +174,10 @@ function PlugDesc = GetSupported(SelPlug)
                                     'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
                                     'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
                                     'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.exe', 'bin/tetgen.mexglx', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ... % Removing older tetgen completely (not used)
-                                    'bin/tetgen1.5.exe', 'bin/tetgen1.5.mexglx'};
+                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
+                                    'bin/tetgen1.5.mexglx'};
+    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
+                                    'bin/tetgen1.5.exe'};
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -299,7 +301,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 0;
-    PlugDesc(end).GetVersionFcn  = @eegplugin_mffmatlabio;
     PlugDesc(end).LoadedFcn      = @Configure;
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
@@ -2559,23 +2560,20 @@ function Archive(OutputFile)
 
     % ===== TEMP FOLDER =====
     bst_progress('start', 'Export environment', 'Creating temporary folder...');
-    % Empty temporary folder
-    gui_brainstorm('EmptyTempFolder');
-    % Create temporary folder for storing all the files to package
-    EnvDir = bst_fullfile(bst_get('BrainstormTmpDir'), ['bst_env_' strDate]);
-    mkdir(EnvDir);
 
     % ===== COPY BRAINSTORM =====
     bst_progress('text', 'Copying: brainstorm...');
     % Get Brainstorm path and version
     bstVer = bst_get('Version');
     bstDir = bst_get('BrainstormHomeDir');
+    % Create temporary folder for storing all the files to package
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'bstenv');
     % Get brainstorm3 destination folder: add version number
     if ~isempty(bstVer.Version) && ~any(bstVer.Version == '?')
-        envBst = bst_fullfile(EnvDir, ['brainstorm', bstVer.Version]);
+        envBst = bst_fullfile(TmpDir, ['brainstorm', bstVer.Version]);
     else
         [tmp, bstName] = bst_fileparts(bstDir);
-        envBst = bst_fullfile(EnvDir, bstName);
+        envBst = bst_fullfile(TmpDir, bstName);
     end
     % Add git commit hash
     if (length(bstVer.Commit) >= 30)
@@ -2625,7 +2623,7 @@ function Archive(OutputFile)
     % ===== SAVE LIST OF VERSIONS =====
     strList = bst_plugin('List', 'installed', 0);
     % Open file versions.txt
-    VersionFile = bst_fullfile(EnvDir, 'versions.txt');
+    VersionFile = bst_fullfile(TmpDir, 'versions.txt');
     fid = fopen(VersionFile, 'wt');
     if (fid < 0)
         error(['Cannot save file: ' VersionFile]);
@@ -2641,9 +2639,9 @@ function Archive(OutputFile)
     % ===== ZIP FILES =====
     bst_progress('text', 'Zipping environment...');
     % Zip files with bst_env_* being the first level
-    zip(OutputFile, EnvDir, bst_fileparts(EnvDir));
-    % Cleaning up
-    gui_brainstorm('EmptyTempFolder');
+    zip(OutputFile, TmpDir, bst_fileparts(TmpDir));
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
     % Close progress bar
     bst_progress('stop');
 end

@@ -53,31 +53,35 @@ for iEvt = 1:length(sEvents)
         sEvents(iEvt).reactTimes = [];
     end
     % channels
-    if (length(sEvents(iEvt).channels) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).channels))
-        sEvents(iEvt).channels = cell(1, nOcc);
-        if ~isModified
-            disp('BST> Fixed events structure: Wrong number or type of elements in field "channels".');
-            isModified = 1;
-        end
-    elseif (nOcc > 1) && (size(sEvents(iEvt).channels,1) > 1)
-        sEvents(iEvt).channels = sEvents(iEvt).channels';
-        if ~isModified
-            disp('BST> Fixed events structure: Transposed list of "channels".');
-            isModified = 1;
+    if ~isempty(sEvents(iEvt).channels)
+        if (length(sEvents(iEvt).channels) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).channels))
+            sEvents(iEvt).channels = cell(1, nOcc);
+            if ~isModified
+                disp('BST> Fixed events structure: Wrong number or type of elements in field "channels".');
+                isModified = 1;
+            end
+        elseif (nOcc > 1) && (size(sEvents(iEvt).channels,1) > 1)
+            sEvents(iEvt).channels = sEvents(iEvt).channels';
+            if ~isModified
+                disp('BST> Fixed events structure: Transposed list of "channels".');
+                isModified = 1;
+            end
         end
     end
     % notes
-    if (length(sEvents(iEvt).notes) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).notes))
-        sEvents(iEvt).notes = cell(1, nOcc);
-        if ~isModified
-            disp('BST> Fixed events structure: Wrong number or type of elements in field "notes".');
-            isModified = 1;
-        end
-    elseif (nOcc > 1) && (size(sEvents(iEvt).notes,1) > 1)
-        sEvents(iEvt).notes = sEvents(iEvt).notes';
-        if ~isModified
-            disp('BST> Fixed events structure: Transposed list of "notes".');
-            isModified = 1;
+    if ~isempty(sEvents(iEvt).notes)
+        if (length(sEvents(iEvt).notes) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).notes))
+            sEvents(iEvt).notes = cell(1, nOcc);
+            if ~isModified
+                disp('BST> Fixed events structure: Wrong number or type of elements in field "notes".');
+                isModified = 1;
+            end
+        elseif (nOcc > 1) && (size(sEvents(iEvt).notes,1) > 1)
+            sEvents(iEvt).notes = sEvents(iEvt).notes';
+            if ~isModified
+                disp('BST> Fixed events structure: Transposed list of "notes".');
+                isModified = 1;
+            end
         end
     end
 end

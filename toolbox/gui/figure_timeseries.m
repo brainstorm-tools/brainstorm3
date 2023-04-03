@@ -2615,7 +2615,7 @@ function DisplayConfigMenu(hFig, jParent)
         if strcmpi(FigureId.Type, 'Spectrum')
             TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            if ismember(TfInfo.Function, {'power', 'magnitude'})
+            if ismember(TfInfo.Function, {'power', 'magnitude', 'log'})
                 jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
                 jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
                 jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
@@ -3465,7 +3465,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
 
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
-    if isFactorChanged
+    if isFactorChanged && ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
         GlobalData.DataSet(iDS).Measures.DisplayUnits = fUnits;
     end
     % Set display Factor
@@ -3636,11 +3636,12 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     end
     
     % ===== DISPLAY GFP =====
+    % GFP reference: https://link.springer.com/article/10.1007/BF01128870
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
                              && ~isempty(TsInfo.Modality) && ismember(TsInfo.Modality, {'EEG','MEG','EEG','SEEG'})
-        GFP = sqrt(sum((F * fFactor).^2, 1));
+        GFP = std(F * fFactor, 1);
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end
 end
@@ -4811,7 +4812,11 @@ function PlotEventsDots_EventsBar(hFig)
             end
         end
         iOccChannels = find(~cellfun(@isempty, iLines));
-        iOccGlobal = find(cellfun(@isempty, iLines) & cellfun(@isempty, events(iEvt).channels));
+        if ~isempty(events(iEvt).channels)
+            iOccGlobal = find(cellfun(@isempty, iLines) & cellfun(@isempty, events(iEvt).channels));
+        else
+            iOccGlobal = find(cellfun(@isempty, iLines));
+        end
                
         % === CHANNEL EVENTS ===
         % Where to display the notes and events labels by default
@@ -5005,7 +5010,7 @@ function PlotEventsDots_EventsBar(hFig)
         end
         
         % === EVENT NOTES ===
-        if ~strcmpi(TsInfo.ShowEventsMode, 'none')
+        if ~strcmpi(TsInfo.ShowEventsMode, 'none') && ~isempty(events(iEvt).notes)
             for iOcc = 1:nOccur
                 % No notes attached to this event, skip
                 if isempty(events(iEvt).notes{iOcc})
