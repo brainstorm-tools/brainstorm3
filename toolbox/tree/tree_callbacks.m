@@ -2366,7 +2366,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display as image',       IconLoader.ICON_NOISECOV,   [], @(h,ev)view_matrix(filenameFull, 'Image'));
                     gui_component('MenuItem', jPopup, [], 'Display as table',       IconLoader.ICON_MATRIX,     [], @(h,ev)view_matrix(filenameFull, 'Table'));
                     % === STAT CLUSTERS ===
-                    if ~isempty(strfind(filenameRelative, '_cluster'))
+                    if strcmpi(nodeType, 'pmatrix') && ~isempty(strfind(filenameRelative, '_cluster'))
                         AddSeparator(jPopup);
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
