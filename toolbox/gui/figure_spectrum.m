@@ -1552,9 +1552,9 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Granger causality';
                     case {'plv', 'plvt'}
                         strAmp = 'Phase locking value';
-                    case {'ciplv', 'ciplvt'}
-                        strAmp = 'Weighted phase lag index';
                     case {'wpli', 'wplit'}
+                        strAmp = 'Weighted phase lag index';
+                    case {'ciplv', 'ciplvt'}
                         strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
