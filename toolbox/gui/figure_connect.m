@@ -2470,6 +2470,7 @@ function UpdateColormap(hFig)
     end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
+    ColormapInfo.DisplayUnits = TfInfo.DisplayUnits;
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
     % Set figure colormap
     set(hFig, 'Colormap', sColormap.CMap);
