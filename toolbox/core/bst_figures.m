@@ -631,6 +631,8 @@ function [hFigures, iFigures, iDataSets, iSurfaces] = GetFigureWithSurface(Surfa
                 continue;
             elseif isempty(FigType) && ~ismember(Figure.Id.Type, {'3DViz', 'Topography'})
                 continue;
+            elseif isempty(FigType) && strcmpi(Figure.Id.Type, 'Topography') && ~strcmpi(Figure.Id.SubType, '3DElectrodes')
+                continue;
             end
             % Get surfaces list
             TessInfo = getappdata(Figure.hFigure, 'Surface');
