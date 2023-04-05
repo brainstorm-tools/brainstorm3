@@ -800,7 +800,7 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(iWhite).FileName;
         case 'Other'
             % Offer all the other surfaces
-            Comment = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', 'Select surface', [], {sSubject.Surface.Comment});
+            Comment = java_dialog('combo', '<HTML>Select the surface to add:<BR><BR>', 'Select surface', [], {sSubject.Surface.Comment});
             if isempty(Comment)
                 return;
             end
