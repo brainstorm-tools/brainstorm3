@@ -1,14 +1,16 @@
-function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType, Labels)
+function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType, Labels, isKeepLabels)
 % TESS_CONCATENATE: Concatenate various surface files into one new file.
 %
-% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other', Labels)
-%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other', Labels)
+% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other', Labels=[], isKeepLabels=0)
+%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other', Labels=[], isKeepLabels=0)
 % 
 % INPUT: 
 %    - TessFiles   : Cell-array of paths to surfaces files to concatenate
 %    - TessMats    : Array of loaded surface structures
 %    - NewComment  : Name of the output surface
 %    - fileType    : File type for the new file {'Cortex', 'InnerSkull', 'OuterSkull', 'Scalp', 'Other'}
+%    - Labels      : Labels for anatomical parcellations, Nx3 cell-array, each row={index, label, color}
+%    - isKeepLabels: If 1, keep the original comments of the input surfaces as the labels of the Structure atlas
 % OUTPUT:
 %    - NewTessFile : Filename of the newly created file
 %    - iSurface    : Index of the new surface file
@@ -31,9 +33,12 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
+if (nargin < 5) || isempty(isKeepLabels)
+    isKeepLabels = 0;
+end
 if (nargin < 4) || isempty(Labels)
     Labels = [];
 end
@@ -70,16 +75,26 @@ for iFile = 1:length(TessFiles)
         isSave = 0;
     end
     % Detect if right/left hemisphere
-    if ~isempty(strfind(oldTess.Comment, 'lh.')) || ~isempty(strfind(oldTess.Comment, 'Lhemi')) || ~isempty(strfind(oldTess.Comment, 'Lwhite')) || ~isempty(strfind(oldTess.Comment, 'left'))
+    if ~isempty(strfind(oldTess.Comment, 'lh.')) || ~isempty(strfind(oldTess.Comment, 'Lhemi')) || ~isempty(strfind(oldTess.Comment, 'Lwhite')) || ~isempty(strfind(lower(oldTess.Comment), 'left'))
         isLeft = 1;
         scoutTag = ' L';
         scoutHemi = 'L';
-        scoutComment = 'Cortex';
-    elseif ~isempty(strfind(oldTess.Comment, 'rh.')) || ~isempty(strfind(oldTess.Comment, 'Rhemi')) || ~isempty(strfind(oldTess.Comment, 'Rwhite')) || ~isempty(strfind(oldTess.Comment, 'right'))
+        if isKeepLabels
+            scoutComment = strrep(oldTess.Comment, 'left', '');
+            scoutComment = strrep(scoutComment, 'Left', '');
+        else
+            scoutComment = 'Cortex';
+        end
+    elseif ~isempty(strfind(oldTess.Comment, 'rh.')) || ~isempty(strfind(oldTess.Comment, 'Rhemi')) || ~isempty(strfind(oldTess.Comment, 'Rwhite')) || ~isempty(strfind(lower(oldTess.Comment), 'right'))
         isRight = 1;
         scoutTag = ' R';
         scoutHemi = 'R';
-        scoutComment = 'Cortex';
+        if isKeepLabels
+            scoutComment = strrep(oldTess.Comment, 'right', '');
+            scoutComment = strrep(scoutComment, 'Right', '');
+        else
+            scoutComment = 'Cortex';
+        end
     % Detect based on comment (tag ' L' or ' R' already present)
     elseif (length(oldTess.Comment) > 2) && strcmpi(oldTess.Comment(end-1:end), ' L')
         scoutTag = ' L';
