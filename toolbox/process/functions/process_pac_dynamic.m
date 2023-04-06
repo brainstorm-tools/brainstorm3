@@ -121,13 +121,19 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.nested.Comment = 'Frequency for amplitude band (high):';
     sProcess.options.nested.Type    = 'range';
     sProcess.options.nested.Value   = {[40, 150], 'Hz', 2};
-        % Band for fa
-%     sProcess.options.label_fa.Comment = 'F_A frequency band:';
-%     sProcess.options.label_fa.Type    = 'label';
-    sProcess.options.fa_type.Comment = {'   Single band', ...
-                                        '   More than one center frequencies (default: 20)' };
-    sProcess.options.fa_type.Type    = 'radio';
-    sProcess.options.fa_type.Value   = 2;
+
+%         % Band for fa
+% %     sProcess.options.label_fa.Comment = 'F_A frequency band:';
+% %     sProcess.options.label_fa.Type    = 'label';
+%     sProcess.options.fa_type.Comment = {'   Single band', ...
+%                                         '   More than one center frequencies (default: 20)' };
+%     sProcess.options.fa_type.Type    = 'radio';
+%     sProcess.options.fa_type.Value   = 2;
+
+    % === FREQ RESOLUTION FOR FREQ-FOR-AMPLITUDE
+    sProcess.options.fAResolution.Comment = 'Frequency resolution for frequency for amplitude:';
+    sProcess.options.fAResolution.Type    = 'value';
+    sProcess.options.fAResolution.Value   = {2, 'Hz', 2};
     
     % === WINDOW LENGTH
     sProcess.options.winLen.Comment = 'Length of sliding time window:';
@@ -233,7 +239,7 @@ tic
     if (length(sInputsA) == 1)
         OPTIONS.isAvgOutput = 0;
     end
-    OPTIONS.HighFreqs    = sProcess.options.fa_type.Value;
+    OPTIONS.fAResolution = sProcess.options.fAResolution.Value{1};
     
     % ===== INITIALIZE =====
     % Initialize output variables
@@ -319,13 +325,8 @@ tic
             PACoptions.overlap = 0.5;                       % Time window over lap (0<= value <1)
             PACoptions.margin = 2;
             PACoptions.margin_included = OPTIONS.margin_included;
+            PACoptions.fAResolution = OPTIONS.fAResolution;
             
-            if OPTIONS.HighFreqs ==1
-                PACoptions.nHighFreqs = 1;                  % Number of high frequency centers
-                PACoptions.doInterpolation = 0;
-            else
-                PACoptions.nHighFreqs = 20; %4               % Number of high frequency centers
-            end
             OPTIONS.PACoptions = PACoptions;
             
              
@@ -611,7 +612,8 @@ logCenters = Options.logCenters;           % Choose the center frequencies for f
 %nHighFreqs = Options.nHighFreqs;           % Number of high frequency centers
 missedPcount = 0;                          % Number of intervals that do not have peak in their F_A envelope PSD 
 % mirrorEffectSample = 40;                 % Number of samples that can be affected due to mirroring effect
-Options.fAResolution = 2; %Hz -- to be commented out when passed by GUI (@Raymundo)
+fAResolution = Options.fAResolution;       % Frequency resolution for frequency for amplitude (Hz)
+nHighFreqs = round((faBand(end)-faBand(1))/fAResolution); % Number of frequency bins for fA exploration
 
 % ==== ADDING MARGIN TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
 nMargin = fix(margin*sRate);
@@ -635,8 +637,6 @@ end
 
 
 % ==== SETTING THE PARAMETERS OF THE FILTERS ====
-nHighFreqs = round((faBand(end)-faBand(1))/Options.fAResolution); % Number offrequency bins for fA exploration
-
 if nHighFreqs > 1 %strcmp(Mode,'map')
     if logCenters
         nestedCenters = logspace(log10(faBand(1)),log10(faBand(end)),nHighFreqs);
