@@ -734,6 +734,8 @@ for iFile = 1:length(FilesA)
             switch OPTIONS.CohMeasure
                 case 'coh'
                     DisplayUnits = 'Time-resolved coherence';
+                case 'msc'
+                    DisplayUnits = 'Time-resolved magnitude-squared coherence';
                 case 'lcoh'
                     DisplayUnits = 'Time-resolved lagged coherence';
                 case 'penv'
