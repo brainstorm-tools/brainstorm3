@@ -200,16 +200,17 @@ function UpdateContainer(hFig)
     Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
     colorbarWidth = bsxfun(@times, 15, Scaling); % replaced .* with bsxfun for back compatibility
-    marginHeight  = bsxfun(@times, 25, Scaling);
-    marginWidth   = bsxfun(@times, 45, Scaling);
-    % If there is a colorbar 
+    marginTop     = bsxfun(@times, 10, Scaling);
+    marginRight   = bsxfun(@times, 55, Scaling);
+    marginBottom  = bsxfun(@times, 40, Scaling);
+    % Reposition the colorbar
     if ~isempty(hColorbar)
         % Reposition the colorbar
         set(hColorbar, 'Units',    'pixels', ...
-                       'Position', [figPos(3) - marginWidth, ...
-                                    marginHeight, ...
+                       'Position', [figPos(3) - marginRight, ...
+                                    marginBottom, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - bsxfun(@times, 3, Scaling)))]);
+                                    max(1, figPos(4) - marginTop - marginBottom)]);
         uistack(hColorbar, 'top', 1);
     end
 end
@@ -2470,6 +2471,7 @@ function UpdateColormap(hFig)
     end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
+    ColormapInfo.DisplayUnits = TfInfo.DisplayUnits;
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
     % Set figure colormap
     set(hFig, 'Colormap', sColormap.CMap);
