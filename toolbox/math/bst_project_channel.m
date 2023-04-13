@@ -77,6 +77,7 @@ sSubjectDest = bst_get('Subject', iSubjectDest);
 [sStudySrc, iStudySrc] = bst_get('ChannelFile', ChannelFile);
 [sSubjectSrc, iSubjectSrc] = bst_get('Subject', sStudySrc.BrainStormSubject);
 % Check subjects
+errMsg = [];
 if (iSubjectSrc == iSubjectDest)
     errMsg = 'Source and destination subjects are identical';
 elseif (sSubjectDest.UseDefaultChannel && (iSubjectDest ~= 0)) || (sSubjectSrc.UseDefaultChannel && (iSubjectSrc ~= 0))
@@ -96,7 +97,7 @@ if isempty(cs_convert(sMriDest, 'scs', 'mni', [0, 0, 0]))
     errMsg = ['Compute MNI normalization for subject "' sSubjectDest.Name '" first.'];
 end
 % Error handling
-if isempty(errMsg)
+if ~isempty(errMsg)
     if isInteractive
         bst_error(errMsg, 'Project channel file', 0);
     else
