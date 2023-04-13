@@ -130,7 +130,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     % OPTIONS PANEL
     jPanelOptions = gui_river([5,2], [0,10,15,0], 'PCA method');
         % PCA TYPE
-        gui_component('label', jPanelOptions, '', 'Compute one component...');
+        gui_component('label', jPanelOptions, '', 'Compute one component (combination of sources)...');
         jButtonGroupMethod = ButtonGroup();
         % Across epochs
         jRadioPcaa = gui_component('radio', jPanelOptions, 'br', ...
@@ -180,9 +180,29 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         gui_component('label', jPanelCov, 'p', 'Input files time window: ');
         gui_component('label', jPanelCov, 'tab', strTime);
 
-        % BASELINE 
-        % Time range
+        % DATA TIME WINDOW
         jCovLabels = {};
+        % Time range
+        jCovLabels{end+1} = gui_component('label', jPanelCov, 'br', 'PCA time window: ');
+        jDataTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], ' - ');
+        jDataTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
+        % Callbacks
+        DataTimeUnit = gui_validate_text(jDataTimeStart, [], jDataTimeStop, ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(1), []);
+        DataTimeUnit = gui_validate_text(jDataTimeStop, jDataTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(2), []);
+        % Units
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], DataTimeUnit);
+        % All file box
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;');
+        jDataTimeAll = gui_component('checkbox', jPanelCov, '', 'All file', [], [], @DataTimeAll_Callback);
+
+        % BASELINE 
+        % Remove DC offset (limited to per-file for now)
+        jRemoveDcFile = gui_component('checkbox', jPanelCov, 'p', 'Remove DC offset (subtract baseline average) per epoch/file', [], [], @RemoveDc_Callback);
+        if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
+            jRemoveDcFile.setSelected(1);
+        end
+        % Time range
         jCovLabels{end+1} = gui_component('label', jPanelCov, 'p', 'Baseline: ');
         jBaselineTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
         jCovLabels{end+1} = gui_component('label', jPanelCov, [], ' - ');
@@ -192,24 +212,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStop, jBaselineTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.Baseline(2), []);
         % Units
         jCovLabels{end+1} = gui_component('label', jPanelCov, [], BaselineTimeUnit);
+        % All file box
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;');
+        jBaselineTimeAll = gui_component('checkbox', jPanelCov, '', 'All file', [], [], @BaselineTimeAll_Callback);
 
-        % DATA TIME WINDOW
-        % Time range
-        jCovLabels{end+1} = gui_component('label', jPanelCov, 'br', 'Data: ');
-        jDataTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
-        jCovLabels{end+1} = gui_component('label', jPanelCov, [], ' - ');
-        jDataTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
-        % Callbacks
-        DataTimeUnit = gui_validate_text(jDataTimeStart, [], jDataTimeStop, ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(1), []);
-        DataTimeUnit = gui_validate_text(jDataTimeStop, jDataTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(2), []);
-        % Units
-        jCovLabels{end+1} = gui_component('label', jPanelCov, [], DataTimeUnit);
-        
-        % Remove DC offset (limited to per-file for now)
-        jRemoveDcFile = gui_component('checkbox', jPanelCov, 'p', 'Remove DC offset (subtract baseline average) per epoch/file');
-        if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
-            jRemoveDcFile.setSelected(1);
-        end
     jPanelNew.add('br hfill', jPanelCov);
         
     % ===== VALIDATION BUTTONS =====
@@ -226,12 +232,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     ctrl = struct('jRadioPcaa',         jRadioPcaa, ...
                   'jRadioPcai',         jRadioPcai, ...
                   'jRadioPca',          jRadioPca, ...
-                  'jBaselineTimeStart', jBaselineTimeStart, ...
-                  'jBaselineTimeStop',  jBaselineTimeStop, ...
-                  'BaselineTimeUnit',   BaselineTimeUnit, ...
                   'jDataTimeStart',     jDataTimeStart, ...
                   'jDataTimeStop',      jDataTimeStop, ...
                   'DataTimeUnit',       DataTimeUnit, ...
+                  'jDataTimeAll',       jDataTimeAll, ...
+                  'jBaselineTimeStart', jBaselineTimeStart, ...
+                  'jBaselineTimeStop',  jBaselineTimeStop, ...
+                  'BaselineTimeUnit',   BaselineTimeUnit, ...
+                  'jBaselineTimeAll',   jBaselineTimeAll, ...
                   'jRemoveDcFile',      jRemoveDcFile);
 %                   'jCheckUseDataCov',   jCheckUseDataCov, ...
     % Create the BstPanel object that is returned by the function
@@ -307,16 +315,20 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 %                 jCheckUseDataCov.setSelected(0);
 %             end
 %             jCheckUseDataCov.setEnabled(0);
+            jDataTimeAll.setSelected(1);
+            jDataTimeAll.setEnabled(0);
+            jRemoveDcFile.setSelected(1);
+            jRemoveDcFile.setEnabled(0);
+            jBaselineTimeAll.setSelected(1);
+            jBaselineTimeAll.setEnabled(0);
             SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
             SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
             SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
-            jRemoveDcFile.setSelected(1);
             jBaselineTimeStart.setEnabled(0);
             jBaselineTimeStop.setEnabled(0);
             jDataTimeStart.setEnabled(0);
             jDataTimeStop.setEnabled(0);
-            jRemoveDcFile.setEnabled(0);
             for i = 1:numel(jCovLabels)
                 jCovLabels{i}.setEnabled(0);
             end
@@ -330,10 +342,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 %             % Update covariance options
 %             CheckUseDataCov_Callback();
             % Otherwise, load default settings and enable controls
+            % Would be nicer to only change it if previous selection was legacy pca.
+            jDataTimeAll.setEnabled(1);
             SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
             SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
             SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
+            jRemoveDcFile.setEnabled(1);
             if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
                 jRemoveDcFile.setSelected(1);
             else
@@ -343,10 +358,60 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jBaselineTimeStop.setEnabled(1);
             jDataTimeStart.setEnabled(1);
             jDataTimeStop.setEnabled(1);
-            jRemoveDcFile.setEnabled(1);
             for i = 1:numel(jCovLabels)
                 jCovLabels{i}.setEnabled(1);
             end
+        end
+    end
+
+%% ===== PCA time window - ALL FILE =====
+    function DataTimeAll_Callback(varargin)
+        if jDataTimeAll.isSelected()
+            SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
+            SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
+            jDataTimeStart.setEnabled(0);
+            jDataTimeStop.setEnabled(0);
+        else
+            % Otherwise, load default settings and enable controls
+            SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
+            SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
+            jDataTimeStart.setEnabled(1);
+            jDataTimeStop.setEnabled(1);
+        end
+    end
+
+%% ===== Baseline time window - ALL FILE =====
+    function BaselineTimeAll_Callback(varargin)
+        if jBaselineTimeAll.isSelected()
+            SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
+            jBaselineTimeStart.setEnabled(0);
+            jBaselineTimeStop.setEnabled(0);
+        else
+            % Otherwise, load default settings and enable controls
+            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
+            jBaselineTimeStart.setEnabled(1);
+            jBaselineTimeStop.setEnabled(1);
+        end
+    end
+
+%% ===== Remove DC =====
+    function RemoveDc_Callback(varargin)
+        if ~jRemoveDcFile.isSelected()
+            SetValue(jBaselineTimeStart, [], BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, [], BaselineTimeUnit);
+            jBaselineTimeStart.setEnabled(0);
+            jBaselineTimeStop.setEnabled(0);
+            jBaselineTimeAll.setSelected(0);
+            jBaselineTimeAll.setEnabled(0);
+        else %if ~jRadioPca.isSelected() 
+            % Otherwise, load default settings and enable controls
+            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
+            jBaselineTimeStart.setEnabled(1);
+            jBaselineTimeStop.setEnabled(1);
+            jBaselineTimeAll.setEnabled(1);
         end
     end
 
