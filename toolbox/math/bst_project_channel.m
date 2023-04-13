@@ -121,7 +121,7 @@ ChannelMatDest.Channel  = ChannelMatSrc.Channel;
 for i = 1:length(ChannelMatSrc.Channel)
     if ~isempty(ChannelMatSrc.Channel(i).Loc)
         if size(ChannelMatSrc.Channel(i).Loc,2) == 2
-            ChannelMatDest.Channel(i).Loc(:,1) = proj(ChannelMatSrc.Channel(i).Loc(:,1)');
+            ChannelMatDest.Channel(i).Loc(:,1) = proj(ChannelMatSrc.Channel(i).Loc(:,1));
             ChannelMatDest.Channel(i).Loc(:,2) = proj(ChannelMatSrc.Channel(i).Loc(:,2));
 
         else
