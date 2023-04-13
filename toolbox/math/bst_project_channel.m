@@ -87,12 +87,12 @@ end
 
 % Load source MRI
 sMriSrc = in_mri_bst(sSubjectSrc.Anatomy(sSubjectSrc.iAnatomy).FileName);
-if cs_convert(sMriSrc, 'scs', 'mni', [0, 0, 0])
+if isempty(cs_convert(sMriSrc, 'scs', 'mni', [0, 0, 0]))
     errMsg = ['Compute MNI normalization for subject "' sSubjectSrc.Name '" first.'];
 end
 % Load destination MRI
 sMriDest = in_mri_bst(sSubjectDest.Anatomy(sSubjectDest.iAnatomy).FileName);
-if cs_convert(sMriDest, 'scs', 'mni', [0, 0, 0])
+if isempty(cs_convert(sMriDest, 'scs', 'mni', [0, 0, 0]))
     errMsg = ['Compute MNI normalization for subject "' sSubjectDest.Name '" first.'];
 end
 % Error handling
@@ -120,7 +120,13 @@ end
 ChannelMatDest.Channel  = ChannelMatSrc.Channel;
 for i = 1:length(ChannelMatSrc.Channel)
     if ~isempty(ChannelMatSrc.Channel(i).Loc)
-        ChannelMatDest.Channel(i).Loc = proj(ChannelMatSrc.Channel(i).Loc);
+        if size(ChannelMatSrc.Channel(i).Loc,2) == 2
+            ChannelMatDest.Channel(i).Loc(:,1) = proj(ChannelMatSrc.Channel(i).Loc(:,1)');
+            ChannelMatDest.Channel(i).Loc(:,2) = proj(ChannelMatSrc.Channel(i).Loc(:,2));
+
+        else
+            ChannelMatDest.Channel(i).Loc = proj(ChannelMatSrc.Channel(i).Loc);
+        end
     end
 end
 % Project head points
