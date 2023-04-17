@@ -85,6 +85,15 @@ elseif (sSubjectDest.UseDefaultChannel && (iSubjectDest ~= 0)) || (sSubjectSrc.U
 elseif isempty(sSubjectDest.Anatomy) || isempty(sSubjectSrc.Anatomy)
     errMsg = 'Source or destination subject do not have any anatomical MRI.';
 end
+% Error handling
+if ~isempty(errMsg)
+    if isInteractive
+        bst_error(errMsg, 'Project channel file', 0);
+    else
+        bst_report('Error', 'bst_project_channel', [], errMsg);
+    end
+    return;
+end
 
 % Load source MRI
 sMriSrc = in_mri_bst(sSubjectSrc.Anatomy(sSubjectSrc.iAnatomy).FileName);
@@ -124,7 +133,6 @@ for i = 1:length(ChannelMatSrc.Channel)
         if size(ChannelMatSrc.Channel(i).Loc,2) == 2
             ChannelMatDest.Channel(i).Loc(:,1) = proj(ChannelMatSrc.Channel(i).Loc(:,1));
             ChannelMatDest.Channel(i).Loc(:,2) = proj(ChannelMatSrc.Channel(i).Loc(:,2));
-
         else
             ChannelMatDest.Channel(i).Loc = proj(ChannelMatSrc.Channel(i).Loc);
         end
@@ -175,7 +183,7 @@ else
     end
 end
 % Error handling
-if isempty(errMsg)
+if ~isempty(errMsg)
     if isInteractive
         bst_error(errMsg, 'Project channel file', 0);
     else
