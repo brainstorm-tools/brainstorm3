@@ -574,12 +574,13 @@ if ~isfield(Options, 'overlap')
 end
 sProcess_name = 'Process_pac_dynamic';
 
-if fpBand(2)>faBand(1)
-    fpBand(2) = faBand(1)/2;
-    error_msg = ['Maximum of Fp should be less than half of the minimum of Fa!' 10 10 ...
-        'max{Fp} modified to ', num2str(fpBand(2))];
+if fpBand(2)>faBand(1)/2
+    error_msg = ['Maximum of Fp should be less than half of the minimum of Fa' 10 ...
+                 sprintf(' max(Fp) = %.1f Hz \n min(Fa) = %.1f Hz', fpBand(2), faBand(1))];
     bst_report('Error', sProcess_name, [], error_msg);
-    disp(['Warning: ' error_msg]);    
+    disp(['Error: ' error_msg]);
+    sPAC = [];
+    return
 end
 
 if winLen < 1/fpBand(1)        
