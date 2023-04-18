@@ -99,18 +99,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         return
     end
      
-    % Extract scouts with PCA, save to temp files.
-    % After getting options to avoid extracting scouts (and keeping temp files) if there's an error.
-    isTempPcaA = false;
-    isTempPcaB = false;
-    if isfield(sProcess.options, 'scoutfunc') && strcmpi(sProcess.options.scoutfunc.Value, 'pca') && ...
-            ( (isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)) || ...
-              (isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)) ) && ...
-            isfield(sProcess.options, 'pcaedit') && ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value) && ...
-            ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca') % old deprecated 'pca' computed as before.
-        [sInputA, sInputB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', sProcess, sInputA, sInputB);
-    end
-
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
@@ -126,16 +114,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     end
 
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
-
-    % Delete temp PCA files
-    if isTempPcaA && isTempPcaB % Need to be combined in case of same files on both sides.
-        process_extract_scout('DeleteTempResultFiles', sProcess, [sInputA, sInputB]);
-    elseif isTempPcaA 
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputA);
-    elseif isTempPcaB
-        process_extract_scout('DeleteTempResultFiles', sProcess, sInputB);
-    end    
+    OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end
 
 
