@@ -171,7 +171,8 @@ function OutputFiles = Run(sProcess, sInputs)
             ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value)
         PcaOptions = sProcess.options.pcaedit.Value;
         if isSave % && ~strcmpi(PcaOptions.Method, 'pca')
-            %% TESTING OLD PCA through extract_scout vs bst_pca
+            % (Uncomment condition above for testing old PCA through extract_scout vs bst_pca.)
+
             % Don't allow concatenating, for now. Option disabled in panel.
             % The other output options above are not used for PCA: isNorm=false (uses pca for
             % flattening), isFlip=true, AddRowComment n/a, AddFileComment=true.
@@ -193,7 +194,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end
             % Run PCA scout extraction on all files.
             % This process always saves matrix outputs: isOutMatrix=true
-            OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, true);
+            OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, true, TimeWindow);
             % Delete temporary flattened files.
             if isUnconstrained
                 DeleteTempResultFiles(sProcess, sInputs);
