@@ -152,10 +152,10 @@ end
 function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
     DtiFile = [];
     errMsg = '';
-    if ispc
-        bdp_exe = 'bdp.exe';
-    else
+    if strncmp(computer,'MAC',3)
         bdp_exe = 'bdp.sh';
+    else
+        bdp_exe = 'bdp';
     end
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
@@ -288,7 +288,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     DtiFile = import_mri(iSubject, DtiNii, 'Nifti1', 0, 0, 'DTI-EIG');
 
     % Delete the temporary files
-    file_delete(TmpDir, 1, 1);
+    %file_delete(TmpDir, 1, 1);
 end
 
 
