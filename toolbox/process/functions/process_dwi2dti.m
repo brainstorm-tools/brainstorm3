@@ -288,7 +288,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     DtiFile = import_mri(iSubject, DtiNii, 'Nifti1', 0, 0, 'DTI-EIG');
 
     % Delete the temporary files
-    %file_delete(TmpDir, 1, 1);
+    file_delete(TmpDir, 1, 1);
 end
 
 
