@@ -152,7 +152,7 @@ end
 function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
     DtiFile = [];
     errMsg = '';
-    if strncmp(computer,'MAC',3)
+    if ~ispc
         bdp_exe = 'bdp.sh';
     else
         bdp_exe = 'bdp';
