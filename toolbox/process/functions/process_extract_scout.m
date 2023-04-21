@@ -1070,107 +1070,6 @@ end
 % modified, because the temporary atlas-based files need to be loaded with process_extract_scout,
 % through bst_process('LoadInputFile'), so they are still treated as if scouts need to be extracted.
 
-% function [sInputA, sInputB, isTempPcaA, isTempPcaB] = RunTempPca(sProcess, sInputA, sInputB)
-%     if nargin < 3
-%         sInputB = [];
-%     elseif nargin < 2
-%         error('Missing input arguments.');
-%     end
-%     isTempPcaA = false;
-%     isTempPcaB = false;
-%     % Verify PCA options were provided.
-%     if ~strcmpi(sProcess.options.scoutfunc.Value, 'pca') || ~isfield(sProcess.options, 'pcaedit') || isempty(sProcess.options.pcaedit.Value)
-%         error('Incorrect process options for running PCA with temporary files.');
-%     end
-% 
-%     % Get scout selection.
-%     % If both groups of files use the same scouts, concatenate inputs (A and B) and compute PCA across all files together.
-%     isSameScouts = false;
-%     if isfield(sProcess.options, 'scouts') && ~isempty(sProcess.options.scouts.Value)
-%         isTempPcaA = true;
-%         AtlasListA = sProcess.options.scouts.Value;
-%         if ~isempty(sInputB) && ~isfield(sProcess.options, 'dest_scouts')
-%             % Assume the single scout selection applies to both groups of files - though this case probably not expected with standard processes.
-%             isTempPcaB = true;
-%             % A and B, call together with same scouts: common PCA
-%             isSameScouts = true;
-%             nA = numel(sInputA);
-%             sInputA = [sInputA, sInputB];
-%         end
-%     elseif ~isempty(sInputA) && isfield(sProcess.options, 'src_scouts') && ~isempty(sProcess.options.src_scouts.Value)
-%         sProcess.options.scouts = sProcess.options.src_scouts;
-%         isTempPcaA = true;
-%         AtlasListA = sProcess.options.scouts.Value;
-%         if ~isempty(sInputB) && isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)
-%             isTempPcaB = true;
-%             AtlasListB = sProcess.options.dest_scouts.Value;
-%             if iscell(AtlasListA) && iscell(AtlasListB) && numel([AtlasListA{:,2}]) == numel([AtlasListB{:,2}]) && ...
-%                     all(ismember([AtlasListA{:,2}], [AtlasListB{:,2}]))
-%                 % A and B, call together with same scouts: common PCA
-%                 isSameScouts = true;
-%                 nA = numel(sInputA);
-%                 sInputA = [sInputA, sInputB];
-%             else
-%                 % Different scouts, run B separately.
-%                 sProcessB = sProcess;
-%                 sProcessB.options.scouts = sProcessB.options.dest_scouts;
-%                 sInputB = RunTempPca(sProcessB, sInputB);
-%             end
-%         end
-%     elseif ~isempty(sInputB) && isfield(sProcess.options, 'dest_scouts') && ~isempty(sProcess.options.dest_scouts.Value)
-%         % B only: call again without A for simplicity.
-%         sProcess.options.scouts = sProcess.options.dest_scouts;
-%         isTempPcaB = true;
-%         sInputB = RunTempPca(sProcess, sInputB);
-%         return;
-%     else
-%         error('No scout selection found.');
-%     end
-% 
-%     % Avoid duplicate files, e.g. if A = B.  GetInputStruct doesn't work in that case.  Also faster.
-%     [~, iIn, iUniq] = unique({sInputA.FileName});
-%     sInputA = sInputA(iIn);
-% 
-%     PcaOptions = sProcess.options.pcaedit.Value;
-%     %% Decide vs history
-%     if strcmpi(PcaOptions.Method, 'pca')
-%         warning('Deprecated ''pca'' method should not be run with RunTempPca, for efficiency.');
-%     end
-%     % Check if we have to first flatten unconstrained sources. We only check first file. Other
-%     % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
-%     isUnconstrained = any(CheckUnconstrained(sProcess, sInputA(1))); % any() needed for mixed models
-%     if isempty(isUnconstrained)
-%         return; % Error already reported;
-%     elseif isUnconstrained
-%         % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files.
-%         FlatOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, [], false);
-%         if isempty(FlatOutputFiles)
-%             return; % Error already reported.
-%         end
-%         % Convert flattened files list back to input structure for second call.
-%         sInputA = bst_process('GetInputStruct', FlatOutputFiles);
-%         % isUnconstrained = false;
-%     end
-%     % Run PCA scout extraction on all files.  Again, outputs temporary result files.
-%     % This process always saves matrix outputs: isOutMatrix=true
-%     ScoutOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, AtlasListA, false);
-%     % Delete temporary flattened files.
-%     if isUnconstrained
-%         DeleteTempResultFiles(sProcess, sInputA);
-%     end
-%     % Convert scout result file list back to input structure for calling process.
-%     sInputA = bst_process('GetInputStruct', ScoutOutputFiles);
-% 
-%     % Recover full list with duplicates.
-%     sInputA = sInputA(iUniq);
-% 
-%     % Split back into A and B lists.
-%     if isSameScouts 
-%         sInputB = sInputA(nA+1:end);
-%         sInputA(nA+1:end) = [];
-%     end
-% end
-
 % sProcess is optional: only used for bst_report and can be the process name only.
 function [sInputA, sInputB, isTempPcaA, isTempPcaB] = RunTempPca(sProcess, sInputA, AtlasListA, PcaOptions, sInputB, AtlasListB)
     if nargin < 4
@@ -1218,9 +1117,8 @@ function [sInputA, sInputB, isTempPcaA, isTempPcaB] = RunTempPca(sProcess, sInpu
     [~, iIn, iUniq] = unique({sInputA.FileName});
     sInputA = sInputA(iIn);
 
-    %% Decide vs history
     if strcmpi(PcaOptions.Method, 'pca')
-        warning('Deprecated ''pca'' method should not be run with RunTempPca, for efficiency.');
+        warning('Deprecated legacy ''pca'' method should not be run with RunTempPca, for efficiency.');
     end
     % Check if we have to first flatten unconstrained sources. We only check first file. Other
     % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.

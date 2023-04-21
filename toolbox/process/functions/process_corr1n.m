@@ -158,8 +158,6 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS = bst_connectivity();
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
-    % Get all process info
-    OPTIONS.sProcess = sProcess;
 
     % Connectivity type: [1xN] or [NxN]
     isConnNN = ismember(OPTIONS.ProcessName, {'process_corr1n', 'process_corr1n_2021', ...

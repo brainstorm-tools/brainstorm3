@@ -264,14 +264,14 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
     % Add list of input files in history
     sResultsOut = bst_history('add', sResultsOut, 'compute', sprintf('PCA reference component(s) computed across %d files: ', nInputs));
     for iInput = 1:nInputs
-        sResultsOut = bst_history('add', sResultsOut, 'src', [' - ' sInputs(iInput).FileName]);
+        sResultsOut = bst_history('add', sResultsOut, 'compute', [' - ' sInputs(iInput).FileName]);
     end
 end
 % Comment
-if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
+if ~isempty(OutComment)
     % Forced in the options
     isForceComment = true;
-    sResultsOut.Comment = sProcess.options.Comment.Value;
+    sResultsOut.Comment = OutComment;
 else
     isForceComment = false;
     sResultsOut.Comment = [' | ' PcaOptions.Method];

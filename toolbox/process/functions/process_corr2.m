@@ -167,8 +167,6 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS = bst_connectivity();
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
-    % Get all process info
-    OPTIONS.sProcess = sProcess;
 
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
