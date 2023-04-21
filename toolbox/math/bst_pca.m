@@ -1,4 +1,4 @@
-function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix, OutTimeWindow)
+function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix, OutTimeWindow, OutComment)
 % BST_PCA: Dimension reduction with principal component analysis (PCA) for scouts, or unconstrained sources.
 %
 % USAGE:  OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMatrix, OutTimeWindow)
@@ -21,6 +21,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    - OutTimeWindow: Requested time window for output time series when isOutMatrix is true. It is
 %      widened if needed to include baseline and data time windows that are used to compute the PCA
 %      (in PcaOptions).
+%    - OutComment: Optional, string to use for new node in tree, instead of default based on inputs.
 %
 % OUTPUTS:
 %    - OutputFiles: This function can save and return deprecated atlas-based result files (full or kernel),
@@ -71,6 +72,9 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 OutputFiles = {};
 AvgType = 2; % group by subject
 
+if nargin < 7 || isempty(OutComment)
+    OutComment = [];
+end
 if nargin < 6 || isempty(OutTimeWindow)
     OutTimeWindow = [];
 end
@@ -95,7 +99,7 @@ iGroups = process_average('SortFiles', sInputs, AvgType); % = 2; by subject
 if numel(iGroups) > 1
     % Run separately for each group, recursive call.
     for iG = 1:numel(iGroups)
-        GroupOutputFiles = bst_pca(sProcess, sInputs(iGroups{iG}), PcaOptions, isScout, isOutMatrix);
+        GroupOutputFiles = bst_pca(sProcess, sInputs(iGroups{iG}), PcaOptions, isScout, isOutMatrix, OutTimeWindow, OutComment);
         if isempty(GroupOutputFiles)
             OutputFiles = {};
             return; % Error already reported.
@@ -245,14 +249,19 @@ end
 % History
 if isScout
     % History: process name
-    % Need sProcess.options.scouts here, so options.src_scouts needs to be copied in processes that use source/destination scouts.
-    if ~isfield(sProcess.options, 'scouts') && isfield(sProcess.options, 'src_scouts')
-        error('Calling process must rename scout options');
-    end
-    sResultsOut = bst_history('add', sResultsOut, 'process', process_extract_scout('FormatComment', sProcess));
-    % History: File name added later for matrix file type.
+    tmpProcess.Comment = 'Scouts time series';
+    tmpProcess.options.scouts.Value = AtlasList;
+    sResultsOut = bst_history('add', sResultsOut, 'process', process_extract_scout('FormatComment', tmpProcess));
+    % History: Source file name added later for matrix file type.
 else
     sResultsOut = bst_history('add', sResultsOut, 'flat', ['Convert unconstrained sources to a flat map with option: ' PcaOptions.Method]);
+end
+if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
+    % Add list of input files in history
+    sResultsOut = bst_history('add', sResultsOut, 'compute', sprintf('PCA reference component(s) computed across %d files: ', nInputs));
+    for iInput = 1:nInputs
+        sResultsOut = bst_history('add', sResultsOut, 'src', [' - ' sInputs(iInput).FileName]);
+    end
 end
 % Comment
 if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
@@ -431,7 +440,7 @@ for iInput = 1:nInputs
         if isScout
             sResults.(OutField{iInput}) = zeros(nScouts, size(matSourceValues, 2));
             for iScout = 1:nScouts
-                [sResults.(OutField{iInput})(iScout, :), PcaComp{iInput, iScout}] = bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ...
+                [sResults.(OutField{iInput})(iScout, :), PcaComp{iInput, iScout}, HistoryMsg] = bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ...
                     ScoutFunction, sScouts(iScout).ScoutOrient, nComp, XyzFunction, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
             end
             % Project data if we want to save timeseries
@@ -440,12 +449,16 @@ for iInput = 1:nInputs
             end
         else
             % Flattening is done for whole file at once even for mixed models.
-            [sResults.(OutField{iInput}), sResults.GridAtlas, ~, PcaComp{iInput, :}] = bst_source_orient([], ...
+            [sResults.(OutField{iInput}), sResults.GridAtlas, ~, PcaComp{iInput, :}, HistoryMsg] = bst_source_orient([], ...
                 nComponents, sResults.GridAtlas, matSourceValues, XyzFunction, [], [], FileSourceCov); % PcaReference not yet available
         end
 
         % Save individual files.  We still need to correct the sign later for pcai.
         sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
+        % Add kept variance to history.
+        for iH = 1:numel(HistoryMsg) % can have multiple when flattening mixed head models
+            sResults = bst_history('add', sResults, 'compute', HistoryMsg{iH});
+        end
         if isOutMatrix % forced for timefreq inputs
             OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment);
         else
@@ -475,18 +488,26 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
 
     if isScout
         for iScout = 1:nScouts
-            [~, PcaReference{iScout}] = bst_scout_value([], ...
+            [~, PcaReference{iScout}, HistoryMsg] = bst_scout_value([], ...
                 ScoutFunction, sScouts(iScout).ScoutOrient, nComp, XyzFunction, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
         % PcaReference{iScout} is size [Nsources, 1]
         end
     else
-        [~, ~, ~, PcaReference] = bst_source_orient([], ...
+        [~, ~, ~, PcaReference, HistoryMsg] = bst_source_orient([], ...
             nComponents, sResults.GridAtlas, [], XyzFunction, [], [], SourceCov);
         % Convert to cell for convenience when simple model.
         if ~iscell(PcaReference)
             PcaReference = {PcaReference};
         end
         % PcaReference{iScout} is size [3, Nsources]
+    end
+end
+
+% Add kept variance to history. Only pcaa; for pcai we save the per-file value instead.
+if strcmpi(PcaOptions.Method, 'pcaa')
+    for iH = 1:numel(HistoryMsg) % can have multiple when flattening mixed head models
+        % Clarify that this value is for the reference component, across all files.
+        sResultsOut = bst_history('add', sResultsOut, 'compute', [HistoryMsg{iH}(1:end-1) ' on average across files.']);
     end
 end
 
@@ -581,7 +602,7 @@ switch PcaOptions.Method
             else
                 % TODO: Might be better to keep this simple projection as a subfunction here.
                 % But easier for now to let source_orient deal with mixed models.  But this is
-                % the only place where a 4-letter pca method 'pcaa' is passed ouside bst_pca.
+                % the only place where a 4-letter pca method 'pcaa' is used ouside bst_pca.
                 [sResults.(OutField{iInput}), sResults.GridAtlas] = bst_source_orient([], ...
                     nComponents, sResults.GridAtlas, matSourceValues, 'pcaa', [], [], [], PcaReference);
             end
@@ -718,7 +739,7 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileC
     % Description: cell array of 'ScoutName @ File' strings.
     sMatrix.Description = cellfun(@(c) [c ' @ ' FileComment], ScoutNames', 'UniformOutput', false);
     % History: File name
-    sMatrix = bst_history('add', sMatrix, 'process', [' - File: ' sInput.FileName]);
+    sMatrix = bst_history('add', sMatrix, 'src', ['PCA applied to file: ' sInput.FileName]);
     % Output study = input study
     sStudy = bst_get('Study', sInput.iStudy);
     % Output filename

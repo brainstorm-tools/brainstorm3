@@ -1,11 +1,12 @@
-function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, ScoutName, Covar, PcaReference)
+function [Fs, PcaFirstComp, HistoryMsg] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, ScoutName, Covar, PcaReference)
 % BST_SCOUT_VALUE: Combine Ns time series using the given function. Used to get scouts/clusters values.
 %
 % USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0, ScoutName=[], Covar=[], PcaReference=[])
 %
 % INPUTS:
 %     - F             : [Nsources * Ncomponents, Ntime] double matrix, source time series
-%     - ScoutFunction : String, function to use to combine the Nsources time series {'mean', 'std', 'mean_norm', 'max', 'power', 'pca', 'fastpca', 'stat', 'all', 'none'}
+%     - ScoutFunction : String, function to use to combine the Nsources time series: 
+%                       {'mean', 'std', 'mean_norm', 'max', 'power', 'pca', 'fastpca', 'stat', 'all', 'none'}
 %     - Orient        : [Nsources x 3], Orientation of each source - usually the normal at the vertex in the cortex mesh
 %     - nComponents   : {1,2,3}, Number of components per vertex in matrix F 
 %                       If 0, the number varies, the properties of each region are defined in input GridAtlas
@@ -13,12 +14,19 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - isSignFlip    : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - ScoutName     : Name of the scout or cluster you're extracting
 %     - Covar         : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA.
-%                       For PCA ScoutFunction: [Nrows x Nrows]; for PCA XyzFunction only (no ScoutFunction): [3 x 3 x Nsources] 3 source orientations at each location
-%     - PcaReference  : Reference PCA components (see PcaFirstComp below for possible sizes) pre-computed across epochs, used to pick consistent sign for each epoch
+%                       For PCA ScoutFunction: [Nrows x Nrows]; for PCA XyzFunction only (no ScoutFunction): 
+%                       [3 x 3 x Nsources] 3 source orientations at each location
+%     - PcaReference  : Reference PCA components (see PcaFirstComp below for possible sizes) pre-computed across 
+%                       epochs, used to pick consistent sign for each epoch
 %
 % OUTPUTS:
-%     - Fs           : Combined time series. [Ncomponents x Ntime] for ScoutFunction only, [Nsources x Ntime] for XyzFunction, or [1 x Ntime] for both.
-%     - PcaFirstComp : First mode of the PCA, as column(s). [Nsources, Ncomponents] for ScoutFunction only, [3 x Nsources] for XyzFunction, or [Nsources * Ncomponents, 1] for both.
+%     - Fs           : Combined time series. [Ncomponents x Ntime] for ScoutFunction only, [Nsources x Ntime] 
+%                      for XyzFunction, or [1 x Ntime] for both.
+%     - PcaFirstComp : First mode of the PCA, as column(s). [Nsources, Ncomponents] for ScoutFunction only, 
+%                      [3 x Nsources] for XyzFunction, or [Nsources * Ncomponents, 1] for both.
+%     - HistoryMsg   : For PCA, indication of kept variance in 1st principal component(s), as a cell array of strings.
+%                      Note that this is computed with the PCA options (PCA time window and possibly DC offset
+%                      on baseline), which may differ from the data on which the component is later applied.
 %
 % NOTES: 
 %     ScoutFunction is applied before XyzFunction. But when both are PCA, they are done simultaneously.
@@ -72,6 +80,7 @@ if (nargin < 3) || isempty(Orient)
 end
 % Initialize return values
 PcaFirstComp = [];
+HistoryMsg = {};
 
 % ===== ORIENTATION SIGN FLIP =====
 % PCA & orientation sign flipping: if we flip here, the resulting component sign is as if the activity
@@ -176,7 +185,7 @@ switch (lower(ScoutFunction))
         end
         % This would be the value comparable to the PCA component "explained variance" / kept power.
         % Uncomment to compare with PCA.
-        %explained = sum(Fs(:).^2) * nRow / sum(F(:).^2);
+        % explained = sum(Fs(:).^2) * nRow / sum(F(:).^2);
 
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
@@ -223,7 +232,7 @@ switch (lower(ScoutFunction))
             Fs = mean(sum(F.^2, 3), 1);
         end
         % This would be the value comparable to the PCA component "explained variance" / kept power.
-        % PowerKept = sum(Fs(:)) * nRow / sum(F(:).^2);
+        % explained = sum(Fs(:)) * nRow / sum(F(:).^2);
 
     % PCA : First mode of PCA of time series within each scout region
     % This case now works for all 3 'pca' choices: the original deprecated per-file method, the
@@ -353,12 +362,12 @@ end
 
 % Display percentage of signal explained by 1st component(s) of PCA
 % Now properly combines multiple orientations if present.
-if explained
-    msg = sprintf('BST> First PCA component captures %1.1f%% of signal power', explained * 100);
+if explained && nargout > 2
+    HistoryMsg{end+1} = sprintf('PCA on scouts: %1.1f%% of signal power kept', explained * 100);
     if ScoutName
-        msg = [msg ' in ' ScoutName];
+        HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
     end
-    disp([msg '.']);
+    HistoryMsg{end} = [HistoryMsg{end} '.'];
 end
 
 
@@ -450,12 +459,12 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     % Display percentage of signal explained by 1st component(s) of PCA
     % Now displayed separately from scout PCA. They shouldn't occur together anymore in recommended
     % usage: scout pca (or other scout function) followed by orient pca is deprecated. 
-    if explained
-        msg = sprintf('BST> First PCA orientation captures %1.1f%% of signal power', explained * 100);
+    if explained && nargout > 2
+        HistoryMsg{end+1} = sprintf('PCA on source orientations: %1.1f%% of signal power kept', explained * 100);
         if ScoutName
-            msg = [msg ' in ' ScoutName];
+            HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
         end
-        disp([msg '.']);
+        HistoryMsg{end} = [HistoryMsg{end} '.'];
     end
 end
 

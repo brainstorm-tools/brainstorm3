@@ -192,6 +192,8 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         OPTIONS.IgnoreBad = ~sProcess.options.includebad.Value;
     end
     % === SCOUTS ===
+    % These scout options are set here even if scouts are NOT selected. To check if scouts are used,
+    % check for nonempty TargetA/B (set below) of type cell or struct.
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'scouts') && isfield(sProcess.options.scouts, 'Value')
         % Selected scouts
         AtlasList = sProcess.options.scouts.Value;

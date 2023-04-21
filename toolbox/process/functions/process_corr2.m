@@ -176,6 +176,8 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     end
 
     % === SCOUTS ===
+    % These scout options are set here even if scouts are NOT selected. To check if scouts are used,
+    % check for nonempty TargetA/B (set below) of type cell or struct.
     if isfield(sProcess.options, 'scoutfunc') && isfield(sProcess.options.scoutfunc, 'Value') && isfield(sProcess.options, 'scouttime') && isfield(sProcess.options.scouttime, 'Value')
         % Override scouts function
         switch (sProcess.options.scoutfunc.Value)

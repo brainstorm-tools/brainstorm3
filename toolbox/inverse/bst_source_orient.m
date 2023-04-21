@@ -1,7 +1,8 @@
-function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames, OrientCov, PcaOrient)
+function [SourceValues, GridAtlas, RowNames, PcaOrient, HistoryMsg] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames, OrientCov, PcaOrient)
 % BST_SOURCE_ORIENT: Constrain source orientation for an unconstrained or mixed source model.
 %
-% USAGE:  [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVertices=[], nComponents, GridAtlas, SourceValues, Function, DataType=[], RowNames=[], OrientCov=[], PcaOrient=[])
+% USAGE:  [SourceValues, GridAtlas, RowNames, PcaOrient, HistoryMsg] = bst_source_orient(iVertices=[], nComponents, ...
+%                   GridAtlas, SourceValues, Function, DataType=[], RowNames=[], OrientCov=[], PcaOrient=[])
 %
 % INPUT: 
 %    - iVertices    : Array of vertex indices of the source space, to reference to rows in Results.GridLoc (volume) or Surface.Vertices (surface)
@@ -26,6 +27,9 @@ function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVer
 %    - RowNames     : Description of the new list of signals
 %    - PcaOrient    : [3 x Nvertices] Direction vector of the first mode of the PCA, for each source
 %                     For mixed models: cell array of such components, for each region.
+%    - HistoryMsg   : For PCA, indication of kept variance in 1st principal component(s), as a cell array of strings.
+%                     this is computed with the PCA options (PCA time window and possibly DC offset
+%                     on baseline), which may differ from the data on which the component is later applied.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -74,6 +78,7 @@ if (nargin < 2) || isempty(nComponents)
 	error('Invalid call');
 end
 
+HistoryMsg = {};
 % === MIXED SOURCE MODELS ===
 if (nComponents == 0)
     % Check that GridAtlas is defined
@@ -124,8 +129,14 @@ if (nComponents == 0)
                 SourceBlocks{end+1} = SourceValues(iVertSource,:,:,:);
             case {'U','L'}
                 % Apply grouping function
-                [SourceBlocks{end+1}, PcaOrient{iScout}] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
+                [SourceBlocks{end+1}, PcaOrient{iScout}, tmpHistoryMsg] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
                     Function, OrientCov{iScout}, PcaOrient{iScout});
+                % Collect PCA "kept variance" messages
+                if ~isempty(tmpHistoryMsg)
+                    HistoryMsg = cat(1, HistoryMsg, tmpHistoryMsg);
+                    % Add region name
+                    HistoryMsg{end} = [HistoryMsg{end}(1:end-1) ' in ' GridAtlas.Scouts(iScout).Label '.'];
+                end
                 % If the row names are defined
                 if ~isempty(RowNames) && iscell(RowNames)
                     RowNamesBlocks{end+1} = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceBlocks{end},1), iVertSource);
@@ -176,7 +187,7 @@ else
             SourceValues = SourceValues(iVertSource,:,:,:);
         case 2
             % Apply grouping function
-            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], ...
+            [SourceValues, PcaOrient, HistoryMsg] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], ...
                 Function, OrientCov, PcaOrient);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
@@ -184,7 +195,7 @@ else
             end
         case 3
             % Apply grouping function
-            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
+            [SourceValues, PcaOrient, HistoryMsg] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
                 Function, OrientCov, PcaOrient);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
@@ -202,7 +213,8 @@ end
 
 
 %% ====== APPLY FUNCTION =====
-function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, OrientCov, PcaOrient)
+function [Values, PcaOrient, HistoryMsg] = ApplyFunction(Values, i1, i2, i3, Function, OrientCov, PcaOrient)
+    HistoryMsg = {};
     switch (Function)
         case 'max'
             if ~isempty(i3)
@@ -265,9 +277,11 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
                 Values = sum(bsxfun( @times, ...
                     permute(reshape(Values, nComp, size(PcaOrient, 2), []), [2, 3, 1]), ...
                     permute(PcaOrient, [2, 3, 1]) ), 3); % [nSource, (nTime or nChan)]
+                % We don't compute the kept variance for this one file; HistoryMsg stays empty here.
+                % What's saved in history (elsewhere) is for the reference component across all files. 
             % Compute and project on first PCA orientation at each location.
             else
-                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], nComp, 'pca', 0, [], OrientCov, PcaOrient);
+                [Values, PcaOrient, HistoryMsg] = bst_scout_value(Values, 'none', [], nComp, 'pca', 0, [], OrientCov, PcaOrient);
             end
         case 'none'
             % Nothing to do
