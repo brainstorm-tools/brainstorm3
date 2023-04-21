@@ -117,17 +117,21 @@ nInputs = numel(sInputs);
 
 % Time window needed for baseline and data, as well as requested output window.
 if isOutMatrix
-    TimeWindow = [min(PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1)), max(PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2))];
-    % Warn if we must widen requested output.
-    if ~isempty(OutTimeWindow) && (TimeWindow(1) > OutTimeWindow(1) || TimeWindow(2) < OutTimeWindow(2))
-        Message = 'Widening requested output time window to include PCA baseline and data windows.';
-        bst_report('Warning', sProcess, sInputs, Message);
-        TimeWindow = [min(TimeWindow(1), OutTimeWindow(1)), max(TimeWindow(2), OutTimeWindow(2))];
+    % TimeWindow widened as needed for computation, but OutTimeWindow reapplied when saving.
+    if isempty(OutTimeWindow)
+        TimeWindow = [min([PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1)]), max([PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2)])];
+    else
+        TimeWindow = [min([PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1), OutTimeWindow(1)]), ...
+            max([PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2), OutTimeWindow(2)])];
     end
 else
     % Keep full time window, since we need the full data file time vector when saving kernels.
-    % Warning given later if requested window doesn't match full window.
     TimeWindow = [];
+    % Warn if requested window.
+    if ~isempty(OutTimeWindow)
+        Message = 'OutTimeWindow ignored when output is ''result'' type (isOutMatrix=false): full time returned.';
+        bst_report('Warning', sProcess, sInputs, Message);
+    end
 end
 
 % Check all files are same type.
@@ -460,7 +464,7 @@ for iInput = 1:nInputs
             sResults = bst_history('add', sResults, 'compute', HistoryMsg{iH});
         end
         if isOutMatrix % forced for timefreq inputs
-            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment);
+            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment, OutTimeWindow);
         else
             % Save single-file result file, full or kernel. For scouts, this is a deprecated
             % atlas-based result file, meant only to be used temporarily and then deleted by the
@@ -614,7 +618,7 @@ switch PcaOptions.Method
             % Save individual files, or shared kernel.
             sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
             if isOutMatrix % forced for timefreq inputs
-                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment);
+                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment, OutTimeWindow);
             elseif isOutSharedKernel
                 % Save shared kernel and find link.  We only get here for the first file in this
                 % condition.
@@ -701,7 +705,9 @@ function Cov = ComputeCovariance(Mat, Time, Options, nComp)
     end
     % Divide by number of samples - 1.  Note that for PCA, this is not necessary: sum of power would
     % give the same result.
-    Cov = Cov / (numel(iTimeCov) - 1);
+    if ~isempty(Cov) % avoid /0 if empty time window
+        Cov = Cov / (numel(iTimeCov) - 1);
+    end
 end
 
 %____________________________________________________________________________________________
@@ -726,7 +732,7 @@ function sResults = MergeFields(sInput, sResults, sResultsOut, isForceComment, i
     sResults.nComponents = sResultsOut.nComponents;
 end
 
-function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileComment)
+function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileComment, OutTimeWindow)
     % Create output structure
     sMatrix = db_template('matrixmat');
     % List of fields to copy from sResults to new matrix file.
@@ -740,6 +746,30 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileC
     sMatrix.Description = cellfun(@(c) [c ' @ ' FileComment], ScoutNames', 'UniformOutput', false);
     % History: File name
     sMatrix = bst_history('add', sMatrix, 'src', ['PCA applied to file: ' sInput.FileName]);
+
+    % Adjust output time window as requested.
+    if ~isempty(OutTimeWindow)
+        % Get time indices
+        iTime = panel_time('GetTimeIndices', sResults.Time, OutTimeWindow);
+        if isempty(iTime)
+            bst_report('Error', 'bst_pca', sInput, 'Invalid time window option, keeping full window used for PCA.');
+        elseif iTime(1) > 1 || iTime(end) < numel(sResults.Time)
+            if (length(iTime) == 1)
+                % If only one time point selected: double it
+                iTime = [iTime, iTime];
+            end
+            % Keep only the requested time window
+            if ~isempty(sMatrix.Value)
+                sMatrix.Value = sMatrix.Value(:,iTime,:);
+            end
+            sMatrix.Time = sMatrix.Time(iTime);
+            % If there are only two time points, make sure they are not identical
+            if (length(sMatrix.Time) == 2) && sMatrix.Time(2) == sMatrix.Time(1)
+                sMatrix.Time(2) = sMatrix.Time(1) + 0.001;
+            end
+        end
+    end
+
     % Output study = input study
     sStudy = bst_get('Study', sInput.iStudy);
     % Output filename
