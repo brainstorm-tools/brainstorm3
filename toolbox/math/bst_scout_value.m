@@ -138,7 +138,7 @@ end
 % Enforce limitations on combining PCA on scout or xyz with other functions.
 % But still allow deprecated previous behavior of doing 'pca' on scouts for x,y,z separately, with warning.
 if nComponents > 1 && ~strcmpi(ScoutFunction, XyzFunction)
-   if strcmpi(ScoutFunction, 'pca')
+   if strcmpi(ScoutFunction, 'pca') && isempty(Covar)
        disp('BST> Warning: Extracting scouts on x,y,z separately is not recommended.');
    elseif strcmpi(XyzFunction, 'pca')  && ~ismember(ScoutFunction, {'all', 'none'})
        error('For PCA XyzFunction, it should be applied before extracting scouts, or at the same time with the same PCA function.');
@@ -192,7 +192,7 @@ switch (lower(ScoutFunction))
         Fs = std(F,[],1);
     % STDERR : Standard error
     case 'stderr'
-        %% This formula was incorrect for standard error. Is it used anywhere?
+        %% This formula was incorrect for standard error (fixed 2023-04). Is it used anywhere?
         Fs = std(F,[],1) ./ sqrt(nRow);
     % RMS
     case 'rms'
@@ -235,18 +235,19 @@ switch (lower(ScoutFunction))
         % explained = sum(Fs(:)) * nRow / sum(F(:).^2);
 
     % PCA : First mode of PCA of time series within each scout region
-    % This case now works for all 3 'pca' choices: the original deprecated per-file method, the
-    % sign-corrected per-file method, or the "across files" method.  This is determined by the
-    % inputs (F, Covar and PcaReference).
+    % This case now works for all 3 'pca' choices: the legacy per-file method, the sign-corrected
+    % per-file method, or the "across files" method.  This is determined by the inputs (F, Covar and
+    % PcaReference).
     % As the original method is still supported, we still allows keeping 3 separate orientation components.
     case 'pca' % {'pca', 'pcai', 'pcaa'}
         % Signal decomposition
         % Use trial data covariance if provided
         if ~isempty(Covar)
-            % safety check
-            if nComponents > 1
-                error('Scout Covar provided but nComponents > 1');
-            end
+            % Allow nComponents > 1 here if we want the same PCA component to be applied on x,y,z
+            % separately, in which case Covar should be summed over x,y,z before calling this function.
+            %             if nComponents > 1
+            %                 error('Scout Covar provided but nComponents > 1');
+            %             end
             [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
             [S, iSort] = sort(S, 'descend');
             PcaFirstComp = U(:, iSort(1));
@@ -281,7 +282,9 @@ switch (lower(ScoutFunction))
         % scout and xyz combined, to recover the real number of vertices.)
         PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
         if ~isempty(F)
-            Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); % dot product of Comp with F on 1st dim, gives size (1, nTime, nComponents)
+            % Dot product of Comp with F on 1st dim (sources), gives size (1, nTime, nComponents).
+            % Compatible with either or both having multiple components.
+            Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); 
         else
             % Covar was not sign-flipped if F is empty.
             Fs = [];
@@ -291,34 +294,6 @@ switch (lower(ScoutFunction))
             PcaFirstComp = bsxfun(@times, PcaFirstComp, FlipMask);
         end
        
-%     % PCA computed on all data (all epochs/files) 
-%     % Here, all sources are treated equally (vertices and orientations).
-%     case 'pcaa'
-%         % Covar is size (nRow,nRow), where nRow can be nVertex or nVertex*nComponents
-%         [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
-%         [S, iSort] = sort(S, 'descend');
-%         explained = S(1) / sum(S);
-%         PcaFirstComp = U(:, iSort(1));
-%         % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility. 
-%         % Keep sum of component elements (coefficients for the weighted sum of timeseries) positive.
-%         % Orientation-based sign flipping was applied above, if orientations available.
-%         CompSign = nzsign(sum(PcaFirstComp));
-%         PcaFirstComp = CompSign * PcaFirstComp;
-%         % Rescale before applying component to timeseries. (nComp/nComp is for when we're doing
-%         % scout and xyz combined, to recover the real number of vertices.)
-%         PcaFirstComp = PcaFirstComp / sqrt(nRow * nComponents / nCompPcaCombined);
-%         % F could be empty here, e.g. if only getting the reference PCA component across files.
-%         if ~isempty(F)
-%             Fs = PcaFirstComp' * F; % (1, nTime)
-%         else
-%             % Covar was not sign-flipped if F is empty.
-%             Fs = [];
-%         end
-%         % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
-%         if isSignFlip
-%             PcaFirstComp = PcaFirstComp .* FlipMask;
-%         end
-        
     % FAST PCA : Display first mode of PCA of time series within each scout region
     % no component returned or "% explained" message, but deprecated.
     case 'fastpca'
@@ -363,7 +338,7 @@ end
 % Display percentage of signal explained by 1st component(s) of PCA
 % Now properly combines multiple orientations if present.
 if explained && nargout > 2
-    HistoryMsg{end+1} = sprintf('PCA on scouts: %1.1f%% of signal power kept', explained * 100);
+    HistoryMsg{end+1} = sprintf('PCA for scout: %1.1f%% of signal power kept', explained * 100);
     if ScoutName
         HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
     end
@@ -416,31 +391,6 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                 Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), Fs), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
             end
             
-%         case 'pcaa'
-%             % Only possible to get here if there were no scout extraction done.
-%             % Here, F may be empty, e.g. if we save the result as a shared kernel.
-%             % Get number of sources from covariance.
-%             %nRow = size(Covar, 3);
-%             PcaFirstComp = zeros(nComponents, nRow);
-%             % For each vertex: Signal decomposition
-%             explained = 0;
-%             for i = 1:nRow
-%                 [U, S] = eig((Covar(:,:,i) + Covar(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
-%                 [S, iSort] = sort(S, 'descend');
-%                 explained = explained + S(1) / sum(S);
-%                 PcaFirstComp(:,i) = U(:, iSort(1));
-%             end
-%             explained = explained / nRow;
-%             % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility.
-%             % Just keep mostly positive coefficients. Here we expect pcaa is run on all available
-%             % data for a subject at once so consistency would not be an issue, but if that's not the
-%             % case, e.g. different conditions run separately, inconsistencies are still possible.
-%             CompSign = nzsign(sum(PcaFirstComp));
-%             PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
-%             if ~isempty(Fs)
-%                 Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), Fs), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
-%             end
-            
         % Compute the norm across the directions
         case 'norm'
             Fs = sqrt(sum(Fs.^2, 3));
@@ -460,7 +410,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     % Now displayed separately from scout PCA. They shouldn't occur together anymore in recommended
     % usage: scout pca (or other scout function) followed by orient pca is deprecated. 
     if explained && nargout > 2
-        HistoryMsg{end+1} = sprintf('PCA on source orientations: %1.1f%% of signal power kept', explained * 100);
+        HistoryMsg{end+1} = sprintf('PCA for source orientation: %1.1f%% of signal power kept', explained * 100);
         if ScoutName
             HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
         end

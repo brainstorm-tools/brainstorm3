@@ -46,8 +46,8 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    with more power than 'mean'.  This is done in bst_scout_value.
 %
 %    The differences between the 3 methods are all dealt with within this function (with one
-%    exception pushed to bst_source_orient for convenience for now).  As such, except for file
-%    comments, 'pca' is used for all 3 cases in other processes and functions.
+%    exception pushed to bst_source_orient for convenience for now).  As such, 'pca' is used for all
+%    3 cases in other processes and functions.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -99,7 +99,7 @@ iGroups = process_average('SortFiles', sInputs, AvgType); % = 2; by subject
 if numel(iGroups) > 1
     % Run separately for each group, recursive call.
     for iG = 1:numel(iGroups)
-        GroupOutputFiles = bst_pca(sProcess, sInputs(iGroups{iG}), PcaOptions, isScout, isOutMatrix, OutTimeWindow, OutComment);
+        GroupOutputFiles = bst_pca(sProcess, sInputs(iGroups{iG}), PcaOptions, AtlasList, isOutMatrix, OutTimeWindow, OutComment);
         if isempty(GroupOutputFiles)
             OutputFiles = {};
             return; % Error already reported.
@@ -115,23 +115,16 @@ nInputs = numel(sInputs);
 %____________________________________________________________________________________________
 % Checks and initializations
 
-% Time window needed for baseline and data, as well as requested output window.
-if isOutMatrix
-    % TimeWindow widened as needed for computation, but OutTimeWindow reapplied when saving.
-    if isempty(OutTimeWindow)
-        TimeWindow = [min([PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1)]), max([PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2)])];
-    else
-        TimeWindow = [min([PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1), OutTimeWindow(1)]), ...
-            max([PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2), OutTimeWindow(2)])];
-    end
-else
-    % Keep full time window, since we need the full data file time vector when saving kernels.
-    TimeWindow = [];
+% In most cases, keep full time window.  Full data file time vector needed when saving kernels.
+TimeWindow = [];
+if isOutMatrix && ~isempty(OutTimeWindow)
+    % TimeWindow widened as needed for baseline and data, but requested OutTimeWindow reapplied when saving.
+    TimeWindow = [min([PcaOptions.Baseline(1), PcaOptions.DataTimeWindow(1), OutTimeWindow(1)]), ...
+        max([PcaOptions.Baseline(2), PcaOptions.DataTimeWindow(2), OutTimeWindow(2)])];
+elseif ~isOutMatrix && ~isempty(OutTimeWindow)
     % Warn if requested window.
-    if ~isempty(OutTimeWindow)
-        Message = 'OutTimeWindow ignored when output is ''result'' type (isOutMatrix=false): full time returned.';
-        bst_report('Warning', sProcess, sInputs, Message);
-    end
+    Message = 'OutTimeWindow ignored when output is ''result'' type (isOutMatrix=false): full time returned.';
+    bst_report('Warning', sProcess, sInputs, Message);
 end
 
 % Check all files are same type.
@@ -173,13 +166,16 @@ if nFreq > 1
     return;
 end
 
-% Check if unconstrained sources.
+% Check if unconstrained sources. 
+% nComponent = 0 for mixed models and is kept unchanged. nComp is used later for different uses,
+% e.g. for the actual number for each region. 
 [isUnconstrained, nComponents] = process_extract_scout('CheckUnconstrained', sProcess, sInputs(1), sResults);
 if isempty(isUnconstrained)
     return; % Error already reported.
 end
 % Refuse scout PCA on unconstrained sources.  Just require separate calls to bst_pca for now.
 if any(isUnconstrained) && isScout
+    % TODO Remove this error if we allow 3d scout PCA.
     Message = 'Unconstrained sources detected, flatten sources before PCA for scouts.';
     bst_report('Error', sProcess, sInputs, Message);
     return;
@@ -222,8 +218,8 @@ if isScout
         return; % Error already reported.
     end
     nScouts = numel(sScouts);
-    % Already checked all constrained sources for scouts.
-    nComp = 1;
+    % (nComp set later for each scout using GetScoutsRow - in case we allow 3d scout PCA.)
+    nComp = ones(nScouts, 1);
     % Prepare output atlas.
     % If saving a result file, it is then a deprecated atlas-based result file.
     sResultsOut.Atlas = db_template('atlas');
@@ -238,15 +234,17 @@ else
     XyzFunction = 'pca'; % don't use 4-letter pcaa or pcai outside this function.
     % Sign flipping does not apply to flattening unconstrained sources.
     isSignFlip = false;
+    % nComponent = 0 for mixed models, nComp is used for the actual number for each region.
     if nComponents == 0
         sScouts = sResults.GridAtlas.Scouts;
         nScouts = numel(sScouts);
-        % We will only use nComp for unconstrained regions, constrained ones are skipped.
-        nComp = 3; % implied by GridAtlas.Scouts.Region(3) = 'U' or 'L', but not otherwise saved.
     else
         nScouts = 1;
-        nComp = nComponents; % 3, otherwise there was nothing to do and returned already.
     end
+    % We will only use nComp for unconstrained regions, constrained ones are skipped.  But set
+    % correctly here anyway for clarity.
+    nComp = ones(nScouts, 1);
+    nComp(isUnconstrained) = 3; % implied by GridAtlas.Scouts.Region(3) = 'U' or 'L', but not otherwise saved.
     sResultsOut.Atlas = [];
 end
 
@@ -297,9 +295,11 @@ else
     end
 end
 % Update number of components when flattening
-if ~isOutMatrix && nComponents > 1
+% (note: sResultsOut.nComponents is ignored for matrix output: no nComponents)
+if ~isScout && nComponents > 1
     sResultsOut.nComponents = 1;
 else
+    % For mixed models, we must keep 0, even if it's flattened.
     sResultsOut.nComponents = nComponents;
 end
 
@@ -312,6 +312,7 @@ if ismember(PcaOptions.Method, {'pca', 'pcai'})
     PcaComp = cell(nInputs, nScouts);
 end
 OutField = cell(nInputs, 1);
+% Number of sources (xyz components counted separately) for consistency check across files.
 if isKernel
     nSource = size(sResults.ImagingKernel, 1);
 else
@@ -320,7 +321,9 @@ end
 for iScout = 1:nScouts % scouts or regions of the mixed model
     if isScout
         % Get scout row indices and more.
-        [sScouts(iScout).iRows, sScouts(iScout).RowNames, sScouts(iScout).ScoutOrient] = ...
+        % TODO to allow 3d scout PCA: add support for atlas-based & mixed model in GetScoutRows.
+        % Unconstrained sources: xyz are separate rows
+        [sScouts(iScout).iRows, sScouts(iScout).RowNames, sScouts(iScout).ScoutOrient, nComp(iScout)] = ...
             process_extract_scout('GetScoutRows', sProcess, sInputs(1), sScouts(iScout), sResults, sSurf, isVolumeAtlas(iScout));
         if isempty(sScouts(iScout).iRows)
             OutputFiles = {};
@@ -328,13 +331,14 @@ for iScout = 1:nScouts % scouts or regions of the mixed model
         end
         % Covariance per scout, in cells.
         if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
-            SourceCov{iScout} = zeros(numel(sScouts(iScout).iRows));
+            SourceCov{iScout} = zeros(numel(sScouts(iScout).iRows) / nComp(iScout));
         end
     else % flattening
         if nComponents == 0
             % Convert to indices in the source matrix
             sScouts(iScout).iRows = bst_convert_indices(sScouts(iScout).GridRows, nComponents, sResults.GridAtlas, 0);
-        else
+        else 
+            % Only 1 region, all rows
             sScouts(iScout).iRows = 1:nSource;
         end
         % If no vertices to read from this region: skip
@@ -343,9 +347,14 @@ for iScout = 1:nScouts % scouts or regions of the mixed model
         end
         if isUnconstrained(iScout) && ismember(PcaOptions.Method, {'pcaa', 'pcai'})
             % Covariance by region for mixed model, in cells; one cell for simple models.
-            SourceCov{iScout} = zeros(nComp, nComp, numel(sScouts(iScout).iRows) / nComp);
+            SourceCov{iScout} = zeros(nComp(iScout), nComp(iScout), numel(sScouts(iScout).iRows) / nComp(iScout));
         end
     end
+end
+if isScout
+    % Output row numbers is more complicated if allowing unconstrained (and therefore mixed models)
+    iOutRow = cumsum(nComp);
+    iOutRow = [iOutRow - nComp(1) + 1, iOutRow];
 end
 
 % Atlas-based files: no PCA needed.
@@ -355,6 +364,7 @@ if isScout && ~isempty(sResults.Atlas)
     Message = 'Scout PCA already present in first input file. Returning all inputs unchanged.';
     bst_report('Warning', sProcess, sInputs, Message);
     OutputFiles = {sInputs.FileName};
+    return;
 end
 
 %____________________________________________________________________________________________
@@ -402,27 +412,34 @@ for iInput = 1:nInputs
         matSourceValues = sResults.ImagingKernel;
     end
     for iScout = 1:nScouts
+        % Skip regions that don't need flattening.
+        if ~isScout && ~isUnconstrained(iScout)
+            continue;
+        end
         % Get source covariance
         if isKernel
             if isScout
                 % add K * DataCov * K' with appropriate kernel rows for this scout
-                FileSourceCov{iScout} = sResults.ImagingKernel(sScouts(iScout).iRows, :) * DataCov * sResults.ImagingKernel(sScouts(iScout).iRows, :)';
-            elseif ~isUnconstrained(iScout)
-                continue;
+                % Sum over xyz in case we allow 3d scout PCA.
+                FileSourceCov{iScout} = zeros(size(SourceCov{iScout}));
+                for i = 1:nComp(iScout)
+                    Kernel = sResults.ImagingKernel(sScouts(iScout).iRows(i:nComp(iScout):end), :);
+                    FileSourceCov{iScout} = FileSourceCov{iScout} + Kernel * DataCov * Kernel';
+                end
             else
-                nVert = numel(sScouts(iScout).iRows) / nComp;
-                Kernel = permute(reshape(sResults.ImagingKernel(sScouts(iScout).iRows, :), nComp, nVert, []), [2, 3, 1]); % (nVert, nChan, nComp)
+                nVert = numel(sScouts(iScout).iRows) / nComp(iScout);
+                Kernel = permute(reshape(sResults.ImagingKernel(sScouts(iScout).iRows, :), nComp(iScout), nVert, []), [2, 3, 1]); % (nVert, nChan, nComp)
                 % For each source (each 3 rows of ImagingKernel), get K * Cov * K' -> [3 x 3]
                 % For efficiency, loop on components instead of sources.
-                FileSourceCov{iScout} = zeros([1, nComp, nVert, size(Kernel,2)]);
-                for i = 1:nComp
-                    FileSourceCov{iScout}(1,i,:,:) = Kernel(:,:,i) * DataCov;
+                tmpFileSourceCov = zeros([1, nComp(iScout), nVert, size(Kernel,2)]);
+                for i = 1:nComp(iScout)
+                    tmpFileSourceCov(1,i,:,:) = Kernel(:,:,i) * DataCov;
                 end
                 % Permuted Kernel: (nComp, 1, nVert, nChan), FileSourceCov: (1, nComp, nVert, nChan)
-                FileSourceCov{iScout} = sum(bsxfun(@times, permute(Kernel, [3,4,1,2]), FileSourceCov{iScout}), 4); % (nComp, nComp, nVert)
+                FileSourceCov{iScout} = sum(bsxfun(@times, permute(Kernel, [3,4,1,2]), tmpFileSourceCov), 4); % (nComp, nComp, nVert)
             end
         else % no kernel
-            FileSourceCov{iScout} = ComputeCovariance(matSourceValues(sScouts(iScout).iRows, :), sResults.Time, PcaOptions, nComp);
+            FileSourceCov{iScout} = ComputeCovariance(matSourceValues(sScouts(iScout).iRows, :), sResults.Time, PcaOptions, nComp(iScout), isScout);
         end
         % Accumulate source covariance
         if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
@@ -443,9 +460,12 @@ for iInput = 1:nInputs
     if ismember(PcaOptions.Method, {'pca', 'pcai'})
         if isScout
             sResults.(OutField{iInput}) = zeros(nScouts, size(matSourceValues, 2));
+            HistoryMsg = cell(nScouts,1);
             for iScout = 1:nScouts
-                [sResults.(OutField{iInput})(iScout, :), PcaComp{iInput, iScout}, HistoryMsg] = bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ...
-                    ScoutFunction, sScouts(iScout).ScoutOrient, nComp, XyzFunction, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
+                % To allow 3d scout PCA: more than one row returned.
+                [sResults.(OutField{iInput})(iOutRow(iScout,1):iOutRow(iScout,2), :), PcaComp{iInput, iScout}, HistoryMsg(iScout)] = ...
+                    bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ScoutFunction, sScouts(iScout).ScoutOrient, ...
+                    nComp(iScout), XyzFunction, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
             end
             % Project data if we want to save timeseries
             if isKernel && isOutMatrix
@@ -464,6 +484,12 @@ for iInput = 1:nInputs
             sResults = bst_history('add', sResults, 'compute', HistoryMsg{iH});
         end
         if isOutMatrix % forced for timefreq inputs
+            % TODO to allow 3d scout PCA: {sScouts.Label} need duplication for unconstrained
+            %     % Add the component index (unconstrained sources)
+            %     if isUnconstrained
+            %         iComp = mod(iRow-1,nComponents(iScout)) + 1;
+            %         scoutDesc = [scoutDesc '.' num2str(iComp)];
+            %     end
             OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment, OutTimeWindow);
         else
             % Save single-file result file, full or kernel. For scouts, this is a deprecated
@@ -491,10 +517,11 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
     end
 
     if isScout
+        HistoryMsg = cell(nScouts,1);
         for iScout = 1:nScouts
-            [~, PcaReference{iScout}, HistoryMsg] = bst_scout_value([], ...
-                ScoutFunction, sScouts(iScout).ScoutOrient, nComp, XyzFunction, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
-        % PcaReference{iScout} is size [Nsources, 1]
+            [~, PcaReference{iScout}, HistoryMsg(iScout)] = bst_scout_value([], ...
+                ScoutFunction, sScouts(iScout).ScoutOrient, nComp(iScout), XyzFunction, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
+            % PcaReference{iScout} is size [Nsources, 1]
         end
     else
         [~, ~, ~, PcaReference, HistoryMsg] = bst_source_orient([], ...
@@ -529,7 +556,7 @@ switch PcaOptions.Method
                 if ~isScout && ~isUnconstrained(iScout)
                     isSignCorrect = [isSignCorrect, false(1, numel(sScouts(iScout).iRows))];
                 else
-                    % Project by column (multiple columns when flattening)
+                    % Project component onto reference, by columns (multiple when flattening)
                     isSignCorrect = [isSignCorrect, sum(bsxfun(@times, PcaReference{iScout}, PcaComp{iInput, iScout}), 1) < 0];
                 end
             end
@@ -540,10 +567,6 @@ switch PcaOptions.Method
             % Load file.  Cannot be a shared kernel here.
             sOut = load(file_fullpath(OutputFiles{iInput}));
             % Correct signs.
-            %% Debugging check, to be removed
-            if numel(isSignCorrect) ~= size(sOut.(OutField{iInput}), 1)
-                error('Output array size mismatch.');
-            end
             sOut.(OutField{iInput})(isSignCorrect, :) = -sOut.(OutField{iInput})(isSignCorrect, :);
             % Save file.
             bst_save(file_fullpath(OutputFiles{iInput}), sOut, 'v6');
@@ -597,7 +620,9 @@ switch PcaOptions.Method
             if isScout
                 sResults.(OutField{iInput}) = zeros(nScouts, size(matSourceValues, 2));
                 for iScout = 1:nScouts
-                    sResults.(OutField{iInput})(iScout, :) = PcaReference{iScout}' * matSourceValues(sScouts(iScout).iRows, :);
+                    for i = 1:nComp(iScout)
+                        sResults.(OutField{iInput})(iOutRow(iScout,1)+i-1, :) = PcaReference{iScout}' * matSourceValues(sScouts(iScout).iRows(i:nComp(iScout):end), :);
+                    end
                 end
                 % Project data if we want to save timeseries
                 if isKernel && isOutMatrix
@@ -610,10 +635,7 @@ switch PcaOptions.Method
                 [sResults.(OutField{iInput}), sResults.GridAtlas] = bst_source_orient([], ...
                     nComponents, sResults.GridAtlas, matSourceValues, 'pcaa', [], [], [], PcaReference);
             end
-            % Set the number of components
-            if nComponents > 1
-                sResults.nComponents = 1;
-            end
+            % (The number of components for output is already updated in sResultsOut.)
 
             % Save individual files, or shared kernel.
             sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
@@ -646,6 +668,8 @@ end
 end
 
 %____________________________________________________________________________________________
+%% ===== SUBFUNCTIONS =====
+
 % ===== Compute data covariance from one file =====
 % function DataCov = GetDataCovariance(DataFile, Options, iStudy)
 %     % Find data file index.
@@ -657,8 +681,12 @@ end
 % ===== COMPUTE COVARIANCE =====
 % Compute covariance from loaded data or sources.
 % Since we have to do it here for sources, we use this functyion for data as well for efficiency instead of calling bst_noisecov.
-% If nComp is 3 (unconstrained sources), it returns a 3x3xN xyz covariances array, otherwise NxN.
-function Cov = ComputeCovariance(Mat, Time, Options, nComp)
+% If nComp is 3 (unconstrained sources) and isScout=false, it returns a 3x3xN xyz covariances array, otherwise NxN.
+% For nComp=3 and isScout=true, N is the number of vertices: we sum over separate x,y,z covariances.
+function Cov = ComputeCovariance(Mat, Time, Options, nComp, isScout)
+    if nargin < 5 || isempty(isScout)
+        isScout = false;
+    end
     if nargin < 4 || isempty(nComp)
         nComp = 1;
     end
@@ -688,6 +716,13 @@ function Cov = ComputeCovariance(Mat, Time, Options, nComp)
     % Compute covariance for this file
     if nComp == 1
         Cov = Mat(:,iTimeCov) * Mat(:,iTimeCov)';
+    elseif isScout 
+        % Sum over separate x,y,z covariances
+        nVert = size(Mat, 1) / nComp;
+        Cov = zeros(nVert);
+        for iC = 1:nComp
+            Cov = Cov + (Mat(iC:nComp:end, iTimeCov) * Mat(iC:nComp:end, iTimeCov)');
+        end
     else % 3x3 orient cov
         nVert = size(Mat, 1) / nComp;
         % Loop over component pairs to get covariance
@@ -783,10 +818,6 @@ end
 function OutputFile = SaveResultFile(sInput, sResults, Method)
     % Get study description
     sStudy = bst_get('Study', sInput.iStudy);
-%     % Make comment unique (for this data file)
-%     %% This happens in db_add_data anyway.  Verify.
-%     iResults = ~cellfun(@isempty, strfind({sStudy.Result.FileName}, sInput.DataFile));
-%     sResults.Comment = file_unique(sResults.Comment, {sStudy.Result(iResults).Comment});
     % File tag
     if ~isempty(strfind(sInput.FileName, '_abs_zscore'))
         FileType = 'results_abs_zscore';
@@ -799,7 +830,7 @@ function OutputFile = SaveResultFile(sInput, sResults, Method)
     OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' Method]);
     % Save on disk
     bst_save(OutputFile, sResults, 'v6');
-    % Register in database
+    % Register in database.  This also makes the Comment unique for this data file.
     db_add_data(sInput.iStudy, OutputFile, sResults);
 end
 

@@ -27,6 +27,8 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 %          Hossein Shahabi, 2019-2020
 %          Daniele Marinazzo, 2022
 
+% FilesA/B variables are now sInput structures (required for PCA). Code still compatible with cells
+% of file names (as before 2023), when PCA is not requested
 
 %% ===== DEFAULT OPTIONS =====
 Def_OPTIONS.Method        = 'corr';
@@ -36,9 +38,10 @@ Def_OPTIONS.TargetB       = [];
 Def_OPTIONS.Freqs         = 0;
 Def_OPTIONS.TimeWindow    = [];
 Def_OPTIONS.IgnoreBad     = 0;             % For recordings: Ignore bad channels
+Def_OPTIONS.UnconstrFunc  = 'max';         % Unconstrained sources: max was forced pre-2023, keep as default in code, but GUI option default is 'pca'.
 Def_OPTIONS.ScoutFunc     = 'all';         % Scout function {mean, max, pca, std, all}
 Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {before, after}
-Def_OPTIONS.ScoutPcaOptions = [];          % Options for scout function 'pca' from panel_pca
+Def_OPTIONS.PcaOptions    = [];            % Options for scout or unconstrained function 'pca', from panel_pca
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
 Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'icohere2019', 'lcohere2019'}
 Def_OPTIONS.WinLen        = [];            % Option for spectral estimates (Coherence 2021)
@@ -72,52 +75,6 @@ Ravg = [];
 nAvg = 0;
 nTime = 1;
 
-% Extract scouts with PCA, and save scout time series as temp files
-% See: bst_pca.m for more info on PCA methods
-OPTIONS.isScoutA = ~isempty(OPTIONS.TargetA) && (isstruct(OPTIONS.TargetA) || iscell(OPTIONS.TargetA));
-OPTIONS.isScoutB = ~isempty(OPTIONS.TargetB) && (isstruct(OPTIONS.TargetB) || iscell(OPTIONS.TargetB));
-sInputToDel = [];
-if strcmpi(OPTIONS.ScoutFunc, 'pca') && ~isempty(OPTIONS.ScoutPcaOptions) && (OPTIONS.isScoutA || OPTIONS.isScoutB)
-    % Give error if requesting pca but passing file names only as inputs.
-    if (OPTIONS.isScoutA && ~isstruct(FilesA)) || (OPTIONS.isScoutB && ~isstruct(FilesB))
-        bst_report('Error', OPTIONS.ProcessName, [], 'When requesting PCA as scout function, bst_connectivity now requires sInput structures instead of file names as inputs.');
-        return;
-    end
-    AtlasListA = [];
-    AtlasListB = [];
-    if OPTIONS.isScoutA
-        AtlasListA = OPTIONS.TargetA;
-    end
-    if OPTIONS.isScoutB
-        AtlasListB = OPTIONS.TargetB;
-    end
-    % FilesA/B are replaced by temporary files as needed by RunTempPca.
-    [FilesA, FilesB, isTempPcaA, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.ProcessName, OPTIONS.ScoutPcaOptions, FilesA, AtlasListA, FilesB, AtlasListB);
-    if isTempPcaA
-        sInputToDel = FilesB;
-    end
-    if isTempPcaB
-        sInputToDel = [sInputToDel, FilesB];
-    end
-end
-
-% FilesA/B can now be process' sInput structures (required for scout PCA above) or file names as before.
-% Get filenames
-if ~isempty(FilesA)
-    if isstruct(FilesA)
-        FilesA = {FilesA.FileName};
-    elseif ischar(FilesA)
-        FilesA = {FilesA};
-    end
-end
-if ~isempty(FilesB)
-    if isstruct(FilesB)
-        FilesB = {FilesB.FileName};
-    elseif ischar(FilesB)
-        FilesB = {FilesB};
-    end
-end
-
 % Initialize progress bar
 if bst_progress('isVisible')
     startValue = bst_progress('get');
@@ -144,9 +101,12 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS
     bst_report('Error', OPTIONS.ProcessName, [], 'Invalid frequency resolution.');
     return;
 end
+% Keep original input files for attaching output node in tree, and for history, when doing PCA.
+OrigFilesA = GetFileNames(FilesA);
+OrigFilesB = GetFileNames(FilesB);
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','ciplv','ciplvt','wpli','wplit','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','ciplv','ciplvt','wpli','wplit','aec','henv'})) && (isempty(FilesB) || (isequal(OrigFilesA, OrigFilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
@@ -168,7 +128,134 @@ if bst_get('UseSigProcToolbox')
 else
     hilbert_fcn = @oc_hilbert;
 end
+% Were scouts requested?
+OPTIONS.isScoutA = ~isempty(OPTIONS.TargetA) && (isstruct(OPTIONS.TargetA) || iscell(OPTIONS.TargetA));
+OPTIONS.isScoutB = ~isempty(OPTIONS.TargetB) && (isstruct(OPTIONS.TargetB) || iscell(OPTIONS.TargetB));
+% No scouts. Avoid confusion.
+if ~OPTIONS.isScoutA && ~OPTIONS.isScoutB
+    OPTIONS.ScoutFunc = 'all';
+end
 
+
+%% ===== PCA =====
+% Check inputs.
+if (strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')) 
+    % Give error if requesting pca but passing file names only as inputs.
+    if (~isempty(FilesA) && ~isstruct(FilesA)) || (~isempty(FilesB) && ~isstruct(FilesB))
+        bst_report('Error', OPTIONS.ProcessName, [], 'When selecting PCA, bst_connectivity now requires sInput structures instead of file names as inputs.');
+        return;
+    end
+end
+% Check flattening unconstrained source orientations with PCA required
+if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
+    % Check if there are unconstrained sources. The function only checks the first file. Other files
+    % would be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
+    isUnconstrA = ~(isempty(FilesA) || ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesA(1)))); % any() needed for mixed models
+    isUnconstrB = ~(isempty(FilesB) || ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesB(1)))); % any() needed for mixed models
+    if isempty(isUnconstrA) || isempty(isUnconstrB)
+        return; % Error already reported;
+    end
+    % No flattening needed. Avoid confusion.
+    if ~isUnconstrA && ~isUnconstrB
+        OPTIONS.UncunstrFunc = 'none';
+    % PCA flattening required for scout PCA.
+    elseif ~strcmpi(OPTIONS.UnconstrFunc, 'pca')
+        if isConnNN || (OPTIONS.isScoutA && OPTIONS.isScoutB)
+            bst_report('Warning', OPTIONS.ProcessName, [], ['Unconstrained sources must first be flattened with PCA when using PCA as scout function. ' ...
+                'Scouts will first be flattened.']);
+        else
+            bst_report('Warning', OPTIONS.ProcessName, [], ['Unconstrained sources must first be flattened with PCA when using PCA as scout function. ' ...
+                'Scouts will first be flattened, but not individual sources as requested.']);
+        end
+    end
+end
+
+% Flatten unconstrained source orientations and/or extract scouts with PCA, and save time series as temp files.
+% See bst_pca.m for more info on PCA methods
+sInputToDel = [];
+if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
+    if isempty(OPTIONS.PcaOptions)
+        bst_report('Error', OPTIONS.ProcessName, [], 'Missing PCA options.');
+        return;
+    end
+    AtlasListA = [];
+    AtlasListB = [];
+    % Avoid flattening with PCA if not explicitly requested, on the A or B side where we're not
+    % extracting scouts with PCA.
+    if strcmpi(OPTIONS.ScoutFunc, 'pca')
+        if OPTIONS.isScoutA
+            AtlasListA = OPTIONS.TargetA;
+        elseif strcmpi(OPTIONS.UnconstrFunc, 'pca')
+            AtlasListA = 'flat';
+        end
+        if OPTIONS.isScoutB
+            AtlasListB = OPTIONS.TargetB;
+        elseif strcmpi(OPTIONS.UnconstrFunc, 'pca')
+            AtlasListB = 'flat';
+        end
+    end
+    % FilesA/B are replaced by temporary files as needed by RunTempPca.
+    [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.ProcessName, OPTIONS.PcaOptions, FilesA, AtlasListA, FilesB, AtlasListB);
+    if isTempPcaA
+        sInputToDel = FilesA;
+    end
+    if isTempPcaB
+        sInputToDel = [sInputToDel, FilesB];
+    end
+end
+
+% Convert inputs to file names
+FilesA = GetFileNames(FilesA);
+FilesB = GetFileNames(FilesB);
+
+
+%% ===== HISTORY =====
+% History: keep list of inputs (original files), and history of 1st input (possibly temp file) if averaging
+% If using temp files for flattening or scout PCA, this is the only place the % kept variance
+% message and PCA input file list will be saved.
+OutHist = struct;
+if ~strcmpi(OPTIONS.OutputMode, 'input')
+    if isConnNN
+        OutHist = bst_history('add', OutHist, 'src', sprintf('Connectivity across %d files; history of the first input:', length(FilesA)));
+    else
+        OutHist = bst_history('add', OutHist, 'src', sprintf('Connectivity across %d pairs of files; history of the first A input:', length(FilesA)));
+    end
+    DataFile = file_resolve_link(FilesA{1});
+    % Load file
+    warning off MATLAB:load:variableNotFound
+    DataHist = load(DataFile, 'History');
+    warning on MATLAB:load:variableNotFound
+    if ~isempty(DataHist)
+        DataHist = CleanHist(DataHist);
+        OutHist = bst_history('add', OutHist, DataHist.History, ' - ');
+    end
+    if ~isConnNN
+        OutHist = bst_history('add', OutHist, 'src', sprintf('Connectivity across %d pairs of files; history of the first B input:', length(FilesA)));
+        DataFile = file_resolve_link(FilesB{1});
+        % Load file
+        warning off MATLAB:load:variableNotFound
+        DataHist = load(DataFile, 'History');
+        warning on MATLAB:load:variableNotFound
+        if ~isempty(DataHist)
+            DataHist = CleanHist(DataHist);
+            OutHist = bst_history('add', OutHist, DataHist.History, ' - ');
+        end
+    end
+    if isConnNN
+        OutHist = bst_history('add', OutHist, 'src', sprintf('Connectivity across %d files; input files:', length(FilesA)));
+    else
+        OutHist = bst_history('add', OutHist, 'src', sprintf('Connectivity across %d pairs of files; input files:', length(FilesA)));
+    end
+    for iFile = 1:length(FilesA)
+        if isConnNN
+            OutHist = bst_history('add', OutHist, 'src', [' - ' OrigFilesA{iFile}]);
+            OrigFilesB = OrigFilesA;
+        else
+            OutHist = bst_history('add', OutHist, 'src', [' -A: ' OrigFilesA{iFile} ' -B: ' OrigFilesB{iFile}]);
+        end
+    end
+end
+    
 
 %% ===== CONCATENATE INPUTS / REMOVE AVERAGE =====
 sAverageA = [];
@@ -335,7 +422,7 @@ for iFile = 1:length(FilesA)
     % Unconstrained models?
     isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
     isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
-%     % Mixed source models not supported yet
+%     % Mixed source models now supported
 %     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
 %     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))
 %         bst_report('Error', OPTIONS.ProcessName, [], 'Connectivity functions are not supported yet for mixed source models.');
@@ -398,8 +485,6 @@ for iFile = 1:length(FilesA)
             else
                 bst_progress('text', 'Calculating: Coherence...');
             end
-            % Compute in symmetrical way only for constrained sources
-            CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
             % Estimate the coherence (2021)
             if ~isempty(OPTIONS.WinLen)
                 if ~iscell(sInputA.Data)
@@ -411,6 +496,8 @@ for iFile = 1:length(FilesA)
                 [R, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, OPTIONS.MaxFreq, sInputB.ImagingKernel, round(100/length(FilesA)));
             % Estimate the coherence (deprecated)
             elseif ~isempty(OPTIONS.MaxFreqRes)
+                % Compute in symmetrical way only for constrained sources
+                CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
             end
             % Error processing
@@ -785,7 +872,7 @@ for iFile = 1:length(FilesA)
     %% ===== SAVE FILE =====
     % Reshape: [nA x nB x nTime x nFreq] => [nA*nB x nTime x nFreq]
     R = reshape(R, [], size(R,3), size(R,4));
-    % Comment
+    % Comment and history
     % 1xN and AxB
     if ~isConnNN
         % Seed(s) (scout)
@@ -819,10 +906,23 @@ for iFile = 1:length(FilesA)
     switch (OPTIONS.OutputMode)
         case 'input'
             nAvg = 1;
-            OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+            % History: keep datafile history (if not averaging)
+            InHist = struct;
+            DataFile = file_resolve_link(FilesB{iFile});
+            % Load file
+            warning off MATLAB:load:variableNotFound
+            DataHist = load(DataFile, 'History');
+            warning on MATLAB:load:variableNotFound
+            if ~isempty(DataHist)
+                DataHist = CleanHist(DataHist);
+                InHist = bst_history('add', InHist, 'src', 'Connectivity: input file history:');
+                InHist = bst_history('add', InHist, DataHist.History, ' - ');
+            end
+            % Use original input file (not a temp PCA file) to attach new node to tree
+            OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, OrigFilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, InHist);
         case {'concat', 'avgcoh'}
             nAvg = 1;
-            OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+            OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, OutHist);
         case 'avg'
             % Concatenate files comments
             AllComments{end+1} = Comment;
@@ -837,7 +937,7 @@ for iFile = 1:length(FilesA)
             end
             nAvg = nAvg + 1;
     end
-end
+end % FilesA loop
 
 %% ===== DELETE TEMP PCA FILES =====
 if ~isempty(sInputToDel)
@@ -846,7 +946,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
+    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands, OutHist);
 end
 
 
@@ -859,7 +959,10 @@ end
 %  ========================================================================
 
 %% ===== SAVE FILE =====
-function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands)
+function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, OutHist)
+    if nargin < 10
+        OutHist = [];
+    end
     NewFile = [];
     bst_progress('text', 'Saving results...');
 
@@ -948,8 +1051,15 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     if ~isempty(sInputB.GridAtlas)
         FileMat.GridAtlas = sInputB.GridAtlas;
     end
+    % History
+    % If using temp files for flattening or scout PCA, this is the only place the % kept variance
+    % message and PCA input file list will be saved.
+    if ~isempty(OutHist)
+        FileMat = bst_history('add', FileMat, OutHist.History);
+    end
     % History: Computation
     FileMat = bst_history('add', FileMat, 'compute', ['Connectivity measure: ', OPTIONS.Method, ' (see the field "Options" for input parameters)']);
+
     % Save options structure
     FileMat.Options = OPTIONS;
     % Apply time and frequency bands
@@ -1069,4 +1179,30 @@ function x = normr(x)
     n = sqrt(sum(x.^2,2));
     x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
     x(n==0,:) = 1 ./ sqrt(size(x,2));
+end
+
+function Hist = CleanHist(Hist)
+    % Copy the history of the first file (but remove the entries "import_epoch" and "import_time")
+    if ~isempty(Hist.History)
+        % Remove entry 'import_epoch'
+        iLineEpoch = find(strcmpi(Hist.History(:,2), 'import_epoch'));
+        if ~isempty(iLineEpoch)
+            Hist.History(iLineEpoch,:) = [];
+        end
+        % Remove entry 'import_time'
+        iLineTime  = find(strcmpi(Hist.History(:,2), 'import_time'));
+        if ~isempty(iLineTime)
+            Hist.History(iLineTime,:) = [];
+        end
+    end
+end
+
+function Files = GetFileNames(Files)
+    if ~isempty(Files)
+        if isstruct(Files)
+            Files = {Files.FileName};
+        elseif ischar(Files)
+            Files = {Files};
+        end
+    end
 end

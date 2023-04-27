@@ -838,6 +838,11 @@ switch lower(structureName)
         template = struct(...
             'Name',   'User scouts', ...
             'Scouts', repmat(db_template('Scout'), 0));
+    % In mixed models, GridAtlas has a different structure, not well documented:
+    % Vert2Grid      % set in process_inverse, but grid size does not match full grid (Scouts.GridRows): missing "all false" rows at end.
+    % Grid2Source    % set in process_inverse
+    % Scouts.Region  % 2nd letter is Surface/Volume/Dba/eXclude; 3rd (added in bst_headmodeler) is Constrained/Unconstrained/Loose  
+    % Scouts.GridRows %
         
     case 'scout'
         template = struct(...
@@ -846,7 +851,7 @@ switch lower(structureName)
             'Color',       [], ...
             'Label',       '', ...
             'Function',    'Mean', ... % Scout function: PCA, FastPCA, Mean, Mean_norm, Max, Power, All
-            'Region',      'UU', ...      % 1st letter: Left/Right/Unknown,  2nd letter: Frontal/Parietal/Temporal/Occipital/Central/Unkown
+            'Region',      'UU', ...      % 1st letter: Left/Right/Unknown, 2nd letter: Frontal/Parietal/Temporal/Occipital/Central/Unkown
             'Handles',     repmat(struct( ...
                 'hFig',        [], ... % Figure handle in which the scout is displayed
                 'hScout',      [], ... % Handles to the graphical scout objects

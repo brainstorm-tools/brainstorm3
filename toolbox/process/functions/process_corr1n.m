@@ -127,27 +127,67 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scouts.Value      = {};
     sProcess.options.scouts.InputTypes = {'results'};
     sProcess.options.scouts.Group      = 'input';
-    % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
-                                             'mean', 'max', 'pca', 'std', 'all', ''};
+    % === UNCONSTRAINED SOURCES ===
+%     sProcess.options.flattentxt.Comment    = 'Unconstrained source orientations:';
+%     sProcess.options.flattentxt.Type       = 'label';
+%     sProcess.options.flattentxt.InputTypes = {'results'};
+%     sProcess.options.flattentxt.Group      = 'input';
+%     sProcess.options.flatten.Comment    = {'PCA flattening before (recommended)', 'Max after <FONT color="#777777">(default pre-2023)</FONT>', ''; ...
+%                                            'pca', 'max', ''};
+%     sProcess.options.flatten.Type       = 'radio_linelabel';
+%     sProcess.options.flatten.Value      = 'pca';
+    sProcess.options.flatten.Comment    = 'Flatten unconstrained source orientations with PCA first';
+    sProcess.options.flatten.Type       = 'checkbox';
+    sProcess.options.flatten.Value      = 0;
+    sProcess.options.flatten.InputTypes = {'results'};
+    sProcess.options.flatten.Group      = 'input';
+    %     sProcess.options.flatten.Controller = 'pca';
+    % === SCOUT TIME ===
+    sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'; ...
+                                             'before', 'after', ''};
+    sProcess.options.scouttime.Type       = 'radio_linelabel';
+    sProcess.options.scouttime.Value      = 'after';
+    sProcess.options.scouttime.InputTypes = {'results'};
+    sProcess.options.scouttime.Group      = 'input';
+    sProcess.options.scouttime.Controller = struct('before', 'before', 'after', 'after');
+    % === SCOUT FUNCTION ===    
+%     sProcess.options.scoutfunctxt.Comment    = 'Scout function:';
+%     sProcess.options.scoutfunctxt.Type       = 'label';
+%     sProcess.options.scoutfunctxt.InputTypes = {'results'};
+%     sProcess.options.scoutfunctxt.Group      = 'input';
+%     sProcess.options.scoutfunctxt2.Comment    = '&nbsp;&nbsp;&nbsp;<I>before connectivity</I>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<I>after connectivity</I>';
+%     sProcess.options.scoutfunctxt2.Type       = 'label';
+%     sProcess.options.scoutfunctxt2.InputTypes = {'results'};
+%     sProcess.options.scoutfunctxt2.Group      = 'input';
+%     sProcess.options.scoutfunc.Comment    = {'PCA', 'Mean', 'All&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', 'Mean', 'Max', 'Std', ''; ...
+%                                              'pca', 'mean', 'all', 'meana', 'max', 'std', ''};
+%     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
+%     sProcess.options.scoutfunc.Value      = 'mean';
+%     sProcess.options.scoutfunc.InputTypes = {'results'};
+%     sProcess.options.scoutfunc.Group      = 'input';
+    sProcess.options.scoutfunc.Comment    = {'PCA', 'Mean', 'All', 'Scout function, before:'; ...
+                                             'pca', 'mean', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'mean';
     sProcess.options.scoutfunc.InputTypes = {'results'};
     sProcess.options.scoutfunc.Group      = 'input';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
+    sProcess.options.scoutfunc.Class      = 'before';
+    sProcess.options.scoutfuncaft.Comment    = {'Mean', 'Max', 'Std', 'Scout function, after:'; ...
+                                             'mean', 'max', 'std', ''};
+    sProcess.options.scoutfuncaft.Type       = 'radio_linelabel';
+    sProcess.options.scoutfuncaft.Value      = 'mean';
+    sProcess.options.scoutfuncaft.InputTypes = {'results'};
+    sProcess.options.scoutfuncaft.Group      = 'input';
+    sProcess.options.scoutfuncaft.Class      = 'after';
+    
+%     sProcess.options.scoutfunc.Controller = struct('pca', 'pca'); % , 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca'
     % Options: PCA
-    sProcess.options.pcaedit.Comment    = {'panel_pca', ' PCA options: '};
+    sProcess.options.pcaedit.Comment    = {'panel_pca', ' PCA options (for orientations and/or scouts): '};
     sProcess.options.pcaedit.Type       = 'editpref';
     sProcess.options.pcaedit.Value      = bst_get('PcaOptions'); % function that returns defaults.
     sProcess.options.pcaedit.InputTypes = {'results'};
     sProcess.options.pcaedit.Group      = 'input';
-    sProcess.options.pcaedit.Class      = 'pca';
-    % === SCOUT TIME ===
-    sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'};
-    sProcess.options.scouttime.Type       = 'radio_line';
-    sProcess.options.scouttime.Value      = 2;
-    sProcess.options.scouttime.InputTypes = {'results'};
-    sProcess.options.scouttime.Group      = 'input';
+%     sProcess.options.pcaedit.Class      = 'pca'; % Doesn't work with 2 controllers: deactivates when one of the 2 is deselected.
 end
 
 
@@ -165,6 +205,14 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
         'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_corr1n_time', ...
         'process_pte1n', 'process_aec1n', 'process_henv1n'});
     
+    % === UNCONSTRAINED SOURCE ORIENTATIONS ===
+    if isfield(sProcess.options, 'flatten') && isfield(sProcess.options.flatten, 'Value') && ~isempty(sProcess.options.flatten.Value)
+        if sProcess.options.flatten.Value
+            OPTIONS.UnconstrFunc = 'pca';
+        else
+            OPTIONS.UnconstrFunc = 'max'; % not used explicitly, but saved in output (if max actually applied)
+        end
+    end
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
@@ -195,33 +243,40 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     if strcmpi(sInputA(1).FileType, 'results') && isfield(sProcess.options, 'scouts') && isfield(sProcess.options.scouts, 'Value')
         % Selected scouts
         AtlasList = sProcess.options.scouts.Value;
-        % Override scouts function
+        % Override scout function (2023 change: two radio lists for before or after, checked below)
         switch (sProcess.options.scoutfunc.Value)
-            case {1, 'mean'}, OPTIONS.ScoutFunc = 'mean';
-            case {2, 'max'},  OPTIONS.ScoutFunc = 'max';
-            case {3, 'pca'},  OPTIONS.ScoutFunc = 'pca';
-            case {4, 'std'},  OPTIONS.ScoutFunc = 'std';
-            case {5, 'all'},  OPTIONS.ScoutFunc = 'all';
+            case {1, 'mean'}, OPTIONS.ScoutFunc = 'mean'; 
+            case {2, 'max'},  OPTIONS.ScoutFunc = 'max';  % OPTIONS.ScoutTime = 'after';
+            case {3, 'pca'},  OPTIONS.ScoutFunc = 'pca';  % OPTIONS.ScoutTime = 'before';
+            case {4, 'std'},  OPTIONS.ScoutFunc = 'std';  % OPTIONS.ScoutTime = 'after';
+            case {5, 'all'},  OPTIONS.ScoutFunc = 'all';  % OPTIONS.ScoutTime = 'before';
             otherwise 
                 bst_report('Error', sProcess, [], 'Invalid scout function.'); 
                 OPTIONS = [];
                 return;
         end
-        % Scout function order
-        switch (sProcess.options.scouttime.Value)
-            case 1, OPTIONS.ScoutTime = 'before';
-            case 2, OPTIONS.ScoutTime = 'after';
-        end
-        % Perform some checks
-        if strcmpi(OPTIONS.ScoutTime, 'before') && ismember(OPTIONS.ScoutFunc, {'max', 'std'})
-            bst_report('Error', sProcess, [], 'Scout functions MAX and STD should not be applied before estimating the connectivity.');
-            OPTIONS = [];
-            return;
-        end
-        if strcmpi(OPTIONS.ScoutTime, 'after') && strcmpi(OPTIONS.ScoutFunc, 'pca')
-            bst_report('Error', sProcess, [], 'Scout function PCA cannot be applied after estimating the connectivity.');
-            OPTIONS = [];
-            return;
+        % Scout function order 
+        if isfield(sProcess.options, 'scouttime')
+            switch (sProcess.options.scouttime.Value)
+                case {1, 'before'}
+                    OPTIONS.ScoutTime = 'before';
+                    if ismember(OPTIONS.ScoutFunc, {'max', 'std'}) % No longer possible in GUI
+                        bst_report('Error', sProcess, [], 'Scout functions MAX and STD cannot be applied before estimating the connectivity.');
+                        OPTIONS = [];
+                        return;
+                    end
+                case {2, 'after'}
+                    OPTIONS.ScoutTime = 'after';
+                    % 2023 GUI change: get scout function from separate "after" list
+                    if isfield(sProcess.options, 'scoutfuncaft')
+                        OPTIONS.ScoutFunc = sProcess.options.scoutfuncaft.Value;
+                    end
+                    if strcmpi(OPTIONS.ScoutFunc, 'pca') % No longer possible in GUI
+                        bst_report('Error', sProcess, [], 'Scout function PCA cannot be applied after estimating the connectivity.');
+                        OPTIONS = [];
+                        return;
+                    end
+            end
         end
         % Set input/output scouts functions
         if ~isempty(AtlasList)
@@ -237,9 +292,9 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
                 return;
             end
         end
-        % Scout PCA options: copy only so they are saved in output files, for documentation; OPTIONS not actually used for PCA computation.
+        % Scout PCA options
         if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
-            OPTIONS.ScoutPcaOptions = sProcess.options.pcaedit.Value;
+            OPTIONS.PcaOptions = sProcess.options.pcaedit.Value;
         end
     end
     

@@ -30,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Scouts time series';
+    sProcess.Comment     = 'Scout time series';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Extract';
     sProcess.Index       = 352;
@@ -165,18 +165,19 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % PCA now treated in separate function, except if called without saving, e.g. through
     % bst_process('LoadInputFile'). In that case, go through usual process below, which is
-    % appropriate for old deprecated 'pca' method, or for temporary atlas-based files (already
+    % appropriate for legacy deprecated 'pca' method, or for temporary atlas-based files (already
     % scouts) that only need to be loaded.
     if strcmpi(ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && ...
             ~isempty(sProcess.options.pcaedit) && ~isempty(sProcess.options.pcaedit.Value)
         PcaOptions = sProcess.options.pcaedit.Value;
         if isSave % && ~strcmpi(PcaOptions.Method, 'pca')
             % Uncomment above to test legacy pca through extract_scout vs bst_pca
-            % Don't allow concatenating, for now. Option disabled in panel.
-            % The other output options above are not used for PCA: isNorm=false (uses pca for
-            % flattening), isFlip=true, AddRowComment n/a, AddFileComment=true.
 
-            % Check if we have to first flatten unconstrained sources. We only check first file. Other
+            % Don't allow concatenating, for now. Option disabled in panel.
+            % Other output options are not used for PCA: isNorm=false (uses pca for flattening),
+            % isFlip=true, AddRowComment n/a, AddFileComment=true.
+
+            % Check if we have to first flatten unconstrained sources. We only check the first file. Other
             % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
             isUnconstrained = any(CheckUnconstrained(sProcess, sInputs(1))); % any() needed for mixed models
             if isempty(isUnconstrained)
@@ -200,7 +201,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end
             return;
         elseif ~strcmpi(PcaOptions.Method, 'pca') % ~isSave
-            % With the exception of the old deprecated per-file PCA method, which can be done in
+            % With the exception of the legacy deprecated per-file PCA method, which can be done in
             % this function, files should be already scouts if isSave is false.
             % Verify that the files are atlas-based result files.
             isAtlasBased = false;
@@ -290,12 +291,13 @@ function OutputFiles = Run(sProcess, sInputs)
         scoutStd     = [];
         Description  = {};
         scoutComment = [];
+        nComponents = zeros(length(sScoutsFinal), 1);
         for iScout = 1:length(sScoutsFinal)
             % Get scout name
             ScoutName = sScoutsFinal(iScout).Label;
 
             % === GET ROWS INDICES ===
-            [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInputs(iInput), ...
+            [iRows, RowNames, ScoutOrient, nComponents(iScout)] = GetScoutRows(sProcess, sInputs(iInput), ...
                 sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas(iScout));
             if isempty(iRows)
                 OutputFiles = {};
@@ -362,7 +364,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end
 
             % Process differently the unconstrained sources
-            isUnconstrained = (nComponents ~= 1) && ~strcmpi(XyzFunction, 'norm');
+            isUnconstrained = (nComponents(iScout) ~= 1) && ~strcmpi(XyzFunction, 'norm');
             % If the flip was requested but not a good thing to do on this file
             wrnMsg = [];
             if isFlip && isUnconstrained
@@ -388,12 +390,12 @@ function OutputFiles = Run(sProcess, sInputs)
             nFreq = size(ScoutSourceValues,3);
             for iFreq = 1:nFreq
                 % Apply scout function
-                tmpScout = bst_scout_value(ScoutSourceValues(:,:,iFreq), sScoutsFinal(iScout).Function, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
+                tmpScout = bst_scout_value(ScoutSourceValues(:,:,iFreq), sScoutsFinal(iScout).Function, ScoutOrient, nComponents(iScout), XyzFunction, isFlipScout, ScoutName);
                 scoutValues = cat(1, scoutValues, tmpScout);
                 if ~isempty(sourceStd)
                     tmpScoutStd = [];
                     for iBound = 1:size(sourceStd,4)
-                        tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), sScoutsFinal(iScout).Function, ScoutOrient, nComponents, XyzFunction, 0);
+                        tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), sScoutsFinal(iScout).Function, ScoutOrient, nComponents(iScout), XyzFunction, 0);
                         if isempty(tmpScoutStd)
                             tmpScoutStd = tmp;
                         else
@@ -409,7 +411,7 @@ function OutputFiles = Run(sProcess, sInputs)
                     % Add the row name
                     if AddRowComment && ~isempty(RowNames)
                         if isUnconstrained
-                            iRowUnconstr = floor((iRow-1) / nComponents + 1);
+                            iRowUnconstr = floor((iRow-1) / nComponents(iScout) + 1);
                             scoutDesc = [scoutDesc '.' RowNames{iRowUnconstr}];
                         else
                             scoutDesc = [scoutDesc '.' RowNames{iRow}];
@@ -417,7 +419,7 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                     % Add the component index (unconstrained sources)
                     if isUnconstrained
-                        iComp = mod(iRow-1,nComponents) + 1;
+                        iComp = mod(iRow-1,nComponents(iScout)) + 1;
                         scoutDesc = [scoutDesc '.' num2str(iComp)];
                     end
                     % Add file comment
@@ -531,11 +533,16 @@ function OutputFiles = Run(sProcess, sInputs)
                 OutputFiles{end+1} = OutFile;
             % Just return scout values
             else
-                % Add nComponents to indicate how many components per vertex
-                if (nComponents == 1) || strcmpi(XyzFunction, 'norm')
+                % Add nComponents to indicate how many components per vertex, based on all scouts
+                if strcmpi(XyzFunction, 'norm')
                     newMat.nComponents = 1;
                 else
-                    newMat.nComponents = nComponents;
+                    newMat.nComponents = unique(nComponents);
+                    % If multiple values, indicate "mixed model" even though this is a matrix file without GridAtlas.
+                    % Should we warn about this?
+                    if numel(newMat.nComponents) > 1
+                        newMat.nComponents = 0;
+                    end
                 end
                 % Return structure
                 if isempty(OutputFiles)
@@ -590,7 +597,7 @@ function [isUnconstrained, nComponents] = CheckUnconstrained(sProcess, sInputs, 
         end
     end
     % Get the number of source orientations (components) per vertex
-    if strcmpi(sInputs(1).FileType, 'results')
+    if isfield(sInputs, 'FileType') && strcmpi(sInputs(1).FileType, 'results')
         nComponents = sResults.nComponents;
     elseif ~isempty(sResults.GridAtlas)
         nComponents = 0;
@@ -650,8 +657,10 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
                 % sResults already has a copy of the sMat (data file) fields: Time, nAvg, Leff, ChannelFlag.
                 matSourceValues = [];
             end
-            % Keep both data file and inverse model histories. 
-            sResults.History = cat(1, sMat.History, sResults.History);
+            % Keep both data file and inverse model histories, but only if not previously done, e.g. with temporary flattened result files.
+            if isempty(sMat.History) || isempty(sResults.History) || ~isequal(sMat.History{1}, sResults.History{1})
+                sResults.History = cat(1, sMat.History, sResults.History);
+            end
             % Input filename
             if isfield(sResults, 'DataFile') && ~isempty(sResults.DataFile)
                 fileComment = [file_short(sResults.DataFile) '/' sInputs(iInput).Comment];
@@ -781,7 +790,7 @@ end
 
 %% ===== GET SCOUTS INFO =====
 % USAGE:  [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList, ResultsAtlas)
-% sProcess can be empty, only used for bst_report.
+% sProcess can be empty or the process name, only used for bst_report.
 % sInput is only needed if SurfaceFile is missing. We assume all inputs use the same surface.
 % ResultsAtlas is only used for (deprecated or temporary) atlas-based result files.
 % AllAtlasNames and isVolumeAtlas have the same length as the scout list sScoutFinal.
@@ -997,7 +1006,7 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
         return;
     end
 
-    % Sort vertices indices
+    % Sort vertex indices
     iVertices = sort(unique(sScout.Vertices));
     % Make sure this is a row vector
     iVertices = iVertices(:)';
@@ -1008,6 +1017,7 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
         RowNames = [];
     end
     % Get the row and vertex or grid indices of the scout in ImageGridAmp/ImagingKernel
+    % iRows includes each component for unconstrained sources (e.g. 3* number of iVertices)
     [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, sResults.GridAtlas, ~isVolumeAtlas);
     % Mixed headmodel results
     if (nComponents == 0)
@@ -1062,16 +1072,21 @@ end
 
 
 %% ===== SAVE PCA TO TEMPORARY RESULT FILES - FOR OTHER PROCESSES =====
-% Run PCA ('pcaa' or 'pcai') on group of inputs as a preliminary step in some processes (e.g.
-% connectivity), instead of file-by-file through bst_process('LoadInputFile') for other scout
-% methods (including deprecated 'pca', for efficiency). This saves temporary result files which are
-% then substituted as inputs to the calling process.  These temporary files should be deleted at the
-% very end of the process with DeleteTempResultFiles, defined below.  sProcess should NOT be
-% modified, because the temporary atlas-based files need to be loaded with process_extract_scout,
-% through bst_process('LoadInputFile'), so they are still treated as if scouts need to be extracted.
-
+% Run PCA, for unconstrained source flattening and/or scouts, on group of inputs as a preliminary
+% step in some processes (e.g. connectivity), instead of file-by-file through
+% bst_process('LoadInputFile') for other scout methods. This saves temporary result files which are
+% then substituted as inputs to the calling process. These temporary files should be deleted at the
+% very end of the process with DeleteTempResultFiles, defined below. Scout and PCA options should
+% NOT be modified after using this function, because the temporary atlas-based files need to be
+% loaded with process_extract_scout, through bst_process('LoadInputFile'), so they should still be
+% treated as if scouts need to be extracted.
+%
 % sProcess is optional: only used for bst_report and can be the process name only.
-function [sInputA, sInputB, isTempPcaA, isTempPcaB] = RunTempPca(sProcess, sInputA, AtlasListA, PcaOptions, sInputB, AtlasListB)
+%
+% AtlasListA/B: if empty, that group of files is completely ignored. It can be set to 'flat' (or any
+% non empty string) to indicate PCA flattening without PCA scouts. Otherwise it should be a cell
+% array from process option of type 'scout'.
+function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOptions, sInputA, AtlasListA, sInputB, AtlasListB)
     if nargin < 4
         error('Missing input arguments.');
     elseif nargin < 6
@@ -1082,75 +1097,102 @@ function [sInputA, sInputB, isTempPcaA, isTempPcaB] = RunTempPca(sProcess, sInpu
     if isempty(PcaOptions)
         error('Incorrect process options for running PCA with temporary files.');
     end
-
+    % Only set these to true after successfully creating the temp files.
     isTempPcaA = false;
     isTempPcaB = false;
+    % Use these to indicate we will try to create the temp files.
+    isPcaA = false;
+    isPcaB = false;
     % Get scout selection.
     if ~isempty(sInputA) && ~isempty(AtlasListA)
-        isTempPcaA = true;
+        isPcaA = true;
     end
     if ~isempty(sInputB) && ~isempty(AtlasListB)
-        isTempPcaB = true;
+        isPcaB = true;
     end
-    % If both groups of files use the same scouts, concatenate inputs (A and B) and compute PCA across all files together.
+    % If both groups of files use the same scouts (or flattening only), concatenate inputs (A and B)
+    % and compute PCA across all files together.
     isSameScouts = false;
-    if isTempPcaA && isTempPcaB
-        if iscell(AtlasListA) && iscell(AtlasListB) && numel([AtlasListA{:,2}]) == numel([AtlasListB{:,2}]) && ...
-                all(ismember([AtlasListA{:,2}], [AtlasListB{:,2}]))
-            % A and B, call together with same scouts: common PCA
-            isSameScouts = true;
-            nA = numel(sInputA);
-            sInputA = [sInputA, sInputB];
-        else
-            % Different scouts, run B separately.
-            sInputB = RunTempPca(sProcess, sInputB, AtlasListB, PcaOptions);
+    if isPcaA && isPcaB && ...
+            ( iscell(AtlasListA) && iscell(AtlasListB) && numel([AtlasListA{:,2}]) == numel([AtlasListB{:,2}]) && ...
+            all(ismember([AtlasListA{:,2}], [AtlasListB{:,2}])) ) || ...
+            ( ischar(AtlasListA) && ischar(AtlasListB) ) % 'flat' for flattening only, no scout
+        % A and B, call together with same scouts: common PCA
+        isSameScouts = true;
+        nA = numel(sInputA);
+        sInputA = [sInputA, sInputB];
+    end
+    if ~isSameScouts && isPcaB
+        % Different scouts, run B separately.
+        tempInputB = RunTempPca(sProcess, PcaOptions, sInputB, AtlasListB);
+        % Verify the files are different.
+        if isempty(tempInputB) % something went wrong
+            sInputA = []; sInputB = [];
+            return;
+        elseif ~any(ismember({sInputB.FileName}, {tempInputB.FileName}))
+            % All new files, safe to flag as temporary.
+            sInputB = tempInputB;
+            isTempPcaB = true;
         end
-    elseif isTempPcaB
-        % B only: call again without A for simplicity.
-        sInputB = RunTempPca(sProcess, sInputB, AtlasListB, PcaOptions);
+    end
+    if ~isPcaA
         return;
-    elseif ~isTempPcaA
-        error('No scout selection found.');
     end
 
     % Avoid duplicate files, e.g. if A = B.  GetInputStruct doesn't work in that case.  Also faster.
     [~, iIn, iUniq] = unique({sInputA.FileName});
     sInputA = sInputA(iIn);
+    % Even legacy 'pca' is done through here now, for improved history.
+    %     if strcmpi(PcaOptions.Method, 'pca')
+    %         warning('Deprecated legacy ''pca'' method should not be run with RunTempPca, for efficiency.');
+    %     end
 
-    if strcmpi(PcaOptions.Method, 'pca')
-        warning('Deprecated legacy ''pca'' method should not be run with RunTempPca, for efficiency.');
-    end
+    % Flattening
     % Check if we have to first flatten unconstrained sources. We only check first file. Other
     % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
     isUnconstrained = any(CheckUnconstrained(sProcess, sInputA(1))); % any() needed for mixed models
     if isempty(isUnconstrained)
+        sInputA = []; 
         return; % Error already reported;
     elseif isUnconstrained
-        % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files.
+        % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files: isOutMatrix=false
         FlatOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, [], false);
         if isempty(FlatOutputFiles)
+            sInputA = [];
             return; % Error already reported.
+        elseif ~any(ismember({sInputA.FileName}, FlatOutputFiles))
+            % Convert flattened files list back to input structure.
+            sInputA = bst_process('GetInputStruct', FlatOutputFiles);
+            % All new files, safe to flag as temporary.
+            isTempPcaA = true;
         end
-        % Convert flattened files list back to input structure for second call.
-        sInputA = bst_process('GetInputStruct', FlatOutputFiles);
-        % isUnconstrained = false;
     end
-    % Run PCA scout extraction on all files.  Again, outputs temporary result files.
-    % This process always saves matrix outputs: isOutMatrix=true
-    ScoutOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, AtlasListA, false);
-    % Delete temporary flattened files.
-    if isUnconstrained
-        DeleteTempResultFiles(sProcess, sInputA);
+
+    % Scouts
+    if iscell(AtlasListA)
+        % Run PCA scout extraction on all files.  Outputs temporary result files: isOutMatrix=false
+        ScoutOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, AtlasListA, false);
+        % Delete temporary flattened files.
+        if isTempPcaA
+            DeleteTempResultFiles(sProcess, sInputA);
+        end
+        if isempty(ScoutOutputFiles)
+            sInputA = [];
+            return; % Error already reported.
+        elseif isTempPcaA || ~any(ismember({sInputA.FileName}, ScoutOutputFiles))
+            % Convert scout result file list back to input structure for calling process.
+            sInputA = bst_process('GetInputStruct', ScoutOutputFiles);
+            % All new files, safe to flag as temporary.
+            isTempPcaA = true;
+        end
     end
-    % Convert scout result file list back to input structure for calling process.
-    sInputA = bst_process('GetInputStruct', ScoutOutputFiles);
 
     % Recover full list with duplicates.
     sInputA = sInputA(iUniq);
-
     % Split back into A and B lists.
     if isSameScouts 
         sInputB = sInputA(nA+1:end);
+        isTempPcaB = isTempPcaA;
         sInputA(nA+1:end) = [];
     end
 end
@@ -1189,7 +1231,7 @@ function isError = DeleteTempResultFiles(sProcess, sInputs)
             iFileResults(iInput) = iResKer;
         end
     end
-    % Remove duplicates of shared kernels.
+    % Remove duplicates of shared kernels, or in input.
     [Files, iUF] = unique(Files);
     iFileStudies = iFileStudies(iUF);
     iFileResults = iFileResults(iUF);
