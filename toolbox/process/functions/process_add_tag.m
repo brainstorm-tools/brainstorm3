@@ -88,6 +88,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % Update each file
+    reloadDatabase   = 0;
+    subjectsToReload = [];
+    studiesToReload  = [];
     RenamedKernels = {};
     for i = 1:length(sInputs)
         % Get file type
@@ -97,6 +100,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if (sProcess.options.output.Value == 1)
             % Rename link => Rename shared kernel instead
             if strcmpi(fileType, 'link')
+                % Handle reload depending on kernel in GlobalDefault, Default and Normal Study
+                sStudy = bst_get('Study', sInputs(i).iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+                if sSubject.UseDefaultChannel == 2
+                    reloadDatabase = 1;
+                elseif sSubject.UseDefaultChannel == 1
+                    subjectsToReload(end+1) = iSubject;
+                elseif sSubject.UseDefaultChannel == 0
+                    studiesToReload(end+1) = sInputs(i).iStudy;
+                end
                 KernelFile = file_resolve_link(sInputs(i).FileName);
                 % Check if this kernel has already been renamed
                 if ismember(KernelFile, RenamedKernels)
@@ -130,6 +143,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 [fPath, fBase, fExt] = bst_fileparts(OldFileName);
                 NewFileName = bst_fullfile(fPath, [fBase, fileTag, fExt]);
                 OutputFiles{i} = strrep(sInputs(i).FileName, file_short(OldFileName), file_short(NewFileName));
+                % Handle reload depending on kernel in GlobalDefault, Default and Normal Study
+                sStudy = bst_get('Study', sInputs(i).iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+                if sSubject.UseDefaultChannel == 2
+                    reloadDatabase = 1;
+                elseif sSubject.UseDefaultChannel == 1
+                    subjectsToReload(end+1) = iSubject;
+                elseif sSubject.UseDefaultChannel == 0
+                    studiesToReload(end+1) = sInputs(i).iStudy;
+                end
                 % Check if this kernel has already been renamed
                 if ismember(OldFileName, RenamedKernels)
                     continue;
@@ -152,8 +175,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
     end
-    % Reload studies
-    db_reload_studies(unique([sInputs.iStudy]));
+    % Reload necessary subjects and studies
+    if reloadDatabase
+        db_reload_database('current');
+    else
+        if ~isempty(subjectsToReload)
+            db_reload_conditions(unique(subjectsToReload));
+        end
+        if ~isempty(studiesToReload)
+            db_reload_studies(unique(studiesToReload));
+        end
+    end
 end
 
 
