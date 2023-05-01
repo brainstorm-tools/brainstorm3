@@ -107,11 +107,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Value   = [];
     
     % === Margin for filtering
-    sProcess.options.label0.Comment = '<U><B>Buffer:</B></U> Is 2 seconds of extra data for buffer (from both sides) included in input time window?';
-    sProcess.options.label0.Type    = 'label';
+%     sProcess.options.label0.Comment = '<U><B>Buffer:</B></U> Is 2 seconds of extra data for buffer (from both sides) included in input time window?';
+%     sProcess.options.label0.Type    = 'label';
     sProcess.options.margin.Comment = {'No', 'Yes'};
     sProcess.options.margin.Type    = 'radio';
     sProcess.options.margin.Value   = 1;
+    sProcess.options.margin.Hidden  = 1;
 
     % === NESTING FREQ
     sProcess.options.nesting.Comment = 'Frequency for phase band (low):';
@@ -138,7 +139,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === WINDOW LENGTH
     sProcess.options.winLen.Comment = 'Length of sliding time window:';
     sProcess.options.winLen.Type    = 'value';
-    sProcess.options.winLen.Value   = {1.10, 'S', 2};
+    sProcess.options.winLen.Value   = {1.10, 's', 2};
     
     % === SOURCES
     sProcess.options.label5.Comment = '<U><B>Sensors/sources to be investigated :</B></U>';
@@ -195,7 +196,6 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA) %#ok<DEFNU>
-tic
     % Get options
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
@@ -289,7 +289,7 @@ tic
             strMsg = sprintf('Higher nesting frequency is too high (%d Hz) compared with sampling frequency (%d Hz): Limiting to %d Hz', round(OPTIONS.BandNested(2)), round(sRate), round(sRate/3));
             disp([10 'process_pac> ' strMsg]);
             bst_report('Warning', sProcess, [], strMsg);
-            % Fix higher frequencyy
+            % Fix higher frequency
             OPTIONS.BandNested(2) = sRate/3;
         end
         % Check the extent of bandNested band
@@ -307,7 +307,6 @@ tic
         fprintf('Processing %d blocks of %d signals each.\n', nBlocks, MAX_BLOCK_SIZE);
         % Process each block of signals
         for iBlock = 1:nBlocks
-%             tic
             bst_progress('text', sprintf('PAC: File %d/%d - Block %d/%d', iFile, length(sInputsA), iBlock, nBlocks));
             bst_progress('set', round(startValue + (iFile-1)/length(sInputsA)*100 + iBlock/nBlocks*100));    
             % Indices of the signals
@@ -527,7 +526,6 @@ function NewFile = SaveFile(sPAC, iOuptutStudy, DataFile, sInput, Comment, nAvg,
     bst_save(NewFile, FileMat, 'v6');
     % Add file to database structure
     db_add_data(iOuptutStudy, NewFile, FileMat);
-    toc
 end
 
 
@@ -550,8 +548,7 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 %    - ValPAC:         [nChannels, nTimeOut] Maximum PAC strength in each  time point
 %    - NestedFreq:     [nChannels, nTimeOut] Fnested corresponding to maximum synchronization index in each time point
 %    - NestingFreq:    [nChannels, nTimeOut] Fnesting corresponding to maximum synchronization index in each time point
-%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum
-%                      synchronization index in each time point (rad)
+%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum synchronization index in each time point (rad)
 %    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency (fp) for all times, channels and nested intervals
 %    - DynamicPAC:     [nNestedCenters,nTimeOut,nChannels] full array of PAC
 %    - DynamicPhase:   [nNestedCenters,nTimeOut,nChannels] Preferred phase
@@ -561,7 +558,9 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 %   Estimation of Phase Amplitude Coupling (PAC) with tPAC method.
 %
 % Author:  Soheila Samiee, 2013-2017
-%
+
+% Note: dimension order is inconsistent in output fields: DynamicX variables are permuted outside
+% this function to put channels first, while the ones for max PAC are permuted inside this function.
 
 if (nargin < 4) || isempty(fpBand)
     fpBand = [4, 8];
@@ -659,7 +658,7 @@ fProlloff = [];% transition band of filters to determine fP
 sPAC.HighFreqs = nestedCenters;
 nFa = length(nestedCenters);
 nSources = size(Xinput,1);
-isources = 1:nSources;
+% isources = 1:nSources;
 nTime = fix((nTS-fix(winLen*sRate))/fix(tStep*sRate))+1;
 TimeOut = winLen/2 : tStep : winLen/2+(nTime-1)*tStep;        % seconds
 PAC = zeros(nFa,nTime,nSources);                              % PAC measure
@@ -827,14 +826,20 @@ end
 
 
 % ===== EXTRACTING THE PAC RELATED VALUES ===== %
+% Max PAC across fA
+% PAC size is [nFreq, nTime, nChannel], but we output these max fields with nChannel first.
 [PACmax,maxInd] = max(abs(PAC),[],1); 
-Fnested  = squeeze(nestedCenters(maxInd))';
-Sind     = repmat((1:nSources), nTime, 1);           % Source indices
-Tind     = repmat((1:nTime)', 1, nSources);              % Time indices
-linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
-Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
-phase_value    = reshape(angle(PAC(linInd)),nTime,nSources)';
-PACmax   = squeeze(PACmax)';
+% Fnested  = squeeze(nestedCenters(maxInd))';
+% Sind     = repmat((1:nSources), nTime, 1);           % Source indices
+% Tind     = repmat((1:nTime)', 1, nSources);              % Time indices
+% linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
+% Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
+% phase_value    = reshape(angle(PAC(maxInd,:,:)),nTime,nSources)';
+% PACmax   = squeeze(PACmax)';
+Fnested  = permute(nestedCenters(maxInd), [3, 2, 1]); % vector to 3d array, then permute.
+Fnesting = permute(nestingFreq(maxInd,:,:), [3, 2, 1]);
+phase_value = permute(angle(PAC(maxInd,:,:)), [3, 2, 1]);
+PACmax   = permute(PACmax, [3, 2, 1]);
 
 % ===== Interpolation in time domain for smoothing the results ==== %
 if doInterpolation
@@ -925,8 +930,8 @@ else
     sPAC.PhasePAC = [phase_value(:), phase_value(:)];
     sPAC.TimeOut  = [TimeOut, TimeOut+0.001];
     sPAC.DynamicPAC(:,1:2,1:nSources) = repmat(abs(PAC),[1,2,1]);
-    sPAC.DynamicNesting(:,1:2,1:nSources)  = repmat(abs(nestingFreq),[1,2,1]);
-    sPAC.DynamicPhase(:,1:2,1:nSources)  = repmat(abs(DynamicPhase),[1,2,1]);
+    sPAC.DynamicNesting(:,1:2,1:nSources)  = repmat(nestingFreq,[1,2,1]);
+    sPAC.DynamicPhase(:,1:2,1:nSources)  = repmat(DynamicPhase,[1,2,1]);
 end
 
 end
