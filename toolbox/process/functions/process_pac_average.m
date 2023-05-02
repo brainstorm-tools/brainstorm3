@@ -129,7 +129,10 @@ function [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase)
         
         if isfield(tpacMat.sPAC, 'DirectPAC')
             % size is [nSignals, nTime=1, nLowFreqs, nHighFreqs]
-            tpacMat.sPAC.DirectPAC = zeros(size(tpacMat.sPAC.DirectPAC));
+            % Keep first file's data to avoid loading again.
+            tpacIn = tpacMat;
+            % Reinitialize output array.
+            tpacMat.sPAC.DirectPAC = zeros(size(tpacMat.sPAC.DirectPAC, 1:3));
             tpacMat.nAvg = 0;
             for iFile = 1:N
                 if iFile > 1
@@ -147,8 +150,8 @@ function [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase)
                     end
                 end
                 % Check full maps were saved.
-                if isempty(tpacMat.sPAC.DirectPAC)
-                    Message = ['Frequencies of file #',num2str(iFile),' is not the same as previous files.'];
+                if isempty(tpacIn.sPAC.DirectPAC)
+                    Message = ['Full PAC array is missing for file #',num2str(iFile),'.'];
                     bst_report('Error', 'process_pac_average', sInput, Message);
                     tpacMat = [];
                     return;
@@ -171,14 +174,17 @@ function [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase)
                 tpacMat.sPAC.DirectPAC = reshape(tpacMat.sPAC.DirectPAC, pacDims);
             end
             [nSources, nWindows, nLow, nHigh] = size(tpacMat.sPAC.DirectPAC);
-            [tpacMat.sPAC.TF, maxInd] = max(tpacMat.sPAC.DirectPAC(:, :, :), 3); % max over all fA and fP pairs.
-            [iFp, iFa] = ind2sub([nLow, nHigh], maxInd); 
+            [tpacMat.sPAC.TF, iLinMax] = max(tpacMat.sPAC.DirectPAC(:, :, :), 3); % max over all fA and fP pairs.
+            [iFp, iFa] = ind2sub([nLow, nHigh], iLinMax); 
             tpacMat.sPAC.NestingFreq = tpacMat.LowFreq(iFp);
             tpacMat.sPAC.NestedFreq = tpacMat.HighFreqs(iFa);
             
         elseif isfield(tpacMat.sPAC, 'DynamicPAC')
             % size is [nSignals, nTime, nHighFreqs, nTrials], 4th dim if "averaging"/concatenating was selected in process_pac_dynamic.
-            tpacMat.sPAC.DynamicPAC = zeros(size(tpacMat.sPAC.DynamicPAC));
+            % Keep first file's data to avoid loading again.
+            tpacIn = tpacMat;
+            % Reinitialize output array.
+            tpacMat.sPAC.DynamicPAC = zeros(size(tpacMat.sPAC.DynamicPAC, 1:3));
             tpacMat.nAvg = 0;
             %             Nesting = tpacMat.sPAC.DynamicNesting;
             for iFile = 1:N
@@ -223,13 +229,14 @@ function [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase)
 
             % Recompute max over fA across averaged tPAC, i.e. do max of mean, not mean of max.
             % Careful: not same array dim order than where this happens in process_pac_dynamic.
-            [tpacMat.sPAC.TF, maxInd] = max(abs(tpacMat.sPAC.DynamicPAC), [], 3); 
-            tpacMat.sPAC.NestedFreq = HighFreqs(maxInd); % vector to 2d array.
+            [tpacMat.sPAC.TF, iLinMax] = max(abs(tpacMat.sPAC.DynamicPAC), [], 3, 'linear'); 
+            [~, ~, iMax] = ind2sub(size(tpacMat.sPAC.DynamicPAC), iLinMax);
+            tpacMat.sPAC.NestedFreq = tpacMat.sPAC.HighFreqs(iMax); % vector to 2d array.
             tpacMat.sPAC.NestingFreq = []; % no longer meaningful.
 
             if usePhase
                 tpacMat.sPAC.DynamicPhase = angle(tpacMat.sPAC.DynamicPAC);
-                tpacMat.sPAC.PhasePAC = tpacMat.sPAC.DynamicPhase(:,:,maxInd); % phase of TF (ValPAC)
+                tpacMat.sPAC.PhasePAC = tpacMat.sPAC.DynamicPhase(iLinMax); % phase of TF (ValPAC)
                 % Go back to real values after phases extracted.
                 tpacMat.sPAC.DynamicPAC = abs(tpacMat.sPAC.DynamicPAC);
             else
