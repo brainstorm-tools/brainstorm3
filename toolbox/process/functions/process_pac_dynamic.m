@@ -38,7 +38,6 @@ function varargout = process_pac_dynamic( varargin )
 %   - 1.1.4:  Soheila, (isFull) display is fixed - Line 175, also comment is modified in save file section, June 2016
 %   - 1.2.0:  Soheila, optimizing in terms of running time with decreasing
 %             loop over time, July 2016
-%
 %   - 2.0.1: Soheila : MAJOR CHANGES (Oct. 2016)
 %                - Loop on Fa before time => faster + Less edge artifact
 %                - Filters bandwidth and stop band: modified
@@ -49,31 +48,24 @@ function varargout = process_pac_dynamic( varargin )
 %                - Detection of Fp => Not multiplied by normalizing vector
 %                  but check if any peak available in PSD of original 
 %                  signal close by
-%                  
 %   - 2.1.0: SS, Nov. 2016
 %                - Filters are all updated to new filters in Brainstorm
 %                  (bst_bandpass_hfilter)
 %   - 2.1.1: SS, Dec. 2016
 %                - Improve in confirmation of fp* selected in the algorithm
-%
 %   - 2.2.0: SS, Dec. 2016
 %                - Complete saving of phase info.
-%
 %   - 2.3.0: SS. Dec. 2016
 %                - Adding the possibility of importing data with margin
 %                included in it
-%
 %   - 2.3.1: SS. Feb. 2017
 %                - Number of points for Fourier transform is changed
-%
 %   - 2.3.2: SS. May. 2017
 %                - Add one point to the beginning and the end fp of interest 
 %                in the spectrum for better estimation of local extermum in 
 %                fp* detection  (line 830)
-%
 %   - 2.4: SS. Aug. 2017 
 %                - "dpac" name changed to "tPAC"
-%   
 %   - 2.5: SS. Aug. 2018: Bug fix
 %                - Adding TimeInit for files with "all recording" option
 %                checked
@@ -90,7 +82,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'tPAC ';
+    sProcess.Comment     = 'tPAC';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -100,6 +92,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutPac#Time-resolved_PAC_estimation_with_tPAC';
 
     % === TIME WINDOW
     sProcess.options.timewindow.Comment = 'Time:';
@@ -130,7 +123,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
 %                                         '   More than one center frequencies (default: 20)' };
 %     sProcess.options.fa_type.Type    = 'radio';
 %     sProcess.options.fa_type.Value   = 2;
-
+ 
     % === FREQ RESOLUTION FOR FREQ-FOR-AMPLITUDE
     sProcess.options.fAResolution.Comment = 'Frequency resolution for frequency for amplitude:';
     sProcess.options.fAResolution.Type    = 'value';
@@ -829,17 +822,13 @@ end
 % Max PAC across fA
 % PAC size is [nFreq, nTime, nChannel], but we output these max fields with nChannel first.
 [PACmax,maxInd] = max(abs(PAC),[],1); 
-% Fnested  = squeeze(nestedCenters(maxInd))';
-% Sind     = repmat((1:nSources), nTime, 1);           % Source indices
-% Tind     = repmat((1:nTime)', 1, nSources);              % Time indices
-% linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
-% Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
-% phase_value    = reshape(angle(PAC(maxInd,:,:)),nTime,nSources)';
-% PACmax   = squeeze(PACmax)';
-Fnested  = permute(nestedCenters(maxInd), [3, 2, 1]); % vector to 3d array, then permute.
-Fnesting = permute(nestingFreq(maxInd,:,:), [3, 2, 1]);
-phase_value = permute(angle(PAC(maxInd,:,:)), [3, 2, 1]);
-PACmax   = permute(PACmax, [3, 2, 1]);
+Fnested  = squeeze(nestedCenters(maxInd))';
+Sind     = repmat((1:nSources), nTime, 1);           % Source indices
+Tind     = repmat((1:nTime)', 1, nSources);              % Time indices
+linInd   = sub2ind(size(PAC),maxInd(:),Tind(:),Sind(:));
+Fnesting = reshape(nestingFreq(linInd),nTime,nSources)';
+phase_value    = reshape(angle(PAC(linInd)),nTime,nSources)';
+PACmax   = squeeze(PACmax)';
 
 % ===== Interpolation in time domain for smoothing the results ==== %
 if doInterpolation
