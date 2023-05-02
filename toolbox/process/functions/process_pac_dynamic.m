@@ -296,8 +296,10 @@ function OutputFiles = Run(sProcess, sInputsA) %#ok<DEFNU>
         MAX_BLOCK_SIZE = OPTIONS.MaxSignals;
         nBlocks = ceil(nSignals / MAX_BLOCK_SIZE);
         sPAC = [];
-        % Display processing time
-        fprintf('Processing %d blocks of %d signals each.\n', nBlocks, MAX_BLOCK_SIZE);
+        % Display processing time if more than one block, otherwise confusing because there may not even be MAX_BLOCK_SIZE signals. 
+        if nBlocks > 1 
+            fprintf('Processing %d blocks of %d signals each.\n', nBlocks, MAX_BLOCK_SIZE);
+        end
         % Process each block of signals
         for iBlock = 1:nBlocks
             bst_progress('text', sprintf('PAC: File %d/%d - Block %d/%d', iFile, length(sInputsA), iBlock, nBlocks));
@@ -766,40 +768,36 @@ for ifreq=1:nFa
             clear pks_env locs_env
             %%% end
 
-            if iSource == 1
-                %%%nestingFreq(ifreq,iTime,isources) = freq(ind(1)+indm-1);
-                nestingFreq(ifreq,iTime,:) = deal(freq(indm(iSource)));
-                %             bandNesting = [max([squeeze(nestingFreq(ifreq,iTime,iSource))-bandNestingLen/2,zeros(size(nestingFreq,3),1)],[],2),...
-                %                 squeeze(nestingFreq(ifreq,iTime,iSource))+bandNestingLen/2];
-                %             bandNesting(bandNesting<.15)=.15;
+            %%%nestingFreq(ifreq,iTime,isources) = freq(ind(1)+indm-1);
+            nestingFreq(ifreq,iTime,iSource) = freq(indm(iSource));
+            %             bandNesting = [max([squeeze(nestingFreq(ifreq,iTime,iSource))-bandNestingLen/2,zeros(size(nestingFreq,3),1)],[],2),...
+            %                 squeeze(nestingFreq(ifreq,iTime,iSource))+bandNestingLen/2];
+            %             bandNesting(bandNesting<.15)=.15;
 
-                bandNesting = [freq(indm(iSource)) - .5 ; freq(indm(iSource)) + .5];
+            bandNesting = [max(0, freq(indm(iSource)) - .5) ; freq(indm(iSource)) + .5];
 
-                % Filtering in fP band
-                Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1), bandNesting(2), isMirror, isRelax, [], fProlloff, Method);    % Filtering
-                Xnesting = Xnesting(:, nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin
-                % Hilbert transform
-                Z = hilbert_fcn(Xnesting')';
-                % Phase detection
-                nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency
-                nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
+            % Filtering in fP band
+            Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1), bandNesting(2), isMirror, isRelax, [], fProlloff, Method);    % Filtering
+            Xnesting = Xnesting(:, nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin
+            % Hilbert transform
+            Z = hilbert_fcn(Xnesting')';
+            % Phase detection
+            nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency
+            nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
 
-                %%% Refine PAC estimation
-                refine_bandNested = [nestedCenters(ifreq)-1.1*bandNesting(2),nestedCenters(ifreq)+1.1*bandNesting(2)];
+            %%% Refine PAC estimation
+            refine_bandNested = [nestedCenters(ifreq)-1.1*bandNesting(2),nestedCenters(ifreq)+1.1*bandNesting(2)];
 
-                % Filtering in fA band
-                refine_Xnested = bst_bandpass_hfilter(Xinput, sRate,refine_bandNested(1), refine_bandNested(2), isMirror, isRelax, [], fArolloff, Method);    % Filtering
-                refine_Xnested = refine_Xnested(:, nMargin-nHilMar+1:end-nMargin+nHilMar);            % Removing part of the margin
+            % Filtering in fA band
+            refine_Xnested = bst_bandpass_hfilter(X, sRate,refine_bandNested(1), refine_bandNested(2), isMirror, isRelax, [], fArolloff, Method);    % Filtering
+            refine_Xnested = refine_Xnested(:, nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin
 
-                % Hilbert transform
-                refine_Z = hilbert_fcn(refine_Xnested')';
+            % Hilbert transform
+            refine_Z = hilbert_fcn(refine_Xnested')';
 
-                % Phase and envelope detection
-                refine_nestedEnv_total = abs(refine_Z);                                              % Envelope of nested frequency rhythms
-                refine_nestedEnv_total = refine_nestedEnv_total(:, nHilMar:end-nHilMar);              % Removing the margin
-
-                refine_nestedEnv = refine_nestedEnv_total(:,(iTime-1)*fix(tStep*sRate)+[1:fix(winLen*sRate)]);
-            end
+            % Phase and envelope detection
+            refine_nestedEnv = abs(refine_Z);                                              % Envelope of nested frequency rhythms
+            refine_nestedEnv = refine_nestedEnv(:,nHilMar:fix(winLen*sRate)+nHilMar-1);   % Removing the margin
 
             iphase = find(diff(sign(nestingPh(iSource, :) - nestingPh(iSource, 1))) == 2 | sign(nestingPh(iSource, 2:end)-nestingPh(iSource, 1)) == 0) - 1;
             if isempty(iphase)
