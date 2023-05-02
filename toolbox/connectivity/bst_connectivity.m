@@ -101,15 +101,19 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS
     bst_report('Error', OPTIONS.ProcessName, [], 'Invalid frequency resolution.');
     return;
 end
+% Processing [1xN] or [NxN]
+isConnNN = isempty(FilesB);
 % Keep original input files for attaching output node in tree, and for history, when doing PCA.
 OrigFilesA = GetFileNames(FilesA);
-OrigFilesB = GetFileNames(FilesB);
+if isConnNN
+    OrigFilesB = OrigFilesA;
+else
+    OrigFilesB = GetFileNames(FilesB);
+end    
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
     OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','ciplv','ciplvt','wpli','wplit','aec','henv'})) && (isempty(FilesB) || (isequal(OrigFilesA, OrigFilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
-% Processing [1xN] or [NxN]
-isConnNN = isempty(FilesB);
 % Options for LoadInputFile(), for FilesA and FilesB separately
 LoadOptionsA.IgnoreBad   = OPTIONS.IgnoreBad;  % From data files: KEEP the bad channels
 LoadOptionsA.ProcessName = OPTIONS.ProcessName;
@@ -204,6 +208,10 @@ if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
     end
 end
 
+ProcessName = OPTIONS.ProcessName;
+% Catch errors to ensure temporary files are deleted.
+try
+
 % Convert inputs to file names
 FilesA = GetFileNames(FilesA);
 FilesB = GetFileNames(FilesB);
@@ -249,7 +257,6 @@ if ~strcmpi(OPTIONS.OutputMode, 'input')
     for iFile = 1:length(FilesA)
         if isConnNN
             OutHist = bst_history('add', OutHist, 'src', [' - ' OrigFilesA{iFile}]);
-            OrigFilesB = OrigFilesA;
         else
             OutHist = bst_history('add', OutHist, 'src', [' -A: ' OrigFilesA{iFile} ' -B: ' OrigFilesB{iFile}]);
         end
@@ -277,7 +284,7 @@ if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
     sInputA = bst_process('LoadInputFile', FilesA{1}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
     if (size(sInputA.Data,2) < 2)
         bst_report('Error', OPTIONS.ProcessName, FilesA{1}, 'Invalid time selection, check the input time window.');
-        return;
+        CleanExit; return;
     end
     % FilesA load calls
     sInputA.Data = cell(1, nTrials);
@@ -291,7 +298,7 @@ if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
         sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
         if (size(sInputB.Data,2) < 2)
             bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
-            return;
+            CleanExit; return;
         end
         % FilesB load calls
         sInputB.Data = cell(1, nTrials);
@@ -313,7 +320,7 @@ elseif (isConcat >= 1)
     sInputA = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, isConcat, OPTIONS.RemoveEvoked, startValue);
     if isempty(sInputA)
         bst_report('Error', OPTIONS.ProcessName, FilesA, 'Could not calculate the average of input files A: the number of signals of all the files must be identical.');
-        return;
+        CleanExit; return;
     end
     FilesA = FilesA(1);
     % Concatenate FileB
@@ -321,13 +328,13 @@ elseif (isConcat >= 1)
         sInputB = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB, isConcat, OPTIONS.RemoveEvoked, startValue);
         if isempty(sInputB)
             bst_report('Error', OPTIONS.ProcessName, FilesB, 'Could not calculate the average of input files B: the number of signals of all the files must be identical.');
-            return;
+            CleanExit; return;
         end
         FilesB = FilesB(1);
         % Some quality check
         if (size(sInputA.Data,2) ~= size(sInputB.Data,2))
             bst_report('Error', OPTIONS.ProcessName, {FilesA{:}, FilesB{:}}, 'Files A and B must have the same number of time samples.');
-            return;
+            CleanExit; return;
         end
     else
         sInputB = sInputA;
@@ -339,14 +346,14 @@ elseif OPTIONS.RemoveEvoked
     [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, 0, 1, startValue);
     if isempty(sAverageA)
         bst_report('Error', OPTIONS.ProcessName, FilesA, 'Could not calculate the average of input files A: the dimensions of all the files must be identical.');
-        return;
+        CleanExit; return;
     end
     % Average: Files B
     if ~isConnNN
         [tmp, sAverageB] = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB, 0, 1, startValue);
         if isempty(sAverageB)
             bst_report('Error', OPTIONS.ProcessName, FilesB, 'Could not calculate the average of input files B: the dimensions of all the files must be identical.');
-            return;
+            CleanExit; return;
         end
     end
 end
@@ -366,7 +373,7 @@ for iFile = 1:length(FilesA)
         sInputA = bst_process('LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
         if (size(sInputA.Data,2) < 2)
             bst_report('Error', OPTIONS.ProcessName, FilesA{iFile}, 'Invalid time selection, check the input time window.');
-            return;
+            CleanExit; return;
         end
         % Check for atlas-based files: no "after" option for the scouts
         if isfield(sInputA, 'Atlas') && ~isempty(sInputA.Atlas) && (length(sInputA.Atlas.Scouts) == size(sInputA.Data,1))
@@ -379,7 +386,7 @@ for iFile = 1:length(FilesA)
                 nTimeA = size(sInputA.Data,2);
             elseif (size(sInputA.Data,2) ~= nTimeA)
                 bst_report('Error', OPTIONS.ProcessName, FilesA{iFile}, 'Invalid time selection, probably due to different time vectors in the input files.');
-                return;
+                CleanExit; return;
             end
         end
         % Remove average
@@ -392,7 +399,7 @@ for iFile = 1:length(FilesA)
             sInputB = bst_process('LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
             if isempty(sInputB.Data)
                 bst_report('Error', OPTIONS.ProcessName, FilesB{iFile}, 'Invalid time selection, check the input time window.');
-                return;
+                CleanExit; return;
             end
             % Check for atlas-based files: no "after" option for the scouts
             if isfield(sInputB, 'Atlas') && ~isempty(sInputB.Atlas) && (length(sInputB.Atlas.Scouts) == size(sInputB.Data,1))
@@ -402,7 +409,7 @@ for iFile = 1:length(FilesA)
             % Some quality check
             if (size(sInputA.Data,2) ~= size(sInputB.Data,2))
                 bst_report('Error', OPTIONS.ProcessName, {FilesA{iFile}, FilesB{iFile}}, 'Files A and B must have the same number of time samples.');
-                return;
+                CleanExit; return;
             end
             % Remove average
             if ~isempty(sAverageB)
@@ -426,12 +433,12 @@ for iFile = 1:length(FilesA)
 %     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
 %     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))
 %         bst_report('Error', OPTIONS.ProcessName, [], 'Connectivity functions are not supported yet for mixed source models.');
-%         return;
+%         CleanExit; return;
 %     end
     % PLV: Incompatible with unconstrained sources  (saves complex values)
     if ismember(OPTIONS.Method, {'plv','plvt','ciplv','ciplvt','wpli','wplit'}) && (isUnconstrA || isUnconstrB)
         bst_report('Error', OPTIONS.ProcessName, [], 'The PLV measures are not supported yet on unconstrained sources.');
-        return;
+        CleanExit; return;
     end
     
     % ===== GET SCOUTS SCTRUCTURES =====
@@ -503,7 +510,7 @@ for iFile = 1:length(FilesA)
             % Error processing
             if isempty(R)
                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                return;
+                CleanExit; return;
             elseif ~isempty(Messages)
                 bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
             end
@@ -519,7 +526,7 @@ for iFile = 1:length(FilesA)
                 iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
                 if isempty(iFreq)
                     bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
-                    return;
+                    CleanExit; return;
                 end
                 % Cut the unwanted frequencies
                 R = R(:,:,iFreq);
@@ -597,7 +604,7 @@ for iFile = 1:length(FilesA)
                 iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
                 if isempty(iFreq)
                     bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
-                    return;
+                    CleanExit; return;
                 end
                 % Cut the unwanted frequencies
                 R = R(:,:,iFreq);
@@ -840,7 +847,7 @@ for iFile = 1:length(FilesA)
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
-            return;
+            CleanExit; return;
     end
     % Replace any NaN values with zeros
     R(isnan(R)) = 0;
@@ -931,13 +938,18 @@ for iFile = 1:length(FilesA)
                 Ravg = R ./ length(FilesA);
             elseif ~isequal(size(Ravg), size(R))
                 bst_report('Error', OPTIONS.ProcessName, [], 'Input files have different size dimensions or different lists of bad channels.');
-                return;
+                CleanExit; return;
             else
                 Ravg = Ravg + R ./ length(FilesA);
             end
             nAvg = nAvg + 1;
     end
 end % FilesA loop
+
+catch ME
+    CleanExit;
+    rethrow(ME);
+end
 
 %% ===== DELETE TEMP PCA FILES =====
 if ~isempty(sInputToDel)
@@ -949,8 +961,16 @@ if strcmpi(OPTIONS.OutputMode, 'avg')
     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands, OutHist);
 end
 
+%% ===== DELETE TEMP PCA FILES before exiting =====
+function CleanExit
+    % Delete temp PCA files.
+    if ~isempty(sInputToDel)
+        process_extract_scout('DeleteTempResultFiles', ProcessName, sInputToDel);
+    end
+end
 
 end
+
 
 
 
