@@ -13,9 +13,10 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %                   concatenated (per subject).
 %          'pcai' : *Individual* files.  Computes a separate PCA component for each file, but correcting
 %                   the sign so it aligns (positive projection) with the 'pcaa' reference component.
-%    - AtlasList: If provided, run PCA to extract one time series per scout; if empty: flatten
-%      unconstrained sources instead.  Both scout extraction and flattening cannot be run from the
-%      same bst_pca call, it returns an error.
+%    - AtlasList: If provided, run PCA to extract one time series per scout, per source orientation
+%      (i.e. 3 per scout for unconstrained sources). If empty: flatten unconstrained sources
+%      instead.  Both scout extraction and flattening cannot be run from the same bst_pca call. If
+%      both are needed, it is recommended to flatten first, then do scout extraction.
 %    - isOutMatrix: If true, force scout PCA to save 'matrix' type files; otherwise, saves 'results',
 %      in kernel form when possible (when all inputs from a condition are kernel links).
 %    - OutTimeWindow: Requested time window for output time series when isOutMatrix is true. It is
@@ -33,19 +34,19 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    them after use (e.g. connectivity processes).
 %
 % IMPLEMENTATION NOTES:
-%    Scout extraction (when non empty AtlasList provided) would work with constrained or
-%    unconstrained sources; not requiring to flatten separately first. However, to simplify the
-%    possible workflows, for now we do them sequentially, flat then scout, such that the results
-%    are the same as if a user did flattening as a separate process first.
-%    (Note that for viewing scout timeseries through the GUI, this function is bypassed and PCA is
-%    applied for both scouts and flattening together in view_scouts.)
+%    PCA for scout extraction (when non empty AtlasList provided) with unconstrained sources could
+%    in theory be done as a single step and provide a single time series; not requiring to flatten
+%    separately first. However, to simplify the possible workflows, they must be done sequentially
+%    in Brainstorm, flat then scout. (Note that for viewing scout timeseries through the GUI, this
+%    function is bypassed and PCA is applied for both scouts and flattening together in
+%    view_scouts.)
 %
 %    Scout PCA components (and so also the timeseries or kernel) are rescaled to have norm
 %    1/sqrt(nVertices) instead of 1, to match the scale of the 'mean' component and be more
 %    comparable to it, and to other scouts.  By definition, PCA will still always give timeseries
-%    with more power than 'mean'.  This is done in bst_scout_value.
+%    with more power than 'mean'.  This scaling is done in bst_scout_value.
 %
-%    The differences between the 3 methods are all dealt with within this function (with one
+%    The differences between the 3 PCA methods are all dealt with within this function (with one
 %    exception pushed to bst_source_orient for convenience for now).  As such, 'pca' is used for all
 %    3 cases in other processes and functions.
 
@@ -173,14 +174,12 @@ end
 if isempty(isUnconstrained)
     return; % Error already reported.
 end
-% Refuse scout PCA on unconstrained sources.  Just require separate calls to bst_pca for now.
-if any(isUnconstrained) && isScout
-    % TODO Remove this error if we allow 3d scout PCA.
-    Message = 'Unconstrained sources detected, flatten sources before PCA for scouts.';
-    bst_report('Error', sProcess, sInputs, Message);
-    return;
-    % Could otherwise have recursive call to do flattening first.
-elseif all(~isUnconstrained) && ~isScout
+% We now allow 3d scout PCA on unconstrained sources.
+% if any(isUnconstrained) && isScout
+%     Message = 'Unconstrained sources detected, flatten sources before PCA for scouts.';
+%     bst_report('Error', sProcess, sInputs, Message);
+%     return;
+if all(~isUnconstrained) && ~isScout
     % Nothing to do.
     OutputFiles = {sInputs.FileName};
     return;
@@ -321,7 +320,7 @@ end
 for iScout = 1:nScouts % scouts or regions of the mixed model
     if isScout
         % Get scout row indices and more.
-        % TODO to allow 3d scout PCA: add support for atlas-based & mixed model in GetScoutRows.
+        % Support for atlas-based & mixed model files was added in GetScoutRows.
         % Unconstrained sources: xyz are separate rows
         [sScouts(iScout).iRows, sScouts(iScout).RowNames, sScouts(iScout).ScoutOrient, nComp(iScout)] = ...
             process_extract_scout('GetScoutRows', sProcess, sInputs(1), sScouts(iScout), sResults, sSurf, isVolumeAtlas(iScout));
@@ -354,7 +353,25 @@ end
 if isScout
     % Output row numbers is more complicated if allowing unconstrained (and therefore mixed models)
     iOutRow = cumsum(nComp);
+    nOutRow = iOutRow(end);
     iOutRow = [iOutRow - nComp(1) + 1, iOutRow];
+end
+% Row labels: add the component index for unconstrained sources
+if isOutMatrix
+    if any(isUnconstrained)
+        RowLabels = cell(nOutRow, 1);
+        for iScout = 1:nScouts
+            if isUnconstrained(iScout)
+                for iComp = 1:nComp(iScout)
+                    RowLabels{iOutRow(iScout, 1) + iComp - 1} = [sScouts(iScout).Label '.' num2str(iComp)];
+                end
+            else
+                RowLabels{iOutRow(iScout, 1)} = sScouts(iScout).Label;
+            end
+        end
+    else
+        RowLabels = {sScouts.Label};
+    end
 end
 
 % Atlas-based files: no PCA needed.
@@ -484,13 +501,7 @@ for iInput = 1:nInputs
             sResults = bst_history('add', sResults, 'compute', HistoryMsg{iH});
         end
         if isOutMatrix % forced for timefreq inputs
-            % TODO to allow 3d scout PCA: {sScouts.Label} need duplication for unconstrained
-            %     % Add the component index (unconstrained sources)
-            %     if isUnconstrained
-            %         iComp = mod(iRow-1,nComponents(iScout)) + 1;
-            %         scoutDesc = [scoutDesc '.' num2str(iComp)];
-            %     end
-            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment, OutTimeWindow);
+            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, RowLabels, FileComment, OutTimeWindow);
         else
             % Save single-file result file, full or kernel. For scouts, this is a deprecated
             % atlas-based result file, meant only to be used temporarily and then deleted by the
@@ -640,7 +651,7 @@ switch PcaOptions.Method
             % Save individual files, or shared kernel.
             sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
             if isOutMatrix % forced for timefreq inputs
-                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, {sScouts.Label}, FileComment, OutTimeWindow);
+                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, RowLabels, FileComment, OutTimeWindow);
             elseif isOutSharedKernel
                 % Save shared kernel and find link.  We only get here for the first file in this
                 % condition.
@@ -661,7 +672,6 @@ switch PcaOptions.Method
             bst_progress('inc', 1);
         end
 end
-%bst_progress('stop');
 
 % Don't update the tree here since the files may be temporary (e.g. flattening from process_extract_scout).
 %     panel_protocols('UpdateNode', 'Study', unique([sInputs.iStudy]));

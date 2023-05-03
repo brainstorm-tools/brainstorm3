@@ -952,6 +952,7 @@ end
 % nComponents is always 1 or 3. If a scout spans multiple regions, an error is returned.
 % RowNames is empty or vertex numbers (cell array of str) only for 'All' scout function.
 % ScoutFunc is only used to warn if a scout in an atlas-based result file was computed with a different function.
+% This function supports atlas-based mixed-model result files, now possibly created in bst_pca.
 function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas, ScoutFunc)
     % Add potentially missing fields.
     if ~isfield(sResults, 'GridAtlas')
@@ -981,23 +982,51 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
 
     % Atlas-based result files: find matching scout
     if ~isempty(sResults.Atlas)
-        % Confirm this is not a mixed model: there should not be any process that create such files (mixed & atlas-based)
-        if nComponents == 0
-            error('Detected unsupported file type: mixed model and atlas-based result.');
-        end
-        % Atlas-based timefreq also not supported for now (error when loading).
+        % Atlas-based timefreq not supported for now (error when loading).
         % Find the requested scout in the file
         iScoutRes = find(strcmpi(sScout.Label, {sResults.Atlas(1).Scouts.Label}));
         % Multiple scouts with the same name in an atlas: Error
         if (length(iScoutRes) > 1)
             bst_report('Error', sProcess, sInputs, ['File is already based on an atlas, but multiple scouts with name "' sScout.Label '" found.']);
-            % If the scout names cannot be found: error
+            return;
+        % If the scout names cannot be found: error
         elseif isempty(iScoutRes)
             bst_report('Error', sProcess, sInputs, ['File is already based on an atlas, but scout "' sScout.Label '" not found.']);
-        elseif nComponents == 1
-            iRows = iScoutRes;
-        elseif nComponents == 3
-            iRows = 3 * iScoutRes - [2, 1, 0];
+            return;
+        end
+        switch nComponents 
+            case 1
+                iRows = iScoutRes;
+            case 3
+                iRows = 3 * (iScoutRes - 1) + (1:3);
+            case 0
+                % Get number of rows for each scout up to the requested one.
+                nComp = zeros(iScoutRes,1);
+                for iScout = 1:iScoutRes
+                    % Find mixed-model region (GridAtlas.Scout) that overlap this scout's vertices.
+                    iRegionScouts = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+                    % Do not accept scouts that span over multiple regions
+                    if isempty(iRegionScouts)
+                        bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
+                        iRows = [];
+                        return;
+                    elseif (length(iRegionScouts) > 1)
+                        bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" spans over multiple regions of the "Source model" atlas.']);
+                        iRows = [];
+                        return;
+                    end
+                    if strcmpi(sResults.GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
+                        nComp(iScout) = 1;
+                    else
+                        nComp(iScout) = 3;
+                    end
+                end
+                % Rows for the requested scout.
+                iRows = sum(nComp(1:end-1)) + (1:nComp(end));
+        end
+        if isempty(iRows)
+            bst_report('Error', sProcess, sInputs, 'Error finding scout rows in atlas-based result file.');
+            return;
         end
         % Warn if the scout function used doesn't match the one requested.
         if ~isempty(ScoutFunc) && ~strcmpi(sScout.Function, ScoutFunc)
@@ -1086,12 +1115,15 @@ end
 % AtlasListA/B: if empty, that group of files is completely ignored. It can be set to 'flat' (or any
 % non empty string) to indicate PCA flattening without PCA scouts. Otherwise it should be a cell
 % array from process option of type 'scout'.
-function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOptions, sInputA, AtlasListA, sInputB, AtlasListB)
+function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOptions, sInputA, AtlasListA, sInputB, AtlasListB, isPcaFlat)
     if nargin < 4
         error('Missing input arguments.');
     elseif nargin < 6
         sInputB = [];
         AtlasListB = [];
+    end
+    if nargin < 7 || isempty(isPcaFlat)
+        isPcaFlat = false;
     end
     % Verify PCA options were provided.
     if isempty(PcaOptions)
@@ -1104,10 +1136,10 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOp
     isPcaA = false;
     isPcaB = false;
     % Get scout selection.
-    if ~isempty(sInputA) && ~isempty(AtlasListA)
+    if ~isempty(sInputA) && (~isempty(AtlasListA) || isPcaFlat)
         isPcaA = true;
     end
-    if ~isempty(sInputB) && ~isempty(AtlasListB)
+    if ~isempty(sInputB) && (~isempty(AtlasListB) || isPcaFlat)
         isPcaB = true;
     end
     % If both groups of files use the same scouts (or flattening only), concatenate inputs (A and B)
@@ -1116,23 +1148,31 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOp
     if isPcaA && isPcaB && ...
             ( iscell(AtlasListA) && iscell(AtlasListB) && numel([AtlasListA{:,2}]) == numel([AtlasListB{:,2}]) && ...
             all(ismember([AtlasListA{:,2}], [AtlasListB{:,2}])) ) || ...
-            ( ischar(AtlasListA) && ischar(AtlasListB) ) % 'flat' for flattening only, no scout
-        % A and B, call together with same scouts: common PCA
+            ( isempty(AtlasListA) && isempty(AtlasListB) && isPcaFlat ) % 'flat' for flattening only, no scout
+        % A and B, call together with same scouts (or no scouts): common PCA
         isSameScouts = true;
         nA = numel(sInputA);
         sInputA = [sInputA, sInputB];
     end
     if ~isSameScouts && isPcaB
         % Different scouts, run B separately.
-        tempInputB = RunTempPca(sProcess, PcaOptions, sInputB, AtlasListB);
+        tempInputB = RunTempPca(sProcess, PcaOptions, sInputB, AtlasListB, [], [], isPcaFlat);
         % Verify the files are different.
         if isempty(tempInputB) % something went wrong
             sInputA = []; sInputB = [];
-            return;
+            return; % Error already reported.
         elseif ~any(ismember({sInputB.FileName}, {tempInputB.FileName}))
             % All new files, safe to flag as temporary.
             sInputB = tempInputB;
             isTempPcaB = true;
+        elseif any(~ismember({sInputB.FileName}, {tempInputB.FileName}))
+            % Some, but not all new files.  Something went wrong, but this should not happen.
+            bst_report('Error', sProcess, sInputB, 'PCA was only applied to some files. Verify inputs are all consistent (e.g. all same atlas or all unconstrained sources). Aborting.');
+            sInputA = []; sInputB = [];
+            return;
+        else
+            % All unchanged files. This can happen if no scout or asking to flatten already flat
+            % sources. Return inputs unchanged and DON'T mark them as temporary.
         end
     end
     if ~isPcaA
@@ -1148,23 +1188,33 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPca(sProcess, PcaOp
     %     end
 
     % Flattening
-    % Check if we have to first flatten unconstrained sources. We only check first file. Other
-    % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
-    isUnconstrained = any(CheckUnconstrained(sProcess, sInputA(1))); % any() needed for mixed models
-    if isempty(isUnconstrained)
-        sInputA = []; 
-        return; % Error already reported;
-    elseif isUnconstrained
-        % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files: isOutMatrix=false
-        FlatOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, [], false);
-        if isempty(FlatOutputFiles)
+    if isPcaFlat
+        % Check if we have to first flatten unconstrained sources. We only check first file. Other
+        % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
+        isUnconstrained = any(CheckUnconstrained(sProcess, sInputA(1))); % any() needed for mixed models
+        if isempty(isUnconstrained)
             sInputA = [];
-            return; % Error already reported.
-        elseif ~any(ismember({sInputA.FileName}, FlatOutputFiles))
-            % Convert flattened files list back to input structure.
-            sInputA = bst_process('GetInputStruct', FlatOutputFiles);
-            % All new files, safe to flag as temporary.
-            isTempPcaA = true;
+            return; % Error already reported;
+        elseif isUnconstrained
+            % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files: isOutMatrix=false
+            FlatOutputFiles = bst_pca(sProcess, sInputA, PcaOptions, [], false);
+            if isempty(FlatOutputFiles)
+                sInputA = [];
+                return; % Error already reported.
+            elseif ~any(ismember({sInputA.FileName}, FlatOutputFiles))
+                % Convert flattened files list back to input structure.
+                sInputA = bst_process('GetInputStruct', FlatOutputFiles);
+                % All new files, safe to flag as temporary.
+                isTempPcaA = true;
+            elseif any(~ismember({sInputA.FileName}, FlatOutputFiles))
+                % Some, but not all new files.  Something went wrong, but this should not happen.
+                bst_report('Error', sProcess, sInputA, 'PCA was only applied to some files. Verify inputs are all consistent (e.g. all same atlas or all unconstrained sources). Aborting.');
+                sInputA = [];
+                return;
+            else
+                % All unchanged files. This can happen if no scout or asking to flatten already flat
+                % sources. Return inputs unchanged and DON'T mark them as temporary.
+            end
         end
     end
 

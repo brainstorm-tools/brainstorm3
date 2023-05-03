@@ -150,8 +150,8 @@ if (strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca'))
         return;
     end
 end
-% Check flattening unconstrained source orientations with PCA required
-if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
+% Check if flattening unconstrained source orientations with PCA 
+if strcmpi(OPTIONS.UnconstrFunc, 'pca') 
     % Check if there are unconstrained sources. The function only checks the first file. Other files
     % would be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
     isUnconstrA = ~(isempty(FilesA) || ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesA(1)))); % any() needed for mixed models
@@ -162,44 +162,18 @@ if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
     % No flattening needed. Avoid confusion.
     if ~isUnconstrA && ~isUnconstrB
         OPTIONS.UncunstrFunc = 'none';
-    % PCA flattening required for scout PCA.
-    elseif ~strcmpi(OPTIONS.UnconstrFunc, 'pca')
-        if isConnNN || (OPTIONS.isScoutA && OPTIONS.isScoutB)
-            bst_report('Warning', OPTIONS.ProcessName, [], ['Unconstrained sources must first be flattened with PCA when using PCA as scout function. ' ...
-                'Scouts will first be flattened.']);
-        else
-            bst_report('Warning', OPTIONS.ProcessName, [], ['Unconstrained sources must first be flattened with PCA when using PCA as scout function. ' ...
-                'Scouts will first be flattened, but not individual sources as requested.']);
-        end
     end
 end
-
-% Flatten unconstrained source orientations and/or extract scouts with PCA, and save time series as temp files.
-% See bst_pca.m for more info on PCA methods
+% Flatten unconstrained source orientations and/or extract scouts with PCA, and save time series in temp files.
 sInputToDel = [];
 if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
     if isempty(OPTIONS.PcaOptions)
         bst_report('Error', OPTIONS.ProcessName, [], 'Missing PCA options.');
         return;
     end
-    AtlasListA = [];
-    AtlasListB = [];
-    % Avoid flattening with PCA if not explicitly requested, on the A or B side where we're not
-    % extracting scouts with PCA.
-    if strcmpi(OPTIONS.ScoutFunc, 'pca')
-        if OPTIONS.isScoutA
-            AtlasListA = OPTIONS.TargetA;
-        elseif strcmpi(OPTIONS.UnconstrFunc, 'pca')
-            AtlasListA = 'flat';
-        end
-        if OPTIONS.isScoutB
-            AtlasListB = OPTIONS.TargetB;
-        elseif strcmpi(OPTIONS.UnconstrFunc, 'pca')
-            AtlasListB = 'flat';
-        end
-    end
     % FilesA/B are replaced by temporary files as needed by RunTempPca.
-    [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.ProcessName, OPTIONS.PcaOptions, FilesA, AtlasListA, FilesB, AtlasListB);
+    [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.ProcessName, OPTIONS.PcaOptions, ...
+        FilesA, OPTIONS.TargetA, FilesB, OPTIONS.TargetB, strcmpi(OPTIONS.UnconstrFunc, 'pca'));
     if isTempPcaA
         sInputToDel = FilesA;
     end

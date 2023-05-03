@@ -1918,7 +1918,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
             'addfilecomment', 0, ...
             'progressbar',    0);
         if isempty(sMat)
-            bst_report('Error', OPTIONS.ProcessName, [], 'Could not calculate the clusters time series.');
+            bst_report('Error', OPTIONS.ProcessName, [], 'Could not calculate the scout time series.');
             sInput.Data = [];
             return;
         end
