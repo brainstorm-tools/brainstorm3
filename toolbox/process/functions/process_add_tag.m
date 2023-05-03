@@ -182,9 +182,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ~isempty(subjectsToReload)
             db_reload_conditions(unique(subjectsToReload));
         end
-        if ~isempty(studiesToReload)
-            db_reload_studies(unique(studiesToReload));
-        end
+        db_reload_studies(unique([studiesToReload, sInputs.iStudy]));
     end
 end
 
