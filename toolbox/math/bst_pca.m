@@ -438,7 +438,7 @@ for iInput = 1:nInputs
             if isScout
                 % add K * DataCov * K' with appropriate kernel rows for this scout
                 % Sum over xyz in case we allow 3d scout PCA.
-                FileSourceCov{iScout} = zeros(size(SourceCov{iScout}));
+                FileSourceCov{iScout} = zeros(numel(sScouts(iScout).iRows) / nComp(iScout));
                 for i = 1:nComp(iScout)
                     Kernel = sResults.ImagingKernel(sScouts(iScout).iRows(i:nComp(iScout):end), :);
                     FileSourceCov{iScout} = FileSourceCov{iScout} + Kernel * DataCov * Kernel';
