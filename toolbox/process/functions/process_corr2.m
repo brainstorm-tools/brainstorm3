@@ -117,44 +117,49 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.dest_scouts.InputTypesB = {'results'};
     sProcess.options.dest_scouts.Group       = 'input';
     % === UNCONSTRAINED SOURCES ===
-    sProcess.options.flatten.Comment    = 'Flatten unconstrained source orientations with PCA first';
-    sProcess.options.flatten.Type       = 'checkbox';
-    sProcess.options.flatten.Value      = 0;
-    sProcess.options.flatten.InputTypes = {'results'};
-    sProcess.options.flatten.Group      = 'input';
+    sProcess.options.flatten.Comment     = 'Flatten unconstrained source orientations with PCA first';
+    sProcess.options.flatten.Type        = 'checkbox';
+    sProcess.options.flatten.Value       = 0;
+    sProcess.options.flatten.InputTypes  = {'results'};
+    sProcess.options.flatten.InputTypesB = {'results'};
+    sProcess.options.flatten.Group       = 'input';
     % === SCOUT TIME ===
-    sProcess.options.scoutfunctxt.Comment = 'Scout function: ';
-    sProcess.options.scoutfunctxt.Type    = 'label';
+    sProcess.options.scoutfunctxt.Comment    = 'Scout function: ';
+    sProcess.options.scoutfunctxt.Type       = 'label';
     sProcess.options.scoutfunctxt.InputTypes = {'results'};
     sProcess.options.scoutfunctxt.Group      = 'input';
-    sProcess.options.scouttime.Comment    = {'before ', 'after connectivity', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
-                                             'before', 'after', ''};
-    sProcess.options.scouttime.Type       = 'radio_linelabel';
-    sProcess.options.scouttime.Value      = 'after';
-    sProcess.options.scouttime.InputTypes = {'results'};
-    sProcess.options.scouttime.Group      = 'input';
-    sProcess.options.scouttime.Controller = struct('before', 'before', 'after', 'after');
+    sProcess.options.scouttime.Comment       = {'before ', 'after connectivity', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
+                                                'before', 'after', ''};
+    sProcess.options.scouttime.Type          = 'radio_linelabel';
+    sProcess.options.scouttime.Value         = 'after';
+    sProcess.options.scouttime.InputTypes    = {'results'};
+    sProcess.options.scouttime.InputTypesB   = {'results'};
+    sProcess.options.scouttime.Group         = 'input';
+    sProcess.options.scouttime.Controller    = struct('before', 'before', 'after', 'after');
     % === SCOUT FUNCTION ===    
-    sProcess.options.scoutfunc.Comment    = {'PCA ', 'Mean ', 'All ', '&nbsp;&nbsp;&nbsp;'; ...
-                                             'pca', 'mean', 'all', ''};
-    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
-    sProcess.options.scoutfunc.Value      = 'mean';
-    sProcess.options.scoutfunc.InputTypes = {'results'};
-    sProcess.options.scoutfunc.Group      = 'input';
-    sProcess.options.scoutfunc.Class      = 'before';
-    sProcess.options.scoutfuncaft.Comment    = {'Mean ', 'Max ', 'Std ', '&nbsp;&nbsp;&nbsp;'; ...
-                                             'mean', 'max', 'std', ''};
-    sProcess.options.scoutfuncaft.Type       = 'radio_linelabel';
-    sProcess.options.scoutfuncaft.Value      = 'mean';
-    sProcess.options.scoutfuncaft.InputTypes = {'results'};
-    sProcess.options.scoutfuncaft.Group      = 'input';
-    sProcess.options.scoutfuncaft.Class      = 'after';    
+    sProcess.options.scoutfunc.Comment        = {'PCA ', 'Mean ', 'All ', '&nbsp;&nbsp;&nbsp;'; ...
+                                                'pca', 'mean', 'all', ''};
+    sProcess.options.scoutfunc.Type           = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value          = 'mean';
+    sProcess.options.scoutfunc.InputTypes     = {'results'};
+    sProcess.options.scoutfunc.InputTypesB    = {'results'};
+    sProcess.options.scoutfunc.Group          = 'input';
+    sProcess.options.scoutfunc.Class          = 'before';
+    sProcess.options.scoutfuncaft.Comment     = {'Mean ', 'Max ', 'Std ', '&nbsp;&nbsp;&nbsp;'; ...
+                                                'mean', 'max', 'std', ''};
+    sProcess.options.scoutfuncaft.Type        = 'radio_linelabel';
+    sProcess.options.scoutfuncaft.Value       = 'mean';
+    sProcess.options.scoutfuncaft.InputTypes  = {'results'};
+    sProcess.options.scoutfuncaft.InputTypesB = {'results'};
+    sProcess.options.scoutfuncaft.Group       = 'input';
+    sProcess.options.scoutfuncaft.Class       = 'after';
     % Options: PCA, for orientations and/or scouts
-    sProcess.options.pcaedit.Comment    = {'panel_pca', ' PCA options: '};
-    sProcess.options.pcaedit.Type       = 'editpref';
-    sProcess.options.pcaedit.Value      = bst_get('PcaOptions'); % function that returns defaults.
-    sProcess.options.pcaedit.InputTypes = {'results'};
-    sProcess.options.pcaedit.Group      = 'input';
+    sProcess.options.pcaedit.Comment     = {'panel_pca', ' PCA options: '};
+    sProcess.options.pcaedit.Type        = 'editpref';
+    sProcess.options.pcaedit.Value       = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.InputTypes  = {'results'};
+    sProcess.options.pcaedit.InputTypesB = {'results'};
+    sProcess.options.pcaedit.Group       = 'input';
     % === TO: SENSOR SELECTION ===
     sProcess.options.dest_sensors.Comment     = 'Sensor types or names (B): ';
     sProcess.options.dest_sensors.Type        = 'text';
