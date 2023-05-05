@@ -1,3 +1,7 @@
+April 2023
+- NIRS: Project channel files between subjects
+- 3DViewer: Overlay any type of surfaces
+--------------------------------------------------------------
 March 2023
 - Parallel computing: Handle temporary files per process, to avoid conflicts
 - Recordings: Optional storage of events channels and notes
