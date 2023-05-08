@@ -802,6 +802,9 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
     isVolumeAtlas = [];
     sSurf = [];
 
+    if nargin < 6 || isempty(ScoutFunc)
+        ScoutFunc = [];
+    end
     if nargin < 5 || isempty(ResultsAtlas)
         ResultsAtlas = [];
     end
@@ -931,7 +934,9 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
                 return;
             end
             % If provided, overwrite scout function from scout panel by process selection.
-            sScout.Function = ScoutFunc;
+            if ~isempty(ScoutFunc)
+                sScout.Function = ScoutFunc;
+            end
             % Add to the list of selected scouts
             if isempty(sScoutsFinal)
                 sScoutsFinal = sScout;
