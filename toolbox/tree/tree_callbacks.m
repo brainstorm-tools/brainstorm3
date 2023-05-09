@@ -2359,6 +2359,10 @@ switch (lower(action))
                 
 %% ===== POPUP: MATRIX =====
             case {'matrix', 'pmatrix'}
+                % Get subject structure
+                iStudy = bstNodes(1).getStudyIndex();
+                sStudy = bst_get('Study', iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                 % For only one file
                 if (length(bstNodes) == 1)
                     % Basic displays
