@@ -73,7 +73,7 @@ OutputFiles = {};
 AllComments = {};
 Ravg = [];
 nAvg = 0;
-nTime = 1;
+% nTime = 1;
 
 % Initialize progress bar
 if bst_progress('isVisible')
@@ -154,8 +154,10 @@ end
 if strcmpi(OPTIONS.UnconstrFunc, 'pca') 
     % Check if there are unconstrained sources. The function only checks the first file. Other files
     % would be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
-    isUnconstrA = ~(isempty(FilesA) || ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesA(1)))); % any() needed for mixed models
-    isUnconstrB = ~(isempty(FilesB) || ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesB(1)))); % any() needed for mixed models
+    isUnconstrA = ~( isempty(FilesA) || ~isfield(FilesA, 'FileType') || ~ismember(FilesA(1).FileType, {'results', 'timefreq'}) || ...
+        ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesA(1))) ); % any() needed for mixed models
+    isUnconstrB = ~(isempty(FilesB) || ~isfield(FilesB, 'FileType') || ~ismember(FilesB(1).FileType, {'results', 'timefreq'}) || ...
+        ~any(process_extract_scout('CheckUnconstrained', OPTIONS.ProcessName, FilesB(1)))); % any() needed for mixed models
     if isempty(isUnconstrA) || isempty(isUnconstrB)
         return; % Error already reported;
     end
@@ -307,7 +309,7 @@ elseif (isConcat >= 1)
         FilesB = FilesB(1);
         % Some quality check
         if (size(sInputA.Data,2) ~= size(sInputB.Data,2))
-            bst_report('Error', OPTIONS.ProcessName, {FilesA{:}, FilesB{:}}, 'Files A and B must have the same number of time samples.');
+            bst_report('Error', OPTIONS.ProcessName, [FilesA(:)', FilesB(:)'], 'Files A and B must have the same number of time samples.');
             CleanExit; return;
         end
     else
@@ -403,14 +405,21 @@ for iFile = 1:length(FilesA)
     % Unconstrained models?
     isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
     isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
-%     % Mixed source models now supported
-%     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
-%     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))
-%         bst_report('Error', OPTIONS.ProcessName, [], 'Connectivity functions are not supported yet for mixed source models.');
-%         CleanExit; return;
-%     end
+    % Mixed source models now supported, but check further if we're using any scouts from unconstrained regions.
+    if isUnconstrA && (sInputA.nComponents == 0)
+        % Here, the sInput structures are based on 'matrix' template, but also much like atlas-based
+        % result files. We can use this function to get the nComp info for each scout (but GridAtlas
+        % already fixed in bst_process 'LoadInputFile').
+        [~, ~, nComp] = process_extract_scout('FixAtlasBasedGrid', OPTIONS.ProcessName, FilesA{iFile}, sInputA);
+        isUnconstrA = any(nComp ~= 1); 
+    end
+    if isUnconstrB && (sInputB.nComponents == 0)
+        [~, ~, nComp] = process_extract_scout('FixAtlasBasedGrid', OPTIONS.ProcessName, FilesB{iFile}, sInputB);
+        isUnconstrB = any(nComp ~= 1);
+    end
     % PLV: Incompatible with unconstrained sources  (saves complex values)
     if ismember(OPTIONS.Method, {'plv','plvt','ciplv','ciplvt','wpli','wplit'}) && (isUnconstrA || isUnconstrB)
+        % TODO: Why? and fix.
         bst_report('Error', OPTIONS.ProcessName, [], 'The PLV measures are not supported yet on unconstrained sources.');
         CleanExit; return;
     end

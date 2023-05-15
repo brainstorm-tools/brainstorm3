@@ -251,6 +251,10 @@ function OutputFiles = Run(sProcess, sInputs)
 
         % === READ FILES ===
         [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs(iInput), TimeWindow);
+        if ~AddFileComment
+            fileComment = '';
+        end
+
         if isempty(sResults)
             if isConcatenate
                 return; % Error already reported.
@@ -298,7 +302,7 @@ function OutputFiles = Run(sProcess, sInputs)
 
             % === GET ROWS INDICES ===
             [iRows, RowNames, ScoutOrient, nComponents(iScout)] = GetScoutRows(sProcess, sInputs(iInput), ...
-                sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas(iScout));
+                sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas(iScout), ScoutFunc, AddRowComment, fileComment);
             if isempty(iRows)
                 OutputFiles = {};
                 return; % Error already reported.
@@ -359,7 +363,8 @@ function OutputFiles = Run(sProcess, sInputs)
             % GetScoutRows already warned if a different scout function was used. 
             if ~isempty(sResults.Atlas)
                 scoutValues = cat(1, scoutValues, ScoutSourceValues);
-                Description = cat(1, Description, ScoutName);
+                % Row names, can be multiple rows per scout for unconstrained sources.
+                Description = cat(1, Description, RowNames);
                 continue;
             end
 
@@ -404,41 +409,14 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                     scoutStd = cat(1, scoutStd, tmpScoutStd);
                 end
-                % Loop on the rows to comment them
-                for iRow = 1:size(tmpScout,1)
-                    % Start with the scout name
-                    scoutDesc = ScoutName;
-                    % Add the row name
-                    if AddRowComment && ~isempty(RowNames)
-                        if isUnconstrained
-                            iRowUnconstr = floor((iRow-1) / nComponents(iScout) + 1);
-                            scoutDesc = [scoutDesc '.' RowNames{iRowUnconstr}];
-                        else
-                            scoutDesc = [scoutDesc '.' RowNames{iRow}];
-                        end
+                % Add frequency to row descriptions.
+                if (nFreq > 1) && AddFileComment
+                    if iscell(sResults.Freqs)
+                        freqComment = [' ' sResults.Freqs{iFreq,1}];
+                    else
+                        freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
                     end
-                    % Add the component index (unconstrained sources)
-                    if isUnconstrained
-                        iComp = mod(iRow-1,nComponents(iScout)) + 1;
-                        scoutDesc = [scoutDesc '.' num2str(iComp)];
-                    end
-                    % Add file comment
-                    if AddFileComment
-                        % Frequency comment
-                        if (nFreq > 1)
-                            if iscell(sResults.Freqs)
-                                freqComment = [' ' sResults.Freqs{iFreq,1}];
-                            else
-                                freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
-                            end
-                        else
-                            freqComment = '';
-                        end
-                        % Add it to the scout comment
-                        scoutDesc = [scoutDesc ' @ ' fileComment freqComment];
-                    end
-                    % Add the scout description
-                    Description = cat(1, Description, scoutDesc);
+                    Description = cat(1, Description, cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false));
                 end
             end
         end
@@ -538,10 +516,12 @@ function OutputFiles = Run(sProcess, sInputs)
                     newMat.nComponents = 1;
                 else
                     newMat.nComponents = unique(nComponents);
-                    % If multiple values, indicate "mixed model" even though this is a matrix file without GridAtlas.
-                    % Should we warn about this?
+                    % If multiple values, indicate "mixed model" and include the GridAtlas, even though this is based on a matrix structure.
                     if numel(newMat.nComponents) > 1
                         newMat.nComponents = 0;
+                        % Both results and timefreq should have these fields.
+                        newMat.GridAtlas = sResults.GridAtlas;
+                        newMat.GridLoc = sResults.GridLoc;
                     end
                 end
                 % Return structure
@@ -581,41 +561,6 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
 end % Run function
-
-
-%% ===== Check if any unconstrained sources =====
-% isUnconstrained is true/false, or a list for mixed models.
-function [isUnconstrained, nComponents] = CheckUnconstrained(sProcess, sInputs, sResults)
-    % Function meant for 1 input file, but runs ok if list.
-    isUnconstrained = [];
-    nComponents = [];
-    if nargin < 3 || isempty(sResults)
-        % Load first file, without data.
-        sResults = LoadFile(sProcess, sInputs);
-        if isempty(sResults)
-            return; % Error already reported.
-        end
-    end
-    % Get the number of source orientations (components) per vertex
-    if isfield(sInputs, 'FileType') && strcmpi(sInputs(1).FileType, 'results')
-        nComponents = sResults.nComponents;
-    elseif ~isempty(sResults.GridAtlas)
-        nComponents = 0;
-    else % treat as constrained, though maybe components still possible, "hidden" in timefreq.RowNames?
-        nComponents = 1;
-    end
-    % Check each region if mixed model.
-    if nComponents == 0
-        if isempty(sResults.GridAtlas) || ~isfield(sResults.GridAtlas, 'Scouts') || isempty(sResults.GridAtlas.Scouts)
-            Message = 'Missing mixed source model region description (GridAtlas).';
-            bst_report('Error', sProcess, sInputs, Message);
-            return;
-        end
-        isUnconstrained = ~arrayfun(@(Scout) ~strcmpi('C', Scout.Region(3)), sResults.GridAtlas.Scouts); % 'U' or 'L'
-    else
-        isUnconstrained = nComponents > 1;
-    end
-end
 
 
 %% ===== LOAD INPUT FILE =====
@@ -955,10 +900,10 @@ end
 % ScoutOrient is only used for "sign flipping" (based on anatomy) when combining sources with constrained orientations.
 % iRows is empty if an error occurs, after logging the error in the report.
 % nComponents is always 1 or 3. If a scout spans multiple regions, an error is returned.
-% RowNames is empty or vertex numbers (cell array of str) only for 'All' scout function.
+% RowNames is a (nx1) cell array of strings of the form 'ScoutName[.Vert][.Comp][ @ FileComment]' depending on the options.
 % ScoutFunc is only used to warn if a scout in an atlas-based result file was computed with a different function.
 % This function supports atlas-based mixed-model result files, now possibly created in bst_pca.
-function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas, ScoutFunc)
+function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas, ScoutFunc, AddRowVertices, FileComment)
     % Add potentially missing fields.
     if ~isfield(sResults, 'GridAtlas')
         sResults.GridAtlas = [];
@@ -968,6 +913,12 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
     end
     if ~isfield(sResults, 'GridOrient')
         sResults.GridOrient = [];
+    end
+    if nargin < 9 || isempty(FileComment)
+        FileComment = '';
+    end
+    if nargin < 8 || isempty(AddRowVertices)
+        AddRowVertices = true;
     end
     if nargin < 7 || isempty(ScoutFunc)
         ScoutFunc = [];
@@ -1028,6 +979,8 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
                 end
                 % Rows for the requested scout.
                 iRows = sum(nComp(1:end-1)) + (1:nComp(end));
+                % Actual components for the requested scout.
+                nComponents = nComp(end);
         end
         if isempty(iRows)
             bst_report('Error', sProcess, sInputs, 'Error finding scout rows in atlas-based result file.');
@@ -1037,22 +990,16 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
         if ~isempty(ScoutFunc) && ~strcmpi(sScout.Function, ScoutFunc)
             bst_report('Warning', sProcess, sInput, ['File is already based on an atlas, but ' sScout.Label ' was computed with scout function ' sScout.Function ' instead of ' ScoutFunc '.']);
         end
-        return;
-    end
+        % Still need row names.
 
+    else
     % Sort vertex indices
     iVertices = sort(unique(sScout.Vertices));
     % Make sure this is a row vector
     iVertices = iVertices(:)';
-    % Get row names
-    if strcmpi(sScout.Function, 'All')
-        RowNames = cellfun(@num2str, num2cell(iVertices), 'UniformOutput', 0);
-    else
-        RowNames = [];
-    end
     % Get the row and vertex or grid indices of the scout in ImageGridAmp/ImagingKernel
     % iRows includes each component for unconstrained sources (e.g. 3* number of iVertices)
-    [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, sResults.GridAtlas, ~isVolumeAtlas);
+    [iRows, iRegionScouts, iGrid] = bst_convert_indices(iVertices, nComponents, sResults.GridAtlas, ~isVolumeAtlas);
     % Mixed headmodel results
     if (nComponents == 0)
         % Do not accept scouts that span over multiple regions
@@ -1079,7 +1026,7 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
         if strcmpi(sResults.GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
             nComponents = 1;
             if ~isempty(sResults.GridOrient)
-                ScoutOrient = sResults.GridOrient(iVertices,:);
+                ScoutOrient = sResults.GridOrient(iGrid,:);
             end
         else
             nComponents = 3;
@@ -1101,6 +1048,187 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
         if ~isVolumeAtlas && isfield(sSurf, 'VertNormals') && ~isempty(sSurf.VertNormals)
             ScoutOrient = sSurf.VertNormals(iVertices,:);
         end
+    end
+    end
+
+    % Row names: cell array of 'ScoutName[.Vert][.Comp][ @ File]' strings. Add vertex index only for
+    % 'all' scout function, and component index only if unconstrained. Add file name only if provided.
+    nRows = numel(iRows);
+    RowNames = cell(nRows, 1);
+    for i = 1:nRows
+        RowNames{i} = sScout.Label;
+        if strcmpi(sScout.Function, 'All') && AddRowVertices
+            % Add vertex index
+            if numel(iVertices) * nComponents ~= nRows
+                bst_report('Error', sProcess, sInput, sprintf('Scout "%s": %d vertices * %d components does not match %d rows.', sScout.Label, numel(iVertices), nComponents, nRows));
+            end
+            iVert = floor((i-1) / nComponents + 1);
+            RowNames{i} = [RowNames{i} '.' num2str(iVertices(iVert))];
+        end
+        if nComponents > 1
+            % Add unconstrained component index
+            iComp = mod(i-1, nComponents) + 1;
+            RowNames{i} = [RowNames{i} '.' num2str(iComp)];
+        end
+    end
+    if ~isempty(FileComment)
+        RowNames = cellfun(@(c) [c ' @ ' FileComment], RowNames, 'UniformOutput', false);
+    end
+end
+
+
+%% ===== Check if any unconstrained sources =====
+% isUnconstrained is true/false, or a list for mixed models.
+% Only needed fields from sResults: nComponents, GridAtlas
+% Provide either sInput structure (to load a file), or the already loaded sResults structure.
+function [isUnconstrained, nComponents] = CheckUnconstrained(sProcess, sInputs, sResults)
+    % Function meant for 1 input file, but runs ok if list.
+    isUnconstrained = [];
+    nComponents = [];
+    if nargin < 3 || isempty(sResults)
+        if isempty(sInputs)
+            Message = 'CheckUnconstrained: no input file or structure provided.';
+            bst_report('Error', sProcess, sInputs, Message);
+            return;
+        end
+        if ~isfield(sInputs, 'FileType') || ~ismember(sInputs(1).FileType, {'results', 'timefreq'})
+            isUnconstrained = false;
+            nComponents = 1;
+            Message = 'CheckUnconstrained function is only meant for results and timefreq files.';
+            bst_report('Warning', sProcess, sInputs, Message);
+            return;
+        end
+        % Load first file, without data.
+        sResults = LoadFile(sProcess, sInputs(1));
+        if isempty(sResults)
+            return; % Error already reported.
+        end
+    end
+    % Get the number of source orientations (components) per vertex
+    if isfield(sResults, 'nComponents') && ~isempty(sResults.nComponents)
+        nComponents = sResults.nComponents;
+    elseif isfield(sResults, 'GridAtlas') && ~isempty(sResults.GridAtlas)
+        nComponents = 0;
+    else % treat as constrained, though maybe components still possible, "hidden" in timefreq.RowNames?
+        nComponents = 1;
+    end
+    % Check each region if mixed model.
+    if nComponents == 0
+        if ~isfield(sResults, 'GridAtlas') || isempty(sResults.GridAtlas) || ~isfield(sResults.GridAtlas, 'Scouts') || isempty(sResults.GridAtlas.Scouts)
+            Message = 'Missing mixed source model region description (GridAtlas).';
+            bst_report('Error', sProcess, sInputs, Message);
+            return;
+        end
+        isUnconstrained = arrayfun(@(Scout) ~strcmpi('C', Scout.Region(3)), sResults.GridAtlas.Scouts); % 'U' or 'L'
+    else
+        isUnconstrained = nComponents > 1;
+    end
+end
+
+
+%% ===== Atlas-based result files: fix GridAtlas for reduced sources =====
+% Keep one grid point per Atlas.Scout in the corresponding GridAtlas.Scouts.GridRows, and only the
+% corresponding rows of GridAtlas.Grid2Source.
+% sProcess, sInput optional: only for reporting errors.
+function [sResults, iRegionScouts, nComp, iRows] = FixAtlasBasedGrid(sProcess, sInput, sResults)
+    if nargin < 3
+        error('Invalid call');
+    end
+    iRegionScouts = [];
+    nComp = [];
+    iRows = {};
+    % Checks
+    if isempty(sResults.Atlas)
+        Message = 'FixAtlasBasedGrid only meant for atlas-based result files, but Atlas is empty.';
+        bst_report('Warning', sProcess, sInput, Message);
+        return;
+    elseif isempty(sResults.GridAtlas)
+        % Only mixed-models need fixing.
+        return;
+    elseif isempty(sResults.GridLoc)
+        % Missing GridLoc, we'll use a reasonable number for nGrid based on kept grid rows.
+        Message = 'Unexpected result structure, mixed model with GridAtlas, but missing GridLoc.';
+        bst_report('Warning', sProcess, sInput, Message);
+    elseif sResults.nComponents ~= 0
+        % Unexpected: has GridAtlas but not a mixed model?  Fix anyway.
+        Message = 'Unexpected result structure, unclear if mixed model (nComponents not 0, but GridAtlas).';
+        bst_report('Warning', sProcess, sInput, Message);
+    elseif numel(sResults.Atlas) > 1
+        Message = 'Unexpected atlas-based result file with multiple atlases.  Converting to single atlas.';
+        bst_report('Warning', sProcess, sInput, Message);
+        sResults.Atlas(1).Scouts = [sResults.Atlas.Scouts];
+        sResults.Atlas(1).Name = 'process_extract_scout';
+        sResults.Atlas(2:end) = [];
+    end
+    nScout = numel(sResults.Atlas.Scouts);
+    nGridRows = numel([sResults.GridAtlas.Scouts.GridRows]);
+    nSource = size(sResults.GridAtlas.Grid2Source, 1);
+    % Check if already fixed (first condition) and sanity check (no more source rows than 3 comp per grid rows)
+    isFixed = false;
+    if nGridRows == nScout && 3*nGridRows >= nSource
+        % Already fixed.
+        if nargout < 2
+            return;
+        else
+            isFixed = true;
+        end
+    end
+
+    % Find source model regions and the number of components (rows) for each scout.
+    iRegionScouts = zeros(nScout,1);
+    nComp = zeros(nScout,1);
+    iRows = cell(nScout,1);
+    for iScout = 1:nScout
+        % Find mixed-model region (GridAtlas.Scout) that overlap this scout's vertices.
+        iRegionTmp = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+        % Do not accept scouts that span over multiple regions
+        if isempty(iRegionTmp)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
+            return;
+        elseif (length(iRegionTmp) > 1)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" spans over multiple regions of the "Source model" atlas.']);
+            return;
+        else
+            iRegionScouts(iScout) = iRegionTmp;
+        end
+        if strcmpi(sResults.GridAtlas.Scouts(iRegionScouts(iScout)).Region(3), 'C')
+            nComp(iScout) = 1;
+        else
+            nComp(iScout) = 3;
+        end
+        % Rows for the requested scout.
+        iRows{iScout} = sum(nComp(1:iScout-1)) + (1:nComp(iScout));
+    end
+
+    if ~isFixed
+        nSource = sum(nComp);
+        % Only keep one grid row per scout in the GridAtlas.
+        % (But we're keeping the full grid definition in GridLoc and GridOrient.)
+        iGridScouts = zeros(nScout,1);
+        for iReg = 1:numel(sResults.GridAtlas.Scouts)
+            % Which scouts are part of that region.
+            iScout = find(iRegionScouts == iReg);
+            % The actual row we keep is not meaningful.
+            sResults.GridAtlas.Scouts(iReg).GridRows = sResults.GridAtlas.Scouts(iReg).GridRows(1:numel(iScout));
+            iGridScouts(iScout) = sResults.GridAtlas.Scouts(iReg).GridRows;
+        end
+        % Recreate grid to source indicator matrix.
+        nGrid = size(sResults.GridLoc, 1);
+        if nGrid == 0
+            % Unexpected, but use max grid row we kept.
+            nGrid = max([sResults.GridAtlas.Scouts.GridRows]);
+        end
+        % We keep the full grid, but only one source row per scout component.
+        sResults.GridAtlas.Grid2Source = logical(sparse(nSource, nGrid));
+        for iScout = 1:nScout
+            % For these rows, indicate the chosen grid index for that scout.
+            sResults.GridAtlas.Grid2Source(iRows{iScout}, iGridScouts(iScout)) = true;
+        end
+    end
+
+    % Also readjust Vert2Grid grid size which could be missing (all false) rows before.
+    if size(sResults.GridAtlas.Vert2Grid, 1) < size(sResults.GridLoc, 1)
+        sResults.GridAtlas.Vert2Grid(size(sResults.GridLoc, 1), end) = false;
     end
 end
 

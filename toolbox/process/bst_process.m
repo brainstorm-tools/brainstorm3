@@ -1898,7 +1898,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
     % ===== LOAD SCOUT =====
     % Load scouts time series (Target = scout structure or list)
     if ~isempty(Target) && (isstruct(Target) || iscell(Target))
-        % Add row name only when extracting all the scouts
+        % Add row vertex index only when extracting all the scouts (could just set to true here: it only applies to 'all')
         AddRowComment = ~isempty(OPTIONS.TargetFunc) && strcmpi(OPTIONS.TargetFunc, 'all');
         % Flip sign only for results    
         isflip = ismember(sInput.DataType, {'link','results'}) && ...
@@ -1918,7 +1918,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
             'addfilecomment', 0, ...
             'progressbar',    0);
         if isempty(sMat)
-            bst_report('Error', OPTIONS.ProcessName, [], 'Could not calculate the scout time series.');
+            bst_report('Error', OPTIONS.ProcessName, FileName, 'Could not calculate the scout time series.');
             sInput.Data = [];
             return;
         end
@@ -1930,11 +1930,19 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.nAvg        = sMat.nAvg;
         sInput.Leff        = sMat.Leff;
         sInput.DisplayUnits= sMat.DisplayUnits;
+        % We may still need the GridAtlas for mixed models: some regions may have 1 component, others 3.
+        if isfield(sMat, 'GridAtlas')
+            % Fix the GridAtlas.Grid2Source array for the new scout/source matrix. Needed for
+            % bst_source_orient (e.g. connectivity on unconstrained sources).
+            sMat = process_extract_scout('FixAtlasBasedGrid', OPTIONS.ProcessName, FileName, sMat);
+            sInput.GridAtlas = sMat.GridAtlas;
+            sInput.GridLoc = sMat.GridLoc;
+        end
         % If only non-All scouts: use just the scouts labels, if not use the full description string
-        sScouts = sMat.Atlas.Scouts;
-        if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
-            sInput.RowNames = {sScouts.Label}';
-        else
+%         sScouts = sMat.Atlas.Scouts;
+%         if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
+%             sInput.RowNames = {sScouts.Label}';
+%         else
             sInput.RowNames = sMat.Description;
             for iRow = 1:length(sInput.RowNames)
                 iAt = find(sInput.RowNames{iRow} == '@', 1);
@@ -1942,7 +1950,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
                     sInput.RowNames{iRow} = strtrim(sInput.RowNames{iRow}(1:iAt-1));
                 end
             end
-        end
+%         end
         
     % ===== LOAD FILE =====
     else

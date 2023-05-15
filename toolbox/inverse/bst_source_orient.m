@@ -80,26 +80,28 @@ end
 
 HistoryMsg = {};
 % === MIXED SOURCE MODELS ===
+% iVertices is assumed to be grid rows here, NOT surface vertices.
 if (nComponents == 0)
     % Check that GridAtlas is defined
     if isempty(GridAtlas) || ~isfield(GridAtlas, 'Scouts') || ~isfield(GridAtlas.Scouts, 'Vertices')
         error('GridAtlas variable is empty');
     end
     nScouts = length(GridAtlas.Scouts);
-    % Resize empty PCA-specific variables for convenience.
+    % Convert empty PCA-specific variables for convenience (for mixed models).
     if isempty(OrientCov) || ~strncmpi(Function, 'pca', 3)
-        OrientCov = cell(nScouts, 0);
+        OrientCov = cell(nScouts, 1);
     elseif ~iscell(OrientCov) || length(OrientCov) ~= nScouts
         error('OrientCov size incompatible with GridAtlas.');
     end
     if isempty(PcaOrient) || ~strncmpi(Function, 'pca', 3)
-        PcaOrient = cell(nScouts, 0);
+        PcaOrient = cell(nScouts, 1);
     elseif ~iscell(PcaOrient) || length(PcaOrient) ~= nScouts
         error('PcaOrient size incompatible with GridAtlas.');
     end
     % Initialize blocks of indices
     SourceBlocks = {};
     RowNamesBlocks = {};
+    iSourceBlocks = {};
     % Loop on all the regions
     for iScout = 1:nScouts
         % Get the vertices for this scouts
@@ -107,7 +109,7 @@ if (nComponents == 0)
             iVertGrid = intersect(iVertices, GridAtlas.Scouts(iScout).GridRows);
         elseif ~isempty(SourceValues)
             iVertGrid = GridAtlas.Scouts(iScout).GridRows;
-        elseif ~isempty(OrientCov)
+        elseif ~isempty(OrientCov{1})
             % For PCA, we don't always need to project values, e.g. for reference component.
             iVertGrid = [];
         else
@@ -120,13 +122,15 @@ if (nComponents == 0)
             iVertSource = [];
         end
         % If no vertices to read from this region: skip
-        if isempty(iVertSource) && isempty(OrientCov)
+        if isempty(iVertSource) && isempty(OrientCov{1})
             continue;
         end
         % Get correpsonding row indices based on the type of region (constrained or unconstrained)
         switch (GridAtlas.Scouts(iScout).Region(3))
             case 'C'
                 SourceBlocks{end+1} = SourceValues(iVertSource,:,:,:);
+                RowNamesBlocks{end+1} = RowNames(iVertSource)';
+                iSourceBlocks{end+1} = iVertSource;
             case {'U','L'}
                 % Apply grouping function
                 [SourceBlocks{end+1}, PcaOrient{iScout}, tmpHistoryMsg] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
@@ -141,6 +145,7 @@ if (nComponents == 0)
                 if ~isempty(RowNames) && iscell(RowNames)
                     RowNamesBlocks{end+1} = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceBlocks{end},1), iVertSource);
                 end
+                iSourceBlocks{end+1} = iVertSource(1:3:end);
                 % Set that the region is now constrained
                 GridAtlas.Scouts(iScout).Region(3) = 'C';
             otherwise
@@ -154,7 +159,8 @@ if (nComponents == 0)
     end
     % Modify the grid/row correspondance matrix
     if ~isempty(GridAtlas.Grid2Source)
-        GridAtlas.Grid2Source = speye(size(SourceValues,1));
+        GridAtlas.Grid2Source = GridAtlas.Grid2Source(cat(2, iSourceBlocks{:}), :);
+        %         GridAtlas.Grid2Source = speye(size(SourceValues,1));
     end
     
     
@@ -169,13 +175,14 @@ else
     end
     if iscell(PcaOrient) && strncmpi(Function, 'pca', 3)
         if length(PcaOrient) > 1
-            error('Unexpected multi-cell OrientCov for simple source model.');
+            error('Unexpected multi-cell PcaOrient for simple source model.');
         end
         PcaOrient = PcaOrient{1};
     end
     % Select only a few vertices
     if ~isempty(iVertices)
         % Convert to indices in the source matrix
+        % The last two arguments are not used in this case (not mixed model).
         iVertSource = bst_convert_indices(iVertices, nComponents, GridAtlas, 0);
     else
         iVertSource = 1:size(SourceValues,1);
@@ -292,10 +299,10 @@ end
 
 
 %% ===== REMOVE COMPONENT TAG =====
-function RowNames = RemoveComponentTag(DataType, RowNames, nRows, iRows)
+function RowNames = RemoveComponentTag(DataType, RowNames, nRowsOut, iRowsIn)
     % Select one row name every three
-    if (length(iRows) == 3 * nRows) && (max(iRows) <= length(RowNames))
-        RowNames = RowNames(iRows(1:3:end));
+    if (length(iRowsIn) == 3 * nRowsOut) && (max(iRowsIn) <= length(RowNames))
+        RowNames = RowNames(iRowsIn(1:3:end));
     end
     % Remove the ".1" appended to the scouts names
     if (isempty(DataType) || ismember(DataType, {'matrix','scout'})) && iscell(RowNames) && ischar(RowNames{1}) && (length(RowNames{1}) > 2) && strcmp(RowNames{1}(end-1:end), '.1')

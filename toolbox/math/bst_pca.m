@@ -25,9 +25,9 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    - OutComment: Optional, string to use for new node in tree, instead of default based on inputs.
 %
 % OUTPUTS:
-%    - OutputFiles: This function can save and return deprecated atlas-based result files (full or kernel),
-%    when provided with an AtlasList and isOutMatrix is false. These files can only be
-%    read properly by process_extract_scout. By extension, they can be read by processes that use
+%    - OutputFiles: This function can save and return deprecated atlas-based result files (full or
+%    kernel), when provided with an AtlasList and isOutMatrix is false. These files can only be read
+%    properly by process_extract_scout. By extension, they can be read by processes that use
 %    bst_process('LoadInputFile', Target) with a scouts-type "Target" (e.g. bst_connectivity and
 %    process_pac), or that call directly process_extract_scout (e.g. process_timefreq). These files
 %    are deprecated but some Brainstorm processes create them through bst_pca temporarily, deleting
@@ -322,6 +322,7 @@ for iScout = 1:nScouts % scouts or regions of the mixed model
         % Get scout row indices and more.
         % Support for atlas-based & mixed model files was added in GetScoutRows.
         % Unconstrained sources: xyz are separate rows
+        % sScouts.RowNames is not saved in result files (sResultsOut.Atlas already set above), but used for matrix output.
         [sScouts(iScout).iRows, sScouts(iScout).RowNames, sScouts(iScout).ScoutOrient, nComp(iScout)] = ...
             process_extract_scout('GetScoutRows', sProcess, sInputs(1), sScouts(iScout), sResults, sSurf, isVolumeAtlas(iScout));
         if isempty(sScouts(iScout).iRows)
@@ -353,25 +354,8 @@ end
 if isScout
     % Output row numbers is more complicated if allowing unconstrained (and therefore mixed models)
     iOutRow = cumsum(nComp);
-    nOutRow = iOutRow(end);
+    %nOutRow = iOutRow(end);
     iOutRow = [iOutRow - nComp(1) + 1, iOutRow];
-end
-% Row labels: add the component index for unconstrained sources
-if isOutMatrix
-    if any(isUnconstrained)
-        RowLabels = cell(nOutRow, 1);
-        for iScout = 1:nScouts
-            if isUnconstrained(iScout)
-                for iComp = 1:nComp(iScout)
-                    RowLabels{iOutRow(iScout, 1) + iComp - 1} = [sScouts(iScout).Label '.' num2str(iComp)];
-                end
-            else
-                RowLabels{iOutRow(iScout, 1)} = sScouts(iScout).Label;
-            end
-        end
-    else
-        RowLabels = {sScouts.Label};
-    end
 end
 
 % Atlas-based files: no PCA needed.
@@ -501,7 +485,7 @@ for iInput = 1:nInputs
             sResults = bst_history('add', sResults, 'compute', HistoryMsg{iH});
         end
         if isOutMatrix % forced for timefreq inputs
-            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, RowLabels, FileComment, OutTimeWindow);
+            OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, cat(1, sScouts.RowNames), FileComment, OutTimeWindow);
         else
             % Save single-file result file, full or kernel. For scouts, this is a deprecated
             % atlas-based result file, meant only to be used temporarily and then deleted by the
@@ -651,7 +635,7 @@ switch PcaOptions.Method
             % Save individual files, or shared kernel.
             sResults = MergeFields(sInputs(iInput), sResults, sResultsOut, isForceComment, isOutMatrix);
             if isOutMatrix % forced for timefreq inputs
-                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, RowLabels, FileComment, OutTimeWindow);
+                OutputFiles{iInput} = SaveMatrixFile(sInputs(iInput), sResults, PcaOptions.Method, cat(1, sScouts.RowNames), FileComment, OutTimeWindow);
             elseif isOutSharedKernel
                 % Save shared kernel and find link.  We only get here for the first file in this
                 % condition.
@@ -777,7 +761,7 @@ function sResults = MergeFields(sInput, sResults, sResultsOut, isForceComment, i
     sResults.nComponents = sResultsOut.nComponents;
 end
 
-function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileComment, OutTimeWindow)
+function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutRowNames, FileComment, OutTimeWindow)
     % Create output structure
     sMatrix = db_template('matrixmat');
     % List of fields to copy from sResults to new matrix file.
@@ -787,8 +771,8 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileC
             sMatrix.(Fields{iF}) = sResults.(Fields{iF});
         end
     end
-    % Description: cell array of 'ScoutName @ File' strings.
-    sMatrix.Description = cellfun(@(c) [c ' @ ' FileComment], ScoutNames', 'UniformOutput', false);
+    % Description: cell array of 'ScoutName[.Vert][.Comp][ @ File]' strings. 
+    sMatrix.Description = ScoutRowNames;
     % History: File name
     sMatrix = bst_history('add', sMatrix, 'src', ['PCA applied to file: ' sInput.FileName]);
 
@@ -826,6 +810,10 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutNames, FileC
 end
 
 function OutputFile = SaveResultFile(sInput, sResults, Method)
+    % Verify and fix GridAtlas for atlas-based files
+    if ~isempty(sResults.GridAtlas) || sResults.nComponents == 0
+        sResults = process_extract_scout('FixAtlasBasedGrid', [], sInput, sResults);
+    end
     % Get study description
     sStudy = bst_get('Study', sInput.iStudy);
     % File tag
