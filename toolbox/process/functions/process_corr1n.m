@@ -271,7 +271,7 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
             end
         end
         % Scout PCA options
-        if strcmpi(OPTIONS.ScoutFunc, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
+        if (strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')) && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ~isempty(sProcess.options.pcaedit.Value)
             OPTIONS.PcaOptions = sProcess.options.pcaedit.Value;
         end
     end
