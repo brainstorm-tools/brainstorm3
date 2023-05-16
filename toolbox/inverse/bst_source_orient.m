@@ -129,7 +129,9 @@ if (nComponents == 0)
         switch (GridAtlas.Scouts(iScout).Region(3))
             case 'C'
                 SourceBlocks{end+1} = SourceValues(iVertSource,:,:,:);
-                RowNamesBlocks{end+1} = RowNames(iVertSource)';
+                if ~isempty(RowNames) && iscell(RowNames)
+                    RowNamesBlocks{end+1} = RowNames(iVertSource)';
+                end
                 iSourceBlocks{end+1} = iVertSource;
             case {'U','L'}
                 % Apply grouping function
@@ -154,7 +156,7 @@ if (nComponents == 0)
     end
     % Concatenate all the blocks together
     SourceValues = cat(1, SourceBlocks{:});
-    if ~isempty(RowNames) && iscell(RowNames)
+    if ~isempty(RowNamesBlocks)
         RowNames = cat(2, RowNamesBlocks{:});
     end
     % Modify the grid/row correspondance matrix
