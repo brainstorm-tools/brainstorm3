@@ -170,7 +170,12 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
     elseif ~isModifData
         bst_report('Info', sProcess, sInputs, 'All the channel files are equivalent. No modification will be performed on the data files.');
     end
-    
+    % Do not allow shared channel for raw data files
+    if isShareChan && any(strcmpi({sInputs.FileType}, 'raw'))
+        bst_report('Error', sProcess, [], 'Raw files should not use shared channel as all projectors from pre-processing will be lost');
+        return;
+    end
+
     
     %% ===== COMPUTE TRANSFORMATION =====
     % Base: first channel file in the list
@@ -244,18 +249,18 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
         % return;
     end
     % Combine SSP from all the files
-    if isShareChan
-        Projector = [];
-        for iFile = 1:length(ChannelMats)
-            if isfield(ChannelMats{iFile}, 'Projector') && ~isempty(ChannelMats{iFile}.Projector)
-                if isempty(Projector)
-                    Projector = ChannelMats{iFile};
-                else
-                    bst_report('Warning', sProcess, sInputs, 'Ignoring Projector matrix (SSP and ICA). Using only the one from the first channel file.');
-                end
-            end
-        end
-    end
+%     if isShareChan
+%         Projector = [];
+%         for iFile = 1:length(ChannelMats)
+%             if isfield(ChannelMats{iFile}, 'Projector') && ~isempty(ChannelMats{iFile}.Projector)
+%                 if isempty(Projector)
+%                     Projector = ChannelMats{iFile};
+%                 else
+%                     bst_report('Warning', sProcess, sInputs, 'Ignoring Projector matrix (SSP and ICA). Using only the one from the first channel file.');
+%                 end
+%             end
+%         end
+%     end
     
     
     %% ===== UPDATE CHANNEL FILES =====
