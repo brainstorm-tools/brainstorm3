@@ -180,6 +180,8 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
     %% ===== COMPUTE TRANSFORMATION =====
     % Base: first channel file in the list
     AvgChannelMat = ChannelMats{1};
+    % Remove projectors from average channel
+    isAvgChan = rmfield(isAvgChan, 'Projector');
     % Compute average channel structure (include ALL the sensor types)
     if isAvgChan && ~all(isChanEqual)
         [AvgChannelMat, Message] = channel_average(ChannelMats);
