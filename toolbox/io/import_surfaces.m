@@ -179,7 +179,8 @@ for iFile = 1:length(SurfaceFiles)
     % Multiple surfaces
     else
         [Tess(:).Atlas] = deal(db_template('Atlas'));
-        NewTess = tess_concatenate(Tess, [], [], Labels);
+        isKeepLabels = 1;
+        NewTess = tess_concatenate(Tess, [], [], Labels, isKeepLabels);
         NewTess.iAtlas  = find(strcmpi({NewTess.Atlas.Name}, 'Structures'));
         NewTess.Comment = importedBaseName;
     end

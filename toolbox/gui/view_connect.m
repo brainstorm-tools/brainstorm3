@@ -137,7 +137,7 @@ if strcmpi(DisplayMode, 'Image')
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
+    [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq', GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits);
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
@@ -262,6 +262,8 @@ if isStaticFreq
 else
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
 end
+% Display units
+TfInfo.DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);
 % Display options panel (not for stat, as the thresholding is already done)

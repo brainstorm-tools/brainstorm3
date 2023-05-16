@@ -1251,7 +1251,10 @@ function PlotFigure(hFig, isForced, isSpectrum, Time, Freqs, TfInfo, TF, RowName
     end
     if isempty(DisplayUnits)
         % Get signal units and display factor 
-        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        if ~isempty(regexp(TfInfo.FileName, '_connect[1n]', 'once'))
+            DisplayUnits  = 'No units';
+            DisplayFactor = 1;
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
         else
             DisplayUnits = 'signal units';
@@ -1549,12 +1552,14 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Granger causality';
                     case {'plv', 'plvt'}
                         strAmp = 'Phase locking value';
-                    case {'ciplv', 'ciplvt'}
-                        strAmp = 'Weighted phase lag index';
                     case {'wpli', 'wplit'}
+                        strAmp = 'Weighted phase lag index';
+                    case {'ciplv', 'ciplvt'}
                         strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
+                    case {'pte'}
+                        strAmp = 'Phase transfer entropy';
                     case 'aec'      % DEPRECATED
                         strAmp = 'Average envelope correlation';
                         % Hilbert (time-varying)

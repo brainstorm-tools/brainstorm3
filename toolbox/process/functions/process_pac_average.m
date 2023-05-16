@@ -1,6 +1,17 @@
 function varargout = process_pac_average( varargin )
 % PROCESS_PAC_AVERAGE: average pac maps.
 %
+% Averages all "full" PAC value arrays across files and/or trials.  Then the max PAC fields (TF,
+% NestingFreq, NestedFreq, PhasePAC) are recomputed from the averages.  However, DyncamicPAC may
+% already be the max across several nesting frequencies and this average should be interpreted with
+% caution.
+%
+% For time-resolved (dynamic) PAC, trials could have been concatenated in 4th dim of the DynamicPAC
+% field; these are also averaged here.  If using the phase in averaging, the returned DynamicPhase
+% is the phase of the averaged (complex) PAC, otherwise it is empty.  Similarly for TF & PhasePAC
+% which are the max values over all frequencies for amplitude.  DynamicNesting (frequency for phase)
+% values are also removed since they are different between files.
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -20,14 +31,7 @@ function varargout = process_pac_average( varargin )
 % =============================================================================@
 %
 % Authors: Soheila Samiee, 2015-2017
-%   - 2.0: SS. Aug. 2017 
-%                - Imported in public brainstorm rep
-%   - 2.1: SS Sep. 2017
-%                - Bug fix for averaging multiple files with different 
-%                number of sources
-%
-%   - 2.2: SS Sep 2017
-%                - Bug fix - donot store f_nesting information 
+%          Marc Lalancette, 2023
 eval(macro_method);
 end
 
@@ -73,162 +77,205 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 
     usePhase = sProcess.options.usePhase.Value;
 
-    % Get current progressbar position
-    if bst_progress('isVisible')
-        curProgress = bst_progress('get');
-    else
-        curProgress = [];
-    end
+    %     % Get current progressbar position
+    %     if bst_progress('isVisible')
+    %         curProgress = bst_progress('get');
+    %     else
+    %         curProgress = [];
+    %     end
 
-    % Load TF file
-    tpacMat = in_bst_timefreq(sInput(1).FileName, 0);
-    % Error
-    if isempty(tpacMat)
-        bst_report('Error', sProcess, sInput, Messages);
-        return;
-    end
-    
     switch(sProcess.options.analyze_type.Value)
         % === EVERYTHING ===
         case 1
-            [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat,usePhase);
-            N = length(sInput);
-            tpacMat.nAvg = N;
-            isAvgFile = 1;
-            
+            [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase);
+            if isempty(tpacMat) % Error already reported.
+                OutputFiles = {};
+                return;
+            end
             % Save the results
-            OutputFiles = save_pac_files(sProcess, sInput, FileTag, tag, tpacMat, isAvgFile);
+            OutputFiles = save_pac_files(sProcess, sInput, FileTag, tpacMat);
             
             % === BY SUBJECT ===
         case 2
             % Process each subject independently
-            uniqueSubj = unique({sInput.SubjectFile});
-            for i = 1:length(uniqueSubj)
-                % Set progress bar at the same level for each loop
-                if ~isempty(curProgress)
-                    bst_progress('set', curProgress);
-                end
+            [~, iSubj, iUniq] = unique({sInput.SubjectFile});
+            nSubj = length(iSubj);
+            OutputFiles = cell(nSubj,1);
+            for i = 1:nSubj
                 % Get all the files for subject #i
-                iInputSubj = find(strcmpi(uniqueSubj{i}, {sInput.SubjectFile}));
-                N = length(sInput(iInputSubj));
-                if N>1
-                    % Load TF file
-                    tpacMat = in_bst_timefreq(sInput(iInputSubj(1)).FileName, 0);
-                    % Process the average of subject #i
-                    [tpacMat, tag, FileTag] = AverageFilesPAC(sInput(iInputSubj(2:end)), tpacMat, usePhase);
-                    isAvgFile = 1;
-                else
-                    % Process the average of subject #i
-                    [tpacMat, tag, FileTag] = AverageFilesPAC(sInput(iInputSubj(1)), tpacMat, usePhase);
-                    isAvgFile = 0;
+                isInputSubj = (i == iUniq);
+                [tpacMat, FileTag] = AverageFilesPAC(sInput(isInputSubj), usePhase);
+                if isempty(tpacMat) % Error already reported.
+                    OutputFiles = {};
+                    return;
                 end
-                tpacMat.nAvg = N;
-                tpacMat.Options.usePhase = usePhase;
-                
                 % Save the results
-                OutputFiles = save_pac_files(sProcess, sInput(iInputSubj), FileTag, tag, tpacMat, isAvgFile);
+                OutputFiles(i) = save_pac_files(sProcess, sInput(isInputSubj), FileTag, tpacMat);
             end
     end
 end
 
 
 
-function [tpacMat, tag, FileTag] = AverageFilesPAC(sInput, tpacMat, usePhase)
-        tag = '|avg_file';
+function [tpacMat, FileTag] = AverageFilesPAC(sInput, usePhase)
         N = length(sInput);
-        spac = tpacMat.sPAC;
+        % Load TF file
+        tpacMat = in_bst_timefreq(sInput(1).FileName, 0);
+        if isempty(tpacMat)
+            bst_report('Error', sProcess, sInput, 'Error loading input file.');
+            return;
+        end
+        tpacMat.Options.usePhase = usePhase;
         
-        if isfield(spac,'DirectPAC')
-            pac = tpacMat.sPAC.DirectPAC/N;
-            for iFile = 2:N
-                tmp = in_bst_timefreq(sInput(iFile).FileName, 0);
-                pac = pac + tmp.sPAC.DirectPAC/N;
+        if isfield(tpacMat.sPAC, 'DirectPAC')
+            % size is [nSignals, nTime=1, nLowFreqs, nHighFreqs]
+            % Keep first file's data to avoid loading again.
+            tpacIn = tpacMat;
+            % Reinitialize output array.
+            tpacMat.sPAC.DirectPAC = zeros(size(tpacMat.sPAC.DirectPAC, 1:3));
+            tpacMat.nAvg = 0;
+            for iFile = 1:N
+                if iFile > 1
+                    tpacIn = in_bst_timefreq(sInput(iFile).FileName, 0);
+                    if ~isequal(tpacMat.sPAC.LowFreqs, tpacIn.sPAC.LowFreqs) || ~isequal(tpacMat.sPAC.HighFreqs, tpacIn.sPAC.HighFreqs)
+                        Message = ['Frequencies of file #',num2str(iFile),' is not the same as previous files.'];
+                        bst_report('Error', 'process_pac_average', sInput, Message);
+                        tpacMat = [];
+                        return;
+                    elseif ~isequal(size(tpacMat.sPAC.DirectPAC), size(tpacIn.sPAC.DirectPAC))
+                        Message = ['Size of PAC array of file #',num2str(iFile),' is not the same as previous files.'];
+                        bst_report('Error', 'process_pac_average', sInput, Message);
+                        tpacMat = [];
+                        return;
+                    end
+                end
+                % Check full maps were saved.
+                if isempty(tpacIn.sPAC.DirectPAC)
+                    Message = ['Full PAC array is missing for file #',num2str(iFile),'.'];
+                    bst_report('Error', 'process_pac_average', sInput, Message);
+                    tpacMat = [];
+                    return;
+                end
+                tpacMat.sPAC.DirectPAC = tpacMat.sPAC.DirectPAC + tpacIn.sPAC.DirectPAC;
+                if isempty(tpacIn.nAvg)
+                    tpacIn.nAvg = 1;
+                end
+                tpacMat.nAvg = tpacMat.nAvg + tpacIn.nAvg;
             end
-            tpacMat.sPAC.DirectPAC = pac;
             FileTag = 'timefreq_pac_fullmaps';
-            %% Recompute nesting frequencies
-            pacDims = size(pac);
+            % Divide by total number of trials for average.
+            tpacMat.sPAC.DirectPAC = tpacMat.sPAC.DirectPAC / tpacMat.nAvg;
+
+            % Recompute max over all fA and fP pairs, saved in TF, and save corresponding frequencies (NestingFreq and NestedFreq).
+            % Ensure we have 4 dimensions
+            pacDims = size(tpacMat.sPAC.DirectPAC);
             if length(pacDims) < 4
-                % Ensure we have 4 dimensions
                 pacDims = [ones(1,4-length(pacDims)), pacDims];
-                pac = reshape(pac,pacDims);
+                tpacMat.sPAC.DirectPAC = reshape(tpacMat.sPAC.DirectPAC, pacDims);
             end
-            [nSources, nWindows, nLow, nHigh] = size(pac);
-            for iSource = 1:nSources
-                for iWindow = 1:nWindows
-                    curPac = pac(iSource,iWindow,:,:);
-                    [tmp, maxInd] = max(curPac(:));
-                    [indFa, indFp] = ind2sub([nLow, nHigh], maxInd);
-                    tpacMat.sPAC.NestingFreq(iSource,iWindow) = tpacMat.sPAC.LowFreqs(indFp);
-                    tpacMat.sPAC.NestedFreq(iSource,iWindow) = tpacMat.sPAC.HighFreqs(indFa);
-                end
-            end
+            [nSources, nWindows, nLow, nHigh] = size(tpacMat.sPAC.DirectPAC);
+            [tpacMat.sPAC.TF, iLinMax] = max(tpacMat.sPAC.DirectPAC(:, :, :), 3); % max over all fA and fP pairs.
+            [iFp, iFa] = ind2sub([nLow, nHigh], iLinMax); 
+            tpacMat.sPAC.NestingFreq = tpacMat.LowFreq(iFp);
+            tpacMat.sPAC.NestedFreq = tpacMat.HighFreqs(iFa);
             
-        elseif isfield(spac,'DynamicPAC')    
-            if usePhase
-                tpac = tpacMat.sPAC.DynamicPAC.*exp(1i*tpacMat.sPAC.DynamicPhase)/N;
-            else
-                tpac = tpacMat.sPAC.DynamicPAC/N;
-            end
-%             Nesting = tpacMat.sPAC.DynamicNesting;
-            for iFile = 2:N
-                tmp = in_bst_timefreq(sInput(iFile).FileName, 0);
-                if ~isequal(tmp.Time,tpacMat.Time) || ~isequal(tmp.sPAC.HighFreqs, tpacMat.sPAC.HighFreqs)
-                    Message = ['Format of file#',num2str(iFile),' does not match the first file'];
-                    bst_report('Error', 'process_pac_average', sInput, Message);
-                    return;
-                end 
-                if ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPAC,1))
-                    Message = ['Number of sources in File #',num2str(iFile),' is not the same as previous files -- average on sources before averaging files'];
-                    bst_report('Error', 'process_pac_average', sInput, Message);
-                    return;
-                end 
-                if usePhase && isequal(size(tpac,1), size(tmp.sPAC.DynamicPhase,1))
-                    tpac = tpac + tmp.sPAC.DynamicPAC.*exp(1i*tmp.sPAC.DynamicPhase)/N;
-                elseif ~isequal(size(tpac,1), size(tmp.sPAC.DynamicPAC,1))                    
-                    Message = ['Number of sources for phase in File #',num2str(iFile),' is not the same as previous files -- You cannot use phase in averaging'];
-                    bst_report('Error', 'process_pac_average', sInput, Message);
-                    return;
-                else
-                    tpac = tpac + tmp.sPAC.DynamicPAC/N;
+        elseif isfield(tpacMat.sPAC, 'DynamicPAC')
+            % size is [nSignals, nTime, nHighFreqs, nTrials], 4th dim if "averaging"/concatenating was selected in process_pac_dynamic.
+            % Keep first file's data to avoid loading again.
+            tpacIn = tpacMat;
+            % Reinitialize output array.
+            tpacMat.sPAC.DynamicPAC = zeros(size(tpacMat.sPAC.DynamicPAC, 1:3));
+            tpacMat.nAvg = 0;
+            %             Nesting = tpacMat.sPAC.DynamicNesting;
+            for iFile = 1:N
+                if iFile > 1
+                    tpacIn = in_bst_timefreq(sInput(iFile).FileName, 0);
+                    if ~isequal(tpacIn.Time, tpacMat.Time) || ~isequal(tpacIn.sPAC.HighFreqs, tpacMat.sPAC.HighFreqs)
+                        Message = ['Format of file #',num2str(iFile),' does not match the first file'];
+                        bst_report('Error', 'process_pac_average', sInput, Message);
+                        tpacMat = [];
+                        return;
+                    elseif ~isequal(size(tpacIn.sPAC.DynamicPAC,1), size(tpacMat.sPAC.DynamicPAC,1))
+                        Message = ['Number of sources in file #',num2str(iFile),' is not the same as previous files -- average on sources before averaging files'];
+                        bst_report('Error', 'process_pac_average', sInput, Message);
+                        tpacMat = [];
+                        return;
+                    elseif usePhase && ~isequal(size(tpacIn.sPAC.DynamicPhase,1), size(tpacMat.sPAC.DynamicPhase,1))
+                        Message = ['Number of sources for phase in file #',num2str(iFile),' is not the same as previous files -- You cannot use phase in averaging'];
+                        bst_report('Error', 'process_pac_average', sInput, Message);
+                        tpacMat = [];
+                        return;
+                    end
                 end
-%                 Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
+                if usePhase
+                    tpacMat.sPAC.DynamicPAC = tpacMat.sPAC.DynamicPAC + sum(tpacIn.sPAC.DynamicPAC.*exp(1i*tpacIn.sPAC.DynamicPhase), 4);
+                else
+                    tpacMat.sPAC.DynamicPAC = tpacMat.sPAC.DynamicPAC + sum(tpacIn.sPAC.DynamicPAC, 4);
+                end
+                % Sum number of trials averaged. Double-check size to be safe in case of concatenated trials.
+                nTrials = size(tpacIn.sPAC.DynamicPAC, 4);
+                if isempty(tpacIn.nAvg) || (tpacIn.nAvg == 1 && nTrials > 1)
+                    tpacIn.nAvg = nTrials;
+                elseif tpacIn.nAvg ~= nTrials && nTrials > 1
+                    Message = sprintf('Unexpected number of averages in input file; nAvg=%d, nTrials=%d.  Using nTrials.', tpacMat.nAvg, nTrials);
+                    bst_report('Warning', 'process_pac_average', sInput, Message);
+                    tpacIn.nAvg = nTrials;
+                end
+                tpacMat.nAvg = tpacMat.nAvg + tpacIn.nAvg;
+                %                 Nesting = cat(5,Nesting,tmp.sPAC.DynamicNesting);
             end
-            tpacMat.sPAC.DynamicPAC = abs(tpac);
+            % Divide by total number of trials for average.
+            tpacMat.sPAC.DynamicPAC = tpacMat.sPAC.DynamicPAC / tpacMat.nAvg;
+
+            % Recompute max over fA across averaged tPAC, i.e. do max of mean, not mean of max.
+            % Careful: not same array dim order than where this happens in process_pac_dynamic.
+            [tpacMat.sPAC.TF, iLinMax] = max(abs(tpacMat.sPAC.DynamicPAC), [], 3, 'linear'); 
+            [~, ~, iMax] = ind2sub(size(tpacMat.sPAC.DynamicPAC), iLinMax);
+            tpacMat.sPAC.NestedFreq = tpacMat.sPAC.HighFreqs(iMax); % vector to 2d array.
+            tpacMat.sPAC.NestingFreq = []; % no longer meaningful.
+
             if usePhase
-                tpacMat.sPAC.PhasePAC = angle(tpac);
-                tpacMat.sPAC.DynamicPhase = angle(tpac);
+                tpacMat.sPAC.DynamicPhase = angle(tpacMat.sPAC.DynamicPAC);
+                tpacMat.sPAC.PhasePAC = tpacMat.sPAC.DynamicPhase(iLinMax); % phase of TF (ValPAC)
+                % Go back to real values after phases extracted.
+                tpacMat.sPAC.DynamicPAC = abs(tpacMat.sPAC.DynamicPAC);
+            else
+                tpacMat.sPAC.PhasePAC = [];
+                tpacMat.sPAC.DynamicPhase = [];
             end
-            tpacMat.sPAC.DynamicNesting = [];%Nesting;
+            % Averaged PAC over different fP's, so fP no longer meaningful; don't average it.
+            tpacMat.sPAC.DynamicNesting = []; 
             FileTag = 'timefreq_dpac_fullmaps';
-        end                
+
+        else
+            Message = 'Unknown file type, not recognized as PAC.';
+            bst_report('Error', 'process_pac_average', sInput, Message);
+            tpacMat = [];
+            return;
+        end
 end
 
 
 
-function OutputFiles = save_pac_files(sProcess, sInput, FileTag, tag, tpacMat, isAvgFile)
+function OutputFiles = save_pac_files(sProcess, sInput, FileTag, tpacMat)
     % === SAVING THE DATA IN BRAINSTORM ===
     % Getting the study
     [sOutputStudy, iOutputStudy, comment, uniqueDataFile] = bst_process('GetOutputStudy', sProcess, sInput);
 
     % Comment
+    tag = '| avg';
     tpacMat.Comment = [tpacMat.Comment, ' ', tag];
 
     % Preparing the output file
     OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), FileTag); 
-    OutputFiles{1} = file_unique(OutputFiles{1});
 
-    if isAvgFile
-        % Averaging results from the different data file: reset the "DataFile" field
-        if isfield(tpacMat, 'DataFile') && ~isempty(tpacMat.DataFile) && (length(uniqueDataFile) ~= 1)
-            tpacMat.DataFile = [];
-        end
-
+    % Averaging results from the different data file: reset the "DataFile" field
+    if isfield(tpacMat, 'DataFile') && ~isempty(tpacMat.DataFile) && (length(uniqueDataFile) ~= 1)
+        tpacMat.DataFile = [];
     end
 
     % Save on disk
     bst_save(OutputFiles{1}, tpacMat, 'v6');
     % Register in database
     db_add_data(iOutputStudy, OutputFiles{1}, tpacMat);
-
 end

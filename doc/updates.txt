@@ -1,6 +1,12 @@
+April 2023
+- NIRS: Project channel files between subjects
+- 3DViewer: Overlay any type of surfaces
+--------------------------------------------------------------
 March 2023
 - Parallel computing: Handle temporary files per process, to avoid conflicts
 - Recordings: Optional storage of events channels and notes
+- Anatomy: New template ICBM152 2023b: New BEM and cortex for OpenMEEG
+- Anatomy: Contralateral projection of volume scouts
 --------------------------------------------------------------
 February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)

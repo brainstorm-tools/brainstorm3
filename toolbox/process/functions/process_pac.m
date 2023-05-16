@@ -295,7 +295,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
             if isempty(DirectPAC)
                 DirectPAC = zeros(nSignals, 1, size(DirectPAC_block,3), size(DirectPAC_block,4));
             end
-            % Copy block results to output variable
+            % Copy block results to output variable [nSignals, nTime=1, nNestingFreqs, nNestedFreqs]
             DirectPAC(iSignals,:,:,:) = DirectPAC_block;
             % Display processing time
             % disp(sprintf('Block #%d/%d: %fs', iBlock, nBlocks, toc));

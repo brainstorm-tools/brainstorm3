@@ -156,11 +156,14 @@ if ~isempty(NevFile)
         % Get events
         if ~isempty(nev.Data.SerialDigitalIO.Value) && ~isempty(nev.Data.SerialDigitalIO.Type)
             allTypes = [nev.Data.SerialDigitalIO.Type', nev.Data.SerialDigitalIO.Value'];
+            isUnparsed = 0;
         elseif ~isempty(nev.Data.SerialDigitalIO.UnparsedData)
             eventCodes = double(nev.Data.SerialDigitalIO.UnparsedData);
             eventCodes = eventCodes - min(eventCodes);
             eventCodes(eventCodes == 0) = [];
-            allTypes = [eventCodes(:), ones(length(eventCodes), 1)];
+            nev.Data.SerialDigitalIO.TimeStamp(eventCodes == 0) = [];
+            allTypes = repmat(eventCodes(:), 1, 2);
+            isUnparsed = 1;
         else
             allTypes = [];
         end
@@ -169,7 +172,11 @@ if ~isempty(NevFile)
         for i = 1:size(uniqueType,1)
             iEvt = length(events) + 1;
             iOcc = ((allTypes(:,1) == uniqueType(i,1)) & (allTypes(:,2) == uniqueType(i,2)));
-            events(iEvt).label      = sprintf('%d-%d', uniqueType(i,1), uniqueType(i,2));
+            if isUnparsed
+                events(iEvt).label = sprintf('D%d', uniqueType(i,1));
+            else
+                events(iEvt).label = sprintf('%d-%d', uniqueType(i,1), uniqueType(i,2));
+            end
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;

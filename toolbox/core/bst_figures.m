@@ -616,7 +616,7 @@ function [hFigures, iFigures, iDataSets, iSurfaces] = GetFigureWithSurface(Surfa
     % Parse inputs
     if (nargin < 4)
         DataFile = '';
-        FigType  = '3DViz';
+        FigType  = '';
         Modality = '';
     end
     % Process all DataSets
@@ -624,35 +624,40 @@ function [hFigures, iFigures, iDataSets, iSurfaces] = GetFigureWithSurface(Surfa
         % Process all figures of this dataset
         for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
             Figure = GlobalData.DataSet(iDS).Figure(iFig);
-            % Look only in 3DViz figures (there cannot be surfaces displayed in other widow types)
-            % and figures that have the appropriate Modality
-            if strcmpi(Figure.Id.Type, FigType) && (isempty(Modality) || strcmpi(Figure.Id.Modality, Modality))
-                % Get surfaces list
-                TessInfo = getappdata(Figure.hFigure, 'Surface');
-                % Look for surface
-                for iTess = 1:length(TessInfo)
-                    % If the surface contain registered spheres: skip
-                    if ~isempty(TessInfo(iTess).SurfaceFile) && ~isempty(strfind(TessInfo(iTess).SurfaceFile, '|reg'))
-                        isSurfFileOk = 0;
-                    % Check if the (or one of the) surface file is valid
-                    elseif iscell(SurfaceFile)
-                        isSurfFileOk = 0;
-                        i = 1;
-                        while (i <= length(SurfaceFile) && ~isSurfFileOk)
-                            isSurfFileOk = file_compare(TessInfo(iTess).SurfaceFile, SurfaceFile{i});
-                            i = i + 1;
-                        end
-                    else
-                        isSurfFileOk = file_compare(TessInfo(iTess).SurfaceFile, SurfaceFile);
+            % If not specified, look in 3DViz+Topography figures, and figures that have the appropriate Modality
+            if ~isempty(Modality) && ~strcmpi(Figure.Id.Modality, Modality)
+                continue;
+            elseif ~isempty(FigType) && ~strcmpi(Figure.Id.Type, FigType)
+                continue;
+            elseif isempty(FigType) && ~ismember(Figure.Id.Type, {'3DViz', 'Topography'})
+                continue;
+            elseif isempty(FigType) && strcmpi(Figure.Id.Type, 'Topography') && ~strcmpi(Figure.Id.SubType, '3DElectrodes')
+                continue;
+            end
+            % Get surfaces list
+            TessInfo = getappdata(Figure.hFigure, 'Surface');
+            % Look for surface
+            for iTess = 1:length(TessInfo)
+                % If the surface contain registered spheres: skip
+                if ~isempty(TessInfo(iTess).SurfaceFile) && ~isempty(strfind(TessInfo(iTess).SurfaceFile, '|reg'))
+                    isSurfFileOk = 0;
+                % Check if the (or one of the) surface file is valid
+                elseif iscell(SurfaceFile)
+                    isSurfFileOk = 0;
+                    i = 1;
+                    while (i <= length(SurfaceFile) && ~isSurfFileOk)
+                        isSurfFileOk = file_compare(TessInfo(iTess).SurfaceFile, SurfaceFile{i});
+                        i = i + 1;
                     end
-                    % If figure is accepted: add it to the list
-                    if isSurfFileOk && (isempty(DataFile) ...
-                                        || file_compare(TessInfo(iTess).DataSource.FileName, DataFile))
-                        hFigures  = [hFigures,  Figure.hFigure];
-                        iFigures  = [iFigures,  iFig];
-                        iDataSets = [iDataSets, iDS];
-                        iSurfaces = [iSurfaces, iTess];
-                    end
+                else
+                    isSurfFileOk = file_compare(TessInfo(iTess).SurfaceFile, SurfaceFile);
+                end
+                % If figure is accepted: add it to the list
+                if isSurfFileOk && (isempty(DataFile) || file_compare(TessInfo(iTess).DataSource.FileName, DataFile))
+                    hFigures  = [hFigures,  Figure.hFigure];
+                    iFigures  = [iFigures,  iFig];
+                    iDataSets = [iDataSets, iDS];
+                    iSurfaces = [iSurfaces, iTess];
                 end
             end
         end

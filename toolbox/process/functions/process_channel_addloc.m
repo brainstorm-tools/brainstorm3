@@ -152,7 +152,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         MriFile = [];
     end
     % Get fiducials
-    if isfield(sProcess.options, 'fiducials') && isfield(sProcess.options.fiducials, 'Value')
+    if isfield(sProcess.options, 'fiducials') && isfield(sProcess.options.fiducials, 'Value') && ~isempty(sProcess.options.fiducials.Value)
         sFid = sProcess.options.fiducials.Value;
         isApplyVox2ras = 0;
     else

@@ -297,6 +297,9 @@ listDep(iExclude) = [];
 % Remove all the classes
 iClass = find(~cellfun(@(c)isempty(strfind(c, '@')), listDep));
 listDep(iClass) = [];
+% Remove all the files from external/signal (already available from the signal processing toolbox)
+iSignal = find(~cellfun(@(c)isempty(strfind(c, ['external' filesep 'signal'])), listDep));
+listDep(iSignal) = [];
 % Add all the 64bit versions of all the included mex-files
 iMex = find(~cellfun(@(c)isempty(strfind(c, '.mexw64')), listDep));
 for i = 1:length(iMex)

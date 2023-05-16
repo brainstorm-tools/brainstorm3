@@ -152,7 +152,11 @@ end
 function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
     DtiFile = [];
     errMsg = '';
-    
+    if ~ispc
+        bdp_exe = 'bdp.sh';
+    else
+        bdp_exe = 'bdp';
+    end
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
@@ -194,7 +198,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== INSTALL BRAINSUITE =====
     bst_progress('text', 'Testing BrainSuite installation...');
     % Check BrainSuite installation
-    status = system('bdp --version');
+    status = system([bdp_exe ' --version']);
     if (status ~= 0)
         % Get BrainSuite path from Brainstorm preferences
         BsDir = bst_get('BrainSuiteDir');
@@ -206,7 +210,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
             disp(['BST> Adding to system path: ' BsBdpDir]);
             setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
             % Check again
-            status = system('bdp --version');
+            status = system([bdp_exe  ' --version']);
         end
         % Brainsuite is not installed
         if (status ~= 0)
@@ -259,7 +263,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== 3. BRAINSUITE DIFFUSION PIPELINE (BDP) =====
     bst_progress('text', '3/3: BrainSuite Diffusion Pipeline...');
     strCall = [...
-        'bdp "' fullfile(TmpDir,'output_mri.bfc.nii.gz"') ...
+        bdp_exe ' "' fullfile(TmpDir,'output_mri.bfc.nii.gz"') ...
         ' --tensor --nii "' DwiFile '"' ...
         ' --t1-mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"')...
         ' -g "' BvecFile '" -b "' BvalFile '"'];
