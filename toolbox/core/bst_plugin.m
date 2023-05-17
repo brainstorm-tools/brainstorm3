@@ -274,12 +274,11 @@ function PlugDesc = GetSupported(SelPlug)
 
     % === I/O: BLACKROCK ===
     PlugDesc(end+1)              = GetStruct('blackrock');
-    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
     PlugDesc(end).TestFile       = 'openNSx.m';
-    PlugDesc(end).ReadmeFile     = 'Versions.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'NPMK/installNPMK.m', 'NPMK/Users Guide.pdf', 'NPMK/Versions.txt', ...
