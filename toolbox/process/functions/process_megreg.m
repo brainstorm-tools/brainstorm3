@@ -61,9 +61,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === SHARE CHANNEL FILE
     sProcess.options.label2.Type    = 'label';
     sProcess.options.label2.Comment = '<BR>Use default channel file :';
+    sProcess.options.label2.InputTypes   = {'data'};
     sProcess.options.sharechan.Comment = {'Yes, share the same channel file between runs', 'No, do not modify the database organization (recommended)'};
     sProcess.options.sharechan.Type    = 'radio';
     sProcess.options.sharechan.Value   = 2;
+    sProcess.options.sharechan.InputTypes   = {'data'};
     % === EPSILON 
     sProcess.options.label3.Type    = 'label';
     sProcess.options.label3.Comment = ' ';
