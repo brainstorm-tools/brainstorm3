@@ -174,7 +174,7 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Do not allow shared channel for raw data files
     if isShareChan && any(strcmpi({sInputs.FileType}, 'raw'))
-        bst_report('Error', sProcess, [], 'Raw files should not use shared channel as all projectors from pre-processing will be lost');
+        bst_report('Error', sProcess, [], 'Shared channel file not currently supported for interpolating raw files');
         return;
     end
 
