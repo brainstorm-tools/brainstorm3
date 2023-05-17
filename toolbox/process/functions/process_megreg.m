@@ -61,9 +61,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === SHARE CHANNEL FILE
     sProcess.options.label2.Type    = 'label';
     sProcess.options.label2.Comment = '<BR>Use default channel file :';
+    sProcess.options.label2.InputTypes   = {'data'};
     sProcess.options.sharechan.Comment = {'Yes, share the same channel file between runs', 'No, do not modify the database organization (recommended)'};
     sProcess.options.sharechan.Type    = 'radio';
     sProcess.options.sharechan.Value   = 2;
+    sProcess.options.sharechan.InputTypes   = {'data'};
     % === EPSILON 
     sProcess.options.label3.Type    = 'label';
     sProcess.options.label3.Comment = ' ';
@@ -170,11 +172,18 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
     elseif ~isModifData
         bst_report('Info', sProcess, sInputs, 'All the channel files are equivalent. No modification will be performed on the data files.');
     end
-    
+    % Do not allow shared channel for raw data files
+    if isShareChan && any(strcmpi({sInputs.FileType}, 'raw'))
+        bst_report('Error', sProcess, [], 'Shared channel file not currently supported for interpolating raw files');
+        return;
+    end
+
     
     %% ===== COMPUTE TRANSFORMATION =====
     % Base: first channel file in the list
     AvgChannelMat = ChannelMats{1};
+    % Remove projectors from average channel
+    isAvgChan = rmfield(isAvgChan, 'Projector');
     % Compute average channel structure (include ALL the sensor types)
     if isAvgChan && ~all(isChanEqual)
         [AvgChannelMat, Message] = channel_average(ChannelMats);
@@ -244,18 +253,18 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
         % return;
     end
     % Combine SSP from all the files
-    if isShareChan
-        Projector = [];
-        for iFile = 1:length(ChannelMats)
-            if isfield(ChannelMats{iFile}, 'Projector') && ~isempty(ChannelMats{iFile}.Projector)
-                if isempty(Projector)
-                    Projector = ChannelMats{iFile};
-                else
-                    bst_report('Warning', sProcess, sInputs, 'Ignoring Projector matrix (SSP and ICA). Using only the one from the first channel file.');
-                end
-            end
-        end
-    end
+%     if isShareChan
+%         Projector = [];
+%         for iFile = 1:length(ChannelMats)
+%             if isfield(ChannelMats{iFile}, 'Projector') && ~isempty(ChannelMats{iFile}.Projector)
+%                 if isempty(Projector)
+%                     Projector = ChannelMats{iFile};
+%                 else
+%                     bst_report('Warning', sProcess, sInputs, 'Ignoring Projector matrix (SSP and ICA). Using only the one from the first channel file.');
+%                 end
+%             end
+%         end
+%     end
     
     
     %% ===== UPDATE CHANNEL FILES =====
