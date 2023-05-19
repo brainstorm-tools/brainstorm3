@@ -98,7 +98,7 @@ end
 
 % ===== TRANSFORMATIONS =====
 isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM'});
-isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM','BRAINSIGHT-TXT'});
 isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf
@@ -219,7 +219,7 @@ switch FileFormat
     case 'BRAINSIGHT-TXT'
         sSubject = bst_get('Subject');
         if sSubject.iAnatomy > 0
-            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, sSubject.Anatomy(sSubject.iAnatomy).FileName); %ADDTV
+            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); %ADDTV
         else
             out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile);
         end
