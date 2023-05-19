@@ -214,15 +214,9 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
-    
-    % === NIRS ===
     case 'BRAINSIGHT-TXT'
-        sSubject = bst_get('Subject');
-        if sSubject.iAnatomy > 0
-            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); %ADDTV
-        else
-            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile);
-        end
+        out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); 
+
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);
         
