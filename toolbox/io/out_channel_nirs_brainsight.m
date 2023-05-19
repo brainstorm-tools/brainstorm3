@@ -92,9 +92,8 @@ end
 
 % Apply transformation
 if ~isempty(Transf)
-    % MNI coordinates: the entire MRI is passed in input
     if isstruct(Transf)
-        Loc = cs_convert(Transf, 'scs', 'mni', Loc')';
+        Loc = cs_convert(Transf, 'scs', 'world', Loc')';
     % World coordinates
     else
         R = Transf(1:3,1:3);
