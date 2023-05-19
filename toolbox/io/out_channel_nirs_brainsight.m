@@ -2,14 +2,15 @@ function out_channel_nirs_brainsight(BstFile, OutputFile, Factor, Transf)
 % OUT_CHANNEL_NIRS_BRAINSIGHT: Export a Brainstorm channel file in 
 % brainsight coordinate files.
 %
-% USAGE:  out_channel_pos( BstFile,    OutputFile, MriFile );
-%         out_channel_pos( ChannelMat, OutputFile, MriFile );
+% USAGE:  out_channel_nirs_brainsight( BstFile, OutputFile, Factor, Transf)
 %
 % INPUT: 
-%    - BstFile    : full path to Brainstorm file to export
-%    - OutputFile : full path to output file (with '.txt' extension)
-%    - MriFile    : optional, full path to the MRI data. Used to set origin
-%                   of exported coordinates.
+%     - BstFile    : full path to Brainstorm file to export
+%     - OutputFile : full path to output file
+%     - Factor     : Factor to convert the positions values in meters.
+%     - Transf     : 4x4 transformation matrix to apply to the 3D positions before saving
+%                    or entire MRI structure. Optodes are
+%                    exported using world coordinates.
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
