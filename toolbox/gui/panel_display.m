@@ -82,6 +82,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jRadioFOverlay = gui_component('Radio', jPanelFOOOF, 'br', 'Overlay',      jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFExponent = gui_component('Radio', jPanelFOOOF, 'br', 'Exponent',      jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFOffset = gui_component('Radio', jPanelFOOOF, 'br', 'Offset',      jButtonGroup, '', @DisplayOptions_Callback);
+        jCheckFFreqRange = gui_component('Checkbox', jPanelFOOOF, 'br', '<HTML>Limit frequency axis to <BR>specparam analysis freq range', [], '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
@@ -202,6 +203,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jRadioFOverlay.setEnabled(0);
     jRadioFExponent.setEnabled(0);
     jRadioFOffset.setEnabled(0);
+    jCheckFFreqRange.setEnabled(0);
     
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
@@ -229,6 +231,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioFError',           jRadioFError, ...
                                   'jRadioFExponent',        jRadioFExponent, ...
                                   'jRadioFOffset',          jRadioFOffset, ...
+                                  'jCheckFFreqRange',       jCheckFFreqRange, ...
                                   'jRadioPacMax',           jRadioPacMax, ...
                                   'jRadioPacFlow',          jRadioPacFlow, ...
                                   'jRadioPacFhigh',         jRadioPacFhigh, ...
@@ -405,6 +408,7 @@ function UpdatePanel(hFig)
         ctrl.jRadioFError.setEnabled(0);
         ctrl.jRadioFExponent.setEnabled(0);
         ctrl.jRadioFOffset.setEnabled(0);
+        ctrl.jCheckFFreqRange.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelFunction.setVisible(0);
@@ -479,6 +483,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
+                ctrl.jCheckFFreqRange.setVisible(1);
+                ctrl.jCheckFFreqRange.setEnabled(1);
                 if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
                     ctrl.jPanelSelect.setVisible(0);
                     ctrl.jRadioFOverlay.setVisible(0)
@@ -487,12 +493,16 @@ function UpdatePanel(hFig)
                     ctrl.jRadioFExponent.setEnabled(1);
                     ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFOffset.setEnabled(1);
+                    ctrl.jCheckFFreqRange.setVisible(0);
+                    ctrl.jCheckFFreqRange.setEnabled(0);
                 else
                     ctrl.jPanelSelect.setVisible(1);
                     ctrl.jRadioFOverlay.setVisible(1)
                     ctrl.jRadioFOverlay.setEnabled(1);
                     ctrl.jRadioFExponent.setVisible(0);
                     ctrl.jRadioFOffset.setVisible(0);
+                    ctrl.jCheckFFreqRange.setVisible(1);
+                    ctrl.jCheckFFreqRange.setEnabled(1);
                 end               
                 switch TfInfo.FOOOFDisp
                     case 'overlay', ctrl.jRadioFOverlay.setSelected(1);
@@ -518,6 +528,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
+                ctrl.jCheckFFreqRange.setVisible(0);
+                ctrl.jCheckFFreqRange.setEnabled(0);
                 if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
@@ -549,6 +561,8 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFError.setEnabled(0);
                 ctrl.jRadioFExponent.setEnabled(0);
                 ctrl.jRadioFOffset.setEnabled(0);
+                ctrl.jCheckFFreqRange.setVisible(0);
+                ctrl.jCheckFFreqRange.setEnabled(0);
             end                
         end
 
@@ -704,7 +718,8 @@ function sOptions = GetDisplayOptions()
             'DisplayBothMeasure', 1, ...
             'DisplayBidirectionalMeasure', 0, ...
             'MeasureAnatomicalFilter', 0, ...
-            'FOOOFDisp', 'overlay');
+            'FOOOFDisp', 'overlay', ...
+            'FOOOFDispRange', 0);
         return
     end
     % Get current panel figure
@@ -754,6 +769,8 @@ function sOptions = GetDisplayOptions()
     elseif ctrl.jRadioFOffset.isSelected()
         sOptions.FOOOFDisp = 'offset';
     end
+    % Restrict spectrum to FOOOF frequency range
+    sOptions.FOOOFDispRange = ctrl.jCheckFFreqRange.isSelected();
     
     % Hide edge effects / Resolution
     sOptions.HideEdgeEffects = ctrl.jCheckHideEdge.isSelected();
@@ -817,6 +834,7 @@ function SetDisplayOptions(sOptions)
         % If nothing changed or RowUpdate for 2DLayout: return
         if isequal(TfInfo.Function, sOptions.Function) && ...
            isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp) && ...
+           isequal(TfInfo.FOOOFDispRange, sOptions.FOOOFDispRange) && ...
            isequal(TfInfo.HideEdgeEffects, sOptions.HideEdgeEffects) && ...
            isequal(TfInfo.HighResolution, sOptions.HighResolution) && ...
            (isequal(TfInfo.RowName, sOptions.RowName) || ismember(TfInfo.DisplayMode, {'2DLayout', '2DLayoutOpt', 'AllSensors'}))
@@ -842,6 +860,7 @@ function SetDisplayOptions(sOptions)
         end
         TfInfo.isFooofDispChanged = ~isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp);
         TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;
+        TfInfo.FOOOFDispRange  = sOptions.FOOOFDispRange;
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
         % Highlight current row for all FOOOFDisp except overlay

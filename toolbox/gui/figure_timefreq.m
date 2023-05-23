@@ -935,6 +935,13 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
             setappdata(hFig, 'Timefreq', TfInfo);
             % Get data, providing FOOOFDisp.
             [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName, TfInfo.FOOOFDisp);       
+            % Keep FT and Freqs up to maximum frequency for FOOOF analysis
+            if TfInfo.FOOOFDispRange
+                freqMax = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.options.freq_range(2);
+                iFreqMax = find(Freqs > freqMax, 1, 'first');
+                TF = TF(:,:,1:iFreqMax);
+                Freqs = Freqs(1:iFreqMax);
+            end
         else
             % Override figure definition and get all rows
             % Get data
