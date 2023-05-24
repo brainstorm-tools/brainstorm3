@@ -100,20 +100,32 @@ if isempty(iChannelMod)
 end
 
 
-sHeadModel = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel));
-
+sHeadModel = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName);
+sCortex    = in_tess_bst(sHeadModel.SurfaceFile);
 
 % Get locations for all channels
-ChanInd = [];
-ChanScs = [];
-ChanNames = {};
+ChanInd         = [];
+ChanScs         = [];
+ChanVertices    = [];
+ChanSensitivity = [];
+ChanNames       = {};
+
 for i = 1:length(iChannelMod)
     sChan = ChannelMat.Channel(iChannelMod(i));
-    if (length(sChan.Loc) == 3) && ~all(sChan.Loc == 0)
-        ChanInd(end+1) = iChannelMod(i);
-        ChanScs(end+1,:) = [sChan.Loc(1), sChan.Loc(2), sChan.Loc(3)];
-        ChanNames{end+1} = sChan.Name;
-    end
+    pairName = strrep(sChan.Name,sChan.Group,'');
+
+    iWL     = find(ChannelMat.Nirs.Wavelengths == str2double(strrep(sChan.Group,'WL','')));
+    iPair   = find(strcmp(sHeadModel.pair_names,pairName));
+
+
+    sensitivity = squeeze(sHeadModel.Gain(iPair,iWL,:));
+    [maxSensitivity, iVertices] = max(sensitivity);
+
+    ChanInd(end+1)          = iChannelMod(i);
+    ChanScs(end+1,:)        = [sCortex.Vertices(iVertices,1),sCortex.Vertices(iVertices,2),sCortex.Vertices(iVertices,3) ];
+    ChanVertices(end+1,:)   = iVertices;
+    ChanNames{end+1}        = sChan.Name;
+    ChanSensitivity(end+1)  = maxSensitivity;
 end
 Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
 isSelect(end+1) = 1;
