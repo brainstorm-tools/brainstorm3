@@ -1,7 +1,7 @@
 function TsvFile = export_channel_nirs_atlas(ChannelFile, TsvFile, Radius, isProba, isInteractive)
 % EXPORT_CHANNEL_NIRS_ATLAS: Compute anatomical labels for NIRS channels from volume and surface parcellations
 %
-% USAGE:  TsvFile = export_channel_atlas(ChannelFile,  TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+% USAGE:  TsvFile = export_channel_nirs_atlas(ChannelFile,  TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
 %
 % INPUT: 
 %     - ChannelFile   : Path to Brainstorm channel file to be processed
@@ -99,6 +99,9 @@ if isempty(iChannelMod)
     error('No available NIRS channels.');
 end
 
+if isempty(sStudy.HeadModel) || isempty(sStudy.iHeadModel)
+    error('No available head model.');
+end
 
 sHeadModel = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName);
 sCortex    = in_tess_bst(sHeadModel.SurfaceFile);
@@ -122,7 +125,7 @@ for i = 1:length(iChannelMod)
     [maxSensitivity, iVertices] = max(sensitivity);
 
     ChanInd(end+1)          = iChannelMod(i);
-    ChanLength(end+1)       = sqrt(sum((sChan.Loc(:,1) - sChan.Loc(:,2)).^2))*100;
+    ChanLength(end+1)       = sqrt(sum((sChan.Loc(:,1) - sChan.Loc(:,2)).^2));
     ChanScs(end+1,:)        = [sCortex.Vertices(iVertices,1),sCortex.Vertices(iVertices,2),sCortex.Vertices(iVertices,3) ];
     ChanNames{end+1}        = sChan.Name;
     ChanSensitivity(end+1)  = maxSensitivity;
@@ -186,7 +189,7 @@ if ~isempty(iCortex)
     end
 end
 % Checkboxes
-isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute contact labels', [], Columns(:,2), isSelect);
+isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], Columns(:,2), isSelect);
 if ~any(isSelect)
     return;
 end
@@ -222,7 +225,7 @@ if ~isempty(iColSurf)
             SurfAtlasesGui{1} = [SurfAtlasesGui{1}, repmat(' ', 1, 23-length(SurfAtlasesGui{1}))];
         end
         % Checkboxes
-        isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute contact labels', [], SurfAtlasesGui, true(1,length(SurfAtlasesGui)));
+        isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute channels labels', [], SurfAtlasesGui, true(1,length(SurfAtlasesGui)));
         if ~isempty(isSelect) && any(isSelect)
             SurfAtlases = SurfAtlases(isSelect == 1);
         else
@@ -239,15 +242,14 @@ end
 if isempty(Radius)
     Radius = java_dialog('input', [...
         '<HTML>Radius of the sphere (in millimeters).<BR><BR>' ...
-        'To match a SEEG contact with an anatomical label from an atlas, we consider<BR>' ...
-        'a sphere around the center of the contact instead of a single voxel.<BR><BR>' ...
+        'To match a NIRS channel with an anatomical label from an atlas, we consider<BR>' ...
+        'a sphere around the vertex with the maximum sensitivity.<BR><BR>' ...
         '<B>Surface atlas</>: The vertices within the sphere are detected, the most prevalent<BR>' ...
         'scout label among them is returned. High-resolution white matter recommended.<BR><BR>' ...
         '<B>Volume atlas</B>: All the voxels within the sphere are extracted, the most prevalent<BR>' ...
         'anatomical label among them is returned as the contact label.<BR><BR>' ...
         '<FONT COLOR="#777777"><B>1.74mm</B>: 27 voxels, all adjacent to the central voxel (cube 3x3x3mm).<BR>' ...
-        '<B>3mm</B>: 93 voxels, recommended for isotropic MRI with a 1x1x1mm resolution.<BR>' ...
-        '<B>5mm</B>: 335 voxels, recommended for bipolar contacts (ie. applied bipolar montage).</FONT><BR><BR>'], ...
+        '<B>3mm</B>: 93 voxels, recommended for isotropic MRI with a 1x1x1mm resolution.<BR>'], ...
         'Contact neighborhood', [], '3');
     if isempty(Radius) || (length(str2num(Radius)) ~= 1)
         return
@@ -436,7 +438,7 @@ end
 ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
 ChanTable{1,1} = 'Channel';
 ChanTable{1,2} = 'Length (cm)';
-ChanTable{1,3} = 'Sensitivity';
+ChanTable{1,3} = 'Sensitivity (db)';
 iEntry = 4;
 
 for iCol = 1:size(Columns,1)
@@ -450,8 +452,8 @@ end
 % Loop on channels (rows)
 for iChan = 1:size(ChanScs,1)
     ChanTable{iChan+1, 1} = ChanNames{iChan};
-    ChanTable{iChan+1, 2} = sprintf('%.2f',ChanLength(iChan));
-    ChanTable{iChan+1, 3} = sprintf('%.3f',ChanSensitivity(iChan));
+    ChanTable{iChan+1, 2} = sprintf('%.2f',100*ChanLength(iChan));
+    ChanTable{iChan+1, 3} = sprintf('%.3f', log10(ChanSensitivity(iChan) / max(ChanSensitivity)));
 
     iEntry = 4;
     % Loop on atlases (columns)

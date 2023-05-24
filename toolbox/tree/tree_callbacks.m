@@ -906,7 +906,8 @@ switch (lower(action))
                 if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
                 end
-
+                
+                % === NIRS CHANNEL LABELLING ===
                 if (length(bstNodes) == 1) && any(ismember({'NIRS'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'NIRS atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_nirs_atlas, filenameRelative));
                 end
