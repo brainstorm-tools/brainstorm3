@@ -434,7 +434,9 @@ end
 % Column headers
 ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
 ChanTable{1,1} = 'Channel';
-iEntry = 2;
+ChanTable{1,2} = 'Sensitivity';
+iEntry = 3;
+
 for iCol = 1:size(Columns,1)
     ChanTable{1, iEntry} = Columns{iCol,1};
     iEntry = iEntry + 1;
@@ -446,7 +448,9 @@ end
 % Loop on channels (rows)
 for iChan = 1:size(ChanScs,1)
     ChanTable{iChan+1, 1} = ChanNames{iChan};
-    iEntry = 2;
+    ChanTable{iChan+1, 2} = sprintf('%.3f',ChanSensitivity(iChan));
+
+    iEntry = 3;
     % Loop on atlases (columns)
     for iCol = 1:size(Columns,1)
         % Numeric value (xyz coordinates - millimeters)
