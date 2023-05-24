@@ -7,7 +7,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    - PcaOptions: Specifies PCA method and covariance settings, usually obtained in the calling
 %      process through the PcaOptions panel, with defaults/preferences from bst_get('PcaOptions').
 %      3 available PCA methods (PcaOptions.Method):
-%          'pca'  : old approach (pre 2023-03), separately for each file, resulting in sign inconsistencies
+%          'pca'  : old approach (pre 2023-05), separately for each file, resulting in sign inconsistencies
 %                   between files.
 %          'pcaa' : *Across* files.  Computes a single "reference" component based on all the source data
 %                   concatenated (per subject).
@@ -47,8 +47,9 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    with more power than 'mean'.  This scaling is done in bst_scout_value.
 %
 %    The differences between the 3 PCA methods are all dealt with within this function (with one
-%    exception pushed to bst_source_orient for convenience for now).  As such, 'pca' is used for all
-%    3 cases in other processes and functions.
+%    exception pushed to bst_source_orient for convenience for now).  As such, 'pca2023' is used for
+%    all 3 cases in other processes and functions.  'pca' in other functions was kept for the
+%    previous (now deprecated) method with sign issues and without other improvements within this function.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -153,10 +154,14 @@ if isOutMatrix && ~isScout
     bst_report('Warning', sProcess, sInputs, Message);
 end
 
-% Load first file.
+% Load first file. (not re-loaded later which is why we have all outputs)
 [sResults, matSourceValues, matDataValues, FileComment] = process_extract_scout('LoadFile', sProcess, sInputs(1), TimeWindow);
 if isempty(sResults)
     return; % Error already reported.
+end
+if nInputs == 1
+    % No need for file in RowName
+    FileComment = '';
 end
 isKernel = isempty(matSourceValues);
 
@@ -202,8 +207,8 @@ end
 % Build scouts list.  For flattening mixed models, it's the source regions list.  For flattening
 % simple model, no list (single region).
 if isScout
-    ScoutFunction = 'pca'; % don't use 4-letter pcaa or pcai outside this function.
-    XyzFunction = [];
+    ScoutFunc = 'pca2023'; % we don't use 4-letter pcaa or pcai outside this function.
+    UnconstrFunc = [];
     % For scouts, we decided to keep sign flipping for all PCA methods.  For pcaa/pcai, it still
     % affects the overall sign of the reference component to be based on the geometry of the
     % region. (Without this, the sign would rather be representative of where the activity is
@@ -211,7 +216,7 @@ if isScout
     % to be picked for consistency/reproducibility, we kept the previous choice.)
     isSignFlip = true;
     [sScouts, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', ...
-        sProcess, sInputs(1), sResults.SurfaceFile, AtlasList, sResults.Atlas, ScoutFunction);
+        sProcess, sInputs(1), sResults.SurfaceFile, AtlasList, sResults.Atlas, ScoutFunc);
     % Selected scout function now applied in GetScoutInfo (overrides the one from the scout panel).
     if isempty(sScouts)
         return; % Error already reported.
@@ -229,8 +234,8 @@ if isScout
     end
     sResultsOut.Atlas.Scouts = sScouts;
 else
-    ScoutFunction = [];
-    XyzFunction = 'pca'; % don't use 4-letter pcaa or pcai outside this function.
+    ScoutFunc = [];
+    UnconstrFunc = 'pca2023'; % we don't use 4-letter pcaa or pcai outside this function.
     % Sign flipping does not apply to flattening unconstrained sources.
     isSignFlip = false;
     % nComponent = 0 for mixed models, nComp is used for the actual number for each region.
@@ -324,7 +329,7 @@ for iScout = 1:nScouts % scouts or regions of the mixed model
         % Unconstrained sources: xyz are separate rows
         % sScouts.RowNames is not saved in result files (sResultsOut.Atlas already set above), but used for matrix output.
         [sScouts(iScout).iRows, sScouts(iScout).RowNames, sScouts(iScout).ScoutOrient, nComp(iScout)] = ...
-            process_extract_scout('GetScoutRows', sProcess, sInputs(1), sScouts(iScout), sResults, sSurf, isVolumeAtlas(iScout));
+            process_extract_scout('GetScoutRows', sProcess, sInputs(1), sScouts(iScout), sResults, sSurf, isVolumeAtlas(iScout), ScoutFunc);
         if isempty(sScouts(iScout).iRows)
             OutputFiles = {};
             return; % Error already reported.
@@ -398,7 +403,7 @@ for iInput = 1:nInputs
         bst_report('Error', sProcess, sInputs, Message);
         OutputFiles = {};
         return;
-    elseif ~isempty(DisplayUnits) && ~isempty(sResults.DisplayUnits) && ~strcmpi(DisplayUnits, sResults.DisplayUnits) % && ~strcmpi(PcaOptions.Method, 'pca')
+    elseif ~isempty(DisplayUnits) && ~isempty(sResults.DisplayUnits) && ~strcmpi(DisplayUnits, sResults.DisplayUnits) 
         % Could accept mixed units if not combining files, but not if concatenating.
         Message = 'Incompatible result files with different units.';
         bst_report('Error', sProcess, sInputs, Message);
@@ -465,8 +470,8 @@ for iInput = 1:nInputs
             for iScout = 1:nScouts
                 % To allow 3d scout PCA: more than one row returned.
                 [sResults.(OutField{iInput})(iOutRow(iScout,1):iOutRow(iScout,2), :), PcaComp{iInput, iScout}, HistoryMsg(iScout)] = ...
-                    bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ScoutFunction, sScouts(iScout).ScoutOrient, ...
-                    nComp(iScout), XyzFunction, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
+                    bst_scout_value(matSourceValues(sScouts(iScout).iRows, :), ScoutFunc, sScouts(iScout).ScoutOrient, ...
+                    nComp(iScout), UnconstrFunc, isSignFlip, sScouts(iScout).Label, FileSourceCov{iScout}); % PcaReference not yet available
             end
             % Project data if we want to save timeseries
             if isKernel && isOutMatrix
@@ -475,7 +480,7 @@ for iInput = 1:nInputs
         else
             % Flattening is done for whole file at once even for mixed models.
             [sResults.(OutField{iInput}), sResults.GridAtlas, ~, PcaComp{iInput, :}, HistoryMsg] = bst_source_orient([], ...
-                nComponents, sResults.GridAtlas, matSourceValues, XyzFunction, [], [], FileSourceCov); % PcaReference not yet available
+                nComponents, sResults.GridAtlas, matSourceValues, UnconstrFunc, [], [], FileSourceCov); % PcaReference not yet available
         end
 
         % Save individual files.  We still need to correct the sign later for pcai.
@@ -515,12 +520,12 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
         HistoryMsg = cell(nScouts,1);
         for iScout = 1:nScouts
             [~, PcaReference{iScout}, HistoryMsg(iScout)] = bst_scout_value([], ...
-                ScoutFunction, sScouts(iScout).ScoutOrient, nComp(iScout), XyzFunction, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
+                ScoutFunc, sScouts(iScout).ScoutOrient, nComp(iScout), UnconstrFunc, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
             % PcaReference{iScout} is size [Nsources, 1]
         end
     else
         [~, ~, ~, PcaReference, HistoryMsg] = bst_source_orient([], ...
-            nComponents, sResults.GridAtlas, [], XyzFunction, [], [], SourceCov);
+            nComponents, sResults.GridAtlas, [], UnconstrFunc, [], [], SourceCov);
         % Convert to cell for convenience when simple model.
         if ~iscell(PcaReference)
             PcaReference = {PcaReference};
@@ -772,6 +777,9 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutRowNames, Fi
         end
     end
     % Description: cell array of 'ScoutName[.Vert][.Comp][ @ File]' strings. 
+    if ~isempty(FileComment)
+        ScoutRowNames = cellfun(@(c) [c ' @ ' FileComment], ScoutRowNames, 'UniformOutput', false);
+    end
     sMatrix.Description = ScoutRowNames;
     % History: File name
     sMatrix = bst_history('add', sMatrix, 'src', ['PCA applied to file: ' sInput.FileName]);

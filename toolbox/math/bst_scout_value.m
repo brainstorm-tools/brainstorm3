@@ -6,14 +6,14 @@ function [Fs, PcaFirstComp, HistoryMsg] = bst_scout_value(F, ScoutFunction, Orie
 % INPUTS:
 %     - F             : [Nsources * Ncomponents, Ntime] double matrix, source time series
 %     - ScoutFunction : String, function to use to combine the Nsources time series: 
-%                       {'mean', 'std', 'mean_norm', 'max', 'power', 'pca', 'fastpca', 'stat', 'all', 'none'}
+%                       {'mean', 'std', 'mean_norm', 'max', 'power', 'pca', 'pca2023', 'fastpca', 'stat', 'all', 'none'}
 %     - Orient        : [Nsources x 3], Orientation of each source - usually the normal at the vertex in the cortex mesh
 %     - nComponents   : {1,2,3}, Number of components per vertex in matrix F 
 %                       If 0, the number varies, the properties of each region are defined in input GridAtlas
-%     - XyzFunction   : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'none'}
+%     - XyzFunction   : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'pca2023', 'none'}
 %     - isSignFlip    : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - ScoutName     : Name of the scout or cluster you're extracting
-%     - Covar         : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA.
+%     - Covar         : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA 2023 version.
 %                       For PCA ScoutFunction: [Nrows x Nrows]; for PCA XyzFunction only (no ScoutFunction): 
 %                       [3 x 3 x Nsources] 3 source orientations at each location
 %     - PcaReference  : Reference PCA components (see PcaFirstComp below for possible sizes) pre-computed across 
@@ -29,11 +29,9 @@ function [Fs, PcaFirstComp, HistoryMsg] = bst_scout_value(F, ScoutFunction, Orie
 %                      on baseline), which may differ from the data on which the component is later applied.
 %
 % NOTES: 
-%     ScoutFunction is applied before XyzFunction. But when both are PCA, they are done simultaneously.
-%     For XyzFunction 'pca', it should be applied before extracting scouts, or at the same time with the same PCA function.
-%     For ScoutFunction 'pca' with nComponents > 1, XyzFunction must match, unless the old deprecated 
-%       behavior is desired where scouts are extracted separately on x,y,z.
-%     For ScoutFunction 'pca', the PCA component (combination of sources) is scaled to 1/sqrt(nVertices)
+%     ScoutFunction is applied before XyzFunction. But when both are pca2023, they are done simultaneously. 
+%       Within the Brainstorm interface, this only happens when viewing time series from the scout panel.
+%     For ScoutFunction 'pca2023', the PCA component (vector of source coefficients) is rescaled by 1/sqrt(nVertices)
 %       to match the scaling of 'mean', and to be more easily comparable between scouts.
 
 % @=============================================================================
@@ -83,9 +81,9 @@ PcaFirstComp = [];
 HistoryMsg = {};
 
 % ===== ORIENTATION SIGN FLIP =====
-% PCA & orientation sign flipping: if we flip here, the resulting component sign is as if the activity
+% PCA & orientation sign flipping: by flipping here for PCA, the resulting component sign is as if the activity
 % was coming from a source with the dominant orientation, regardless of where the component weights are strong. 
-if strcmpi(ScoutFunction, 'pca') && isempty(PcaReference)
+if strncmpi(ScoutFunction, 'pca', 3) && isempty(PcaReference)
     isSignFlip = true;
 end
 % Flip only if there are mixed signs in F (+ and -)
@@ -144,7 +142,7 @@ if nComponents > 1 && ~strcmpi(ScoutFunction, XyzFunction)
        error('For PCA XyzFunction, it should be applied before extracting scouts, or at the same time with the same PCA function.');
    end
 end
-if strcmpi(ScoutFunction, 'pca')
+if strcmpi(ScoutFunction, 'pca2023')
     % Store nComp for rescaling, in case we're doing combined scout and xyz PCA.
     nCompPcaCombined = nComponents;
     if strcmpi(ScoutFunction, XyzFunction)
@@ -170,7 +168,7 @@ else
     nRow = size(F,1);
 end
 nTime = size(F,2);
-explained = 0;
+explained = [];
 
 
 %% ===== COMBINE ALL VERTICES =====
@@ -211,7 +209,7 @@ switch (lower(ScoutFunction))
         
     % MAX : Strongest at each time instant (in absolue values)
     case 'max'
-        % If one component: max(abs)
+        % If one component: signed max(abs)
         if (nComponents == 1)
             Fs = bst_max(F,1);
         else
@@ -239,7 +237,7 @@ switch (lower(ScoutFunction))
     % per-file method, or the "across files" method.  This is determined by the inputs (F, Covar and
     % PcaReference).
     % As the original method is still supported, we still allows keeping 3 separate orientation components.
-    case 'pca' % {'pca', 'pcai', 'pcaa'}
+    case 'pca2023' % {'pca', 'pcai', 'pcaa'}
         % Signal decomposition
         % Use trial data covariance if provided
         if ~isempty(Covar)
@@ -294,8 +292,18 @@ switch (lower(ScoutFunction))
             PcaFirstComp = bsxfun(@times, PcaFirstComp, FlipMask);
         end
        
+    % Unmodified now deprecated legacy PCA: with sign issues, no rescaling, and DC offset and svd on entire time window.
+    case 'pca'
+        Fs = zeros(1, nTime, nComponents);
+        explained = [0, 0];
+        for i = 1:nComponents
+            [Fs(1,:,i), ExplTemp] = PcaFirstMode(F(:,:,i), true); % use legacy "bugged" sign
+            explained = explained + ExplTemp;
+        end
+        explained = explained(1) / explained(2);
+        
+    %% TODO: test and probably remove this option from GUI
     % FAST PCA : Display first mode of PCA of time series within each scout region
-    % no component returned or "% explained" message, but deprecated.
     case 'fastpca'
         % Reduce dimensions first
         nMax = 50; % Maximum number of variables to run the PCA on
@@ -314,9 +322,12 @@ switch (lower(ScoutFunction))
         end
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);
+        explained = [0, 0];
         for i = 1:nComponents
-            Fs(1,:,i) = PcaFirstMode(F(:,:,i));
+            [Fs(1,:,i), ExplTemp] = PcaFirstMode(F(:,:,i), false); % use improved sign
+            explained = explained + ExplTemp;
         end
+        explained = explained(1) / explained(2);
         
     % STAT : Average values as if they were statistical results => ignore all the zero-values
     case 'stat'
@@ -337,7 +348,7 @@ end
 
 % Display percentage of signal explained by 1st component(s) of PCA
 % Now properly combines multiple orientations if present.
-if explained && nargout > 2
+if ~isempty(explained) && nargout > 2
     HistoryMsg{end+1} = sprintf('PCA for scout: %1.1f%% of signal power kept', explained * 100);
     if ScoutName
         HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
@@ -356,7 +367,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     % Different options to combine the three orientations
     switch lower(XyzFunction)
         % Compute the PCA of all the components
-        case 'pca' % {'pca', 'pcaa', 'pcai'}
+        case 'pca2023' % {'pca', 'pcaa', 'pcai'}
             PcaFirstComp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             explained = [0, 0];
@@ -368,7 +379,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                     explained = explained + [S(1), sum(S)];
                 else % use data
                     Fi = permute(Fs(i,:,:), [3,2,1]); % permute faster than squeeze
-                    % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
+                    % This is an unexpected legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
                     % Keeping offset removal as before for now.
                     [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ'); % sum faster than mean
                     S = diag(S);
@@ -391,6 +402,18 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                 Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), Fs), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
             end
             
+        % Unmodified now deprecated legacy PCA: with sign issues, and DC offset and svd on entire time window.
+        case 'pca'
+            F = Fs;
+            Fs = zeros(nRow, nTime);
+            explained = [0, 0];
+            % For each vertex: Signal decomposition
+            for i = 1:nRow
+                [Fs(i,:), ExplTemp] = PcaFirstMode(permute(F(i,:,:), [3,2,1]), true); % use legacy "bugged" sign
+                explained = explained + ExplTemp;
+            end
+            explained = explained(1) / explained(2);
+            
         % Compute the norm across the directions
         case 'norm'
             Fs = sqrt(sum(Fs.^2, 3));
@@ -409,7 +432,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     % Display percentage of signal explained by 1st component(s) of PCA
     % Now displayed separately from scout PCA. They shouldn't occur together anymore in recommended
     % usage: scout pca (or other scout function) followed by orient pca is deprecated. 
-    if explained && nargout > 2
+    if ~isempty(explained) && nargout > 2
         HistoryMsg{end+1} = sprintf('PCA for source orientation: %1.1f%% of signal power kept', explained * 100);
         if ScoutName
             HistoryMsg{end} = [HistoryMsg{end} ' in ' ScoutName];
@@ -422,16 +445,31 @@ end
 
 
 %% ===== PCA: FIRST MODE =====
-% Now only used for 'fastpca'.
-function [F, explained] = PcaFirstMode(F)
+% Now only used for deprecated legacy pca and 'fastpca'.
+function [F, explained] = PcaFirstMode(F, isLegacySign)
     % Signal decomposition / Remove average over time for each row
-    [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ'); %sum(F,2)./size(F,2)
+    [U, S, V] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ'); %sum(F,2)./size(F,2)
     S = diag(S);
-    explained = S(1).^2 / sum(S.^2);
+    explained = [S(1).^2, sum(S.^2)];
     U = U(:,1);
-    % Remove ambiguity of arbitrary component sign for consistency across files/epochs (as best we can here with single trial data) and reproducibility.
+    if isLegacySign
+        % This section does not work properly: the resulting sign is arbitrary and leads to averaging issues.
+        % Find which original signal has the largest coefficient in the first component
+        [~, nmax] = max(abs(U(:,1)));
+        % What's the sign of absolute max amplitude in this signal?
+        [~, i_omaxx] = max(abs(F(nmax,:)));
+        sign_omaxx = sign(F(nmax,i_omaxx));
+        % Sign of maximum in first component time series [at a different time - so unrelated actually]
+        [Vmaxx, i_Vmaxx] = max(abs(V(:,1)));
+        sign_Vmaxx = sign(V(i_Vmaxx,1));
+        % Reconcile signs
+        CompSign = sign_Vmaxx * sign_omaxx;
+    else
+        % Remove ambiguity of arbitrary component sign for consistency across files/epochs and
+        % reproducibility, as best we can here with single trial data.
+        CompSign = nzsign(sum(U));
+    end
     % Correct sign and project data onto first PCA component.
-    CompSign = nzsign(sum(U));
     F = CompSign * U' * F;
 end
 

@@ -13,7 +13,7 @@ function [SourceValues, GridAtlas, RowNames, PcaOrient, HistoryMsg] = bst_source
 %                     GridAtlas.Scouts(i).Region(2) is the source type (V=volume, S=surface, D=dba, X=exclude)
 %                     GridAtlas.Scouts(i).Region(3) is the orientation constrain (U=unconstrained, C=contrained, L=loose)
 %    - SourceValues : [Nvertices*nComponents x Nsensors] or [Nvertices*nComponents x Ntime], source values
-%    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'pcaa', 'mean'}
+%    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'pca2023', 'pcaa', 'mean'}
 %    - DataType     : Type of data being processed {'data', 'results', 'scouts', 'matrix'}
 %    - RowNames     : Description of signals being processed: {empty, array of doubles, array of cells}
 %    - OrientCov    : [3 x 3 x Nvertices] Covariance between 3 rows of SourceValues (3 source orientations) at each vertex, pre-computed from one or more epochs.
@@ -267,7 +267,7 @@ function [Values, PcaOrient, HistoryMsg] = ApplyFunction(Values, i1, i2, i3, Fun
             else
                 Values = abs(Values(i1,:,:,:)).^2 + abs(Values(i2,:,:,:)).^2;
             end
-        case {'pca', 'pcaa'}
+        case {'pca', 'pca2023', 'pcaa'}
             % Values could be empty here. 
             if ~isempty(PcaOrient)
                 nComp = size(PcaOrient, 1);
@@ -290,7 +290,7 @@ function [Values, PcaOrient, HistoryMsg] = ApplyFunction(Values, i1, i2, i3, Fun
                 % What's saved in history (elsewhere) is for the reference component across all files. 
             % Compute and project on first PCA orientation at each location.
             else
-                [Values, PcaOrient, HistoryMsg] = bst_scout_value(Values, 'none', [], nComp, 'pca', 0, [], OrientCov, PcaOrient);
+                [Values, PcaOrient, HistoryMsg] = bst_scout_value(Values, 'none', [], nComp, Function, 0, [], OrientCov, PcaOrient);
             end
         case 'none'
             % Nothing to do

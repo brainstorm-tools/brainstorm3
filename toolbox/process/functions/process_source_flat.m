@@ -77,13 +77,18 @@ function OutputFiles = Run(sProcess, sInputs)
         case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
     end
 
-    % ===== PCA =====
-    if strncmpi(Method, 'pca', 3)
+    % ===== PCA 2023 =====
+    if strcmpi(Method, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ...
+            ~isempty(sProcess.options.pcaedit.Value) && ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca')
         PcaOptions = sProcess.options.pcaedit.Value;
         OutputFiles = bst_pca(sProcess, sInputs, PcaOptions); 
 
-    % ===== Norm =====
+    % ===== Norm or legacy PCA =====
     else
+        if strcmpi(Method, 'pca')
+            disp('BST> Warning: Running deprecated legacy PCA.');
+            bst_report('Warning', sProcess, sInputs, 'Running deprecated legacy PCA separately on each file/epoch, with arbitrary signs which can lead to averaging issues. See tutorial linked in PCA options panel.');
+        end
         nFiles = numel(sInputs);
         bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, nFiles);
 
@@ -150,7 +155,7 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field)
             % Set the number of components
             ResultsMat.nComponents = 1;
     end
-    % Save new file function; Disabled 2023-03: for result files, Function is the inverse method. This is saved elsewhere: tag and history.
+    % Save new file function; Disabled 2023-06: for result files, Function is the inverse method. This is saved elsewhere: tag and history.
     %     ResultsMat.Function = Method;
 
     % File tag

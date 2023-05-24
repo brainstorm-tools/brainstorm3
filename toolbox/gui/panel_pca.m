@@ -130,25 +130,19 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     % OPTIONS PANEL
     jPanelOptions = gui_river([5,2], [0,10,15,0], 'PCA method');
         % PCA TYPE
-        gui_component('label', jPanelOptions, '', 'Compute one component (combination of sources)...');
+        gui_component('label', jPanelOptions, '', 'Compute one principal component (combination of signals)...');
         jButtonGroupMethod = ButtonGroup();
         % Across epochs
         jRadioPcaa = gui_component('radio', jPanelOptions, 'br', ...
-            ['<HTML><B>across all epochs/files</B>: Generally recommended, especially for within subject comparisons.<BR>' ...
-            'Much faster with kernel link source files.<BR>' ... %  and using pre-computed data covariance
-            'Can save shared kernels.'], [], [], @RadioPca_Callback);
+            'across all epochs/files', [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPcaa);
         % Per epoch, with sign consistency
         jRadioPcai = gui_component('radio', jPanelOptions, 'br', ...
-            ['<HTML><B>per individual epoch/file, with consistent sign</B>: Useful for single-trial analysis,<BR>' ...
-            'while still allowing combining epochs. Sign selected using PCA across epochs as reference.<BR>' ...
-            'Slower. Saves individual files.'], [], [], @RadioPca_Callback);
+            'per individual epoch/file, with consistent sign', [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPcai);
         % Per epoch, without sign consistency
         jRadioPca = gui_component('radio', jPanelOptions, 'br', ...
-            ['<HTML><FONT color="#777777"><B>per individual epoch/file, arbitrary signs</B>: Can be used for single files.<BR>' ...
-            'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.<BR>' ...
-            '<I>The covariance options below cannot be modified.</I></FONT>'], [], [], @RadioPca_Callback);
+            '<HTML><FONT color="#777777">per individual epoch/file, arbitrary signs (not recommended, pre 2023)</FONT>', [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPca);
         switch lower(PcaOptions.Method)
             case 'pca'
@@ -166,8 +160,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         % directly, even before the inverse model, like we'd do for filtering, and keep it
         % consistent (no more offset removal options) everywhere after.  Then only the data time
         % window would be relevant here.
-        gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only,<BR>' ...
-            'which is then applied to the unmodified data (without offset removal).']);
+        % gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the principal component coefficients only,<BR>' ...
+        %     'which is then applied to the unmodified data (without offset removal).']);
 %         % Use pre-computed data covariance?
 %         if isAllCov
 %             jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (requires kernel link source files)<BR>' ...
@@ -316,19 +310,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 %             end
 %             jCheckUseDataCov.setEnabled(0);
             jDataTimeAll.setSelected(1);
+            DataTimeAll_Callback;
             jDataTimeAll.setEnabled(0);
             jRemoveDcFile.setSelected(1);
             jRemoveDcFile.setEnabled(0);
             jBaselineTimeAll.setSelected(1);
+            BaselineTimeAll_Callback;
             jBaselineTimeAll.setEnabled(0);
-            SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
-            SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
-            SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
-            jBaselineTimeStart.setEnabled(0);
-            jBaselineTimeStop.setEnabled(0);
-            jDataTimeStart.setEnabled(0);
-            jDataTimeStop.setEnabled(0);
             for i = 1:numel(jCovLabels)
                 jCovLabels{i}.setEnabled(0);
             end
@@ -344,20 +332,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             % Otherwise, load default settings and enable controls
             % Would be nicer to only change it if previous selection was legacy pca.
             jDataTimeAll.setEnabled(1);
-            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
-            SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
-            SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
+            jDataTimeAll.setSelected(0);
+            DataTimeAll_Callback;
             jRemoveDcFile.setEnabled(1);
             if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
                 jRemoveDcFile.setSelected(1);
             else
                 jRemoveDcFile.setSelected(0);
             end
-            jBaselineTimeStart.setEnabled(1);
-            jBaselineTimeStop.setEnabled(1);
-            jDataTimeStart.setEnabled(1);
-            jDataTimeStop.setEnabled(1);
+            jBaselineTimeAll.setSelected(0);
+            RemoveDc_Callback;
             for i = 1:numel(jCovLabels)
                 jCovLabels{i}.setEnabled(1);
             end
@@ -373,10 +357,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jDataTimeStop.setEnabled(0);
         else
             % Otherwise, load default settings and enable controls
-            SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
-            SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
             jDataTimeStart.setEnabled(1);
             jDataTimeStop.setEnabled(1);
+            SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
+            SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
         end
     end
 
@@ -389,10 +373,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jBaselineTimeStop.setEnabled(0);
         else
             % Otherwise, load default settings and enable controls
-            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
             jBaselineTimeStart.setEnabled(1);
             jBaselineTimeStop.setEnabled(1);
+            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
         end
     end
 
@@ -407,11 +391,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jBaselineTimeAll.setEnabled(0);
         else %if ~jRadioPca.isSelected() 
             % Otherwise, load default settings and enable controls
-            SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
-            jBaselineTimeStart.setEnabled(1);
-            jBaselineTimeStop.setEnabled(1);
             jBaselineTimeAll.setEnabled(1);
+            BaselineTimeAll_Callback;
         end
     end
 

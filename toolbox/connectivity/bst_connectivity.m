@@ -140,18 +140,18 @@ if ~OPTIONS.isScoutA && ~OPTIONS.isScoutB
     OPTIONS.ScoutFunc = 'all';
 end
 
+ProcessName = OPTIONS.ProcessName;
+
 
 %% ===== PCA =====
-% Check inputs.
-if (strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')) 
-    % Give error if requesting pca but passing file names only as inputs.
+sInputToDel = [];
+% Flatten unconstrained source orientations with PCA.
+if strcmpi(OPTIONS.UnconstrFunc, 'pca')
+    % This was not previously an option in this process, give errors if legacy call with missing options or file names as inputs.
     if (~isempty(FilesA) && ~isstruct(FilesA)) || (~isempty(FilesB) && ~isstruct(FilesB))
         bst_report('Error', OPTIONS.ProcessName, [], 'When selecting PCA, bst_connectivity now requires sInput structures instead of file names as inputs.');
         return;
     end
-end
-% Check if flattening unconstrained source orientations with PCA 
-if strcmpi(OPTIONS.UnconstrFunc, 'pca') 
     % Check if there are unconstrained sources. The function only checks the first file. Other files
     % would be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
     isUnconstrA = ~( isempty(FilesA) || ~isfield(FilesA, 'FileType') || ~ismember(FilesA(1).FileType, {'results', 'timefreq'}) || ...
@@ -161,32 +161,49 @@ if strcmpi(OPTIONS.UnconstrFunc, 'pca')
     if isempty(isUnconstrA) || isempty(isUnconstrB)
         return; % Error already reported;
     end
-    % No flattening needed. Avoid confusion.
-    if ~isUnconstrA && ~isUnconstrB
-        OPTIONS.UncunstrFunc = 'none';
+    % Flattening needed.
+    if isUnconstrA || isUnconstrB
+        if isempty(PcaOptions)
+            bst_report('Error', sProcess, [], 'Missing PCA options for flattening unconstrained sources.');
+            return;
+        end
+        % FilesA/B are replaced by temporary files as needed by RunTempPcaFlat.
+        [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPcaFlat', ProcessName, ...
+            OPTIONS.PcaOptions, FilesA, FilesB);
+        if isTempPcaA
+            sInputToDel = [sInputToDel, FilesA];
+        end
+        if isTempPcaB
+            sInputToDel = [sInputToDel, FilesB];
+        end
+        % We no longer have unconstrained sources.
+        OPTIONS.UnconstrFunc = 'none';
     end
 end
-% Flatten unconstrained source orientations and/or extract scouts with PCA, and save time series in temp files.
-sInputToDel = [];
-if strcmpi(OPTIONS.UnconstrFunc, 'pca') || strcmpi(OPTIONS.ScoutFunc, 'pca')
-    if isempty(OPTIONS.PcaOptions)
-        bst_report('Error', OPTIONS.ProcessName, [], 'Missing PCA options.');
+
+% Catch errors from this point to ensure temporary files are deleted.
+try
+
+% Extract scouts with PCA, and save time series in temp files.
+if strcmpi(OPTIONS.ScoutFunc, 'pca') && ~isempty(OPTIONS.PcaOptions) && ~strcmpi(OPTIONS.PcaOptions.Method, 'pca')
+    % Check inputs
+    if (~isempty(FilesA) && ~isstruct(FilesA)) || (~isempty(FilesB) && ~isstruct(FilesB))
+        bst_report('Error', OPTIONS.ProcessName, [], 'When selecting PCA, bst_connectivity now requires sInput structures instead of file names as inputs.');
         return;
     end
-    % FilesA/B are replaced by temporary files as needed by RunTempPca.
-    [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPca', OPTIONS.ProcessName, OPTIONS.PcaOptions, ...
-        FilesA, OPTIONS.TargetA, FilesB, OPTIONS.TargetB, strcmpi(OPTIONS.UnconstrFunc, 'pca'));
+    % FilesA/B are replaced by temporary files as needed by RunTempPcaScout.
+    [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPcaScout', ProcessName, ...
+        OPTIONS.PcaOptions, FilesA, OPTIONS.TargetA, FilesB, OPTIONS.TargetB);
     if isTempPcaA
-        sInputToDel = FilesA;
+        sInputToDel = [sInputToDel, FilesA];
     end
     if isTempPcaB
         sInputToDel = [sInputToDel, FilesB];
     end
+    % Here we must keep the scout function as 'pca' so that the temp atlas-based files are loaded properly.
 end
-
-ProcessName = OPTIONS.ProcessName;
-% Catch errors to ensure temporary files are deleted.
-try
+% Else: we accept pca scout function without options or with file names as inputs as a legacy call.
+% There will be a warning about deprecated pca through LoadInputFiles > process_extract_scout.
 
 % Convert inputs to file names
 FilesA = GetFileNames(FilesA);
