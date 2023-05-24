@@ -28,7 +28,7 @@ function TsvFile = export_channel_nirs_atlas(ChannelFile, TsvFile, Radius, isPro
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire, 2023
+% Authors: Francois Tadel, 2021; Edouard Delaire, 2023
 
 
 % ===== PASRSE INPUTS =====
@@ -106,8 +106,8 @@ sCortex    = in_tess_bst(sHeadModel.SurfaceFile);
 % Get locations for all channels
 ChanInd         = [];
 ChanScs         = [];
-ChanVertices    = [];
 ChanSensitivity = [];
+ChanLength      = []; 
 ChanNames       = {};
 
 for i = 1:length(iChannelMod)
@@ -122,11 +122,12 @@ for i = 1:length(iChannelMod)
     [maxSensitivity, iVertices] = max(sensitivity);
 
     ChanInd(end+1)          = iChannelMod(i);
+    ChanLength(end+1)       = sqrt(sum((sChan.Loc(:,1) - sChan.Loc(:,2)).^2))*100;
     ChanScs(end+1,:)        = [sCortex.Vertices(iVertices,1),sCortex.Vertices(iVertices,2),sCortex.Vertices(iVertices,3) ];
-    ChanVertices(end+1,:)   = iVertices;
     ChanNames{end+1}        = sChan.Name;
     ChanSensitivity(end+1)  = maxSensitivity;
 end
+
 Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
 isSelect(end+1) = 1;
 
@@ -434,8 +435,9 @@ end
 % Column headers
 ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
 ChanTable{1,1} = 'Channel';
-ChanTable{1,2} = 'Sensitivity';
-iEntry = 3;
+ChanTable{1,2} = 'Length (cm)';
+ChanTable{1,3} = 'Sensitivity';
+iEntry = 4;
 
 for iCol = 1:size(Columns,1)
     ChanTable{1, iEntry} = Columns{iCol,1};
@@ -448,9 +450,10 @@ end
 % Loop on channels (rows)
 for iChan = 1:size(ChanScs,1)
     ChanTable{iChan+1, 1} = ChanNames{iChan};
-    ChanTable{iChan+1, 2} = sprintf('%.3f',ChanSensitivity(iChan));
+    ChanTable{iChan+1, 2} = sprintf('%.2f',ChanLength(iChan));
+    ChanTable{iChan+1, 3} = sprintf('%.3f',ChanSensitivity(iChan));
 
-    iEntry = 3;
+    iEntry = 4;
     % Loop on atlases (columns)
     for iCol = 1:size(Columns,1)
         % Numeric value (xyz coordinates - millimeters)
@@ -525,7 +528,7 @@ if isInteractive
     if ~isempty(TsvFile)
         wndTitle = TsvFile;
     else
-        wndTitle = 'SEEG contact labels';
+        wndTitle = 'NIRS channels labels';
     end
     view_text([strTable 10 10], wndTitle);
 end
