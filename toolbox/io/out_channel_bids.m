@@ -1,4 +1,4 @@
-function out_channel_bids(BstFile, OutputFile, Factor, Transf)
+function out_channel_bids(BstFile, OutputFile, Factor, Transf, isNIRS)
 % OUT_CHANNEL_BIDS: Exports a Brainstorm channel file in an BIDS _electrodes.tsv file.
 %
 % USAGE:  out_channel_bids(BstFile, OutputFile, Factor=1, Transf=[]);
@@ -38,12 +38,11 @@ end
 if (nargin < 4) || isempty(Transf)
     Transf = [];
 end
-
+if (nargin < 5) || isempty(isNIRS)
+    isNIRS = 0;
+end
 % Load brainstorm channel file
 BstMat = in_bst_channel(BstFile);
-
-% Detect NIRS channels 
-isNIRS = any( contains( {BstMat.Channel.Type},'NIRS'));
 
 % Get all the positions
 Loc   = zeros(3,0);

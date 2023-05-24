@@ -1005,7 +1005,8 @@ switch (lower(action))
 
                     % === MENU: EXPORT ===
                     % Export menu (added later)
-                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_channel, filenameFull));
+                    isNIRS = ismember(DisplayMod, {'NIRS'});
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_channel, filenameFull,[],isNIRS,1));
                 end
                 
 %% ===== POPUP: ANATOMY =====

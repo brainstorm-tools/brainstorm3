@@ -1,4 +1,4 @@
-function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isInteractive)
+function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isNIRS, isInteractive)
 % EXPORT_CHANNEL: Export a Channel file to one of the supported file formats.
 %
 % USAGE:  export_channel(BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask], isInteractive=1)
@@ -31,13 +31,18 @@ function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isInterac
 % Authors: Francois Tadel, 2008-2022
 
 % ===== PASRSE INPUTS =====
-if (nargin < 4) || isempty(isInteractive)
+if (nargin < 5) || isempty(isInteractive)
     isInteractive = 1;
 end
+if (nargin < 4) || isempty(isNIRS)
+    isNIRS = 0;
+end
+
 if (nargin < 2)
     OutputChannelFile = [];
     FileFormat = [];
 end
+
 if (nargin < 1) || isempty(BstChannelFile)
     error('Brainstorm:InvalidCall', 'Invalid use of export_channel()');
 end
@@ -65,6 +70,7 @@ if isempty(OutputChannelFile)
         case 'BRAINSIGHT-TXT', DefaultExt = '.txt';
         otherwise,             DefaultExt = '.pos';
     end
+
     % Get input study/subject
     sStudy = bst_get('ChannelFile', BstChannelFile);
     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
@@ -76,12 +82,21 @@ if isempty(OutputChannelFile)
     end
     DefaultOutputFile = bst_fullfile(LastUsedDirs.ExportChannel, [baseFile, DefaultExt]);
     
+    FileFilters = bst_get('FileFilters', 'channelout');
+
+    if isNIRS
+        FileFilters(:,2) = cellfun( @(x)strrep( x ,'EEG','NIRS') ,  FileFilters(:,2) ,  'UniformOutput' ,  false)
+        FileFilters(:,2) = cellfun( @(x)strrep(x, 'electrodes','optodes'),  FileFilters(:,2) ,  'UniformOutput' ,  false)
+
+        FileFilters = FileFilters(2:end,:);
+    end
+
     % === Ask user filename ===
     [OutputChannelFile, FileFormat, FileFilter] = java_getfile( 'save', ...
         'Export channels...', ...    % Window title
         DefaultOutputFile, ...       % Default directory
         'single', 'files', ...       % Selection mode
-        bst_get('FileFilters', 'channelout'), ...
+        FileFilters, ...
         DefaultFormats.ChannelOut);
     % If no file was selected: exit
     if isempty(OutputChannelFile)
