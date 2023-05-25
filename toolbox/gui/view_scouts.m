@@ -370,7 +370,11 @@ for iResFile = 1:length(ResultsFiles)
         % More than one component and PCA: do PCA on scout & components at the same time.
         elseif strncmpi(ScoutFunction, 'pca', 3) 
             iTrace = k;
-            scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction);
+            if ScoutsOptions.displayAbsolute
+                scoutsActivity{iResFile,iTrace} = abs(bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction));
+            else
+                scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction);
+            end
             % It doesn't make sense to run pca on std.
             scoutsStd{iResFile,iTrace} = [];
         % More than one component & Absolute: Display the norm

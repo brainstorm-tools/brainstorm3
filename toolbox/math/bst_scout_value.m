@@ -451,7 +451,8 @@ end
 % Now only used for deprecated legacy pca and 'fastpca'.
 function [F, explained] = PcaFirstMode(F, isLegacySign)
     % Signal decomposition / Remove average over time for each row
-    [U, S, V] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ'); %sum(F,2)./size(F,2)
+    FDemeaned = bsxfun(@minus, F, sum(F,2)./size(F,2));
+    [U, S, V] = svd(FDemeaned, 'econ'); %sum(F,2)./size(F,2)
     S = diag(S);
     explained = [S(1).^2, sum(S.^2)];
     U = U(:,1);
@@ -460,8 +461,8 @@ function [F, explained] = PcaFirstMode(F, isLegacySign)
         % Find which original signal has the largest coefficient in the first component
         [~, nmax] = max(abs(U));
         % What's the sign of absolute max amplitude in this signal?
-        [~, i_omaxx] = max(abs(F(nmax,:)));
-        sign_omaxx = sign(F(nmax,i_omaxx));
+        [~, i_omaxx] = max(abs(FDemeaned(nmax,:)));
+        sign_omaxx = sign(FDemeaned(nmax,i_omaxx));
         % Sign of maximum in first component time series [at a different time - so unrelated actually]
         [~, i_Vmaxx] = max(abs(V(:,1)));
         sign_Vmaxx = sign(V(i_Vmaxx,1));
