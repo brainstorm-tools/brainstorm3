@@ -1021,7 +1021,12 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
                 nComp = zeros(iScoutRes,1);
                 for iScout = 1:iScoutRes
                     % Find mixed-model region (GridAtlas.Scout) that overlap this scout's vertices.
-                    iRegionScouts = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+                    % Volume atlases have grid indices instead of vertices.
+                    if isVolumeAtlas
+                        iRegionScouts = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.GridRows}));
+                    else
+                        iRegionScouts = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+                    end
                     % Do not accept scouts that span over multiple regions
                     if isempty(iRegionScouts)
                         bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
@@ -1220,7 +1225,13 @@ function [sResults, iRegionScouts, nComp, iRows] = FixAtlasBasedGrid(sProcess, s
         Message = 'Unexpected atlas-based result file with multiple atlases.  Converting to single atlas.';
         bst_report('Warning', sProcess, sInput, Message);
         sResults.Atlas(1).Scouts = [sResults.Atlas.Scouts];
-        sResults.Atlas(1).Name = 'process_extract_scout';
+        % Keep atlas of correct surface of volume type.
+        [isVolumeAtlas, nGrid] = panel_scout('ParseVolumeAtlas', sResults.Atlas(1).Name);
+        if isVolumeAtlas
+            sResults.Atlas(1).Name = sprintf('Volume %d: process_extract_scout', nGrid);
+        else
+            sResults.Atlas(1).Name = 'process_extract_scout';
+        end
         sResults.Atlas(2:end) = [];
     end
     nScout = numel(sResults.Atlas.Scouts);
@@ -1243,7 +1254,13 @@ function [sResults, iRegionScouts, nComp, iRows] = FixAtlasBasedGrid(sProcess, s
     iRows = cell(nScout,1);
     for iScout = 1:nScout
         % Find mixed-model region (GridAtlas.Scout) that overlap this scout's vertices.
-        iRegionTmp = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+        % Volume atlases have grid indices instead of vertices.
+        isVolumeAtlas = panel_scout('ParseVolumeAtlas', sResults.Atlas(1).Name);
+        if isVolumeAtlas
+            iRegionTmp = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.GridRows}));
+        else
+            iRegionTmp = find(cellfun(@(iVert) any(ismember(sResults.Atlas(1).Scouts(iScout).Vertices, iVert)), {sResults.GridAtlas.Scouts.Vertices}));
+        end
         % Do not accept scouts that span over multiple regions
         if isempty(iRegionTmp)
             bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
@@ -1357,12 +1374,12 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaFlat(sProcess, P
         if isempty(FlatOutputFiles)
             sInputA = [];
             return; % Error already reported.
-        elseif ~any(ismember({sInputA.FileName}, FlatOutputFiles))
+        elseif ~any(ismember(FlatOutputFiles, {sInputA.FileName}))
             % Convert flattened files list back to input structure.
             sInputA = bst_process('GetInputStruct', FlatOutputFiles);
             % All new files, safe to flag as temporary.
             isTempPcaA = true;
-        elseif any(~ismember({sInputA.FileName}, FlatOutputFiles))
+        elseif ~all(ismember(FlatOutputFiles, {sInputA.FileName}))
             % Some, but not all new files.  Something went wrong, but this should not happen.
             bst_report('Error', sProcess, sInputA, 'PCA was only applied to some files. Verify inputs are all consistent (e.g. all same atlas or all unconstrained sources). Aborting.');
             sInputA = [];
@@ -1418,7 +1435,7 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaScout(sProcess, 
         sInputA = [sInputA, sInputB];
     elseif isPcaB 
         % Different scouts, run B separately.
-        [sInputB, isTempPcaB] = RunTempPcaScout(sProcess, PcaOptions, sInputB, AtlasListB, [], [], isPcaFlat);
+        [sInputB, isTempPcaB] = RunTempPcaScout(sProcess, PcaOptions, sInputB, AtlasListB, [], []);
         % Don't return yet, may still have A to process with different scouts.
     end
     if ~isPcaA
@@ -1440,13 +1457,13 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaScout(sProcess, 
     if isempty(ScoutOutputFiles) % something went wrong
         sInputA = []; sInputB = [];
         return; % Error already reported.
-    elseif ~any(ismember({ScoutOutputFiles.FileName}, {sInputA.FileName}))
+    elseif ~any(ismember(ScoutOutputFiles, {sInputA.FileName}))
         % All new files, safe to flag as temporary.
         % Convert scout result file list back to input structure for calling process.
         sInputA = bst_process('GetInputStruct', ScoutOutputFiles);
         % All new files, safe to flag as temporary.
         isTempPcaA = true;
-    elseif ~all(ismember({ScoutOutputFiles.FileName}, {sInputA.FileName}))
+    elseif ~all(ismember(ScoutOutputFiles, {sInputA.FileName}))
         % Some, but not all new files.  Something went wrong, but this should not happen.
         bst_report('Error', sProcess, sInputA, 'PCA was only applied to some files. Verify inputs are all consistent (e.g. all same atlas or all unconstrained sources). Aborting.');
         sInputA = []; sInputB = [];

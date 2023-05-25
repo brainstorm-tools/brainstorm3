@@ -104,7 +104,7 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
         if (nnz(FlipMask > 0) < nnz(FlipMask < 0))
             FlipMask = -FlipMask;
         end
-        % Replace zeros (exaclty orthogonal to or aligned with dominant orientation) by 1: don't ignore any sources. 
+        % Replace zeros (exaclty orthogonal to dominant orientation) by 1: don't ignore any sources. 
         % This also fixes the bug for volume models where all orientations=[0,0,0], which gives FlipMask=[1,0,0,0,0,0,...].
         FlipMask(FlipMask == 0) = 1;
 
@@ -285,7 +285,6 @@ switch (lower(ScoutFunction))
             % Compatible with either or both having multiple components.
             Fs = sum(bsxfun(@times, permute(PcaFirstComp, [1,3,2]), F), 1); 
         else
-            % Covar was not sign-flipped if F is empty.
             Fs = [];
         end
         % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
@@ -364,7 +363,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     if ~isempty(Fs)
         nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
     end
-    explained = 0;
+    explained = [];
     % Different options to combine the three orientations
     switch lower(XyzFunction)
         % Compute the PCA of all the components

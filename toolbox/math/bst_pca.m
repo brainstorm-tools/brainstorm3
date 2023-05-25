@@ -517,11 +517,12 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
     end
 
     if isScout
-        HistoryMsg = cell(nScouts,1);
+        HistoryMsg = {};
         for iScout = 1:nScouts
-            [~, PcaReference{iScout}, HistoryMsg(iScout)] = bst_scout_value([], ...
+            [~, PcaReference{iScout}, HistoryMsgTmp] = bst_scout_value([], ...
                 ScoutFunc, sScouts(iScout).ScoutOrient, nComp(iScout), UnconstrFunc, isSignFlip, sScouts(iScout).Label, SourceCov{iScout});
             % PcaReference{iScout} is size [Nsources, 1]
+            HistoryMsg = cat(1, HistoryMsg, HistoryMsgTmp(:));
         end
     else
         [~, ~, ~, PcaReference, HistoryMsg] = bst_source_orient([], ...
@@ -535,7 +536,7 @@ if ismember(PcaOptions.Method, {'pcaa', 'pcai'})
 end
 
 % Add kept variance to history. Only pcaa; for pcai we save the per-file value instead.
-if strcmpi(PcaOptions.Method, 'pcaa')
+if strcmpi(PcaOptions.Method, 'pcaa') && nInputs > 1
     for iH = 1:numel(HistoryMsg) % can have multiple when flattening mixed head models
         % Clarify that this value is for the reference component, across all files.
         sResultsOut = bst_history('add', sResultsOut, 'compute', [HistoryMsg{iH}(1:end-1) ' on average across files.']);

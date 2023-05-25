@@ -163,7 +163,7 @@ if strcmpi(OPTIONS.UnconstrFunc, 'pca')
     end
     % Flattening needed.
     if isUnconstrA || isUnconstrB
-        if isempty(PcaOptions)
+        if isempty(OPTIONS.PcaOptions)
             bst_report('Error', sProcess, [], 'Missing PCA options for flattening unconstrained sources.');
             return;
         end
