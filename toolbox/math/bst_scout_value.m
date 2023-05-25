@@ -409,6 +409,9 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             explained = [0, 0];
             % For each vertex: Signal decomposition
             for i = 1:nRow
+                if i == 36
+                    tic;
+                end
                 [Fs(i,:), ExplTemp] = PcaFirstMode(permute(F(i,:,:), [3,2,1]), true); % use legacy "bugged" sign
                 explained = explained + ExplTemp;
             end
@@ -455,12 +458,12 @@ function [F, explained] = PcaFirstMode(F, isLegacySign)
     if isLegacySign
         % This section does not work properly: the resulting sign is arbitrary and leads to averaging issues.
         % Find which original signal has the largest coefficient in the first component
-        [~, nmax] = max(abs(U(:,1)));
+        [~, nmax] = max(abs(U));
         % What's the sign of absolute max amplitude in this signal?
         [~, i_omaxx] = max(abs(F(nmax,:)));
         sign_omaxx = sign(F(nmax,i_omaxx));
         % Sign of maximum in first component time series [at a different time - so unrelated actually]
-        [Vmaxx, i_Vmaxx] = max(abs(V(:,1)));
+        [~, i_Vmaxx] = max(abs(V(:,1)));
         sign_Vmaxx = sign(V(i_Vmaxx,1));
         % Reconcile signs
         CompSign = sign_Vmaxx * sign_omaxx;

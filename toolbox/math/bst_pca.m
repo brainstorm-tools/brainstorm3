@@ -7,7 +7,7 @@ function OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, isOutMa
 %    - PcaOptions: Specifies PCA method and covariance settings, usually obtained in the calling
 %      process through the PcaOptions panel, with defaults/preferences from bst_get('PcaOptions').
 %      3 available PCA methods (PcaOptions.Method):
-%          'pca'  : old approach (pre 2023-05), separately for each file, resulting in sign inconsistencies
+%          'pca'  : old approach (pre 2023-06), separately for each file, resulting in sign inconsistencies
 %                   between files.
 %          'pcaa' : *Across* files.  Computes a single "reference" component based on all the source data
 %                   concatenated (per subject).

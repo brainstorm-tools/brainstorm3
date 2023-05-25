@@ -3354,9 +3354,9 @@ switch contextName
         argout1 = FillMissingFields(contextName, defPref);
     
     case 'PcaOptions'
-        defPref.Method         = 'pcaa'; % across epochs
-        defPref.Baseline       = [-.1, 0];
-        defPref.DataTimeWindow = [0, 1];
+        defPref.Method         = 'pca';    % deprecated legacy per-file with sign inconsistencies, but kept as default for reproducibility
+        defPref.Baseline       = [-.1, 0]; % not used for 'pca': full window instead
+        defPref.DataTimeWindow = [0, 1];   % not used for 'pca': full window instead
         defPref.RemoveDcOffset = 'file';
         argout1 = FillMissingFields(contextName, defPref);
         

@@ -468,8 +468,9 @@ function OutputFiles = Run(sProcess, sInputs)
                     else
                         freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
                     end
-                    Description = cat(1, Description, cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false));
+                    RowNames = cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false);
                 end
+                Description = cat(1, Description, RowNames);
             end
         end
         % If nothing was found
