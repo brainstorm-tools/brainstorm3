@@ -104,7 +104,8 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
         if (nnz(FlipMask > 0) < nnz(FlipMask < 0))
             FlipMask = -FlipMask;
         end
-        % Replace zeros (exaclty orthogonal to dominant orientation) by 1: don't ignore any sources. 
+        % Replace zeros (exaclty orthogonal to or aligned with dominant orientation) by 1: don't ignore any sources. 
+        % This also fixes the bug for volume models where all orientations=[0,0,0], which gives FlipMask=[1,0,0,0,0,0,...].
         FlipMask(FlipMask == 0) = 1;
 
         % If not all the values are of the same sign, flip
