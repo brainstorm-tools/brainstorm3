@@ -32,16 +32,16 @@ function TsvFile = export_channel_nirs_atlas(ChannelFile, TsvFile, Radius, isPro
 
 
 % ===== PASRSE INPUTS =====
-if (nargin < 5) || ismpety(isInteractive)
+if (nargin < 5) || isempty(isInteractive)
     isInteractive = 1;
 end
-if (nargin < 4) || ismpety(isProba)
+if (nargin < 4) || isempty(isProba)
     isProba = [];
 end
-if (nargin < 3) || ismpety(Radius)
+if (nargin < 3) || isempty(Radius)
     Radius = [];
 end
-if (nargin < 3) || ismpety(TsvFile)
+if (nargin < 3) || isempty(TsvFile)
     TsvFile = [];
 end
 if (nargin < 1) || isempty(ChannelFile)
@@ -119,6 +119,10 @@ for i = 1:length(iChannelMod)
 
     iWL     = find(ChannelMat.Nirs.Wavelengths == str2double(strrep(sChan.Group,'WL','')));
     iPair   = find(strcmp(sHeadModel.pair_names,pairName));
+
+    if isempty(iWL) || isempty(iPair)
+        continue;
+    end
 
 
     sensitivity = squeeze(sHeadModel.Gain(iPair,iWL,:));
