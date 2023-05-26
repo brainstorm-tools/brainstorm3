@@ -57,6 +57,19 @@ if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
     error('You need the subject anatomy in order to export the sensors positions.');
 end
 
+% Load channel file
+ChannelMat = in_bst_channel(ChannelFile);
+% Get channel indices
+iChannelMod = channel_find(ChannelMat.Channel, 'NIRS');
+
+if isempty(iChannelMod)
+    error('No available NIRS channels.');
+end
+
+if isempty(sStudy.HeadModel) || isempty(sStudy.iHeadModel)
+    error('No available head model.');
+end
+
 
 % List of columnes to export: {Name, Description, Labels, Probabilities}
 Columns = cell(0,4);
@@ -90,18 +103,6 @@ end
 
 
 % ===== GET COORDINATES: SCS =====
-% Load channel file
-ChannelMat = in_bst_channel(ChannelFile);
-% Get channel indices
-iChannelMod = channel_find(ChannelMat.Channel, 'NIRS');
-
-if isempty(iChannelMod)
-    error('No available NIRS channels.');
-end
-
-if isempty(sStudy.HeadModel) || isempty(sStudy.iHeadModel)
-    error('No available head model.');
-end
 
 sHeadModel = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName);
 sCortex    = in_tess_bst(sHeadModel.SurfaceFile);
@@ -195,7 +196,7 @@ end
 
 % Checkboxes
 isChanSelected = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], ChanNames, isChanSelected);
-if ~any(isSelect)
+if ~any(isChanSelected)
     return;
 end
 
