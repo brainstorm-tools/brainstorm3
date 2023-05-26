@@ -446,10 +446,10 @@ end
 
 % ===== GENERATE TABLE =====
 % Column headers
-ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
-ChanTable{1,1} = 'Channel';
-ChanTable{1,2} = 'Length (cm)';
-ChanTable{1,3} = 'Sensitivity (db)';
+ChanTable       = cell( sum(isChanSelected) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
+ChanTable{1,1}  = 'Channel';
+ChanTable{1,2}  = 'Length (cm)';
+ChanTable{1,3}  = 'Sensitivity (db)';
 iEntry = 4;
 
 for iCol = 1:size(Columns,1)
