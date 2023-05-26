@@ -51,24 +51,24 @@ Group = {};
 Type = {};
 for i = 1:length(BstMat.Channel)
     if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
-        if isNIRS
-                CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
-                toks = regexp(strrep(BstMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
-
-                Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
-                Label{end+1} = sprintf('S%s',toks{1}{1} );
-                Type{end+1}  = 'source';
-                Group{end+1} = '';
-
-                Loc(:,end+1) = BstMat.Channel(i).Loc(:,2);
-                Label{end+1} = sprintf('D%s',toks{1}{2} );
-                Type{end+1}  = 'detector';
-                Group{end+1} = '';
-        else
+        if ~isNIRS
             Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
             Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
             Group{end+1} = BstMat.Channel(i).Group;
             Type{end+1} = BstMat.Channel(i).Type;
+        else
+            CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
+            toks = regexp(strrep(BstMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
+
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
+            Label{end+1} = sprintf('S%s',toks{1}{1} );
+            Type{end+1}  = 'source';
+            Group{end+1} = '';
+
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,2);
+            Label{end+1} = sprintf('D%s',toks{1}{2} );
+            Type{end+1}  = 'detector';
+            Group{end+1} = '';
         end
     end   
 end

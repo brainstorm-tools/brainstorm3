@@ -1,4 +1,4 @@
-function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isNIRS, isInteractive)
+function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isInteractive)
 % EXPORT_CHANNEL: Export a Channel file to one of the supported file formats.
 %
 % USAGE:  export_channel(BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask], isInteractive=1)
@@ -31,18 +31,13 @@ function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isNIRS, i
 % Authors: Francois Tadel, 2008-2022
 
 % ===== PASRSE INPUTS =====
-if (nargin < 5) || isempty(isInteractive)
+if (nargin < 4) || isempty(isInteractive)
     isInteractive = 1;
 end
-if (nargin < 4) || isempty(isNIRS)
-    isNIRS = 0;
-end
-
 if (nargin < 2)
     OutputChannelFile = [];
     FileFormat = [];
 end
-
 if (nargin < 1) || isempty(BstChannelFile)
     error('Brainstorm:InvalidCall', 'Invalid use of export_channel()');
 end
@@ -55,20 +50,23 @@ if isempty(OutputChannelFile)
     DefaultFormats = bst_get('DefaultFormats');
     % Get default extension
     switch (DefaultFormats.ChannelOut)
-        case 'POLHEMUS',       DefaultExt = '.pos';
-        case 'MEGDRAW',        DefaultExt = '.eeg';
-        case 'POLHEMUS-HS',    DefaultExt = '.pos';
-        case 'CARTOOL-XYZ',    DefaultExt = '.xyz';
-        case 'BESA-SFP',       DefaultExt = '.sfp';
-        case 'BESA-ELP',       DefaultExt = '.elp';
-        case 'BIDS-SCANRAS-MM',DefaultExt = '_electrodes.tsv';
-        case 'BIDS-MNI-MM',    DefaultExt = '_electrodes.tsv';
-        case 'BIDS-ALS-MM',    DefaultExt = '_electrodes.tsv';
-        case 'CURRY-RES',      DefaultExt = '.res';
-        case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
-        case 'EGI',            DefaultExt = '.sfp';
-        case 'BRAINSIGHT-TXT', DefaultExt = '.txt';
-        otherwise,             DefaultExt = '.pos';
+        case 'POLHEMUS',            DefaultExt = '.pos';
+        case 'MEGDRAW',             DefaultExt = '.eeg';
+        case 'POLHEMUS-HS',         DefaultExt = '.pos';
+        case 'CARTOOL-XYZ',         DefaultExt = '.xyz';
+        case 'BESA-SFP',            DefaultExt = '.sfp';
+        case 'BESA-ELP',            DefaultExt = '.elp';
+        case 'BIDS-SCANRAS-MM',     DefaultExt = '_electrodes.tsv';
+        case 'BIDS-MNI-MM',         DefaultExt = '_electrodes.tsv';
+        case 'BIDS-ALS-MM',         DefaultExt = '_electrodes.tsv';
+        case 'CURRY-RES',           DefaultExt = '.res';
+        case 'EEGLAB-XYZ',          DefaultExt = '.xyz';
+        case 'EGI',                 DefaultExt = '.sfp';
+        case 'BRAINSIGHT-TXT',      DefaultExt = '.txt';
+        case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
+        otherwise,                  DefaultExt = '.pos';
     end
 
     % Get input study/subject
@@ -82,21 +80,12 @@ if isempty(OutputChannelFile)
     end
     DefaultOutputFile = bst_fullfile(LastUsedDirs.ExportChannel, [baseFile, DefaultExt]);
     
-    FileFilters = bst_get('FileFilters', 'channelout');
-
-    if isNIRS
-        FileFilters(:,2) = cellfun( @(x)strrep( x ,'EEG','NIRS') ,  FileFilters(:,2) ,  'UniformOutput' ,  false)
-        FileFilters(:,2) = cellfun( @(x)strrep(x, 'electrodes','optodes'),  FileFilters(:,2) ,  'UniformOutput' ,  false)
-
-        FileFilters = FileFilters(2:end,:);
-    end
-
     % === Ask user filename ===
     [OutputChannelFile, FileFormat, FileFilter] = java_getfile( 'save', ...
         'Export channels...', ...    % Window title
         DefaultOutputFile, ...       % Default directory
         'single', 'files', ...       % Selection mode
-        FileFilters, ...
+        bst_get('FileFilters', 'channelout'), ...
         DefaultFormats.ChannelOut);
     % If no file was selected: exit
     if isempty(OutputChannelFile)
@@ -112,9 +101,9 @@ end
 
 
 % ===== TRANSFORMATIONS =====
-isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM'});
-isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM','BRAINSIGHT-TXT'});
-isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM'});
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM', 'BRAINSIGHT-TXT'});
+isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf
     % Get channel file
@@ -229,6 +218,17 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
+
+    % === NIRS ONLY ===
+    case 'BIDS-NIRS-SCANRAS-MM'
+        % Transf is a 4x4 transformation matrix
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf, 1);
+    case 'BIDS-NIRS-MNI-MM'
+        % Transf is a MRI structure with the definition of MNI normalization
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf, 1);
+    case 'BIDS-NIRS-ALS-MM'
+        % No transformation: export unchanged SCS/CTF space
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
     case 'BRAINSIGHT-TXT'
         out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); 
 
