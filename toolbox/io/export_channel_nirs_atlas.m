@@ -135,9 +135,9 @@ for i = 1:length(iChannelMod)
     ChanSensitivity(end+1)  = maxSensitivity;
 end
 
-Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
-isSelect(end+1) = 1;
-
+Columns(end+1,:)    = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
+isSelect(end+1)     = 1;
+isChanSelected        = ones(1,length(iChannelMod)); 
 
 % ===== GET COORDINATES: MNI, WORLD =====
 % Load the MRI
@@ -192,7 +192,13 @@ if ~isempty(iCortex)
         isSelect = [isSelect, nVertices == max(nVertices)];
     end
 end
+
 % Checkboxes
+isChanSelected = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], ChanNames, isChanSelected);
+if ~any(isSelect)
+    return;
+end
+
 isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], Columns(:,2), isSelect);
 if ~any(isSelect)
     return;
@@ -313,6 +319,7 @@ for i = 1:length(iColVol)
     ChanProba = cell(1,size(ChanScs,1));
     isWarningNoText = 1;
     for iChan = 1:size(ChanScs,1)
+
         % Coordinates of the closest voxel
         C = round(xyzAtlas(iChan,:));
         % If there are multiple voxels
@@ -454,35 +461,43 @@ for iCol = 1:size(Columns,1)
     end
 end
 % Loop on channels (rows)
+iRow = 1;
 for iChan = 1:size(ChanScs,1)
-    ChanTable{iChan+1, 1} = ChanNames{iChan};
-    ChanTable{iChan+1, 2} = sprintf('%.2f',100*ChanLength(iChan));
-    ChanTable{iChan+1, 3} = sprintf('%.3f', log10(ChanSensitivity(iChan) / max(ChanSensitivity)));
+
+     if ~isChanSelected(iChan)
+        continue;
+     end
+
+
+    ChanTable{iRow+1, 1} = ChanNames{iChan};
+    ChanTable{iRow+1, 2} = sprintf('%.2f',100*ChanLength(iChan));
+    ChanTable{iRow+1, 3} = sprintf('%.3f', log10(ChanSensitivity(iChan) / max(ChanSensitivity)));
 
     iEntry = 4;
     % Loop on atlases (columns)
     for iCol = 1:size(Columns,1)
         % Numeric value (xyz coordinates - millimeters)
         if isnumeric(Columns{iCol,3}) && (iChan <= size(Columns{iCol,3},1)) && (size(Columns{iCol,3},2) == 3)
-            ChanTable{iChan+1, iEntry} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
+            ChanTable{iRow+1, iEntry} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
         % Text value (atlas label)
         elseif iscell(Columns{iCol,3}) && (iChan <= length(Columns{iCol,3}))
-            ChanTable{iChan+1, iEntry} = Columns{iCol,3}{iChan};
+            ChanTable{iRow+1, iEntry} = Columns{iCol,3}{iChan};
             % Add probability
             if ~isempty(Columns{iCol,4})
                 if (Columns{iCol,4}{iChan} > 0) && ~strcmpi(Columns{iCol,3}{iChan}, 'N/A')
-                    ChanTable{iChan+1, iEntry+1} = sprintf('%d%%', round(100 * Columns{iCol,4}{iChan}));
+                    ChanTable{iRow+1, iEntry+1} = sprintf('%d%%', round(100 * Columns{iCol,4}{iChan}));
                 else
-                    ChanTable{iChan+1, iEntry+1} = 'N/A';
+                    ChanTable{iRow+1, iEntry+1} = 'N/A';
                 end
                 iEntry = iEntry + 1;
             end
         % Not available
         else
-            ChanTable{iChan+1, iEntry} = 'N/A';
+            ChanTable{iRow+1, iEntry} = 'N/A';
         end
         iEntry = iEntry + 1;
     end
+    iRow = iRow + 1;
 end
 
 
