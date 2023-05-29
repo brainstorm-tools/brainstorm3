@@ -1341,8 +1341,8 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaFlat(sProcess, P
     isTempPcaA = false;
     isTempPcaB = false;
     % Use these to indicate we will try to create the temp files.
-    isPcaA = ~isempty(sInputA);
-    isPcaB = ~isempty(sInputB);
+    isPcaA = ~isempty(sInputA) && ismember(sInputA(1).FileType, {'results', 'timefreq'});
+    isPcaB = ~isempty(sInputB) && ismember(sInputB(1).FileType, {'results', 'timefreq'});
     % If both groups of files use the same scouts (or flattening only), concatenate inputs (A and B)
     % and compute PCA across all files together.
     if isPcaA && isPcaB
@@ -1421,8 +1421,10 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaScout(sProcess, 
     isTempPcaA = false;
     isTempPcaB = false;
     % Use these to indicate we will try to create the temp files.
-    isPcaA = ~isempty(sInputA) && ~isempty(AtlasListA);
-    isPcaB = ~isempty(sInputB) && ~isempty(AtlasListB);
+    isPcaA = ~isempty(sInputA) && ismember(sInputA(1).FileType, {'results', 'timefreq'}) && ...
+        ~isempty(AtlasListA) && (isstruct(AtlasListA) || iscell(AtlasListA));
+    isPcaB = ~isempty(sInputB) && ismember(sInputB(1).FileType, {'results', 'timefreq'}) && ...
+        ~isempty(AtlasListB) && (isstruct(AtlasListB) || iscell(AtlasListB));
     % If both groups of files use the same scouts, concatenate inputs (A and B) and compute PCA
     % across all files together.
     isSameScouts = false;
@@ -1435,7 +1437,7 @@ function [sInputA, isTempPcaA, sInputB, isTempPcaB] = RunTempPcaScout(sProcess, 
         sInputA = [sInputA, sInputB];
     elseif isPcaB 
         % Different scouts, run B separately.
-        [sInputB, isTempPcaB] = RunTempPcaScout(sProcess, PcaOptions, sInputB, AtlasListB, [], []);
+        [sInputB, isTempPcaB] = RunTempPcaScout(sProcess, PcaOptions, sInputB, AtlasListB);
         % Don't return yet, may still have A to process with different scouts.
     end
     if ~isPcaA

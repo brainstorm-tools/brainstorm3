@@ -191,7 +191,7 @@ if strcmpi(OPTIONS.ScoutFunc, 'pca') && ~isempty(OPTIONS.PcaOptions) && ~strcmpi
         bst_report('Error', OPTIONS.ProcessName, [], 'When selecting PCA, bst_connectivity now requires sInput structures instead of file names as inputs.');
         return;
     end
-    % FilesA/B are replaced by temporary files as needed by RunTempPcaScout.
+    % FilesA/B are replaced by temporary files as needed by RunTempPcaScout. It also correctly ignores non-result inputs.
     [FilesA, isTempPcaA, FilesB, isTempPcaB] = process_extract_scout('RunTempPcaScout', ProcessName, ...
         OPTIONS.PcaOptions, FilesA, OPTIONS.TargetA, FilesB, OPTIONS.TargetB);
     if isTempPcaA
