@@ -31,7 +31,7 @@ end
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs) 
     panelName = 'PcaOptions';
-    bstPanelNew = [];
+    bstPanelNew = []; 
 
     PcaOptions = sProcess.options.pcaedit.Value;
     nInputs = numel(sInputs);
@@ -213,8 +213,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     jPanelNew.add('br hfill', jPanelCov);
         
     % ===== VALIDATION BUTTONS =====
+    % Help
+    gui_component('button', jPanelNew, 'br left',  'Online tutorial', [], [], @ButtonHelp_Callback);
+    gui_component('label',  jPanelNew, 'hfill', '  ');
     % Cancel
-    gui_component('button', jPanelNew, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
+    gui_component('button', jPanelNew, 'right', 'Cancel', [], [], @ButtonCancel_Callback);
     % Run
     gui_component('button', jPanelNew, '', 'OK', [], [], @ButtonOk_Callback);
 
@@ -256,6 +259,16 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     function ButtonOk_Callback(varargin)
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+    end
+
+%% ===== BUTTON: HELP =====
+    function ButtonHelp_Callback(varargin)
+        HelpUrl = 'https://neuroimage.usc.edu/brainstorm/Tutorials/PCA';
+        % Display web page
+        status = web(HelpUrl, '-browser');
+        if (status ~= 0)
+            web(HelpUrl);
+        end
     end
 
 %% ===== Use pre-computed covariance checkbox =====

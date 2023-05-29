@@ -1940,19 +1940,14 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
             sInput.GridAtlas = sMat.GridAtlas;
             sInput.GridLoc = sMat.GridLoc;
         end
-        % If only non-All scouts: use just the scouts labels, if not use the full description string
-%         sScouts = sMat.Atlas.Scouts;
-%         if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
-%             sInput.RowNames = {sScouts.Label}';
-%         else
-            sInput.RowNames = sMat.Description;
-            for iRow = 1:length(sInput.RowNames)
-                iAt = find(sInput.RowNames{iRow} == '@', 1);
-                if ~isempty(iAt)
-                    sInput.RowNames{iRow} = strtrim(sInput.RowNames{iRow}(1:iAt-1));
-                end
+        % Get row names. Can't use just the scouts labels: unconstrained or mixed models have more than one row per scout.
+        sInput.RowNames = sMat.Description;
+        for iRow = 1:length(sInput.RowNames)
+            iAt = find(sInput.RowNames{iRow} == '@', 1);
+            if ~isempty(iAt)
+                sInput.RowNames{iRow} = strtrim(sInput.RowNames{iRow}(1:iAt-1));
             end
-%         end
+        end
         
     % ===== LOAD FILE =====
     else
