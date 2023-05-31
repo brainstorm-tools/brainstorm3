@@ -1,3 +1,10 @@
+June 2023
+- PCA: MAJOR FIXES AND IMPROVEMENTS for scouts and flattening unconstrained sources.
+|  Fix sign issues and compute across epochs/conditions. New time window options.
+|  New tutorial page. PCA for scouts rescaled. "% power kept" fix and saved in history.
+- Connectivity: New option to flatten unconstrained sources with PCA.
+- Connectivity: Fixes for scouts on volume and mixed models.
+--------------------------------------------------------------
 April 2023
 - NIRS: Project channel files between subjects
 - 3DViewer: Overlay any type of surfaces
