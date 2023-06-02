@@ -1,5 +1,5 @@
 function out_channel_bids(BstFile, OutputFile, Factor, Transf, isNIRS)
-% OUT_CHANNEL_BIDS: Exports a Brainstorm channel file in an BIDS _electrodes.tsv file.
+% OUT_CHANNEL_BIDS: Exports a Brainstorm channel file in an BIDS _electrodes.tsv or _optrodes.tsv file
 %
 % USAGE:  out_channel_bids(BstFile, OutputFile, Factor=1, Transf=[]);
 %
@@ -9,6 +9,7 @@ function out_channel_bids(BstFile, OutputFile, Factor, Transf, isNIRS)
 %     - Factor     : Factor to convert the positions values in meters.
 %     - Transf     : 4x4 transformation matrix to apply to the 3D positions before saving
 %                    or entire MRI structure for conversion to MNI space
+%     - isNIRS     : (Default = 0), if isNIRS = 1, channel file is exported as _optrodes.tsv
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
