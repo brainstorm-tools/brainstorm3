@@ -1,5 +1,5 @@
-function out_channel_bids(BstFile, OutputFile, Factor, Transf)
-% OUT_CHANNEL_BIDS: Exports a Brainstorm channel file in an BIDS _electrodes.tsv file.
+function out_channel_bids(BstFile, OutputFile, Factor, Transf, isNIRS)
+% OUT_CHANNEL_BIDS: Exports a Brainstorm channel file in an BIDS _electrodes.tsv or _optrodes.tsv file
 %
 % USAGE:  out_channel_bids(BstFile, OutputFile, Factor=1, Transf=[]);
 %
@@ -9,6 +9,7 @@ function out_channel_bids(BstFile, OutputFile, Factor, Transf)
 %     - Factor     : Factor to convert the positions values in meters.
 %     - Transf     : 4x4 transformation matrix to apply to the 3D positions before saving
 %                    or entire MRI structure for conversion to MNI space
+%     - isNIRS     : (Default = 0), if isNIRS = 1, channel file is exported as _optrodes.tsv
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -38,9 +39,12 @@ end
 if (nargin < 4) || isempty(Transf)
     Transf = [];
 end
-
+if (nargin < 5) || isempty(isNIRS)
+    isNIRS = 0;
+end
 % Load brainstorm channel file
 BstMat = in_bst_channel(BstFile);
+
 % Get all the positions
 Loc   = zeros(3,0);
 Label = {};
@@ -48,11 +52,34 @@ Group = {};
 Type = {};
 for i = 1:length(BstMat.Channel)
     if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
-        Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
-        Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
-        Group{end+1} = BstMat.Channel(i).Group;
-        Type{end+1} = BstMat.Channel(i).Type;
-    end
+        if ~isNIRS
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
+            Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
+            Group{end+1} = BstMat.Channel(i).Group;
+            Type{end+1} = BstMat.Channel(i).Type;
+        else
+            CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
+            toks = regexp(strrep(BstMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
+
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
+            Label{end+1} = sprintf('S%s',toks{1}{1} );
+            Type{end+1}  = 'source';
+            Group{end+1} = '';
+
+            Loc(:,end+1) = BstMat.Channel(i).Loc(:,2);
+            Label{end+1} = sprintf('D%s',toks{1}{2} );
+            Type{end+1}  = 'detector';
+            Group{end+1} = '';
+        end
+    end   
+end
+
+% Remove duplicate 
+if isNIRS
+    [Label, I]  = unique(Label, 'stable');
+    Loc         = Loc(:,I);
+    Group       = Group(I);
+    Type        = Type(I);
 end
 
 % Apply transformation
@@ -76,7 +103,11 @@ if (fid < 0)
    error('Cannot open file'); 
 end
 % Write header: column names
-ColNames = {'name', 'x', 'y', 'z', 'size', 'group', 'type'};
+if isNIRS
+    ColNames = {'name','type', 'x', 'y', 'z'};
+else
+    ColNames = {'name', 'x', 'y', 'z', 'size', 'group', 'type'};
+end
 fprintf(fid, '%s\t', ColNames{1:end-1});
 fprintf(fid, '%s\n', ColNames{end});
 % Write file: one line per location
@@ -84,19 +115,21 @@ for i = 1:length(Label)
     for iCol = 1:length(ColNames)
         switch (ColNames{iCol})
             case 'name'
-                fprintf(fid, '%s\t', Label{i});
+                fprintf(fid, '%s', Label{i});
             case 'x'
-                fprintf(fid, '%1.6f\t', Loc(1,i));
+                fprintf(fid, '%1.6f', Loc(1,i));
             case 'y'
-                fprintf(fid, '%1.6f\t', Loc(2,i));
+                fprintf(fid, '%1.6f', Loc(2,i));
             case 'z'
-                fprintf(fid, '%1.6f\t', Loc(3,i));
+                fprintf(fid, '%1.6f', Loc(3,i));
             case 'size'
-                fprintf(fid, 'n/a\t');
+                fprintf(fid, 'n/a');
             case 'group'
-                fprintf(fid, '%s\t', Group{i});
+                fprintf(fid, '%s', Group{i});
             case 'type'
                 switch (Type{i})
+                    case {'source', 'detector'}
+                        chType = Type{i};
                     case 'SEEG'
                         chType = 'depth';
                     case 'ECOG'
@@ -115,6 +148,10 @@ for i = 1:length(Label)
                         chType = 'n/a';
                 end
                 fprintf(fid, '%s', chType);
+        end
+
+        if iCol < length(ColNames)
+            fprintf(fid, '\t');
         end
     end
     fprintf(fid, '\n');
