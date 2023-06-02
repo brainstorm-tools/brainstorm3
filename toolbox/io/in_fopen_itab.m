@@ -167,7 +167,7 @@ if (hdr.nsmpl >= 1)
     % Format list
     for iEvt = 1:length(uniqueType)
         % Find list of occurences of this event
-        iOcc = find(strcmpi(allType, uniqueType(iEvt)));
+        iOcc = find(allType == uniqueType(iEvt));
         % Fill events structure
         events(iEvt).label      = num2str(uniqueType(iEvt));
         events(iEvt).color      = [];

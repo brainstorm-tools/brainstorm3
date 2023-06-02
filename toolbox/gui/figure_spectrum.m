@@ -1390,6 +1390,16 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         ColorOrder = DefaultColor;
     end
     set(hAxes, 'ColorOrder', ColorOrder);
+    % Update XLim if needed
+    XLimOld = get(hAxes, 'XLim');
+    if ~isequal(XLim, XLimOld)
+        hAllFigs = bst_figures('GetFiguresByType', 'Spectrum');
+        % Loop over all the spectrum figures found
+        for i = 1:length(hAllFigs)
+            hAxes = findobj(hAllFigs(i), '-depth', 1, 'Tag', 'AxesGraph');
+            set(hAxes, 'XLim', XLim);
+        end
+    end
 
     % Create handles structure
     PlotHandles = db_template('DisplayHandlesTimeSeries');

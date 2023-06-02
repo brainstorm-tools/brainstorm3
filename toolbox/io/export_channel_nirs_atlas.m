@@ -1,28 +1,15 @@
-function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
-% EXPORT_CHANNEL_ATLAS: Compute anatomical labels for SEEG/ECOG contacts from volume and surface parcellations
+function TsvFile = export_channel_nirs_atlas(ChannelFile, TsvFile, Radius, isProba, isInteractive)
+% EXPORT_CHANNEL_NIRS_ATLAS: Compute anatomical labels for NIRS channels from volume and surface parcellations
 %
-% USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
-%         TsvFile = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+% USAGE:  TsvFile = export_channel_nirs_atlas(ChannelFile,  TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
 %
 % INPUT: 
 %     - ChannelFile   : Path to Brainstorm channel file to be processed
-%     - Modality      : String, export only the channel with the selected modality
-%     - iChannels     : Array of integers, export only the selected channel indices
 %     - TsvFile       : Output text file (tab-separated values)
 %     - Radius        : Size in millimeters of the neighborhood to consider around each contact
 %     - IsInteractive : If 1, display the output table at the end of the process
 %     - iChannels     : Limit export to a subset of channel indices
 % 
-% REFERENCES:
-%     - MERCIER M, 2021:
-%       "Because of the uncertainty on the 3D locations described above, we recommend to consider 
-%        a region around the contact centroid (e.g., 3x3x3mm with respect to the size of the electrode 
-%        that is no more than ~ 2mm wide) and counting the number of voxels of each label in this 
-%        neighborhood volume (probabilistic approach in space, for an example of implementation see 
-%        the Proximal Tissue Density index introduced in Mercier eta al., 2017)"
-%     - INTRANAT SOFTWARE:
-%       Sphere of 3mm radius around the closest voxel to the SEEG contacts, 5mm for bipolar contacts
-
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -41,35 +28,49 @@ function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021
+% Authors: Francois Tadel, 2021; Edouard Delaire, 2023
 
 
 % ===== PASRSE INPUTS =====
-if (nargin < 6) || isempty(isInteractive)
+if (nargin < 5) || isempty(isInteractive)
     isInteractive = 1;
 end
-if (nargin < 5) || isempty(isProba)
+if (nargin < 4) || isempty(isProba)
     isProba = [];
 end
-if (nargin < 4) || isempty(Radius)
+if (nargin < 3) || isempty(Radius)
     Radius = [];
 end
 if (nargin < 3) || isempty(TsvFile)
     TsvFile = [];
 end
-if (nargin < 2) || isempty(Modality)
-    Modality = 'ECOG+SEEG';
-end
 if (nargin < 1) || isempty(ChannelFile)
-    error('Brainstorm:InvalidCall', 'Invalid use of export_channel_atlas()');
+    error('Brainstorm:InvalidCall', 'Invalid use of export_channel_nirs_atlas()');
 end
+
 % Get input study/subject
 sStudy = bst_get('ChannelFile', ChannelFile);
 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+
 % Get the subject's MRI
 if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
     error('You need the subject anatomy in order to export the sensors positions.');
 end
+
+% Load channel file
+ChannelMat = in_bst_channel(ChannelFile);
+% Get channel indices
+iChannelMod = channel_find(ChannelMat.Channel, 'NIRS');
+
+if isempty(iChannelMod)
+    error('No available NIRS channels.');
+end
+
+if isempty(sStudy.HeadModel) || isempty(sStudy.iHeadModel)
+    error('No available head model.');
+end
+
+
 % List of columnes to export: {Name, Description, Labels, Probabilities}
 Columns = cell(0,4);
 isSelect = [];
@@ -102,32 +103,42 @@ end
 
 
 % ===== GET COORDINATES: SCS =====
-% Load channel file
-ChannelMat = in_bst_channel(ChannelFile);
-% Get channel indices
-if ischar(Modality)
-    iChannelMod = channel_find(ChannelMat.Channel, Modality);
-elseif isnumeric(Modality)
-    iChannelMod = Modality;
-end
-if isempty(iChannelMod)
-    error('No channels available for the selected modality.');
-end
+
+sHeadModel = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName);
+sCortex    = in_tess_bst(sHeadModel.SurfaceFile);
+
 % Get locations for all channels
-ChanInd = [];
-ChanScs = [];
-ChanNames = {};
+ChanInd         = [];
+ChanScs         = [];
+ChanSensitivity = [];
+ChanLength      = []; 
+ChanNames       = {};
+
 for i = 1:length(iChannelMod)
     sChan = ChannelMat.Channel(iChannelMod(i));
-    if (length(sChan.Loc) == 3) && ~all(sChan.Loc == 0)
-        ChanInd(end+1) = iChannelMod(i);
-        ChanScs(end+1,:) = [sChan.Loc(1), sChan.Loc(2), sChan.Loc(3)];
-        ChanNames{end+1} = sChan.Name;
-    end
-end
-Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
-isSelect(end+1) = 1;
+    pairName = strrep(sChan.Name,sChan.Group,'');
 
+    iWL     = find(ChannelMat.Nirs.Wavelengths == str2double(strrep(sChan.Group,'WL','')));
+    iPair   = find(strcmp(sHeadModel.pair_names,pairName));
+
+    if isempty(iWL) || isempty(iPair)
+        continue;
+    end
+
+
+    sensitivity = squeeze(sHeadModel.Gain(iPair,iWL,:));
+    [maxSensitivity, iVertices] = max(sensitivity);
+
+    ChanInd(end+1)          = iChannelMod(i);
+    ChanLength(end+1)       = sqrt(sum((sChan.Loc(:,1) - sChan.Loc(:,2)).^2));
+    ChanScs(end+1,:)        = [sCortex.Vertices(iVertices,1),sCortex.Vertices(iVertices,2),sCortex.Vertices(iVertices,3) ];
+    ChanNames{end+1}        = sChan.Name;
+    ChanSensitivity(end+1)  = maxSensitivity;
+end
+
+Columns(end+1,:)    = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
+isSelect(end+1)     = 1;
+isChanSelected        = ones(1,length(iChannelMod)); 
 
 % ===== GET COORDINATES: MNI, WORLD =====
 % Load the MRI
@@ -182,8 +193,14 @@ if ~isempty(iCortex)
         isSelect = [isSelect, nVertices == max(nVertices)];
     end
 end
+
 % Checkboxes
-isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute contact labels', [], Columns(:,2), isSelect);
+isChanSelected = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], ChanNames, isChanSelected);
+if ~any(isChanSelected)
+    return;
+end
+
+isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute channels labels', [], Columns(:,2), isSelect);
 if ~any(isSelect)
     return;
 end
@@ -219,7 +236,7 @@ if ~isempty(iColSurf)
             SurfAtlasesGui{1} = [SurfAtlasesGui{1}, repmat(' ', 1, 23-length(SurfAtlasesGui{1}))];
         end
         % Checkboxes
-        isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute contact labels', [], SurfAtlasesGui, true(1,length(SurfAtlasesGui)));
+        isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute channels labels', [], SurfAtlasesGui, true(1,length(SurfAtlasesGui)));
         if ~isempty(isSelect) && any(isSelect)
             SurfAtlases = SurfAtlases(isSelect == 1);
         else
@@ -236,15 +253,14 @@ end
 if isempty(Radius)
     Radius = java_dialog('input', [...
         '<HTML>Radius of the sphere (in millimeters).<BR><BR>' ...
-        'To match a SEEG contact with an anatomical label from an atlas, we consider<BR>' ...
-        'a sphere around the center of the contact instead of a single voxel.<BR><BR>' ...
+        'To match a NIRS channel with an anatomical label from an atlas, we consider<BR>' ...
+        'a sphere around the vertex with the maximum sensitivity.<BR><BR>' ...
         '<B>Surface atlas</>: The vertices within the sphere are detected, the most prevalent<BR>' ...
         'scout label among them is returned. High-resolution white matter recommended.<BR><BR>' ...
         '<B>Volume atlas</B>: All the voxels within the sphere are extracted, the most prevalent<BR>' ...
         'anatomical label among them is returned as the contact label.<BR><BR>' ...
         '<FONT COLOR="#777777"><B>1.74mm</B>: 27 voxels, all adjacent to the central voxel (cube 3x3x3mm).<BR>' ...
-        '<B>3mm</B>: 93 voxels, recommended for isotropic MRI with a 1x1x1mm resolution.<BR>' ...
-        '<B>5mm</B>: 335 voxels, recommended for bipolar contacts (ie. applied bipolar montage).</FONT><BR><BR>'], ...
+        '<B>3mm</B>: 93 voxels, recommended for isotropic MRI with a 1x1x1mm resolution.<BR>'], ...
         'Contact neighborhood', [], '3');
     if isempty(Radius) || (length(str2num(Radius)) ~= 1)
         return
@@ -304,6 +320,7 @@ for i = 1:length(iColVol)
     ChanProba = cell(1,size(ChanScs,1));
     isWarningNoText = 1;
     for iChan = 1:size(ChanScs,1)
+
         % Coordinates of the closest voxel
         C = round(xyzAtlas(iChan,:));
         % If there are multiple voxels
@@ -430,9 +447,12 @@ end
 
 % ===== GENERATE TABLE =====
 % Column headers
-ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
-ChanTable{1,1} = 'Channel';
-iEntry = 2;
+ChanTable       = cell( sum(isChanSelected) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
+ChanTable{1,1}  = 'Channel';
+ChanTable{1,2}  = 'Length (cm)';
+ChanTable{1,3}  = 'Sensitivity (db)';
+iEntry = 4;
+
 for iCol = 1:size(Columns,1)
     ChanTable{1, iEntry} = Columns{iCol,1};
     iEntry = iEntry + 1;
@@ -442,32 +462,43 @@ for iCol = 1:size(Columns,1)
     end
 end
 % Loop on channels (rows)
+iRow = 1;
 for iChan = 1:size(ChanScs,1)
-    ChanTable{iChan+1, 1} = ChanNames{iChan};
-    iEntry = 2;
+
+     if ~isChanSelected(iChan)
+        continue;
+     end
+
+
+    ChanTable{iRow+1, 1} = ChanNames{iChan};
+    ChanTable{iRow+1, 2} = sprintf('%.2f',100*ChanLength(iChan));
+    ChanTable{iRow+1, 3} = sprintf('%.3f', log10(ChanSensitivity(iChan) / max(ChanSensitivity)));
+
+    iEntry = 4;
     % Loop on atlases (columns)
     for iCol = 1:size(Columns,1)
         % Numeric value (xyz coordinates - millimeters)
         if isnumeric(Columns{iCol,3}) && (iChan <= size(Columns{iCol,3},1)) && (size(Columns{iCol,3},2) == 3)
-            ChanTable{iChan+1, iEntry} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
+            ChanTable{iRow+1, iEntry} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
         % Text value (atlas label)
         elseif iscell(Columns{iCol,3}) && (iChan <= length(Columns{iCol,3}))
-            ChanTable{iChan+1, iEntry} = Columns{iCol,3}{iChan};
+            ChanTable{iRow+1, iEntry} = Columns{iCol,3}{iChan};
             % Add probability
             if ~isempty(Columns{iCol,4})
                 if (Columns{iCol,4}{iChan} > 0) && ~strcmpi(Columns{iCol,3}{iChan}, 'N/A')
-                    ChanTable{iChan+1, iEntry+1} = sprintf('%d%%', round(100 * Columns{iCol,4}{iChan}));
+                    ChanTable{iRow+1, iEntry+1} = sprintf('%d%%', round(100 * Columns{iCol,4}{iChan}));
                 else
-                    ChanTable{iChan+1, iEntry+1} = 'N/A';
+                    ChanTable{iRow+1, iEntry+1} = 'N/A';
                 end
                 iEntry = iEntry + 1;
             end
         % Not available
         else
-            ChanTable{iChan+1, iEntry} = 'N/A';
+            ChanTable{iRow+1, iEntry} = 'N/A';
         end
         iEntry = iEntry + 1;
     end
+    iRow = iRow + 1;
 end
 
 
@@ -519,7 +550,7 @@ if isInteractive
     if ~isempty(TsvFile)
         wndTitle = TsvFile;
     else
-        wndTitle = 'SEEG contact labels';
+        wndTitle = 'NIRS channels labels';
     end
     view_text([strTable 10 10], wndTitle);
 end

@@ -50,21 +50,25 @@ if isempty(OutputChannelFile)
     DefaultFormats = bst_get('DefaultFormats');
     % Get default extension
     switch (DefaultFormats.ChannelOut)
-        case 'POLHEMUS',       DefaultExt = '.pos';
-        case 'MEGDRAW',        DefaultExt = '.eeg';
-        case 'POLHEMUS-HS',    DefaultExt = '.pos';
-        case 'CARTOOL-XYZ',    DefaultExt = '.xyz';
-        case 'BESA-SFP',       DefaultExt = '.sfp';
-        case 'BESA-ELP',       DefaultExt = '.elp';
-        case 'BIDS-SCANRAS-MM',DefaultExt = '_electrodes.tsv';
-        case 'BIDS-MNI-MM',    DefaultExt = '_electrodes.tsv';
-        case 'BIDS-ALS-MM',    DefaultExt = '_electrodes.tsv';
-        case 'CURRY-RES',      DefaultExt = '.res';
-        case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
-        case 'EGI',            DefaultExt = '.sfp';
-        case 'BRAINSIGHT-TXT', DefaultExt = '.txt';
-        otherwise,             DefaultExt = '.pos';
+        case 'POLHEMUS',            DefaultExt = '.pos';
+        case 'MEGDRAW',             DefaultExt = '.eeg';
+        case 'POLHEMUS-HS',         DefaultExt = '.pos';
+        case 'CARTOOL-XYZ',         DefaultExt = '.xyz';
+        case 'BESA-SFP',            DefaultExt = '.sfp';
+        case 'BESA-ELP',            DefaultExt = '.elp';
+        case 'BIDS-SCANRAS-MM',     DefaultExt = '_electrodes.tsv';
+        case 'BIDS-MNI-MM',         DefaultExt = '_electrodes.tsv';
+        case 'BIDS-ALS-MM',         DefaultExt = '_electrodes.tsv';
+        case 'CURRY-RES',           DefaultExt = '.res';
+        case 'EEGLAB-XYZ',          DefaultExt = '.xyz';
+        case 'EGI',                 DefaultExt = '.sfp';
+        case 'BRAINSIGHT-TXT',      DefaultExt = '.txt';
+        case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
+        otherwise,                  DefaultExt = '.pos';
     end
+
     % Get input study/subject
     sStudy = bst_get('ChannelFile', BstChannelFile);
     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
@@ -97,9 +101,9 @@ end
 
 
 % ===== TRANSFORMATIONS =====
-isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM'});
-isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM'});
-isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM'});
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM', 'BRAINSIGHT-TXT'});
+isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf
     % Get channel file
@@ -214,15 +218,20 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
-    
-    % === NIRS ===
+
+    % === NIRS ONLY ===
+    case 'BIDS-NIRS-SCANRAS-MM'
+        % Transf is a 4x4 transformation matrix
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf, 1);
+    case 'BIDS-NIRS-MNI-MM'
+        % Transf is a MRI structure with the definition of MNI normalization
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf, 1);
+    case 'BIDS-NIRS-ALS-MM'
+        % No transformation: export unchanged SCS/CTF space
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
     case 'BRAINSIGHT-TXT'
-        sSubject = bst_get('Subject');
-        if sSubject.iAnatomy > 0
-            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, sSubject.Anatomy(sSubject.iAnatomy).FileName); %ADDTV
-        else
-            out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile);
-        end
+        out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); 
+
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);
         

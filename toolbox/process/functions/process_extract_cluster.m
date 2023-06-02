@@ -130,7 +130,7 @@ function OutputFiles = Run(sProcess, sInputs)
         end
         % Get channel file
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-        if ~isfield(ChannelMat, 'Clusters') || isempty(ChannelMat.Clusters)
+        if (~isfield(ChannelMat, 'Clusters') || isempty(ChannelMat.Clusters)) && ~isstruct(sProcess.options.clusters.Value)
             bst_report('Error', sProcess, [], ['No clusters available in channel file: ' sInputs(iInput).ChannelFile]);
             return;
         end
