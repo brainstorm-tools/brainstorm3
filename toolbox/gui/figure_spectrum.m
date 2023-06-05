@@ -1251,7 +1251,10 @@ function PlotFigure(hFig, isForced, isSpectrum, Time, Freqs, TfInfo, TF, RowName
     end
     if isempty(DisplayUnits)
         % Get signal units and display factor 
-        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        if ~isempty(regexp(TfInfo.FileName, '_connect[1n]', 'once'))
+            DisplayUnits  = 'No units';
+            DisplayFactor = 1;
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
         else
             DisplayUnits = 'signal units';
@@ -1387,6 +1390,16 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         ColorOrder = DefaultColor;
     end
     set(hAxes, 'ColorOrder', ColorOrder);
+    % Update XLim if needed
+    XLimOld = get(hAxes, 'XLim');
+    if ~isequal(XLim, XLimOld)
+        hAllFigs = bst_figures('GetFiguresByType', 'Spectrum');
+        % Loop over all the spectrum figures found
+        for i = 1:length(hAllFigs)
+            hAxes = findobj(hAllFigs(i), '-depth', 1, 'Tag', 'AxesGraph');
+            set(hAxes, 'XLim', XLim);
+        end
+    end
 
     % Create handles structure
     PlotHandles = db_template('DisplayHandlesTimeSeries');
@@ -1549,12 +1562,14 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Granger causality';
                     case {'plv', 'plvt'}
                         strAmp = 'Phase locking value';
-                    case {'ciplv', 'ciplvt'}
-                        strAmp = 'Weighted phase lag index';
                     case {'wpli', 'wplit'}
+                        strAmp = 'Weighted phase lag index';
+                    case {'ciplv', 'ciplvt'}
                         strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
+                    case {'pte'}
+                        strAmp = 'Phase transfer entropy';
                     case 'aec'      % DEPRECATED
                         strAmp = 'Average envelope correlation';
                         % Hilbert (time-varying)

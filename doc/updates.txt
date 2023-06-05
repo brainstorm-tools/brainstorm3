@@ -1,6 +1,18 @@
+May 2023
+- FOOOF: Add option to display model only for freq range of analysis
+- Plugin: Get Blackrock NPMK library from its GitHub HEAD
+- Anatomy: Support of FreeSurfer wfiles as textures
+- Bugfix: Error in averaging PAC and tPAC
+--------------------------------------------------------------
+April 2023
+- NIRS: Project channel files between subjects
+- 3DViewer: Overlay any type of surfaces
+--------------------------------------------------------------
 March 2023
 - Parallel computing: Handle temporary files per process, to avoid conflicts
 - Recordings: Optional storage of events channels and notes
+- Anatomy: New template ICBM152 2023b: New BEM and cortex for OpenMEEG
+- Anatomy: Contralateral projection of volume scouts
 --------------------------------------------------------------
 February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)

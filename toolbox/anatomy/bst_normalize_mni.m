@@ -208,17 +208,22 @@ end
 % If the MRI is currently loaded
 if ~isempty(iLoadedMri)
     % Update structures
-    GlobalData.Mri(iLoadedMri).NCS.R  = sMriT1.NCS.R;
-    GlobalData.Mri(iLoadedMri).NCS.T  = sMriT1.NCS.T;
     GlobalData.Mri(iLoadedMri).NCS.AC = sMriT1.NCS.AC;
     GlobalData.Mri(iLoadedMri).NCS.PC = sMriT1.NCS.PC;
     GlobalData.Mri(iLoadedMri).NCS.IH = sMriT1.NCS.IH;
     GlobalData.Mri(iLoadedMri).NCS.Origin = sMriT1.NCS.Origin;
+    % Linear MNI transformation
+    if isfield(sMriT1.NCS,'R') && isfield(sMriT1.NCS,'T')
+        GlobalData.Mri(iLoadedMri).NCS.R  = sMriT1.NCS.R;
+        GlobalData.Mri(iLoadedMri).NCS.T  = sMriT1.NCS.T;
+    end
+    % Non-linear MNI transformtion
     if isfield(sMriT1.NCS,'y') && isfield(sMriT1.NCS,'iy') && isfield(sMriT1.NCS,'y_vox2ras')
         GlobalData.Mri(iLoadedMri).NCS.y         = sMriT1.NCS.y;
         GlobalData.Mri(iLoadedMri).NCS.iy        = sMriT1.NCS.iy;
         GlobalData.Mri(iLoadedMri).NCS.y_vox2ras = sMriT1.NCS.y_vox2ras;
     end
+    % SCS coordinates
     GlobalData.Mri(iLoadedMri).SCS.R   = sMriT1.SCS.R;
     GlobalData.Mri(iLoadedMri).SCS.T   = sMriT1.SCS.T;
     GlobalData.Mri(iLoadedMri).SCS.NAS = sMriT1.SCS.NAS;

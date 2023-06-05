@@ -770,6 +770,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
             return;
         end
+        % Add "other", to allow importing all the other surfaces
+        typesList{end+1} = 'Other';
         % Ask user which kind of surface he wants to add to the figure 3DViz
         surfaceType = java_dialog('question', 'What kind of surface would you like to display ?', 'Add surface', [], typesList, typesList{1});
     end
@@ -796,6 +798,14 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(iSubCortical).FileName;
         case 'White'
             SurfaceFile = sSubject.Surface(iWhite).FileName;
+        case 'Other'
+            % Offer all the other surfaces
+            Comment = java_dialog('combo', '<HTML>Select the surface to add:<BR><BR>', 'Select surface', [], {sSubject.Surface.Comment});
+            if isempty(Comment)
+                return;
+            end
+            iSurface = find(strcmp({sSubject.Surface.Comment}, Comment), 1);
+            SurfaceFile = sSubject.Surface(iSurface).FileName;
         otherwise
             return;
     end

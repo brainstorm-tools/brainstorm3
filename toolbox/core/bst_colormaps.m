@@ -1508,7 +1508,14 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         % Update ticks of the colorbar
         set(hColorbar, 'YTick',      YTickNorm, ...
                        'YTickLabel', YTickLabel);
-        xlabel(hColorbar, fUnits);
+        % Units label
+        figPos = get(hFig, 'Position');
+        colorbarPos = get(hColorbar, 'Position');
+        hText = xlabel(hColorbar, fUnits, 'Units', 'pixels');
+        xlabelPos = get(hText, 'Extent');
+        if colorbarPos(1) + xlabelPos(1) + xlabelPos(3) > figPos(3)
+            set(hText, 'Rotation', 90, 'Units', 'normalized', 'Position', [-1.5, 0.5]);
+        end
     end    
 end
 

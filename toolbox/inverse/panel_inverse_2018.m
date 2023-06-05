@@ -565,7 +565,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             end
         end
         % Enable/disable text boxes
-        jTextLoose.setEnabled(jRadioLoose.isSelected());
+        % jTextLoose.setEnabled(jRadioLoose.isSelected()); % For mixed models with loose
         jLabelWeightExp.setEnabled(jCheckDepth.isSelected());
         jTextWeightExp.setEnabled(jCheckDepth.isSelected());
         jLabelWeightLimit.setEnabled(jCheckDepth.isSelected());
@@ -637,7 +637,6 @@ function s = GetPanelContents() %#ok<DEFNU>
         % Source model
         if strcmpi(ctrl.HeadModelType, 'mixed')
             s.SourceOrient = [];
-            s.Loose = [];
         else
             if ctrl.jRadioConstr.isSelected()
                 s.SourceOrient = {'fixed'};
@@ -646,8 +645,8 @@ function s = GetPanelContents() %#ok<DEFNU>
             elseif ctrl.jRadioLoose.isSelected()
                 s.SourceOrient = {'loose'};
             end
-            s.Loose = str2num(char(ctrl.jTextLoose.getText()));
         end
+        s.Loose = str2num(char(ctrl.jTextLoose.getText()));
         % Depth weighting
         s.UseDepth    = ctrl.jCheckDepth.isSelected() && ~strcmpi(s.InverseMeasure, 'sloreta');
         s.WeightExp   = str2num(char(ctrl.jTextWeightExp.getText()));

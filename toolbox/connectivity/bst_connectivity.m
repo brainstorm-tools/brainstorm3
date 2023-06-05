@@ -393,6 +393,7 @@ for iFile = 1:nFiles
     switch (OPTIONS.Method)
         % === CORRELATION ===
         case 'corr'
+            DisplayUnits = 'Correlation';
             bst_progress('text', sprintf('Calculating: Correlation [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'Corr: ';
             % All the correlations with one call
@@ -400,6 +401,14 @@ for iFile = 1:nFiles
             
         % === COHERENCE ===
         case 'cohere'
+            switch OPTIONS.CohMeasure
+                case 'mscohere'
+                    DisplayUnits = 'Magnitude-squared coherence';
+                case {'icohere2019', 'icohere'}
+                    DisplayUnits = 'Imaginary coherence';
+                case 'lcohere2019'
+                    DisplayUnits = 'Lagged coherence';
+            end
             if (size(sInputA.Data,1) > 1) && (size(sInputB.Data,1) > 1)
                 bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             else
@@ -461,6 +470,7 @@ for iFile = 1:nFiles
 
         % ==== GRANGER ====
         case 'granger'
+            DisplayUnits = 'Granger causality';
             bst_progress('text', sprintf('Calculating: Granger [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             % Using the connectivity toolbox developed at USC
             inputs.partial     = 0;
@@ -488,6 +498,7 @@ for iFile = 1:nFiles
             
         % ==== GRANGER SPECTRAL ====
         case 'spgranger'
+            DisplayUnits = 'Granger causality';
             bst_progress('text', sprintf('Calculating: Granger spectral [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             % Using the connectivity toolbox developed at USC
             inputs.partial     = 0;
@@ -536,6 +547,7 @@ for iFile = 1:nFiles
         % WARNING: This function has been deprecated. Now using the HENV implementation instead
         % See discussion on the forum: https://neuroimage.usc.edu/forums/t/30358
         case 'aec'   % DEPRECATED
+            DisplayUnits = 'Average envelope correlation';
             bst_progress('text', sprintf('Calculating: AEC [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'AEC: ';
 
@@ -593,6 +605,15 @@ for iFile = 1:nFiles
             
         % ==== PLV ====
         case {'plv', 'ciplv'}
+            switch OPTIONS.Method
+                case 'plv'
+                    DisplayUnits = 'Phase locking value';
+                    if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
+                        DisplayUnits = [DisplayUnits, 'magnitude'];
+                    end
+                case 'ciplv'
+                    DisplayUnits = 'Corrected imaginary phase locking value';
+            end
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
@@ -649,6 +670,7 @@ for iFile = 1:nFiles
             % Debiased wPLI square, eq. 33 in same publication, after simplifications:
             % DwPLI = (N * E{imag(Sab)}^2 - E{imag(Sab)^2}) / (N * E{abs(imag(Sab))}^2 - E{imag(Sab)^2})
 
+            DisplayUnits = 'Weighted phase lag index';
             if isConnNN
                 % Avoid passing redundant data
                 [S, Freq, Messages] = bst_xspectrum([], sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
@@ -674,6 +696,17 @@ for iFile = 1:nFiles
         
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
+            switch OPTIONS.Method
+                case 'plvt'
+                    DisplayUnits = 'Phase locking value';
+                    if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
+                        DisplayUnits = [DisplayUnits, 'magnitude'];
+                    end
+                case 'wplit'
+                    DisplayUnits = 'Weighted phase lag index';
+                case 'ciplvt'
+                    DisplayUnits = 'Corrected imaginary phase locking value';
+            end
             bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             % Time: vector of file B
             nTime = length(sInputB.Time);
@@ -724,6 +757,7 @@ for iFile = 1:nFiles
 
         % ==== PTE ====
         case 'pte'
+            DisplayUnits = 'Phase transfer entropy';
             bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'PTE';
             if OPTIONS.isNormalized
@@ -752,6 +786,18 @@ for iFile = 1:nFiles
             
         % ==== henv ====
         case 'henv'
+            switch OPTIONS.CohMeasure
+                case 'coh'
+                    DisplayUnits = 'Time-resolved coherence';
+                case 'msc'
+                    DisplayUnits = 'Time-resolved magnitude-squared coherence';
+                case 'lcoh'
+                    DisplayUnits = 'Time-resolved lagged coherence';
+                case 'penv'
+                    DisplayUnits = 'Envelope correlation';
+                case 'oenv'
+                    DisplayUnits = 'Orthogonalized envelope correlation';
+            end
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, size(sInputA.Data,1), size(sInputB.Data,1)));
             % Warning when using the split option
             if (OPTIONS.tfSplit > 1)
@@ -833,10 +879,10 @@ for iFile = 1:nFiles
     switch (OPTIONS.OutputMode)
         case 'input'
             nAvg = 1;
-            OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+            OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits);
         case {'concat', 'avgcoh'}
             nAvg = 1;
-            OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+            OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits);
         case 'avg'
             % Concatenate files comments
             AllComments{end+1} = Comment;
@@ -878,7 +924,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
+    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands, DisplayUnits);
 end
 
 
@@ -891,20 +937,21 @@ end
 %  ========================================================================
 
 %% ===== SAVE FILE =====
-function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands)
+function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits)
     NewFile = [];
     bst_progress('text', 'Saving results...');
 
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = db_template('timefreqmat');
-    FileMat.TF        = R;
-    FileMat.Comment   = Comment;
-    FileMat.DataType  = sInputB.DataType;
-    FileMat.Freqs     = OPTIONS.Freqs;
-    FileMat.Method    = OPTIONS.Method;
-    FileMat.DataFile  = file_win2unix(DataFile);
-    FileMat.nAvg      = nAvg;
+    FileMat.TF           = R;
+    FileMat.DisplayUnits = DisplayUnits;
+    FileMat.Comment      = Comment;
+    FileMat.DataType     = sInputB.DataType;
+    FileMat.Freqs        = OPTIONS.Freqs;
+    FileMat.Method       = OPTIONS.Method;
+    FileMat.DataFile     = file_win2unix(DataFile);
+    FileMat.nAvg         = nAvg;
     % Comment if average comes from trials
     if FileMat.nAvg > 1
         listComments = Comment;

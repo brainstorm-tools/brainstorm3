@@ -274,12 +274,11 @@ function PlugDesc = GetSupported(SelPlug)
 
     % === I/O: BLACKROCK ===
     PlugDesc(end+1)              = GetStruct('blackrock');
-    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
     PlugDesc(end).TestFile       = 'openNSx.m';
-    PlugDesc(end).ReadmeFile     = 'Versions.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'NPMK/installNPMK.m', 'NPMK/Users Guide.pdf', 'NPMK/Versions.txt', ...
@@ -452,7 +451,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).RequiredPlugs  = {'kilosort-wrapper'; 'phy'; 'npy-matlab'};
-    PlugDesc(end).InstalledFcn   = 'process_spikesorting_kilosort(''copyKilosortConfig'', bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''Kilosort-master'', ''configFiles'', ''StandardConfig_MOVEME.m''), bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''Kilosort-master'', ''KilosortStandardConfig.m''));';
+    PlugDesc(end).InstalledFcn   = 'process_spikesorting_kilosort(''copyKilosortConfig'', bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''KiloSort-master'', ''configFiles'', ''StandardConfig_MOVEME.m''), bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''KiloSort-master'', ''KilosortStandardConfig.m''));';
 
     
     % === ELECTROPHYSIOLOGY: Kilosort Wrapper ===

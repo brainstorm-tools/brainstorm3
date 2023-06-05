@@ -173,6 +173,8 @@ for f = 1:nfBins
         switch OPTIONS.CohMeasure
             case 'coh'  % Coherence
                 CorrMat = Sxy./sqrt(SxxSyy) ;
+            case 'msc'  % Magnitude-squared Coherence
+                CorrMat = abs(Sxy).^2 ./SxxSyy ;
             case 'lcoh' % Lagged-Coherence
                 CorrMat = (imag(Sxy)./sqrt(SxxSyy-(real(Sxy).^2))) ;
             case 'penv' % Envelope Correlation (Plain - No Orthogonalization)

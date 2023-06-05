@@ -247,7 +247,7 @@ function ScreenDef = GetScreenClientArea()
         % === SCALING ===
         try
             % Adjust with the OS scaling factor (for high-DPI screens)
-            javaScreenSize = jScreens(i).getDisplayMode().getWidth();
+            javaScreenSize = jScreens(i).getDefaultConfiguration().getBounds().getWidth();
             if (i == 1) || (i > size(MonitorPositions,1))
                 matlabScreenSize = MonitorPositions(1,3) - MonitorPositions(1,1) + 1;
             else

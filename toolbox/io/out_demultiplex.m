@@ -36,16 +36,16 @@ cleanNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
 % Assemble output filenames
 outFiles = cellfun(@(c)bst_fullfile(OutputDir, ['raw_elec_', c]), cleanNames, 'UniformOutput', 0);
-% If all files already exist: nothing else to do in this function
-isFileOk = cellfun(@(c)exist([c, '.mat'], 'file'), outFiles);
+% If all .mat files already exist: nothing else to do in this function
+isFileOk = cellfun(@(c)exist([c, '.mat'], 'file') > 0, outFiles);
 if all(isFileOk)
     % Add the .mat extension to the file names
     disp(['BST> Channels already demultiplexed in: ' OutputDir]);
     outFiles = cellfun(@(x) [x '.mat'], outFiles, 'UniformOutput', 0);
     return;
-% If some files already exist: delete all intermediate existing file, before generating them again
+% If some .mat files already exist: delete all intermediate existing file, before generating them again
 elseif any(isFileOk)
-    delete(outFiles{isFileOk});
+    cellfun(@(c)delete([c, '.mat']), outFiles(isFileOk));
 end
 
 % Load input data file
