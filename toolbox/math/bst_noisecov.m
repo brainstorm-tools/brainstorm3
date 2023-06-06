@@ -106,7 +106,7 @@ sStudy = sTargetStudies(iWithChan);
 % Load channel file
 ChannelMat = in_bst_channel(sStudy.Channel.FileName);
 % Get all the valid channels
-iChan = good_channel(ChannelMat.Channel, [], {'MEG','EEG','ECOG','SEEG'});
+iChan = good_channel(ChannelMat.Channel, [], {'MEG','EEG','ECOG','SEEG','NIRS'});
 nChanAll = length(ChannelMat.Channel);
 % Get the possible channe types
 ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
