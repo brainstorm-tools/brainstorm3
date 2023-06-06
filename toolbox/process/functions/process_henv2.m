@@ -112,7 +112,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
-
+    
     % === Metric options
     OPTIONS.Method        = 'henv';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
@@ -160,5 +160,5 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.isParallel = sProcess.options.parallel.Value ; 
 
     % === Computing connectivity matrix
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end

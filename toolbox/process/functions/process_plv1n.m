@@ -89,6 +89,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         OutputFiles = {};
         return
     end
+
     % Keep time or not: different methods
     OPTIONS.Method = sProcess.options.plvmethod.Value;
     if sProcess.options.keeptime.Value
@@ -107,7 +108,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         OPTIONS.PlvMeasure = 'magnitude';
     end
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
 end
 
 

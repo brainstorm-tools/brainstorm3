@@ -205,7 +205,11 @@ function [DestRowNames, AllRowNames, iRowsSrc, iRowsDest, msgError] = GetUniform
                 end
                 % Check file type
                 if (size(fileMat.Description,2) > 1)
-                    msgError = 'Cannot process a matrix file in which the "Description" fields has more than one column.';
+                    msgError = 'Cannot process a matrix file in which the "Description" field has more than one column.';
+                    return;
+                end
+                if isempty(fileMat.Description)
+                    msgError = 'Cannot process a matrix file in which the "Description" field is empty.';
                     return;
                 end
                 % Add row names to the list

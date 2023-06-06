@@ -107,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+     
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
@@ -162,9 +163,9 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         OPTIONS.TimeWindow = TimeVectorA(iTimes([1,end]));
         % Compute metric
         if ~isempty(sInputB)
-            ConnectMat = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
+            ConnectMat = bst_connectivity(sInputA, sInputB, OPTIONS);
         else
-            ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+            ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         end
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)

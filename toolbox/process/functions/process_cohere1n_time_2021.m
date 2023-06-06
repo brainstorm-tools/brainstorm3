@@ -107,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
@@ -125,7 +126,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     sfreq      = round(1/(TimeVector(2) - TimeVector(1)));
     % Get time window of first fileA if none specified in parameters
     if isempty(OPTIONS.TimeWindow)
-        OPTIONS.TimeWindow = TimeVectorA([1, end]);
+        OPTIONS.TimeWindow = TimeVector([1, end]);
     end
     % Select input time window
     TimeVector = TimeVector((TimeVector >= OPTIONS.TimeWindow(1)) & (TimeVector <= OPTIONS.TimeWindow(2)));
@@ -151,7 +152,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
         OPTIONS.TimeWindow = TimeVector(iTimes([1,end]));
         % Compute metric
-        ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+        ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)
             bst_report('Error', sProcess, sInputA, 'Coherence for the selected time segment could not be calculated.');

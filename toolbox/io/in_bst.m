@@ -13,7 +13,7 @@ function [sMatrix, matName] = in_bst(FileName, TimeBounds, isLoadFull, isIgnoreB
 %    - TimeBounds : [Start,Stop] values of the time segment to read (in seconds)
 %    - isLoadFull : If 0, read the kernel-based results separately as Kernel+Recordings
 %    - isIgnoreBad: If 1, do not return the bad segments in the file
-%    - RemoveBaseline: {'all','no'}, only usefull when reading RAW files
+%    - RemoveBaseline: {'all','no'}, only used when reading RAW files
 %
 % OUTPUT:
 %    - sMatrix     : Full content of the file

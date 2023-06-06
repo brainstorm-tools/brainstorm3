@@ -79,6 +79,7 @@ function bst_set( varargin )
 %    - bst_set('MriOptions',            MriOptions)
 %    - bst_set('CustomColormaps',       CustomColormaps)
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
+%    - bst_set('PcaOptions',            PcaOptions) 
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
 %    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
@@ -272,7 +273,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'ConnectGraphOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'PcaOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 

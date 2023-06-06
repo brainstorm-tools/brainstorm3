@@ -308,7 +308,7 @@ for iResFile = 1:length(ResultsFiles)
             % Get atlas "Source model"
             GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
             % Get the vertex indices of the scout in GridLoc
-            [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
+            [iRows, iRegionScouts, iGrid] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
             % Do not accept scouts that span over multiple regions
             if isempty(iRegionScouts)
                 bst_error(['Scout "' sScouts(k).Label '" is not included in the source model.' 10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).'], 'Display scouts', 0);
@@ -328,7 +328,7 @@ for iResFile = 1:length(ResultsFiles)
             % Set the scout computation properties based on the information in the "Source model" atlas
             if strcmpi(GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
                 nComponents = 1;
-                VertNormals = GlobalData.DataSet(iDS).Results(iResult).GridOrient(iVertices,:);
+                VertNormals = GlobalData.DataSet(iDS).Results(iResult).GridOrient(iGrid,:);
             else
                 nComponents = 3;
                 VertNormals = [];
@@ -367,6 +367,16 @@ for iResFile = 1:length(ResultsFiles)
             if ScoutsOptions.displayAbsolute
                 scoutsActivity{iResFile,iTrace} = abs(scoutsActivity{iResFile,iTrace});
             end
+        % More than one component and PCA: do PCA on scout & components at the same time.
+        elseif strncmpi(ScoutFunction, 'pca', 3) 
+            iTrace = k;
+            if ScoutsOptions.displayAbsolute
+                scoutsActivity{iResFile,iTrace} = abs(bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction));
+            else
+                scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction);
+            end
+            % It doesn't make sense to run pca on std.
+            scoutsStd{iResFile,iTrace} = [];
         % More than one component & Absolute: Display the norm
         elseif ScoutsOptions.displayAbsolute
             iTrace = k;
@@ -378,6 +388,8 @@ for iResFile = 1:length(ResultsFiles)
             end
         % More than one component & Relative: Display the three components
         else
+            % This doesn't work for mixed models: iTrace should depend on previous regions' nComponents.
+            % But that case (mixed and relative) is flagged and an error is generated below (Legend section).
             iTrace = nComponents * (k-1) + (1:nComponents);
             tmp = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, 'none');
             for iComp = 1:nComponents

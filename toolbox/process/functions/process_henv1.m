@@ -158,5 +158,5 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isParallel = sProcess.options.parallel.Value ; 
 
     % === Computing connectivity matrix
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputA, OPTIONS);
 end

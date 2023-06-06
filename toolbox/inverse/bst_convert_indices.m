@@ -5,7 +5,6 @@ function [iSourceRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices
 %
 % INPUT: 
 %    - iVertices    : Array of vertex indices of the source space, to reference to rows in Results.GridLoc (volume) or Surface.Vertices (surface)
-%                     If empty, use all the vertices
 %    - nComponents  : Number of entries per vertex in SourceValues (1,2,3)
 %                     If 0, the number varies, the properties of each region are defined in input GridAtlas
 %    - GridAtlas    : Set of scouts that defines the properties of the source space regions, when nComponents=0
@@ -17,7 +16,7 @@ function [iSourceRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices
 % OUTPUT: 
 %    - iSourceRows   : Array of vertex indices of the source space, to reference to rows in Results.GridLoc (volume)
 %    - iRegionScouts : List of the scout indices in GridAtlas that are involved in the list of vertices iGridLoc
-%    - iVertices     : Modified list of vertices (when some are removed, compared with the initial iVertices)
+%    - iVertices     : For mixed source models, grid indices corresponding to input list (if surface vertices provided, some may not match any grid points).
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
