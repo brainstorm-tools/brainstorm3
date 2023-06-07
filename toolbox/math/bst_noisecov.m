@@ -1,7 +1,8 @@
-function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
+function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov, isSave)
 % BST_NOISECOV: Compute noise covariance matrix for a set of studies.
 %
 % USAGE:  NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options=[ask], isDataCov=0)                      
+%              NoiseCov = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options=[ask], isDataCov=0, 0)                      
 %               Options = bst_noisecov()
 %
 % INPUT: 
@@ -49,6 +50,9 @@ if (nargin == 0)
 end
 
 %% ===== PARSE INPUTS =====
+if (nargin < 6) || isempty(isSave)
+    isSave = true;
+end
 if (nargin < 5) || isempty(isDataCov)
     isDataCov = [];
 end
@@ -86,6 +90,8 @@ else
     strComment = 'Noise covariance';
 end
 
+% Don't show progress bar if called with 1 file
+isProgress = length(DataFiles) > 1;
 
 %% ===== GET DATA CHANNELS =====
 % Get channel studies
@@ -100,7 +106,7 @@ sStudy = sTargetStudies(iWithChan);
 % Load channel file
 ChannelMat = in_bst_channel(sStudy.Channel.FileName);
 % Get all the valid channels
-iChan = good_channel(ChannelMat.Channel, [], {'MEG','EEG','ECOG','SEEG'});
+iChan = good_channel(ChannelMat.Channel, [], {'MEG','EEG','ECOG','SEEG','NIRS'});
 nChanAll = length(ChannelMat.Channel);
 % Get the possible channe types
 ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
@@ -108,7 +114,9 @@ ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
 
 %% ===== READ ALL TIME VECTORS =====
 % Progress bar
-bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(DataFiles));
+if isProgress
+    bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(DataFiles));
+end
 % Regular list of imported data files
 if ~isRaw
     nFiles = length(DataFiles);
@@ -132,7 +140,9 @@ if ~isRaw
         DataMats(iFile).Time = DataMat.Time;
         DataMats(iFile).nAvg = DataMat.nAvg;
         DataMats(iFile).Leff = DataMat.Leff;
-        bst_progress('inc', 1);
+        if isProgress
+            bst_progress('inc', 1);
+        end
     end
 % Raw file
 else
@@ -202,7 +212,9 @@ end
 % Get number of samples and sampling rates
 nSamples = length([DataMats.Time]) - length([DataMats.iBadTime]);
 % Close progress bar
-bst_progress('stop');
+if isProgress
+    bst_progress('stop');
+end
 % Check number of actual samples available for computation
 if (nSamples == 0)
     error('This selection does not contain any file that can be used for computing the covariance matrix.');
@@ -250,10 +262,14 @@ if strcmpi(Options.RemoveDcOffset, 'all')
     Favg = zeros(nChanAll, 1);
     Ntotal = zeros(nChanAll, 1);
     % Progress bar
-    bst_progress('start', 'Average across time', 'Computing average across time...', 0, nBlocks);
+    if isProgress
+        bst_progress('start', 'Average across time', 'Computing average across time...', 0, nBlocks);
+    end
     % Loop on all the files
     for iFile = 1:nBlocks
-        bst_progress('inc', 1);
+        if isProgress
+            bst_progress('inc', 1);
+        end
         % Load recordings
         [DataMat, iTimeBaseline] = ReadRecordings();
         if isempty(iTimeBaseline)
@@ -280,11 +296,15 @@ Ntotal   = zeros(nChanAll);
 NoiseCov = zeros(nChanAll);
 FourthMoment = zeros(nChanAll);
 % Progress bar
-bst_progress('start', strComment, ['Computing ' lower(strComment) '...'], 0, nBlocks);
+if isProgress
+    bst_progress('start', strComment, ['Computing ' lower(strComment) '...'], 0, nBlocks);
+end
 drawnow
 % Loop on all the files
 for iFile = 1:nBlocks
-    bst_progress('inc', 1);
+    if isProgress
+        bst_progress('inc', 1);
+    end
     % Load recordings
     [DataMat, iTimeBaseline, iTimeCov] = ReadRecordings();
     if isempty(iTimeBaseline)
@@ -306,6 +326,7 @@ for iFile = 1:nBlocks
     % Compute covariance for this file
     % fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
     % fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    % TODO: doesn't make sense to have weights other than 1 here. Check and error instead of using?
     fileCov  = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
     fileCov2 = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
     % Add file covariance to accumulator
@@ -376,10 +397,15 @@ for iSrc = 1:length(DataFiles)
     NoiseCovMat = bst_history('add', NoiseCovMat, 'src', DataFiles{iSrc});
 end
 % Save in database
-NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
+if isSave
+    NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
+else
+    NoiseCovFiles = NoiseCovMat;
+end
 % Close progress bar
-bst_progress('stop');
-
+if isProgress
+    bst_progress('stop');
+end
 
 
 
@@ -392,7 +418,9 @@ bst_progress('stop');
         iTimeBaseline = [];
         iTimeCov = [];
         if ~isRaw
-            bst_progress('text', ['File: ' DataFiles{iFile}]);
+            if isProgress
+                bst_progress('text', ['File: ' DataFiles{iFile}]);
+            end
             DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg', 'Leff');
         else
             DataMat = DataMats(iFile);

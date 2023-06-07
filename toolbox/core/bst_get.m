@@ -194,6 +194,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('CustomColormaps')         : Gets the list of user defined colormaps
 %    - bst_get('MriOptions')              : Configuration for MRI display
 %    - bst_get('DigitizeOptions')         : Digitizer options
+%    - bst_get('PcaOptions')              : Options for PCA dimension reduction (xyz flattening or scout function) 
 %    - bst_get('ReadOnly')                : Read only interface
 %    - bst_get('NodelistOptions')         : Structure with the options for file selection in the Process1 and Process2 panels
 %    - bst_get('ResizeFunction')          : Get the appropriate resize function
@@ -1244,7 +1245,7 @@ switch contextName
         end
         % Get study in database
         [sStudy, iStudy] = bst_get('Study', StudyFile);
-        % If data file instead on Study file
+        % If data file instead of Study file
         if isempty(sStudy)
             [sStudy, iStudy] = bst_get('AnyFile', StudyFile);
         end
@@ -3352,6 +3353,13 @@ switch contextName
             'iMontage',     1);
         argout1 = FillMissingFields(contextName, defPref);
     
+    case 'PcaOptions'
+        defPref.Method         = 'pca';    % deprecated legacy per-file with sign inconsistencies, but kept as default for reproducibility
+        defPref.Baseline       = [-.1, 0]; % not used for 'pca': full window instead
+        defPref.DataTimeWindow = [0, 1];   % not used for 'pca': full window instead
+        defPref.RemoveDcOffset = 'file';
+        argout1 = FillMissingFields(contextName, defPref);
+        
     case 'ConnectGraphOptions'
         % Get interface scaling factor
         InterfaceScaling = bst_get('InterfaceScaling');

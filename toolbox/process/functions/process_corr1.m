@@ -76,7 +76,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
 
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputA, OPTIONS);
 end
 
 

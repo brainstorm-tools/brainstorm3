@@ -96,6 +96,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method     = 'corr';
@@ -129,7 +130,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
         OPTIONS.TimeWindow = TimeVector(iTimes([1,end]));
         % Compute metric
-        ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+        ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)
             bst_report('Error', sProcess, sInputA, 'Correction for the selected time segment could not be calculated.');

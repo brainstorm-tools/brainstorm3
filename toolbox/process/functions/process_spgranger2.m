@@ -92,7 +92,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.MaxFreq      = sProcess.options.maxfreq.Value{1};
 
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end
 
 

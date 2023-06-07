@@ -6,7 +6,8 @@ function varargout = panel_time(varargin)
 %         timeUnit = panel_time('GetTimeUnit')
 %       TimeVector = panel_time('GetRawTimeVector', sFile)
 %                    panel_time('SetCurrentTime',  value)
-%                    panel_time('TimeKeyCallback', keyEvent);
+%                    panel_time('TimeKeyCallback', keyEvent)
+%            iTime = panel_time('GetTimeIndices', TimeVector, TimeRange)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
