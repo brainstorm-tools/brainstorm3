@@ -646,8 +646,12 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
             % Load results
             sResults = in_bst_results(sInputs(iInput).FileName, 0);
             % Always load data file to recover its comment. Necessary for matrix to be identifiable in tree.
-            sMat = in_bst(sResults.DataFile, TimeWindow);
-            if ~isempty(sMat.Comment)
+            if ~isempty(sResults.DataFile)
+                sMat = in_bst(sResults.DataFile, TimeWindow);
+            else
+                sMat = [];
+            end
+            if ~isempty(sMat) && ~isempty(sMat.Comment)
                 sResults.Comment = sMat.Comment;
             end
             % FULL RESULTS
@@ -659,12 +663,16 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
                 sResults = rmfield(sResults, 'ImageGridAmp');
             % KERNEL ONLY
             elseif isfield(sResults, 'ImagingKernel') && ~isempty(sResults.ImagingKernel) && nargout > 1
-                matDataValues = sMat.F;
+                if isempty(sMat)
+                    bst_report('Warning', sProcess, sInputs(iInput), 'Inverse kernel without associated data file.');
+                else
+                    matDataValues = sMat.F;
+                end
                 % sResults already has a copy of the sMat (data file) fields: Time, nAvg, Leff, ChannelFlag.
                 matSourceValues = [];
             end
             % Keep both data file and inverse model histories, but only if not previously done, e.g. with temporary flattened result files.
-            if isempty(sMat.History) || isempty(sResults.History) || ~isequal(sMat.History{1}, sResults.History{1})
+            if ~isempty(sMat) && ~isempty(sMat.History) && (isempty(sResults.History) || ~isequal(sMat.History{1}, sResults.History{1}))
                 sResults.History = cat(1, sMat.History, sResults.History);
             end
             % Input filename
