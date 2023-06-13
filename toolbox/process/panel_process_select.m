@@ -2860,6 +2860,13 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                     else
                         option.Value = savedOpt;
                     end
+                elseif isfield(ProcessOptions.SavedParam, field)
+                    disp('debugging saved param type mismatch');
+                    disp(sProcesses(iProcess).Comment)
+                    disp(optNames{iOpt})
+                    disp(ProcessOptions.SavedParam.(field)) % saved value
+                    disp(option) % default 
+%                     disp(' ');                    
                 end
             end
             % Update option

@@ -1,5 +1,5 @@
 function [Fmax, iMax] = bst_max(F, dim)
-% BST_MAX: Get the maximum in magnitude, but with the correct sign.
+% BST_MAX: Get the maximum in magnitude, but with the original sign (or complex value).
 % 
 % USAGE:  [Fmax, iMax] = bst_max(F, dim=1)
 
@@ -30,8 +30,9 @@ end
 
 % Get the sign of each maximum
 if isempty(dim)
-    [Fmax, iMax] = max(abs(F(:)));
-    Fmax = sign(F(iMax)) .* Fmax;
+    [~, iMax] = max(abs(F(:)));
+    % Works for signed real or complex values.
+    Fmax = F(iMax);
 elseif (dim <= 5)
     % Permute with first dimension
     if (dim > 1)
@@ -46,10 +47,10 @@ elseif (dim <= 5)
         F = reshape(F, size(F,1), []);
     end
     % Get maximum absolute values
-    [Fmax, iMax] = max(abs(F), [], 1);
+    [~, iMax] = max(abs(F), [], 1);
     % Build indices of the values to read
     iF = sub2ind(size(F), iMax, 1:size(F,2));
-    Fmax = sign(F(iF)) .* Fmax;
+    Fmax = F(iF);
     % Restore initial shape
     if (nd > 2)
         Fmax = reshape(Fmax, 1, oldSize(2), oldSize(3), oldSize(4), oldSize(5));

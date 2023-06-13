@@ -3220,7 +3220,7 @@ switch contextName
             argout1.FreqBands = defPref.FreqBands;
         end
         
-    case 'TimefreqOptions_plv'
+    case 'TimefreqOptions_plv' % not used
         defPref.isTimeBands     = 0;
         defPref.isFreqBands     = 1;
         defPref.isFreqLog       = 0;

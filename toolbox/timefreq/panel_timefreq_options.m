@@ -76,10 +76,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
     
     % Determine which function is calling this pannel
-    isProcHenv = ismember(func2str(sProcess.Function), {'process_henv1', 'process_henv1n', 'process_henv2'});
-    if isProcHenv
+    % Used by process_: hilbert, psd, timefreq,  and connectivity: henv(1,1n,2), plv(1,1n,2)
+    % Connectivity processes have options.tfmeasure with value 'hilbert' or 'morlet' ('fourier' doesn't use this panel).
+    isProcConnect = isfield(sProcess.options, 'tfmeasure'); % used multiple times
+    if isProcConnect
         Method = sProcess.options.tfmeasure.Value;
-    else
+    else % hilbert, psd, timefreq
         Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
     end
     
@@ -158,7 +160,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % Button: Generate
         jButtonTimeBands = gui_component('button', jPanelTime, 'br', 'Generate', [], [], @CreateTimeBands);
         jButtonTimeBands.setMargin(Insets(0,3,0,3));
-    if ~ismember(Method, {'fft', 'psd'}) && ~isProcHenv
+    if ~ismember(Method, {'fft', 'psd'}) && ~isProcConnect
         jPanelNew.add('br', jPanelTime);
     else
         gui_component('label', jPanelNew, 'br', '');
@@ -304,7 +306,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % === FILE SIZE ===
         jTextOutputSize = gui_component('label', jPanelProc, 'br', '');
-    if ~isProcHenv
+    if ~isProcConnect
         jPanelNew.add('br hfill', jPanelProc);
     end
     
@@ -448,7 +450,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            if isProcHenv || (strcmpi(Method, 'psd') && isfield(sProcess.options, 'units') && isfield(sProcess.options.units, 'Value') && isequal(sProcess.options.units.Value, 'normalized'))
+            if isProcConnect || (strcmpi(Method, 'psd') && isfield(sProcess.options, 'units') && isfield(sProcess.options.units, 'Value') && isequal(sProcess.options.units.Value, 'normalized'))
                 jRadioFreqBands.setEnabled(0);
             else
                 jRadioFreqBands.setEnabled(1);
@@ -487,8 +489,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                 end                
             end
         end
-        % Disable some options when called through process_henv*
-        if isProcHenv
+        % Disable some options when called through connectivity process (henv*, plv*)
+        if isProcConnect
             jRadioMeasNon.setSelected(1);
             jRadioMeasPow.setEnabled(0);
             jRadioMeasMag.setEnabled(0);

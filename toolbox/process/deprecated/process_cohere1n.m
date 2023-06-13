@@ -102,14 +102,14 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
     OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
-    OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
+    OPTIONS.WinOverlap    = 0.50;  % First pre-define the overlap
     OPTIONS.pThresh       = 0.05;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
     % Change the overlap if it is specified
     if isfield(sProcess.options, 'overlap') && isfield(sProcess.options.overlap, 'Value') && ...
        iscell(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value{1})
-        OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
+        OPTIONS.WinOverlap = sProcess.options.overlap.Value{1}/100 ; 
     end
 
     % Compute metric

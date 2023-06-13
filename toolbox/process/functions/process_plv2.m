@@ -26,7 +26,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
     sProcess.Comment     = 'Phase locking value AxB';
     sProcess.Category    = 'Custom';
@@ -42,32 +42,49 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
-    % === FREQ BANDS
-    sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
-    sProcess.options.freqbands.Type    = 'groupbands';
-    sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
-    % === PLV METHOD
-    sProcess.options.plvmethod.Comment = {'<B>PLV</B>: Phase locking value', '<B>ciPLV</B>:  Corrected imaginary phase locking value', '<B>wPLI</B>: Weighted phase lag index'; 'plv', 'ciplv', 'wpli'};
-    sProcess.options.plvmethod.Type    = 'radio_label';
-    sProcess.options.plvmethod.Value   = 'plv';
+    % === Time-freq options
+    sProcess.options.label2.Comment = 'Time-frequency decomposition:';
+    sProcess.options.label2.Type    = 'label';
+    % === Hilbert/Morlet
+    sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Spectral (Fourier)', ''; 'hilbert', 'fourier', ''};
+    sProcess.options.tfmeasure.Type    = 'radio_linelabel';
+    sProcess.options.tfmeasure.Value   = 'hilbert';
+    sProcess.options.tfmeasure.Controller = struct('hilbert', 'hilbert', 'fourier', 'fourier');
     % === KEEP TIME
-    sProcess.options.keeptime.Comment = 'Keep time information, and estimate the PLV across trials<BR>(requires the average of many trials)';
+    sProcess.options.keeptime.Comment = 'Time-resolved: estimate for each time point, requires many trials';
     sProcess.options.keeptime.Type    = 'checkbox';
     sProcess.options.keeptime.Value   = 0;
+    sProcess.options.keeptime.Class   = 'hilbert';
+    % === FREQ BANDS Panel 
+    sProcess.options.freqbands.Comment = {'panel_timefreq_options', 'Frequency bands: '};
+    sProcess.options.freqbands.Type    = 'editpref';
+    sProcess.options.freqbands.Value   = [];
+    sProcess.options.freqbands.Class   = 'hilbert';
+%     % === FREQ BANDS
+%     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
+%     sProcess.options.freqbands.Type    = 'groupbands';
+%     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
+
     % === PLV METHOD
+    sProcess.options.plvmethod.Comment = {'<B>PLV</B>: Phase locking value', '<B>ciPLV</B>:  Corrected imaginary phase locking value', '<B>wPLI</B>: Weighted phase lag index'; ...
+                                          'plv', 'ciplv', 'wpli'};
+    sProcess.options.plvmethod.Type    = 'radio_label';
+    sProcess.options.plvmethod.Value   = 'plv';
+    % === PLV MEASURE
     sProcess.options.plvmeasure.Comment = {'None (complex)', 'Magnitude', 'Measure:'};
     sProcess.options.plvmeasure.Type    = 'radio_line';
     sProcess.options.plvmeasure.Value   = 2;
     % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Comment = {'Estimate separately for each input file (save one file per input)', 'Estimate across files (save one file)'; ...
+                                            'input', 'avg'};
+    sProcess.options.outputmode.Type    = 'radio_label';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     if ~isempty(sProcess.options.plvmethod.Value)
         iMethod = find(strcmpi(sProcess.options.plvmethod.Comment(2,:), sProcess.options.plvmethod.Value));
         if ~isempty(iMethod)
@@ -82,7 +99,7 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputA, sInputB)
     % Input options
     OPTIONS = process_corr2('GetConnectOptions', sProcess, sInputA, sInputB);
     if isempty(OPTIONS)
@@ -90,14 +107,35 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         return
     end
     
-    % Keep time or not: different methods
     OPTIONS.Method = sProcess.options.plvmethod.Value;
-    if sProcess.options.keeptime.Value
-        OPTIONS.Method = [OPTIONS.Method 't'];
+
+    % === Time-freq method 
+    % Get time-freq panel options
+    tfOPTIONS = sProcess.options.edit.Value;
+    if isempty(tfOPTIONS) % possible?
+        [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
+        gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0); 
+        drawnow;
+        tfOPTIONS = panel_timefreq_options('GetPanelContents');
+        gui_hide(panelName);
     end
-    % Hilbert and frequency bands options
-    OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = 0;
+    % Fill bst_henv options structure
+    OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
+    switch OPTIONS.tfMeasure
+        case 'hilbert'
+            OPTIONS.Freqs = tfOPTIONS.Freqs;
+            OPTIONS.isMirror = 0;
+            % Keep time or not: different methods, only with Hilbert
+            if sProcess.options.keeptime.Value
+                OPTIONS.Method = [OPTIONS.Method 't'];
+            end
+        case 'fourier'
+            OPTIONS.Freqs = [];
+    end
+%     % Hilbert and frequency bands options
+%     OPTIONS.Freqs = sProcess.options.freqbands.Value;
+%     OPTIONS.isMirror = 0;
+
     % PLV measure
     if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 
         switch (sProcess.options.plvmeasure.Value)
