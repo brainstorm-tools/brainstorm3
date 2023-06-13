@@ -347,6 +347,9 @@ switch (lower(commandName))
         UpdateConstraints(0);
         pBar.jWindow.setPreferredSize(DefaultSize);
         pBar.jWindow.pack();
+
+    otherwise
+        error('Unknown command: %s', commandName);
 end
 
 %% ===== ADD COMPONENTS =====

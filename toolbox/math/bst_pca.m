@@ -195,6 +195,10 @@ SurfaceFile = sResults.SurfaceFile;
 DisplayUnits = sResults.DisplayUnits;
 
 % Progress bar
+isProgressBar = bst_progress('isVisible');
+if isProgressBar
+    PrevProgress = bst_progress('get');
+end
 if isScout
     bst_progress('start', 'Extract scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 2*nInputs);
 else
@@ -661,6 +665,14 @@ switch PcaOptions.Method
 
             bst_progress('inc', 1);
         end
+end
+
+if isProgressBar
+    % Reset existing progress bar as best we can; no way to know previous title or text.
+    bst_progress('start', '', '', PrevProgress, 100);
+else
+    % Hide.
+    bst_progress('stop');
 end
 
 % Don't update the tree here since the files may be temporary (e.g. flattening from process_extract_scout).
