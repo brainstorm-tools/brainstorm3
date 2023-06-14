@@ -197,7 +197,7 @@ DisplayUnits = sResults.DisplayUnits;
 % Progress bar
 isProgressBar = bst_progress('isVisible');
 if isProgressBar
-    PrevProgress = bst_progress('get');
+    PrevBarParams = bst_progress('getbarparams');
 end
 if isScout
     bst_progress('start', 'Extract scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 2*nInputs);
@@ -668,8 +668,7 @@ switch PcaOptions.Method
 end
 
 if isProgressBar
-    % Reset existing progress bar as best we can; no way to know previous title or text.
-    bst_progress('start', '', '', PrevProgress, 100);
+    bst_progress('setbarparams', PrevBarParams);
 else
     % Hide.
     bst_progress('stop');
