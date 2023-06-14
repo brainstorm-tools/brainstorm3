@@ -90,7 +90,7 @@ function OutputFiles = Run(sProcess, sInputs)
             bst_report('Warning', sProcess, sInputs, 'Running deprecated legacy PCA separately on each file/epoch, with arbitrary signs which can lead to averaging issues. See tutorial linked in PCA options panel.');
         end
         nFiles = numel(sInputs);
-        bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, nFiles);
+        bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, 100);
 
         for iInput = 1:nFiles
             % Load the source file with full data.
@@ -121,7 +121,7 @@ function OutputFiles = Run(sProcess, sInputs)
             bst_save(OutputFiles{iInput}, ResultsMat, 'v6');
             % Register in database
             db_add_data(sInputs(iInput).iStudy, OutputFiles{iInput}, ResultsMat);
-            bst_progress('inc', 1);
+            bst_progress('set', round(100*iInput/nFiles));
         end
     end
 end

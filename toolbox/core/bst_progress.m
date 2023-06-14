@@ -14,6 +14,8 @@ function pBar = bst_progress(varargin)
 %         pBar = bst_progress('setimage', imagefile) : display an image in the wait bar
 %         pBar = bst_progress('setlink', url)        : clicking on the image opens a browser to display the url
 %         pBar = bst_progress('removeimage')         : Remove the image from the wait bar
+%   pBarParams = bst_progress('getbarparams')        : Get current bar parameters
+%         pBar = bst_progress('setbarparams')        : Set bar parameters
 
 % NOTES : The window is created once, and then never deleted, just hidden.
 %         Progress bar is represented by a structure: 
@@ -347,6 +349,37 @@ switch (lower(commandName))
         UpdateConstraints(0);
         pBar.jWindow.setPreferredSize(DefaultSize);
         pBar.jWindow.pack();
+
+    % ==== GET BAR PARAMETERS ====
+    case 'getbarparams'
+        % Get a copy of the bar parameters
+        pBarParams.isImage = pBar.isImage;
+        pBarParams.Title = pBar.jWindow.getTitle().toCharArray';
+        pBarParams.Msg = pBar.jLabel.getText().toCharArray';
+        pBarParams.isIndeterminate = pBar.jProgressBar.isIndeterminate();
+        pBarParams.Value = pBar.jProgressBar.getValue();
+        pBarParams.Min = pBar.jProgressBar.getMinimum();
+        pBarParams.Max = pBar.jProgressBar.getMaximum();
+        pBar = pBarParams;
+
+    % ==== SET BAR PARAMETERS ====
+    case 'setbarparams'
+        % Parse arguments
+        if (nargin == 2)
+            pBarParams = varargin{2};
+        else
+            error('Usage : bst_progress(''setbarparams'', barParams)');
+        end
+        % (Re)start bar
+        if pBarParams.isIndeterminate
+            bst_progress('start', pBarParams.Title, pBarParams.Msg);
+        else
+            bst_progress('start', pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
+            bst_progress('set', pBarParams.Value);
+        end
+
+    otherwise
+        error('Unknown command: %s', commandName);
 end
 
 %% ===== ADD COMPONENTS =====

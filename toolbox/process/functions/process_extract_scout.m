@@ -293,10 +293,10 @@ function OutputFiles = Run(sProcess, sInputs)
         % Progress bar
         if (length(sInputs) > 1)
             if iInput == 1
-                bst_progress('start', 'Extract scouts', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)), iInput, length(sInputs));
+                bst_progress('start', 'Extract scouts', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)), 0, 100);
             else
                 bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
-                bst_progress('inc', 1);
+                bst_progress('set', round(100*(iInput-1)/length(sInputs)));
             end
         end
         isAbs = ~isempty(strfind(sInputs(iInput).FileName, '_abs'));
