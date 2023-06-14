@@ -200,9 +200,9 @@ if isProgressBar
     PrevBarParams = bst_progress('getbarparams');
 end
 if isScout
-    bst_progress('start', 'Extract scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 2*nInputs);
+    bst_progress('start', 'Extract scouts with PCA', sprintf('Extract scouts for %d files', nInputs), 0, 10*nInputs);
 else
-    bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nInputs), 0, 2*nInputs);
+    bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nInputs), 0, 10*nInputs);
 end
 
 %____________________________________________________________________________________________
@@ -504,9 +504,9 @@ for iInput = 1:nInputs
     end
     if strcmpi(PcaOptions.Method, 'pca')
         % Only one file loop for old pca method.
-        bst_progress('inc', 2);
+        bst_progress('inc', 10);
     else
-        bst_progress('inc', 1);
+        bst_progress('inc', 9);
     end
 end % first file loop
 

@@ -353,9 +353,9 @@ switch (lower(commandName))
     % ==== GET BAR PARAMETERS ====
     case 'getbarparams'
         % Get a copy of the bar parameters
-        pBarParams.isIamge = pBar.isImage;
-        pBarParams.wndTitle = pBar.jWindow.getTitle().toCharArray';
-        pBarParams.msg  = pBar.jLabel.getText().toCharArray';
+        pBarParams.isImage = pBar.isImage;
+        pBarParams.Title = pBar.jWindow.getTitle().toCharArray';
+        pBarParams.Msg = pBar.jLabel.getText().toCharArray';
         pBarParams.isIndeterminate = pBar.jProgressBar.isIndeterminate();
         pBarParams.Value = pBar.jProgressBar.getValue();
         pBarParams.Min = pBar.jProgressBar.getMinimum();
@@ -371,10 +371,10 @@ switch (lower(commandName))
             error('Usage : bst_progress(''setbarparams'', barParams)');
         end
         % (Re)start bar
-        if pBarParams.isIndeterminate()
-            bst_progress('start', pBarParams.wndTitle, pBarParams.msg);
+        if pBarParams.isIndeterminate
+            bst_progress('start', pBarParams.Title, pBarParams.Msg);
         else
-            bst_progress('start', pBarParams.wndTitle, pBarParams.msg, pBarParams.Min, pBarParams.Max);
+            bst_progress('start', pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
             bst_progress('set', pBarParams.Value);
         end
 
