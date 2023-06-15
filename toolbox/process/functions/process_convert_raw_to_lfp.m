@@ -225,6 +225,7 @@ end
 function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileIn, ChannelMat, cleanChannelNames, LFP_fs)
     % Load electrode file
     load(ElecFile, 'data', 'sr');
+    % Convert column vector to row vector
     data = data';
     % Apply notch filter
     if ~isempty(NotchFreqs)
@@ -235,7 +236,7 @@ function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileI
         % Get channel name from electrode file name
         [tmp, ChannelName] = fileparts(ElecFile);
         ChannelName = strrep(ChannelName, 'raw_elec_', '');
-        data = BayesianSpikeRemoval(ChannelName, data, sr, sFileIn, ChannelMat, cleanChannelNames, BandPass);
+        data = BayesianSpikeRemoval(ChannelName, data', sr, sFileIn, ChannelMat, cleanChannelNames, BandPass);
         data = data';
     end
     % Band-pass filter
@@ -280,7 +281,7 @@ function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, Chann
         % from spktimes to obtain the start times of the spikes
   
         if mod(length(data),2)~=0
-            data_temp = [data 0]';
+            data_temp = [data; 0];
             g = fitLFPpowerSpectrum(data_temp,BandPass(1),BandPass(2),sFile.prop.sfreq);
             S = zeros(length(data_temp),1);
             iSpk = round(spkSamples - nSegment/2);

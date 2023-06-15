@@ -278,6 +278,20 @@ switch(fileType)
     case 'headmodel'
         sMatrix = in_bst_headmodel(FileName);
         matName = 'Gain';
+
+    case 'unknown'
+        if isempty(FileName)
+            disp('BST> Warning: No file provided.');
+        else
+            disp('BST> Error: Unknown file type.');
+        end
+        sMatrix = [];
+        matName = '';
+        
+    otherwise
+        disp('BST> Error: Unrecognized file type.');
+        sMatrix = [];
+        matName = '';
 end
 end
 
