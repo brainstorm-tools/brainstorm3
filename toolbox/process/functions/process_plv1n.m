@@ -42,8 +42,19 @@ function sProcess = GetDescription()
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
+    % === PLV METHOD
+    sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.plvmethod.Comment = {'<B>PLV</B>: Phase locking value', '<B>ciPLV</B>: Lagged phase synchronization / Corrected imaginary PLV', '<B>wPLI</B>: Weighted phase lag index'; ...
+                                          'plv', 'ciplv', 'wpli'};
+    sProcess.options.plvmethod.Type    = 'radio_label';
+    sProcess.options.plvmethod.Value   = 'plv';
+    % === PLV MEASURE
+    sProcess.options.plvmeasure.Comment = {'None (PLV: complex)', 'Magnitude', 'Measure:'};
+    sProcess.options.plvmeasure.Type    = 'radio_line';
+    sProcess.options.plvmeasure.Value   = 2;
     % === Time-freq options
-    sProcess.options.label2.Comment = 'Time-frequency decomposition:';
+    sProcess.options.label2.Comment = '<B><BR>Time-frequency decomposition:</B>';
     sProcess.options.label2.Type    = 'label';
     % === Hilbert/Morlet
     sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Spectral (Fourier)', ''; 'hilbert', 'fourier', ''};
@@ -66,7 +77,7 @@ function sProcess = GetDescription()
     sProcess.options.overlap.Value   = {50, '%', []};
     sProcess.options.overlap.Class   = 'fourier';
     % === KEEP TIME
-    sProcess.options.keeptime.Comment = 'Time-resolved: estimate for each time point (Hilbert) <BR>or each window (Fourier); requires many epochs';
+    sProcess.options.keeptime.Comment = 'Time-resolved estimate (requires many epochs)';
     sProcess.options.keeptime.Type    = 'checkbox';
     sProcess.options.keeptime.Value   = 0;
 %     sProcess.options.keeptime.Class   = 'hilbert';
@@ -75,15 +86,6 @@ function sProcess = GetDescription()
 %     sProcess.options.freqbands.Type    = 'groupbands';
 %     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
 
-    % === PLV METHOD
-    sProcess.options.plvmethod.Comment = {'<B>PLV</B>: Phase locking value', '<B>ciPLV</B>: Lagged phase synchronization / Corrected imaginary PLV', '<B>wPLI</B>: Weighted phase lag index'; ...
-                                          'plv', 'ciplv', 'wpli'};
-    sProcess.options.plvmethod.Type    = 'radio_label';
-    sProcess.options.plvmethod.Value   = 'plv';
-    % === PLV MEASURE
-    sProcess.options.plvmeasure.Comment = {'None (PLV: complex)', 'Magnitude', 'Measure:'};
-    sProcess.options.plvmeasure.Type    = 'radio_line';
-    sProcess.options.plvmeasure.Value   = 2;
     % === OUTPUT MODE
     sProcess.options.outputmode.Comment = {'Estimate separately for each input file (save one file per input)', 'Estimate across files (save one file)'; ...
                                             'input', 'avg'};

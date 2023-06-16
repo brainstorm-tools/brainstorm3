@@ -849,14 +849,14 @@ for iFile = 1:nFiles
 %             R = reshape(R, nA, nB, 1, nFreqBands);
             
         % ==== WPLI ====
-        case {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere', 'cohere-econ'} % only wpli available in GUI
-            % This case could also directly apply to cohere and other phase metrics plv, ciplv when doing Fourier transform.
-
-%             % Could also use this case for time-resolved
+        case {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere', ...
+                'plvt', 'ciplvt', 'wplit', 'dwplit', 'plit', 'coheret'} % 'dwpli', 'pli' not available in GUI
+            % Could also use this case for time-resolved
+            % TODO: either new option from processes, or "extract" from last letter = t
+            isKeepTime = lower(OPTIONS.Method(end)) == 't';
 %             nTimeOut = nTime;
 %             TimeAvgFunc = @(v) v; % do nothing
-%             % TODO: error if Fourier and time-resolved in PLV process, and here.
-            nTimeOut = 1; 
+%             nTimeOut = 1; 
             % TODO: compare mean to sum for speed, and direct vs func handle
 %             TimeAvgFunc = @(v) mean(v,3); % average over time dimension
             switch OPTIONS.Method
@@ -876,15 +876,30 @@ for iFile = 1:nFiles
                 case 'pli'
                     DisplayUnits = 'Phase lag index';
                     Comment = 'PLI';
-                case {'cohere', 'cohere-econ'}
-                    DisplayUnits = 'Magnitude-squared coherence';
+                case 'cohere'
+                    switch OPTIONS.CohMeasure
+                        case 'mscohere'
+                            DisplayUnits = 'Magnitude-squared coherence';
+                            Comment = 'MSCoh';
+                        case 'icohere2019'
+                            DisplayUnits = 'Imaginary coherence';
+                            Comment = 'ImCoh';
+                        case 'icohere'
+                            DisplayUnits = 'Lagged coherence squared';
+                            Comment = 'LagCoh2';
+                        case 'lcohere2019'
+                            DisplayUnits = 'Lagged coherence';
+                            Comment = 'LagCoh';
+                    end
+%                     % Check precision for high frequencies
 %                     fStep = OPTIONS.Freqs(2)-OPTIONS.Freqs(1);
 %                     if (fStep < 0.1)
 %                         precision = '%1.2f';
 %                     else
 %                         precision = '%1.1f';
 %                     end
-                    Comment = OPTIONS.CohMeasure;
+%             % Add the number of windows to the report
+%             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
             end
             bst_progress('text', sprintf('Calculating: %s %s [%dx%d]...', OPTIONS.tfMeasure, Comment, nA, nB));
 
@@ -898,8 +913,13 @@ for iFile = 1:nFiles
 %                 end
                 % Initialize accumulators
                 if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
+                    if isKeepTime
+                        nTimeOut = nTime;
+                    else
+                        nTimeOut = 1;
+                    end
                     switch OPTIONS.Method
-                        %     case {'cohere', 'cohere-econ'}
+                        %     case 'cohere'
                         %         % Saa, Sbb don't need window loop thus no initialization.
                         %         R.Sab = complex(zeros(nA, nB, nTimeOut, nFreqBands));
                         case {'plv', 'ciplv', 'cohere'}
@@ -967,6 +987,14 @@ for iFile = 1:nFiles
                             else
                                 R.Sab(:,:,:,iBand) = R.Sab(:,:,:,iBand) + HA * HB' / size(HA,2); % ' is conjugate transpose
                             end
+                            R.Saa = R.Saa + HA * HA' / size(HA,2);
+                            if ~isNxN
+                                if isKern && strcmpi(Func, 'cohere-econ')
+                                    % Kernel was not applied for Sab, but needed here since we only keep the diagonal of Sbb (PSD).
+                                    HB = KernelB * HB;
+                                end
+                                R.Sbb = R.Sbb + HB * HB' / size(HB,2);
+                            end
                     end
                 end
                 nWin = nWin + 1;
@@ -974,6 +1002,12 @@ for iFile = 1:nFiles
 
             % "Spectral" formulae, using Fourier transform.
             else % if strcmpi(OPTIONS.tfMeasure, 'fourier')
+                % TODO: new option from processes nRunningAvgWin
+                if isKeepTime
+                    nRunningAvgWin = nTime;
+                else
+                    nRunningAvgWin = 0;
+                end
                 % wPLI and debiased wPLI as defined in:
                 %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
                 %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
@@ -987,9 +1021,9 @@ for iFile = 1:nFiles
                 % Non-linear functions of cross-spectrum also require the kernel to be applied first.
                 if isConnNN
                     % Avoid passing redundant data
-                    [S, nWinFile, OPTIONS.Freqs, Messages] = bst_xspectrum(sInputA.Data, [], sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method);
+                    [S, nWinFile, OPTIONS.Freqs, Messages] = bst_xspectrum(sInputA.Data, [], sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, isKeepTime);
                 else
-                    [S, nWinFile, OPTIONS.Freqs, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method);
+                    [S, nWinFile, OPTIONS.Freqs, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, isKeepTime);
                 end
                 % Error processing
                 if isempty(S)
@@ -998,37 +1032,18 @@ for iFile = 1:nFiles
                 elseif ~isempty(Messages)
                     bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
                 end
+                % TODO: implement running average over a few windows here, for few or long files.
                 if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
                     % Initialize accumulators
                     Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
                     for f = 1:numel(Terms)
-%                         % For "economy" methods, apply kernel after bst_xspectrum. Currently only cohere-econ.
-%                         if strcmpi(OPTIONS.Method, 'cohere-econ') && strcmpi(Terms{f}, 'Sab')
-%                             fprintf('Initial cohere-econ kernel step\n');
-%                             % Double-check that we have only one A signal, which allows fast matrix multiplication (without pagemtimes).
-%                             if nA > 1
-%                                 error('Unexpected multiple signals in A with kernel in B.');
-%                             end
-%                             R.Sab = permute(permute(S.Sab, [3,2,1]) * sInputB.ImagingKernel', [3,2,1]);
-%                             if MatlabVersion >= 909  %  >= Matlab 2020b
-%                                 R.Sab = pagemtimes(S.Sab, sInputB.ImagingKernel');
-%                             else
-%                                 % Reshape Sab as [nA,1,nFreq,nSensorB], K as [1,nSourceB,1,nSensorB] and sum over B sensors.
-%                                 R.Sab = sum(bsxfun(@times, permute(S.Sab, [1,4,3,2]), permute(sInputB.ImagingKernel, [3,1,4,2])), 4);
-%                         else
-                            R.(Terms{f}) = S.(Terms{f});
-%                         end
+                        R.(Terms{f}) = S.(Terms{f});
                     end
                     nWin = nWinFile;
                 else
                     % Sum terms
                     for f = 1:numel(Terms)
-%                         % For "economy" methods, apply kernel after bst_xspectrum. Currently only cohere-econ.
-%                         if strcmpi(OPTIONS.Method, 'cohere-econ') && strcmpi(Terms{f}, 'Sab')
-%                             R.Sab = R.Sab + permute(permute(S.Sab, [3,2,1]) * sInputB.ImagingKernel', [3,2,1]);
-%                         else
-                            R.(Terms{f}) = R.(Terms{f}) + S.(Terms{f});
-%                         end
+                        R.(Terms{f}) = R.(Terms{f}) + S.(Terms{f});
                     end
                     nWin = nWin + nWinFile;
                 end
@@ -1303,13 +1318,32 @@ function NewFile = Finalize(DataFile)
                 R = (R.ImSab.^2 - R.SqImSab) ./ (R.AbsImSab.^2 - R.SqImSab);
             case 'pli'
                 R = R.SgnImSab / nWin;
-            case {'cohere', 'cohere-econ'}
-                % Reshape Saa as [nA, 1, nFreq], and Sbb as [1, nB, nFreq].
-                % abs to ensure real signals (no residual imaginary part from numerical errors)
+            case 'cohere'
+                % Reshape Saa as [nA, 1, nFreq] or [nA, 1, nTime, nFreq], and Sbb as [1, nB, ...] for C denominator.
+                % Still complex at this step, keep in R.Sab.
                 if isConnNN
-                    R = bst_bsxfun(@rdivide, bst_bsxfun(@rdivide, abs(R.Sab .* conj(R.Sab)), permute(R.Saa, [1, 3, 2])), permute(R.Saa, [3, 1, 2]));
+                    R.Sab = bst_bsxfun(@rdivide, R.Sab, sqrt(bst_bsxfun(@times, permute(R.Saa, [1,4,2,3]), permute(R.Saa, [4,1,2,3]))));
                 else
-                    R = bst_bsxfun(@rdivide, bst_bsxfun(@rdivide, abs(R.Sab .* conj(R.Sab)), permute(R.Saa, [1, 3, 2])), permute(R.Sbb, [3, 1, 2]));
+                    R.Sab = bst_bsxfun(@rdivide, R.Sab, sqrt(bst_bsxfun(@times, permute(R.Saa, [1,4,2,3]), permute(R.Sbb, [4,1,2,3]))));
+                end
+                % All these measures give real positive values.
+                switch OPTIONS.CohMeasure
+                    case 'mscohere'
+                        % Magnitude-squared Coherence
+                        % MSC = |C|^2 = C .* conj(C) = |Sxy|^2/(Sxx*Syy)
+                        R = abs(R.Sab).^2;
+                    case {'icohere2019'}
+                        % Imaginary Coherence (2019)
+                        % IC = Im(C) = Im(Sxy)/sqrt(Sxx*Syy)
+                        R = abs(imag(R.Sab));
+                    case 'lcohere2019'
+                        % Lagged Coherence (2019)
+                        % LC = Im(C)/sqrt(1-[Re(C)]^2) = Im(Sxy)/sqrt(Sxx*Syy - [Re(Sxy)]^2)
+                        R = abs(imag(R.Sab)) ./ sqrt(1-real(R.Sab).^2);
+                    case 'icohere'
+                        % "Imaginary Coherence" (before 2019) = actually squared lagged coherence.
+                        % (LC)^2 = Im(C)^2 / (1-Re(C)^2)
+                        R = imag(R.Sab).^2 ./ (1-real(R.Sab).^2);
                 end
         end
         % Static measures may need to be reshaped to add singleton time dimension.
