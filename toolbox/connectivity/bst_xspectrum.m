@@ -1,4 +1,4 @@
-function [S, nWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, isTime)
+function [S, nAvgWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, isTime)
 % BST_XSPECTRUM : Compute cross-spectrum or orther function of A and B Fourier transforms
 %                 used to to further compute connectivity metrics
 %
@@ -24,19 +24,22 @@ function [S, nWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOv
 %                'xspec'  : Sab (default)
 %    - isTime  : 0 Average all time windows
 %                1 Don't average windows, S terms have an added time dimension, before the freqency dim.
-%                n Do a running average over n windows, keeping the time dimension. For long and/or few files.
+%                n Do a moving average over n windows, keeping the time dimension. For long and/or few files.
 %
 % OUTPUTS:
-%    - S    : Structure with fields listed above, summed over windows, for computing the requested connectivity metric. 
-%             Most terms, like S.Sab, have size [nSignalsA, nSignalsB, nFreq], or [nA, nB, nTime, nFreq] for time-resolved.
-%    - nWin : Number of windows that were summed.
-%    - Freq : Frequency vector (length nFreq).
+%    - S : Structure with fields listed above, possibly summed over windows (depending on isTime), 
+%          for computing the requested connectivity metric. Most terms, like S.Sab, have size
+%          [nSignalsA, nSignalsB, nFreq], or [nA, nB, nTime, nFreq] for time-resolved.
+%    - nAvgWin  : Number of windows that were summed; depends on data length, window params and isTime.
+%    - Freq     : Frequency vector (length nFreq).
 %    - Messages : Text indicating warnings or errors that occured.
 %
 % Implementation notes:
-% Zero frequency is not removed, though probably meaningless in general.
-% 'cohere' was tested with applying the kernel outside this function, but the performance gains did
-% not justify the added code complexity.
+% - Zero frequency is always removed (hard-coded flag).
+% - 'cohere' was tested with applying the kernel outside this function, but the performance gains did
+%   not justify the added code complexity.
+% - When not doing time-resolved, loop over windows instead of computing all at once.  Uses less
+%   memory, though somewhat slower (~25% in one test).
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -87,9 +90,8 @@ Freq = [];
 Time = [];
 Messages = [];
 
-% When not doing time-resolved, loop over windows instead of computing all at once.  Uses less
-% memory, though somewhat slower (~25% in one test).
-isConserveMemory = true;
+% Remove zero frequency as not meaningful for connectivity measures.
+isRemoveZeroFreq = true;
 
 isNxN = isempty(B) || isequal(A, B);
 isKern = ~isempty(KernelB);
@@ -119,16 +121,32 @@ end
 
 % Epoch into windows
 [ep, nWin, iStart] = epoching(A, nWinLen, nOverlap);
-% Save start times of windows, assuming first sample is time 0, and accounting for possible running
-% average over multiple windows (so fewer windows in total)
-% TODO: confirm sample 1 is time 0 usually.
+% If not enough windows for moving average, average them all, i.e. no time.
+if nWin <= isTime
+    if isTime == 1
+        Messages = 'File time duration too short wrt window length for time-resolved estimation. Only computing one estimate across full duration.';
+    else
+        Messages = 'File time duration too short for requested moving average of time windows. Only computing one estimate across full duration.';
+    end
+    isTime = 0;
+end
+% Save times at center of windows (could be between 2 samples), assuming first sample is time 0, and
+% accounting for possible moving average over multiple windows and excluding edges with zero padding
+% (so fewer windows are output)
 if isTime
-    Time = (iStart(1:(end-isTime+1)) - 1) / Fs;
+    Time = (iStart(1:(end-isTime+1)) - 1 + isTime/2) / Fs;
 end
 ep = bsxfun(@times, ep, win);
-% Zero padding, FFT, keep only positive frequencies
+% Zero padding, FFT, keep only positive frequencies, remove zero freq.
 Fa = fft(ep, nFFT, 2);
-Fa = Fa(:, 1:nFreq, :);
+if isRemoveZeroFreq
+    Freq(1) = [];
+    nFreq = nFreq - 1;
+    Fa = Fa(:, (1:nFreq)+1, :);
+else
+    Fa = Fa(:, 1:nFreq, :);
+end
+
 if ~isNxN
     % Signals A and B must have same nTime
     if ~isequal(size(A, 2), size(B, 2))
@@ -138,7 +156,11 @@ if ~isNxN
     ep = epoching(B, nWinLen, nOverlap);
     ep = bsxfun(@times, ep, win);
     Fb = fft(ep, nFFT, 2);
-    Fb = Fb(:, 1:nFreq, :);
+    if isRemoveZeroFreq
+        Fb = Fb(:, (1:nFreq)+1, :);
+    else
+        Fb = Fb(:, 1:nFreq, :);
+    end
 end
 clear A B ep
 
@@ -157,10 +179,8 @@ else
 end
 if ~isTime % initialize for window loop
     switch Func
-        case {'cohere', 'xspec'}
-            % Saa, Sbb don't need window loop thus no initialization.
-            % S.Sab = complex(zeros(nA, nB, nFreq));
-        case {'plv', 'ciplv'}
+        case {'plv', 'ciplv', 'cohere', 'xspec'}
+            % For cohere: Saa, Sbb don't need window loop thus no initialization.
             S.Sab = complex(zeros(nA, nB, nFreq));
         case 'pli'
             S.SgnImSab = zeros(nA, nB, nFreq);
@@ -216,14 +236,15 @@ if ~isTime
             S.Sbb = sum(abs(Fb).^2, 3);
         end
     end
+    nAvgWin = nWin;
     % Dividing by number of windows (for averaging) can be done later, but often cancels anyway.
 
 else % keep time, no window looping
     % These terms have size [nA, nB, nWin, nFreq]
     if isNxN
-        Sab = bsxfun(@times, permute(Fa, [1,4,2,3]), conj(permute(Fa, [4,1,2,3])));
+        Sab = bsxfun(@times, permute(Fa, [1,4,3,2]), conj(permute(Fa, [4,1,3,2])));
     else
-        Sab = bsxfun(@times, permute(Fa, [1,4,2,3]), conj(permute(Fb, [4,1,2,3])));
+        Sab = bsxfun(@times, permute(Fa, [1,4,3,2]), conj(permute(Fb, [4,1,3,2])));
     end
     switch Func
         case 'pli'
@@ -240,15 +261,33 @@ else % keep time, no window looping
     end
     % These terms have size [nA|nB, nWin, nFreq]
     if ismember(Func, {'cohere'})
-        S.Saa = abs(Fa).^2;
+        S.Saa = abs(permute(Fa, [1,3,2])).^2;
         if ~isNxN
-            S.Sbb = abs(Fb).^2;
+            S.Sbb = abs(permute(Fb, [1,3,2])).^2;
         end
     end
-end
 
-% Running average over windows.
-if isTime > 1
+    % Moving sum over windows.
+    if isTime > 1
+        nAvgWin = isTime;
+        Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
+        for f = 1:numel(Terms)
+            if ndims(S.(Terms{f})) == 4
+                % Sum over second-last dimension = time
+                S.(Terms{f}) = filter(ones(1,nAvgWin), 1, S.(Terms{f}), [], 3);
+                % Remove points at start that used zero-padding.
+                S.(Terms{f})(:,:,1:nAvgWin-1,:) = [];
+            elseif ndims(S.(Terms{f})) == 3
+                S.(Terms{f}) = filter(ones(1,nAvgWin), 1, S.(Terms{f}), [], 2);
+                S.(Terms{f})(:,1:nAvgWin-1,:) = [];
+            else
+                error('Unexpected dimension.');
+            end
+        end
+    else
+        % No averaging.
+        nAvgWin = 1;
+    end
 
 end
 
@@ -263,7 +302,7 @@ function [epx, nEpochs, iStart] = epoching(x, nEpochLen, nOverlap)
     % Number of epochs
     nEpochs = floor( (nTime - nOverlap) / (nEpochLen - nOverlap) );
     % If not enough data
-    if nEpochs == 0
+    if nEpochs <= 0 || isinf(nEpochs)
         epx = [];
         return
     end

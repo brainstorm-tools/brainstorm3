@@ -79,7 +79,7 @@ OPTIONS_tf.Measure       = 'none' ;
 % Compute the parameters for window
 hopSize    = ceil(winSize-overLap) ;
 nWindows   = fix((N-winSize)/hopSize)+1 ;
-if (nWindows == 0)
+if (nWindows <= 0)
     error('No data to process: the estimator window is maybe larger than the data to process.');
 end
 timePoints = NaN(nWindows,1) ;                   % Pre-define the center of windows

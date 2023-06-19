@@ -20,6 +20,7 @@ function varargout = process_plv2( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Marc Lalancette, 2023
 
 eval(macro_method);
 end
@@ -125,16 +126,14 @@ function OutputFiles = Run(sProcess, sInputA, sInputB)
         case 'hilbert'
             OPTIONS.Freqs = tfOPTIONS.Freqs;
             OPTIONS.isMirror = 0;
-            % Keep time or not: different methods, only with Hilbert
-            if sProcess.options.keeptime.Value
-                OPTIONS.Method = [OPTIONS.Method 't'];
-            end
         case 'fourier'
             OPTIONS.Freqs = [];
     end
+    % Keep time or not; now explicit flag, no longer separate method '...t'
+    OPTIONS.isKeepTime = sProcess.options.keeptime.Value;
 %     % Hilbert and frequency bands options
 %     OPTIONS.Freqs = sProcess.options.freqbands.Value;
-%     OPTIONS.isMirror = 0;
+    OPTIONS.isMirror = 0;
 
     % PLV measure
     if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 

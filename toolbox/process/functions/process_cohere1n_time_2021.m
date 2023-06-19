@@ -117,6 +117,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.WinOverlap    = 0.50;
     OPTIONS.isSave        = 0;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+    OPTIONS.tfMeasure     = 'fourier';
     % Sliding time windows options
     WinLength  = sProcess.options.slide_win.Value{1};
     WinOverlap = sProcess.options.slide_overlap.Value{1};

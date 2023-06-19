@@ -107,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.WinOverlap    = 0.50;  % First pre-define the overlap
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+    OPTIONS.tfMeasure     = 'fourier';
 
     % Change the overlap if it is specified
     if isfield(sProcess.options, 'overlap') && isfield(sProcess.options.overlap, 'Value') && ...

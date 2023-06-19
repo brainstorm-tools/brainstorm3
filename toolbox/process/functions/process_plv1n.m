@@ -20,6 +20,7 @@ function varargout = process_plv1n( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Marc Lalancette, 2023
 
 eval(macro_method);
 end
@@ -49,45 +50,80 @@ function sProcess = GetDescription()
                                           'plv', 'ciplv', 'wpli'};
     sProcess.options.plvmethod.Type    = 'radio_label';
     sProcess.options.plvmethod.Value   = 'plv';
-    % === PLV MEASURE
-    sProcess.options.plvmeasure.Comment = {'None (PLV: complex)', 'Magnitude', 'Measure:'};
+    % === PLV MEASURE 
+    % now always magnitude, complex was only used to average files for PLV, before averaging was improved.
+    sProcess.options.plvmeasure.Comment = {'None (complex)', 'Magnitude', 'Measure:'};
     sProcess.options.plvmeasure.Type    = 'radio_line';
     sProcess.options.plvmeasure.Value   = 2;
+    sProcess.options.plvmeasure.Hidden  = 1;
     % === Time-freq options
-    sProcess.options.label2.Comment = '<B><BR>Time-frequency decomposition:</B>';
+    sProcess.options.label2.Comment = '<BR><B>Time-frequency decomposition:</B>';
     sProcess.options.label2.Type    = 'label';
     % === Hilbert/Morlet
     sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Spectral (Fourier)', ''; 'hilbert', 'fourier', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
     sProcess.options.tfmeasure.Controller = struct('hilbert', 'hilbert', 'fourier', 'fourier');
-    % === FREQ BANDS Panel 
-    sProcess.options.editbands.Comment = {'panel_timefreq_options', 'Frequency bands: '};
+    % === TF OPTIONS Panel 
+    sProcess.options.editbands.Comment = {'panel_timefreq_options', 'Options: '};
     sProcess.options.editbands.Type    = 'editpref';
     sProcess.options.editbands.Value   = [];
     sProcess.options.editbands.Class   = 'hilbert';
+%     % === Split a Large Signal into Blocks 
+%     sProcess.options.tfsplit.Comment = 'Split large data in';
+%     sProcess.options.tfsplit.Type    = 'value';
+%     sProcess.options.tfsplit.Value   = {1, 'time block(s)', 0};
+%     sProcess.options.tfsplit.Class   = 'hilbert';
     % === WINDOW LENGTH
-    sProcess.options.win_length.Comment = 'Time window length:';
-    sProcess.options.win_length.Type    = 'value';
-    sProcess.options.win_length.Value   = {1, 's', []};
-    sProcess.options.win_length.Class   = 'fourier';
+    sProcess.options.fftlength.Comment = 'Fourier transform window length:';
+    sProcess.options.fftlength.Type    = 'value';
+    sProcess.options.fftlength.Value   = {1, 's', []};
+    sProcess.options.fftlength.Class   = 'fourier';
     % === OVERLAP
-    sProcess.options.overlap.Comment = 'Time window overlap:' ;
-    sProcess.options.overlap.Type    = 'value';
-    sProcess.options.overlap.Value   = {50, '%', []};
-    sProcess.options.overlap.Class   = 'fourier';
-    % === KEEP TIME
-    sProcess.options.keeptime.Comment = 'Time-resolved estimate (requires many epochs)';
-    sProcess.options.keeptime.Type    = 'checkbox';
-    sProcess.options.keeptime.Value   = 0;
-%     sProcess.options.keeptime.Class   = 'hilbert';
+    sProcess.options.fftoverlap.Comment = 'Fourier transform window overlap:' ;
+    sProcess.options.fftoverlap.Type    = 'value';
+    sProcess.options.fftoverlap.Value   = {50, '%', []};
+    sProcess.options.fftoverlap.Class   = 'fourier';
+    % === HIGHEST FREQUENCY OF INTEREST
+    sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
+    sProcess.options.maxfreq.Type    = 'value';
+    sProcess.options.maxfreq.Value   = {59,'Hz',2};
+    sProcess.options.maxfreq.Class   = 'fourier';
+%     % === KEEP TIME
+%     sProcess.options.keeptime.Comment = 'Time-resolved estimate (requires several epochs)';
+%     sProcess.options.keeptime.Type    = 'checkbox';
+%     sProcess.options.keeptime.Value   = 0;
+%     sProcess.options.keeptime.Controller = 'keeptime';
+    % === TIME AVERAGING
+    sProcess.options.label3.Comment = '<BR>';
+    sProcess.options.label3.Type    = 'label';
+    sProcess.options.time.Comment = {'Full (requires epochs)', 'Windowed', 'None', '<B>Time resolution:</B>'; ...
+                                     'dynamic', 'windowed', 'static', ''};
+    sProcess.options.time.Type    = 'radio_linelabel';
+    sProcess.options.time.Value   = 'dynamic';
+    % === Hilbert/Morlet: WINDOW LENGTH
+    sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
+    sProcess.options.avgwinlength.Type    = 'value';
+    sProcess.options.avgwinlength.Value   = {1, 's', []};
+    sProcess.options.avgwinlength.Class   = 'hilbert';
+%     % === Hilbert/Morlet: OVERLAP
+%     sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:' ;
+%     sProcess.options.avgwinoverlap.Type    = 'value';
+%     sProcess.options.avgwinoverlap.Value   = {50, '%', []};
+%     sProcess.options.avgwinoverlap.Class   = 'hilbert';
+    % === Fourier: MOVING AVERAGE 
+    sProcess.options.avgwinnum.Comment = '&nbsp;&nbsp;&nbsp;Time window length:' ;
+    sProcess.options.avgwinnum.Type    = 'value';
+    sProcess.options.avgwinnum.Value   = {3, 'Fourier transform windows', 0};
+    sProcess.options.avgwinnum.Class   = 'fourier';
 %     % === FREQ BANDS
 %     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
 %     sProcess.options.freqbands.Type    = 'groupbands';
 %     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
 
-    % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Estimate separately for each input file (save one file per input)', 'Estimate across files (save one file)'; ...
+    % === OUTPUT MODE / FILE AVERAGING
+    % Ideally, 'input' would be disabled for 'dynamic'.
+    sProcess.options.outputmode.Comment = {'Estimate separately for each input file (save one file per input)', 'Estimate across files, inter-trial (save one file)'; ...
                                             'input', 'avg'};
     sProcess.options.outputmode.Type    = 'radio_label';
     sProcess.options.outputmode.Value   = 'input';
@@ -125,7 +161,6 @@ function OutputFiles = Run(sProcess, sInputA)
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
     switch OPTIONS.tfMeasure
         case 'hilbert'
-%            OPTIONS.Freqs = sProcess.options.freqbands.Value;
             % Get time-freq panel options
             tfOPTIONS = sProcess.options.editbands.Value;
             if isempty(tfOPTIONS)
@@ -137,16 +172,15 @@ function OutputFiles = Run(sProcess, sInputA)
             end
             OPTIONS.Freqs = tfOPTIONS.Freqs;
             OPTIONS.isMirror = 0;
-            % Keep time or not: different methods, only with Hilbert
-            if sProcess.options.keeptime.Value
-                OPTIONS.Method = [OPTIONS.Method 't'];
-            end
         case 'fourier'
             OPTIONS.Freqs = [];
+            OPTIONS.WinLen = sProcess.options.fftlength.Value{1};
+            %OPTIONS.WinOverlap = sProcess.options.fftoverlap.Value{1}/100 ;
+            OPTIONS.MaxFreq = sProcess.options.maxfreq.Value{1};
+            OPTIONS.nAvgWin = sProcess.options.avgwin.Value{1};
     end
-%     OPTIONS.isMirror = 0;
-    OPTIONS.WinLen = sProcess.options.win_length.Value{1};
-    OPTIONS.WinOverlap = sProcess.options.overlap.Value{1}/100 ;
+    % Keep time or not; now explicit flag, no longer separate method '...t'
+    OPTIONS.isKeepTime = sProcess.options.keeptime.Value;
 
     % PLV measure
     if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 
