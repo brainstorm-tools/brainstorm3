@@ -223,7 +223,7 @@ for iFile = 1:length(SourceFiles)
     % Comment: Use the base filename (if not defined in input)
     [fPath, fBase, fExt] = bst_fileparts(SourceFiles{iFile});
     if isempty(Comment)
-        if strcmpi(FileFormat, 'FS')
+        if strncmpi(FileFormat, 'FS', 2)
             Comment = [fBase, fExt];
         else
             Comment = fBase;
