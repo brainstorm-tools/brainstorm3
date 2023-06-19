@@ -2755,7 +2755,7 @@ function SetProgressLogo(PlugDesc)
         end
         % Set link
         if ~isempty(PlugDesc.URLinfo)
-            bst_progress('setlink', 'http://openmeeg.github.io');
+            bst_progress('setlink', PlugDesc.URLinfo);
         end
     end
 end

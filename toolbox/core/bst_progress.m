@@ -14,6 +14,7 @@ function pBar = bst_progress(varargin)
 %         pBar = bst_progress('setimage', imagefile) : display an image in the wait bar
 %         pBar = bst_progress('setlink', url)        : clicking on the image opens a browser to display the url
 %         pBar = bst_progress('removeimage')         : Remove the image from the wait bar
+%         pBar = bst_progress('removelink')          : Remove click-on-image action
 %   pBarParams = bst_progress('getbarparams')        : Get current bar parameters
 %         pBar = bst_progress('setbarparams')        : Set bar parameters
 
@@ -349,6 +350,10 @@ switch (lower(commandName))
         UpdateConstraints(0);
         pBar.jWindow.setPreferredSize(DefaultSize);
         pBar.jWindow.pack();
+
+    % ==== REMOVE LINK ====
+    case 'removelink'
+        java_setcb(pBar.jImage, 'MouseClickedCallback', []);
 
     % ==== GET BAR PARAMETERS ====
     case 'getbarparams'
