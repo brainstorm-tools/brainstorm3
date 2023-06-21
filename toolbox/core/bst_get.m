@@ -3913,10 +3913,11 @@ switch contextName
         fontTypes = {};
         if (nargin >= 3)
             fontTypes{end + 1} = varargin{3};
+        else
+            fontTypes{end + 1} = 'Arial';  % Default font
+            fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
+            fontTypes{end + 1} = 'Courier New';
         end
-        fontTypes{end + 1} = 'Arial';  % Default font
-        fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
-        
         % Check for cached font
         foundFont = 0;
         for iFont = 1 : length(fontTypes)
