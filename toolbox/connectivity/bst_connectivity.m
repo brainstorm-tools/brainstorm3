@@ -3,6 +3,16 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 %
 % USAGE:  OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 %             OPTIONS = bst_connectivity()
+%
+% References: 
+%   wPLI and debiased wPLI as defined in:
+%     Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
+%     An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
+%     Neuroimage, Apr 2011, https://pubmed.ncbi.nlm.nih.gov/21276857
+%   wPLI = abs(E{imag(Sab)}) / E{abs(imag(Sab))}; E{} is expectation value, i.e. terms we must average. Sab is the cross-spectrum.
+%   Debiased wPLI square, eq. 33 in same publication, after simplifications:
+%   dwPLI = (N * E{imag(Sab)}^2 - E{imag(Sab)^2}) / (N * E{abs(imag(Sab))}^2 - E{imag(Sab)^2})
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -45,7 +55,7 @@ Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {befo
 Def_OPTIONS.PcaOptions    = [];            % Options for scout or unconstrained function 'pca', from panel_pca
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
 Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'icohere2019', 'lcohere2019'}
-Def_OPTIONS.WinLen        = [];            % Option for coherence & PLV 2023; TODO remove: in old code EMPTY indicates deprecated coherence
+Def_OPTIONS.WinLen        = [];            % Option for coherence & PLV 2023
 Def_OPTIONS.WinOverlap    = 0.50;          % Option for spectral estimates (Coherence 2021, PLV 2023)
 Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence deprecated, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, PLV, spectral Granger)
@@ -59,9 +69,11 @@ Def_OPTIONS.pThresh       = 0.05;          % Significance threshold for the metr
 Def_OPTIONS.OutputMode    = 'input';       % {'avg','input','concat','avgcoh'}
 Def_OPTIONS.iOutputStudy  = [];
 Def_OPTIONS.isSave        = 1;
-Def_OPTIONS.tfMeasure     = 'hilbert';     % for bst_henv: {hilbert, morlet}, for phase metrics: {hilbert, fourier}
-Def_OPTIONS.isKeepTime    = 0;             % Option for coherence & PLV 2023 (replaces '...t' methods), for both hilbert or fourier
-Def_OPTIONS.nAvgWin       = 1;             % Option for coherence & PLV 2023, when 'windowed' time resolution
+Def_OPTIONS.tfMeasure     = 'hilbert';     % Option for henv, coherence & PLV 2023 {hilbert, morlet, fourier}
+Def_OPTIONS.TimeRes       = [];            % Option for henv, coherence & PLV 2023 {full, windowed, none} (replaces '...t' methods, and former dynamic/static)
+Def_OPTIONS.nAvgLen       = 1;             % Option for coherence & PLV 2023, for 'fourier' and 'windowed' time resolution
+Def_OPTIONS.MorletFc      = [];            % Option for envelope correlation 'morlet'
+Def_OPTIONS.MorletFwhmTc  = [];            % Option for envelope correlation 'morlet'
 % Return the default options
 if (nargin == 0)
     OutputFiles = Def_OPTIONS;
@@ -73,15 +85,18 @@ end
 % Copy default options to OPTIONS structure (do not replace defined values)
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
-% TODO: TESTING doing PLV and coherence with avg only
-if ~strcmpi(OPTIONS.OutputMode, 'input')
-    OPTIONS.OutputMode = 'avg';
-end
-
 % Compatibility: old time-resolved methods ending it 't'
 if ismember(OPTIONS.Method, {'plvt','ciplvt','wplit'})
     OPTIONS.Method(end) = '';
-    OPTIONS.isKeepTime = true;
+    OPTIONS.TimeRes = 'full';
+end
+% Encode non-windowed time resolution in "averaging length" for 'fourier' PLV
+if strcmpi(OPTIONS.tfMeasure, 'fourier')
+    if strcmpi(OPTIONS.TimeRes, 'none')
+        OPTIONS.nAvgLen = 0;
+    elseif strcmpi(OPTIONS.TimeRes, 'full')
+        OPTIONS.nAvgLen = 1;
+    end
 end
 
 % Initialize output variables
@@ -103,10 +118,12 @@ if (nFiles == 1)
     OPTIONS.RemoveEvoked = 0;
 end
 % Frequency bands
-if ~isempty(OPTIONS.Freqs) && iscell(OPTIONS.Freqs)
-    % Get frequency bands once for methods that need them.
+if ~isempty(OPTIONS.Freqs) 
     nFreqBands = size(OPTIONS.Freqs, 1);
-    BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+    if iscell(OPTIONS.Freqs)
+        % Get frequency bands once for methods that need them.
+        BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+    end
 end
 % Frequency limits: 0 = disable
 if isequal(OPTIONS.MaxFreq, 0)
@@ -392,6 +409,7 @@ OPTIONS.sScoutsAtlasB = [];
 OPTIONS.sScoutsGridLocB = [];
 R = [];
 Time = [];
+nAvgLen = [];
 
 % Loop over input files
 for iFile = 1:nFiles
@@ -551,77 +569,6 @@ for iFile = 1:nFiles
             % All the correlations with one call
             R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean); 
             
-        % === COHERENCE ===
-%         case 'cohere'
-%             switch OPTIONS.CohMeasure
-%                 case 'mscohere'
-%                     DisplayUnits = 'Magnitude-squared coherence';
-%                 case 'icohere2019'
-%                     DisplayUnits = 'Imaginary coherence';
-%                 case 'icohere'
-%                     DisplayUnits = 'Lagged coherence squared';
-%                 case 'lcohere2019'
-%                     DisplayUnits = 'Lagged coherence';
-%             end
-%             if (size(sInputA.Data,1) > 1) && (size(sInputB.Data,1) > 1)
-%                 bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
-%             else
-%                 bst_progress('text', 'Calculating: Coherence...');
-%             end
-%             % Estimate the coherence (2021)
-%             if ~isempty(OPTIONS.WinLen)
-%                 if ~iscell(sInputA.Data)
-%                     sInputA.Data = {sInputA.Data};
-%                 end
-%                 if ~isempty(sInputB.Data) && ~iscell(sInputB.Data)
-%                     sInputB.Data = {sInputB.Data};
-%                 end
-%                 [R, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.CohMeasure, OPTIONS.MaxFreq, sInputB.ImagingKernel, round(100/nFiles));
-%             % Estimate the coherence (deprecated)
-%             elseif ~isempty(OPTIONS.MaxFreqRes)
-%                 % Compute in symmetrical way only for constrained sources
-%                 CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
-%                 [R, ~, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.WinOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/nFiles));
-%             end
-%             % Error processing
-%             if isempty(R)
-%                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-%                 CleanExit; return;
-%             elseif ~isempty(Messages)
-%                 bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-%             end
-%             % Remove the coherence at 0Hz => Meaningless
-%             iZero = find(OPTIONS.Freqs == 0);
-%             if ~isempty(iZero)
-%                 OPTIONS.Freqs(iZero) = [];
-%                 R(:,:,iZero) = [];
-%             end
-%             % Keep only the frequency bins we are interested in. For deprecated coherence
-%             if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0) && ~isempty(OPTIONS.MaxFreqRes)
-%                 % Get frequencies of interest
-%                 iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
-%                 if isempty(iFreq)
-%                     bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
-%                     CleanExit; return;
-%                 end
-%                 % Cut the unwanted frequencies
-%                 R = R(:,:,iFreq);
-%                 OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
-%             end
-%             % Add the number of windows to the report
-%             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
-%             % Check precision for high frequencies
-%             fStep = OPTIONS.Freqs(2)-OPTIONS.Freqs(1);
-%             if (fStep < 0.1)
-%                 precision = '%1.2f';
-%             else
-%                 precision = '%1.1f';
-%             end
-%             % Output comment
-%             Comment = sprintf(['%s(' precision 'Hz,%dwin)'], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
-%             % Reshape as [nA x nB x nTime x nFreq]
-%             R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
-
         % ==== GRANGER ====
         case 'granger'
             DisplayUnits = 'Granger causality';
@@ -755,61 +702,7 @@ for iFile = 1:nFiles
             % Reshape as [nA x nB x nTime x nFreq]
             R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
-        % ==== PLV ====
-%         case {'plv', 'ciplv'}
-%             switch OPTIONS.Method
-%                 case 'plv'
-%                     DisplayUnits = 'Phase locking value';
-%                     if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
-%                         DisplayUnits = [DisplayUnits, ' magnitude'];
-%                     end
-%                 case 'ciplv'
-%                     %DisplayUnits = 'Lagged phase synchronization';
-%                     DisplayUnits = 'Corrected imaginary phase locking value';
-%             end
-%             bst_progress('text', sprintf('Calculating: %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
-%             nA = size(sInputA.Data,1);
-%             nB = size(sInputB.Data,1);
-% %             nTime = size(sInputB.Data,2);
-% 
-%             % Intitialize returned matrix
-%             R = zeros(nA, nB, nFreqBands);
-%             % Loop on each frequency band
-%             for iBand = 1:nFreqBands
-%                 % Band-pass filter in one frequency band + Apply Hilbert transform
-%                 % Filtering is the main slow step when doing 1xN (filtfilt ~90% of execution time).
-%                 if isConnNN
-%                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     HA = hilbert_fcn(DataAband')';
-%                     HB = HA;
-%                 else
-%                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     HA = hilbert_fcn(DataAband')';
-%                     HB = hilbert_fcn(DataBband')';
-%                 end
-% %                 phaseA = HA ./ abs(HA);
-% %                 phaseB = HB ./ abs(HB);
-%                 R(:,:,iBand) = (HA ./ abs(HA)) * (HB ./ abs(HB))' / size(HA,2);
-%                 % Compute PLV averaged over time
-%                 switch (OPTIONS.Method)
-%                     case 'plv'
-% %                         R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);
-%                         Comment = 'PLV';
-%                     case 'ciplv'
-%                         % Implementation based on:
-%                         %    Bruna R, Maestu F, Pereda E
-%                         %    Phase locking value revisited: teaching new tricks to an old dog
-%                         %    Journal of Neural Engineering, Jun 2018
-%                         %    https://pubmed.ncbi.nlm.nih.gov/29952757
-%                         R(:,:,iBand) = imag(R(:,:,iBand)) ./ sqrt(1 - real(R(:,:,iBand)).^2 + eps); % +eps in case ./sqrt(1-1)
-%                         Comment = 'ciPLV';
-%                 end
-%             end
-%             % Reshape as [nA x nB x nTime x nFreq]
-%             R = reshape(R, nA, nB, 1, nFreqBands);
-            
-        % ==== WPLI ====
+        % ==== COHERENCE & PHASE SYNC METRICS ====
         case {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere'} % 'dwpli', 'pli' not available in GUI
             % This case is also now used for time-resolved
             switch OPTIONS.Method
@@ -838,75 +731,73 @@ for iFile = 1:nFiles
                             DisplayUnits = 'Imaginary coherence';
                             Comment = 'ImCoh';
                         case 'icohere'
-                            DisplayUnits = 'Lagged coherence squared';
+                            DisplayUnits = 'Squared lagged coherence';
                             Comment = 'LagCoh2';
                         case 'lcohere2019'
                             DisplayUnits = 'Lagged coherence';
                             %DisplayUnits = 'Corrected imaginary coherence';
                             Comment = 'LagCoh';
                     end
-%                     % Check precision for high frequencies
-%                     fStep = OPTIONS.Freqs(2)-OPTIONS.Freqs(1);
-%                     if (fStep < 0.1)
-%                         precision = '%1.2f';
-%                     else
-%                         precision = '%1.1f';
-%                     end
             end
             Comment = [Comment '-' OPTIONS.tfMeasure];
-            if OPTIONS.isKeepTime
+            if ismember(OPTIONS.TimeRes, {'full', 'windowed'})
                 Comment = [Comment '-time'];
             end
             bst_progress('text', sprintf('Calculating: %s %s [%dx%d]...', OPTIONS.tfMeasure, Comment, nA, nB));
 
             switch OPTIONS.tfMeasure
                 % "Instantaneous" formulae, using Hilbert transform.
-                case 'hilbert'
+                % Morlet wavelets are implemented the same way: full time resolution for each frequency
+                case {'hilbert', 'morlet'}
                     % Deal with time resolution options, and initialize accumulators
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
-                    % Check if we're doing "moving average"-like estimation across consecutive time steps, after TF decomposition.
-                    % If so, get number of time samples.
-                    isFullTime = false;
-                    if OPTIONS.isKeepTime 
-                        if ~isempty(OPTIONS.WinLen)
-                            % Window length in samples
-                            nWinLen = round(OPTIONS.WinLen * sfreq);
-                            if nWinLen <= 1
-                                Message = 'Requested window length smaller than one sample. Keeping full time resolution.';
-                                bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                                isFullTime = true;
-                            elseif nWinLen >= nTime
-                                Message = 'File time duration too short wrt requested window length. Only computing one estimate across full duration.';
-                                bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                                % Avoid further checks and error messages.
-                                OPTIONS.isKeepTime = 0;
+                        % Check if we're doing "moving average"-like estimation across consecutive time steps, after TF decomposition.
+                        % If so, get number of time samples.
+                        isFullTime = false;
+                        if strcmpi(OPTIONS.TimeRes, 'windowed')
+                            if ~isempty(OPTIONS.WinLen)
+                                % Window length in samples
+                                nAvgLen = round(OPTIONS.WinLen * sfreq);
+                                if nAvgLen <= 1
+                                    Message = 'Requested window length smaller than one sample. Keeping full time resolution.';
+                                    bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+                                    OPTIONS.TimeRes = 'full';
+                                elseif nAvgLen >= nTime
+                                    Message = 'File time duration too short wrt requested window length. Only computing one estimate across all time.';
+                                    bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+                                    % Avoid further checks and error messages.
+                                    OPTIONS.TimeRes = 'none';
+                                end
+                            else % empty WinLen: full time resolution
+                                OPTIONS.TimeRes = 'full';
                             end
-                        else % empty WinLen: full time resolution
-                            isFullTime = true;
                         end
-                    end
-                    if isFullTime
-                        % keep full time resolution, do nothing
-                        TimeAvgFunc = @(X, dim) X;
-                        nWinLen = 1;
-                        nTimeOut = nTime; % When averaging files, already verified time is same as 1st file.
-                        Time = sInputA.Time;
-                    elseif OPTIONS.isKeepTime 
-                        TimeAvgFunc = @(X, dim) movavg(X, nWinLen, dim);
-                        nTimeOut = nTime - nWinLen + 1;
-                        % Output time vector: center of windows
-                        %% TODO: remove +1 to reproduce exactly henv times: half a sample ahead of actual center
-                        Time = (sInputA.Time((1:nTimeOut)+1) + sInputA.Time(nWinLen:end)) / 2;
-                        % Alternative: approximately center of windows, but on existing samples. 
-                        %iStart = ceil(nWinLen/2);
-                        %iEnd = nTime - floor(nWinLen/2);
-                        %Time = sInputA.Time(iStart:iEnd);
-                    else % no time: average
-                        TimeAvgFunc = @(X, dim) mean(X, dim);
-                        nWinLen = nTime;
-                        nTimeOut = 1;
-                        Time = [];
-                    end
+                        switch OPTIONS.TimeRes
+                            case 'full'
+                                % keep full time resolution, do nothing
+                                TimeAvgFunc = @(X, dim) X;
+                                nAvgLen = 1;
+                                nTimeOut = nTime; % When averaging files, already verified time is same as 1st file.
+                                Time = sInputA.Time;
+                            case 'windowed'
+                                % moving average
+                                TimeAvgFunc = @(X, dim) movavg(X, nAvgLen, dim);
+                                nTimeOut = nTime - nAvgLen + 1;
+                                % Output time vector: center of windows
+                                % TODO: remove +1 added to reproduce exactly henv times: half a sample after actual center
+                                Time = (sInputA.Time((1:nTimeOut)+1) + sInputA.Time(nAvgLen:end)) / 2;
+                                % Alternative: approximately center of windows, but on existing samples.
+                                %iStart = ceil(nWinLen/2);
+                                %iEnd = nTime - floor(nWinLen/2);
+                                %Time = sInputA.Time(iStart:iEnd);
+                            case 'none' % average
+                                TimeAvgFunc = @(X, dim) mean(X, dim);
+                                nAvgLen = nTime;
+                                nTimeOut = 1;
+                                Time = [];
+                            otherwise
+                                error('Unknown time resolution param');
+                        end
                         switch OPTIONS.Method
                             case 'cohere'
                                 R.Sab = complex(zeros(nA, nB, nTimeOut, nFreqBands));
@@ -930,11 +821,11 @@ for iFile = 1:nFiles
                         end
                         nWin = 0;
                         % Add the number of averaged samples & files to the report (only once per output file)
-                        Message = sprintf('Estimating across %d time samples', nWinLen); % samples are not independent due to bandpass filter
+                        Message = sprintf('Estimating across %d time samples', nAvgLen); % samples are not independent due to bandpass filter
                         if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
                             Message = [Message sprintf(' per file, across %d files', nFiles)];
                         end
-                        if ~isempty(Time) % OPTIONS.isKeepTime
+                        if ~isempty(Time)
                             Message = [Message ', for each output time point'];
                         end
                         bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
@@ -942,13 +833,31 @@ for iFile = 1:nFiles
 
                     % Process one band at a time to minimize memory requirements.
                     for iBand = 1:nFreqBands
-                        % Band-pass filter in one frequency band
-                        DataBand = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                        % Analytic signals (original + i * Hilbert transform)
-                        HA = hilbert_fcn(DataBand')';
-                        if ~isConnNN
-                            DataBand = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                            HB = hilbert_fcn(DataBand')';
+                        switch OPTIONS.tfMeasure
+                            case 'hilbert'
+                                % Band-pass filter in one frequency band
+                                DataBand = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                                % Analytic signals (original + i * Hilbert transform)
+                                HA = hilbert_fcn(DataBand')';
+                                if ~isConnNN
+                                    DataBand = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                                    HB = hilbert_fcn(DataBand')';
+                                end
+                            case 'morlet'
+                                % Compute wavelet decompositions
+                                % Not sure why, but bst_timefreq removes 0 freq (DC) first, and it does change the result.
+                                if iBand == 1
+                                    % Remove mean of the signal
+                                    sInputA.Data = bst_bsxfun(@minus, sInputA.Data, mean(sInputA.Data,2));
+                                end
+                                HA = morlet_transform(sInputA.Data, sInputA.Time, OPTIONS.Freqs(iBand), OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
+                                if ~isConnNN
+                                    if iBand == 1
+                                        % Remove mean of the signal
+                                        sInputB.Data = bst_bsxfun(@minus, sInputB.Data, mean(sInputB.Data,2));
+                                    end
+                                    HB = morlet_transform(sInputB.Data, sInputB.Time, OPTIONS.Freqs(iBand), OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
+                                end
                         end
                         % PLV: Normalize first, keep only phase info.
                         if ismember(OPTIONS.Method, {'plv', 'ciplv'})
@@ -958,7 +867,7 @@ for iFile = 1:nFiles
                             end
                         end
                         % Compute "instantaneous cross-spectrum" first, keeping time.
-                        if OPTIONS.isKeepTime || ismember(OPTIONS.Method, {'pli', 'wpli', 'dwpli'})
+                        if ismember(OPTIONS.TimeRes, {'full', 'windowed'}) || ismember(OPTIONS.Method, {'pli', 'wpli', 'dwpli'})
                             if isConnNN
                                 Sab = bsxfun(@times, permute(HA, [1, 3, 2]), conj(permute(HA, [3, 1, 2])));
                             else
@@ -997,28 +906,15 @@ for iFile = 1:nFiles
 
                 case 'fourier'
                     % "Spectral" formulae, using Fourier transform.
-                    % Check if we're doing "moving average"-like estimation across consecutive time steps, after TF decomposition.
-                    if OPTIONS.isKeepTime && OPTIONS.nAvgWin > OPTIONS.isKeepTime
-                        OPTIONS.isKeepTime = OPTIONS.nAvgWin;
-                    end
-                    % wPLI and debiased wPLI as defined in:
-                    %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
-                    %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
-                    %    Neuroimage, Apr 2011
-                    %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                    % wPLI = abs(E{imag(Sab)}) / E{abs(imag(Sab))}; E{} is expectation value, i.e. terms we must average. Sab is the cross-spectrum.
-                    % Debiased wPLI square, eq. 33 in same publication, after simplifications:
-                    % dwPLI = (N * E{imag(Sab)}^2 - E{imag(Sab)^2}) / (N * E{abs(imag(Sab))}^2 - E{imag(Sab)^2})
-
-                    % One could have files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
+                    % There could be files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
                     % Non-linear functions of cross-spectrum also require the kernel to be applied first.
                     if isConnNN
                         % Avoid passing redundant data
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, [], ...
-                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.isKeepTime);
+                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.nAvgLen);
                     else
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, ...
-                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.isKeepTime);
+                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.nAvgLen);
                     end
                     % Error processing
                     if isempty(S)
@@ -1027,13 +923,13 @@ for iFile = 1:nFiles
                     elseif ~isempty(Messages)
                         bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
                     end
-                    if OPTIONS.isKeepTime
+                    if ismember(OPTIONS.TimeRes, {'full', 'windowed'})
                         if ~isempty(Time)
                             % Convert relative time (first window = 0) to epoch time.
                             Time = Time + sInputA.Time(1);
                         else
                             % File duration too short (already reported). Avoid further checks and error messages.
-                            OPTIONS.isKeepTime = 0;
+                            OPTIONS.nAvgLen = 0;
                         end
                     end
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
@@ -1044,11 +940,16 @@ for iFile = 1:nFiles
                         end
                         nWin = nWinFile;
                         % Add the number of averaged windows & files to the report (only once per output file)
-                        Message = sprintf('Estimating across %d windows of %d samples each', nWinFile, round(OPTIONS.WinLen * sfreq));
+                        if OPTIONS.nAvgLen == 0
+                            nAvgLen = nWinFile;
+                        else
+                            nAvgLen = OPTIONS.nAvgLen;
+                        end
+                        Message = sprintf('Estimating across %d windows of %d samples each', nAvgLen, round(OPTIONS.WinLen * sfreq));
                         if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
                             Message = [Message sprintf(' per file, across %d files', nFiles)];
                         end
-                        if ~isempty(Time) % OPTIONS.isKeepTime
+                        if ~isempty(Time)
                             Message = [Message ', for each output time point'];
                         end
                         bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
@@ -1059,109 +960,7 @@ for iFile = 1:nFiles
                         end
                         nWin = nWin + nWinFile;
                     end
-            end
-
-%         % ==== WPLI-TIME ====            
-%         case 'wplit'
-%             DisplayUnits = 'Weighted phase lag index';
-%             Comment = 'wPLIt';
-% 
-%             % Process one band at a time to minimize memory requirements.
-%             % Intitialize analytical signals
-%             HA = zeros(nA, 1, nTime); % , nFreqBands
-%             if ~isConnNN
-%                 HB = zeros(1, nB, nTime); % , nFreqBands
-%             end
-%             % Initialize accumulators
-%             if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
-%                 R.ImSab = zeros(nA, nB, nTime, nFreqBands);
-%                 R.AbsImSab = zeros(nA, nB, nTime, nFreqBands);
-%                 nWin = 0;
-%             end
-% 
-%             % Loop on each frequency band
-%             for iBand = 1:nFreqBands
-%                 % Band-pass filter in one frequency band
-%                 DataBand = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                 % Analytic signals (original + i * Hilbert transform)
-%                 HA(:,1,:) = hilbert_fcn(DataBand')';
-%                 if ~isConnNN
-%                     DataBand = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     HB(1,:,:) = hilbert_fcn(DataBand')';
-%                 end
-%                 if isConnNN
-%                     Sab = bsxfun(@times, HA, conj(permute(HA, [2, 1, 3, 4])));
-%                 else
-%                     Sab = bsxfun(@times, HA, conj(HB));
-%                 end
-%                 R.ImSab(:,:,:,iBand) = R.ImSab(:,:,:,iBand) + imag(Sab);
-%                 R.AbsImSab(:,:,:,iBand) = R.AbsImSab(:,:,:,iBand) + abs(imag(Sab));
-%             end
-%             nWin = nWin + 1;
-% 
-%         % ==== PLV-TIME ====
-%         case {'plvt', 'ciplvt'}
-%             switch OPTIONS.Method
-%                 case 'plvt'
-%                     DisplayUnits = 'Phase locking value';
-%                     if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
-%                         DisplayUnits = [DisplayUnits, ' magnitude'];
-%                     end
-%                     Comment = 'PLVt';
-%                 case 'ciplvt'
-%                     DisplayUnits = 'Lagged phase synchronization';
-%                     Comment = 'ciPLVt';
-%             end
-%             bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
-%             % Time: vector of file B
-%             nTime = length(sInputB.Time);
-%             % Intitialize returned matrix
-%             nA = size(sInputA.Data,1);
-%             nB = size(sInputB.Data,1);
-%             R = zeros(nA, nB, nTime, nFreqBands);
-% 
-%             % Loop on each frequency band
-%             for iBand = 1:nFreqBands
-%                 % Band-pass filter in one frequency band + Apply Hilbert transform
-%                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     HA = hilbert_fcn(DataAband')';
-%                 if ~isConnNN
-%                     HB = HA;
-%                 else
-%                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-%                     HA = hilbert_fcn(DataAband')';
-%                     HB = hilbert_fcn(DataBband')';
-%                 end
-%                 % Compute the (ci)PLV and wPLI in time for each pair
-% % TODO: optimize with bsxfun and permute instead of rep                
-%                 phaseA = repmat(HA,[nB 1]) ./ abs(repmat(HA,[nB 1]));
-%                 phaseB = repelem(HB,nA, 1) ./ abs(repelem(HB,nA, 1));
-%                 switch (OPTIONS.Method)
-%                     case 'plvt'
-%                         % R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));  % Sylvain Baillet, slower
-%                         if isConnNN
-%                             HA = HA ./ abs(HA);
-%                             R(:,:,iBand) = bsxfun(@times, permute(HA, [1, 3, 2]), conj(permute(HA, [3, 1, 2])));
-%                         else
-%                             R(:,:,iBand) = bsxfun(@times, permute(HA./abs(HA), [1, 3, 2]), conj(permute(HB./abs(HB), [3, 1, 2])));
-%                         end
-% %                         R(:,:,iBand) = (phaseA .* conj(phaseB));  % Daniele Marinazzo
-% % Both bugged:
-%                     case 'ciplvt'
-%                         error('bugged');
-%                         % R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2);     % SLOWER
-%                         csd = phaseA .* conj(phaseB);
-%                         R(:,:,iBand) = imag(csd) ./ (real(csd)/nTime) .* conj(real(csd)/nTime);
-%                     case 'wplit'
-%                         % R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))';    % SLOWER
-%                         cdi = imag(phaseA .* conj(phaseB));
-%                         R(:,:,iBand) = abs(cdi) .* sign(cdi) ./ abs(cdi);
-%                         Comment = 'wPLIt: ';
-%                 end
-%             end
-%             % Reshape as [nA x nB x nTime x nFreq]
-%             R = reshape(R, nA, nB, nTime, nFreqBands);
+            end % tfmeasure switch
 
         % ==== PTE ====
         case 'pte'
@@ -1171,9 +970,6 @@ for iFile = 1:nFiles
             if OPTIONS.isNormalized
                 Comment = [Comment, ' [Normalized]']; %#ok<*AGROW> 
             end
-            % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
-            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Intitialize returned matrix
             R = zeros(nA, nB, 1, nFreqBands);
             % Loop on each frequency band
@@ -1193,15 +989,20 @@ for iFile = 1:nFiles
         case 'henv'
             switch OPTIONS.CohMeasure
                 case 'coh'
-                    DisplayUnits = 'Time-resolved coherence';
+                    DisplayUnits = 'Coherence';
+                    Comment = 'Coh';
                 case 'msc'
-                    DisplayUnits = 'Time-resolved magnitude-squared coherence';
+                    DisplayUnits = 'Magnitude-squared coherence';
+                    Comment = 'MSCoh';
                 case 'lcoh'
-                    DisplayUnits = 'Time-resolved lagged coherence';
+                    DisplayUnits = 'Lagged coherence';
+                    Comment = 'LagCoh';
                 case 'penv'
                     DisplayUnits = 'Envelope correlation';
+                    Comment = 'EnvCorr';
                 case 'oenv'
                     DisplayUnits = 'Orthogonalized envelope correlation';
+                    Comment = 'OEnvCorr';
             end
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, nA, nB));
             % Warning when using the split option
@@ -1210,13 +1011,28 @@ for iFile = 1:nFiles
             end
             % Process options
             OPTIONS.SampleRate = sfreq;
-            OPTIONS.Freqs      = OPTIONS.Freqrange;
             % Compute envelope correlation
             [R, timeSamples, Nwin] = bst_henv(sInputA.Data, sInputB.Data, sInputA.Time, OPTIONS);
             % Output file time
-            sInputB.Time = timeSamples + sInputB.Time(1);
+            Time = timeSamples + sInputB.Time(1);
             % File comment
-            Comment = sprintf('%s (%s, %1.2fs, %dwin)', OPTIONS.CohMeasure, OPTIONS.tfMeasure, OPTIONS.WinLength, Nwin);
+            Comment = [Comment '-' OPTIONS.tfMeasure];
+            if ismember(OPTIONS.TimeRes, {'full', 'windowed'}) && numel(Time) > 1
+                Comment = [Comment '-time'];
+            end
+            % Add the number of averaged samples & files to the report (only once per output file)
+            if strcmpi(OPTIONS.TimeRes, 'none')
+                Message = sprintf('Estimating across %d time samples', nTime); % samples are not independent due to bandpass filter
+            else % 'windowed'
+                Message = sprintf('Estimating across %d time samples', round(OPTIONS.WinLen * sfreq)); % samples are not independent due to bandpass filter
+            end
+            if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
+                Message = [Message sprintf(' per file, across %d files', nFiles)];
+            end
+            if numel(Time) > 1
+                Message = [Message ', for each output time point'];
+            end
+            bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
@@ -1244,11 +1060,7 @@ for iFile = 1:nFiles
             OutHist = bst_history('add', OutHist, DataHist.History, ' - ');
         end
         OutputFiles{iFile} = Finalize(OrigFilesB{iFile});
-%         R = [];
     else 
-        % Concatenate files comments
-        % TODO: this seems odd.
-%         AllComments{end+1} = Comment;
         % Sum terms and continue file loop.
         if isnumeric(R)
             if isempty(Ravg)
@@ -1259,8 +1071,7 @@ for iFile = 1:nFiles
             else
                 Ravg = Ravg + R ./ nFiles;
             end
-        else % struct
-            % Terms are already being summed into R fields directly.
+        % Else R is a struct and terms are already being summed into its fields directly.
         end
         
     end
@@ -1270,18 +1081,11 @@ if ~strcmpi(OPTIONS.OutputMode, 'input')
     if isnumeric(R) && ~isempty(Ravg)
         R = Ravg;
     end
-    if ismember(OPTIONS.OutputMode, {'concat', 'avgcoh'})
-        nAvg = 1;
-    elseif strcmpi(OPTIONS.OutputMode, 'avg')
-        % TODO decide what to do with this. maybe keep for methods where avgcoh is equiv to avg, or granger/pte if they're not changed.
-        nAvg = nFiles;
-    end
     OutputFiles{1} = Finalize;
 end
 
 catch ME
     CleanExit;
-    % TODO: double check this gets caught by bst_process and logged in the report.
     rethrow(ME);
 end
 
@@ -1345,10 +1149,13 @@ function NewFile = Finalize(DataFile)
                         % Lagged Coherence (2019)
                         % LC = Im(C)/sqrt(1-[Re(C)]^2) = Im(Sxy)/sqrt(Sxx*Syy - [Re(Sxy)]^2)
                         R = abs(imag(R.Sab)) ./ sqrt(1-real(R.Sab).^2);
+                        % For diagonal elements (self-connectivity), R = 0/0. Replace by 0.
+                        R(isnan(R(:))) = 0;
                     case 'icohere'
                         % "Imaginary Coherence" (before 2019) = actually squared lagged coherence.
                         % (LC)^2 = Im(C)^2 / (1-Re(C)^2)
                         R = imag(R.Sab).^2 ./ (1-real(R.Sab).^2);
+                        R(isnan(R(:))) = 0;
                 end
         end
         % Static measures may need to be reshaped to add singleton time dimension.
@@ -1392,7 +1199,7 @@ function NewFile = Finalize(DataFile)
     % to work with arrays with more dimensions. Also would likely have better performance (no loop over all frequencies and times).
     
     %% ===== SAVE FILE =====
-    % Comment
+    % Comment: add source x target or input
     Comment = [Comment ': '];
     % 1xN and AxB
     if ~isConnNN
@@ -1454,29 +1261,41 @@ function NewFile = Finalize(DataFile)
 %     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands, DisplayUnits, OutHist);
 % end
 
-    % Comment if average comes from trials
-    if nAvg > 1 
-%         if iscell(Comment)
-%             listComments = Comment;
-%             % If Comments are the same
-%             if length(unique(listComments)) > 1
-%                 % Search for trial tags and remove them
-%                 for iComment = 1 : length(listComments)
-%                     [~, tmpStrs] = regexp(listComments{iComment},'\(#.+\)','match','split');
-%                     listComments{iComment} = deblank([tmpStrs{:}]);
-%                 end
-%             end
-%             if (length(unique(listComments)) == 1)
-%                 Comment = listComments{1};
-%             else
-%                 Comment = listComments{end};
-%             end
-%         else
-            [~, tmpStrs] = regexp(Comment,'\(#.+\)','match','split');
-            Comment = deblank([tmpStrs{:}]);
-%         end
-        Comment = sprintf('Avg: %s (%d)', Comment, nAvg);
+    % For now, nAvg is kept for methods where the final values are averages: averaging is done after full connectivity, including e.g. abs. 
+    % The methods listed here were not (yet) modified with the 2023 file averaging changes.
+    if strcmpi(OPTIONS.OutputMode, 'avg') && ismember(OPTIONS.Method, {'corr', 'granger', 'spgranger', 'aec', 'pte', 'henv'})
+        nAvg = nFiles;
+    else
+        nAvg = 1;
     end
+
+    % Comment: append (n files, n win|samp) when computing/averaging across files and/or time
+    AvgComment = '';
+    if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
+        AvgComment = [AvgComment sprintf('%d files', nFiles)];
+    end
+    if ~isempty(nAvgLen) && nAvgLen > 1
+        if ~isempty(AvgComment)
+            AvgComment = [AvgComment ','];
+        end
+        if strcmpi(OPTIONS.tfMeasure, 'fourier')
+            AvgComment = [AvgComment sprintf('%d win', nAvgLen)];
+        else
+            AvgComment = [AvgComment sprintf('%d samp', nAvgLen)];
+        end
+    end
+    if ~isempty(AvgComment)
+        % Remove previous parentheses
+        [~, tmpStrs] = regexp(Comment,'\(#.+\)','match','split');
+        Comment = deblank([tmpStrs{:}]);
+        % Still add "Avg:" for some methods (those where averaging not yet modified 2023)
+        if nAvg > 1 
+            Comment = ['Avg: ' Comment];
+        end
+        % Add new parentheses
+        Comment = [Comment ' (' AvgComment ')'];
+    end
+
 
 %% ===== SAVE FILE =====
 % function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits, OutHist)
@@ -1507,33 +1326,20 @@ function NewFile = Finalize(DataFile)
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if ismember(OPTIONS.Method, {'henv'}) 
-        FileMat.Time      = sInputB.Time;
-        FileMat.TimeBands = [];
-    elseif OPTIONS.isKeepTime && ~isempty(Time)
+    if ismember(OPTIONS.TimeRes, {'full', 'windowed'}) && ~isempty(Time)
         FileMat.Time      = Time;
         FileMat.TimeBands = [];
     else
         FileMat.Time      = sInputB.Time([1,end]);
         FileMat.TimeBands = {OPTIONS.Method, sInputB.Time(1), sInputB.Time(end)};
     end
-    % Measure 
-    % TODO (this doesn't seem very useful)
-    if ismember(OPTIONS.Method, {'plv','ciplv','wpli'})
-        switch (OPTIONS.PlvMeasure)
-            case 'magnitude'
-                FileMat.Measure = 'other';
-            otherwise
-                FileMat.Measure = 'none';
-        end
-    else
-        FileMat.Measure = 'other';
-    end
+    % Measure
+    FileMat.Measure = 'other';
     % Row names: NxM
     FileMat.RefRowNames = sInputA.RowNames;
     FileMat.RowNames    = sInputB.RowNames;
     % Atlas 
-    % TODO why not save if it's in A side only?
+    % TODO should also save if it's in A side only, which is possible.
     if OPTIONS.isScoutB
         % Save the atlas in the file
         FileMat.Atlas = db_template('atlas');
@@ -1712,13 +1518,13 @@ function Files = GetFileNames(Files)
 end
 
 % Moving average, discarding edges that use zero-padding
-function X = movavg(X, nAvgWin, dim)
-    X = filter(1/nAvgWin * ones(1,nAvgWin), 1, X, [], dim); 
+function X = movavg(X, nAvgLen, dim)
+    X = filter(1/nAvgLen * ones(1,nAvgLen), 1, X, [], dim); 
     % Remove points at start that used zero-padding.
     if dim == 3
-        X(:,:,1:nAvgWin-1,:) = [];
+        X(:,:,1:nAvgLen-1,:) = [];
     elseif dim == 2
-        X(:,1:nAvgWin-1,:) = [];
+        X(:,1:nAvgLen-1,:) = [];
     else
         error('Invalid dim');
     end

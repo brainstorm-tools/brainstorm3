@@ -124,11 +124,11 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.flatten.InputTypesB = {'results'};
     sProcess.options.flatten.Group       = 'input';
     % === SCOUT TIME ===
-    sProcess.options.scoutfunctxt.Comment    = 'Scout function: ';
-    sProcess.options.scoutfunctxt.Type       = 'label';
-    sProcess.options.scoutfunctxt.InputTypes = {'results'};
-    sProcess.options.scoutfunctxt.Group      = 'input';
-    sProcess.options.scouttime.Comment       = {'before ', 'after connectivity', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
+%     sProcess.options.scoutfunctxt.Comment    = 'Scout function: ';
+%     sProcess.options.scoutfunctxt.Type       = 'label';
+%     sProcess.options.scoutfunctxt.InputTypes = {'results'};
+%     sProcess.options.scoutfunctxt.Group      = 'input';
+    sProcess.options.scouttime.Comment       = {'before ', 'after connectivity', 'Scout function: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
                                                 'before', 'after', ''};
     sProcess.options.scouttime.Type          = 'radio_linelabel';
     sProcess.options.scouttime.Value         = 'after';

@@ -1,14 +1,14 @@
-function [S, nAvgWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, isTime)
+function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, nAvgLen)
 % BST_XSPECTRUM : Compute cross-spectrum or orther function of A and B Fourier transforms
 %                 used to to further compute connectivity metrics
 %
-% USAGE:  [S, nWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Overlap=0.5, MaxFreq=[], KernelB=[], Func='xspec', isTime=0)
+% USAGE:  [S, nWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Overlap=0.5, MaxFreq=[], KernelB=[], Func='xspec', nAvgLen=0)
 %
 % INPUTS:
 %    - A       : Signals A [nSignalsA, nTimeA]
 %    - B       : Signals B [nSignalsB, nTimeB] or optionally empty if A=B
 %    - Fs      : Sampling frequency of A and B (in Hz)
-%    - WinLen  : Length of the window used to estimate the auto- and cross-spectra
+%    - WinLen  : Length of the window used for the Fourier transform, to estimate the auto- and cross-spectra
 %    - WinOverlap : [0-1], percentage of time overlap between two consecutive estimation windows
 %    - MaxFreq : Highest frequency of interest
 %    - KernelB : If provided, project Fourier transform of B at the source level before applying functions.
@@ -22,23 +22,24 @@ function [S, nAvgWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 %                'wpli'   : ImSab, AbsImSab
 %                'dwpli'  : ImSab, AbsImSab, SqImSab
 %                'xspec'  : Sab (default)
-%    - isTime  : 0 Average all time windows
+%    - nAvgLen : 0 Average all Fourier windows
 %                1 Don't average windows, S terms have an added time dimension, before the freqency dim.
 %                n Do a moving average over n windows, keeping the time dimension. For long and/or few files.
 %
 % OUTPUTS:
-%    - S : Structure with fields listed above, possibly summed over windows (depending on isTime), 
+%    - S : Structure with fields listed above, possibly summed over windows (depending on nAvgLen), 
 %          for computing the requested connectivity metric. Most terms, like S.Sab, have size
 %          [nSignalsA, nSignalsB, nFreq], or [nA, nB, nTime, nFreq] for time-resolved.
-%    - nAvgWin  : Number of windows that were summed; depends on data length, window params and isTime.
+%    - nAvgLen  : Number of windows that were summed; may be adjusted depending on data length and window params.
 %    - Freq     : Frequency vector (length nFreq).
+%    - Time     : Relative time vector, assuming first input sample is time 0.
 %    - Messages : Text indicating warnings or errors that occured.
 %
 % Implementation notes:
 % - Zero frequency is always removed (hard-coded flag).
 % - 'cohere' was tested with applying the kernel outside this function, but the performance gains did
 %   not justify the added code complexity.
-% - When not doing time-resolved, loop over windows instead of computing all at once.  Uses less
+% - When not doing time-resolved, loops over windows instead of computing all at once.  Uses less
 %   memory, though somewhat slower (~25% in one test).
 
 % @=============================================================================
@@ -67,8 +68,8 @@ function [S, nAvgWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 
 %% ===== INITIALIZATIONS =====
 % Default options
-if nargin < 9 || isempty(isTime)
-    isTime = 0;
+if nargin < 9 || isempty(nAvgLen)
+    nAvgLen = 0;
 end
 if nargin < 8 || isempty(Func)
     Func = 'xspec';
@@ -122,19 +123,19 @@ end
 % Epoch into windows
 [ep, nWin, iStart] = epoching(A, nWinLen, nOverlap);
 % If not enough windows for moving average, average them all, i.e. no time.
-if nWin <= isTime
-    if isTime == 1
-        Messages = 'File time duration too short wrt window length for time-resolved estimation. Only computing one estimate across full duration.';
+if nAvgLen > 0 && nWin <= nAvgLen
+    if nAvgLen == 1
+        Messages = 'File time duration too short wrt window length for time-resolved estimation. Only computing one estimate across all time.';
     else
-        Messages = 'File time duration too short for requested moving average of time windows. Only computing one estimate across full duration.';
+        Messages = 'File time duration too short for requested moving average of time windows. Only computing one estimate across all time.';
     end
-    isTime = 0;
+    nAvgLen = 0;
 end
 % Save times at center of windows (could be between 2 samples), assuming first sample is time 0, and
 % accounting for possible moving average over multiple windows and excluding edges with zero padding
 % (so fewer windows are output)
-if isTime
-    Time = (iStart(1:(end-isTime+1)) - 1 + isTime/2) / Fs;
+if nAvgLen
+    Time = (iStart(1:(end-nAvgLen+1)) - 1 + nAvgLen/2) / Fs;
 end
 ep = bsxfun(@times, ep, win);
 % Zero padding, FFT, keep only positive frequencies, remove zero freq.
@@ -177,7 +178,7 @@ if ~isNxN
 else
     nB = nA;
 end
-if ~isTime % initialize for window loop
+if ~nAvgLen % not keeping time: initialize for window loop
     switch Func
         case {'plv', 'ciplv', 'cohere', 'xspec'}
             % For cohere: Saa, Sbb don't need window loop thus no initialization.
@@ -204,7 +205,7 @@ if ismember(Func, {'plv', 'ciplv'})
 end
     
 %% ===== Compute requested functions for each window =====
-if ~isTime
+if ~nAvgLen % not keeping time: loop over windows
     % These terms have size [nA, nB, nFreq]
     % This could be done faster without looping as when keeping time, but would require nWin times more memory.
     for iWin = 1:nWin
@@ -236,7 +237,7 @@ if ~isTime
             S.Sbb = sum(abs(Fb).^2, 3);
         end
     end
-    nAvgWin = nWin;
+    nAvgLen = nWin;
     % Dividing by number of windows (for averaging) can be done later, but often cancels anyway.
 
 else % keep time, no window looping
@@ -268,25 +269,14 @@ else % keep time, no window looping
     end
 
     % Moving sum over windows.
-    if isTime > 1
-        nAvgWin = isTime;
+    if nAvgLen > 1
         Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
         for f = 1:numel(Terms)
-            if ndims(S.(Terms{f})) == 4
-                % Sum over second-last dimension = time
-                S.(Terms{f}) = filter(ones(1,nAvgWin), 1, S.(Terms{f}), [], 3);
-                % Remove points at start that used zero-padding.
-                S.(Terms{f})(:,:,1:nAvgWin-1,:) = [];
-            elseif ndims(S.(Terms{f})) == 3
-                S.(Terms{f}) = filter(ones(1,nAvgWin), 1, S.(Terms{f}), [], 2);
-                S.(Terms{f})(:,1:nAvgWin-1,:) = [];
-            else
-                error('Unexpected dimension.');
-            end
+            S.(Terms{f}) = movsum(S.(Terms{f}), nAvgLen, ndims(S.(Terms{f})) - 1);
         end
     else
         % No averaging.
-        nAvgWin = 1;
+        nAvgLen = 1;
     end
 
 end
@@ -315,4 +305,15 @@ function [epx, nEpochs, iStart] = epoching(x, nEpochLen, nOverlap)
     end
 end
 
-
+% Moving sum (like moving average), discarding edges that use zero-padding
+function X = movsum(X, nAvgLen, dim)
+    X = filter(ones(1,nAvgLen), 1, X, [], dim); 
+    % Remove points at start that used zero-padding.
+    if dim == 3
+        X(:,:,1:nAvgLen-1,:) = [];
+    elseif dim == 2
+        X(:,1:nAvgLen-1,:) = [];
+    else
+        error('Invalid dim');
+    end
+end

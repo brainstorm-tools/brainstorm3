@@ -24,7 +24,7 @@ eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % === Description the process
     sProcess.Comment     = 'Envelope Correlation AxB [2022]';
     sProcess.Category    = 'Custom';
@@ -37,7 +37,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isPaired    = 1;
-    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
@@ -55,9 +54,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
     % === Edit Panel 
-    sProcess.options.edit.Comment = {'panel_timefreq_options', 'Options: '};
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = [];
+    sProcess.options.tfedit.Comment = {'panel_timefreq_options', 'Options: '};
+    sProcess.options.tfedit.Type    = 'editpref';
+    sProcess.options.tfedit.Value   = [];
     % === Split a Large Signal into Blocks 
     sProcess.options.tfsplit.Comment = 'Split large data in:';
     sProcess.options.tfsplit.Type    = 'value';
@@ -98,12 +97,12 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
     Comment = sProcess.Comment;
 end
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputA, sInputB) 
     % Initialize returned values
     OutputFiles = {};
     
@@ -121,7 +120,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     
     % === Time-freq method 
     % Get time-freq panel options
-    tfOPTIONS = sProcess.options.edit.Value;
+    tfOPTIONS = sProcess.options.tfedit.Value;
     if isempty(tfOPTIONS)
         [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
         gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0); 
@@ -133,9 +132,9 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
     switch OPTIONS.tfMeasure
         case 'hilbert'
-            OPTIONS.Freqrange    = tfOPTIONS.Freqs;
+            OPTIONS.Freqs    = tfOPTIONS.Freqs;
         case 'morlet'
-            OPTIONS.Freqrange    = tfOPTIONS.Freqs(:);
+            OPTIONS.Freqs    = tfOPTIONS.Freqs(:);
             OPTIONS.MorletFc     = tfOPTIONS.MorletFc;
             OPTIONS.MorletFwhmTc = tfOPTIONS.MorletFwhmTc;
     end
@@ -157,7 +156,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.HStatDyn   = sProcess.options.statdyn.Value; 
     
     % === Parallel Processing 
-    OPTIONS.isParallel = sProcess.options.parallel.Value ; 
+    OPTIONS.isParallel = sProcess.options.parallel.Value; 
 
     % === Computing connectivity matrix
     OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
