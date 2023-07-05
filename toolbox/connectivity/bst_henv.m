@@ -225,7 +225,7 @@ for f = 1:nfBins
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
 %         else
 %         end
-        % TODO: abs() here prevents "improved" aggregation across files in bst_connectivity (averaging changes 2023).
+        % TODO: abs() here also prevents "improved" aggregation across files in bst_connectivity (averaging changes 2023).
         A(:,:,t,f) = abs(CorrMat) ;
 
     end
@@ -309,9 +309,13 @@ function At = HMatCorr(U,V)
 %     end
 % end
 
-% Equivalent implementation F.TADEL (14-11-2022)
-Uc = U - mean(U,1);  % Remove mean
-Vc = V - mean(V,1);  % Remove mean
-At = (Uc' * Vc) ./ sqrt(sum(Uc.*Uc,1) .* sum(Vc.*Vc,1));
+% % Equivalent implementation F.TADEL (14-11-2022)
+% % TODO: missing bsxfun for minus
+% Uc = U - mean(U,1);  % Remove mean
+% Vc = V - mean(V,1);  % Remove mean
+% At = (Uc' * Vc) ./ bsxfun(@times, sqrt(sum(Uc.*Uc,1))', sqrt(sum(Vc.*Vc,1)));
+
+% Equivalent, but more robust numerically; existing correlation code (2023-07)
+At = bst_corrn(U', V', 1);
 
 end

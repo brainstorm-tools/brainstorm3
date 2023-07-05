@@ -59,7 +59,7 @@ function sProcess = GetDescription()
     % === Time-freq options
 %     sProcess.options.label2.Comment = '<B>Time-frequency decomposition:</B>';
 %     sProcess.options.label2.Type    = 'label';
-    sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Spectral (Fourier)', '<B>Time-frequency decomposition:</B>'; ...
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Fourier transform', '<B>Time-frequency decomposition:</B>'; ...
                                           'hilbert', 'fourier', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
@@ -154,15 +154,15 @@ function OutputFiles = Run(sProcess, sInputA, sInputB)
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
     switch OPTIONS.tfMeasure
         case 'hilbert'
-    % Get time-freq panel options
+            % Get time-freq panel options
             tfOPTIONS = sProcess.options.tfedit.Value;
             if isempty(tfOPTIONS)
-        [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
-        gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0); 
-        drawnow;
-        tfOPTIONS = panel_timefreq_options('GetPanelContents');
-        gui_hide(panelName);
-    end
+                [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
+                gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0);
+                drawnow;
+                tfOPTIONS = panel_timefreq_options('GetPanelContents');
+                gui_hide(panelName);
+            end
             OPTIONS.Freqs = tfOPTIONS.Freqs;
             if strcmpi(sProcess.options.timeres.Value, 'windowed')
                 OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};

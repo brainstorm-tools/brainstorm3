@@ -57,7 +57,7 @@ function sProcess = GetDescription()
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'penv';
     % === TIME-FREQUENCY OPTIONS
-    sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Wavelets (Morlet)', '<B>Time-frequency decomposition:</B>'; ... % , 'Spectral (Fourier)'
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', '<B>Time-frequency decomposition:</B>'; ... % , 'Spectral (Fourier)'
                                           'hilbert', 'morlet', ''}; % 'fourier', 
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
@@ -143,16 +143,16 @@ function OutputFiles = Run(sProcess, sInputA)
     
     % === Number of Blocks
     if isfield(sProcess.options, 'tfsplit')
-        entNumBlocks = sProcess.options.tfsplit.Value{1};
+        OPTIONS.tfSplit = sProcess.options.tfsplit.Value{1};
+        if OPTIONS.tfSplit <= 1
+            OPTIONS.tfSplit = 1;
+        elseif OPTIONS.tfSplit > 20
+            OPTIONS.tfSplit = 20;
+        else
+            OPTIONS.tfSplit = round(OPTIONS.tfSplit);
+        end
     else
-        entNumBlocks = 1;
-    end
-    if entNumBlocks <= 1
         OPTIONS.tfSplit = 1;
-    elseif entNumBlocks > 20
-        OPTIONS.tfSplit = 20;
-    else
-        OPTIONS.tfSplit = round(entNumBlocks);
     end
 
     if isfield(sProcess.options, 'win_length')

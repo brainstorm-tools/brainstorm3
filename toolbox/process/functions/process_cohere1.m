@@ -62,7 +62,7 @@ function sProcess = GetDescription()
     % === Time-freq options
     sProcess.options.label2.Comment = '<B>Time-frequency decomposition:</B>';
     sProcess.options.label2.Type    = 'label';
-    sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Wavelets (Morlet)', 'Spectral (Fourier)', ''; ...
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', 'Fourier transform', ''; ...
                                           'hilbert', 'morlet', 'fourier', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';

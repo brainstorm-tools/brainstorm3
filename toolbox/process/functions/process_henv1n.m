@@ -49,8 +49,8 @@ function sProcess = GetDescription()
     % === Connectivity measure 
     sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.cohmeasure.Comment = {'Envelope correlation (no orthogonalization)','Envelope correlation (orthogonalized)','Lcoh-test'; ...
-                                           'penv', 'oenv', 'lcoh'}; % 'coh', 'msc', 'lcoh', 
+    sProcess.options.cohmeasure.Comment = {'Envelope correlation (no orthogonalization)','Envelope correlation (orthogonalized) '; ...
+                                           'penv', 'oenv'}; % 'coh', 'msc', 'lcoh', 
 %                                            'Magnitude coherence: |C|= |Cxy|/sqrt(Cxx*Cyy)', ...
 %                                            'Magnitude-squared coherence: |C|^2 = |Cxy|^2/(Cxx*Cyy)', ...
 %                                            'Lagged coherence: LC = |imag(C)|/sqrt(1-real(C)^2)', ...
@@ -58,7 +58,7 @@ function sProcess = GetDescription()
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'penv';
     % === TIME-FREQUENCY OPTIONS
-    sProcess.options.tfmeasure.Comment = {'Instantaneous (Hilbert)', 'Wavelets (Morlet)', '<B>Time-frequency decomposition:</B>'; ... % , 'Spectral (Fourier)'
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', '<B>Time-frequency decomposition:</B>'; ... % , 'Spectral (Fourier)'
                                           'hilbert', 'morlet', ''}; % 'fourier', 
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
@@ -135,31 +135,31 @@ function OutputFiles = Run(sProcess, sInputA)
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
     switch OPTIONS.tfMeasure
         case 'hilbert'
-            OPTIONS.Freqs    = tfOPTIONS.Freqs;
+            OPTIONS.Freqs        = tfOPTIONS.Freqs;
         case 'morlet'
-            OPTIONS.Freqs    = tfOPTIONS.Freqs(:);
+            OPTIONS.Freqs        = tfOPTIONS.Freqs(:);
             OPTIONS.MorletFc     = tfOPTIONS.MorletFc;
             OPTIONS.MorletFwhmTc = tfOPTIONS.MorletFwhmTc;
     end
     
     % === Number of Blocks
     if isfield(sProcess.options, 'tfsplit')
-    entNumBlocks = sProcess.options.tfsplit.Value{1}; 
+        OPTIONS.tfSplit = sProcess.options.tfsplit.Value{1};
+        if OPTIONS.tfSplit <= 1
+            OPTIONS.tfSplit = 1; 
+        elseif OPTIONS.tfSplit > 20
+            OPTIONS.tfSplit = 20;
+        else
+            OPTIONS.tfSplit = round(OPTIONS.tfSplit);
+        end
     else
-        entNumBlocks = 1;
-    end
-    if entNumBlocks <= 1
-        OPTIONS.tfSplit = 1; 
-    elseif entNumBlocks > 20
-        OPTIONS.tfSplit = 20;
-    else
-        OPTIONS.tfSplit = round(entNumBlocks); 
+        OPTIONS.tfSplit = 1;
     end
     
     if isfield(sProcess.options, 'win_length')
         % Compatibility (before 2023)
         OPTIONS.WinLen     = sProcess.options.win_length.Value{1};
-    OPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1} / 100;
+        OPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1} / 100;
         if strcmpi(sProcess.options.statdyn.Value, 'static')
             OPTIONS.TimeRes = 'none';
         else % 'dynamic'
