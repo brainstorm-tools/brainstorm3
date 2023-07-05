@@ -3920,7 +3920,11 @@ switch contextName
         % Font types
         fontTypes = {};
         if (nargin >= 3)
-            fontTypes{end + 1} = varargin{3};
+            if ischar(varargin{3})
+                fontTypes = varargin(3);
+            else
+                fontTypes = varargin{3};
+            end
         else
             fontTypes{end + 1} = 'Arial';            % Default font
             fontTypes{end + 1} = 'Liberation Sans';  % Free Arial substitute
