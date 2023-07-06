@@ -37,7 +37,7 @@ function sProcess = GetDescription()
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.OutputTypes = {'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Bin size
@@ -159,7 +159,7 @@ function OutputFiles = Run(sProcess, sInputs)
         
         % ===== SAVE RESULTS =====
         % Prepare output file structure
-        TfMat = db_template('timefreqmat');
+        TfMat = db_template('matrixmat');
         TfMat.Value        = meanData;
         TfMat.Std          = CI;
         TfMat.Comment      = ['PSTH: ' uniqueComments{iList}];
@@ -167,7 +167,7 @@ function OutputFiles = Run(sProcess, sInputs)
         TfMat.Time         = diff(bins(1:2))/2+bins(1:end-1);
         TfMat.ChannelFlag  = ones(length(labelsNeurons),1);
         TfMat.nAvg         = 1;
-        TfMat.DisplayUnits = 'Spikes/sec';
+        TfMat.DisplayUnits = 'Firing rate (spikes/s)';
         
         % Add history field
         TfMat = bst_history('add', TfMat, 'compute', 'PSTH per neuron');

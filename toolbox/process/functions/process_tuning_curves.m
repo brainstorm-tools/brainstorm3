@@ -162,7 +162,7 @@ function OutputFiles = Run(sProcess, sInput)
               
         set(gca, 'Xtick', 1:length(sProcess.options.eventsel.Value), 'Xticklabel', sProcess.options.eventsel.Value);
         xlabel('Condition');
-        ylabel('Firing Rate (Spikes/second)');
+        ylabel('Firing rate (spikes/s)');
         grid on
             
         if max(CI(2,:)) == 0
