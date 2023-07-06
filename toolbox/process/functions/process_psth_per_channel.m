@@ -123,15 +123,16 @@ function OutputFiles = Run(sProcess, sInput)
     % ===== SAVE RESULTS =====
     % Prepare output file structure
     FileMat = db_template('datamat');
-    FileMat.F           = single_file_binning;
-    FileMat.Time        = diff(bins(1:2))/2+bins(1:end-1);
-    FileMat.Comment     = ['PSTH: ' DataMat.Comment];
-    FileMat.DataType    = 'recordings';
-    FileMat.ChannelFlag = DataMat.ChannelFlag;
-    FileMat.Device      = DataMat.Device;
-    FileMat.Events      = Events;
-    FileMat.nAvg        = 1;
-    FileMat.History     = DataMat.History;
+    FileMat.F            = single_file_binning;
+    FileMat.Time         = diff(bins(1:2))/2+bins(1:end-1);
+    FileMat.Comment      = ['PSTH: ' DataMat.Comment];
+    FileMat.DataType     = 'recordings';
+    FileMat.ChannelFlag  = DataMat.ChannelFlag;
+    FileMat.Device       = DataMat.Device;
+    FileMat.Events       = Events;
+    FileMat.nAvg         = 1;
+    FileMat.DisplayUnits = 'Firing rate (spikes/s)';
+    FileMat.History      = DataMat.History;
     
     % Add history field
     FileMat = bst_history('add', FileMat, 'ptsh', ['PSTH per electrode: ' num2str(bin_size) ' ms']);
