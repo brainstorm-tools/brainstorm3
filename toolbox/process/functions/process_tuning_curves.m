@@ -95,27 +95,20 @@ function OutputFiles = Run(sProcess, sInput)
     for iNeuron = 1:length(sProcess.options.spikesel.Value)
         index_NeuronEvents = find(ismember(allEventLabels, sProcess.options.spikesel.Value{iNeuron})); % Find the index of the spike-events that correspond to that electrode (Exact string match)
         times_NeuronEvents = events(index_NeuronEvents).times;
+        % Get closest index for spike event in the time vector
         times_NeuronEventsIx = times_NeuronEvents;        
         for ifor = 1 : length(times_NeuronEvents)
-            disp(ifor)
-            [~, ix] = min(abs(raw_link.Time - times_NeuronEvents(ifor)));
-            times_NeuronEventsIx(ifor) = ix;
+            [~, times_NeuronEventsIx(ifor)] = min(abs(raw_link.Time - times_NeuronEvents(ifor)));
         end
         
         for iEvent = 1:length(sProcess.options.eventsel.Value)
             index_StimulusEvents = find(ismember(allEventLabels, sProcess.options.eventsel.Value{iEvent})); % Find the index of the spike-events that correspond to that electrode (Exact string match)
             times_StimulusEvents = events(index_StimulusEvents).times;
-
-            
             final_matrix{iNeuron, iEvent} = zeros([1,length(times_StimulusEvents)]);
             for iSampleEvent = 1:length(times_StimulusEvents)
-                if iSampleEvent == 35
-                    disp('')
-                end
-                
+                % Get closet index for requested window around the Events selected
                 iTime = panel_time('GetTimeIndices', raw_link.Time, times_StimulusEvents(iSampleEvent) + sProcess.options.timewindow.Value{1});
-                
-                %number_spikes = sum((times_NeuronEvents >= times_StimulusEvents(iSampleEvent) + sProcess.options.timewindow.Value{1}(1)) & (times_NeuronEvents <= times_StimulusEvents(iSampleEvent) + sProcess.options.timewindow.Value{1}(2)));                                               
+                % Count spikes
                 number_spikes = sum((times_NeuronEventsIx >= iTime(1)) & (times_NeuronEventsIx <= iTime(end)));                                               
                 final_matrix{iNeuron, iEvent}(iSampleEvent) = number_spikes;
             end
