@@ -329,10 +329,14 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             isEeg  = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'EEG'));
             isEcog = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'ECOG'));
             isSeeg = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'SEEG'));
+            isNIRS = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'NIRS'));
         end
     end
     % Check that at least one modality is available
-    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
+    if isNIRS
+        errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
+        return;
+    elseif ~isMeg && ~isEeg && ~isEcog && ~isSeeg
         errMessage = 'No valid sensor types to estimate a head model.';
         return;
     end
