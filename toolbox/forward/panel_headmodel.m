@@ -334,7 +334,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     end
     % Check that at least one modality is available
     if isNIRS
-        errMessage = 'To compute head model for NIRS, use NIRS > Sources > Compute head model from fluence (using NIRSTORM plugin).';
+        errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
         return;
     elseif ~isMeg && ~isEeg && ~isEcog && ~isSeeg
         errMessage = 'No valid sensor types to estimate a head model.';
