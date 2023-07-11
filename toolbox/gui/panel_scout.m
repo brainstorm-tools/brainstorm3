@@ -5318,7 +5318,12 @@ function SaveScouts(varargin)
             % Save file
             bst_save(ScoutFile, sAtlas, 'v7');
         case 'FS-LABEL-SINGLE'
-            out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            if length(sScouts) == 1
+             out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            else
+              bst_error('FreeSurfer label file corresponds can only store a single ROI. Please export each label separatly');
+              return;
+            end
     end
 end
 
