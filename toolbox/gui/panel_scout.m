@@ -5321,7 +5321,7 @@ function SaveScouts(varargin)
             if length(sScouts) == 1
              out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
             else
-              bst_error('FreeSurfer label file corresponds can only store a single ROI. Please export each label separatly');
+              bst_error('FreeSurfer label file can only store a single ROI. Please export each label separatly');
               return;
             end
     end
