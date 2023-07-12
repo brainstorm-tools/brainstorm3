@@ -190,14 +190,14 @@ for iFile = 1:length(LabelFiles)
                 continue
             end
             % Check sizes
-            if (length(labels) ~= length(Vertices))
-                Messages = [Messages, sprintf('%s: Number of vertices in the surface (%d) and the label file (%d) do not match.\n', [fBase, fExt], length(Vertices), length(labels))];
-                continue
-            end
+%             if (length(labels) ~= length(Vertices))
+%                 Messages = [Messages, sprintf('%s: Number of vertices in the surface (%d) and the label file (%d) do not match.\n', [fBase, fExt], length(Vertices), length(labels))];
+%                 continue
+%             end
 
             % === CONVERT TO SCOUTS ===
             % Convert to scouts structures
-            lablist = unique(labels);
+            lablist = colortable.table(:,5);
             % Loop on each label
             for i = 1:length(lablist)
                 % Find entry in the colortable
@@ -208,7 +208,7 @@ for iFile = 1:length(LabelFiles)
                 end             
                 % New scout index
                 iScout = length(sAtlas.Scouts) + 1;
-                sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
+                sAtlas.Scouts(iScout).Vertices = 1 + vertices(labels == lablist(i))';
                 if ~isempty(colortable.struct_names{iTable})
                     % Strip uselss parts of Schaeffer labels
                     Label = colortable.struct_names{iTable};
