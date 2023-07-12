@@ -197,7 +197,7 @@ for iFile = 1:length(LabelFiles)
 
             % === CONVERT TO SCOUTS ===
             % Convert to scouts structures
-            lablist = colortable.table(:,5);
+            lablist = unique(labels);
             % Loop on each label
             for i = 1:length(lablist)
                 % Find entry in the colortable
