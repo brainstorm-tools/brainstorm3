@@ -1834,19 +1834,19 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
         % Copy list to all modalities
         GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities = Modality;
+        % PSD: dataset channel flag from parent data file
+        if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
+            ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
+            if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
+                GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
+            end
+        end
         % If only one modality: consider it as the "type" of the file
         if (length(Modality) == 1)
             GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality = Modality{1};
             % If the good/bad channels for the dataset are not defined yet
             if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
-                % PSD: Remove bad channels defined in parent data file
-                if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
-                    ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
-                    if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
-                        GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
-                    end
-                end
-                % Otherwise: Set all the channels as good by default
+                % Set all the channels as good by default
                 if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
                     GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
                 end
