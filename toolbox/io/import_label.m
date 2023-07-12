@@ -182,18 +182,14 @@ for iFile = 1:length(LabelFiles)
         % ===== FREESURFER ANNOT =====
         case 'FS-ANNOT'
             % === READ FILE ===
-            % Read label file
+            % Read .annot file
+            % Number of labels (and vertices) in annot file can be different from number of vertices in surface
             try
                 [vertices, labels, colortable] = read_annotation(LabelFiles{iFile}, 0);
             catch
                 Messages = [Messages, sprintf('%s: read_annotation crashed: %s\n', [fBase, fExt], lasterr)];
                 continue
             end
-            % Check sizes
-%             if (length(labels) ~= length(Vertices))
-%                 Messages = [Messages, sprintf('%s: Number of vertices in the surface (%d) and the label file (%d) do not match.\n', [fBase, fExt], length(Vertices), length(labels))];
-%                 continue
-%             end
 
             % === CONVERT TO SCOUTS ===
             % Convert to scouts structures

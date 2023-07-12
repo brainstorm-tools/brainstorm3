@@ -5301,7 +5301,7 @@ function SaveScouts(varargin)
                              'single', 'files', ...
                              {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
                               {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'; ...
-                              {'.annot'}, 'FreeSurfer annotation, multiple scout(*.annot)', 'FS-ANNOT'}, 1);
+                              {'.annot'}, 'FreeSurfer annotation, multiple scouts (*.annot)', 'FS-ANNOT'}, 1);
     if isempty(ScoutFile)
         return;
     end
@@ -5320,10 +5320,10 @@ function SaveScouts(varargin)
             bst_save(ScoutFile, sAtlas, 'v7');
         case 'FS-LABEL-SINGLE'
             if length(sScouts) == 1
-             out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+                out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
             else
-              bst_error('FreeSurfer label file can only store a single scout. Please export each scout separatly');
-              return;
+                bst_error('FreeSurfer label file can only store a single scout. Please export each scout separatly');
+                return;
             end
         case 'FS-ANNOT'
             vertices = [];
