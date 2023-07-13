@@ -43,11 +43,11 @@ function sProcess = GetDescription()
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
     % === REMOVE EVOKED REPONSE
-    % TODO: option to be removed once a process exists
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
+    sProcess.options.removeevoked.Hidden  = 1;
     % === COHERENCE METHOD
     sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
     sProcess.options.label1.Type    = 'label';
@@ -114,7 +114,7 @@ function sProcess = GetDescription()
     sProcess.options.avgwinnum.Class   = 'fourier';
     % === OUTPUT MODE / FILE AVERAGING
     % Ideally, 'input' would be disabled for 'full' time resolution.
-    sProcess.options.outputmode.Comment = {'separately for each file', 'once across files/epochs', 'Estimate & save:'; ...
+    sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...
                                             'input', 'avg', ''};
     sProcess.options.outputmode.Type    = 'radio_linelabel';
     sProcess.options.outputmode.Value   = 'input';

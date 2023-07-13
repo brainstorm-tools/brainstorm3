@@ -405,8 +405,6 @@ SurfaceFileB = [];
 % Save scouts structures in the options
 OPTIONS.sScoutsA = [];
 OPTIONS.sScoutsB = [];
-OPTIONS.sScoutsAtlasB = [];
-OPTIONS.sScoutsGridLocB = [];
 R = [];
 Time = [];
 nAvgLen = [];
@@ -499,8 +497,7 @@ for iFile = 1:nFiles
     end
     
     % ===== GET SCOUTS SCTRUCTURES =====
-    % TODO: We may not even need this.  Only for 'after' and even then, we've gone through 'all'
-    % before in that case so we should have the Atlas.
+    % TODO: We may not need this. sInputA/B.Atlas could be used instead of sScoutsA/B, which are only used for comments and 'after' scout extraction.
     % This is a bit slow: only load once if surface files match.
     % Selected scout function now saved in sScouts in GetScoutsInfo (overrides the one stored in the SurfaceFile, to use scout function requested in the process options).
     % Scouts for FilesB
@@ -515,23 +512,7 @@ for iFile = 1:nFiles
                 bst_report('Error', OPTIONS.ProcessName, FilesB{iFile}, 'Cannot compute connectivity across files from different subjects or surfaces together.');
                 CleanExit; return;
             end
-            [OPTIONS.sScoutsB, AtlasNames] = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB, [], OPTIONS.ScoutFunc);
-            % Get atlas name
-            uniqueAtlasNames = unique(AtlasNames);
-            if (length(uniqueAtlasNames) == 1)
-                OPTIONS.sScoutsAtlasNameB = AtlasNames{1};
-                % Volume atlas: get the GridLoc
-                if panel_scout('ParseVolumeAtlas', OPTIONS.sScoutsAtlasNameB)
-                    % Load the GridLoc from the first input source file
-                    warning off MATLAB:load:variableNotFound
-                    sResultsVol = load(file_fullpath(FilesB{iFile}), 'GridLoc');
-                    warning on MATLAB:load:variableNotFound
-                    % Return the GridLoc
-                    if ~isempty(sResultsVol) && isfield(sResultsVol, 'GridLoc')
-                        OPTIONS.sScoutsGridLocB = sResultsVol.GridLoc;
-                    end
-                end
-            end
+            OPTIONS.sScoutsB = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB, [], OPTIONS.ScoutFunc);
         end
     end
     % Scouts for FilesA
@@ -550,6 +531,7 @@ for iFile = 1:nFiles
             end
             if isConnNN || isequal(OPTIONS.TargetA, OPTIONS.TargetB)
                 OPTIONS.sScoutsA = OPTIONS.sScoutsB;
+                OPTIONS.sScoutsAtlasNameA = sScoutsAtlasNameB;
             else
                 OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA, [], OPTIONS.ScoutFunc);
             end
@@ -1308,6 +1290,8 @@ function NewFile = Finalize(DataFile)
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = db_template('timefreqmat');
+    FileMat.Atlas = db_template('atlas');
+    FileMat.Atlas.Name = '';
     % Reshape: [nA x nB x nTime x nFreq] => [nA*nB x nTime x nFreq]
     FileMat.TF           = reshape(R, [], size(R,3), size(R,4));
     FileMat.DisplayUnits = DisplayUnits;
@@ -1338,31 +1322,28 @@ function NewFile = Finalize(DataFile)
     % Row names: NxM
     FileMat.RefRowNames = sInputA.RowNames;
     FileMat.RowNames    = sInputB.RowNames;
-    % Atlas 
-    % TODO should also save if it's in A side only, which is possible.
-    if OPTIONS.isScoutB
-        % Save the atlas in the file
-        FileMat.Atlas = db_template('atlas');
-        if ~isempty(OPTIONS.sScoutsAtlasNameB)
-            FileMat.Atlas.Name = OPTIONS.sScoutsAtlasNameB;
-        else
-            FileMat.Atlas.Name = OPTIONS.ProcessName;
-        end
-        if ~isempty(OPTIONS.sScoutsGridLocB)
-            FileMat.GridLoc = OPTIONS.sScoutsGridLocB;
-        end
-        FileMat.Atlas.Scouts = OPTIONS.sScoutsB;
-    elseif ~isempty(sInputB.Atlas)
-        FileMat.Atlas = sInputB.Atlas;
+    % Atlas: save A in first index, B in second, unless there's only B.
+    if ~isempty(sInputA.Atlas)
+        FileMat.Atlas(1) = sInputA.Atlas(1);
     end
+    if ~isempty(sInputB.Atlas)
+        FileMat.Atlas(end+1) = sInputB.Atlas(1);
+    end
+    % Surface & grid: save from B, otherwise if missing, save from A.
     if ~isempty(sInputB.SurfaceFile)
         FileMat.SurfaceFile = sInputB.SurfaceFile;
+    elseif ~isempty(sInputA.SurfaceFile)
+        FileMat.SurfaceFile = sInputA.SurfaceFile;
     end
     if ~isempty(sInputB.GridLoc)
         FileMat.GridLoc = sInputB.GridLoc;
+    elseif ~isempty(sInputA.GridLoc)
+        FileMat.GridLoc = sInputA.GridLoc;
     end
     if ~isempty(sInputB.GridAtlas)
         FileMat.GridAtlas = sInputB.GridAtlas;
+    elseif ~isempty(sInputA.GridAtlas)
+        FileMat.GridAtlas = sInputA.GridAtlas;
     end
     % History
     % If using temp files for flattening or scout PCA, this is the only place the % kept variance

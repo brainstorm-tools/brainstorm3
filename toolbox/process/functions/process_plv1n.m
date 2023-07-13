@@ -116,7 +116,7 @@ function sProcess = GetDescription()
     sProcess.options.avgwinnum.Class   = 'fourier';
     % === OUTPUT MODE / FILE AVERAGING
     % Ideally, 'input' would be disabled for 'full' time resolution.
-    sProcess.options.outputmode.Comment = {'separately for each file', 'once across files/epochs', 'Estimate & save:'; ...
+    sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...
                                             'input', 'avg', ''};
     sProcess.options.outputmode.Type    = 'radio_linelabel';
     sProcess.options.outputmode.Value   = 'input';

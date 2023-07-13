@@ -41,11 +41,11 @@ function sProcess = GetDescription()
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
     % === REMOVE EVOKED REPONSE
-    % TODO: option to be removed once a process exists
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
+    sProcess.options.removeevoked.Hidden  = 1;
     % === Connectivity measure 
     sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
     sProcess.options.label1.Type    = 'label';
@@ -90,7 +90,7 @@ function sProcess = GetDescription()
     sProcess.options.parallel.Type    = 'checkbox';
     sProcess.options.parallel.Value   = 0;  
     % === OUTPUT MODE / FILE AVERAGING
-    sProcess.options.outputmode.Comment = {'separately for each file', 'once across files/epochs', 'Estimate & save:'; ...
+    sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
                                             'input', 'avg', ''};
     sProcess.options.outputmode.Type    = 'radio_linelabel';
     sProcess.options.outputmode.Value   = 'input';

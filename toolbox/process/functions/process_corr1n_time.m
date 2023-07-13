@@ -65,15 +65,17 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scalarprod.Type       = 'checkbox';
     sProcess.options.scalarprod.Value      = 0;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
-%     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
-%     sProcess.options.outputmode.Type    = 'radio';
-%     sProcess.options.outputmode.Value   = 1;
+    % Why is this disabled just for corr1n_time?
+%     sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
+%                                             'input', 'avg', ''};
+%     sProcess.options.outputmode.Type    = 'radio_linelabel';
+%     sProcess.options.outputmode.Value   = 'input';
+%     sProcess.options.outputmode.Group   = 'output';
     % === OUTPUT COMMENT TAG
     sProcess.options.commenttag.Comment = 'Comment tag: ';
     sProcess.options.commenttag.Type    = 'text';
-    sProcess.options.commenttag.Value   = '';    
+    sProcess.options.commenttag.Value   = '';   
+    sProcess.options.commenttag.Group   = 'output';
 end
 
 

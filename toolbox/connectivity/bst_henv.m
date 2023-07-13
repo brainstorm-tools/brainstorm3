@@ -225,8 +225,8 @@ for f = 1:nfBins
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
 %         else
 %         end
-        % TODO: abs() here also prevents "improved" aggregation across files in bst_connectivity (averaging changes 2023).
-        A(:,:,t,f) = abs(CorrMat) ;
+        % 2023-07: removed abs() here, which is not needed and also prevents "improved" aggregation across files in bst_connectivity.
+        A(:,:,t,f) = CorrMat ;
 
     end
 end
@@ -289,6 +289,8 @@ end
 end
 
 function ConVec = HOrthCorr(tXh,tYh)
+% Orthogonalization from Hipp 2012. 
+% TODO: investigate strange results on diagonal (2023-07)
 Xh_p   = imag(bsxfun(@times, tXh, conj(tYh)./abs(tYh)));
 Yh_p   = imag(bsxfun(@times, tYh, conj(tXh)./abs(tXh)));
 r1     = HMatCorr(abs(tXh),abs(Yh_p)) ;
@@ -297,25 +299,7 @@ ConVec = (abs(r1)+abs(r2))/2 ;
 end
 
 function At = HMatCorr(U,V)
-% Implementation H.Shahabi (2021)
-% % Number of channels 
-% n1 = size(U,2) ; 
-% n2 = size(V,2) ; 
-% At = zeros(n1,n2) ; 
-% for k = 1:n1
-%     for m = 1:n2
-%         tmp1    = corrcoef(U(:,k),V(:,m)) ;
-%         At(k,m) = tmp1(1,2) ; 
-%     end
-% end
-
-% % Equivalent implementation F.TADEL (14-11-2022)
-% % TODO: missing bsxfun for minus
-% Uc = U - mean(U,1);  % Remove mean
-% Vc = V - mean(V,1);  % Remove mean
-% At = (Uc' * Vc) ./ bsxfun(@times, sqrt(sum(Uc.*Uc,1))', sqrt(sum(Vc.*Vc,1)));
-
-% Equivalent, but more robust numerically; existing correlation code (2023-07)
+% Correlation implementation in bst_corrn is robust numerically, which is required to avoid values > 1.
 At = bst_corrn(U', V', 1);
 
 end
