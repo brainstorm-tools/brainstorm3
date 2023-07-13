@@ -5357,6 +5357,30 @@ function SaveScouts(varargin)
                     end
                 end
             end
+            % Check again for unique colors, if duplicate colors get random RGB
+            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');
+            if length(C) ~= length(sScouts)
+                % Find indexes of duplicate colors
+                repIxs = [];
+                for iia = 1 : length(ia)
+                    rep = find(ic == ic(ia(iia)));
+                    if length(rep) > 1
+                        repIxs = [repIxs, rep(2:end)];
+                    end
+                end
+                % Get a unique random color for each duplicate color
+                colorsRnd = [];
+                while size(colorsRnd, 1) < length(repIxs)
+                     colorRnd = randi(256, 1, 3) - 1;
+                     if ~ismember(colorRnd, C)
+                         C = [C; colorRnd];
+                         colorsRnd = [colorsRnd; colorRnd];
+                     end
+                end
+                for ix = 1 : length(repIxs)
+                    sScouts(repIxs(ix)).Color = colorsRnd(ix, :);
+                end
+            end
 
             for iScout = 1:length(sScouts)
                 ct.table(iScout,1:3) = sScouts(iScout).Color;
