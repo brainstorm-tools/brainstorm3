@@ -5300,7 +5300,8 @@ function SaveScouts(varargin)
     [ScoutFile, FileFormat] = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
                              'single', 'files', ...
                              {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
-                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'}, 1);
+                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'; ...
+                              {'.annot'}, 'FreeSurfer annotation, multiple scouts (*.annot)', 'FS-ANNOT'}, 1);
     if isempty(ScoutFile)
         return;
     end
@@ -5318,7 +5319,76 @@ function SaveScouts(varargin)
             % Save file
             bst_save(ScoutFile, sAtlas, 'v7');
         case 'FS-LABEL-SINGLE'
-            out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            if length(sScouts) == 1
+                out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            else
+                bst_error('FreeSurfer label file can only store a single scout. Please export each scout separatly');
+                return;
+            end
+        case 'FS-ANNOT'
+            vertices = [];
+            label = [];
+            ct = struct();
+            ct.numEntries   = length(sScouts);
+            ct.orig_tab     = sAtlas.Name;
+            ct.struct_names = {sScouts.Label};
+            ct.table = zeros(length(sScouts),5);
+
+            % Address duplicate colors
+            sScouts = arrayfun(@(s) setfield(s,'Color', round(255*s.Color)), sScouts);  % Scale colors to 0-255
+            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');                          % Unique colors
+            if length(C) ~= length(sScouts)
+                % Space to search neightbors, includes [0, 0, 0]
+                [~, nMostRep] = mode(ic);
+                sideCube  = ceil(nMostRep^(1/3)) - 1;
+                [R, G, B] = meshgrid(-sideCube:sideCube, -sideCube:sideCube, -sideCube:sideCube);
+                seachRGB= [R(:), G(:), B(:)];
+                for iia = 1 : length(ia)
+                    rep = find(ic == ic(ia(iia)));
+                    % If duplicate colors, get neighboring colors
+                    if length(rep) > 1
+                        colorNeighbors = bst_bsxfun(@plus, seachRGB, sScouts(rep(1)).Color);
+                        colorNeighbors(any(colorNeighbors > 255, 2) | any(colorNeighbors < 0, 2) , :) = [];
+                        [~, iClosest] = sort(sum((bsxfun(@minus, colorNeighbors, sScouts(rep(1)).Color) .^2), 2));
+                        colorNeighbors = colorNeighbors(iClosest(1: length(rep)), :);
+                        for irep = 1 : length(rep)
+                            sScouts(rep(irep)).Color = colorNeighbors(irep, :);
+                        end
+                    end
+                end
+            end
+            % Check again for unique colors, if duplicate colors get random RGB
+            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');
+            if length(C) ~= length(sScouts)
+                % Find indexes of duplicate colors
+                repIxs = [];
+                for iia = 1 : length(ia)
+                    rep = find(ic == ic(ia(iia)));
+                    if length(rep) > 1
+                        repIxs = [repIxs, rep(2:end)];
+                    end
+                end
+                % Get a unique random color for each duplicate color
+                colorsRnd = [];
+                while size(colorsRnd, 1) < length(repIxs)
+                     colorRnd = randi(256, 1, 3) - 1;
+                     if ~ismember(colorRnd, C)
+                         C = [C; colorRnd];
+                         colorsRnd = [colorsRnd; colorRnd];
+                     end
+                end
+                for ix = 1 : length(repIxs)
+                    sScouts(repIxs(ix)).Color = colorsRnd(ix, :);
+                end
+            end
+
+            for iScout = 1:length(sScouts)
+                ct.table(iScout,1:3) = sScouts(iScout).Color;
+                ct.table(iScout,5)   = ct.table(iScout,1)  + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
+                vertices = [vertices , sScouts(iScout).Vertices - 1];
+                label    = [label ,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
+            end
+            write_annotation(ScoutFile, vertices, label, ct)
     end
 end
 
