@@ -1535,6 +1535,10 @@ function JumpToEvent(iEvent, iOccur)
     % Get event time
     evtEpoch = events(iEvent).epochs(iOccur);
     evtTime  = mean(events(iEvent).times(:,iOccur),1);
+    evtChannel = [];
+    if ~isempty(events(iEvent).channels)
+        evtChannel = events(iEvent).channels{iOccur};
+    end
     % Check if event is a "full page" shortcut
     RawViewerOptions = bst_get('RawViewerOptions');
     iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,2), events(iEvent).label));
@@ -1554,6 +1558,8 @@ function JumpToEvent(iEvent, iOccur)
     end
     % Select the event time
     panel_time('SetCurrentTime', evtTime);
+    % Select channels if any
+    bst_figures('SetSelectedRows', evtChannel);
 end
 
 
