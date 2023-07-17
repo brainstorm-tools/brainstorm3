@@ -40,6 +40,12 @@ if (nargin < 4) || isempty(DisplayUnits)
     DisplayUnits = [];
 end
 
+% If no modality (ex: surface mask, mri values...)
+if (nargin < 3) || isempty(DataType)
+    DataType = 'none';
+end
+
+
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
     % Source files
@@ -56,10 +62,7 @@ end
 
 % Consider input data in absolute value
 val = abs(val);
-% If no modality (ex: surface mask, mri values...)
-if isempty(DataType)
-    DataType = 'none';
-end
+
 
 % If the display unit is already defined
 if ~isempty(DisplayUnits)
