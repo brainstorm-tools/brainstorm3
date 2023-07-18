@@ -1362,6 +1362,10 @@ function hNewFig = CloneFigure(hFig)
             GlobalData.DataSet(iDS).Figure(iNewFig).Handles.Wmat        = GlobalData.DataSet(iDS).Figure(iFig).Handles.Wmat;
             GlobalData.DataSet(iDS).Figure(iNewFig).Handles.DataMinMax  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
         end
+        % 2DDisc: Set white background
+        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.SubType, '2DDisc')
+            SetBackgroundColor(hNewFig, [1 1 1]);
+        end
         % Delete scouts
         delete(findobj(hNewAxes, 'Tag', 'ScoutLabel'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutMarker'));
