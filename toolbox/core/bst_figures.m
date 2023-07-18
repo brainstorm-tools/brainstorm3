@@ -1388,6 +1388,10 @@ function hNewFig = CloneFigure(hFig)
         end
         % Update Surfaces panel
         panel_surface('UpdatePanel');
+        % Reload figure to apply montage (Topology NIRS)
+        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.Modality, 'NIRS')
+            ReloadFigures(hNewFig, 0);
+        end
         
     % ===== TIME SERIES =====
     elseif strcmpi(FigureId.Type, 'DataTimeSeries')
