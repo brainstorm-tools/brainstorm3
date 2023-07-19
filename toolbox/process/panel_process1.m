@@ -119,7 +119,15 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     if isempty(sProcesses)
         return
     end   
-    
+    % Make sure the advanced options were reviewed
+    for iProc = 1 : length(sProcesses)
+        if ismember(func2str(sProcesses(iProc).Function), {'process_hilbert'}) ...
+            && (~isfield(sProcesses(iProc).options.edit, 'Value') || isempty(sProcesses(iProc).options.edit.Value))
+            bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before generating the script.'], 'Pipeline editor', 0);
+            panel_process_select('ShowPanel', {sFiles.FileName}, sProcesses);
+            return
+        end
+    end
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sFiles, [], 1);
     
