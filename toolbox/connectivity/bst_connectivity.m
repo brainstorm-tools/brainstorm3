@@ -531,7 +531,6 @@ for iFile = 1:nFiles
             end
             if isConnNN || isequal(OPTIONS.TargetA, OPTIONS.TargetB)
                 OPTIONS.sScoutsA = OPTIONS.sScoutsB;
-                OPTIONS.sScoutsAtlasNameA = sScoutsAtlasNameB;
             else
                 OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA, [], OPTIONS.ScoutFunc);
             end

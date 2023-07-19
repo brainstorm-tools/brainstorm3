@@ -288,18 +288,20 @@ for k = 1:numBlocks
 end
 end
 
-function ConVec = HOrthCorr(tXh,tYh)
-% Orthogonalization from Hipp 2012. 
 % TODO: investigate strange results on diagonal (2023-07)
-Xh_p   = imag(bsxfun(@times, tXh, conj(tYh)./abs(tYh)));
-Yh_p   = imag(bsxfun(@times, tYh, conj(tXh)./abs(tXh)));
+function ConVec = HOrthCorr(tXh,tYh)
+% tXh is a column vector (one signal)
+% Orthogonalization from Hipp 2012. 
+% The division by abs is done outside imag(XY*) so that it gives exactly 0 when orthogonalizing a
+% signal with itself: imag(XX*) = 0, whereas there would be nonzero numerical errors for imag(XX*/abs(X))
+Xh_p   = bsxfun(@rdivide, imag(bsxfun(@times, tXh, conj(tYh))), abs(tYh));
+Yh_p   = bsxfun(@rdivide, imag(bsxfun(@times, tYh, conj(tXh))), abs(tXh));
 r1     = HMatCorr(abs(tXh),abs(Yh_p)) ;
-r2     = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ;
-ConVec = (abs(r1)+abs(r2))/2 ;
+r2     = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ; % row vector
+ConVec = bsxfun(@plus, abs(r1), abs(r2)) / 2;
 end
 
 function At = HMatCorr(U,V)
 % Correlation implementation in bst_corrn is robust numerically, which is required to avoid values > 1.
 At = bst_corrn(U', V', 1);
-
 end
