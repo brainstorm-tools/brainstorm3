@@ -135,11 +135,7 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.flatten.InputTypes = {'results'};
     sProcess.options.flatten.Group      = 'input';
     % === SCOUT TIME ===
-%     sProcess.options.scoutfunctxt.Comment = 'Scout function: ';
-%     sProcess.options.scoutfunctxt.Type    = 'label';
-%     sProcess.options.scoutfunctxt.InputTypes = {'results'};
-%     sProcess.options.scoutfunctxt.Group      = 'input';
-    sProcess.options.scouttime.Comment    = {'before ', 'after connectivity', 'Scout function: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
+    sProcess.options.scouttime.Comment    = {'before&nbsp;&nbsp;&nbsp;', 'after&nbsp;&nbsp;&nbsp; connectivity metric', 'Scout function: &nbsp;&nbsp;&nbsp;Apply'; ...
                                              'before', 'after', ''};
     sProcess.options.scouttime.Type       = 'radio_linelabel';
     sProcess.options.scouttime.Value      = 'after';
@@ -147,14 +143,14 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scouttime.Group      = 'input';
     sProcess.options.scouttime.Controller = struct('before', 'before', 'after', 'after');
     % === SCOUT FUNCTION ===    
-    sProcess.options.scoutfunc.Comment    = {'PCA ', 'Mean ', 'All ', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfunc.Comment    = {'PCA&nbsp;&#8201;&#8201;', 'Mean&nbsp;', 'All', '&nbsp;&nbsp;&nbsp;'; ...
                                              'pca', 'mean', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'mean';
     sProcess.options.scoutfunc.InputTypes = {'results'};
     sProcess.options.scoutfunc.Group      = 'input';
     sProcess.options.scoutfunc.Class      = 'before';
-    sProcess.options.scoutfuncaft.Comment    = {'Mean ', 'Max ', 'Std ', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfuncaft.Comment    = {'Mean&nbsp;', 'Max&nbsp;&#8201;&#8201;', 'Std', '&nbsp;&nbsp;&nbsp;'; ...
                                              'mean', 'max', 'std', ''};
     sProcess.options.scoutfuncaft.Type       = 'radio_linelabel';
     sProcess.options.scoutfuncaft.Value      = 'mean';
