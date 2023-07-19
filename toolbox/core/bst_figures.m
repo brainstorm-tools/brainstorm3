@@ -1372,7 +1372,7 @@ function hNewFig = CloneFigure(hFig)
         delete(findobj(hNewAxes, 'Tag', 'ScoutPatch'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutContour'));
         % Update current figure selection
-        if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.SubType, '3DSensorCap')
+        if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.SubType, '3DSensorCap') || strcmpi(FigureId.SubType, '3DOptodes')
             SetCurrentFigure(hNewFig, '3D');
         else
             SetCurrentFigure(hNewFig);
