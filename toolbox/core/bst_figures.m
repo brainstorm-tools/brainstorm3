@@ -1362,13 +1362,17 @@ function hNewFig = CloneFigure(hFig)
             GlobalData.DataSet(iDS).Figure(iNewFig).Handles.Wmat        = GlobalData.DataSet(iDS).Figure(iFig).Handles.Wmat;
             GlobalData.DataSet(iDS).Figure(iNewFig).Handles.DataMinMax  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
         end
+        % 2DDisc: Set white background
+        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.SubType, '2DDisc')
+            SetBackgroundColor(hNewFig, [1 1 1]);
+        end
         % Delete scouts
         delete(findobj(hNewAxes, 'Tag', 'ScoutLabel'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutMarker'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutPatch'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutContour'));
         % Update current figure selection
-        if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.SubType, '3DSensorCap')
+        if strcmpi(FigureId.Type, '3DViz') || strcmpi(FigureId.SubType, '3DSensorCap') || strcmpi(FigureId.SubType, '3DOptodes')
             SetCurrentFigure(hNewFig, '3D');
         else
             SetCurrentFigure(hNewFig);
@@ -1388,6 +1392,10 @@ function hNewFig = CloneFigure(hFig)
         end
         % Update Surfaces panel
         panel_surface('UpdatePanel');
+        % Reload figure to apply montage (Topology NIRS)
+        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.Modality, 'NIRS')
+            ReloadFigures(hNewFig, 0);
+        end
         
     % ===== TIME SERIES =====
     elseif strcmpi(FigureId.Type, 'DataTimeSeries')
