@@ -288,7 +288,6 @@ for k = 1:numBlocks
 end
 end
 
-% TODO: investigate strange results on diagonal (2023-07)
 function ConVec = HOrthCorr(tXh,tYh)
 % tXh is a column vector (one signal)
 % Orthogonalization from Hipp 2012. 
