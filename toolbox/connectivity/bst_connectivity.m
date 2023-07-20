@@ -1041,6 +1041,7 @@ for iFile = 1:nFiles
             OutHist = bst_history('add', OutHist, DataHist.History, ' - ');
         end
         OutputFiles{iFile} = Finalize(OrigFilesB{iFile});
+        R = [];
     else 
         % Sum terms and continue file loop.
         if isnumeric(R)
