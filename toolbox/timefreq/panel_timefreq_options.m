@@ -184,7 +184,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             jRadioFreqLog    = [];
             jTextFreqLog     = [];
             jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br', 'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel);
+        elseif strcmpi(Method, 'stft')
+            jRadioFreqLinear = gui_component('radio', jPanelFreq, [],   'Matlab''s FFT defaults',        jButtonGroup, [], @UpdatePanel);
+            jTextFreqLinear  = [];
+            jRadioFreqLog    = [];
+            jTextFreqLog     = [];
+            jRadioFreqBands  = gui_component('radio', jPanelFreq, 'br', 'Group in frequency bands (Hz)', jButtonGroup, [], @UpdatePanel);
         end
+
         % Text: freq bands
         strFreqBands = process_tf_bands('FormatBands', TimefreqOptions.FreqBands);
         jTextFreqBands = gui_component('textfreq', jPanelFreq, 'br hfill', strFreqBands, [], [], @UpdatePanel);
@@ -215,6 +222,27 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         jTextTr = [];
     end
     
+    % ===== STFT OPTIONS =====
+    if strcmpi(Method, 'stft')
+        jPanelStft= gui_river([2,2], [0,10,15,10], 'Short-time Fourier options');
+
+        % Windowing parameters
+                      gui_component('label',    jPanelStft, 'br', 'Fourier transform window length:  ');
+        jTextWinLen = gui_component('texttime', jPanelStft, 'tab', num2str(TimefreqOptions.StftWinLen));
+                      gui_component('label',    jPanelStft, '', 's   (default=All window)');
+                      gui_component('label',    jPanelStft, 'br', 'Fourier transform window overlap:  ');
+        jTextWinOvr = gui_component('texttime', jPanelStft, 'tab', num2str(TimefreqOptions.StftWinOvr));
+                      gui_component('label',    jPanelStft, '', '%   (default=0%)');
+                      gui_component('label',    jPanelStft, 'br', 'Highest frequency of interest::  ');
+        jTextFrqMax = gui_component('texttime', jPanelStft, 'tab', num2str(TimefreqOptions.StftFrqMax));
+                      gui_component('label',    jPanelStft, '', 'Hz   (default=90Hz)');
+        jPanelNew.add('br hfill', jPanelStft);
+    else
+        jTextWinLen  = [];
+        jTextWinOvr  = [];
+        jTextFrqMax = [];
+    end
+
     % ===== PROCESSING OPTIONS =====
     jPanelProc = gui_river([2,2], [0,10,15,10], 'Processing options');       
         % === KERNEL SOURCE ===
@@ -237,7 +265,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             case 'data',     ClusterName = 'Cluster';
             case 'results',  ClusterName = 'Scout'; 
             case 'timefreq', ClusterName = 'Scout';
-            otherwise,      ClusterName = '';
+            otherwise,       ClusterName = '';
         end
         % Scout/cluster function
         if isCluster && ~isClusterAll
@@ -283,6 +311,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             case 'hilbert',  strMap = 'Hilbert maps';
             case 'fft',      strMap = 'FFT values';
             case 'psd',      strMap = 'PSD values';
+            otherwise,       strMap = '';
         end
         % Compute average
         if ~isOneFile
@@ -383,6 +412,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                   'jButtonFreqBands',jButtonFreqBands, ...
                   'jTextFc',         jTextFc, ...
                   'jTextTr',         jTextTr, ...
+                  'jTextWinLen',     jTextWinLen, ...
+                  'jTextWinOvr',     jTextWinOvr, ...
+                  'jTextFrqMax',     jTextFrqMax, ...
                   'jRadioKernelYes', jRadioKernelYes, ...
                   'jRadioKernelNo',  jRadioKernelNo, ...
                   'jRadioClustBefore', jRadioClustBefore, ...
@@ -826,6 +858,12 @@ function s = GetPanelContents(ctrl)
     if ~isempty(ctrl.jTextFc)
         s.MorletFc     = str2num(char(ctrl.jTextFc.getText()));
         s.MorletFwhmTc = str2num(char(ctrl.jTextTr.getText()));
+    end
+    % Get stft options
+    if ~isempty(ctrl.jTextWinLen)
+        s.StftWinLen = str2num(char(ctrl.jTextWinLen.getText()));
+        s.StftWinOvr = str2num(char(ctrl.jTextWinOvr.getText()));
+        s.StftFrqMax = str2num(char(ctrl.jTextFrqMax.getText()));
     end
     % Get time to apply cluster function
     if ~isempty(ctrl.jRadioClustBefore)

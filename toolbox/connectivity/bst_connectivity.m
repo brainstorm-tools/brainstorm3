@@ -69,9 +69,9 @@ Def_OPTIONS.pThresh       = 0.05;          % Significance threshold for the metr
 Def_OPTIONS.OutputMode    = 'input';       % {'avg','input','concat','avgcoh'}
 Def_OPTIONS.iOutputStudy  = [];
 Def_OPTIONS.isSave        = 1;
-Def_OPTIONS.tfMeasure     = 'hilbert';     % Option for henv, coherence & PLV 2023 {hilbert, morlet, fourier}
+Def_OPTIONS.tfMeasure     = 'hilbert';     % Option for henv, coherence & PLV 2023 {hilbert, morlet, stft}
 Def_OPTIONS.TimeRes       = [];            % Option for henv, coherence & PLV 2023 {full, windowed, none} (replaces '...t' methods, and former dynamic/static)
-Def_OPTIONS.nAvgLen       = 1;             % Option for coherence & PLV 2023, for 'fourier' and 'windowed' time resolution
+Def_OPTIONS.nAvgLen       = 1;             % Option for coherence & PLV 2023, for 'windowed' time resolution
 Def_OPTIONS.MorletFc      = [];            % Option for envelope correlation 'morlet'
 Def_OPTIONS.MorletFwhmTc  = [];            % Option for envelope correlation 'morlet'
 % Return the default options
@@ -91,7 +91,7 @@ if ismember(OPTIONS.Method, {'plvt','ciplvt','wplit'})
     OPTIONS.TimeRes = 'full';
 end
 % Encode non-windowed time resolution in "averaging length" for 'fourier' PLV
-if strcmpi(OPTIONS.tfMeasure, 'fourier')
+if strcmpi(OPTIONS.tfMeasure, 'stft')
     if strcmpi(OPTIONS.TimeRes, 'none')
         OPTIONS.nAvgLen = 0;
     elseif strcmpi(OPTIONS.TimeRes, 'full')
@@ -131,7 +131,7 @@ if isequal(OPTIONS.MaxFreq, 0)
 end
 % Frequency max resolution: 0 = error
 if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS.WinLen) && ...
-        (strcmpi(OPTIONS.tfMeasure, 'fourier') || ismember(OPTIONS.Method, {'spgranger'}))
+        (strcmpi(OPTIONS.tfMeasure, 'stft') || ismember(OPTIONS.Method, {'spgranger'}))
     bst_report('Error', OPTIONS.ProcessName, [], 'Invalid frequency resolution.');
     return;
 end
@@ -885,8 +885,8 @@ for iFile = 1:nFiles
                     % If time-averaged, already divided by nTime.
                     nWin = nWin + 1;
 
-                case 'fourier'
-                    % "Spectral" formulae, using Fourier transform.
+                case 'stft'
+                    % "Spectral" formulae, using Fourier transform in windows (short-time Fourier transform)
                     % There could be files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
                     % Non-linear functions of cross-spectrum also require the kernel to be applied first.
                     if isConnNN
@@ -1260,7 +1260,7 @@ function NewFile = Finalize(DataFile)
         if ~isempty(AvgComment)
             AvgComment = [AvgComment ','];
         end
-        if strcmpi(OPTIONS.tfMeasure, 'fourier')
+        if strcmpi(OPTIONS.tfMeasure, 'stft')
             AvgComment = [AvgComment sprintf('%d win', nAvgLen)];
         else
             AvgComment = [AvgComment sprintf('%d samp', nAvgLen)];

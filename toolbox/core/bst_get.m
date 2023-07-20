@@ -3278,6 +3278,28 @@ switch contextName
             argout1.FreqBands = defPref.FreqBands;
         end
     
+    case 'TimefreqOptions_stft'
+        defPref.isTimeBands     = 0;
+        defPref.isFreqBands     = 0;
+        defPref.isFreqLog       = 0;
+        defPref.TimeBands       = {};
+        defPref.Freqs           = [];
+        defPref.FreqsLog        = [];
+        defPref.FreqBands       = bst_get('DefaultFreqBands');
+        defPref.Measure         = 'power';
+        defPref.Output          = 'all';
+        defPref.ClusterFuncTime = 'after';
+        defPref.StftWinLen      = 1;
+        defPref.StftWinOvr      = 0;
+        defPref.StftFrqMax      = 0;
+        argout1 = FillMissingFields(contextName, defPref);
+        if isempty(argout1.Freqs)
+            argout1.Freqs = defPref.Freqs;
+        end
+        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+            argout1.FreqBands = defPref.FreqBands;
+        end
+
     case 'ExportBidsOptions'
         defPref.ProjName    = [];
         defPref.ProjID      = [];
