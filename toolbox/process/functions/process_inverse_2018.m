@@ -614,11 +614,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             end
             % Create sparse conversion matrices between indices
             if ~isempty(iVert2Grid)
-                % Ensure size is full grid for clarity and to allow matrix multiplication, e.g. with
-                % Grid2Source.  If the last region(s) are volume, they correspond to grid points but
-                % not vertices, so this sparse array could be missing grid rows were its size not specified.
+                % Ensure size is full grid for clarity and to allow matrix multiplication, e.g. with Grid2Source.
+                % If the last region(s) are volume, they correspond to grid points but not vertices,
+                % so this sparse array could be missing grid rows were its size not specified.
                 nVert = size(iVert2Grid,1);
-                HeadModelInit.GridAtlas(1).Vert2Grid = sparse(iVert2Grid(:,2), iVert2Grid(:,1), true(nVert,1), numel(iAllGrid), nVert);
+                HeadModelInit.GridAtlas(1).Vert2Grid = sparse(iVert2Grid(:,2), iVert2Grid(:,1), true(nVert,1), max(iAllGrid), max(iVert2Grid(:,1)));
             else
                 HeadModelInit.GridAtlas(1).Vert2Grid = [];
             end
