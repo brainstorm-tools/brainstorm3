@@ -943,6 +943,12 @@ function s = GetPanelContents(ctrl)
         TimefreqOptions.MorletFc     = s.MorletFc;
         TimefreqOptions.MorletFwhmTc = s.MorletFwhmTc;
     end
+    % STFT options
+    if ~isempty(ctrl.jTextWinLen)
+        TimefreqOptions.StftWinLen = s.StftWinLen;
+        TimefreqOptions.StftWinOvr = s.StftWinOvr;
+        TimefreqOptions.StftFrqMax = s.StftFrqMax;
+    end
     % Other options
     bst_set(['TimefreqOptions_', ctrl.Method], TimefreqOptions);
 end
