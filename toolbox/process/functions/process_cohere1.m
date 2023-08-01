@@ -75,14 +75,17 @@ function sProcess = GetDescription()
                                         'full', 'windowed', 'none', ''};
     sProcess.options.timeres.Type    = 'radio_linelabel';
     sProcess.options.timeres.Value   = 'full';
-    % === Hilbert/Morlet: WINDOW LENGTH
+    sProcess.options.timeres.Controller = struct('full', 'nowindowed', 'windowed', 'windowed', 'none', 'nowindowed');
+    % === WINDOW LENGTH
     sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
     sProcess.options.avgwinlength.Type    = 'value';
     sProcess.options.avgwinlength.Value   = {1, 's', []};
-%     % === Hilbert/Morlet: OVERLAP
+    sProcess.options.avgwinlength.Class   = 'windowed';
+    % === WINDOW OVERLAP
     sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
     sProcess.options.avgwinoverlap.Type    = 'value';
     sProcess.options.avgwinoverlap.Value   = {50, '%', []};
+    sProcess.options.avgwinoverlap.Class   = 'windowed';
     % === OUTPUT MODE / FILE AVERAGING
     % Ideally, 'input' would be disabled for 'full' time resolution.
     sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...
@@ -139,7 +142,7 @@ function OutputFiles = Run(sProcess, sInputA)
             OPTIONS.Freqs = tfOPTIONS.Freqs;
             if strcmpi(sProcess.options.timeres.Value, 'windowed')
                 OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
-                %OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
             end
             OPTIONS.isMirror = 0;
         case 'morlet'
@@ -148,15 +151,16 @@ function OutputFiles = Run(sProcess, sInputA)
             OPTIONS.MorletFwhmTc = tfOPTIONS.MorletFwhmTc;            
             if strcmpi(sProcess.options.timeres.Value, 'windowed')
                 OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
-                %OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
             end
         case 'stft'
             OPTIONS.Freqs = [];
-            OPTIONS.WinLen     = tfOPTIONS.StftWinLen;
-            OPTIONS.WinOverlap = tfOPTIONS.StftWinOvr/100;
+            OPTIONS.StftWinLen = tfOPTIONS.StftWinLen;
+            OPTIONS.StftWinOvr = tfOPTIONS.StftWinOvr/100;
             OPTIONS.MaxFreq    = tfOPTIONS.StftFrqMax;
             if strcmpi(sProcess.options.timeres.Value, 'windowed')
-                OPTIONS.nAvgLen = sProcess.options.avgwinnum.Value{1};
+                OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
             end
     end
     % Keep time or not; now option, no longer separate process

@@ -71,9 +71,11 @@ Def_OPTIONS.iOutputStudy  = [];
 Def_OPTIONS.isSave        = 1;
 Def_OPTIONS.tfMeasure     = 'hilbert';     % Option for henv, coherence & PLV 2023 {hilbert, morlet, stft}
 Def_OPTIONS.TimeRes       = [];            % Option for henv, coherence & PLV 2023 {full, windowed, none} (replaces '...t' methods, and former dynamic/static)
-Def_OPTIONS.nAvgLen       = 1;             % Option for coherence & PLV 2023, for 'windowed' time resolution
+% Def_OPTIONS.nAvgLen       = 1;             % Option for coherence & PLV 2023, for 'windowed' time resolution
 Def_OPTIONS.MorletFc      = [];            % Option for envelope correlation 'morlet'
 Def_OPTIONS.MorletFwhmTc  = [];            % Option for envelope correlation 'morlet'
+Def_OPTIONS.StftWinLen    = [];            % Option for STFT coherence and & PLV 2023
+Def_OPTIONS.StftWinOvr    = [];            % Option for STFT coherence and & PLV 2023
 % Return the default options
 if (nargin == 0)
     OutputFiles = Def_OPTIONS;
@@ -130,7 +132,7 @@ if isequal(OPTIONS.MaxFreq, 0)
     OPTIONS.MaxFreq = [];
 end
 % Frequency max resolution: 0 = error
-if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS.WinLen) && ...
+if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS.StftWinLen) && ...
         (strcmpi(OPTIONS.tfMeasure, 'stft') || ismember(OPTIONS.Method, {'spgranger'}))
     bst_report('Error', OPTIONS.ProcessName, [], 'Invalid frequency resolution.');
     return;
@@ -892,10 +894,10 @@ for iFile = 1:nFiles
                     if isConnNN
                         % Avoid passing redundant data
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, [], ...
-                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.nAvgLen);
+                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, 0);
                     else
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, ...
-                            sfreq, OPTIONS.WinLen, OPTIONS.WinOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, OPTIONS.nAvgLen);
+                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, 0);
                     end
                     % Error processing
                     if isempty(S)
