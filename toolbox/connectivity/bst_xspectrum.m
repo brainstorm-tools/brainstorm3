@@ -89,6 +89,9 @@ Freq = [];
 Time = [];
 Messages = [];
 
+% Get Matlab version, to use pagemtimes (>= R2020b) or local implementation
+MatlabVersion = bst_get('MatlabVersion');
+
 % Remove zero frequency as not meaningful for connectivity measures.
 isRemoveZeroFreq = true;
 
@@ -166,7 +169,16 @@ if ~isNxN
     else
         % We have a kernel, apply it now.
         nB = size(KernelB, 1);
-        Fb = KernelB * Fb;
+        if MatlabVersion >= 909  %  >= Matlab R2020b
+            Fb = pagemtimes(KernelB, Fb);
+        else
+            FbSource = zeros(size(KernelB,1), size(Fb,2), size(Fb,3));
+            for k = 1:size(Fb,3)
+                FbSource(:,:,k) = KernelB * Fb(:,:,k);
+            end
+            Fb = FbSource;
+            clear FbSource
+        end
     end
 else
     nB = nA;
