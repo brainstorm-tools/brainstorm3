@@ -92,14 +92,6 @@ if ismember(OPTIONS.Method, {'plvt','ciplvt','wplit'})
     OPTIONS.Method(end) = '';
     OPTIONS.TimeRes = 'full';
 end
-% Encode non-windowed time resolution in "averaging length" for 'fourier' PLV
-if strcmpi(OPTIONS.tfMeasure, 'stft')
-    if strcmpi(OPTIONS.TimeRes, 'none')
-        OPTIONS.nAvgLen = 0;
-    elseif strcmpi(OPTIONS.TimeRes, 'full')
-        OPTIONS.nAvgLen = 1;
-    end
-end
 
 % Initialize output variables
 OutputFiles = {};
@@ -736,7 +728,6 @@ for iFile = 1:nFiles
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
                         % Check if we're doing "moving average"-like estimation across consecutive time steps, after TF decomposition.
                         % If so, get number of time samples.
-                        isFullTime = false;
                         if strcmpi(OPTIONS.TimeRes, 'windowed')
                             if ~isempty(OPTIONS.WinLen)
                                 % Window length in samples
@@ -891,13 +882,19 @@ for iFile = 1:nFiles
                     % "Spectral" formulae, using Fourier transform in windows (short-time Fourier transform)
                     % There could be files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
                     % Non-linear functions of cross-spectrum also require the kernel to be applied first.
+                    % Encode non-windowed time resolution
+                    if strcmpi(OPTIONS.TimeRes, 'none')
+                        TimeRes = 0;
+                    elseif strcmpi(OPTIONS.TimeRes, 'full')
+                        TimeRes = 1;
+                    end
                     if isConnNN
                         % Avoid passing redundant data
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, [], ...
-                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, 0);
+                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, TimeRes);
                     else
                         [S, nWinFile, OPTIONS.Freqs, Time, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, ...
-                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, 0);
+                            sfreq, OPTIONS.StftWinLen, OPTIONS.StftWinOvr, OPTIONS.MaxFreq, sInputB.ImagingKernel, OPTIONS.Method, TimeRes);
                     end
                     % Error processing
                     if isempty(S)

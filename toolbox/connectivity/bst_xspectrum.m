@@ -1,4 +1,4 @@
-function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, nAvgLen)
+function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, WinOverlap, MaxFreq, KernelB, Func, TimeRes)
 % BST_XSPECTRUM : Compute cross-spectrum or orther function of A and B Fourier transforms
 %                 used to to further compute connectivity metrics
 %
@@ -22,15 +22,14 @@ function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 %                'wpli'   : ImSab, AbsImSab
 %                'dwpli'  : ImSab, AbsImSab, SqImSab
 %                'xspec'  : Sab (default)
-%    - nAvgLen : 0 Average all Fourier windows
-%                1 Don't average windows, S terms have an added time dimension, before the freqency dim.
-%                n Do a moving average over n windows, keeping the time dimension. For long and/or few files.
+%    - TimeRes : 0 No,  average all Fourier windows, S term have the dimension [nSignalsA, nSignalsB, nFreq]
+%                1 Yes, don't average windows, S term have the dimension [nA, nB, nWin, nFreq]
 %
 % OUTPUTS:
 %    - S : Structure with fields listed above, possibly summed over windows (depending on nAvgLen), 
 %          for computing the requested connectivity metric. Most terms, like S.Sab, have size
 %          [nSignalsA, nSignalsB, nFreq], or [nA, nB, nTime, nFreq] for time-resolved.
-%    - nAvgLen  : Number of windows that were summed; may be adjusted depending on data length and window params.
+%    - nAvgLen  : Number of windows (nWin) that were summed; may be adjusted depending on data length and window params.
 %    - Freq     : Frequency vector (length nFreq).
 %    - Time     : Relative time vector, assuming first input sample is time 0.
 %    - Messages : Text indicating warnings or errors that occured.
@@ -65,11 +64,10 @@ function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 %          Hossein Shahabi, 2019
 %          Raymundo Cassani, Marc Lalancette, 2021-2023
 
-
 %% ===== INITIALIZATIONS =====
 % Default options
-if nargin < 9 || isempty(nAvgLen)
-    nAvgLen = 0;
+if nargin < 9 || isempty(TimeRes)
+    TimeRes = 0;
 end
 if nargin < 8 || isempty(Func)
     Func = 'xspec';
@@ -121,22 +119,17 @@ if ~isempty(MaxFreq)
 end
 
 % Epoch into windows
-[ep, nWin, iStart] = epoching(A, nWinLen, nOverlap);
+[ep, ixs] = bst_epoching(A, nWinLen, nOverlap);
+nWin = size(ixs, 1);
 % If not enough windows for moving average, average them all, i.e. no time.
-if nAvgLen > 0 && nWin <= nAvgLen
-    if nAvgLen == 1
-        Messages = 'File time duration too short wrt window length for time-resolved estimation. Only computing one estimate across all time.';
-    else
-        Messages = 'File time duration too short for requested moving average of time windows. Only computing one estimate across all time.';
-    end
-    nAvgLen = 0;
+if nWin < 1
+    Messages = 'File time duration too short wrt window length for time-resolved estimation. Only computing one estimate across all time.';
 end
-% Save times at center of windows (could be between 2 samples), assuming first sample is time 0, and
-% accounting for possible moving average over multiple windows and excluding edges with zero padding
-% (so fewer windows are output)
-if nAvgLen
-    Time = (iStart(1:(end-nAvgLen+1)) - 1 + nAvgLen/2) / Fs;
+% Times for window centers
+if TimeRes
+    Time = mean(ixs-1, 2) / Fs;
 end
+
 ep = bsxfun(@times, ep, win);
 % Zero padding, FFT, keep only positive frequencies, remove zero freq.
 Fa = fft(ep, nFFT, 2);
@@ -154,7 +147,7 @@ if ~isNxN
         Messages = 'File A and File B must have the same number of samples.';
         return;
     end
-    ep = epoching(B, nWinLen, nOverlap);
+    ep = bst_epoching(B, nWinLen, nOverlap);
     ep = bsxfun(@times, ep, win);
     Fb = fft(ep, nFFT, 2);
     if isRemoveZeroFreq
@@ -178,7 +171,7 @@ if ~isNxN
 else
     nB = nA;
 end
-if ~nAvgLen % not keeping time: initialize for window loop
+if ~TimeRes % No time resolved: initialize for window loop
     switch Func
         case {'plv', 'ciplv', 'cohere', 'xspec'}
             % For cohere: Saa, Sbb don't need window loop thus no initialization.
@@ -205,7 +198,7 @@ if ismember(Func, {'plv', 'ciplv'})
 end
     
 %% ===== Compute requested functions for each window =====
-if ~nAvgLen % not keeping time: loop over windows
+if ~TimeRes % No time resolved: initialize for window loop
     % These terms have size [nA, nB, nFreq]
     % This could be done faster without looping as when keeping time, but would require nWin times more memory.
     for iWin = 1:nWin
@@ -237,10 +230,14 @@ if ~nAvgLen % not keeping time: loop over windows
             S.Sbb = sum(abs(Fb).^2, 3);
         end
     end
+    % Dividing by number of windows (for averaging)
+    terms = fieldnames(S);
+    for iTerm = 1:numel(terms)
+        S.(terms{iTerm}) = S.(terms{iTerm}) / nWin;
+    end
     nAvgLen = nWin;
-    % Dividing by number of windows (for averaging) can be done later, but often cancels anyway.
 
-else % keep time, no window looping
+else % Time resolved, no window looping
     % These terms have size [nA, nB, nWin, nFreq]
     if isNxN
         Sab = bsxfun(@times, permute(Fa, [1,4,3,2]), conj(permute(Fa, [4,1,3,2])));
@@ -268,52 +265,52 @@ else % keep time, no window looping
         end
     end
 
-    % Moving sum over windows.
-    if nAvgLen > 1
-        Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
-        for f = 1:numel(Terms)
-            S.(Terms{f}) = movsum(S.(Terms{f}), nAvgLen, ndims(S.(Terms{f})) - 1);
-        end
-    else
-        % No averaging.
-        nAvgLen = 1;
-    end
+%     % Moving sum over windows.
+%     if nAvgLen > 1
+%         Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
+%         for f = 1:numel(Terms)
+%             S.(Terms{f}) = movsum(S.(Terms{f}), nAvgLen, ndims(S.(Terms{f})) - 1);
+%         end
+%     else
+%         % No averaging.
+%         nAvgLen = 1;
+%     end
 
 end
 
 end
 
-function [epx, nEpochs, iStart] = epoching(x, nEpochLen, nOverlap)
-    % Divides the A provided as [nSignals, nTime] into epochs with a epoch length of nEpochLen
-    % indicated in samples, and an overlap of nOverlap samples between consecutive epochs.
-
-    % Obtain parameters of the data
-    [nSignals, nTime] = size(x);
-    % Number of epochs
-    nEpochs = floor( (nTime - nOverlap) / (nEpochLen - nOverlap) );
-    % If not enough data
-    if nEpochs <= 0 || isinf(nEpochs)
-        epx = [];
-        return
-    end
-    % iStart indicates where the epochs start
-    iStart = ((0 : (nEpochs-1)) * (nEpochLen - nOverlap)) + 1;
-    epx = zeros(nSignals, nEpochLen, nEpochs, class(x));
-    % Divide data in epochs
-    for iEpoch = 1 : nEpochs
-        epx(:,:,iEpoch) = x(:, iStart(iEpoch) : iStart(iEpoch) + nEpochLen - 1);
-    end
-end
+% function [epx, nEpochs, iStart] = epoching(x, nEpochLen, nOverlap)
+%     % Divides the A provided as [nSignals, nTime] into epochs with a epoch length of nEpochLen
+%     % indicated in samples, and an overlap of nOverlap samples between consecutive epochs.
+%
+%     % Obtain parameters of the data
+%     [nSignals, nTime] = size(x);
+%     % Number of epochs
+%     nEpochs = floor( (nTime - nOverlap) / (nEpochLen - nOverlap) );
+%     % If not enough data
+%     if nEpochs <= 0 || isinf(nEpochs)
+%         epx = [];
+%         return
+%     end
+%     % iStart indicates where the epochs start
+%     iStart = ((0 : (nEpochs-1)) * (nEpochLen - nOverlap)) + 1;
+%     epx = zeros(nSignals, nEpochLen, nEpochs, class(x));
+%     % Divide data in epochs
+%     for iEpoch = 1 : nEpochs
+%         epx(:,:,iEpoch) = x(:, iStart(iEpoch) : iStart(iEpoch) + nEpochLen - 1);
+%     end
+% end
 
 % Moving sum (like moving average), discarding edges that use zero-padding
-function X = movsum(X, nAvgLen, dim)
-    X = filter(ones(1,nAvgLen), 1, X, [], dim); 
-    % Remove points at start that used zero-padding.
-    if dim == 3
-        X(:,:,1:nAvgLen-1,:) = [];
-    elseif dim == 2
-        X(:,1:nAvgLen-1,:) = [];
-    else
-        error('Invalid dim');
-    end
-end
+% function X = movsum(X, nAvgLen, dim)
+%     X = filter(ones(1,nAvgLen), 1, X, [], dim);
+%     % Remove points at start that used zero-padding.
+%     if dim == 3
+%         X(:,:,1:nAvgLen-1,:) = [];
+%     elseif dim == 2
+%         X(:,1:nAvgLen-1,:) = [];
+%     else
+%         error('Invalid dim');
+%     end
+% end
