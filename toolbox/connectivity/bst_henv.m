@@ -225,8 +225,12 @@ for f = 1:nfBins
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
 %         else
 %         end
-        % 2023-07: removed abs() here, which is not needed and also prevents "improved" aggregation across files in bst_connectivity.
-        A(:,:,t,f) = CorrMat ;
+        if ismember(OPTIONS.CohMeasure, {'coh','msc','lcoh'})
+            A(:,:,t,f) = abs(CorrMat);
+        else
+            % 2023-07: removed abs() here, which is not needed and also prevents "improved" aggregation across files in bst_connectivity.
+            A(:,:,t,f) = CorrMat ;
+        end
 
     end
 end
