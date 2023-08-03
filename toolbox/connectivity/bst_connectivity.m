@@ -401,7 +401,7 @@ OPTIONS.sScoutsA = [];
 OPTIONS.sScoutsB = [];
 R = [];
 Time = [];
-nAvgLen = [];
+nWinLenSamples = [];
 
 % Loop over input files
 for iFile = 1:nFiles
@@ -680,6 +680,29 @@ for iFile = 1:nFiles
         % ==== COHERENCE & PHASE SYNC METRICS ====
         case {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere'} % 'dwpli', 'pli' not available in GUI
             % This case is also now used for time-resolved
+
+            % Verify WinLen argument for windowed metric
+            if strcmpi(OPTIONS.TimeRes, 'windowed')
+                if ~isempty(OPTIONS.WinLen)
+                    % Window length and overlap in samples
+                    nWinLenSamples    = round(OPTIONS.WinLen * sfreq);
+                    nWinOvelapSamples = round(OPTIONS.WinOverlap * nWinLenSamples);
+                    if nWinLenSamples <= 1
+                        Message = 'Requested window length smaller than one sample. Keeping full time resolution.';
+                        bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                        OPTIONS.TimeRes = 'full';
+                    elseif nWinLenSamples >= nTime
+                        Message = 'File time duration too short wrt requested window length. Only computing one estimate across all time.';
+                        bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                        % Avoid further checks and error messages.
+                        OPTIONS.TimeRes = 'none';
+                    end
+                else % empty WinLen: full time resolution
+                    OPTIONS.TimeRes = 'full';
+                end
+            end
+
+            % Display units and Comment
             switch OPTIONS.Method
                 case 'plv'
                     DisplayUnits = 'Phase locking value';
@@ -726,49 +749,31 @@ for iFile = 1:nFiles
                 case {'hilbert', 'morlet'}
                     % Deal with time resolution options, and initialize accumulators
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
-                        % Check if we're doing "moving average"-like estimation across consecutive time steps, after TF decomposition.
-                        % If so, get number of time samples.
-                        if strcmpi(OPTIONS.TimeRes, 'windowed')
-                            if ~isempty(OPTIONS.WinLen)
-                                % Window length in samples
-                                nAvgLen = round(OPTIONS.WinLen * sfreq);
-                                if nAvgLen <= 1
-                                    Message = 'Requested window length smaller than one sample. Keeping full time resolution.';
-                                    bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                                    OPTIONS.TimeRes = 'full';
-                                elseif nAvgLen >= nTime
-                                    Message = 'File time duration too short wrt requested window length. Only computing one estimate across all time.';
-                                    bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                                    % Avoid further checks and error messages.
-                                    OPTIONS.TimeRes = 'none';
-                                end
-                            else % empty WinLen: full time resolution
-                                OPTIONS.TimeRes = 'full';
-                            end
-                        end
                         switch OPTIONS.TimeRes
                             case 'full'
-                                % keep full time resolution, do nothing
-                                TimeAvgFunc = @(X, dim) X;
-                                nAvgLen = 1;
-                                nTimeOut = nTime; % When averaging files, already verified time is same as 1st file.
+                                % Output time vector equal input time vector
+                                nTimeOut = nTime;
                                 Time = sInputA.Time;
+                                nWinLenSamples = 1;
+                                % Full time resolution, do nothing
+                                TimeAvgFunc = @(X, dim) X;
                             case 'windowed'
-                                % moving average
-                                TimeAvgFunc = @(X, dim) movavg(X, nAvgLen, dim);
-                                nTimeOut = nTime - nAvgLen + 1;
                                 % Output time vector: center of windows
-                                % TODO: remove +1 added to reproduce exactly henv times: half a sample after actual center
-                                Time = (sInputA.Time((1:nTimeOut)+1) + sInputA.Time(nAvgLen:end)) / 2;
-                                % Alternative: approximately center of windows, but on existing samples.
-                                %iStart = ceil(nWinLen/2);
-                                %iEnd = nTime - floor(nWinLen/2);
-                                %Time = sInputA.Time(iStart:iEnd);
-                            case 'none' % average
-                                TimeAvgFunc = @(X, dim) mean(X, dim);
-                                nAvgLen = nTime;
+                                [~, ixs] = bst_epoching(sInputA.Time, nWinLenSamples, nWinOvelapSamples);
+                                nTimeOut = size(ixs,1);
+                                % Center of the time window (sample 1 = 0 s)
+                                Time = reshape((mean(ixs, 2)-1) ./ sfreq, 1, []);
+                                % Time vector below replicates henv times: half a sample after actual center
+                                % Time = reshape(floor(mean(ixs, 2)) ./ sfreq, 1, []);
+                                % Average in time windows
+                                TimeAvgFunc = @(X, dim) bst_epoching(X, nWinLenSamples, nWinOvelapSamples, dim, 1);
+                            case 'none'
+                                % No output time vector
                                 nTimeOut = 1;
                                 Time = [];
+                                nWinLenSamples = nTime;
+                                % Average across time
+                                TimeAvgFunc = @(X, dim) mean(X, dim);
                             otherwise
                                 error('Unknown time resolution param');
                         end
@@ -795,7 +800,7 @@ for iFile = 1:nFiles
                         end
                         nWin = 0;
                         % Add the number of averaged samples & files to the report (only once per output file)
-                        Message = sprintf('Estimating across %d time samples', nAvgLen); % samples are not independent due to bandpass filter
+                        Message = sprintf('Estimating across %d time samples', nWinLenSamples); % samples are not independent due to bandpass filter
                         if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
                             Message = [Message sprintf(' per file, across %d files', nFiles)];
                         end
@@ -882,11 +887,11 @@ for iFile = 1:nFiles
                     % "Spectral" formulae, using Fourier transform in windows (short-time Fourier transform)
                     % There could be files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
                     % Non-linear functions of cross-spectrum also require the kernel to be applied first.
-                    % Encode non-windowed time resolution
+
+                    % Request time-resolution in bst_xspectrum for OPTIONS.TimeRes = full or windowed
+                    TimeRes = 1;
                     if strcmpi(OPTIONS.TimeRes, 'none')
                         TimeRes = 0;
-                    elseif strcmpi(OPTIONS.TimeRes, 'full')
-                        TimeRes = 1;
                     end
                     if isConnNN
                         % Avoid passing redundant data
@@ -903,18 +908,25 @@ for iFile = 1:nFiles
                     elseif ~isempty(Messages)
                         bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
                     end
-                    if ismember(OPTIONS.TimeRes, {'full', 'windowed'})
-                        if ~isempty(Time)
-                            % Convert relative time (first window = 0) to epoch time.
-                            Time = Time + sInputA.Time(1);
-                        else
-                            % File duration too short (already reported). Avoid further checks and error messages.
-                            OPTIONS.nAvgLen = 0;
+                    % Average S terms (Sab, Saa, AbsImSab, etc) across windows
+                    Terms = fieldnames(S);
+                    if strcmp(OPTIONS.TimeRes, 'windowed')
+                        % Adjust window length and overlap to number of STFT windows
+                        nWinLenAvg = floor(nWinLenSamples ./ round(OPTIONS.StftWinLen * sfreq));
+                        nWinOvrAvg = floor(OPTIONS.WinOverlap * nWinLenAvg);
+                        [~, ixs] = bst_epoching(Time, nWinLenAvg, nWinOvrAvg);
+                        Time = reshape(mean(Time(ixs),2), 1, []);
+                        for f = 1:numel(Terms)
+                            % Windows are the second-to-last dimension
+                            dim = length(size(S.(Terms{f})))-1;
+                            S.(Terms{f}) = bst_epoching(S.(Terms{f}), nWinLenAvg, nWinOvrAvg, dim, 1);
                         end
+                        % Add the number of averaged windows & files to the report
+                        nWinLenSamples = nWinLenAvg;
                     end
+                    % Initial R or Accumulate R
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
                         % Initialize accumulators
-                        Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
                         for f = 1:numel(Terms)
                             R.(Terms{f}) = S.(Terms{f});
                         end
@@ -1255,14 +1267,14 @@ function NewFile = Finalize(DataFile)
     if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
         AvgComment = [AvgComment sprintf('%d files', nFiles)];
     end
-    if ~isempty(nAvgLen) && nAvgLen > 1
+    if ~isempty(nWinLenSamples) && nWinLenSamples > 1
         if ~isempty(AvgComment)
             AvgComment = [AvgComment ','];
         end
         if strcmpi(OPTIONS.tfMeasure, 'stft')
-            AvgComment = [AvgComment sprintf('%d win', nAvgLen)];
+            AvgComment = [AvgComment sprintf('%d win', nWinLenSamples)];
         else
-            AvgComment = [AvgComment sprintf('%d samp', nAvgLen)];
+            AvgComment = [AvgComment sprintf('%d samp', nWinLenSamples)];
         end
     end
     if ~isempty(AvgComment)
@@ -1494,18 +1506,5 @@ function Files = GetFileNames(Files)
         elseif ischar(Files)
             Files = {Files};
         end
-    end
-end
-
-% Moving average, discarding edges that use zero-padding
-function X = movavg(X, nAvgLen, dim)
-    X = filter(1/nAvgLen * ones(1,nAvgLen), 1, X, [], dim); 
-    % Remove points at start that used zero-padding.
-    if dim == 3
-        X(:,:,1:nAvgLen-1,:) = [];
-    elseif dim == 2
-        X(:,1:nAvgLen-1,:) = [];
-    else
-        error('Invalid dim');
     end
 end
