@@ -130,7 +130,8 @@ if nWin < 1
 end
 % Times for window centers
 if TimeRes
-    Time = mean(ixs-1, 2) / Fs;
+    % Center of window (considering sample 1 = 0 s)
+    Time = reshape(mean(ixs-1, 2) / Fs, 1, []);
 end
 
 ep = bsxfun(@times, ep, win);
@@ -276,6 +277,7 @@ else % Time resolved, no window looping
             S.Sbb = abs(permute(Fb, [1,3,2])).^2;
         end
     end
+    nAvgLen = 1;
 
 %     % Moving sum over windows.
 %     if nAvgLen > 1
