@@ -775,9 +775,9 @@ for iFile = 1:nFiles
                         switch OPTIONS.Method
                             case 'cohere'
                                 R.Sab = complex(zeros(nA, nB, nTimeOut, nFreqBands));
-                                R.Saa = complex(zeros(nA, nTimeOut, nFreqBands));
+                                R.Saa = zeros(nA, nTimeOut, nFreqBands);
                                 if ~isConnNN
-                                    R.Sbb = complex(zeros(nB, nTimeOut, nFreqBands));
+                                    R.Sbb = zeros(nB, nTimeOut, nFreqBands);
                                 end
                             case {'plv', 'ciplv'}
                                 R.Sab = complex(zeros(nA, nB, nTimeOut, nFreqBands));
