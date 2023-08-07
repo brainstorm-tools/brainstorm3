@@ -159,6 +159,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     else
         filtfilt_fcn = @oc_filtfilt;
     end
+    Messages = [] ;
     % Define a default width
     % Remove the mean of the data before filtering
     xmean = mean(x,2);
@@ -167,6 +168,11 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     for ifreq = 1:length(FreqList)
         % Define coefficients of an IIR notch filter
         w0 = 2 * pi * FreqList(ifreq) / sfreq;      %Normalized notch frequncy
+        % Check for valid notch frequency
+        if w0 >= 1
+            Messages = sprintf('Notch frequency cannot be above %.2f Hz.\n', sfreq/2);
+            return
+        end
         % Pole radius
         switch Method
             case 'hnotch' % (Default after 2019)  radius by a user defined bandwidth (-3dB)
@@ -225,7 +231,6 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     % Compute the effective transient: Number of samples necessary for having 99% of the impulse response energy
     [tmp, iE99] = min(abs(E - 0.99)) ;
     FiltSpec.transient      = iE99 / sfreq ;
-    Messages = [] ; 
 end
 
 
@@ -249,8 +254,9 @@ function DisplaySpec(sfreq)
     end
     % Compute filter specification
     [tmp, FiltSpec, Messages] = Compute([], sfreq, FreqList, Method, bandWidth) ;
-    if isempty(FiltSpec)
+    if isempty(FiltSpec) || ~isempty(Messages)
         bst_error(Messages, 'Filter response', 0);
+        return
     end
 
     b = FiltSpec.NumT; 
