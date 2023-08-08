@@ -70,7 +70,9 @@ end
 
 function x = normr(x)
     n = sqrt(sum(x.^2,2));
-    x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
+    if any(n~=0)
+        x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
+    end
     x(n==0,:) = 1 ./ sqrt(size(x,2));
 end
 
