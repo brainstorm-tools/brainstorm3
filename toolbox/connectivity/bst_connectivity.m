@@ -1321,7 +1321,7 @@ function NewFile = Finalize(DataFile)
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if ismember(OPTIONS.TimeRes, {'full', 'windowed'}) && ~isempty(Time)
+    if ~isempty(OPTIONS.TimeRes) && ismember(OPTIONS.TimeRes, {'full', 'windowed'}) && ~isempty(Time)
         FileMat.Time      = Time;
         FileMat.TimeBands = [];
     else
