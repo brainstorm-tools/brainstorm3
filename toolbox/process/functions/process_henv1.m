@@ -57,8 +57,8 @@ function sProcess = GetDescription()
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'penv';
     % === TIME-FREQUENCY OPTIONS
-    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', '<B>Time-frequency decomposition:</B>'; ... % , 'Spectral (Fourier)'
-                                          'hilbert', 'morlet', ''}; % 'fourier', 
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', '<B>Time-frequency decomposition:</B>'; ...
+                                          'hilbert', 'morlet', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
     % === Edit Panel 
