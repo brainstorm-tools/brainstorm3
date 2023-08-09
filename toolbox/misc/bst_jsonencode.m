@@ -43,7 +43,25 @@ if nargin < 3
 end
 
 if length(inStruct) > 1
-    error('List of structure input unsupported. If you tried using cells, try a cell of cell {{}}');
+    outString = '[';
+    if indent
+        outString = [outString 10 createIndent(depth + 1)];
+    end
+    for iElem = 1:length(inStruct)
+        if iElem > 1
+            outString = [outString ', ']; %#ok<*AGROW>
+            if indent
+                outString = [outString 10 createIndent(depth + 1)];
+            end
+        end
+        outString = [outString bst_jsonencode(inStruct(iElem), indent, depth + 1)];
+    end
+    if indent
+        outString = [outString 10 createIndent(depth)];
+    end
+    outString = [outString ']'];
+    return;
+    %     error('List of structure input unsupported. If you tried using cells, try a cell of cell {{}}');
 end
 
 outString = '{';
