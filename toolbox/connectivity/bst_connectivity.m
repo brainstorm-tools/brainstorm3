@@ -932,10 +932,10 @@ for iFile = 1:nFiles
                         end
                         nWin = nWinFile;
                         % Add the number of averaged windows & files to the report (only once per output file)
-                        if OPTIONS.nAvgLen == 0
+                        if TimeRes == 0
                             nAvgLen = nWinFile;
                         else
-                            nAvgLen = OPTIONS.nAvgLen;
+                            nAvgLen = nWinLenAvg;
                         end
                         Message = sprintf('Estimating across %d windows of %d samples each', nAvgLen, round(OPTIONS.WinLen * sfreq));
                         if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
