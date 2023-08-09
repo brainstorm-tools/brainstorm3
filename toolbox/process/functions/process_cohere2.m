@@ -71,28 +71,22 @@ function sProcess = GetDescription()
     sProcess.options.tfedit.Comment = {'panel_timefreq_options', 'Options: '};
     sProcess.options.tfedit.Type    = 'editpref';
     sProcess.options.tfedit.Value   = [];
-    sProcess.options.tfedit.Class   = 'hilbert';
     % === TIME AVERAGING
     sProcess.options.timeres.Comment = {'Full (requires epochs)', 'Windowed', 'None', '<B>Time resolution:</B>'; ...
                                         'full', 'windowed', 'none', ''};
     sProcess.options.timeres.Type    = 'radio_linelabel';
     sProcess.options.timeres.Value   = 'full';
+    sProcess.options.timeres.Controller = struct('full', 'nowindowed', 'windowed', 'windowed', 'none', 'nowindowed');
     % === WINDOW LENGTH
     sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
     sProcess.options.avgwinlength.Type    = 'value';
     sProcess.options.avgwinlength.Value   = {1, 's', []};
-    sProcess.options.avgwinlength.Class   = 'hilbert';
-    sProcess.options.timeres.Controller = struct('full', 'nowindowed', 'windowed', 'windowed', 'none', 'nowindowed');
+    sProcess.options.avgwinlength.Class   = 'windowed';
     % === WINDOW OVERLAP
     sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
     sProcess.options.avgwinoverlap.Type    = 'value';
     sProcess.options.avgwinoverlap.Value   = {50, '%', []};
-    sProcess.options.avgwinoverlap.Class   = 'hilbert';
-    % === Fourier: MOVING AVERAGE 
-    sProcess.options.avgwinnum.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
-    sProcess.options.avgwinnum.Type    = 'value';
-    sProcess.options.avgwinnum.Value   = {3, 'Fourier transform windows', 0};
-    sProcess.options.avgwinnum.Class   = 'fourier';
+    sProcess.options.avgwinlength.Class   = 'windowed';
     % === OUTPUT MODE / FILE AVERAGING
     % Ideally, 'input' would be disabled for 'full' time resolution.
     sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...

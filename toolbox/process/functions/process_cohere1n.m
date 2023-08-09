@@ -71,7 +71,6 @@ function sProcess = GetDescription()
     sProcess.options.tfedit.Comment = {'panel_timefreq_options', 'Options: '};
     sProcess.options.tfedit.Type    = 'editpref';
     sProcess.options.tfedit.Value   = [];
-    sProcess.options.tfedit.Class   = 'hilbert';
     % === TIME AVERAGING
     sProcess.options.timeres.Comment = {'Full (requires epochs)', 'Windowed', 'None', '<B>Time resolution:</B>'; ...
                                         'full', 'windowed', 'none', ''};
