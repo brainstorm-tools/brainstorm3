@@ -86,7 +86,7 @@ function sProcess = GetDescription()
     sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
     sProcess.options.avgwinoverlap.Type    = 'value';
     sProcess.options.avgwinoverlap.Value   = {50, '%', []};
-    sProcess.options.avgwinlength.Class   = 'windowed';
+    sProcess.options.avgwinoverlap.Class   = 'windowed';
     % === OUTPUT MODE / FILE AVERAGING
     % Ideally, 'input' would be disabled for 'full' time resolution.
     sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...
