@@ -733,6 +733,12 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
                 Version = strtrim(str(9:end));
+            case 'brainentropy'
+                bst_progress('text', ['Checking latest online version for ' PlugName '...']);
+                disp(['BST> Checking latest online version for ' PlugName '...']);
+                str = bst_webread('https://raw.githubusercontent.com/multifunkim/best-brainstorm/master/best/VERSION.txt');
+                str = strsplit(str,'\n');
+                Version = strtrim(str{1});
             otherwise
                 % If downloading from github: Get last GitHub commit SHA
                 if isGithubMaster(URLzip)
