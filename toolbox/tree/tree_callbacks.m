@@ -895,7 +895,53 @@ switch (lower(action))
                 if (length(bstNodes) == 1) && ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Edit channel file', IconLoader.ICON_EDIT, [], @(h,ev)gui_edit_channel(filenameRelative));
                 end
-                
+                %Function to read channels from in_bst_channel.m 
+
+		% USAGE:  sMat = in_bst_channel(MatFile, FieldsList) : Read the specified fields        
+		%         sMat = in_bst_channel(MatFile)             : Read all the fields
+		% 
+		% INPUT:
+		%    - MatFile    : Absolute or relative path to the file to read
+		%    - FieldsList : List of fields to read from the file
+		% OUTPUT:
+		%    - sMat : Brainstorm matrix file structure
+		
+		
+		% function to rename the channels 
+		% create a dictionary mapping the corresponding channels and replace the "key" with the "value" in the dictionary. 
+		%The keys are same as the items in the list biosemiElectrodes
+		
+		function renamedChannels = renameChannels(channelData, channelMap)
+		    % channelData: Cell array of original channel names
+		    % channelMap: Dictionary mapping original channel names to new names
+		    
+		    renamedChannels = channelData;  % Initialize with original channel names
+		    
+		    % Loop through each channel name
+		    for i = 1:length(channelData)
+		        originalName = channelData{i};
+		        
+		        % Check if the channel has a mapping in the dictionary
+		        if isKey(channelMap, originalName)
+		            newName = channelMap(originalName);
+		            renamedChannels{i} = newName;  % Rename the channel
+		        end
+		    end
+		end
+		
+		% Example channel data and channel map
+		channelData = {'F3', 'F4', 'Pz', 'Oz'};
+		channelMap = containers.Map({'F3', 'F4', 'Pz', 'Oz'}, ...
+		                            {'Frontal1', 'Frontal2', 'Parietal', 'Occipital'});
+		
+		% Call the renameChannels function
+		newChannels = renameChannels(channelData, channelMap);
+		
+		% Display the renamed channels
+		disp('Original Channels:');
+		disp(channelData);
+		disp('Renamed Channels:');
+		disp(newChannels);
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
