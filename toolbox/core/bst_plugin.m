@@ -240,6 +240,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).GetVersionFcn  = @be_versions;
     PlugDesc(end).DeleteFiles    = {'docs', '.github'};
     
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
@@ -732,6 +733,12 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
                 Version = strtrim(str(9:end));
+            case 'brainentropy'
+                bst_progress('text', ['Checking latest online version for ' PlugName '...']);
+                disp(['BST> Checking latest online version for ' PlugName '...']);
+                str = bst_webread('https://raw.githubusercontent.com/multifunkim/best-brainstorm/master/best/VERSION.txt');
+                str = strsplit(str,'\n');
+                Version = strtrim(str{1});
             otherwise
                 % If downloading from github: Get last GitHub commit SHA
                 if isGithubMaster(URLzip)
@@ -2208,11 +2215,33 @@ function strList = List(Target, isGui)
             strDate = '';
             strPath = '';
         end
-        % Cut version string (short github SHA)
-        if (length(PlugDesc(iPlug).Version) > 13)
+        % Get installed version
+        if (length(PlugDesc(iPlug).Version) > 13)   % Cut version string (short github SHA)
             plugVer = ['git @', PlugDesc(iPlug).Version(1:7)];
         else
             plugVer = PlugDesc(iPlug).Version;
+        end
+        % Get installed version with GetVersionFcn
+        if isempty(plugVer) && isfield(PlugDesc(iPlug),'GetVersionFcn') && ~isempty(PlugDesc(iPlug).GetVersionFcn)
+            % Load plugin if needed
+            tmpLoad = 0;
+            if ~PlugDesc(iPlug).isLoaded
+                tmpLoad = 1;
+                Load(PlugDesc(iPlug), 0);
+            end
+            try
+                if ischar(PlugDesc(iPlug).GetVersionFcn)
+                    plugVer = eval(PlugDesc(iPlug).GetVersionFcn);
+                elseif isa(PlugDesc(iPlug).GetVersionFcn, 'function_handle')
+                    plugVer = feval(PlugDesc(iPlug).GetVersionFcn);
+                end
+            catch 
+                disp(['BST> Could not get installed version with callback: ' PlugDesc(iPlug).GetVersionFcn]);
+            end
+            % Unload plugin
+            if tmpLoad
+                Unload(PlugDesc(iPlug), 0);
+            end
         end
         % Assemble plugin text row
         strList = [strList strLoaded, ...
