@@ -2215,21 +2215,33 @@ function strList = List(Target, isGui)
             strDate = '';
             strPath = '';
         end
-
-        if isfield(PlugDesc(iPlug),'GetVersionFcn') && ~isempty(PlugDesc(iPlug).GetVersionFcn)
-            try
-                if ischar(PlugDesc(iPlug).GetVersionFcn)
-                    plugVer     = eval(PlugDesc(iPlug).GetVersionFcn);
-                else
-                    plugVer     = PlugDesc(iPlug).GetVersionFcn();
-                end
-            catch 
-                plugVer = PlugDesc(iPlug).Version;
-            end
-        elseif (length(PlugDesc(iPlug).Version) > 13)   % Cut version string (short github SHA)
+        % Get installed version
+        if (length(PlugDesc(iPlug).Version) > 13)   % Cut version string (short github SHA)
             plugVer = ['git @', PlugDesc(iPlug).Version(1:7)];
         else
             plugVer = PlugDesc(iPlug).Version;
+        end
+        % Get installed version with GetVersionFcn
+        if isempty(plugVer) && isfield(PlugDesc(iPlug),'GetVersionFcn') && ~isempty(PlugDesc(iPlug).GetVersionFcn)
+            % Load plugin if needed
+            tmpLoad = 0;
+            if ~PlugDesc(iPlug).isLoaded
+                tmpLoad = 1;
+                Load(PlugDesc(iPlug), 0);
+            end
+            try
+                if ischar(PlugDesc(iPlug).GetVersionFcn)
+                    plugVer = eval(PlugDesc(iPlug).GetVersionFcn);
+                elseif isa(PlugDesc(iPlug).GetVersionFcn, 'function_handle')
+                    plugVer = feval(PlugDesc(iPlug).GetVersionFcn);
+                end
+            catch 
+                disp(['BST> Could not get installed version with callback: ' PlugDesc(iPlug).GetVersionFcn]);
+            end
+            % Unload plugin
+            if tmpLoad
+                Unload(PlugDesc(iPlug), 0);
+            end
         end
         % Assemble plugin text row
         strList = [strList strLoaded, ...
