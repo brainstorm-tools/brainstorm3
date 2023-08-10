@@ -159,6 +159,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     else
         filtfilt_fcn = @oc_filtfilt;
     end
+    FiltSpec = [];
     Messages = [] ;
     % Define a default width
     % Remove the mean of the data before filtering
@@ -169,8 +170,8 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
         % Define coefficients of an IIR notch filter
         w0 = 2 * pi * FreqList(ifreq) / sfreq;      %Normalized notch frequncy
         % Check for valid notch frequency
-        if w0 >= 1
-            Messages = sprintf('Notch frequency cannot be above %.2f Hz.\n', sfreq/2);
+        if w0 >= pi
+            Messages = sprintf('Cannot be above %.2f Hz.\n', sfreq/2);
             return
         end
         % Pole radius
