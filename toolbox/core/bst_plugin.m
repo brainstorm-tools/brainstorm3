@@ -2215,8 +2215,18 @@ function strList = List(Target, isGui)
             strDate = '';
             strPath = '';
         end
-        % Cut version string (short github SHA)
-        if (length(PlugDesc(iPlug).Version) > 13)
+
+        if isfield(PlugDesc(iPlug),'GetVersionFcn') && ~isempty(PlugDesc(iPlug).GetVersionFcn)
+            try
+                if ischar(PlugDesc(iPlug).GetVersionFcn)
+                    plugVer     = eval(PlugDesc(iPlug).GetVersionFcn);
+                else
+                    plugVer     = PlugDesc(iPlug).GetVersionFcn();
+                end
+            catch 
+                plugVer = PlugDesc(iPlug).Version;
+            end
+        elseif (length(PlugDesc(iPlug).Version) > 13)   % Cut version string (short github SHA)
             plugVer = ['git @', PlugDesc(iPlug).Version(1:7)];
         else
             plugVer = PlugDesc(iPlug).Version;
