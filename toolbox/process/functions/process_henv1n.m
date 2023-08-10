@@ -20,13 +20,15 @@ function varargout = process_henv1n(varargin)
 % =============================================================================@
 %
 % Author: Hossein Shahabi, Francois Tadel, 2020-2022
+%         Marc Lalancette, 2023
+
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() 
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN [2022]';
+    sProcess.Comment     = 'Envelope Correlation NxN [2023]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 686;
