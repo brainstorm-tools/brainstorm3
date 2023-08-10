@@ -2370,7 +2370,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
             procFunc    = func2str(sExportProc(iProc).Function);
             % Time-freq: make sure the options were selected
-            if ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd', 'process_henv1', 'process_henv1n', 'process_henv2'}) && (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))
+            if ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd', ...
+                                   'process_henv1', 'process_henv1n', 'process_henv2', ...
+                                   'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                                   'process_plv1', 'process_plv1n', 'process_plv2'}) && (~isfield(sExportProc(iProc).options.tfedit, 'Value') || isempty(sExportProc(iProc).options.tfedit.Value))
                 bst_error('Please check the advanced options of the process before generating the script.', 'Generate script', 0);
                 return;
             end
