@@ -1,4 +1,10 @@
+# Matlab autosave files
 *.asv
+# Java components of Brainstorm
 java/brainstorm.jar
+# Anatomy defaults
 defaults/anatomy/*
+# Compiled Brainstorm
+bin/*/brainstorm3.jar
+# macOS desktop service store files
 .DS_Store
