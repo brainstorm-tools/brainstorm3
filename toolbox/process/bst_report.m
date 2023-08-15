@@ -1566,17 +1566,16 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     if ~exist('webread', 'file')
         error('Sending email requires Matlab >= 2014b.');
     end
-    % Check ReportFile 
-    if ~exist(ReportFile, 'file') || isempty(ReportFile)
-        ReportFile = 'current';
-    end
     % Get report
-    if any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
-        Reports = GetReport(ReportFile);
-    else
+    if exist(ReportFile, 'file')
         ReportMat = load(ReportFile);
         Reports = ReportMat.Reports;
-    end    
+    else
+        if isempty(ReportFile) || ~any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
+            ReportFile = 'current';
+        end
+        Reports = GetReport(ReportFile);
+    end
     % Print report
     if isFullReport
         html = PrintToHtml(Reports, isFullReport);
