@@ -44,6 +44,8 @@ ProtocolName = 'TutorialConnectivity';
 gui_brainstorm('DeleteProtocol', ProtocolName);
 % Create new protocol
 gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
+% Start a new report
+bst_report('Start');
 
 
 %% ===== SIMULATE DATA (MVAR MODEL) =====
