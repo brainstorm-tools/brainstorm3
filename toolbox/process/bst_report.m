@@ -1576,28 +1576,49 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
         end
         Reports = GetReport(ReportFile);
     end
-    % Print report
+    html = '';
+    % RESTful arguments
+    restArgs = {'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html};
+    if ~bst_verlessthan(901)
+        restArgs{end+1} = weboptions('CertificateFilename','');
+    end
+    % Full report: prepare and send
     if isFullReport
         html = PrintToHtml(Reports, isFullReport);
-    else
+        restArgs{10} = html;
+        try
+            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+        catch ME
+            % Try to send as compact report if Error413: "Request Entity Too Large"
+            if ~isempty(strfind(lower(ME.identifier), 'http413'))
+                isFullReport = 0;
+            else
+                resp = 'bad';
+            end
+        end
+    end
+    % Compact report: prepare and send
+    if ~isFullReport
         html = '';
         for iEntry = 1:size(Reports,1)
             if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
                 html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
                 if ~isempty(Reports{iEntry,2})
-                    html = [html, ' - ' func2str(Reports{iEntry,2}.Function)];
+                    if isstruct(Reports{iEntry,2})
+                        html = [html, 9, ' - ' func2str(Reports{iEntry,2}.Function)];
+                    elseif ischar(Reports{iEntry,2})
+                        html = [html, 9, ' - ' Reports{iEntry,2}];
+                    end
                 end
                 html = [html, 10];
             end
         end
-    end
-    % Send by email
-    % Matlab <= 2016a
-    if bst_verlessthan(901)
-        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
-    else
-        options = weboptions('CertificateFilename','');
-        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html, options);
+        restArgs{10} = html;
+        try
+            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+        catch
+            resp = 'bad';
+        end
     end
     % Return status
     isOk = isequal(resp, 'ok');
