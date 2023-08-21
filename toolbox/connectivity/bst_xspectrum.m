@@ -269,53 +269,7 @@ else % Time resolved, no window looping
         end
     end
     nAvgLen = 1;
-
-%     % Moving sum over windows.
-%     if nAvgLen > 1
-%         Terms = fieldnames(S); % e.g. Sab, Saa, AbsImSab, etc.
-%         for f = 1:numel(Terms)
-%             S.(Terms{f}) = movsum(S.(Terms{f}), nAvgLen, ndims(S.(Terms{f})) - 1);
-%         end
-%     else
-%         % No averaging.
-%         nAvgLen = 1;
-%     end
-
 end
 
 end
 
-% function [epx, nEpochs, iStart] = epoching(x, nEpochLen, nOverlap)
-%     % Divides the A provided as [nSignals, nTime] into epochs with a epoch length of nEpochLen
-%     % indicated in samples, and an overlap of nOverlap samples between consecutive epochs.
-%
-%     % Obtain parameters of the data
-%     [nSignals, nTime] = size(x);
-%     % Number of epochs
-%     nEpochs = floor( (nTime - nOverlap) / (nEpochLen - nOverlap) );
-%     % If not enough data
-%     if nEpochs <= 0 || isinf(nEpochs)
-%         epx = [];
-%         return
-%     end
-%     % iStart indicates where the epochs start
-%     iStart = ((0 : (nEpochs-1)) * (nEpochLen - nOverlap)) + 1;
-%     epx = zeros(nSignals, nEpochLen, nEpochs, class(x));
-%     % Divide data in epochs
-%     for iEpoch = 1 : nEpochs
-%         epx(:,:,iEpoch) = x(:, iStart(iEpoch) : iStart(iEpoch) + nEpochLen - 1);
-%     end
-% end
-
-% Moving sum (like moving average), discarding edges that use zero-padding
-% function X = movsum(X, nAvgLen, dim)
-%     X = filter(ones(1,nAvgLen), 1, X, [], dim);
-%     % Remove points at start that used zero-padding.
-%     if dim == 3
-%         X(:,:,1:nAvgLen-1,:) = [];
-%     elseif dim == 2
-%         X(:,1:nAvgLen-1,:) = [];
-%     else
-%         error('Invalid dim');
-%     end
-% end
