@@ -141,9 +141,11 @@ end
 
 
 %% ===== SNAPSHOT =====
-% USAGE:  bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
+% USAGE:  bst_report('Snapshot', SnapType,       FileName,     Comment, ...)
+%   img = bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
 %         bst_report('Snapshot', 'noiscov',      AnyFile,      Comment)
+%         bst_report('Snapshot', 'ndatacov',     AnyFile,      Comment)
 %         bst_report('Snapshot', 'headmodel',    AnyFile,      Comment)
 %         bst_report('Snapshot', 'data',         DataFile,     Comment, Modality, Time=start, RowName=[All])
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
@@ -154,9 +156,13 @@ end
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
 %         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
+%         bst_report('Snapshot', 'connectimage', ConnectFile,  Comment, Time=start, Freq=0)
+%         bst_report('Snapshot', 'connectgraph', ConnectFile,  Comment, Threshold=0, Time=start, Freq=0)
 %         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
+%
+% Optional output img is a cell array of cell arrays with image(s) data for each FileName
 % Note: All the input files can be either strings (one file) or cell-array of strings (many files)
-function Snapshot(SnapType, FileName, Comment, varargin)
+function img = Snapshot(SnapType, FileName, Comment, varargin)
     % No file in input: nothing to do
     if (nargin < 1)
         return;
@@ -169,11 +175,22 @@ function Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Recustive call if inputs are cell arrays of filenames
     if ~isempty(FileName) && iscell(FileName)
-        for iFile = 1:length(FileName)
-            Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+        if nargout > 0
+            % Output: cell array of cell arrays with image(s) for each FileName
+            imgs = cell(1, length(FileName));
+            for iFile = 1:length(FileName)
+                imgs{iFile} = Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+            end
+            img = imgs;
+        else
+            for iFile = 1:length(FileName)
+                Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+            end
         end
         return;
     end
+    % Use short file name
+    FileName = file_short(FileName);
     % Get current window layout
     curLayout = bst_get('Layout', 'WindowManager');
     if ~isempty(curLayout)
@@ -666,6 +683,8 @@ function Snapshot(SnapType, FileName, Comment, varargin)
         Error('process_snapshot', FileName, strErr);
         hFig = [];
     end
+    % Output images
+    imgs = cell(1, length(hFig));
     % If a figure was created
     for i = 1:length(hFig)
         drawnow;
@@ -684,6 +703,10 @@ function Snapshot(SnapType, FileName, Comment, varargin)
         end
         % Add image to report
         Add('image', Comment, FileName, img);
+        % Append images (only if requested)
+        if nargout > 0
+            imgs{i} = img;
+        end
         % Close figure
         if ~strcmpi(SnapType, 'figure')
             close(hFig(i));
@@ -705,6 +728,8 @@ function Snapshot(SnapType, FileName, Comment, varargin)
     if ~isempty(curLayout)
         bst_set('Layout', 'WindowManager', curLayout);
     end
+    % Output: cell array with image(s)
+    img = imgs;
 end
 
 
