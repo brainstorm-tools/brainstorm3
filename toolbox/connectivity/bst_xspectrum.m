@@ -2,7 +2,7 @@ function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 % BST_XSPECTRUM : Compute cross-spectrum or orther function of A and B Fourier transforms
 %                 used to to further compute connectivity metrics
 %
-% USAGE:  [S, nWin, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Overlap=0.5, MaxFreq=[], KernelB=[], Func='xspec', nAvgLen=0)
+% USAGE:  [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Overlap=0.5, MaxFreq=[], KernelB=[], Func='xspec', TimeRes=0)
 %
 % INPUTS:
 %    - A       : Signals A [nSignalsA, nTimeA]
@@ -29,7 +29,7 @@ function [S, nAvgLen, Freq, Time, Messages] = bst_xspectrum(A, B, Fs, WinLen, Wi
 %    - S : Structure with fields listed above, possibly summed over windows (depending on nAvgLen), 
 %          for computing the requested connectivity metric. Most terms, like S.Sab, have size
 %          [nSignalsA, nSignalsB, nFreq], or [nA, nB, nTime, nFreq] for time-resolved.
-%    - nAvgLen  : Number of windows (nWin) that were summed; may be adjusted depending on data length and window params.
+%    - nAvgLen  : Number of windows that were averaged (if TimeRes=0); depends on data length and window params.
 %    - Freq     : Frequency vector (length nFreq).
 %    - Time     : Relative time vector, assuming first input sample is time 0.
 %    - Messages : Text indicating warnings or errors that occured.
@@ -173,18 +173,13 @@ if ~isNxN
         if MatlabVersion >= 909  %  >= Matlab R2020b
             Fb = pagemtimes(KernelB, Fb);
         else
-            FbSource = zeros(size(KernelB,1), size(Fb,2), size(Fb,3));
-            for k = 1:size(Fb,3)
-                FbSource(:,:,k) = KernelB * Fb(:,:,k);
-            end
-            Fb = FbSource;
-            clear FbSource
+            Fb = reshape(KernelB * Fb(:,:), [nB, nFreq, nWin]); % reshaping to 2-d for matrix multiplication
         end
     end
 else
     nB = nA;
 end
-if ~TimeRes % No time resolved: initialize for window loop
+if ~TimeRes % Not time resolved: initialize for window loop
     switch Func
         case {'plv', 'ciplv', 'cohere', 'xspec'}
             % For cohere: Saa, Sbb don't need window loop thus no initialization.
@@ -211,7 +206,7 @@ if ismember(Func, {'plv', 'ciplv'})
 end
     
 %% ===== Compute requested functions for each window =====
-if ~TimeRes % No time resolved: initialize for window loop
+if ~TimeRes % Not time resolved: loop over windows
     % These terms have size [nA, nB, nFreq]
     % This could be done faster without looping as when keeping time, but would require nWin times more memory.
     for iWin = 1:nWin

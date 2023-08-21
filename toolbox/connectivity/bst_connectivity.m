@@ -888,7 +888,7 @@ for iFile = 1:nFiles
                     % There could be files from different runs and different kernels, so must apply kernel here (in bst_xspectrum).
                     % Non-linear functions of cross-spectrum also require the kernel to be applied first.
 
-                    % Request time-resolution in bst_xspectrum for OPTIONS.TimeRes = full or windowed
+                    % Request time-resolved output from bst_xspectrum for OPTIONS.TimeRes = full or windowed
                     TimeRes = 1;
                     if strcmpi(OPTIONS.TimeRes, 'none')
                         TimeRes = 0;
@@ -930,7 +930,7 @@ for iFile = 1:nFiles
                         for f = 1:numel(Terms)
                             R.(Terms{f}) = S.(Terms{f});
                         end
-                        nWin = nWinFile;
+                        nWin = 0;
                         % Add the number of averaged windows & files to the report (only once per output file)
                         if TimeRes == 0
                             nAvgLen = nWinFile;
@@ -950,8 +950,9 @@ for iFile = 1:nFiles
                         for f = 1:numel(Terms)
                             R.(Terms{f}) = R.(Terms{f}) + S.(Terms{f});
                         end
-                        nWin = nWin + nWinFile;
                     end
+                    % If averaging over consecutive stft windows (TimeRes = 'windowed'), already divided by nWinFile.
+                    nWin = nWin + 1;
             end % tfmeasure switch
 
         % ==== PTE ====
@@ -1224,36 +1225,6 @@ function NewFile = Finalize(DataFile)
         Comment = [Comment, sInputA.Comment];
     end
 
-%     % Save each connectivity matrix as an independent file
-%     switch (OPTIONS.OutputMode)
-%         case 'input'
-%             nAvg = 1;
-%             % Use original input file (not a temp PCA file) to attach new node to tree
-%             OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, OrigFilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits, InHist);
-%         case {'concat', 'avgcoh'}
-%             nAvg = 1;
-%             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits, OutHist);
-%         case 'avg'
-%             % Concatenate files comments
-%             AllComments{end+1} = Comment;
-%             % Compute online average of the connectivity matrices
-%             if isempty(Ravg)
-%                 Ravg = R ./ nFiles;
-%             elseif ~isequal(size(Ravg), size(R))
-%                 bst_report('Error', OPTIONS.ProcessName, [], 'Input files have different size dimensions or different lists of bad channels.');
-%                 CleanExit; return;
-%             else
-%                 Ravg = Ravg + R ./ nFiles;
-%             end
-%             nAvg = nAvg + 1;
-%     end
-% 
-% 
-% %% ===== SAVE AVERAGE =====
-% if strcmpi(OPTIONS.OutputMode, 'avg')
-%     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands, DisplayUnits, OutHist);
-% end
-
     % For now, nAvg is kept for methods where the final values are averages: averaging is done after full connectivity, including e.g. abs. 
     % The methods listed here were not (yet) modified with the 2023 file averaging changes.
     if strcmpi(OPTIONS.OutputMode, 'avg') && ismember(OPTIONS.Method, {'corr', 'granger', 'spgranger', 'aec', 'pte', 'henv'})
@@ -1289,12 +1260,6 @@ function NewFile = Finalize(DataFile)
         Comment = [Comment ' (' AvgComment ')'];
     end
 
-
-%% ===== SAVE FILE =====
-% function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands, DisplayUnits, OutHist)
-%     if nargin < 11
-%         OutHist = [];
-%     end
     NewFile = [];
     bst_progress('text', 'Saving results...');
 
