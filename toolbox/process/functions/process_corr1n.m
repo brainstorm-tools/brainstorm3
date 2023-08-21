@@ -143,14 +143,14 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scouttime.Group      = 'input';
     sProcess.options.scouttime.Controller = struct('before', 'before', 'after', 'after');
     % === SCOUT FUNCTION ===    
-    sProcess.options.scoutfunc.Comment    = {'PCA&nbsp;&#8201;&#8201;', 'Mean&nbsp;', 'All', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfunc.Comment    = {'PCA&nbsp;&thinsp;&thinsp;', 'Mean&nbsp;', 'All', '&nbsp;&nbsp;&nbsp;'; ...
                                              'pca', 'mean', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'mean';
     sProcess.options.scoutfunc.InputTypes = {'results'};
     sProcess.options.scoutfunc.Group      = 'input';
     sProcess.options.scoutfunc.Class      = 'before';
-    sProcess.options.scoutfuncaft.Comment    = {'Mean&nbsp;', 'Max&nbsp;&#8201;&#8201;', 'Std', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfuncaft.Comment    = {'Mean&nbsp;', 'Max&nbsp;&thinsp;&thinsp;', 'Std', '&nbsp;&nbsp;&nbsp;'; ...
                                              'mean', 'max', 'std', ''};
     sProcess.options.scoutfuncaft.Type       = 'radio_linelabel';
     sProcess.options.scoutfuncaft.Value      = 'mean';
