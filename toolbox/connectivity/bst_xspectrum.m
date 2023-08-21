@@ -170,11 +170,7 @@ if ~isNxN
     else
         % We have a kernel, apply it now.
         nB = size(KernelB, 1);
-        if MatlabVersion >= 909  %  >= Matlab R2020b
-            Fb = pagemtimes(KernelB, Fb);
-        else
-            Fb = reshape(KernelB * Fb(:,:), [nB, nFreq, nWin]); % reshaping to 2-d for matrix multiplication
-        end
+        Fb = reshape(KernelB * Fb(:,:), [nB, nFreq, nWin]); % reshaping to 2-d for matrix multiplication
     end
 else
     nB = nA;
