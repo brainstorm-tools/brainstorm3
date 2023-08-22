@@ -1298,12 +1298,12 @@ function NewFile = Finalize(DataFile)
     % Row names: NxM
     FileMat.RefRowNames = sInputA.RowNames;
     FileMat.RowNames    = sInputB.RowNames;
-    % Atlas: save A in first index, B in second, unless there's only B.
+    % Atlas: save A in first index, B in second
     if ~isempty(sInputA.Atlas)
         FileMat.Atlas(1) = sInputA.Atlas(1);
     end
     if ~isempty(sInputB.Atlas)
-        FileMat.Atlas(end+1) = sInputB.Atlas(1);
+        FileMat.Atlas(2) = sInputB.Atlas(1);
     end
     % Surface & grid: save from B, otherwise if missing, save from A.
     if ~isempty(sInputB.SurfaceFile)
