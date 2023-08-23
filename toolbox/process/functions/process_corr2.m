@@ -49,9 +49,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scalarprod.Type    = 'checkbox';
     sProcess.options.scalarprod.Value   = 0;
     % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
+                                            'input', 'avg', ''};
+    sProcess.options.outputmode.Type    = 'radio_linelabel';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 
@@ -124,11 +125,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.flatten.InputTypesB = {'results'};
     sProcess.options.flatten.Group       = 'input';
     % === SCOUT TIME ===
-    sProcess.options.scoutfunctxt.Comment    = 'Scout function: ';
-    sProcess.options.scoutfunctxt.Type       = 'label';
-    sProcess.options.scoutfunctxt.InputTypes = {'results'};
-    sProcess.options.scoutfunctxt.Group      = 'input';
-    sProcess.options.scouttime.Comment       = {'before ', 'after connectivity', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Apply'; ...
+    sProcess.options.scouttime.Comment       = {'before&nbsp;&nbsp;&nbsp;', 'after&nbsp;&nbsp;&nbsp; connectivity metric', 'Scout function: &nbsp;&nbsp;&nbsp;Apply'; ...
                                                 'before', 'after', ''};
     sProcess.options.scouttime.Type          = 'radio_linelabel';
     sProcess.options.scouttime.Value         = 'after';
@@ -137,7 +134,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.scouttime.Group         = 'input';
     sProcess.options.scouttime.Controller    = struct('before', 'before', 'after', 'after');
     % === SCOUT FUNCTION ===    
-    sProcess.options.scoutfunc.Comment        = {'PCA ', 'Mean ', 'All ', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfunc.Comment        = {'PCA&nbsp;&thinsp;&thinsp;', 'Mean&nbsp;', 'All', '&nbsp;&nbsp;&nbsp;'; ...
                                                 'pca', 'mean', 'all', ''};
     sProcess.options.scoutfunc.Type           = 'radio_linelabel';
     sProcess.options.scoutfunc.Value          = 'mean';
@@ -145,7 +142,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.scoutfunc.InputTypesB    = {'results'};
     sProcess.options.scoutfunc.Group          = 'input';
     sProcess.options.scoutfunc.Class          = 'before';
-    sProcess.options.scoutfuncaft.Comment     = {'Mean ', 'Max ', 'Std ', '&nbsp;&nbsp;&nbsp;'; ...
+    sProcess.options.scoutfuncaft.Comment     = {'Mean&nbsp;', 'Max&nbsp;&thinsp;&thinsp;', 'Std', '&nbsp;&nbsp;&nbsp;'; ...
                                                 'mean', 'max', 'std', ''};
     sProcess.options.scoutfuncaft.Type        = 'radio_linelabel';
     sProcess.options.scoutfuncaft.Value       = 'mean';

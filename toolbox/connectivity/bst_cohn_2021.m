@@ -1,7 +1,7 @@
 function [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, MaxFreq, ImagingKernel, waitMax)
 % BST_COHN_2021: Updated version of bst_cohn.m 
 %
-% USAGE:  [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
+% USAGE:  [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', MaxFreq=[], ImagingKernel=[], waitMax=100)
 %
 % INPUTS:
 %    - Xs      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
@@ -123,7 +123,6 @@ if ~isempty(MaxFreq)
         freq = freq(1:nKeep);
     end
 end
-nWin = 0;
 % Initialize accumulators
 Sxy = [];
 Sxx = [];
@@ -286,7 +285,7 @@ if ~isempty(ImagingKernel)
     
     %% ===== Case 1xN =====
     if ~isNxN             
-        % Initialize Sxy and Syy in source space
+        % Initialize Sxy in source space
         Sxy_sources = complex(zeros(nSignalsX, nSourcesY, length(freq)));
         % Projection for each frequency
         for iFreq = 1:length(freq)
