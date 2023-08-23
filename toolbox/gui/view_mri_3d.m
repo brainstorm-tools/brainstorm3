@@ -148,13 +148,22 @@ end
 if ~isempty(SurfAlpha)
     panel_surface('SetSurfaceTransparency', hFig, iSurf, SurfAlpha);
 end
-% Add data on the MRI slices 
-if ~isempty(OverlayFile)
+% Add data on the MRI slices
+isOverlay = ~isempty(OverlayFile);
+if isOverlay
     isOk = panel_surface('SetSurfaceData', hFig, iSurf, OverlayType, OverlayFile, isStat);
     if ~isOk
         close(hFig);
         return;
     end
+end
+% Try to load an anatomical atlas
+if ~isOverlay
+    figure_3d('SetVolumeAtlas', hFig);
+% If the overlay is an atlas: simply set the atlas name in the figure
+elseif isOverlay && strcmpi(file_gettype(OverlayFile), 'subjectimage') && ~isempty(strfind(OverlayFile, '_volatlas'))
+    [sSubject, iSubject, iAnatomy] = bst_get('MriFile', OverlayFile);
+    setappdata(hFig, 'AnatAtlas', sSubject.Anatomy(iAnatomy).Comment);
 end
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
