@@ -1,5 +1,3 @@
-toolbox/process/functions/process_channel_biosemi.m
-
 function varargout = process_channel_biosemi( varargin )
 
 % PROCESS_CHANNEL_BIOSEMI: Rename channels for Biosemi raw recordings in database.
