@@ -55,11 +55,11 @@ function sProcess = GetDescription()
     sProcess.options.flatten.Value      = 1;
     sProcess.options.flatten.InputTypes = {'results'};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
-                                             'mean', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Power', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+                                             'mean', 'power', 'max', 'pca', 'std', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'pca';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca');
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'power', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca');
     % === PCA Options
     sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
     sProcess.options.pcaedit.Type    = 'editpref';
@@ -145,11 +145,12 @@ function OutputFiles = Run(sProcess, sInputs)
     % Override scouts function
     if ~isempty(sProcess.options.scoutfunc.Value)
         switch lower(sProcess.options.scoutfunc.Value)
-            case {1, 'mean'}, ScoutFunc = 'mean';
-            case {2, 'max'},  ScoutFunc = 'max';
-            case {3, 'pca'},  ScoutFunc = 'pca';
-            case {4, 'std'},  ScoutFunc = 'std';
-            case {5, 'all'},  ScoutFunc = 'all';
+            case {1, 'mean'},   ScoutFunc = 'mean';
+            case {2, 'max'},    ScoutFunc = 'max';
+            case {3, 'pca'},    ScoutFunc = 'pca';
+            case {4, 'std'},    ScoutFunc = 'std';
+            case {5, 'all'},    ScoutFunc = 'all';
+            case {6, 'power'},  ScoutFunc = 'power';
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else

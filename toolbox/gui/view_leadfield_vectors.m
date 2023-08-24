@@ -407,7 +407,8 @@ bst_progress('stop');
         delete(findobj(hAxes, '-depth', 1, 'Tag', 'SelChannel'));
         % Plot selected sensor
         if ~isempty(Channels(iChannel).Loc) && ~ismember(Channels(iChannel).Name, {'EEG','MEG','MEG MAG', 'MEG GRAD'})
-            line(Channels(iChannel).Loc(1,1), Channels(iChannel).Loc(2,1), Channels(iChannel).Loc(3,1), ...
+            % Center of mass of all coordinates
+            line(mean(Channels(iChannel).Loc(1,:),2), mean(Channels(iChannel).Loc(2,:),2), mean(Channels(iChannel).Loc(3,:),2), ...
                 'Parent',          hAxes, ...
                 'LineWidth',       2, ...
                 'LineStyle',       'none', ...
@@ -477,7 +478,8 @@ bst_progress('stop');
         Channels = ChannelMat.Channel(iChannels);
         % Get channels locations
         if length(Channels) > 10
-            markersLocs = cell2mat(cellfun(@(c)c(:,1), {Channels.Loc}, 'UniformOutput', 0))';
+            % Center of mass of all coordinates for each sensor
+            markersLocs = cell2mat(cellfun(@(c) mean(c,2), {Channels.Loc}, 'UniformOutput', 0))';
         end
         % Ask to select reference
         isOk = SelectReference();

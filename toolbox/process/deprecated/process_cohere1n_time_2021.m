@@ -1,5 +1,5 @@
-function varargout = process_cohere1n_time( varargin )
-% PROCESS_COHERE1N_TIME: Compute the time-resolved coherence between all the pairs of signals, in one file.
+function varargout = process_cohere1n_time_2021( varargin )
+% PROCESS_COHERE1N_TIME_2021: Compute the time-resolved coherence between all the pairs of signals, in one file.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,7 +19,9 @@ function varargout = process_cohere1n_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, 2015-2020; Hossein Shahabi, 2019-2020
+% Authors: Elizabeth Bock, 2015
+%          Francois Tadel, 2015-2021
+%          Hossein Shahabi, 2019-2020
 
 eval(macro_method);
 end
@@ -28,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Time-resolved coherence NxN [Deprecated]';
+    sProcess.Comment     = 'Time-resolved coherence NxN [2021]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 657;
@@ -38,6 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
@@ -47,17 +50,17 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
     % === Time window
-    sProcess.options.win.Comment = 'Estimation window length:';
-    sProcess.options.win.Type    = 'value';
-    sProcess.options.win.Value   = {.350, 'ms', []};
+    sProcess.options.slide_win.Comment = 'Sliding time window duration:';
+    sProcess.options.slide_win.Type    = 'value';
+    sProcess.options.slide_win.Value   = {.350, 'ms', []};
     % === Overlap for Sliding window (Time)
-    sProcess.options.overlap.Comment = 'Sliding window overlap:';
-    sProcess.options.overlap.Type    = 'value';
-    sProcess.options.overlap.Value   = {50, '%', []};
+    sProcess.options.slide_overlap.Comment = 'Sliding window overlap:';
+    sProcess.options.slide_overlap.Type    = 'value';
+    sProcess.options.slide_overlap.Value   = {50, '%', []};
     % === COHERENCE METHOD
     sProcess.options.cohmeasure.Comment = {...
         ['<B>Magnitude-squared Coherence</B><BR>' ...
-        '|C|^2 = |Gxy|^2/(Gxx*Gyy)'], ...
+        '|C|^2 = |Cxy|^2/(Cxx*Cyy)'], ...
         ['<B>Imaginary Coherence (2019)</B><BR>' ...
         'IC    = |imag(C)|'], ...
         ['<B>Lagged Coherence (2019)</B><BR>' ...
@@ -67,10 +70,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'mscohere', 'icohere2019','lcohere2019', 'icohere'};
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'mscohere';
-    % === MAX FREQUENCY RESOLUTION
-    sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
-    sProcess.options.maxfreqres.Type    = 'value';
-    sProcess.options.maxfreqres.Value   = {2,'Hz',2};
+    % === WINDOW LENGTH
+    sProcess.options.win_length.Comment = 'Window length for PSD estimation:';
+    sProcess.options.win_length.Type    = 'value';
+    sProcess.options.win_length.Value   = {1, 's', []};
+    % === OVERLAP
+    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
+    sProcess.options.overlap.Type    = 'value';
+    sProcess.options.overlap.Value   = {50, '%', []};
     % === HIGHEST FREQUENCY OF INTEREST
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
@@ -93,32 +100,35 @@ end
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
-    % Forcing the concatenation of the inputs
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 2;
+    % Output mode 2021: Forcing the average cross-spectra of input files (one output file)
+    sProcess.options.outputmode.Value = 'avgcoh';
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
         return
     end
+
     CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
-    OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
+    OPTIONS.WinLen        = sProcess.options.win_length.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
-    OPTIONS.CohOverlap    = 0.50;
-    OPTIONS.pThresh       = 0.05;
+    OPTIONS.WinOverlap    = 0.50;
     OPTIONS.isSave        = 0;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+    OPTIONS.tfMeasure     = 'fourier';
     % Sliding time windows options
-    WinLength  = sProcess.options.win.Value{1};
-    WinOverlap = sProcess.options.overlap.Value{1};
-    
+    WinLength  = sProcess.options.slide_win.Value{1};
+    WinOverlap = sProcess.options.slide_overlap.Value{1};
+
     % Read time information
     TimeVector = in_bst(sInputA(1).FileName, 'Time');
     sfreq      = round(1/(TimeVector(2) - TimeVector(1)));
+    % Get time window of first fileA if none specified in parameters
+    if isempty(OPTIONS.TimeWindow)
+        OPTIONS.TimeWindow = TimeVector([1, end]);
+    end
     % Select input time window
     TimeVector = TimeVector((TimeVector >= OPTIONS.TimeWindow(1)) & (TimeVector <= OPTIONS.TimeWindow(2)));
     nTime      = length(TimeVector);
@@ -132,7 +142,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputA, 'Sliding window for the coherence estimation is too long compared with the epochs in input.');
         return;
     end
-    
+
     % Get progress bar position
     posProgress = bst_progress('get');
     % Loop over all the time windows

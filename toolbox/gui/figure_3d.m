@@ -1814,8 +1814,40 @@ function DisplayFigurePopup(hFig)
     % Create the colormaps menus
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
     
-    % ==== MENU: MRI DISPLAY ====
+    % === ANATOMICAL ATLASES ===
     ColormapInfo = getappdata(hFig, 'Colormap');
+    if ismember('anatomy', ColormapInfo.AllTypes)
+        [AtlasNames, AtlasFiles, iAtlas] = figure_mri('GetVolumeAtlases', hFig);
+        % Get index of Anatomy surface in the figure
+        TessInfo = getappdata(hFig, 'Surface');
+        iTess = find(file_compare({TessInfo.Name}, 'Anatomy'));
+        % Get atlas name in the figure
+        AtlasNameFig = getappdata(hFig, 'AnatAtlas');
+        if isempty(AtlasNameFig)
+            AtlasNameFig  = 'none';
+        end
+        if ~isempty(AtlasNames)
+            jMenuAtlas = gui_component('Menu', jPopup, [], 'Anatomical atlas', IconLoader.ICON_ANATOMY, [], []);
+            for i = 1:length(AtlasNames)
+                jCheck = gui_component('radiomenuitem', jMenuAtlas, [], AtlasNames{i}, [], [], @(h,ev)SetVolumeAtlas(hFig, AtlasNames{i}));
+                if strcmpi(AtlasNameFig, AtlasNames{i})
+                    jCheck.setSelected(1);
+                end
+            end
+            % Show/Hide atlas
+            if ~strcmpi(AtlasNameFig, 'none')
+                if isempty(TessInfo.DataSource.FileName)
+                    jMenuAtlas.addSeparator();
+                    gui_component('MenuItem', jMenuAtlas, [], 'Show atlas', [], [], @(h,ev)panel_surface('SetSurfaceData', hFig, 1, 'Anatomy', AtlasFiles{iAtlas}, 0));
+                elseif file_compare(AtlasFiles{iAtlas}, TessInfo.DataSource.FileName)
+                    jMenuAtlas.addSeparator();
+                    gui_component('MenuItem', jMenuAtlas, [], 'Hide atlas', [], [], @(h,ev)panel_surface('RemoveSurfaceData', hFig, 1));
+                end
+            end
+        end
+    end
+
+    % ==== MENU: MRI DISPLAY ====
     if ismember('anatomy', ColormapInfo.AllTypes)
         jMenuMri = gui_component('Menu', jPopup, [], 'MRI display', IconLoader.ICON_ANATOMY);
         MriOptions = bst_get('MriOptions');
@@ -4911,4 +4943,76 @@ function hTensorCut = PlotTensorCut(hFig, CutPosition, CutDim, isRelative, Facto
     % Update figure handles
     Handles.TensorDisplay = opt;
     bst_figures('SetFigureHandles', hFig, Handles);
+end
+
+%% ===== SET VOLUME ATLAS =====
+% USAGE:  SetVolumeAtlas(hFig, AnatAtlas)   % Set to a specific atlas
+function SetVolumeAtlas(hFig, AnatAtlas)
+    % Parse inputs
+    if (nargin < 2) || isempty(AnatAtlas)
+        AnatAtlas = [];
+    end
+    % Get default MRI display options
+    MriOptions = bst_get('MriOptions');
+    % Get surfaces list
+    TessInfo = getappdata(hFig, 'Surface');
+    % Find the first anatomy entry
+    iTess = find(~isempty(strcmpi(TessInfo.Name, 'Anatomy')));
+    % Get available atlases for this figure
+    [AtlasNames, AtlasFiles] = figure_mri('GetVolumeAtlases', hFig);
+    if isempty(AtlasNames)
+        return;
+    end
+    % Open progress bar
+    isProgress = bst_progress('isVisible');
+    if ~isProgress
+        bst_progress('start', 'MRI Viewer', 'Loading volume atlas...');
+    end
+    % If atlas is not specified: pick the saved one, or Desikan-Killiany, or the first one
+    if isempty(AnatAtlas)
+        if ~isempty(MriOptions.DefaultAtlas) && ismember(MriOptions.DefaultAtlas, AtlasNames)
+            AnatAtlas = MriOptions.DefaultAtlas;
+        elseif ismember('aparc.DKTatlas+aseg', AtlasNames)
+            AnatAtlas = 'aparc.DKTatlas+aseg';
+        elseif ismember('aparc.a2009s+aseg', AtlasNames)
+            AnatAtlas = 'aparc.a2009s+aseg';
+        elseif ismember('DKT', AtlasNames)
+            AnatAtlas = 'DKT';
+        elseif ismember('Destrieux', AtlasNames)
+            AnatAtlas = 'Destrieux';
+        else
+            AnatAtlas = AtlasNames{1};
+        end
+    end
+    % Atlas as surface data
+    if strcmpi(AnatAtlas, 'none')
+        % Remvoe atlas data from the MRI slices
+        panel_surface('RemoveSurfaceData', hFig, 1);
+    else
+        iAtlas = find(strcmpi(AnatAtlas, AtlasNames));
+        if isempty(iAtlas)
+            disp(['BST> Error: Atlas "' AnatAtlas '" not available for this figure.']);
+            if ~isProgress
+                bst_progress('stop');
+            end
+            return;
+        elseif (length(iAtlas) > 1)
+            duplicAtlas = unique(AtlasNames(iAtlas));
+            disp(['BST> Warning: Multiple atlases with identical name: ' sprintf('%s ', duplicAtlas{:})]);
+            iAtlas = iAtlas(1);
+        end
+        % If the atlas is currently displayed: reload the overlay
+        if TessInfo(iTess).isOverlayAtlas
+            panel_surface('SetSurfaceData', hFig, 1, 'Anatomy', AtlasFiles{iAtlas}, 0);
+        end
+    end
+    % Save atlas name for figure
+    setappdata(hFig, 'AnatAtlas', AnatAtlas);
+    % Save default value for future use
+    MriOptions.DefaultAtlas = AnatAtlas;
+    bst_set('MriOptions', MriOptions);
+    % Close progress bar
+    if ~isProgress
+        bst_progress('stop');
+    end
 end

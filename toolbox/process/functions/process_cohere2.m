@@ -1,5 +1,5 @@
-function varargout = process_plv2( varargin )
-% PROCESS_PLV2: Compute the coherence between one signal in one file, and all the signals in another file.
+function varargout = process_cohere2( varargin )
+% PROCESS_COHERE1N: Compute the coherence between all the pairs of signals, in one file.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,36 +29,42 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Phase locking value AxB [2023]';
+    sProcess.Comment     = 'Coherence AxB [2023]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 656;
+    sProcess.Index       = 652;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'matrix'};
+    sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isPaired    = 1;
- 
+
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
-    % === PLV METHOD
+    % === REMOVE EVOKED REPONSE
+    sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
+    sProcess.options.removeevoked.Type    = 'checkbox';
+    sProcess.options.removeevoked.Value   = 0;
+    sProcess.options.removeevoked.Group   = 'input';
+    sProcess.options.removeevoked.Hidden  = 1;
+    % === COHERENCE METHOD
     sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.plvmethod.Comment = {'Phase locking value', 'Lagged phase synchronization / Corrected imaginary PLV', 'Weighted phase lag index'; ...
-                                          'plv', 'ciplv', 'wpli'};
-    sProcess.options.plvmethod.Type    = 'radio_label';
-    sProcess.options.plvmethod.Value   = 'plv';
-    % === PLV MEASURE
-    % now always magnitude, complex was only used to average files for PLV, before averaging was improved.
-    sProcess.options.plvmeasure.Comment = {'None (complex)', 'Magnitude', 'Measure:'};
-    sProcess.options.plvmeasure.Type    = 'radio_line';
-    sProcess.options.plvmeasure.Value   = 2;
-    sProcess.options.plvmeasure.Hidden  = 1;
+    sProcess.options.cohmeasure.Comment = {...
+        'Magnitude-squared coherence', ...
+        'Imaginary coherence', ...
+        'Lagged coherence / Corrected imaginary coherence'; ...
+        'mscohere', 'icohere2019','lcohere2019'}; % , 'icohere'
+%         '<FONT color="#777777"> Squared Lagged Coherence ("imaginary coherence" before 2019)</FONT>' ...
+    sProcess.options.cohmeasure.Type    = 'radio_label';
+    sProcess.options.cohmeasure.Value   = 'mscohere';
     % === Time-freq options
-    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Fourier transform', '<B>Time-frequency decomposition:</B>'; ...
-                                          'hilbert', 'stft', ''};
+    sProcess.options.label2.Comment = '<B>Time-frequency decomposition:</B>';
+    sProcess.options.label2.Type    = 'label';
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', 'Fourier transform', ''; ...
+                                          'hilbert', 'morlet', 'stft', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
     % === TF OPTIONS Panel 
@@ -67,7 +73,7 @@ function sProcess = GetDescription()
     sProcess.options.tfedit.Value   = [];
     % === TIME AVERAGING
     sProcess.options.timeres.Comment = {'Full (requires epochs)', 'Windowed', 'None', '<B>Time resolution:</B>'; ...
-                                     'full', 'windowed', 'none', ''};
+                                        'full', 'windowed', 'none', ''};
     sProcess.options.timeres.Type    = 'radio_linelabel';
     sProcess.options.timeres.Value   = 'full';
     sProcess.options.timeres.Controller = struct('full', 'nowindowed', 'windowed', 'windowed', 'none', 'nowindowed');
@@ -93,10 +99,10 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
-    if ~isempty(sProcess.options.plvmethod.Value)
-        iMethod = find(strcmpi(sProcess.options.plvmethod.Comment(2,:), sProcess.options.plvmethod.Value));
+    if ~isempty(sProcess.options.cohmeasure.Value)
+        iMethod = find(strcmpi(sProcess.options.cohmeasure.Comment(2,:), sProcess.options.cohmeasure.Value));
         if ~isempty(iMethod)
-            Comment = str_striptag(sProcess.options.plvmethod.Comment{1,iMethod});
+            Comment = str_striptag(sProcess.options.cohmeasure.Comment{1,iMethod});
         else
             Comment = sProcess.Comment;
         end
@@ -114,12 +120,14 @@ function OutputFiles = Run(sProcess, sInputA, sInputB)
         OutputFiles = {};
         return
     end
-    
-    OPTIONS.Method = sProcess.options.plvmethod.Value;
+
+    OPTIONS.Method = 'cohere';
+    OPTIONS.CohMeasure = sProcess.options.cohmeasure.Value; 
+    OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
 
     % === Time-freq method 
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
-    if ismember(OPTIONS.tfMeasure, {'hilbert','stft'})
+    if ismember(OPTIONS.tfMeasure, {'hilbert','morlet', 'stft'})
         % Get time-freq panel options
         tfOPTIONS = sProcess.options.tfedit.Value;
         if isempty(tfOPTIONS)
@@ -138,6 +146,14 @@ function OutputFiles = Run(sProcess, sInputA, sInputB)
                 OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
             end
             OPTIONS.isMirror = 0;
+        case 'morlet'
+            OPTIONS.Freqs        = tfOPTIONS.Freqs(:);
+            OPTIONS.MorletFc     = tfOPTIONS.MorletFc;
+            OPTIONS.MorletFwhmTc = tfOPTIONS.MorletFwhmTc;            
+            if strcmpi(sProcess.options.timeres.Value, 'windowed')
+                OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+            end
         case 'stft'
             OPTIONS.Freqs = [];
             OPTIONS.StftWinLen = tfOPTIONS.StftWinLen;
@@ -151,16 +167,6 @@ function OutputFiles = Run(sProcess, sInputA, sInputB)
     % Keep time or not; now option, no longer separate process
     OPTIONS.TimeRes = sProcess.options.timeres.Value;
 
-    % PLV measure (compatibility)
-    if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 
-        switch (sProcess.options.plvmeasure.Value)
-            case 1,  OPTIONS.PlvMeasure = 'none';
-            case 2,  OPTIONS.PlvMeasure = 'magnitude';
-        end
-    else
-        OPTIONS.PlvMeasure = 'magnitude';
-    end
-    
     % Compute metric
     OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);
 end

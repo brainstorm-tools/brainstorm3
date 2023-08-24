@@ -1,5 +1,5 @@
 function varargout = process_henv1n(varargin)
-% PROCESS_HENV1N: Compute the time-varying COherence and enVELope measures using Hilbert transform and Morlet Wavelet
+% PROCESS_HENV1N: Compute the time-varying Coherence and envelope measures using Hilbert transform and Morlet Wavelet
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -20,13 +20,15 @@ function varargout = process_henv1n(varargin)
 % =============================================================================@
 %
 % Author: Hossein Shahabi, Francois Tadel, 2020-2022
+%         Marc Lalancette, 2023
+
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN [2022]';
+    sProcess.Comment     = 'Envelope Correlation NxN [2023]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 686;
@@ -45,64 +47,66 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
-    % === TIME-FREQUENCY TRANSFORMATION METHOD
-    % === TITLE
-    sProcess.options.label2.Comment = '<U><B>Time-frequency transformation method</B></U>:';
-    sProcess.options.label2.Type    = 'label';
-    % === Hilbert/Morlet
-    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelet', ''; 'hilbert', 'morlet', ''};
+    sProcess.options.removeevoked.Hidden  = 1;
+    % === Connectivity measure 
+    sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.cohmeasure.Comment = {'Envelope correlation (no orthogonalization)','Envelope correlation (orthogonalized) '; ...
+                                           'penv', 'oenv'}; % 'coh', 'msc', 'lcoh', 
+%                                            'Magnitude coherence: |C|= |Cxy|/sqrt(Cxx*Cyy)', ...
+%                                            'Magnitude-squared coherence: |C|^2 = |Cxy|^2/(Cxx*Cyy)', ...
+%                                            'Lagged coherence: LC = |imag(C)|/sqrt(1-real(C)^2)', ...
+                                           
+    sProcess.options.cohmeasure.Type    = 'radio_label';
+    sProcess.options.cohmeasure.Value   = 'penv';
+    % === TIME-FREQUENCY OPTIONS
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Morlet wavelets', '<B>Time-frequency decomposition:</B>'; ...
+                                          'hilbert', 'morlet', ''};
     sProcess.options.tfmeasure.Type    = 'radio_linelabel';
     sProcess.options.tfmeasure.Value   = 'hilbert';
     % === Edit Panel 
-    sProcess.options.edit.Comment = {'panel_timefreq_options', 'Options: '};
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = [];
-    % === Split a Large Signal into Blocks 
-    sProcess.options.tfsplit.Comment = 'Split large data in:';
-    sProcess.options.tfsplit.Type    = 'value';
-    sProcess.options.tfsplit.Value   = {1, 'block(s)', 0};
-    % === Connectivity measure 
-    sProcess.options.label4.Comment = '<BR><U><B>Connectivity measure</B></U>:';
-    sProcess.options.label4.Type    = 'label';
-    % === Connectivity measure 
-    sProcess.options.cohmeasure.Comment = {'Magnitude coherence: |C|= |Cxy|/sqrt(Cxx*Cyy)', ...
-                                           'Magnitude-squared coherence: |C|^2 = |Cxy|^2/(Cxx*Cyy)', ...
-                                           'Lagged coherence: LC = |imag(C)|/sqrt(1-real(C)^2)', ...
-                                           'Envelope correlation (no orthogonalization)','Envelope correlation (orthogonalized) '; ...
-                                           'coh', 'msc', 'lcoh', 'penv', 'oenv'};
-    sProcess.options.cohmeasure.Type    = 'radio_label';
-    sProcess.options.cohmeasure.Value   = 'coh';
-    % === Time-varying or Average
-    sProcess.options.statdyn.Comment = {'Dynamic', 'Static', 'Time resolution: '; 'dynamic', 'static', ''};
-    sProcess.options.statdyn.Type    = 'radio_linelabel';
-    sProcess.options.statdyn.Value   = 'dynamic';
-    % === Time window
-    sProcess.options.win_length.Comment = 'Estimation window length:';
-    sProcess.options.win_length.Type    = 'value';
-    sProcess.options.win_length.Value   = {1.5, 'ms', 0};
-    % === overlap
-    sProcess.options.win_overlap.Comment = 'Sliding window overlap:';
-    sProcess.options.win_overlap.Type    = 'value';
-    sProcess.options.win_overlap.Value   = {50, '%', 0};
+    sProcess.options.tfedit.Comment = {'panel_timefreq_options', 'Options: '};
+    sProcess.options.tfedit.Type    = 'editpref';
+    sProcess.options.tfedit.Value   = [];
+%     sProcess.options.tfedit.Class   = 'hilbert';
+%     % === Split a Large Signal into Blocks
+%     sProcess.options.tfsplit.Comment = 'Split large data in';
+%     sProcess.options.tfsplit.Type    = 'value';
+%     sProcess.options.tfsplit.Value   = {1, 'time block(s)', 0};
+%     sProcess.options.tfsplit.Class   = 'hilbert';
+    % === TIME AVERAGING
+    sProcess.options.timeres.Comment = {'Windowed', 'None', '<B>Time resolution:</B>'; ... % 'Full (requires epochs)', 
+                                     'windowed', 'none', ''}; % 'full', 
+    sProcess.options.timeres.Type    = 'radio_linelabel';
+    sProcess.options.timeres.Value   = 'windowed';
+    % === Hilbert/Morlet: WINDOW LENGTH
+    sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
+    sProcess.options.avgwinlength.Type    = 'value';
+    sProcess.options.avgwinlength.Value   = {1, 's', []};
+    % === Hilbert/Morlet: OVERLAP
+    sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
+    sProcess.options.avgwinoverlap.Type    = 'value';
+    sProcess.options.avgwinoverlap.Value   = {50, '%', []};
     % === Parallel processing
     sProcess.options.parallel.Comment = 'Use the parallel processing toolbox';
     sProcess.options.parallel.Type    = 'checkbox';
     sProcess.options.parallel.Value   = 0;  
-    % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Average among output files (one file - only for trials)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    % === OUTPUT MODE / FILE AVERAGING
+    sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
+                                            'input', 'avg', ''};
+    sProcess.options.outputmode.Type    = 'radio_linelabel';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
     Comment = sProcess.Comment;
 end
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputA) 
     % Initialize returned values
     OutputFiles = {};
     
@@ -114,13 +118,14 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
 
     % === Metric options
     OPTIONS.Method        = 'henv';
+    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value;
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
     OPTIONS.isSave        = 1;
     OPTIONS.isSymmetric   = 1; 
     
     % === Time-freq method 
     % Get time-freq panel options
-    tfOPTIONS = sProcess.options.edit.Value;
+    tfOPTIONS = sProcess.options.tfedit.Value;
     if isempty(tfOPTIONS)
         [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
         gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0); 
@@ -132,31 +137,45 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
     switch OPTIONS.tfMeasure
         case 'hilbert'
-            OPTIONS.Freqrange    = tfOPTIONS.Freqs;
+            OPTIONS.Freqs        = tfOPTIONS.Freqs;
         case 'morlet'
-            OPTIONS.Freqrange    = tfOPTIONS.Freqs(:);
+            OPTIONS.Freqs        = tfOPTIONS.Freqs(:);
             OPTIONS.MorletFc     = tfOPTIONS.MorletFc;
             OPTIONS.MorletFwhmTc = tfOPTIONS.MorletFwhmTc;
     end
     
     % === Number of Blocks
-    entNumBlocks = sProcess.options.tfsplit.Value{1}; 
-    if entNumBlocks <= 1
-        OPTIONS.tfSplit = 1; 
-    elseif entNumBlocks > 20
-        OPTIONS.tfSplit = 20;
+    if isfield(sProcess.options, 'tfsplit')
+        OPTIONS.tfSplit = sProcess.options.tfsplit.Value{1};
+        if OPTIONS.tfSplit <= 1
+            OPTIONS.tfSplit = 1; 
+        elseif OPTIONS.tfSplit > 20
+            OPTIONS.tfSplit = 20;
+        else
+            OPTIONS.tfSplit = round(OPTIONS.tfSplit);
+        end
     else
-        OPTIONS.tfSplit = round(entNumBlocks); 
+        OPTIONS.tfSplit = 1;
     end
     
-    % === Connectivity measure
-    OPTIONS.CohMeasure = sProcess.options.cohmeasure.Value;
-    OPTIONS.WinLength  = sProcess.options.win_length.Value{1};
-    OPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1} / 100;
-    OPTIONS.HStatDyn   = sProcess.options.statdyn.Value; 
+    if isfield(sProcess.options, 'win_length')
+        % Compatibility (before 2023)
+        OPTIONS.WinLen     = sProcess.options.win_length.Value{1};
+        OPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1} / 100;
+        if strcmpi(sProcess.options.statdyn.Value, 'static')
+            OPTIONS.TimeRes = 'none';
+        else % 'dynamic'
+            OPTIONS.TimeRes = 'windowed';
+        end
+    else
+        % Harmonized options (2023)
+        OPTIONS.WinLen     = sProcess.options.avgwinlength.Value{1};
+        OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1} / 100;
+        OPTIONS.TimeRes    = sProcess.options.timeres.Value;
+    end
     
     % === Parallel Processing 
-    OPTIONS.isParallel = sProcess.options.parallel.Value ; 
+    OPTIONS.isParallel = sProcess.options.parallel.Value; 
 
     % === Computing connectivity matrix
     OutputFiles = bst_connectivity(sInputA, [], OPTIONS);

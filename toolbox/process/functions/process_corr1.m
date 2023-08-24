@@ -48,9 +48,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scalarprod.Type       = 'checkbox';
     sProcess.options.scalarprod.Value      = 0;
     % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
+                                            'input', 'avg', ''};
+    sProcess.options.outputmode.Type    = 'radio_linelabel';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 

@@ -20,15 +20,16 @@ function varargout = process_plv1n( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Marc Lalancette, 2023
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Phase locking value NxN';
+    sProcess.Comment     = 'Phase locking value NxN [2023]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 671;
@@ -42,32 +43,56 @@ function sProcess = GetDescription() %#ok<DEFNU>
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
-    % === FREQ BANDS
-    sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
-    sProcess.options.freqbands.Type    = 'groupbands';
-    sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
     % === PLV METHOD
-    sProcess.options.plvmethod.Comment = {'<B>PLV</B>: Phase locking value', '<B>ciPLV</B>:  Corrected imaginary phase locking value', '<B>wPLI</B>: Weighted phase lag index'; 'plv', 'ciplv', 'wpli'};
+    sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.plvmethod.Comment = {'Phase locking value', 'Lagged phase synchronization / Corrected imaginary PLV', 'Weighted phase lag index'; ...
+                                          'plv', 'ciplv', 'wpli'};
     sProcess.options.plvmethod.Type    = 'radio_label';
     sProcess.options.plvmethod.Value   = 'plv';
-    % === KEEP TIME
-    sProcess.options.keeptime.Comment = 'Keep time information, and estimate the PLV across trials<BR>(requires the average of many trials)';
-    sProcess.options.keeptime.Type    = 'checkbox';
-    sProcess.options.keeptime.Value   = 0;
-    % === PLV METHOD
+    % === PLV MEASURE 
+    % now always magnitude, complex was only used to average files for PLV, before averaging was improved.
     sProcess.options.plvmeasure.Comment = {'None (complex)', 'Magnitude', 'Measure:'};
     sProcess.options.plvmeasure.Type    = 'radio_line';
     sProcess.options.plvmeasure.Value   = 2;
-    % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    sProcess.options.plvmeasure.Hidden  = 1;
+    % === Time-freq options
+    sProcess.options.tfmeasure.Comment = {'Hilbert transform', 'Fourier transform', '<B>Time-frequency decomposition:</B>'; ...
+                                          'hilbert', 'stft', ''};
+    sProcess.options.tfmeasure.Type    = 'radio_linelabel';
+    sProcess.options.tfmeasure.Value   = 'hilbert';
+    % === TF OPTIONS Panel 
+    sProcess.options.tfedit.Comment = {'panel_timefreq_options', 'Options: '};
+    sProcess.options.tfedit.Type    = 'editpref';
+    sProcess.options.tfedit.Value   = [];
+    % === TIME AVERAGING
+    sProcess.options.timeres.Comment = {'Full (requires epochs)', 'Windowed', 'None', '<B>Time resolution:</B>'; ...
+                                     'full', 'windowed', 'none', ''};
+    sProcess.options.timeres.Type    = 'radio_linelabel';
+    sProcess.options.timeres.Value   = 'full';
+    sProcess.options.timeres.Controller = struct('full', 'nowindowed', 'windowed', 'windowed', 'none', 'nowindowed');
+    % === WINDOW LENGTH
+    sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
+    sProcess.options.avgwinlength.Type    = 'value';
+    sProcess.options.avgwinlength.Value   = {1, 's', []};
+    sProcess.options.avgwinlength.Class   = 'windowed';
+    % === WINDOW OVERLAP
+    sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
+    sProcess.options.avgwinoverlap.Type    = 'value';
+    sProcess.options.avgwinoverlap.Value   = {50, '%', []};
+    sProcess.options.avgwinoverlap.Class   = 'windowed';
+    % === OUTPUT MODE / FILE AVERAGING
+    % Ideally, 'input' would be disabled for 'full' time resolution.
+    sProcess.options.outputmode.Comment = {'separately for each file', 'across combined files/epochs', 'Estimate & save:'; ...
+                                            'input', 'avg', ''};
+    sProcess.options.outputmode.Type    = 'radio_linelabel';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     if ~isempty(sProcess.options.plvmethod.Value)
         iMethod = find(strcmpi(sProcess.options.plvmethod.Comment(2,:), sProcess.options.plvmethod.Value));
         if ~isempty(iMethod)
@@ -82,7 +107,7 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputA)
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
@@ -90,15 +115,43 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         return
     end
 
-    % Keep time or not: different methods
     OPTIONS.Method = sProcess.options.plvmethod.Value;
-    if sProcess.options.keeptime.Value
-        OPTIONS.Method = [OPTIONS.Method 't'];
+
+    % === Time-freq method 
+    OPTIONS.tfMeasure = sProcess.options.tfmeasure.Value;
+    if ismember(OPTIONS.tfMeasure, {'hilbert','stft'})
+        % Get time-freq panel options
+        tfOPTIONS = sProcess.options.tfedit.Value;
+        if isempty(tfOPTIONS)
+            [bstPanelNew, panelName] = panel_timefreq_options('CreatePanel', sProcess, sInputA);
+            gui_show(bstPanelNew, 'JavaWindow', panelName, 0, 0, 0);
+            drawnow;
+            tfOPTIONS = panel_timefreq_options('GetPanelContents');
+            gui_hide(panelName);
+        end
     end
-    % Filtering bands options
-    OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = 0;
-    % PLV measure
+    switch OPTIONS.tfMeasure
+        case 'hilbert'
+            OPTIONS.Freqs = tfOPTIONS.Freqs;
+            if strcmpi(sProcess.options.timeres.Value, 'windowed')
+                OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+            end
+            OPTIONS.isMirror = 0;
+        case 'stft'
+            OPTIONS.Freqs = [];
+            OPTIONS.StftWinLen = tfOPTIONS.StftWinLen;
+            OPTIONS.StftWinOvr = tfOPTIONS.StftWinOvr/100;
+            OPTIONS.MaxFreq    = tfOPTIONS.StftFrqMax;
+            if strcmpi(sProcess.options.timeres.Value, 'windowed')
+                OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
+                OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+            end
+    end
+    % Keep time or not; now option, no longer separate process
+    OPTIONS.TimeRes = sProcess.options.timeres.Value;
+
+    % PLV measure (compatibility)
     if isfield(sProcess.options, 'plvmeasure') && isfield(sProcess.options.plvmeasure, 'Value') && ~isempty(sProcess.options.plvmeasure.Value) 
         switch (sProcess.options.plvmeasure.Value)
             case 1,  OPTIONS.PlvMeasure = 'none';
@@ -115,7 +168,7 @@ end
 
 
 %% ===== TEST FUNCTION =====
-function Test() %#ok<DEFNU>
+function Test()
     % Start a new report
     bst_report('Start');
     % Get test datasets

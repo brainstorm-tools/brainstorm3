@@ -1,5 +1,5 @@
 function [A, timePoints, nWindows] = bst_henv(X, Y, Time, OPTIONS)
-% BST_HENV Compute the time-varying Coherence and Envelope measures
+% BST_HENV Compute Envelope correlation connectivity measures
 %
 % INPUTS:
 %   - X            : Input signals [Nsignals x Ntimes]
@@ -8,16 +8,15 @@ function [A, timePoints, nWindows] = bst_henv(X, Y, Time, OPTIONS)
 %   - OPTIONS:
 %     - SampleRate : Sampling frequency
 %     - CohMeasure : Desired measure of connectivity
-%                    'coh'  - coherence
-%                    'lcoh' - lagged coherence
 %                    'penv' - plain envelope correlation (No Orthogonalization)
 %                    'oenv' - orthogonalized envelope correlation
-%     - WinLength  : window size in second for dynamic networks
-%     - WinOverlap : overlap between windows in percentage
-%     - HStatDyn   : Time scale of the network ('dynamic' or 'static')
+%                    (former coherence measures are deprecated - use cohere processes instead)
+%     - tfMeasure  : Time-frequency transformation method (Hilbert/Morlet)
+%     - TimeRes    : Output time resolution 'windowed' or 'none' (across all time)
+%     - WinLen     : window size in second for 'windowed' time resolution
+%     - WinOverlap : overlap between windows (between 0 and 1) for 'windowed' time resolution
 %     - tfSplit    : Number of blocks to split the raw signal for time-frequnecy analysis
 %     - isParallel : Parallel Processing option (1 when it is enabled)
-%     - tfMeasure  : Time-frequency transformation method (Hilbert/Morlet)
 %
 % OUTPUTS:
 %   - A            : Four-dimensional connectivity matrix (nSignals x nSignals x nWindows x nfBins)
@@ -52,19 +51,37 @@ if (nargin < 4)
     error('Invalid call.');
 end
 
+% Warn for deprecated use of coherence in this function.
+if ismember(OPTIONS.CohMeasure, {'coh','msc','lcoh'})
+    bst_report('Warning', [], [], 'Coherence measures in envelope correlation process are deprecated. Use updated coherence process instead.');
+end
+
 % Signal properties
 nX      = size(X,1);
 nY      = size(Y,1);
 N       = size(X,2);
 % Check if the two inputs are the same 
-sameInp = isequal(X,Y);
+sameInp = isequal(X,Y); % isConnNN
 
 % Options for connectivity analysis 
-Fs        = OPTIONS.SampleRate ;
-winSize   = OPTIONS.WinLength * Fs ;
-overLap   = OPTIONS.WinOverlap * winSize ;
-numBlocks = OPTIONS.tfSplit ;
-parMode   = OPTIONS.isParallel ;
+Fs      = OPTIONS.SampleRate ;
+if isfield(OPTIONS, 'tfSplit')
+    numBlocks = OPTIONS.tfSplit ;
+else
+    numBlocks = 1;
+end
+if isfield(OPTIONS, 'isParallel')
+    parMode   = OPTIONS.isParallel ;
+else
+    parMode   = 0;
+end
+if isfield(OPTIONS, 'HStatDyn')
+    if strcmpi(OPTIONS.HStatDyn, 'static')
+        OPTIONS.TimeRes = 'none';
+    else
+        OPTIONS.TimeRes = 'windowed';
+    end
+end
 
 % Time-frequency options
 OPTIONS_tf.Method        = OPTIONS.tfMeasure;
@@ -77,13 +94,21 @@ OPTIONS_tf.Measure       = 'none' ;
 
 %% ~~~~~~ Constant definition and pre-allocation
 % Compute the parameters for window
-hopSize    = ceil(winSize-overLap) ;
-nWindows   = fix((N-winSize)/hopSize)+1 ;
-if (nWindows == 0)
-    error('No data to process: the estimator window is maybe larger than the data to process.');
+if strcmpi(OPTIONS.TimeRes, 'none')
+    hopSize = 1; % unused
+    nWindows = 1;
+    winSize = N;
+else
+    winSize   = OPTIONS.WinLen * Fs ;
+    overLap   = OPTIONS.WinOverlap * winSize ;
+    hopSize   = ceil(winSize-overLap) ;
+    nWindows  = fix((N-winSize)/hopSize)+1 ;
+    if (nWindows <= 0)
+        error('No data to process: the estimator window is maybe larger than the data to process.');
+    end
 end
 timePoints = NaN(nWindows,1) ;                   % Pre-define the center of windows
-nfBins     = size(OPTIONS.Freqrange,1) ;         % Number of Frequency bins
+nfBins     = size(OPTIONS.Freqs,1) ;         % Number of Frequency bins
 A          = zeros(nX,nY,nWindows,nfBins) ;  % Pre-define the connectivity matrix
 % Data       = bst_bsxfun(@minus, Data, mean(Data,2)) ;  % Removing mean from the data
 
@@ -102,9 +127,9 @@ for f = 1:nfBins
     %% Time-frequency transformation
     switch OPTIONS.tfMeasure
         case 'hilbert'
-            OPTIONS_tf.Freqs        = OPTIONS.Freqrange(f,:);
+            OPTIONS_tf.Freqs        = OPTIONS.Freqs(f,:);
         case 'morlet'
-            OPTIONS_tf.Freqs        = OPTIONS.Freqrange(f) ;
+            OPTIONS_tf.Freqs        = OPTIONS.Freqs(f) ;
             OPTIONS_tf.MorletFc     = OPTIONS.MorletFc ;
             OPTIONS_tf.MorletFwhmTc = OPTIONS.MorletFwhmTc ;
     end
@@ -137,7 +162,7 @@ for f = 1:nfBins
         tfOut_tmp = tfOut_tmp{1}.TF ;
         Xh        = transpose(tfOut_tmp) ;
         if ~sameInp
-            % Compute Frequency Transform for X
+            % Compute Frequency Transform for Y
             tfOut_tmp = bst_timefreq(Y, OPTIONS_tf) ;
             tfOut_tmp = tfOut_tmp{1}.TF ;
             Yh        = transpose(tfOut_tmp) ;
@@ -155,6 +180,7 @@ for f = 1:nfBins
         % Selecting the appropriate time points
         tRange = (t-1)*hopSize+(1:winSize) ;
         % Center of the window
+        % TODO fix: this, with how it's used in bst_connectivity, is half a sample ahead of "real" window center.
         timePoints(t) = median(tRange(1:end-1)) ;
         % Complex signals in the current window range
         tXh = Xh(tRange,:) ;
@@ -162,11 +188,13 @@ for f = 1:nfBins
         if ~sameInp
             tYh = Yh(tRange,:) ;
         end
-        % Computing auto and cross Spectrums
-        Sxy     = (transpose(tXh)*conj(tYh))/winSize ;
-        Sxx     = real(diag((transpose(tXh)*conj(tXh))/winSize)) ;
-        Syy     = real(diag((transpose(tYh)*conj(tYh))/winSize)) ;
-        SxxSyy  = Sxx*Syy' ;
+        if ismember(OPTIONS.CohMeasure, {'coh','msc','lcoh'})
+            % Computing auto and cross Spectrums
+            Sxy     = (transpose(tXh)*conj(tYh))/winSize ;
+            Sxx     = real(diag((transpose(tXh)*conj(tXh))/winSize)) ;
+            Syy     = real(diag((transpose(tYh)*conj(tYh))/winSize)) ;
+            SxxSyy  = Sxx*Syy' ;
+        end
         % Pre-define the connectivity matrix for the current freq and window
         CorrMat = zeros(nX,nY) ;
         % Compute the desired measure
@@ -190,27 +218,34 @@ for f = 1:nfBins
                     end
                 end
         end
-        if sameInp
-            % No auto-correlation
+%         if sameInp
+%             % No auto-correlation
 %            CorrMat(logical(eye(nX))) = 0 ;
-            % We assume all measures are real, non-negative, and symmetric
+%             % We assume all measures are real, non-negative, and symmetric
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
+%         else
+%         end
+        if ismember(OPTIONS.CohMeasure, {'coh','msc','lcoh'})
+            A(:,:,t,f) = abs(CorrMat);
         else
+            % 2023-07: removed abs() here, which is not needed and also prevents "improved" aggregation across files in bst_connectivity.
+            A(:,:,t,f) = CorrMat ;
         end
-        A(:,:,t,f) = abs(CorrMat) ;
 
     end
 end
 fprintf(1, '\n');
 
 %% Outputs
-switch (OPTIONS.HStatDyn)
-    case 'dynamic'  % Time-varying networks
-        timePoints = timePoints/Fs ;
-    case 'static'   % Average among all networks
-        A = bst_nanmean(A,3);
-        timePoints = median(timePoints/Fs) ;
-end
+% Convert samples to time.
+timePoints = timePoints/Fs ;
+% switch (OPTIONS.HStatDyn)
+%     case 'dynamic'  % Time-varying networks
+%         timePoints = timePoints/Fs ;
+%     case 'static'   % Average among all networks
+%         A = bst_nanmean(A,3);
+%         timePoints = median(timePoints/Fs) ;
+% end
 end
 
 function [Data3D,blockLen3D,actLen] = dataDimTran(Data2D,tranLen,numBlocks)
@@ -258,29 +293,18 @@ end
 end
 
 function ConVec = HOrthCorr(tXh,tYh)
-Xh_p   = imag(bsxfun(@times, tXh, conj(tYh)./abs(tYh)));
-Yh_p   = imag(bsxfun(@times, tYh, conj(tXh)./abs(tXh)));
+% tXh is a column vector (one signal)
+% Orthogonalization from Hipp 2012. 
+% The division by abs is done outside imag(XY*) so that it gives exactly 0 when orthogonalizing a
+% signal with itself: imag(XX*) = 0, whereas there would be nonzero numerical errors for imag(XX*/abs(X))
+Xh_p   = bsxfun(@rdivide, imag(bsxfun(@times, tXh, conj(tYh))), abs(tYh));
+Yh_p   = bsxfun(@rdivide, imag(bsxfun(@times, tYh, conj(tXh))), abs(tXh));
 r1     = HMatCorr(abs(tXh),abs(Yh_p)) ;
-r2     = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ;
-ConVec = (abs(r1)+abs(r2))/2 ;
+r2     = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ; % row vector
+ConVec = bsxfun(@plus, abs(r1), abs(r2)) / 2;
 end
 
 function At = HMatCorr(U,V)
-% Implementation H.Shahabi (2021)
-% % Number of channels 
-% n1 = size(U,2) ; 
-% n2 = size(V,2) ; 
-% At = zeros(n1,n2) ; 
-% for k = 1:n1
-%     for m = 1:n2
-%         tmp1    = corrcoef(U(:,k),V(:,m)) ;
-%         At(k,m) = tmp1(1,2) ; 
-%     end
-% end
-
-% Equivalent implementation F.TADEL (14-11-2022)
-Uc = U - mean(U,1);  % Remove mean
-Vc = V - mean(V,1);  % Remove mean
-At = (Uc' * Vc) ./ sqrt(sum(Uc.*Uc,1) .* sum(Vc.*Vc,1));
-
+% Correlation implementation in bst_corrn is robust numerically, which is required to avoid values > 1.
+At = bst_corrn(U', V', 1);
 end

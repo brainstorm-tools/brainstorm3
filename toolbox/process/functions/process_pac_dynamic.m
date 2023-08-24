@@ -269,8 +269,8 @@ function OutputFiles = Run(sProcess, sInputsA) %#ok<DEFNU>
             return;
         end
         
-        % Get time window of first file if none specified in parameters
-        if isempty(OPTIONS.TimeWindow)
+        % Set time window of first file if none specified in parameters and average across trials is requested
+        if isempty(OPTIONS.TimeWindow) && OPTIONS.isAvgOutput
             OPTIONS.TimeWindow = sInput.Time([1, end]);
         end
         

@@ -1,8 +1,9 @@
-function varargout = process_cohere1n_2021( varargin )
-% PROCESS_COHERE1N_2021: Compute the coherence between all the pairs of signals, in one file.
+function varargout = process_cohere1_2021( varargin )
+% PROCESS_COHERE1_2021: Compute the coherence between one signal and all the others, in one file.
 %
-% USAGE:   OutputFiles = process_cohere1n_2021('Run', sProcess, sInputA)
-%                        process_cohere1n_2021('Test')
+% USAGE:  OutputFiles = process_cohere1_2021('Run', sProcess, sInputA)
+%                       process_cohere1_2021('Test', 1)
+%                       process_cohere1_2021('Test', 2)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -33,10 +34,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Coherence NxN [2021]';
+    sProcess.Comment     = 'Coherence 1xN [2021]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 656;
+    sProcess.Index       = 655;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
@@ -45,7 +46,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
 
     % === CONNECT INPUT
-    sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
+    sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
     % === REMOVE EVOKED REPONSE
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
@@ -61,7 +62,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'LC    = |imag(C)|/sqrt(1-real(C)^2)'], ...
         ['<FONT color="#777777"> Imaginary Coherence (before 2019)</FONT><BR>' ...
         '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
-        'mscohere', 'icohere2019', 'lcohere2019', 'icohere'};
+        'mscohere', 'icohere2019','lcohere2019', 'icohere'};
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'mscohere';
     % === WINDOW LENGTH
@@ -105,27 +106,35 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
     OPTIONS.WinLen        = sProcess.options.win_length.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
-    OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
+    OPTIONS.WinOverlap    = 0.50;  % First pre-define the overlap
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
+    OPTIONS.tfMeasure     = 'fourier';
 
     % Change the overlap if it is specified
     if isfield(sProcess.options, 'overlap') && isfield(sProcess.options.overlap, 'Value') && ...
        iscell(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value{1})
-        OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
+        OPTIONS.WinOverlap = sProcess.options.overlap.Value{1}/100 ; 
     end
 
     % Compute metric
-    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, sInputA, OPTIONS);
 end
 
 
 
 %% ===== TEST FUNCTION =====
-function Test() %#ok<DEFNU>
+function Test(iTest) %#ok<DEFNU>
     % Start a new report
     bst_report('Start');
+    % Select tests
+    if (nargin < 1) || isempty(iTest)
+        iTest = 1;
+    end
     % Get test datasets
-    sFile = process_simulate_ar('Test'); % Fs = 1200 Hz
+    switch iTest
+        case 1,  sFile = process_simulate_matrix('Test'); % Fs = 1200 Hz
+        case 2,  sFile = process_simulate_ar('Test');     % Fs = 1200 Hz
+    end
     % NOTES:
     % bst_cohn.m (2019) uses 2^nextpow2(round(Fs / MaxFreqRes)) samples 
     % of DATA for the FFT, there is no zero padding
@@ -146,8 +155,9 @@ function Test() %#ok<DEFNU>
     
     % Coherence process with bst_cohn.m (2019)
     tic;
-    sTmp = bst_process('CallProcess', 'process_cohere1n', sFile, [], ...
+    sTmp = bst_process('CallProcess', 'process_cohere1', sFile, [], ...
         'timewindow',   [], ...          % All the time in input
+        'src_rowname',  '1', ...         % Test signal #1 => other signals
         'cohmeasure',   'mscohere', ...  % 1=Magnitude-squared, 2=Imaginary
         'overlap',      50, ...          % 50%
         'maxfreqres',   MaxFreqRes, ...  % VARIES
@@ -160,15 +170,16 @@ function Test() %#ok<DEFNU>
     bst_process('CallProcess', 'process_add_tag', sTmp.FileName, [], 'tag', '(2019)' );
     % Snapshot: spectrum
     bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
-        'target',       11, ...  % Connectivity matrix (image)
+        'target',       10, ...  % Frequency spectrum
         'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
         'Comment',      [sTmp.Comment, ': (2019)']);
 
     
     % Coherence process with bst_cohn_2021.m
     tic;
-    sTmp = bst_process('CallProcess', 'process_cohere1n_2021', sFile, [], ...
+    sTmp = bst_process('CallProcess', 'process_cohere1_2021', sFile, [], ...
         'timewindow',   [], ...          % All the time in input
+        'src_rowname',  '1', ...         % Test signal #1 => other signals
         'includebad',   1, ...
         'removeevoked', 0, ...
         'cohmeasure',   'mscohere', ...  % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
@@ -181,7 +192,7 @@ function Test() %#ok<DEFNU>
     bst_report('Info', 'process_cohere1n_2021', sFile, sprintf('Execution time: %1.6f seconds', t));   
     % Snapshot: spectrum
     bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
-        'target',         11, ...  % Connectivity matrix (image)
+        'target',       10, ...  % Frequency spectrum
         'modality',       1, ...
         'orient',         1, ...
         'contact_nimage', 16, ...
@@ -191,6 +202,5 @@ function Test() %#ok<DEFNU>
     ReportFile = bst_report('Save', sTmp);
     bst_report('Open', ReportFile);
 end
-
 
 
