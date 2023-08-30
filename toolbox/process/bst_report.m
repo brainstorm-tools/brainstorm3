@@ -381,7 +381,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
                 if (length(varargin) >= 4) && ~isempty(varargin{4})
                     SurfSmooth = varargin{4};
                 else
-                    SurfSmooth = [];
+                    SurfSmooth = 0.3;
                 end
                 if (length(varargin) >= 5) && ~isempty(varargin{5}) && ~isequal(varargin{5}, 0)
                     Freq = varargin{5};

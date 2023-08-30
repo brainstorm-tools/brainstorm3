@@ -2506,7 +2506,7 @@ function SetSurfaceSmooth(hFig, iSurf, value, isSave)
     if strcmpi(TessInfo(iSurf).Name, 'FEM')
         return;
     end
-    % Update surface transparency
+    % Update surface smooth
     TessInfo(iSurf).SurfSmoothValue = value;
     setappdata(hFig, 'Surface', TessInfo);
     % Update panel controls
