@@ -611,12 +611,14 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
 
     % === NEW CLUSTER ===
     % New cluster structure
-    sCluster  = db_template('Cluster');
+    sCluster = db_template('Cluster');
     % Store current cluster sensors list
     sCluster.Sensors = Sensors;
     % Add clusters
     iCluster = SetClusters('Add', sCluster);
-
+    % Retrieve added cluster
+    sClusters = GetClusters();
+    sCluster  = sClusters(iCluster);
     % Update clusters list
     UpdateClustersList();
     % Select new cluster
