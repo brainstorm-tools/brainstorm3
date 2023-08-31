@@ -3,9 +3,10 @@ function tutorial_practicalmeeg(bids_dir, reports_dir)
 %
 % WORKSHOP PAGE : https://neuroimage.usc.edu/brainstorm/WorkshopParis2019
 % FULL TUTORIAL : https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
+% DOWNLOAD DATA : http://neuroimage.usc.edu/bst/download.php
 %
 % INPUTS:
-%    - bids_dir: Path to folder ds000117-practical  (https://owncloud.icm-institute.org/index.php/s/cNu5jmiOhe7Yuoz/download)
+%    - bids_dir: Path where the tutorial_practicalmeeg.zip file has been unzipped
 %       |- derivatives/freesurfer/sub-01                               : Segmentation folder generated with FreeSurfer
 %       |- derivatives/meg_derivatives/sub-01/ses-meg/meg/*.fif        : MEG+EEG recordings (processed with MaxFilter's SSS)
 %       |- derivatives/meg_derivatives/sub-emptyroom/ses-meg/meg/*.fif : Empty room measurements (processed with MaxFilter's SSS)
@@ -278,10 +279,17 @@ bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
 hFig = view_topography({sFilesAvg.FileName}, 'EEG', '2DLayout');
 bst_report('Snapshot', hFig, sFilesAvg(1).FileName, 'EEG average (2D Layout)', [200,200,800,600]);
 close(hFig);
-% Display EEG056 signals in all conditions
+% Create cluster 'c1' with EEG056 sensor
 hFigMeg = view_timeseries(sFilesAvg(1).FileName);
-Clust = panel_cluster('CreateNewCluster', {'EEG065'});
-hFig = view_clusters({sFilesAvg.FileName}, Clust.Label, [], struct('function', 'Mean', 'overlayClusters', 0, 'overlayConditions', 1));
+[sCluster, iCluster] = panel_cluster('CreateNewCluster', {'EEG065'});
+% Update cluster label
+sCluster.Label = 'EEG065';
+panel_cluster('SetClusters', iCluster, sCluster);
+% Save channel file (which contains the cluster)
+[~, ~, iDS] = bst_figures('GetFigure', hFigMeg);
+bst_memory('SaveChannelFile', iDS);
+% Display EEG056 signals in all conditions
+hFig = view_clusters({sFilesAvg.FileName}, {sCluster.Label}, [], struct('function', 'Mean', 'overlayClusters', 0, 'overlayConditions', 1));
 bst_report('Snapshot', hFig, sFilesAvg(1).FileName, 'EEG065');
 close([hFig, hFigMeg]);
 
