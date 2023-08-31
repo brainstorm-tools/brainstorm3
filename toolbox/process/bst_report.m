@@ -17,7 +17,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
-%         bst_report('ClearHistory')
+%         bst_report('ClearHistory', isUserConfirm=1)
 % 
 %         bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
@@ -1330,12 +1330,18 @@ end
 
 
 %% ===== CLEAR HISTORY =====
-function ClearHistory()
-    % Ask for confirmation
-    isConfirm = java_dialog('confirm', 'Delete all the saved process reports?', 'Clear process history');
-    if ~isConfirm
-        return;
-    end 
+function ClearHistory(isUserConfirm)
+    % Parse inputs
+    if (nargin < 1) || isempty(isUserConfirm) || (isUserConfirm ~= 0)
+        isUserConfirm = 1;
+    end
+    if isUserConfirm
+        % Ask for confirmation
+        isConfirm = java_dialog('confirm', 'Delete all the saved process reports?', 'Clear process history');
+        if ~isConfirm
+            return;
+        end
+    end
     % Get all the available reports
     ProtocolInfo = bst_get('ProtocolInfo');
     ProtocolName = file_standardize(ProtocolInfo.Comment);
