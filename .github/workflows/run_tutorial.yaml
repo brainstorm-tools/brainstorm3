@@ -1,0 +1,156 @@
+# Workflow to test Brainstorm source on GitHub-Hosted Linux, Windows and macOS runners
+
+# Workflow name
+name: Run tutorial (on Brainstorm source)
+
+# Parameters
+env:
+  MATLAB_VER: R2021b # Oldest "b" release available for Windows runner
+
+# When the workflow will run
+on:
+  # Run on Push to a given branch
+  push:
+    branches:
+      - fake-branch
+  # Run manually from GitHub Actions tab, it must be in the default branch
+  workflow_dispatch:
+    # Inputs that appear on GitHub
+    inputs:
+      testname:
+        type: choice
+        description: Test to run
+        options:
+        - tutorial_introduction
+        - tutorial_connectivity
+        - tutorial_coherence
+        - tutorial_ephys
+        - tutorial_epilepsy
+        - tutorial_epileptogenicity
+        - tutorial_fem_tensors
+        - tutorial_neuromag
+        - tutorial_phantom_ctf
+        - tutorial_phantom_elekta
+        - tutorial_practicalmeeg
+        - tutorial_raw
+        - tutorial_resting
+        - tutorial_simulations
+        - tutorial_yokogawa
+        required: true
+      bstusername:
+        description: Brainstorm username to send email
+        required: true
+        default: ''
+
+# Name for each run
+run-name: "Run: ${{ github.event.inputs.testname }}"
+
+jobs:
+  # Ubuntu job
+  Run-Ubuntu:
+    name: Run on Linux (Ubuntu 20.04)
+    runs-on: ubuntu-20.04
+    steps:
+      # Get the Brainstorm code to test
+      - name: Checkout 'brainstorm3' in 'brainstorm3'
+        uses: actions/checkout@v3
+        with:
+          path: brainstorm3
+      # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
+      - name: Set up Matlab
+        uses: matlab-actions/setup-matlab@v1
+        with:
+          release: ${{ env.MATLAB_VER }}
+      # Get code to do the testing
+      - name: Checkout 'bst-tests' in 'bst-tests'
+        uses: actions/checkout@v3
+        with:
+          repository: brainstorm-tools/bst-tests
+          ref: 'main'
+          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
+          # TOKEN was create on rcassani account
+          token: ${{ secrets.TOKEN_BST_TEST }}
+          path: bst-tests
+      # Keep script at same level as brainstorm.m
+      - name: Create symbolic link for test_brainstorm.m
+        run: ln -s $GITHUB_WORKSPACE/bst-tests/test_brainstorm.m $GITHUB_WORKSPACE/brainstorm3/test_brainstorm.m
+      # Run testing
+      - name: Run script
+        uses: matlab-actions/run-command@v1
+        with:
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          startup-options: -nodisplay
+
+  # macOS job
+  Run-MacOS:
+    name: Run on macOS (12 Monterey)
+    runs-on: macos-12
+    steps:
+      # Get the Brainstorm code to test
+      - name: Checkout 'brainstorm3' in 'brainstorm3'
+        uses: actions/checkout@v3
+        with:
+          path: brainstorm3
+      # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
+      - name: Set up Matlab
+        uses: matlab-actions/setup-matlab@v1
+        with:
+          release: ${{ env.MATLAB_VER }}
+      # Get code to do the testing
+      - name: Checkout 'bst-tests' in 'bst-tests'
+        uses: actions/checkout@v3
+        with:
+          repository: brainstorm-tools/bst-tests
+          ref: 'main'
+          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
+          # TOKEN was create on rcassani account
+          token: ${{ secrets.TOKEN_BST_TEST }}
+          path: bst-tests
+      # Keep script at same level as brainstorm.m
+      - name: Create symbolic link for test_brainstorm.m
+        run: ln -s $GITHUB_WORKSPACE/bst-tests/test_brainstorm.m $GITHUB_WORKSPACE/brainstorm3/test_brainstorm.m
+      # Run testing
+      - name: Run script
+        uses: matlab-actions/run-command@v1
+        with:
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          startup-options: -nodisplay
+
+  # Windows job
+  Run-Windows:
+    name: Run on Windows (Server 2019)
+    runs-on: windows-2019
+    steps:
+      # Get the Brainstorm code to test
+      - name: Checkout 'brainstorm3' in 'brainstorm3'
+        uses: actions/checkout@v3
+        with:
+          path: brainstorm3
+      # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
+      - name: Set up Matlab
+        uses: matlab-actions/setup-matlab@v1
+        with:
+          release: ${{ env.MATLAB_VER }}
+      # Get code to do the testing
+      - name: Checkout 'bst-tests' in 'bst-tests'
+        uses: actions/checkout@v3
+        with:
+          repository: brainstorm-tools/bst-tests
+          ref: 'main'
+          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
+          # TOKEN was create on rcassani account
+          token: ${{ secrets.TOKEN_BST_TEST }}
+          path: bst-tests
+      # Keep script at same level as brainstorm.m
+      - name: Create symbolic link for test_brainstorm.m
+        shell: cmd
+        run: |
+             mklink %GITHUB_WORKSPACE%\brainstorm3\test_brainstorm.m %GITHUB_WORKSPACE%\bst-tests\test_brainstorm.m
+             pwd
+             dir
+      # Run testing
+      - name: Run script
+        uses: matlab-actions/run-command@v1
+        with:
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          startup-options: -nodisplay
