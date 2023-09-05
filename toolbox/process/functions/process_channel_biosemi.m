@@ -67,7 +67,7 @@ function OutputFiles = Run(sProcess, sInputs)
     % TODO: Check:
     %       - There are EEG channels, AND
     %       -Find indices of channels with type 'EEG'
-    eegIndices = find(strcmpi({ChannelMat.channel.type}, 'EEG'));
+    eegIndices = find(strcmpi({ChannelMat.Channel.Type}, 'EEG'));
 
     if isempty(eegIndices)
         bst_report('Error', sProcess, [], 'No EEG Channel was taken into account');
@@ -75,7 +75,7 @@ function OutputFiles = Run(sProcess, sInputs)
      
     
     % Use the indices to filter the channels
-    eegChannels = ChannelMat.channel(eegIndices);
+    eegChannels = ChannelMat.Channel(eegIndices);
     
         %       - Current channels names correspond to Biosemi style: A1...A32, B1...B32 C1... and so on, AND
         %         (Be aware of multiple naming e.g., A1 == A01 === A001, ...)
@@ -121,6 +121,7 @@ function OutputFiles = Run(sProcess, sInputs)
                             end
             
         end
+
     % ===== RENAME CHANNELS IN CHANNEL FILE  =====
     ChannelFileRenamed = Compute(sChannel.FileName);
     if ~isequal(ChannelFileRenamed, sChannel.FileName)
@@ -133,39 +134,50 @@ end
 
 %% ===== RENAME CHANNELS =====
 function ChannelFileNew = Compute(ChannelFile)
-    ChannelFileNew=[];
-    ChannelMatNew = struct();
-    ChannelFileFull = file_fullpath(ChannelFile);
-
-    % Load channel file
-    ChannelMatOld = in_bst_channel(ChannelFileFull, 'Channel', 'History');
-    eegIndices = find(strcmpi({ChannelMatOld.channel.type}, 'EEG'));
+    ChannelFileNew = [];  % Initialize the output
     
-    % Use the indices to filter the channels
-    eegChannels = ChannelMatOld.channel(eegIndices);
+    % Load the channel file
+    ChannelMatOld = in_bst_channel(ChannelFile, 'Channel', 'History'); % Remove file_fullpath
+    
+    % Get EEG channels
+    eegIndices = find(strcmpi({ChannelMatOld.Channel.Type}, 'EEG')); % Use correct field names
+    
+    % Extract EEG channels
+    eegChannels = ChannelMatOld.Channel(eegIndices);
+    
+    % TODO: Get maps with GetBiosemiMaps
+    % Call GetBiosemiMaps and assign the result to the 'channelMap' variable
+    
+    % Use 'channelMap' to rename channels
+    for chan = 1 : length(eegChannels)
+        originalName = eegChannels(chan).Name;
+        % TODO: Implement the renaming logic using 'channelMap'
+        % newName = Rename the channel based on the mapping
+        ChannelMap=GetBiosemiMaps(eegChannels);
 
-
-    % TODO: Get maps with GetBiosemiMapping
-    %call GetBiosemiMapping
-
-    channelMap=GetBiosemiMaps(eegChannels);
-
-    % TODO: Do name mapping
-    numEEGChannels=sum(ChannelMat.Channel.type=='eeg');
-         for chan = 1 : numEEGChannels
-             ChannelMatOld.Channel(chan) = ChannelMatOld.Channel(chan).replace(channelMap);
-         end
-    %     ChannelMapOld = getChannelMap();             
-       
-    ChannelMatNew.Channel = ChannelMatOld.Channel;
-
-    % Add in History
-    ChannelMatNew.History = ChannelMatOld.History;
-    ChannelMatNew = bst_history('add', ChannelMatNew, 'edit', 'Channel names renamed to 10-10 system according Biosemi caps.');
-
-    % Update file
-    bst_save(ChannelFileFull, ChannelMatNew, 'v7', 1);
-    ChannelFileNew = file_short(ChannelFileFull);
+        if isKey(ChannelMap, originalName)
+                    newName = ChannelMap(originalName);
+                    eegChannels(chan).Name  = newName;  % Rename the channel
+        else
+            bst_report('Error', sProcess, [], 'Channel does not belong to BioSemi');
+       end       
+        
+    end
+    
+    % Create a new structure ChannelMatNew
+    ChannelMatNew = ChannelMatOld;  % Initialize with the old data
+    
+    % Assign the modified EEG channels back to the structure
+    ChannelMatNew.Channel(eegIndices) = eegChannels;
+    
+    % Add a history entry
+    ChannelMatNew = bst_history('add', ChannelMatNew, 'edit', 'Channel names renamed to 10-10 system according to Biosemi caps.');
+    
+    % Save the updated channel file
+    bst_save(ChannelFile, ChannelMatNew, 'v7', 1);
+    
+    % Set the output file path
+    ChannelFileNew = ChannelFile;
 end
 
 %% ===== NAME MAPS =====
