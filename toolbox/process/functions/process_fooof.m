@@ -291,7 +291,6 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
         if opt.return_spectrum
             fg(chan).power_spectrum = spec(chan,:);
         end
-        %plot(fs', [fg(chan).ap_fit', fg(chan).peak_fit', fg(chan).fooofed_spectrum'])
     end
 end
 
@@ -883,8 +882,8 @@ function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_
     if hOT % Use OptimToolbox for fmincon
         options = optimset('Display', 'off', 'TolX', 1e-3, 'TolFun', 1e-5, ...
         'MaxFunEvals', 3000, 'MaxIter', 3000); % Tuned options
-        lb = [guess(:,1)-guess(:,3)*2,zeros(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(1)];
-        ub = [guess(:,1)+guess(:,3)*2,inf(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(2)];
+        lb = [max([ones(size(guess,1),1).*freqs(1) guess(:,1)-guess(:,3)*2],[],2),zeros(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(1)];
+        ub = [min([ones(size(guess,1),1).*freqs(end) guess(:,1)+guess(:,3)*2],[],2),inf(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(2)];
         peak_params = fmincon(@error_model_constr,guess,[],[],[],[], ...
             lb,ub,[],options,freqs,flat_spec, peak_type);
     else % Use basic simplex approach, fminsearch, with guess_weight
