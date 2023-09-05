@@ -65,15 +65,22 @@ function OutputFiles = Run(sProcess, sInputs)
     ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');
     
     % TODO: Check:
-
     %       - There are EEG channels, AND
-    % Find indices of channels with type 'EEG'
+    %       -Find indices of channels with type 'EEG'
     eegIndices = find(strcmpi({ChannelMat.channel.type}, 'EEG'));
+
+    if isempty(eegIndices)
+        bst_report('Error', sProcess, [], 'No EEG Channel was taken into account');
+    end
+     
     
     % Use the indices to filter the channels
     eegChannels = ChannelMat.channel(eegIndices);
+    
         %       - Current channels names correspond to Biosemi style: A1...A32, B1...B32 C1... and so on, AND
         %         (Be aware of multiple naming e.g., A1 == A01 === A001, ...)
+        %        - Countering/removing the additional zeros from the
+        %        channel name using regex 
 
         for i = 1:length(eegChannels)
             newValue = regexprep(value, '0(?=[1-9])', '');
@@ -94,10 +101,14 @@ function OutputFiles = Run(sProcess, sInputs)
 
         if isempty(missingEEGElectrodes) && isempty(extraEEGElectrodes)
                             % Channel data and channel map
-                           %channelmap=GetBioSemiCaps(ChannelMat);
+                            
                                                        
                             % Call the compute function to rename the channels
-                            OutputFiles={eegChannels,ChannelMat}; 
+                            %OutputFiles={eegChannels,ChannelMat}; 
+                            ChannelFileNew=Compute(eegChannels);
+                            % for gui return the final ChannelFileNew
+                            disp(ChannelFileNew.Channel)
+
         
          else
                             if ~isempty(missingEEGElectrodes)
@@ -106,14 +117,10 @@ function OutputFiles = Run(sProcess, sInputs)
                             end
                             if ~isempty(extraEEGElectrodes)
                                
-                                dbst_report('Error', sProcess, [], 'There are extra EEG channels.', num2str(extraElectrodes));
+                                bst_report('Error', sProcess, [], 'There are extra EEG channels.', num2str(extraElectrodes));
                             end
             
         end
-                            
-                  
-
-        
     % ===== RENAME CHANNELS IN CHANNEL FILE  =====
     ChannelFileRenamed = Compute(sChannel.FileName);
     if ~isequal(ChannelFileRenamed, sChannel.FileName)
@@ -126,11 +133,12 @@ end
 
 %% ===== RENAME CHANNELS =====
 function ChannelFileNew = Compute(ChannelFile)
-    %ChannelFileNew = [];
+    ChannelFileNew=[];
+    ChannelMatNew = struct();
     ChannelFileFull = file_fullpath(ChannelFile);
 
     % Load channel file
-    ChannelMatOld = in_bst_channel(ChannelFile, 'Channel', 'History');
+    ChannelMatOld = in_bst_channel(ChannelFileFull, 'Channel', 'History');
     eegIndices = find(strcmpi({ChannelMatOld.channel.type}, 'EEG'));
     
     % Use the indices to filter the channels
@@ -139,7 +147,9 @@ function ChannelFileNew = Compute(ChannelFile)
 
     % TODO: Get maps with GetBiosemiMapping
     %call GetBiosemiMapping
+
     channelMap=GetBiosemiMaps(eegChannels);
+
     % TODO: Do name mapping
     numEEGChannels=sum(ChannelMat.Channel.type=='eeg');
          for chan = 1 : numEEGChannels
@@ -148,9 +158,11 @@ function ChannelFileNew = Compute(ChannelFile)
     %     ChannelMapOld = getChannelMap();             
        
     ChannelMatNew.Channel = ChannelMatOld.Channel;
+
     % Add in History
     ChannelMatNew.History = ChannelMatOld.History;
     ChannelMatNew = bst_history('add', ChannelMatNew, 'edit', 'Channel names renamed to 10-10 system according Biosemi caps.');
+
     % Update file
     bst_save(ChannelFileFull, ChannelMatNew, 'v7', 1);
     ChannelFileNew = file_short(ChannelFileFull);
@@ -187,6 +199,6 @@ function ChannelMap = GetBiosemiMaps(eegchannels)
        elseif numEEGChannels == 64
            ChannelMap = mapping64;   
        else
-                      bst_report('Error', sProcess, [], 'The number of channels is not 32 or 64. Please check the channel file.');
+          bst_report('Error', sProcess, [], 'The number of channels is not 32 or 64. Please check the channel file.');
        end       
 end
