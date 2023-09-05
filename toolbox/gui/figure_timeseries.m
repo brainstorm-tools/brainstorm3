@@ -3928,7 +3928,7 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     barMeasure = fScaled / TsInfo.DefaultFactor;
     % Get position where to plot the legend
     nChan = length(PlotHandles.hLines);
-    centerOffset = PlotHandles.ChannelOffsets(min(2,nChan)) + 1/(nChan+2)/2;
+    centerOffset = PlotHandles.ChannelOffsets(1) + 1/(nChan+2)/2;
     % Plot bar for the maximum amplitude
     xBar = .3;
     yBar = centerOffset + 1/(nChan+2) * [-0.5, 0.5] / zoomFactor;
