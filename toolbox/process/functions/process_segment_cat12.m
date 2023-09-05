@@ -23,7 +23,7 @@ function varargout = process_segment_cat12( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Francois Tadel, 2019-2023
 
 eval(macro_method);
 end
@@ -242,17 +242,16 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
                 'Missing fiducials: the surfaces cannot be aligned with the MRI.'];
         end
     end
+    % A vox2ras matrix must be present in the MRI for running CAT12
+    sMri = mri_add_world(T1FileBst, sMri);
 
     % ===== SAVE MRI AS NII =====
     bst_progress('text', 'Saving temporary files...');
-    % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
     % Create temporay folder for CAT12 output
-    catDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'cat12');
-    mkdir(catDir);
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'cat12');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
-    NiiFile = bst_fullfile(catDir, [subjid, '.nii']);
+    NiiFile = bst_fullfile(TmpDir, [subjid, '.nii']);
     out_mri_nii(sMri, NiiFile);
     % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
@@ -362,7 +361,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
            findall(0, 'Type', 'Figure', 'Tag', 'CAT')]);
 
     % ===== PROJECT ATLASES =====
-    TessLhFile = file_find(catDir, 'lh.central.*.gii', 2);
+    TessLhFile = file_find(TmpDir, 'lh.central.*.gii', 2);
     if exist('cat_surf_map_atlas', 'file') && file_exist(TessLhFile)
         % Get CAT12 dir
         CatDir = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
@@ -379,12 +378,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
     isKeepMri = 1;
-    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, 0, [], isExtraMaps, isKeepMri);
+    errMsg = import_anatomy_cat(iSubject, TmpDir, nVertices, 0, [], isExtraMaps, isKeepMri);
     if ~isempty(errMsg)
         return;
     end
     % Delete temporary folder
-    % file_delete(catDir, 1, 3);
+    file_delete(TmpDir, 1, 1);
     % Remove logo
     bst_plugin('SetProgressLogo', []);
     % Return success

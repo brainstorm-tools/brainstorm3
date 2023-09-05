@@ -14,6 +14,7 @@ function varargout = panel_protocols(varargin)
 %        nodeFound = panel_protocols('SelectNode',          nodeRoot, FileName )
 %        nodeFound = panel_protocols('GetNode',             nodeType, iStudy, iFile )
 %        nodeFound = panel_protocols('GetNode',             FileName )
+%        nodeStudy = panel_protocols('GetStudyNode',        nodeRoot, iStudy)
 %        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy )  % Select given 'study' tree node
 %        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )     % Find 'study' tree node with studyIndex = iStudy and select it
 %                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
@@ -39,7 +40,8 @@ function varargout = panel_protocols(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -204,7 +206,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             case {event.VK_DELETE, event.VK_BACK_SPACE}
                 if ismember(char(targetNodes(1).getType()), {'subjectdb', 'studydbsubj', 'studydbcond'})
                     % Cancel action
-                else
+                elseif ~bst_get('ReadOnly')
                     % Replace the "Link to raw file" nodes with their
                     % parent, except for spike-sorted raw files
                     if strcmpi(char(targetNodes(1).getType()), 'rawdata') ...
@@ -216,24 +218,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     end
                     % Delete nodes
                     bst_call(@node_delete, targetNodes);
-                    %node_delete(targetNodes);
                 end
             % F5 : REFRESH
             case event.VK_F5
                 UpdateTree();
             % CTRL+C: COPY
             case event.VK_C
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     CopyNode(targetNodes, 0);
                 end
             % CTRL+X: CUT
             case event.VK_X
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     CopyNode(targetNodes, 1);
                 end
             % CTRL+V: PASTE
             case event.VK_V
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     PasteNode(targetNodes);
                 end
         end
@@ -245,7 +246,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Get selected paths
         selectedPaths = event.getSource.getSelectionPaths();
         nbNodes = length(selectedPaths);
-        % If less than two nodes selected : nothing to do
+        % If one node is selected: Remember it
+        if nbNodes == 1
+            UpdateSearchSelNode(selectedPaths(nbNodes).getLastPathComponent());
+        end
+        % If less than two nodes selected: nothing else to do
         if (nbNodes < 2)
             return
         end
@@ -287,7 +292,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         newComment = char(ev.getSource.getCellEditorValue());
         % If the Comment field changed => need to update the DataBase and the node
         % Node: Cannot rename nodes starting with '(' => Special nodes
-        if ~isempty(newComment) && ~strcmp(bstNode.getComment(), newComment) && (newComment(1) ~= '(')
+        if ~isempty(newComment) && ~strcmp(bstNode.getComment(), newComment) && (newComment(1) ~= '(') && ~bst_get('ReadOnly')
             % Rename node
             bst_call(@node_rename, bstNode, newComment);            
         end       
@@ -296,7 +301,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== TREE DROP =====
     function protocolTreeDrop_Callback(hObject, ev)
         % Get Brainstorm GUI structure
-        if isempty(ev.getChildIndices())
+        if isempty(ev.getChildIndices()) && ~bst_get('ReadOnly')
             isCut = 1;
             if CopyNode(jTreeDragHandler.getSrcNodes(), isCut)
                 PasteNode(jTreeDragHandler.getDestNode());
@@ -434,6 +439,77 @@ function UpdateTree(resetNodes)
         nodeRoot.add(dbNode);
     end
     
+    % When switching between exploration modes: Try to keep the same node selection
+    prevExplorationMode = bst_get('Layout', 'PreviousExplorationMode');
+    if ~isempty(selNode) && ~isempty(prevExplorationMode) && ~isequal(prevExplorationMode, explorationMode)
+        [prevDbNode, prevSelNode] = GetSearchNodes(iSearch, prevExplorationMode);
+        % If there was a previous node selection
+        if ~isempty(prevSelNode)
+            newSelNode = [];
+            % Between functional views: keep the same file selected
+            if ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
+                prevFileName = char(prevSelNode.getFileName());
+                if ~isempty(prevFileName) && (length(prevFileName) > 4)
+                    if isequal(prevFileName(end-3:end), '.mat') && ~strcmpi(char(prevSelNode.getType()), 'studysubject')
+                        newSelNode = GetNode(dbNode, prevFileName);
+                    else
+                        iStudyOld = prevSelNode.getStudyIndex();
+                        if iStudyOld > 0
+                            newSelNode = GetStudyNode(dbNode, iStudyOld);
+                        end
+                    end
+                end
+            % From functional view to anatomy view: Keeps the same subject
+            elseif ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && isequal(explorationMode, 'Subjects')
+                % Get old subject index
+                iStudyOld = prevSelNode.getStudyIndex();
+                if (iStudyOld >= 1)
+                    sStudyOld = bst_get('Study', iStudyOld);
+                    if ~isempty(sStudyOld)
+                        [sSubjectOld, iSubjectOld] = bst_get('Subject', sStudyOld.BrainStormSubject);
+                        if ~isempty(sSubjectOld)
+                            if sSubjectOld.UseDefaultAnat
+                                iSubjectOld = 0;
+                            end
+                            % Get new subject index
+                            iSubjectNew = selNode.getStudyIndex();
+                            % If the subject changed: select the parent node for the new subject
+                            if ~isequal(iSubjectNew, iSubjectOld)
+                                newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
+                            end
+                        end
+                    end
+                end
+            % From anatomy view to functional view: Keeps the same subject
+            elseif isequal(prevExplorationMode, 'Subjects') && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
+                % Get old subject index
+                iSubjectOld = prevSelNode.getStudyIndex();
+                % If default anatomy is selected: nothing can be done
+                if (iSubjectOld >= 1)
+                    % Get new subject index
+                    iStudyNew = selNode.getStudyIndex();
+                    sStudyNew = bst_get('Study', iStudyNew);
+                    if ~isempty(sStudyNew)
+                        [sSubjectNew, iSubjectNew] = bst_get('Subject', sStudyNew.BrainStormSubject);
+                        % If the subject changed: Select the parent node for the new subject
+                        if ~isequal(iSubjectNew, iSubjectOld)
+                            if isequal(explorationMode, 'StudiesSubj')
+                                newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                            elseif isequal(explorationMode, 'StudiesCond')
+                                newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 1);
+                            end
+                        end
+                    end
+                end
+            end
+            % Updated selected node
+            if ~isempty(newSelNode)
+                selNode = newSelNode;
+                UpdateSearchSelNode(newSelNode, iSearch, explorationMode);
+            end
+        end
+    end
+
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
@@ -523,6 +599,8 @@ function UpdateNode(category, indices, isExpandTrials)
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
+    % Reset searches (otherwise the new nodes are added to one search tab only)
+    ResetSearchNodes();
     % Get root of the exploration tree 
     treeModel   = ctrl.jTreeProtocols.getModel();
     nodeRootTmp = treeModel.getRoot();
@@ -597,13 +675,8 @@ function UpdateNode(category, indices, isExpandTrials)
                         % NOTHING TO DO
                     case {'StudiesSubj', 'StudiesCond'}
                         % Find the target study node (possible types: studysubject, condition, study)
-                        nodeStudy = [nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
-                                     nodeRoot.findChild('condition',    iStudy, -1, 1), ...
-                                     nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
-                                     nodeRoot.findChild('study',        iStudy, -1, 1), ...
-                                     nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+                        nodeStudy = GetStudyNode(nodeRoot, iStudy);
                         if ~isempty(nodeStudy)
-                            nodeStudy = nodeStudy(1);                           
                             % Do not update nodes are haven't been created yet ("Loading...")
                             if (nodeStudy.getChildCount() == 1) && strcmpi(char(nodeStudy.getChildAt(0).getType()), 'loading')
                                 continue;
@@ -898,15 +971,9 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
     % If nothing was found: expand the trials lists to look for the files
     if isExpand
         % Get study node
-        nodeStudy = [nodeRoot.findChild('condition', iStudy, -1, 1), ...
-                     nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
-                     nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
-                     nodeRoot.findChild('study', iStudy, -1, 1), ...
-                     nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+        nodeStudy = GetStudyNode(nodeRoot, iStudy);
         if isempty(nodeStudy)
             return; 
-        else
-            nodeStudy = nodeStudy(1);
         end
         % If this node is not rendered yet: render it
         if (nodeStudy.getChildCount() == 1) && strcmpi(char(nodeStudy.getChildAt(0).getType()), 'loading')
@@ -930,6 +997,19 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
                 return;
             end
         end
+    end
+end
+
+
+%% ===== NODE: GET STUDY NODE =====
+function nodeStudy = GetStudyNode(nodeRoot, iStudy)
+    nodeStudy = [nodeRoot.findChild('condition', iStudy, -1, 1), ...
+                 nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
+                 nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
+                 nodeRoot.findChild('study', iStudy, -1, 1), ...
+                 nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+    if ~isempty(nodeStudy)
+        nodeStudy = nodeStudy(1);
     end
 end
 
@@ -1028,7 +1108,7 @@ function destFile = PasteNode( targetNode )
     % Cannot copy anat files to a subject using default anatomy
     if isAnatomy
         sSubjectTarget = bst_get('Subject', iTarget);
-        if sSubjectTarget.UseDefaultAnat
+        if (iTarget > 0) && sSubjectTarget.UseDefaultAnat
             bst_error('Destination subject uses the default anatomy.', 'Clipboard', 0);
             destFile = {};
             return;
@@ -1930,6 +2010,41 @@ function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode, numNodes)
     end
 end
 
+
+% Update the selected node in the current search node.
+%
+% Params:
+%  - selNode: the node currently selected in the tree
+%
+% Returns: nothing
+function UpdateSearchSelNode(selNode, iSearch, explorationMode)
+    global GlobalData;
+
+    % Get selected search tab
+    if (nargin < 2) || isempty(iSearch)
+        iSearch = GetSelectedSearch();
+        if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
+            return;
+        end
+    end
+    % Get current exploration mode if not specified
+    if (nargin < 3) || isempty(explorationMode)
+        explorationMode = bst_get('Layout', 'ExplorationMode');
+    end
+    % Update selected node for current exploration mode
+    switch explorationMode
+        case 'Subjects'  % Anatomy view
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = selNode;
+        case 'StudiesSubj'  % Functional view, grouped by subjects
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = selNode;
+        case 'StudiesCond'  % Functional view, grouped by conditions
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = selNode;
+        otherwise
+            error('Unsupported database view mode');
+    end
+end
+
+
 % Clears all saved searches nodes from memory
 %
 % Params:
@@ -1947,7 +2062,7 @@ function ResetSearchNodes(iSearches)
     
     for iSearch = iSearches
         GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
-        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).AnatSelNode = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncSubjRootNode = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncSubjSelNode  = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncCondRootNode = [];

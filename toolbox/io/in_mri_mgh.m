@@ -1,7 +1,7 @@
-function [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst, isApplyVox2ras)
+function [sMri, vox2ras, tReorient] = in_mri_mgh(MriFile, isApplyBst, isApplyVox2ras)
 % IN_MRI_MGH: Read a structural MGH MRI (or gzipped MGZ).
 %
-% USAGE:  [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst=[ask], isApplyVox2ras=[ask]);
+% USAGE:  [sMri, vox2ras, tReorient] = in_mri_mgh(MriFile, isApplyBst=[ask], isApplyVox2ras=[ask]);
 %
 % INPUT:
 %    - MriFile    : full path to a MRI file, WITH EXTENSION
@@ -10,8 +10,9 @@ function [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst, isApplyVox2ras)
 %                   FreeSurfer output folder.
 %    - isApplyVox2ras : Apply additional transformation to the volume
 % OUTPUT:
-%    - sMri    : Standard brainstorm structure for MRI volumes
-%    - vox2ras : [4x4] transformation matrix: voxels to RAS coordinates
+%    - sMri      : Standard brainstorm structure for MRI volumes
+%    - vox2ras   : [4x4] transformation matrix: voxels to RAS coordinates
+%    - tReorient : Transformation matrix of the volume in order to convert it to Brainstorm voxel coordinates
 %
 % FORMAT: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/MghFormat
 
@@ -33,8 +34,11 @@ function [sMri, vox2ras] = in_mri_mgh(MriFile, isApplyBst, isApplyVox2ras)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2023
 
+% Initialize returned values
+vox2ras = [];
+tReorient = [];
 % Parse inputs
 if (nargin < 3) || isempty(isApplyVox2ras)
     isApplyVox2ras = [];
@@ -46,12 +50,13 @@ end
 
 %% ===== UNZIP FILE =====
 [MRIpath, MRIbase, MRIext] = bst_fileparts(MriFile);
+TmpDir = [];
 % If file is gzipped
 if strcmpi(MRIext, '.mgz')
     % Get temporary folder
-    tmpDir = bst_get('BrainstormTmpDir');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'importmri');
     % Target file
-    gunzippedFile = bst_fullfile(tmpDir, [MRIbase, '.mgh']);
+    gunzippedFile = bst_fullfile(TmpDir, [MRIbase, '.mgh']);
     % Unzip file
     res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
     if ~res
@@ -93,8 +98,6 @@ if (hdr.ras_good_flag)
     Pxyz_0 = hdr.Pxyz_c - hdr.Mdc * D * Pcrs_c;
     vox2ras = [hdr.Mdc * D, Pxyz_0;  ...
 	           0 0 0 1];
-else
-    vox2ras = [];
 end
 
 % Position at the end of the header
@@ -174,8 +177,11 @@ sMri = struct('Cube',   Cube, ...
 % ===== VOLUME ORIENTATION =====
 % Apply orientation to the volume
 if ~isempty(vox2ras) && ~isequal(isApplyVox2ras, 0)
-    [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApplyVox2ras);
+    [sMri, vox2ras, tReorient] = cs_nii2bst(sMri, vox2ras, isApplyVox2ras);
 end
 
-
+% ===== DELETE TEMPORARY FILE =====
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
+end
 

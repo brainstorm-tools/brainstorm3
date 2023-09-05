@@ -25,14 +25,14 @@ function sMri = mri_set_default_fid(sMri, Method)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2020
+% Authors: Francois Tadel, 2017-2022
 
 % Parse inputs
 if (nargin < 2) || isempty(Method)
     Method = 'maff8';
 end
 
-% ===== NCS FIDUCIALS =====
+% ===== MNI COORDINATES =====
 % MNI coordinates for all the fiducials
 switch (Method)
     case {'maff8', 'segment'}   % SPM12
@@ -54,16 +54,26 @@ switch (Method)
     otherwise
         error(['Unknown method: ' Method]);
 end
-% Convert: MNI (meters) => MRI (millimeters)
-sMri.NCS.AC     = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;
-sMri.NCS.PC     = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
-sMri.NCS.IH     = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
-sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Orig) .* 1000;
+
+% ===== NCS FIDUCIALS =====
+% Compute default positions for NAS/LPA/RPA if not available yet
+if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || isempty(sMri.NCS.AC)
+    sMri.NCS.AC = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;
+end
+if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'PC') || isempty(sMri.NCS.PC)
+    sMri.NCS.PC = cs_convert(sMri, 'mni', 'mri', PC) .* 1000;
+end
+if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'IH') || isempty(sMri.NCS.IH)
+    sMri.NCS.IH = cs_convert(sMri, 'mni', 'mri', IH) .* 1000;
+end
+if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'Origin') || isempty(sMri.NCS.Origin)
+    sMri.NCS.Origin = cs_convert(sMri, 'mni', 'mri', Orig) .* 1000;
+end
 
 % ===== SCS FIDUCIALS =====
 % Compute default positions for NAS/LPA/RPA if not available yet
-if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') ...
-        || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) 
+if ~isfield(sMri, 'SCS') || any(~isfield(sMri.SCS, {'NAS','LPA','RPA'})) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA)
+    % Convert: MNI (meters) => MRI (millimeters)
     sMri.SCS.NAS = cs_convert(sMri, 'mni', 'mri', NAS) .* 1000;
     sMri.SCS.LPA = cs_convert(sMri, 'mni', 'mri', LPA) .* 1000;
     sMri.SCS.RPA = cs_convert(sMri, 'mni', 'mri', RPA) .* 1000;

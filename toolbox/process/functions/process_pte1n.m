@@ -81,7 +81,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isNormalized = sProcess.options.normalized.Value;
 
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
 end
 
 

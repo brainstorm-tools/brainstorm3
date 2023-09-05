@@ -597,7 +597,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 end
                 % In the case of a surface region, add the match of the vertices in the cortex surface and the GridLoc matrix
                 if strcmpi(sScout.Region(2), 'S')
-                    iVert2Grid = [iVert2Grid; sScout.Vertices', sScout.GridRows'];
+                    iVert2Grid = [iVert2Grid; sScout.Vertices(:), sScout.GridRows(:)];
                 end
                 % Add to the scout definition the indices in the ImageGrid
                 iAllGrid   = [iAllGrid,   reshape(repmat(sScout.GridRows,nComp,1), 1, [])];

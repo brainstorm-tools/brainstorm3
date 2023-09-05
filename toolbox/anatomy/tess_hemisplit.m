@@ -50,8 +50,8 @@ if ~isempty(iStruct)
     iLeftScout  = [find(strcmpi({sSurf.Atlas(iStruct).Scouts.Label}, 'lh')), find(strcmpi({sSurf.Atlas(iStruct).Scouts.Label}, 'Cortex') & strcmpi({sSurf.Atlas(iStruct).Scouts.Region}, 'LU'))];
     % If both hemispheres are described here: get the indices
     if ~isempty(iRightScout) && ~isempty(iLeftScout)
-        rH = sSurf.Atlas(iStruct).Scouts(iRightScout).Vertices;
-        lH = sSurf.Atlas(iStruct).Scouts(iLeftScout).Vertices;
+        rH = sSurf.Atlas(iStruct).Scouts(iRightScout).Vertices(:)';
+        lH = sSurf.Atlas(iStruct).Scouts(iLeftScout).Vertices(:)';
         return;
     end
     % === Method 2: Sum all the L/R scouts ===
@@ -63,6 +63,9 @@ if ~isempty(iStruct)
     if ~isempty(iRightScouts) && ~isempty(iLeftScouts)
         rH = unique([sSurf.Atlas(iStruct).Scouts(iRightScouts).Vertices]);
         lH = unique([sSurf.Atlas(iStruct).Scouts(iLeftScouts).Vertices]);
+        % Make sure these are row vectors
+        rH = rH(:)';
+        lH = lH(:)';
         return;
     end
 end

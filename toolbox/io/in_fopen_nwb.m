@@ -23,7 +23,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % =============================================================================@
 %
 % Author: Konstantinos Nasiotis 2019-2021
-%         Francois Tadel, 2020-2021
+%         Francois Tadel, 2020-2023
 
 
 %% ===== INSTALL NWB LIBRARY =====
@@ -43,7 +43,8 @@ previous_directory = pwd;
 % Do everything in the NWB directory - With every call of nwbRead a +types
 % folder is created in the pwd for some reason
 % Go in the tmp folder so the +types can be dumped
-cd(bst_get('BrainstormTmpDir'))
+TmpDir = bst_get('BrainstormTmpDir', 0, 'nwb');
+cd(TmpDir)
 
 % Load the metadata
 nwb2 = nwbRead(DataFile);
@@ -131,6 +132,11 @@ sFile = db_template('sfile');
 sFile.header.ChannelsModuleStructure = ChannelsModuleStructure;
 sFile.prop.sfreq = Fs;
 
+% Check the number of channels
+if ChannelsModuleStructure.nChannels > length(ChannelsModuleStructure.amp_channel_IDs)
+    warning('More channels are found in raw data than in DynamicTable. Select channels according to DynamicTable.');
+    ChannelsModuleStructure.nChannels = length(ChannelsModuleStructure.amp_channel_IDs);
+end
 nChannels = sum([ChannelsModuleStructure.nChannels]);
 
 %% Check for epochs/trials
@@ -151,6 +157,20 @@ for iModule = iElectrophysiologyModules
     groups = [groups ChannelsModuleStructure(iModule).groupLabels];
 end
 
+% Get semantic labels. The 'label' key might be specific to the dataset that we tested.
+if isKey(nwb2.general_extracellular_ephys_electrodes.vectordata, 'label')
+    labels = nwb2.general_extracellular_ephys_electrodes.vectordata.get('label').data.load; 
+else
+    labels = arrayfun(@(x) sprintf('amp%d', x), ChannelsModuleStructure.amp_channel_IDs, 'UniformOutput', 0);
+end
+
+% Get information of Good/Bad channels. The 'good' key might be specific to the dataset that we tested.
+if isKey(nwb2.general_extracellular_ephys_electrodes.vectordata, 'good')  % 1 is good, 0 is bad
+    ChannelFlag = nwb2.general_extracellular_ephys_electrodes.vectordata.get('good').data.load;
+    ChannelFlag = ChannelFlag * 2 - 1;  % 1 is good, -1 is bad in BST
+else
+    ChannelFlag = ones(nChannels, 1);
+end
 
 try
     % Get coordinates and set to 0 if they are not available
@@ -176,9 +196,9 @@ for iModule = 1:length(ChannelsModuleStructure)
         ii = ii + 1;
         zz = zz + 1;
         if ChannelsModuleStructure(iModule).isElectrophysiology
-            ChannelMat.Channel(ii).Name    = ['amp' num2str(ii-1)];
+            ChannelMat.Channel(ii).Name    = labels{iChannel};
             ChannelMat.Channel(ii).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
-            ChannelMat.Channel(ii).Group   = groups(iChannel,:);
+            ChannelMat.Channel(ii).Group   = groups{iChannel};  % dtype shoud be char
             ChannelMat.Channel(ii).Type    = 'SEEG';
             ChannelType{ii} = 'EEG';
         else
@@ -203,7 +223,7 @@ sFile.comment      = nwb2.identifier;
 sFile.prop.times   = [time(1), time(end)];
 sFile.prop.nAvg    = 1;
 % No info on bad channels
-sFile.channelflag  = ones(nChannels, 1);
+sFile.channelflag  = ChannelFlag;
 sFile.header.ChannelType = ChannelType;
 
 %% ===== READ EVENTS =====
@@ -239,13 +259,24 @@ function moduleStructure = getDeeperModule(nwb, DataKey)
         amp_channel_IDs = obj.electrodes.data.load + 1; % Python starts from 0
         
         electrodes_path = obj.electrodes.table.path;
-        electrodes_path = strrep(electrodes_path(2:end), '/','_');        
+        electrodes_path = strrep(electrodes_path(2:end), '/', '_');
         
-        not_ordered_groupLabels = nwb.(electrodes_path).vectordata.get('group_name').data.load;
-        groupLabels = not_ordered_groupLabels(amp_channel_IDs,:);
+        % Check if Channel IDs are provided
+        if isprop(nwb.(electrodes_path), 'id')
+            amp_channel_IDs = nwb.(electrodes_path).id.data.load + 1;
+        end
+        
+        % Check if 'group_name' exist. If not, extract group names from other
+        % key. The 'group' key here might be specific to the dataset that we tested.
+        if isKey(nwb.(electrodes_path).vectordata, 'group_name')   
+            not_ordered_groupLabels = nwb.(electrodes_path).vectordata.get('group_name').data.load; 
+        else
+            not_ordered_groupLabels = {nwb.(electrodes_path).vectordata.get('group').data.path};                     
+            [~, not_ordered_groupLabels] = cellfun(@(x) fileparts(x), not_ordered_groupLabels', 'UniformOutput', 0);
+        end
         
         moduleStructure.amp_channel_IDs = amp_channel_IDs;
-        moduleStructure.groupLabels = groupLabels;
+        moduleStructure.groupLabels = not_ordered_groupLabels(amp_channel_IDs,:);
 
     else
         moduleStructure.amp_channel_IDs = [];

@@ -34,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 55;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event names
@@ -68,28 +68,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % ===== GET FILE DESCRIPTOR =====
         % Load the raw file descriptor
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
+        % Load the raw file descriptor
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events');
+            sEvents = DataMat.Events;
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Call the deleting function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames);
+        [sEvents, isModified] = Compute(sInputs(iFile), sEvents, EvtNames);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);

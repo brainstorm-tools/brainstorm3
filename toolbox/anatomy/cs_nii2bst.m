@@ -1,8 +1,7 @@
-function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
+function [sMri, vox2ras, tReorient] = cs_nii2bst(sMri, vox2ras, isApply)
 % CS_NII2BST: Converts a vox2ras transformation matrix from NIfTI format to Brainstorm format.
 %
-% USAGE:  [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply=[ask])   % Transform the volume
-%                 vox2ras = cs_nii2bst(sMri, vox2ras, isApply=[ask])   % Just fix the transformation
+% USAGE:  [sMri, vox2ras, tReorient] = cs_nii2bst(sMri, vox2ras, isApply=[ask])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,13 +21,13 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2021
+% Author: Francois Tadel, 2016-2022
 
 % Parse inputs
 if (nargin < 3) || isempty(isApply)
     isApply = [];
 end
-
+tReorient = [];
 
 % Normalize rotation matrix
 R = vox2ras(1:3,1:3);
@@ -65,7 +64,8 @@ if isModified && isApply
         end
     end
     % Apply all transformations
-    vox2ras = vox2ras * inv(TransFlip * TransPerm);
+    tReorient = TransFlip * TransPerm;
+    vox2ras = vox2ras * inv(tReorient);
     % Set the sform/qform transformations from the nifti header
     if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
         % Set sform to NIFTI_XFORM_ALIGNED_ANAT 

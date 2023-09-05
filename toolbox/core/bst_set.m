@@ -43,6 +43,7 @@ function bst_set( varargin )
 %    - bst_set('InterfaceScaling',      InterfaceScaling)
 %    - bst_set('TSDisplayMode',         TSDisplayMode)    : {'butterfly','column'}
 %    - bst_set('ElectrodeConfig',       ElectrodeConfig, Modality)
+%    - bst_set('ElecInterpDist',        ElecInterpDist, Modality)
 %    - bst_set('DefaultFormats'         defaultFormats)
 %    - bst_set('BFSProperties',         [scalpCond,skullCond,brainCond,scalpThick,skullThick])
 %    - bst_set('ImportEegRawOptions',   ImportEegRawOptions)
@@ -78,6 +79,7 @@ function bst_set( varargin )
 %    - bst_set('MriOptions',            MriOptions)
 %    - bst_set('CustomColormaps',       CustomColormaps)
 %    - bst_set('DigitizeOptions',       DigitizeOptions)
+%    - bst_set('PcaOptions',            PcaOptions) 
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
 %    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
@@ -247,19 +249,31 @@ switch contextName
     case 'ElectrodeConfig'
         Modality = varargin{2};
         ElectrodeConf = varargin{3};
-        if ~ismember(Modality, {'EEG','SEEG','ECOG'})
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif ~ismember(Modality, {'EEG','SEEG','ECOG','MEG'})
             error(['Invalid modality: ' Modality]);
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
-        
+
+    case 'ElecInterpDist'
+        Modality = varargin{2};
+        ElecInterpDist = varargin{3};
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif ~ismember(Modality, {'EEG','SEEG','ECOG','MEG'})
+            error(['Invalid modality: ' Modality]);
+        end
+        GlobalData.Preferences.(contextName).(Modality) = ElecInterpDist;
+
     case {'UniformizeTimeSeriesScales', 'XScale', 'YScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
           'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
           'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'ConnectGraphOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
-          'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
+          'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_stft', 'TimefreqOptions_plv', ...
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'PcaOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
@@ -271,12 +285,10 @@ switch contextName
             error('Invalid call to bst_set.');
         end
         [username, apiKey, domain] = varargin{2:4};
-        
+        % Default domain: plot.ly
         if isempty(domain)
-            % Default Plot.ly server
-            domain = 'http://plot.ly';
+            domain = 'https://plot.ly';
         end
-        
         % Plotly needs a URL with HTTP and no trailing slash.
         if strfind(domain, 'https://')
             domain = strrep(domain, 'https://', 'http://');
@@ -286,7 +298,7 @@ switch contextName
         if domain(end) == '/'
             domain = domain(1:end-1);
         end
-        
+        % Save credentials
         saveplotlycredentials(username, apiKey);
         saveplotlyconfig(domain);
         

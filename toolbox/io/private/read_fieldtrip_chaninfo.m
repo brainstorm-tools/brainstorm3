@@ -5,7 +5,7 @@ function ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -41,7 +41,12 @@ end
 
 
 %% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
+% The strategy developed here is a heuristic that might need to be refined in the future.
+% Reference:  https://github.com/fieldtrip/fieldtrip/issues/2040
+%             https://github.com/fieldtrip/fieldtrip/issues/507
 projList = {};
+gradChanTypes = [];
+coilChan = [];
 if ~isempty(grad)
     % Initialize FieldTrip
     [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
@@ -50,6 +55,10 @@ if ~isempty(grad)
     end
     % Fix glitches in the structure
     grad = ft_datatype_sens(grad);
+    % Save channel types, if they exist
+    if isfield(grad, 'chantype') && ~isempty(grad.chantype)
+        gradChanTypes = grad.chantype;
+    end
     
     % Get the list of montages to undo
     montageList = {grad.balance.current};
@@ -75,12 +84,17 @@ if ~isempty(grad)
         % Add to the list of projectors to process
         projList{end+1} = mont;
     end
-    % Remove small values to keep only the ones (diagonals can have different values when mixing GRAD and MAG)
-    diagVal = max(abs(grad.tra),[],2);
-    grad.tra = bst_bsxfun(@rdivide, grad.tra, diagVal);
-    grad.tra(abs(grad.tra) < 0.5) = 0;
-    grad.tra = round(grad.tra);
-    grad.tra = bst_bsxfun(@times, grad.tra, diagVal);
+    % If TRA matrix is not a binary coil-channel adjacency matrix
+    if any(~ismember(unique(grad.tra), [-1 0 1]))
+        % Normalize each row separately because diagonals can have different values when mixing GRAD and MAG
+        diagVal = max(abs(grad.tra),[],2);
+        coilChan = bst_bsxfun(@rdivide, grad.tra, diagVal);
+        % Binarize the TRA matrix to reconstruct the coil-channel correspondence matrix
+        coilChan(abs(coilChan) < 0.7) = 0;  % Hope that balancing (ICA,SSP) would never exceed 70% of the maximum value per row
+        coilChan = round(coilChan);         % Three possible values:  -1, 0, 1
+    else
+        coilChan = grad.tra;
+    end
 end
 
 %% ===== BUILD PROJECTOR LIST =====
@@ -142,10 +156,8 @@ for i = 1:nChannels
         if ~any(isnan(elec.elecpos(ichan,:))) && ~any(isinf(elec.elecpos(ichan,:))) && ~all(elec.elecpos(ichan,:) == 0)
             ChannelMat.Channel(i).Loc(:,1) = elec.elecpos(ichan,:);
             % Apply units
-            if isequal(elec.unit, 'mm')
-                ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
-            elseif isequal(elec.unit, 'cm')
-                ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
+            if isfield(elec, 'unit') && ~isempty(elec.unit)
+                ChannelMat.Channel(i).Loc(:,1) = bst_units_ui(elec.unit, ChannelMat.Channel(i).Loc(:,1));
             end
         end
         % Get type
@@ -162,7 +174,7 @@ for i = 1:nChannels
         % Find channel index
         ichan = find(strcmpi(chName, grad.label), 1);
         % Find corresponding coils
-        icoils = find(grad.tra(ichan,:));
+        icoils = find(coilChan(ichan,:));
         % Error: Two many coils
         if (length(icoils) > 2)
             % TODO: This is wrong: not importing the correct coil positions, not importing the SSP/ICA projectors...
@@ -174,20 +186,16 @@ for i = 1:nChannels
             % Locations
             ChannelMat.Channel(i).Loc    = grad.coilpos(icoils,:)';
             ChannelMat.Channel(i).Orient = grad.coilori(icoils,:)';
-            ChannelMat.Channel(i).Weight = grad.tra(ichan,icoils);
+            ChannelMat.Channel(i).Weight = coilChan(ichan,icoils);
         end
-        
         % Apply units
-        if isfield(grad, 'unit') && isequal(grad.unit, 'cm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 100;
-        elseif isfield(grad, 'unit') && isequal(grad.unit, 'mm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 1000;
+        if isfield(grad, 'unit') && ~isempty(grad.unit)
+            ChannelMat.Channel(i).Loc(:,1) = bst_units_ui(grad.unit, ChannelMat.Channel(i).Loc(:,1));
         end
-        
         % Get type
         if isempty(ChannelMat.Channel(i).Type)
-            if isfield(grad, 'chantype') && ~isempty(grad.chantype)
-                ChannelMat.Channel(i).Type = upper(grad.chantype{ichan});
+            if ~isempty(gradChanTypes)
+                ChannelMat.Channel(i).Type = upper(gradChanTypes{ichan});
             else
                 ChannelMat.Channel(i).Type = 'MEG';
             end
@@ -198,6 +206,7 @@ end
 %% ===== CONVERT CHANNEL TYPES =====
 for i = 1:length(ChannelMat.Channel)
     switch upper(ChannelMat.Channel(i).Type)
+        case 'MEGGRAD',     ChannelMat.Channel(i).Type = 'MEG';
         case 'MEGPLANAR',   ChannelMat.Channel(i).Type = 'MEG GRAD';
         case 'MEGMAG',      ChannelMat.Channel(i).Type = 'MEG MAG';
         case 'REFGRAD',     ChannelMat.Channel(i).Type = 'MEG REF';

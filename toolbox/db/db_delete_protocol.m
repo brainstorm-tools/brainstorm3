@@ -68,6 +68,7 @@ end
 
 %% ===== REMOVE FILES =====
 if isRemoveFiles
+    bst_progress('start', 'Delete Protocol', 'Removing all files...');
     % Remove all the contents of STUDIES and SUBJECTS folders
     file_delete( {sProtocolsListInfo(iProtocol).STUDIES, sProtocolsListInfo(iProtocol).SUBJECTS}, 1, 2);
     % If the parent folder (protocol folder) is empty: remove it
@@ -82,6 +83,7 @@ if isRemoveFiles
 end
     
 %% ===== REMOVE PROTOCOL =====
+bst_progress('start', 'Delete Protocol', 'Removing protocol...');
 sProtocolsListInfo(iProtocol)     = [];
 sProtocolsListSubjects(iProtocol) = [];
 sProtocolsListStudies(iProtocol)  = [];
@@ -108,6 +110,8 @@ gui_brainstorm('SetCurrentProtocol', iProtocol);
 % Save database
 % db_save();
 isRemoved = 1;
+
+bst_progress('stop');
 
 
 

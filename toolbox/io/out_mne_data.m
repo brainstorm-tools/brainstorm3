@@ -31,7 +31,7 @@ function [mneObj, DataMat, ChannelMat, iChannels] = out_mne_data(DataFiles, ObjT
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2022
 
 
 %% ===== PARSE INPUTS =====
@@ -63,15 +63,15 @@ elseif (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
     error('Only "Epoched" objects accept multiple input files.');
 end
 % Check that data files are available in the database
-if ~isempty(DataFiles)
+MeasDate = [];
+if ~isempty(DataFiles) && isappdata(0, 'BrainstormRunning')
     sStudy = bst_get('DataFile', DataFiles{1});
-    if isempty(sStudy)
-        error(['File not found: ' DataFiles{1}]);
-    end
     % Get study date
-    MeasDate = sStudy.DateOfStudy;
-else
-    MeasDate = [];
+    if isempty(sStudy)
+        warning(['File not found in database: ' DataFiles{1}]);
+    else
+        MeasDate = sStudy.DateOfStudy;
+    end
 end
 
 
@@ -165,6 +165,9 @@ end
 %% ===== CREATE INFO OBJECT =====
 % Create info object
 mneInfo = out_mne_channel(ChannelFile, iChannels);
+% Unlocking Info object
+mneSetStatus = py.getattr(mneInfo, '__setstate__');
+mneSetStatus(py.dict(pyargs('_unlocked', true)));
 % Sampling frequency
 mneInfo{'sfreq'} = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
 % Description
@@ -191,6 +194,8 @@ if ~isempty(MeasDate)
     catch
     end
 end
+% Locking Info object again
+mneSetStatus(py.dict(pyargs('_unlocked', false)));
 
 % Object: Raw
 switch ObjType
@@ -198,7 +203,10 @@ switch ObjType
     case 'Raw'
         % Create Raw object
         first_samp = round(DataMat.Time(1) .* mneInfo{'sfreq'});
-        mneObj = py.mne.io.RawArray(bst_mat2py(DataMat.F), mneInfo, first_samp);
+        mneObj = py.mne.io.RawArray(pyargs(...
+            'data',       bst_mat2py(DataMat.F), ...
+            'info',       mneInfo, ...
+            'first_samp', first_samp));
         
         % Add events
         for iEvt = 1:length(DataMat.Events)
@@ -230,13 +238,21 @@ switch ObjType
             end
         end
         % Create Epoched object from concatenated trials
-%         mneObj = py.mne.EpochsArray(bst_mat2py(DataMat.F), mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
-        mneObj = py.mne.EpochsArray(DataMat.F, mneInfo, bst_mat2py(evts, 1), DataMat.Time(1), event_id);
+        mneObj = py.mne.EpochsArray(pyargs(...
+            'data',     DataMat.F, ...
+            'info',     mneInfo, ...
+            'events',   bst_mat2py(evts, 1), ...
+            'tmin',     DataMat.Time(1), ...
+            'event_id', event_id));
         
     case 'Evoked'
         % Create Evoked object
-%         mneObj = py.mne.EvokedArray(bst_mat2py(DataMat.F), mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
-        mneObj = py.mne.EvokedArray(DataMat.F, mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
+        mneObj = py.mne.EvokedArray(pyargs(...
+            'data',    DataMat.F, ...
+            'info',    mneInfo, ...
+            'tmin',    DataMat.Time(1), ...
+            'comment', DataMat.Comment, ...
+            'nave',    uint32(DataMat.nAvg)));
 end
 
 

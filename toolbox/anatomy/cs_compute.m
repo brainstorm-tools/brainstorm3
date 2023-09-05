@@ -5,7 +5,7 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 %
 % INPUT:
 %     - sMri   : Brainstorm MRI structure
-%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','tal'}
+%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','acpc','tal','captrak'}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,7 +25,7 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 Transf = [];
 
@@ -71,13 +71,76 @@ switch lower(csname)
             sMri.SCS.T      = Transf.T;
         end
         
-        
     % ===== MRI => MNI =====
     case 'mni'
         error('To estimate the MNI coordinates: right-click on the MRI > MNI normalization.');
 
+    % ===== MRI => ACPC =====
+    case 'acpc'
+        % The necessary points are not defined
+        if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)
+            disp('BST> Cannot compute MRI=>ACPC transformation: Missing fiducial points.');
+            return;
+        end
+        % Get coordinates in meters
+        AC = sMri.NCS.AC / 1000;
+        PC = sMri.NCS.PC / 1000;
+        IH = sMri.NCS.IH / 1000;
+        % Compute axes: Code from FieldTrip (ft_headcoordinates.m)
+        origin = AC;
+        diry   = AC - PC;
+        dirz   = IH - AC;
+        dirx   = cross(diry,dirz);
+        dirz   = cross(dirx,diry);
+        dirx   = dirx/norm(dirx);
+        diry   = diry/norm(diry);
+        dirz   = dirz/norm(dirz);
+        % Compute the rotation matrix
+        rot = eye(4);
+        rot(1:3,1:3) = inv(eye(3) / [dirx; diry; dirz]);
+        % compute the translation matrix
+        tra = eye(4);
+        tra(1:4,4) = [-origin(:); 1];
+        % Combine these to compute the full homogeneous transformation matrix
+        transform = rot * tra;
+        % Return in split format
+        Transf.R = transform(1:3,1:3);
+        Transf.T = transform(1:3,4);
 
-    % ===== MRI => TAL =====
+    % ===== MRI => CapTrak =====
+    case 'captrak'
+        % The necessary points are not defined
+        if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3)
+            disp('BST> Cannot compute MRI=>SCS transformation: Missing fiducial points.');
+            return;
+        end
+        % Get coordinates in meters
+        NAS = double(sMri.SCS.NAS(:))' ./ 1000;
+        LPA = double(sMri.SCS.LPA(:))' ./ 1000;
+        RPA = double(sMri.SCS.RPA(:))' ./ 1000;
+        % X axis: From LPA through RPA exactly
+        dirx   = RPA - LPA;
+        dirx   = dirx/norm(dirx);
+        % Y axis: Orthogonal to the X-axis through the nasion (NAS)
+        origin = LPA + dirx * sum((NAS - LPA) .* dirx);
+        diry = NAS - origin;
+        diry   = diry/norm(diry);
+        % Z axis: Orthogonal to the XY-plane through the vertex of the head
+        dirz = cross(dirx,diry);
+        % Compute the rotation matrix
+        rot = eye(4);
+        rot(1:3,1:3) = inv(eye(3) / [dirx; diry; dirz]);
+        % compute the translation matrix
+        tra = eye(4);
+        tra(1:4,4) = [-origin(:); 1];
+        % Combine these to compute the full homogeneous transformation matrix
+        transform = rot * tra;
+        % Return in split format
+        Transf.R = transform(1:3,1:3);
+        Transf.T = transform(1:3,4);
+
+    % ===== SCS => TAL =====
+    % Not a real TALAIRACH system, used only from tess_envelope.m
     case 'tal'
         % The necessary points are not defined
         if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)

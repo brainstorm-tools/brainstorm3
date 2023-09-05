@@ -37,7 +37,7 @@ function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubje
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 % Check command line
@@ -70,6 +70,7 @@ end
 iNewSurfaces = [];
 OutputSurfacesFiles = {};
 nVertices = [];
+Labels = [];
 
 % Get Protocol information
 ProtocolInfo = bst_get('ProtocolInfo');
@@ -143,7 +144,7 @@ for iFile = 1:length(SurfaceFiles)
     % ===== LOAD SURFACE FILE =====
     bst_progress('start', 'Importing tesselation', ['Loading file "' TessFile '"...']);
     % Load surfaces(s)
-    Tess = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels);
+    [Tess, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels);
     if isempty(Tess)
         bst_progress('stop');
         return
@@ -159,6 +160,8 @@ for iFile = 1:length(SurfaceFiles)
     end
     importedBaseName = strrep(importedBaseName, 'tess_', '');
     importedBaseName = strrep(importedBaseName, '_tess', '');
+    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+    importedBaseName = strrep(importedBaseName, '_volatlas', '');
     % Only one surface
     if (length(Tess) == 1)
         % Surface mesh
@@ -176,7 +179,8 @@ for iFile = 1:length(SurfaceFiles)
     % Multiple surfaces
     else
         [Tess(:).Atlas] = deal(db_template('Atlas'));
-        NewTess = tess_concatenate(Tess);
+        isKeepLabels = 1;
+        NewTess = tess_concatenate(Tess, [], [], Labels, isKeepLabels);
         NewTess.iAtlas  = find(strcmpi({NewTess.Atlas.Name}, 'Structures'));
         NewTess.Comment = importedBaseName;
     end

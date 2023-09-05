@@ -1,7 +1,7 @@
-function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas, isSingleHemi )
+function [nScoutProj, destSurfMat, sAtlasProj] = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas, isSingleHemi, isSave )
 % BST_PROJECT_SCOUTS: Project scouts on a different surface (need the FreeSurfer registered spheres).
 %
-% USAGE:  nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas=[all], isSingleHemi=0 )
+% USAGE:  [nScoutProj, destSurfMat, sAtlasProj] = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas=[all], isSingleHemi=0, isSave=1 )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,9 +21,12 @@ function nScoutProj = bst_project_scouts( srcSurfFile, destSurfFile, sAtlas, isS
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2019
+% Authors: Francois Tadel, 2015-2023
 
 % ===== PARSE INPUTS ======
+if (nargin < 5) || isempty(isSave)
+    isSave = 1;
+end
 if (nargin < 4) || isempty(isSingleHemi)
     isSingleHemi = 0;
 end
@@ -31,6 +34,8 @@ if (nargin < 3) || isempty(sAtlas)
     sAtlas = [];
 end
 nScoutProj = 0;
+destSurfMat = [];
+sAtlasProj = sAtlas;
 
 % ===== GET INTERPOLATION =====
 % Make sure files are different
@@ -91,6 +96,8 @@ for iAtlas = 1:length(sAtlas)
         % Get vertices identified in this scout
         iVertices = find(scoutIndex == iScout);
         if isempty(iVertices)
+            sAtlasProj(iAtlas).Scouts(iScout).Vertices = [];
+            sAtlasProj(iAtlas).Scouts(iScout).Seed     = [];
             continue;
         end
         % Limit the growth to extra vertices when not projecting an entire atlas
@@ -115,7 +122,9 @@ for iAtlas = 1:length(sAtlas)
             destSurfMat.Atlas(iAtlasDest).Name = sAtlas(iAtlas).Name;
         end
         % Destination scout name
-        if isSameSubject
+        if ~isSave
+            ScoutLabel = sScout.Label;
+        elseif isSameSubject
             ScoutLabel = sScout.Label;
         else
             ScoutLabel = [sSrcSubj.Name '_' sScout.Label];
@@ -126,18 +135,21 @@ for iAtlas = 1:length(sAtlas)
         end
         % Create new scout
         iScoutDest = length(destSurfMat.Atlas(iAtlasDest).Scouts) + 1;
-        destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Vertices = iVertices;
+        destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Vertices = iVertices(:)';
         destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Seed     = iSeed;
         destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Color    = sScout.Color;
         destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Label    = ScoutLabel;
         destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Function = sScout.Function;
         destSurfMat.Atlas(iAtlasDest).Scouts(iScoutDest).Region   = sScout.Region;
+        % Report projected scouts
         nScoutProj = nScoutProj + 1;
+        sAtlasProj(iAtlas).Scouts(iScout).Vertices = iVertices(:)';
+        sAtlasProj(iAtlas).Scouts(iScout).Seed     = iSeed;
     end
 end
 
 % Save destination surface (append the atlas to existing file)
-if (nScoutProj > 0)
+if isSave && (nScoutProj > 0)
     s.Atlas = destSurfMat.Atlas;
     bst_save(file_fullpath(destSurfFile), s, 'v7', 1);
 end

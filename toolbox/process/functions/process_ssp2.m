@@ -24,7 +24,8 @@ function varargout = process_ssp2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2011-2018
+% Authors: Francois Tadel, 2011-2022
+%          Elizabeth Bock, 2011-2018
 
 eval(macro_method);
 end
@@ -602,6 +603,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     end
             
     % ===== COMPUTE PROJECTORS =====
+    Y = [];
     bst_progress('text', 'Computing projector...');
     switch (Method)
         
@@ -690,19 +692,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_report('Error', sProcess, sInputsA, 'Function "jadeR" did not return any results.');
                 return;
             end
-            % Fill with the missing channels with zeros
-            Wall = zeros(length(ChannelMat.Channel), size(W,1));
-            Wall(iChannels,:) = W';
-            % Build projector structure
-            proj = db_template('projector');
-            proj.Components = Wall;
-            proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
-            proj.Status     = 1;
-            proj.SingVal    = 'ICA';
-            % Apply component selection (if set explicetly)
-            if ~isempty(SelectComp)
-                proj.CompMask(SelectComp) = 1;
-            end
             
         % === INFOMAX ===
         case 'ICA_infomax'
@@ -720,53 +709,82 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 bst_report('Error', sProcess, sInputsA, 'Function "runica" did not return any results.');
                 return;
             end
-            % Reconstruct mixing matrix
+            % Reconstruct unmixing matrix
             W = icaweights * icasphere;
-            % Fill with the missing channels with zeros
-            Wall = zeros(length(ChannelMat.Channel), size(W,1));
-            Wall(iChannels,:) = W';
-            % Build projector structure
-            proj = db_template('projector');
-            proj.Components = Wall;
-            proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
-            proj.Status     = 1;
-            proj.SingVal    = 'ICA';
-            % Apply component selection (if set explicetly)
-            if ~isempty(SelectComp)
-                proj.CompMask(SelectComp) = 1;
-            end
             
-%         % === FASTICA ===
-%         case 'ICA_fastica'
-%             bst_progress('text', 'Calling external function: fastica()...');
-%             % Scale the values to higher values, so that the pcamat function doesn't complain for small eigenvalues
-%             F = F ./ mean(F(:));
-%             % Run decomposition
-%             if ~isempty(nIcaComp) && (nIcaComp ~= 0)
-%                 [Winv,W] = fastica(F, 'displayMode', 'off', 'approach', 'symm', 'numOfIC', nIcaComp);
-%             else
-%                 [Winv,W] = fastica(F, 'displayMode', 'off', 'approach', 'symm');
-%             end
-%             % Fill with the missing channels with zeros
-%             Wall = zeros(length(ChannelMat.Channel), size(W,1));
-%             Wall(iChannels,:) = W';
-%             % Build projector structure
-%             proj = db_template('projector');
-%             proj.Components = Wall;
-%             proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
-%             proj.Status     = 1;
-%             proj.SingVal    = 'ICA';
+        % === ICA: PICARD ===
+        case 'ICA_picard'
+            bst_progress('text', 'Calling external function: picard()...');
+            % Install picard plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'picard');
+            if ~isInstalled
+                error(errMsg);
+            end
+            % Run decomposition
+            if ~isempty(nIcaComp) && (nIcaComp ~= 0)
+                [Y,W] = picard(F, 'pca', nIcaComp);
+            else
+                [Y,W] = picard(F);
+            end
+
+        % === ICA: FASTICA ===
+        case 'ICA_fastica'
+            bst_progress('text', 'Calling external function: fastica()...');
+            % Install fastica plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'fastica');
+            if ~isInstalled
+                error(errMsg);
+            end
+            % Scale the values to higher values, so that the pcamat function doesn't complain for small eigenvalues
+            F = F ./ mean(abs(F(:)));
+            % Run decomposition
+            if ~isempty(nIcaComp) && (nIcaComp ~= 0)
+                [M,W] = fastica(F, 'numOfIC', nIcaComp);
+            else
+                [M,W] = fastica(F);
+            end
 
         otherwise
             bst_report('Error', sProcess, sInputsA, ['Invalid method: "' Method '".']);
             return;
     end
-    
-    if ~isempty(icaSort)
-        y = W * F;
-        C = bst_corrn(Fref, y);
-        [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
-        proj.Components = proj.Components(:,iSort);
+
+    % Finish assembling ICA results
+    if ismember(Method, {'ICA_jade', 'ICA_infomax', 'ICA_picard', 'ICA_fastica'})
+        % Fill with the missing channels with zeros
+        Wall = zeros(length(ChannelMat.Channel), size(W,1));
+        Wall(iChannels,:) = W';
+        % Build projector structure
+        proj = db_template('projector');
+        proj.Components = Wall;
+        proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
+        proj.Status     = 1;
+        proj.SingVal    = 'ICA';
+        % Apply component selection (if set explicitly)
+        if ~isempty(SelectComp)
+            proj.CompMask(SelectComp) = 1;
+        end
+        % Compute IC
+        if isempty(Y)
+            Y = W * F;
+        end
+        % Sort ICA components
+        if ~isempty(icaSort)
+            % By correlation with reference channel
+            C = bst_corrn(Fref, Y);
+            [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
+            proj.Components = proj.Components(:,iSort);
+        elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
+            % By explained variance
+            if diff(size(W)) == 0
+                M = inv(W);
+            else
+                M = pinv(W);
+            end
+            var = sum(M.^2, 1) .* sum(Y.^2, 2)';
+            [var, iSort] = sort(var, 'descend');
+            proj.Components = proj.Components(:,iSort);
+        end
     end
     
     % Modality used in the end
@@ -1057,4 +1075,3 @@ function proj = ConvertOldFormat(OldProj)
         proj = OldProj;
     end
 end
-

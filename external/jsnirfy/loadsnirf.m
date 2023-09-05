@@ -6,7 +6,7 @@ function data=loadsnirf(fname,varargin)
 %
 %    Load an HDF5 based SNIRF file, and optionally convert it to a JSON 
 %    file based on the JSNIRF specification:
-%    https://github.com/fangq/jsnirf
+%    https://github.com/NeuroJSON/jsnirf
 %
 %    author: Qianqian Fang (q.fang <at> neu.edu)
 %
@@ -20,16 +20,16 @@ function data=loadsnirf(fname,varargin)
 %        - the loadh5/regrouph5 functions are provided by the eazyh5
 %          toolbox at http://github.com/fangq/eazyh5
 %        - the varargin2struct and jsonopt functions are provided by the JSONLab 
-%          toolbox at http://github.com/fangq/jsonlab 
+%          toolbox at http://github.com/NeuroJSON/jsonlab 
 %        - if data compression is specified by 'compression','zlib' param/value 
 %          pairs, ZMat toolbox will be needed, http://github.com/fangq/zmat
 %
 %    example:
 %        data=loadsnirf('test.snirf');
 %
-%    this file is part of JSNIRF specification: https://github.com/fangq/jsnirf
+%    this file is part of JSNIRF specification: https://github.com/NeuroJSON/jsnirf
 %
-%    License: GPLv3 or Apache 2.0, see https://github.com/fangq/jsnirf for details
+%    License: GPLv3 or Apache 2.0, see https://github.com/NeuroJSON/jsnirf for details
 %
 
 if(nargin==0 || ~ischar(fname))
@@ -52,9 +52,9 @@ end
 outfile=jsonopt('FileName','',opt);
 if(~isempty(outfile))
     if(regexp(outfile,'\.[Bb][Nn][Ii][Rr][Ss]$'))
-        saveubjson('SNIRDData',data,'FileName',outfile,opt);
+        savebj('SNIRFData',data,'FileName',outfile,opt);
     elseif(~isempty(regexp(outfile,'\.[Jj][Nn][Ii][Rr][Ss]$', 'once'))|| ~isempty(regexp(outfile,'\.[Jj][Ss][Oo][Nn]$', 'once')))
-        savejson('SNIRDData',data,'FileName',outfile,opt);
+        savejson('SNIRFData',data,'FileName',outfile,opt);
     elseif(regexp(outfile,'\.[Mm][Aa][Tt]$'))
         save(outfile,'data');
     else

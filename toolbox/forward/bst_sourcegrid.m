@@ -1,14 +1,12 @@
-function GridLoc = bst_sourcegrid(Options, CortexFile, sInner, sEnvelope)
-% BST_SOURCEGRID: 3D adaptative gridding of the volume inside a cortex envelope.
+function GridLoc = bst_sourcegrid(Options, SurfaceFile, BoundaryFile)
+% BST_SOURCEGRID: 3D adaptative gridding of the volume inside a surface.
 %
-% USAGE:  GridLoc = bst_sourcegrid(Options, CortexFile)
-%         GridLoc = bst_sourcegrid(Options, CortexFile, sInner, sEnvelope)
+% USAGE:  GridLoc = bst_sourcegrid(Options, SurfaceFile, BoundaryFile=[])
 % 
 % INPUTS: 
-%    - Options    : Options structure
-%    - CortexFile : Full path to a cortex tesselation file
-%    - sInner     : Loaded inner skull surface
-%    - sEnvelope  : Convex envelope to use as the outermost layer of the grid
+%    - Options      : Options structure
+%    - SurfaceFile  : Surface inside which the volume must be gridded (e.g. cortex surface)
+%    - BoundaryFile : Surface within all the grid points must be (e.g. inner skull)
 %
 % OUTPUTS:
 %    - GridLoc    : [Nx3] double matrix representing the volume grid.
@@ -31,28 +29,18 @@ function GridLoc = bst_sourcegrid(Options, CortexFile, sInner, sEnvelope)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2015
+% Authors: Francois Tadel, 2010-2023
 
 % ===== PARSE INPUTS =====
-if (nargin <= 2)
-    % Create an envelope of the cortex surface
-    [sEnvelope, sCortex] = tess_envelope(CortexFile, 'convhull', Options.nVerticesInit, .001, []);
-    if isempty(sEnvelope)
-        return;
-    end
-    sInner = [];
-end
-if (nargin < 1) || isempty(Options)
-    Options.Method        = 'adaptive';
-    Options.nLayers       = 17;    % Adaptive option
-    Options.Reduction     = 3;     % Adaptive option
-    Options.nVerticesInit = 4000;  % Adaptive option
-    Options.Resolution    = 0.005; % Isotropic option
+if (nargin < 3)
+    BoundaryFile = [];
 end
 
 % ===== SAMPLE VOLUME =====
 switch lower(Options.Method)
     case 'adaptive'
+        % Create an envelope of the cortex surface
+        sEnvelope = tess_envelope(SurfaceFile, 'convhull', Options.nVerticesInit, .001, []);
         % Build scales for each layer
         scaleLayers = linspace(1, 0, Options.nLayers+1);
         scaleLayers = scaleLayers(1:end-1);
@@ -62,18 +50,20 @@ switch lower(Options.Method)
         % Sample volume
         GridLoc = SampleVolume(sEnvelope.Vertices, sEnvelope.Faces, scaleLayers, reduceLayers);
 
-    case {'isotropic', 'isohead'}
+    case {'isotropic', 'isoskull', 'isohead'}
+        % Load surface
+        sTess = in_tess_bst(SurfaceFile, 0);
         % Create a regular grid
         [X,Y,Z] = meshgrid(...
-            min(sEnvelope.Vertices(:,1)) : Options.Resolution : (max(sEnvelope.Vertices(:,1))+Options.Resolution), ...
-            min(sEnvelope.Vertices(:,2)) : Options.Resolution : (max(sEnvelope.Vertices(:,2))+Options.Resolution), ...
-            min(sEnvelope.Vertices(:,3)) : Options.Resolution : (max(sEnvelope.Vertices(:,3))+Options.Resolution));
+            min(sTess.Vertices(:,1)) : Options.Resolution : (max(sTess.Vertices(:,1))+Options.Resolution), ...
+            min(sTess.Vertices(:,2)) : Options.Resolution : (max(sTess.Vertices(:,2))+Options.Resolution), ...
+            min(sTess.Vertices(:,3)) : Options.Resolution : (max(sTess.Vertices(:,3))+Options.Resolution));
         GridLoc = [X(:), Y(:), Z(:)];
 end
 
 % ===== REMOVE POINTS OUTSIDE OF THE MRI =====
 % Get brainmask
-[brainmask, sMri] = bst_memory('GetSurfaceMask', CortexFile);
+[brainmask, sMri] = bst_memory('GetSurfaceMask', SurfaceFile);
 % Convert coordinates: SCS->Voxels
 GridLocMri = round(cs_convert(sMri, 'scs', 'voxel', GridLoc));
 % Find all the points that are not inside the MRI volume
@@ -91,9 +81,11 @@ isOutsideBrain = (brainmask(ind) == 0);
 % Remove those points
 GridLoc(isOutsideBrain,:) = [];
 
-% ===== REMOVE POINTS OUTSIDE OF THE INNER SKULL =====
-if ~isempty(sInner) && ismember(lower(Options.Method), {'isotropic', 'adaptive'})
-    % Find points outside of the inner skull
+% ===== REMOVE POINTS OUTSIDE OF BOUNDARY =====
+if ~isempty(BoundaryFile) && ismember(lower(Options.Method), {'isotropic', 'adaptive'})
+    % Load surface
+    sInner = in_tess_bst(BoundaryFile, 0);
+    % Find points outside of the boundary
     iOutside = find(~inpolyhd(GridLoc, sInner.Vertices, sInner.Faces));
     % Remove the points
     if ~isempty(iOutside)
@@ -103,11 +95,11 @@ if ~isempty(sInner) && ismember(lower(Options.Method), {'isotropic', 'adaptive'}
     % % Show removed points
     % if ~isempty(iOutside)
     %     % Show surface + removed points
-    %     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .4, [.6 .6 .6]);
+    %     view_surface_matrix(sTess.Vertices, sTess.Faces, .4, [.6 .6 .6]);
     %     line(GridLoc(iOutside,1), GridLoc(iOutside,2), GridLoc(iOutside,3), 'LineStyle', 'none', ...
     %                 'MarkerFaceColor', [1 0 0], 'MarkerEdgeColor', [1 1 1], 'MarkerSize', 6, 'Marker', 'o');
     %     % Show surface + grid points
-    %     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .3, [.6 .6 .6]);
+    %     view_surface_matrix(sTess.Vertices, sTess.Faces, .3, [.6 .6 .6]);
     %     line(GridLoc(~iOutside,1), GridLoc(~iOutside,2), GridLoc(~iOutside,3), 'LineStyle', 'none', ...
     %                 'MarkerFaceColor', [0 1 0], 'MarkerSize', 2, 'Marker', 'o');
     % end

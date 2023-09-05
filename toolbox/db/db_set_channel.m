@@ -1,4 +1,4 @@
-function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality] = db_set_channel( iStudy, ChannelMat, ChannelReplace, ChannelAlign )
+function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality, Tolerance] = db_set_channel( iStudy, ChannelMat, ChannelReplace, ChannelAlign, Tolerance)
 % DB_SET_CHANNEL: Define a channel file for a given study.
 %
 % USAGE:  db_set_channel( iStudy, ChannelMat,  ChannelReplace=1, ChannelAlign=1 )
@@ -16,6 +16,8 @@ function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality] = db_s
 %    - ChannelAlign   : 0, do not perform automatic headpoints-based alignment
 %                       1, perform automatic alignment after user confirmation
 %                       2, perform automatic alignment without user confirmation
+%    - Tolerance      : Percentage of outliers head points, ignored in the final fit
+%
 % OUTPUT:
 %    - OutputFile: Newly created channel file (empty is no file created)
 
@@ -41,6 +43,9 @@ function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality] = db_s
 
 %% ===== PARSE INPUTS =====
 % Check inputs
+if (nargin < 5) || isempty(Tolerance)
+    Tolerance = 0;
+end
 if (nargin < 4) || isempty(ChannelAlign)
     ChannelAlign = 1;
 end
@@ -175,7 +180,7 @@ if (ChannelAlign >= 1)
     end
     
     % Call automatic registration for MEG
-    [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(OutputFile, [], 0, isConfirm);
+    [ChannelMat, R, T, isSkip, isUserCancel, strReport, Tolerance] = channel_align_auto(OutputFile, [], 0, isConfirm, Tolerance);
     % User validated: keep this answer for the next round (force alignment for next call)
     if ~isSkip
         if isUserCancel

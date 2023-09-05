@@ -32,7 +32,7 @@ function [ sStudy ] = db_parse_study( studiesDir, studySubDir, sizeProgress )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -46,7 +46,7 @@ function [ sStudy ] = db_parse_study( studiesDir, studySubDir, sizeProgress )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 if ~file_exist(bst_fullfile(studiesDir, studySubDir))
@@ -207,32 +207,32 @@ for iFile = 1:length(dirFiles)
                     sStudy(1).NoiseCov(2) = noisecovInfo;
                 end
                 
-            case 'data'
-                % Get data filename without the trial block
-                [groupName, iTrial] = str_remove_trial(filenameRelative);
-                dataInfo = [];
-                % If it is a trial in a group of trials
-                if ~isempty(groupName)
-                    iTrialGroup = find(strcmpi(groupName, trialFiles));
-                    % Not existing in the trial group
-                    if isempty(iTrialGroup)
-                        trialFiles{end+1} = groupName;
-                        trialData(end+1) = length(sStudy(1).Data) + 1;
-                        trialInd{end+1} = iTrial;
-                    % Existing in the trial group
-                    elseif ~isempty(iTrial)
-                        dataInfo = sStudy(1).Data(trialData(iTrialGroup));
-                        dataInfo.Comment = strrep(dataInfo.Comment, ['(#' num2str(trialInd{iTrialGroup}) ')'], ['(#' num2str(iTrial) ')']);
-                        dataInfo.FileName = filenameRelative;
-                    end
-                end
+            case {'data', 'spike'}
+%                 % Get data filename without the trial block
+%                 [groupName, iTrial] = str_remove_trial(filenameRelative);
+%                 dataInfo = [];
+%                 % If it is a trial in a group of trials
+%                 if ~isempty(groupName)
+%                     iTrialGroup = find(strcmpi(groupName, trialFiles));
+%                     % Not existing in the trial group
+%                     if isempty(iTrialGroup)
+%                         trialFiles{end+1} = groupName;
+%                         trialData(end+1) = length(sStudy(1).Data) + 1;
+%                         trialInd{end+1} = iTrial;
+%                     % Existing in the trial group
+%                     elseif ~isempty(iTrial)
+%                         dataInfo = sStudy(1).Data(trialData(iTrialGroup));
+%                         dataInfo.Comment = strrep(dataInfo.Comment, ['(#' num2str(trialInd{iTrialGroup}) ')'], ['(#' num2str(iTrial) ')']);
+%                         dataInfo.FileName = filenameRelative;
+%                     end
+%                 end
                 % Try to load channel info
-                if isempty(dataInfo)
+%                 if isempty(dataInfo)
                     dataInfo = io_getDataInfo(filenameRelative);
                     if ~isempty(dataInfo) && isempty(dataInfo.Comment)
                         dataInfo.Comment = '';
                     end
-                end
+%                 end
                 % If a data file was found : copy data information
                 if ~isempty(dataInfo)
                     % Bad trial ?

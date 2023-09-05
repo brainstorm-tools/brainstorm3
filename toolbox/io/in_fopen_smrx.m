@@ -175,8 +175,8 @@ for i = 1:length(iMarkerChan)
             sFile.events(iEvt).times    = t;
             sFile.events(iEvt).epochs   = ones(1, length(t));
             sFile.events(iEvt).select   = 1;
-            sFile.events(iEvt).channels = cell(1, length(t));
-            sFile.events(iEvt).notes    = cell(1, length(t));
+            sFile.events(iEvt).channels = [];
+            sFile.events(iEvt).notes    = [];
         end
 
     % Read events
@@ -189,8 +189,8 @@ for i = 1:length(iMarkerChan)
             sFile.events(iEvt).times    = t;
             sFile.events(iEvt).epochs   = ones(1, length(t));
             sFile.events(iEvt).select   = 1;
-            sFile.events(iEvt).channels = cell(1, length(t));
-            sFile.events(iEvt).notes    = cell(1, length(t));
+            sFile.events(iEvt).channels = [];
+            sFile.events(iEvt).notes    = [];
         end
     end
 end

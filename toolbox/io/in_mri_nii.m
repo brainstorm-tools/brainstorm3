@@ -1,7 +1,7 @@
-function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
+function [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 % IN_MRI_NII: Reads a structural NIfTI/Analyze MRI.
 %
-% USAGE:  [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[]);
+% USAGE:  [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[]);
 %
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
@@ -10,9 +10,10 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 %    - isScale     : If 1, apply scaling based on scl_slope/scl_inter, and save the volume in float
 %
 % OUTPUT:
-%    - sMri    : Brainstorm MRI structure
-%    - vox2ras : [4x4] transformation matrix: voxels to RAS coordinates
-%                (corresponds to MNI coordinates if the volume is registered to the MNI space)
+%    - sMri      : Brainstorm MRI structure
+%    - vox2ras   : [4x4] transformation matrix: voxels to RAS coordinates
+%                  (corresponds to MNI coordinates if the volume is registered to the MNI space)
+%    - tReorient : Transformation matrix of the volume in order to convert it to Brainstorm voxel coordinates
 %
 % FORMATS:
 %     - Analyze7.5 (.hdr/.img)
@@ -36,10 +37,12 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
+% Initialize returned values
 sMri = [];
 vox2ras = [];
+tReorient = [];
 % Parse inputs
 if (nargin < 4) || isempty(isScale)
     isScale = [];
@@ -113,7 +116,7 @@ sMri.Header  = hdr;
 % ===== NIFTI ORIENTATION =====
 % Apply orientation to the volume
 if ~isempty(hdr.nifti) && ~isempty(hdr.nifti.vox2ras)
-    [vox2ras, sMri] = cs_nii2bst(sMri, hdr.nifti.vox2ras, isApply);
+    [sMri, vox2ras, tReorient] = cs_nii2bst(sMri, hdr.nifti.vox2ras, isApply);
 end
 
 end
@@ -280,14 +283,7 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         end
     % === ANALYZE UNITS ===
     else
-        switch (deblank(dim.vox_units))
-            case 'mm'
-                factor = 1;
-            case 'm'
-                factor = 1000;
-            otherwise
-                factor = 1;
-        end
+        factor = 1000 * bst_units_ui(dim.vox_units);
         dim.pixdim(2:4) = (double(dim.pixdim(2:4)) * factor);
     end
 

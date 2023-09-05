@@ -23,7 +23,7 @@ function varargout = process_segment_fastsurfer( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021
+% Authors: Francois Tadel, 2021-2023
 
 eval(macro_method);
 end
@@ -194,9 +194,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== CHECK OUTPUT FOLDER =====
     % Folder for FastSurfer output
     if ~isempty(outdir)
+        TmpDir = [];
         procDir = outdir;
     else
-        procDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'fastsurfer');
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'fastsurfer');
+        procDir = TmpDir;
     end
     if ~file_exist(procDir)
         mkdir(procDir);
@@ -225,6 +227,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
             'Delete the existing files?' 10 10], 'FastSurfer segmentation');
         if ~isDel
             errMsg = 'Process aborted by user.';
+            % Delete temporary files
+            if ~isempty(TmpDir)
+                file_delete(TmpDir, 1, 1);
+            end
             return;
         end
     end
@@ -286,6 +292,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     errMsg = import_anatomy_fs(iSubject, FsDir, nVertices, 0, [], isExtraMaps, isVolumeAtlas, isKeepMri);
     if ~isempty(errMsg)
         return;
+    end
+    % Delete temporary files
+    if ~isempty(TmpDir)
+        file_delete(TmpDir, 1, 1);
     end
     % Return success
     isOk = 1;

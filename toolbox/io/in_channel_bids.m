@@ -1,7 +1,7 @@
 function ChannelMat = in_channel_bids(ChannelFile, factor)
 % IN_CHANNEL_BIDS:  Read 3D cartesian positions from a BIDS _electrodes.tsv file.
 %
-% USAGE:  ChannelMat = in_channel_bids(ChannelFile, posUnits)
+% USAGE:  ChannelMat = in_channel_bids(ChannelFile, factor)
 %
 % INPUTS: 
 %     - ChannelFile : Full path to the .tsv file
@@ -25,10 +25,10 @@ function ChannelMat = in_channel_bids(ChannelFile, factor)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2022
 
 % Read the TSV file
-tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'});
+tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'}, 0);
 if isempty(tsvValues) || isempty(tsvValues{1,1})
     disp('BIDS> Error: Invalid _electrodes.tsv file.');
     ChannelMat = [];
@@ -45,7 +45,7 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChan]);
 for iChan = 1:nChan
     % Name
     if ~isempty(tsvValues{iChan,1})
-        ChannelMat.Channel(iChan).Name = tsvValues{iChan,1};
+        ChannelMat.Channel(iChan).Name = strtrim(tsvValues{iChan,1});
     else
         ChannelMat.Channel(iChan).Name = sprintf('E%03d', iChan);
     end
@@ -59,14 +59,14 @@ for iChan = 1:nChan
     end
     % Type
     chType = tsvValues{iChan,6};
-    if isequal(chType, 'depth')
+    if isequal(chType, 'depth') || isequal(chType, 'seeg')
         ChannelMat.Channel(iChan).Type = 'SEEG';
-    elseif isequal(chType, 'grid') || isequal(chType, 'strip')
-        ChannelMat.Channel(iChan).Type = 'ECOG';
-    elseif isequal(chType, 'grid')
+    elseif isequal(chType, 'grid') || isequal(chType, 'strip') || isequal(chType, 'ecog')
         ChannelMat.Channel(iChan).Type = 'ECOG';
     elseif ~isempty(strfind(ChannelFile, '/ieeg/')) || ~isempty(strfind(ChannelFile, '\\ieeg\\'))
         ChannelMat.Channel(iChan).Type = 'SEEG';
+    elseif isequal(chType, 'source') || isequal(chType, 'detector')
+        ChannelMat.Channel(iChan).Type = 'NIRS';
     else 
         ChannelMat.Channel(iChan).Type = 'EEG';
     end

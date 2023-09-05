@@ -7,8 +7,6 @@ function varargout = process_spikesorting_waveclus( varargin )
 % for each electrode that can be used later for supervised spike-sorting.
 % When all spikes on all electrodes have been clustered, all the spikes for
 % each neuron is assigned to an events file in brainstorm format.
-%
-% USAGE: OutputFiles = process_spikesorting_waveclus('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,7 +26,9 @@ function varargout = process_spikesorting_waveclus( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2022
+%          Martin Cousineau, 2018
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
@@ -38,7 +38,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'WaveClus';
-    sProcess.Category    = 'Custom';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1201;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/SpikeSorting';
@@ -48,27 +48,38 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % Spike sorter name
     sProcess.options.spikesorter.Type   = 'text';
     sProcess.options.spikesorter.Value  = 'waveclus';
     sProcess.options.spikesorter.Hidden = 1;
+    % RAM limitation
     sProcess.options.binsize.Comment = 'Maximum RAM to use: ';
     sProcess.options.binsize.Type    = 'value';
     sProcess.options.binsize.Value   = {2, 'GB', 1};
-    sProcess.options.paral.Comment = 'Parallel processing';
-    sProcess.options.paral.Type    = 'checkbox';
-    sProcess.options.paral.Value   = 0;
-    sProcess.options.make_plots.Comment = 'Create images';
+    % Parallel processing
+    sProcess.options.parallel.Comment = 'Parallel processing';
+    sProcess.options.parallel.Type    = 'checkbox';
+    sProcess.options.parallel.Value   = 0;
+    % Use SSP/ICA
+    sProcess.options.usessp.Comment = 'Apply the existing SSP/ICA projectors';
+    sProcess.options.usessp.Type    = 'checkbox';
+    sProcess.options.usessp.Value   = 1;
+    % Save images
+    sProcess.options.make_plots.Comment = 'Save images of the clustered spikes';
     sProcess.options.make_plots.Type    = 'checkbox';
     sProcess.options.make_plots.Value   = 0;
-    % Channel name comment
-    sProcess.options.make_plotshelp.Comment = '<I><FONT color="#777777">This saves images of the clustered spikes</FONT></I>';
-    sProcess.options.make_plotshelp.Type    = 'label';
+    % Separator
+    sProcess.options.sep1.Type = 'label';
+    sProcess.options.sep1.Comment = '<BR>';
     % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', 'Waveclus parameters: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
-    % Show warning that pre-spikesorted events will be overwritten
-    sProcess.options.warning.Comment = '<B><FONT color="#FF0000">Spike Events created from the acquisition system will be overwritten</FONT></B>';
+    % Label: Reset options
+    sProcess.options.edit_help.Comment = '<I><FONT color="#777777">To restore default options: re-install the waveclus plugin.</FONT></I>';
+    sProcess.options.edit_help.Type    = 'label';
+    % Label: Warning that pre-spikesorted events will be overwritten
+    sProcess.options.warning.Comment = '<BR><B><FONT color="#FF0000">Warning: Existing spike events will be overwritten</FONT></B>';
     sProcess.options.warning.Type    = 'label';
 end
 
@@ -80,245 +91,165 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFiles = {};
-    ProtocolInfo = bst_get('ProtocolInfo');
     
+    % ===== DEPENDENCIES =====
     % Not available in the compiled version
     if bst_iscompiled()
-        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
+        bst_report('Error', sProcess, sInput, 'This function is not available in the compiled version of Brainstorm.');
         return
     end
-    
-    if sProcess.options.binsize.Value{1} <= 0
-        bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
-        return
-    end
-    
-    % Ensure we are including the WaveClus folder in the Matlab path
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    if exist(waveclusDir, 'file')
-        addpath(genpath(waveclusDir));
+    % Load plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'waveclus');
+    if ~isInstalled
+        error(errMsg);
     end
 
-    % Install WaveClus if missing
-    if ~exist('wave_clus_font', 'file')
-        rmpath(genpath(waveclusDir));
-        isOk = java_dialog('confirm', ...
-            ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], 'WaveClus');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
-            return;
-        end
-        downloadAndInstallWaveClus();
+    % ===== OPTIONS =====
+    % Get option: bin size
+    BinSize = sProcess.options.binsize.Value{1};
+    if (BinSize <= 0)
+        bst_report('Error', sProcess, sInput, 'Invalid maximum amount of RAM specified.');
+        return
     end
+    % Get other options
+    isParallel = sProcess.options.parallel.Value;
+    UseSsp = sProcess.options.usessp.Value;
     
-    % Prepare parallel pool, if requested
-    if sProcess.options.paral.Value
+    % ===== LOAD INPUTS =====
+    % Get protocol info
+    ProtocolInfo = bst_get('ProtocolInfo');
+    BrainstormTmpDir = bst_get('BrainstormTmpDir');
+    % File path
+    [fPath, fBase] = bst_fileparts(file_fullpath(sInput.FileName));
+    % Remove "data_0raw" or "data_" tag
+    if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
+        fBase = fBase(11:end);
+    elseif (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
+        fBase = fBase(6:end);
+    end
+    % Load input files
+    ChannelMat = in_bst_channel(sInput.ChannelFile);
+    numChannels = length(ChannelMat.Channel);
+    % Demultiplex channels
+    demultiplexDir = bst_fullfile(BrainstormTmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
+    elecFiles = out_demultiplex(sInput.FileName, sInput.ChannelFile, demultiplexDir, UseSsp, BinSize * 1e9, isParallel);
+    
+    % ===== OUTPUT FOLDER =====
+    outputPath = bst_fullfile(fPath, [fBase '_waveclus_spikes']);
+    previous_directory = pwd;
+    % If output folder already exists: delete it
+    if exist(outputPath, 'dir') == 7
+        % Move Matlab out of the folder to be deleted
+        if ~isempty(strfind(previous_directory, outputPath))
+            cd(bst_fileparts(outputPath));
+        end
+        % Delete existing output folder
         try
-            poolobj = gcp('nocreate');
-            if isempty(poolobj)
-                parpool;
-            end
+            rmdir(outputPath, 's');
         catch
-            sProcess.options.paral.Value = 0;
-            poolobj = [];
+        	error(['Could not remove spikes folder: ' 10 outputPath 10 ' Make sure this folder is not open in another program.'])
+        end
+    end
+    % Create output folder
+    mkdir(outputPath);
+    
+    % ===== SPIKE SORTING =====        
+    % The function Get_spikes saves the _spikes files at the current directory
+    cd(outputPath);
+    if isParallel
+        bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
+        parfor ielectrode = 1:numChannels
+            if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'}) % Perform spike sorting only on the channels that are (S)EEG
+                Get_spikes(elecFiles{ielectrode});
+            end
         end
     else
-        poolobj = [];
-    end
-    
-    % Compute on each raw input independently
-    for i = 1:length(sInputs)
-        [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
-        % Remove "data_0raw" or "data_" tag
-        if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
-            fBase = fBase(11:end);
-        elseif (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
-            fBase = fBase(6:end);
-        end
-        
-        ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
-        numChannels = length(ChannelMat.Channel);
-        sFiles = in_spikesorting_rawelectrodes(sInputs(i), ...
-            sProcess.options.binsize.Value{1} * 1e9, ...
-            sProcess.options.paral.Value);
-        
-        %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
-        outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_waveclus_spikes']);
-        
-        % Clear if directory already exists
-        if exist(outputPath, 'dir') == 7
-            rmdir(outputPath, 's');
-        end
-        mkdir(outputPath);
-        
-        %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        if sProcess.options.paral.Value
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
-        else
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
-        end
-        
-        % The Get_spikes saves the _spikes files at the current directory.
-        previous_directory = pwd;
-        cd(outputPath);
-
-        if sProcess.options.paral.Value  
-            parfor ielectrode = 1:numChannels
-                if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'}) % Perform spike sorting only on the channels that are (S)EEG
-                    Get_spikes(sFiles{ielectrode});
-                end
+        bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
+        for ielectrode = 1:numChannels
+            if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'})
+                Get_spikes(elecFiles{ielectrode});
             end
-        else
-            for ielectrode = 1:numChannels
-                if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'})
-                    Get_spikes(sFiles{ielectrode});
-                end
-                bst_progress('inc', 1);
-            end
-        end
-
-        %%%%%%%%%%%%%%%%%%%%%% Do the clustering %%%%%%%%%%%%%%%%%%%%%%%%%%
-        bst_progress('start', 'Spike-sorting', 'Clustering detected spikes...');
-        
-        % The optional inputs in Do_clustering have to be true or false, not 1 or 0
-        if sProcess.options.paral.Value
-            parallel = true;
-        else
-            parallel = false;
-        end
-        if sProcess.options.make_plots.Value
-            make_plots = true;
-        else
-            make_plots = false;
-        end
-        
-        % Do the clustering
-        Do_clustering(1:numChannels, 'parallel', parallel, 'make_plots', make_plots);
-        
-        %%%%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Saving events file...');        
-        cd(previous_directory);
-        
-        % Delete existing spike events
-        process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
-        
-        % ===== SAVE LINK FILE =====
-        % Build output filename
-        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_wclus_' fBase]);
-        NewBstFile = [NewBstFilePrefix '.mat'];
-        iFile = 1;
-        commentSuffix = '';
-        while exist(NewBstFile, 'file') == 2
-            iFile = iFile + 1;
-            NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
-            commentSuffix = [' (' num2str(iFile) ')'];
-        end
-        % Build output structure
-        DataMat = struct();
-        DataMat.Comment     = ['WaveClus Spike Sorting' commentSuffix];
-        DataMat.DataType    = 'raw';%'ephys';
-        DataMat.Device      = 'waveclus';
-        DataMat.Name        = NewBstFile;
-        DataMat.Parent      = outputPath;
-        DataMat.RawFile     = sInputs(i).FileName;
-        DataMat.Spikes      = struct();
-        % Build spikes structure
-        spikes = dir(bst_fullfile(outputPath, 'raw_elec*_spikes.mat'));
-        spikes = sort_nat({spikes.name});
-        % New channelNames - Without any special characters.
-        cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
-        for iChannel = 1:length(cleanChannelNames)
-            DataMat.Spikes(iChannel).Path = outputPath;
-            DataMat.Spikes(iChannel).File = ['times_raw_elec_' cleanChannelNames{iChannel} '.mat'];
-            if exist(bst_fullfile(outputPath, DataMat.Spikes(iChannel).File), 'file') ~= 2
-                DataMat.Spikes(iChannel).File = '';
-                disp(['The threshold was not crossed for Channel: ' ChannelMat.Channel(iChannel).Name]);
-            end
-            DataMat.Spikes(iChannel).Name = ChannelMat.Channel(iChannel).Name;
-            DataMat.Spikes(iChannel).Mod  = 0;
-        end
-        % Save events file for backup
-        SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat');
-        % Add history field
-        DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
-        % Save file on hard drive
-        bst_save(NewBstFile, DataMat, 'v6');
-        % Add file to database
-        sOutputStudy = db_add_data(sInputs(i).iStudy, NewBstFile, DataMat);
-        % Return new file
-        OutputFiles{end+1} = NewBstFile;
-
-        % ===== UPDATE DATABASE =====
-        % Update links
-        db_links('Study', sInputs(i).iStudy);
-        panel_protocols('UpdateNode', 'Study', sInputs(i).iStudy);
-    end
-    
-    %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%
-    % Turn off parallel processing and return to the initial directory
-
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
+            bst_progress('inc', 1);
         end
     end
+
+
+    % ===== SPIKE SORTING =====
+    bst_progress('start', 'Spike-sorting', 'Clustering detected spikes...');
+    % The optional inputs in Do_clustering have to be true or false, not 1 or 0
+    if isParallel
+        parallel = true;
+    else
+        parallel = false;
+    end
+    if sProcess.options.make_plots.Value
+        make_plots = true;
+    else
+        make_plots = false;
+    end
+    % Do the clustering
+    Do_clustering(1:numChannels, 'parallel', parallel, 'make_plots', make_plots);
+    % Restore current folder
+    cd(previous_directory);
     
+
+    % ===== IMPORT EVENTS =====
+    bst_progress('text', 'Saving events file...');
+    % Delete existing spike events
+    panel_spikes('DeleteSpikeEvents', sInput.FileName);
+
+    % Build output filename
+    NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_wclus_' fBase]);
+    NewBstFile = [NewBstFilePrefix '.mat'];
+    iFile = 1;
+    commentSuffix = '';
+    while exist(NewBstFile, 'file') == 2
+        iFile = iFile + 1;
+        NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
+        commentSuffix = [' (' num2str(iFile) ')'];
+    end
+    % Build output structure
+    DataMat = struct();
+    DataMat.Comment     = ['WaveClus Spike Sorting' commentSuffix];
+    DataMat.DataType    = 'raw';
+    DataMat.Device      = 'waveclus';
+    DataMat.Name        = file_short(NewBstFile);
+    DataMat.Parent      = file_short(outputPath);
+    DataMat.RawFile     = sInput.FileName;
+    DataMat.Spikes      = struct();
+    % New channelNames - Without any special characters.
+    cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
+    for iChannel = 1:length(cleanChannelNames)
+        DataMat.Spikes(iChannel).Path = file_short(outputPath);
+        DataMat.Spikes(iChannel).File = ['times_raw_elec_' cleanChannelNames{iChannel} '.mat'];
+        if exist(bst_fullfile(outputPath, DataMat.Spikes(iChannel).File), 'file') ~= 2
+            DataMat.Spikes(iChannel).File = '';
+            disp(['The threshold was not crossed for Channel: ' ChannelMat.Channel(iChannel).Name]);
+        end
+        DataMat.Spikes(iChannel).Name = ChannelMat.Channel(iChannel).Name;
+        DataMat.Spikes(iChannel).Mod  = 0;
+    end
+    % Save events file for backup
+    SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat');
+    % Add history field
+    DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
+    % Save file on hard drive
+    bst_save(NewBstFile, DataMat, 'v6');
+    % Add file to database
+    db_add_data(sInput.iStudy, file_short(NewBstFile), DataMat);
+    % Return new file
+    OutputFiles{end+1} = NewBstFile;
+
+    % ===== UPDATE DATABASE =====
+    % Update links
+    db_links('Study', sInput.iStudy);
+    panel_protocols('UpdateNode', 'Study', sInput.iStudy);
 end
 
 
-%% ===== DOWNLOAD AND INSTALL WAVECLUS =====
-function downloadAndInstallWaveClus()
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    waveclusTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus_tmp');
-    url = 'https://github.com/csn-le/wave_clus/archive/master.zip';
-    
-    % If folders exists: delete
-    if isdir(waveclusDir)
-        file_delete(waveclusDir, 1, 3);
-    end
-    if isdir(waveclusTmpDir)
-        file_delete(waveclusTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(waveclusTmpDir);
-    % Download file
-    zipFile = bst_fullfile(waveclusTmpDir, 'waveclus.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download WaveClus.' 10 errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'WaveClus', 'Installing WaveClus...');
-    unzip(zipFile, waveclusTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(waveclusTmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newWaveclusDir = bst_fullfile(waveclusTmpDir, diropen(idir).name, 'wave_clus-master');
-    % Move WaveClus directory to proper location
-    file_move(newWaveclusDir, waveclusDir);
-    % Delete unnecessary files
-    file_delete(waveclusTmpDir, 1, 3);
-    % Add WaveClus to Matlab path
-    addpath(genpath(waveclusDir));
-end
-
+%% ===== SAVE BRAINSTORM EVENTS =====
 function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     if nargin < 3
         eventNamePrefix = '';
@@ -332,7 +263,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     DataMat = in_bst_data(sFile.RawFile);
     existingEvents = DataMat.F.events;
     for iEvent = 1:length(existingEvents)
-        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+        if ~panel_spikes('IsSpikeEvent', existingEvents(iEvent).label)
             if iNewEvent == 0
                 events = existingEvents(iEvent);
             else
@@ -343,14 +274,14 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     end
     
     for iElectrode = 1:numElectrodes
-        newEvents = process_spikesorting_supervised(...
+        newEvents = panel_spikes(...
             'CreateSpikeEvents', ...
             sFile.RawFile, ...
             sFile.Device, ...
-            bst_fullfile(sFile.Parent, sFile.Spikes(iElectrode).File), ...
+            bst_fullfile(file_fullpath(sFile.Parent), sFile.Spikes(iElectrode).File), ...
             sFile.Spikes(iElectrode).Name, ...
-            0, eventNamePrefix);
-        
+            1, eventNamePrefix); % Design choice: 0 means the unsupervised spiking events will not be automatically loaded to the link to raw file. They will start appearing only after the users manually spike-sort
+                                 %                1 would link them automatically. The problem with that, is that if the users don't finish manual spike-sorting, there is a mix of both.
         if iNewEvent == 0
             events = newEvents;
             iNewEvent = length(newEvents);
@@ -361,5 +292,5 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
         end
     end
 
-    save(bst_fullfile(sFile.Parent, outputFile),'events');
+    save(bst_fullfile(file_fullpath(sFile.Parent), outputFile),'events');
 end

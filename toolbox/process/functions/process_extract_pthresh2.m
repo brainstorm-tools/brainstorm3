@@ -78,7 +78,7 @@ function OutputFiles = Run(sProcess, sInput, sInput2) %#ok<DEFNU>
             if isfield(sFileA, 'pmap') && ~isempty(sFileA.pmap)
                 sFileA.pmap = sFileA.pmap(iChannels,:,:);
             end
-            if isfield(StatMsFileAat, 'tmap') && ~isempty(sFileA.tmap)
+            if isfield(sFileA, 'tmap') && ~isempty(sFileA.tmap)
                 sFileA.tmap = sFileA.tmap(iChannels,:,:);
             end
             % Create a new data file structure

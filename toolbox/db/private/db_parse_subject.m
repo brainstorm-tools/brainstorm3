@@ -29,7 +29,7 @@ function sSubject = db_parse_subject( subjectsDir, subjectSubDir, sizeProgress )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -183,6 +183,17 @@ end
 
 
 %% ===== DEFAULT ANATOMY/SURFACES =====
+% Sort anatomy files: first T1 and MRI, then volume atlases
+if ~isempty(sSubject) && (length(sSubject(1).Anatomy) >= 2)
+    iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject(1).Anatomy.FileName}));
+    if (length(iNoAtlas) >= 2)
+        iT1 = find(~cellfun(@(c)isempty([strfind(lower(c), '_t1'), strfind(lower(c), '_mri')]), {sSubject(1).Anatomy(iNoAtlas).FileName}));
+        iNoAtlas = [iNoAtlas(iT1), setdiff(iNoAtlas, iNoAtlas(iT1))];
+    end
+    iSort = [iNoAtlas, setdiff(1:length(sSubject(1).Anatomy), iNoAtlas)];
+    sSubject(1).Anatomy = sSubject(1).Anatomy(iSort);
+end
+% If there is a brainstormsubject.mat
 if ~isempty(subjMat)
     % The brainstormsubject.mat can define what are the defaults files for the different 
     % file categories : Anatomy, Scalp, Cortex, InnerSkull, OuterSkull, Fibers, FEM
@@ -192,12 +203,7 @@ if ~isempty(subjMat)
     % ==== ANATOMY ====
     % By default : use the first anatomy in list (which is not a volume atlas)
     if ~isempty(sSubject(1).Anatomy)
-        iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject(1).Anatomy.FileName}));
-        if (length(sSubject(1).Anatomy) == 1) || isempty(iNoAtlas)
-            sSubject(1).iAnatomy = 1;
-        else
-            sSubject(1).iAnatomy = iNoAtlas(1);
-        end
+        sSubject(1).iAnatomy = 1;
     else
         sSubject(1).iAnatomy = [];
     end

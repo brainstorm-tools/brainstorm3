@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2023
 %          Martin Cousineau, 2017
 %          Marc Lalancette, 2020
 
@@ -60,6 +60,11 @@ end
    
 
 %% ===== GET ALL ACCESSIBLE DATA =====
+% If the input data is derivated dataset
+LoadedFile = TimefreqFile;
+if any(TimefreqFile == '$')
+    TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
+end
 % Get study
 [sStudy, iStudy, iItem, DataType, sTimefreq] = bst_get('AnyFile', TimefreqFile);
 if isempty(sStudy)
@@ -70,7 +75,7 @@ end
 %% ===== LOAD TIME-FREQUENCY FILE =====
 bst_progress('start', 'View time-frequency map', 'Loading data...');
 % Load file
-[iDS, iTimefreq] = bst_memory('LoadTimefreqFile', TimefreqFile);
+[iDS, iTimefreq] = bst_memory('LoadTimefreqFile', LoadedFile);
 if isempty(iDS)
     bst_progress('stop');
     hFig = [];
@@ -87,7 +92,7 @@ FigureId.Type     = 'Spectrum';
 FigureId.SubType  = DisplayMode;
 FigureId.Modality = Modality;
 % Create TimeSeries figure
-[hFig, iFig] = bst_figures('CreateFigure', iDS, FigureId, CreateMode, sTimefreq.FileName);
+[hFig, iFig] = bst_figures('CreateFigure', iDS, FigureId, CreateMode, LoadedFile);
 if isempty(hFig)
     bst_error('Cannot create figure', 'View spectrum', 0);
     return;
@@ -105,7 +110,7 @@ setappdata(hFig, 'isStaticFreq', isStaticFreq);
 % Get figure data
 TfInfo = getappdata(hFig, 'Timefreq');
 % Create time-freq information structure
-TfInfo.FileName    = sTimefreq.FileName;
+TfInfo.FileName    = LoadedFile;
 TfInfo.Comment     = sTimefreq.Comment;
 TfInfo.DisplayMode = DisplayMode;
 TfInfo.InputTarget = RowName;
@@ -147,6 +152,11 @@ if isStaticFreq || strcmpi(DisplayMode, 'Spectrum')
 elseif strcmpi(DisplayMode, 'TimeSeries')
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
 end
+% Set 'overlay' is the default display mode. Only for FOOOF TF files 
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
+    TfInfo.FOOOFDisp = 'overlay';
+end
+
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);
 
@@ -203,11 +213,3 @@ set(hFig, 'Visible', 'on');
 % Set the time label visible
 figure_timeseries('SetTimeVisible', hFig, 1);
 bst_progress('stop');
-
-
-
-
-
-
-
-

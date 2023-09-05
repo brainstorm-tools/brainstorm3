@@ -10,6 +10,7 @@ function errorMsg = import_anatomy_civet(iSubject, CivetDir, nVertices, isIntera
 %    - nVertices    : Number of vertices in the file cortex surface
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
+%                     Or full MRI structure with fiducials defined in the SCS structure, to be registered with the FS MRI
 %    - isExtraMaps  : If 1, create an extra folder "CIVET" to save some of the
 %                     CIVET cortical maps (thickness, ...)
 % OUTPUT:
@@ -33,7 +34,7 @@ function errorMsg = import_anatomy_civet(iSubject, CivetDir, nVertices, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2018
+% Authors: Francois Tadel, 2013-2022
 
 
 %% ===== PARSE INPUTS =====
@@ -146,8 +147,6 @@ if isExtraMaps
     ThickLhFile = file_find(CivetDir, [StudyPrefix '_native_rms_tlink_30mm_left.txt']);
     ThickRhFile = file_find(CivetDir, [StudyPrefix '_native_rms_tlink_30mm_right.txt']);
 end
-% Find fiducials definitions
-FidFile = file_find(CivetDir, 'fiducials.m');
 % Report errors
 if ~isempty(errorMsg)
     if isInteractive
@@ -169,91 +168,18 @@ if isempty(BstT1File)
 end
 
 
-%% ===== DEFINE FIDUCIALS =====
-% If fiducials file exist: read it
-isComputeMni = 0;
-if ~isempty(FidFile)
-    % Execute script
-    fid = fopen(FidFile, 'rt');
-    FidScript = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-    % Execute script
-    eval(FidScript);    
-    % If not all the fiducials were loaded: ignore the file
-    if ~exist('NAS', 'var') || ~exist('LPA', 'var') || ~exist('RPA', 'var') || isempty(NAS) || isempty(LPA) || isempty(RPA)
-        FidFile = [];
+%% ===== DEFINE FIDUCIALS / MNI NORMALIZATION =====
+% Set fiducials and/or compute linear MNI normalization
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, CivetDir, BstT1File, sFid, 0, isInteractive);
+% Error handling
+if ~isempty(errCall)
+    errorMsg = [errorMsg, errCall];
+    if isempty(isComputeMni)
+        if isInteractive
+            bst_error(errorMsg, 'Import CIVET folder', 0);
+        end
+        return;
     end
-    % If the normalized points were not defined: too bad...
-    if ~exist('AC', 'var')
-        AC = [];
-    end
-    if ~exist('PC', 'var')
-        PC = [];
-    end
-    if ~exist('IH', 'var')
-        IH = [];
-    end
-    % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
-end
-% Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
-    % Use fiducials from file
-    if ~isempty(FidFile)
-        % Already loaded
-    % Compute them from MNI transformation
-    elseif isempty(sFid)
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
-        isComputeMni = 1;
-        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
-    % Else: use the defined ones
-    else
-        NAS = sFid.NAS;
-        LPA = sFid.LPA;
-        RPA = sFid.RPA;
-        AC = sFid.AC;
-        PC = sFid.PC;
-        IH = sFid.IH;
-    end
-    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
-        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
-    end
-    % If the NAS/LPA/RPA are defined, but not the others: Compute them
-    if ~isempty(NAS) && ~isempty(LPA) && ~isempty(RPA) && isempty(AC) && isempty(PC) && isempty(IH)
-        isComputeMni = 1;
-    end
-% Define with the MRI Viewer
-else
-    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
-    hFig = view_mri(BstT1File, 'EditFiducials');
-    drawnow;
-    bst_progress('stop');
-    % Wait for the MRI Viewer to be closed
-    waitfor(hFig);
-end
-% Load SCS and NCS field to make sure that all the points were defined
-warning('off','MATLAB:load:variableNotFound');
-sMri = load(BstT1File, 'SCS', 'NCS');
-warning('on','MATLAB:load:variableNotFound');
-if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
-    errorMsg = ['Could not import CIVET folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
-    if isInteractive
-        bst_error(errorMsg, 'Import CIVET folder', 0);
-    end
-    return;
-end
-
-
-%% ===== MNI NORMALIZATION =====
-if isComputeMni
-    % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstT1File);
-    % Error handling
-    errorMsg = [errorMsg errCall];
 end
 
 

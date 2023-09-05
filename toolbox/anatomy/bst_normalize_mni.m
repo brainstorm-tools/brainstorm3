@@ -32,7 +32,7 @@ function [sMriT1, errMsg] = bst_normalize_mni(T1File, Method, T2File)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2021
+% Authors: Francois Tadel, 2015-2023
 
 %% ===== PARSE INPUTS =====
 % Inializations
@@ -208,17 +208,22 @@ end
 % If the MRI is currently loaded
 if ~isempty(iLoadedMri)
     % Update structures
-    GlobalData.Mri(iLoadedMri).NCS.R  = sMriT1.NCS.R;
-    GlobalData.Mri(iLoadedMri).NCS.T  = sMriT1.NCS.T;
     GlobalData.Mri(iLoadedMri).NCS.AC = sMriT1.NCS.AC;
     GlobalData.Mri(iLoadedMri).NCS.PC = sMriT1.NCS.PC;
     GlobalData.Mri(iLoadedMri).NCS.IH = sMriT1.NCS.IH;
     GlobalData.Mri(iLoadedMri).NCS.Origin = sMriT1.NCS.Origin;
+    % Linear MNI transformation
+    if isfield(sMriT1.NCS,'R') && isfield(sMriT1.NCS,'T')
+        GlobalData.Mri(iLoadedMri).NCS.R  = sMriT1.NCS.R;
+        GlobalData.Mri(iLoadedMri).NCS.T  = sMriT1.NCS.T;
+    end
+    % Non-linear MNI transformtion
     if isfield(sMriT1.NCS,'y') && isfield(sMriT1.NCS,'iy') && isfield(sMriT1.NCS,'y_vox2ras')
         GlobalData.Mri(iLoadedMri).NCS.y         = sMriT1.NCS.y;
         GlobalData.Mri(iLoadedMri).NCS.iy        = sMriT1.NCS.iy;
         GlobalData.Mri(iLoadedMri).NCS.y_vox2ras = sMriT1.NCS.y_vox2ras;
     end
+    % SCS coordinates
     GlobalData.Mri(iLoadedMri).SCS.R   = sMriT1.SCS.R;
     GlobalData.Mri(iLoadedMri).SCS.T   = sMriT1.SCS.T;
     GlobalData.Mri(iLoadedMri).SCS.NAS = sMriT1.SCS.NAS;
@@ -236,6 +241,8 @@ if ~isempty(TpmFiles) && ~isempty(T1File)
     [sSubject, iSubject] = bst_get('MriFile', T1File);
     % Import tissue classification
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
+    % Delete the temporary folder
+    file_delete(bst_fileparts(TpmFiles{1}), 1, 1);
 end
 
 % Close progress bar

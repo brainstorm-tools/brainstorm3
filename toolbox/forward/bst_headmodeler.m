@@ -258,23 +258,20 @@ switch (OPTIONS.HeadModelType)
                 end
                 OPTIONS.GridLoc = sGrid.GridLoc;
                 GridOptions = sGrid.GridOptions;
-                % If using the full head volume: change the surface file that is used as a reference
-                if strcmpi(GridOptions.Method, 'isohead')
-                    OutSurfaceFile = OPTIONS.HeadFile;
-                end
             else
-                if strcmpi(OPTIONS.GridOptions.Method, 'isohead')
-                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.HeadFile);
-                    OutSurfaceFile = OPTIONS.HeadFile;
-                else
-                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
-                end
+                OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
                 GridOptions = OPTIONS.GridOptions;
             end
             if isempty(OPTIONS.GridLoc)
                 OPTIONS = [];
                 bst_progress('stop');
                 return;
+            end
+            % If using the full head volume: change the surface file that is used as a reference
+            if strcmpi(GridOptions.Method, 'isohead')
+                OutSurfaceFile = OPTIONS.HeadFile;
+            elseif strcmpi(GridOptions.Method, 'isoskull')
+                OutSurfaceFile = OPTIONS.InnerSkullFile;
             end
             % For group grids: Check if the reference was a head surface
             if strcmpi(GridOptions.Method, 'group') && ~isempty(GridOptions.FileName)
@@ -325,7 +322,7 @@ switch (OPTIONS.HeadModelType)
             % Progress bar
             bst_progress('text', ['Computing mixed models...   [' sAtlas.Scouts(is).Label ']']);
             % Get the indices for the current scout
-            iVert = sAtlas.Scouts(is).Vertices;
+            iVert = sAtlas.Scouts(is).Vertices(:)';
             % Switch
             switch (sAtlas.Scouts(is).Region(2))
                 % Surface
@@ -347,8 +344,8 @@ switch (OPTIONS.HeadModelType)
                     [SrcLoc, SrcOri, sAtlas.Scouts(is), iVertModif] = dba_get_model( sAtlas.Scouts(is), sCortex );
                     % If modifications where done on the cortex atlases: we have to update them
                     if ~isempty(iVertModif)
-                        sAtlas.Scouts(is).Vertices = iVertModif;
-                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif;
+                        sAtlas.Scouts(is).Vertices = iVertModif(:)';
+                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif(:)';
                         isCortexModif = 1;
                     end
                 % Exclude
@@ -356,7 +353,7 @@ switch (OPTIONS.HeadModelType)
                     SrcLoc = [];
                     SrcOri = [];
                 otherwise
-                    errMessage = ['Invalid atlase region "' sAtlas.Scouts(is).Region '".'];
+                    errMessage = ['Invalid atlas region "' sAtlas.Scouts(is).Region '".'];
                     OPTIONS = [];
                     return;
             end
@@ -571,17 +568,7 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         iSrcGain = (3 * (iSrc(1)-1) + 1) : 3*iSrc(end);
         % ===== MEG =====
         if ismember(OPTIONS.MEGMethod, {'meg_sphere', 'os_meg'})
-            % Function os_meg can only accept calls to groups of sensors with the same number of coils
-            % => Group the sensors by number of coils and call os_meg as many times as needed
-            grpCoils = unique(nCoilsPerSensor(iAllMeg));
-            % Loop on each group of sensors
-            for iGrp = 1:length(grpCoils)
-                % Get all the sensors with this amount of coils
-                nCoils = grpCoils(iGrp);
-                iMegGrp = iAllMeg(nCoilsPerSensor(iAllMeg) == nCoils);
-                % Compute (os_meg)
-                Gain(iMegGrp,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iMegGrp), Param(iMegGrp));
-            end
+            Gain(iAllMeg,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iAllMeg), Param(iAllMeg));
         end
         % ===== EEG =====
         if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')

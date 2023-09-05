@@ -23,6 +23,7 @@ function varargout = panel_spikesorting_options(varargin)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2018
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
@@ -40,34 +41,36 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         panelName = [];
         return;
     end
-    
     % Check chosen spike sorter
     spikeSorter = sProcess.options.spikesorter.Value;
     
-    % Create main main panel
-    jPanelNew = gui_river();
+    % Create main panel
+    jPanelNew = gui_component('panel');
+    % Create edit box
+    jTextOptions = java_create('javax.swing.JTextArea', 'Ljava.lang.String;', 'Loading...');
+    jTextOptions.setBackground(Color(1,1,1));
+    jTextOptions.setMargin(java_create('java.awt.Insets', 'IIII', 10,25,10,25));
+    jTextOptions.setFont(bst_get('Font', 12, 'Courier New'));
+    jPanelNew.add(JScrollPane(jTextOptions));
+    % Validation button
+    gui_component('button', jPanelNew, BorderLayout.SOUTH, 'Save options', [], [], @ButtonOk_Callback);
 
-    % ===== FREQUENCY PANEL =====
-    jTextOptions = gui_component('textarea', jPanelNew, 'br hfill', 'test');
-    
-    % ===== VALIDATION BUTTON =====
-    gui_component('Button', jPanelNew, 'br right', 'OK', [], [], @ButtonOk_Callback);
+    % Set maximum panel size
+    maxSize = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.getMaximumWindowBounds();
+    jPanelNew.setPreferredSize(java.awt.Dimension(700, maxSize.getHeight() - 200));
 
-    % ===== PANEL CREATION =====
-    % Put everything in a big scroll panel
-    jPanelScroll = javax.swing.JScrollPane(jPanelNew);
-    %jPanelScroll.add(jPanelNew);
-    %jPanelScroll.setPreferredSize(jPanelNew.getPreferredSize());
     % Return a mutex to wait for panel close
     bst_mutex('create', panelName);
     % Controls list
-    ctrl = struct('jTextOptions',    jTextOptions, ...
-        'spikeSorter', spikeSorter);
+    ctrl = struct('jTextOptions', jTextOptions, ...
+                  'spikeSorter',  spikeSorter);
     % Create the BstPanel object that is returned by the function
-    bstPanelNew = BstPanel(panelName, jPanelScroll, ctrl);
+    bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
     
+    % Load options file into the panel
     UpdatePanel();
     
+
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
 %  =================================================================================
@@ -88,7 +91,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                     idx = idx + 1;
                 end
                 fclose(fid);
-                header = [char(join(header, newline)) newline];
+                header = [char(join(header, char(10))), char(10)];
             else
                 header = '';
             end
@@ -104,17 +107,19 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
     end
 
+
 %% ===== UPDATE PANEL =====
     function UpdatePanel(varargin)
+        % Get option file
         [optionFile, skipLines] = GetSpikeSorterOptionFile(spikeSorter);
-        
+        % Options file is not found
         if exist(optionFile, 'file') ~= 2
             java_dialog('error', 'Could not find spike-sorter''s parameters file.');
             bstPanelNew = [];
             bst_mutex('release', panelName);
             return;
         end
-        
+        % Read options file
         fid = fopen(optionFile,'rt');
         idx = 1;
         optionText = {};
@@ -128,53 +133,48 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         end
         fclose(fid);
-        jTextOptions.setText(char(join(optionText, newline)));
+        % Set as panel contents
+        jTextOptions.setText(char(join(optionText, char(10))));
     end
 end
 
+
+%% ===== GET OPTIONS FILE =====
 function [optionFile, skipLines, skipValidate] = GetSpikeSorterOptionFile(spikeSorter)
     skipLines = 0;
     skipValidate = 0;
-    
+    optionFile = [];
+
+    % Get plugin
+    PlugDesc = bst_plugin('GetInstalled', spikeSorter);
+    % Install plugin if not available
+    if isempty(PlugDesc)
+        [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', spikeSorter, 1);
+        if ~isInstalled
+            error(errMsg);
+        end
+    end
+
+    % Get default options file for each spike sorting application
     switch lower(spikeSorter)
         case 'waveclus'
-            optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus', 'set_parameters.m');
+            optionFile = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'set_parameters.m');
             skipLines = 2;
-
         case 'ultramegasort2000'
-            optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000', 'ss_default_params.m');
+            optionFile = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'ss_default_params.m');
             skipLines = 2;
             skipValidate = 1;
-            
         case 'kilosort'
-            optionFile = bst_fullfile(bst_get('BrainstormUserDir'), 'kilosort', 'KilosortStandardConfig.m');
-
-        otherwise
-            error('The chosen spike sorter is currently unsupported by Brainstorm.');
+            optionFile = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'KilosortStandardConfig.m');
     end
-    
-    % Check whether the file exists, i.e. the spike sorter is installed
-    if exist(optionFile, 'file') ~= 2
-        if java_dialog('confirm', ...
-                ['The ' spikeSorter ' spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], spikeSorter)
-            switch lower(spikeSorter)
-                case 'waveclus'
-                    process_spikesorting_waveclus('downloadAndInstallWaveClus');
-
-                case 'ultramegasort2000'
-                    process_spikesorting_ultramegasort2000('downloadAndInstallUltraMegaSort2000');
-
-                case 'kilosort'
-                    process_spikesorting_kilosort('downloadAndInstallKiloSort');
-
-                otherwise
-                    error('The chosen spike sorter is currently unsupported by Brainstorm.');
-            end
-        end
+    % Handling errors: File not found
+    if ~file_exist(optionFile)
+        error(['File not found: ' optionFile]);
     end
 end
 
+
+%% ===== VALIDATE OPTIONS FILE =====
 function passed = ValidateOptions(textOptions)
     try
         eval(textOptions);

@@ -1,12 +1,13 @@
-function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
+function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions, nLink)
 % IN_FOPEN_FIF: Open a FIF file, and get all the data and channel information.
 %
-% USAGE:  [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
+% USAGE:  [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions, nLink=1)
 %         [sFile, ChannelMat] = in_fopen_fif(DataFile)
 %
 % INPUT: 
 %     - ImportOptions : Structure that describes how to import the recordings. Fields directly used:
 %       => Fields used: ChannelAlign, ChannelReplace, EventsMode, DisplayMessages
+%     - nLink : Index in the chain of linked files
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,9 +27,12 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2022
 
 %% ===== PARSE INPUTS =====
+if (nargin < 3) || isempty(nLink)
+    nLink = 1;
+end
 if (nargin < 2) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
 end
@@ -150,7 +154,7 @@ elseif (nEpochs == 0)
     sFile.prop.times = double([raw.first_samp, raw.last_samp]) ./ sFile.prop.sfreq;
     sFile.header.raw = raw;
     sFile.header.fif_times = sFile.prop.times;
-    sFile.header.fif_headers = {sFile.header};
+    sFile.header.fif_headers = {rmfield(sFile.header, {'fif_list', 'fif_times', 'fif_headers'})};
     % Read events information
     if iscell(ImportOptions.EventsMode) || ~strcmpi(ImportOptions.EventsMode, 'ignore')
         [sFile.events, ImportOptions] = fif_read_events(sFile, ChannelMat, ImportOptions);
@@ -174,43 +178,6 @@ else
     end
     % Extract global min/max for time and samples indices
     sFile.prop.times = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
-%     % Read events
-%     [fifEvt, mappings] = fiff_read_events(fid,tree);
-%     if ~isempty(fifEvt) && ~isempty(mappings)
-%         % Initialize returned structure
-%         uniqueEvt = unique(fifEvt(:,3)');
-%         events = repmat(db_template('event'), [1, length(uniqueEvt)]);
-%         % Parse event names
-%         mappings = str_split(mappings, ';');
-%         mappings = cellfun(@(c)str_split(c,':'), mappings, 'UniformOutput', 0);
-%         if (length(mappings) >= 2)
-%             mappings = reshape([mappings{:}], 2, [])';
-%         else
-%             mappings = [];
-%         end
-%         % Create events list
-%         for iEvt = 1:length(uniqueEvt)
-%             % Find all the occurrences of event #iEvt
-%             iMrk = find(fifEvt(:,3) == uniqueEvt(iEvt));
-%             % Event label
-%             if ~isempty(mappings) && ismember(num2str(uniqueEvt(iEvt)), mappings(:,2))
-%                 iMap = find(strcmpi(mappings(:,2), num2str(uniqueEvt(iEvt))));
-%                 events(iEvt).label = mappings{iMap, 1};
-%             else
-%                 events(iEvt).label = num2str(uniqueEvt{iEvt});
-%             end
-%             % 
-%             epochSmp = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
-%             samples = double(fifEvt(iMrk,1))';
-%             events(iEvt).epochs     = floor(samples ./ epochSmp) + 1;
-%             events(iEvt).times      = mod(samples, epochSmp) ./ sFile.prop.sfreq + sFile.prop.times(1);
-%             events(iEvt).reactTimes = [];
-%             events(iEvt).select     = 1;
-%             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-%             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
-%         end
-%         sFile.events = events;
-%     end
 end
 
 
@@ -279,7 +246,7 @@ if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw
         % Display linked file
         disp([10 'FIF> Linking next file: ' NextFile]);
         % Load the header of the linked file recursively
-        sFileNext = in_fopen_fif(NextFile, ImportOptions);
+        sFileNext = in_fopen_fif(NextFile, ImportOptions, nLink + 1);
         % Concatenate files (check time compatibility)
         if isempty(sFileNext)
             % File could not be read...
@@ -304,6 +271,12 @@ if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw
     end
 end
 
+% Removing chaining information if one file only
+if (nLink == 1) && (length(sFile.header.fif_list) == 1)
+    sFile.header.fif_list = [];
+    sFile.header.fif_times = [];
+    sFile.header.fif_headers = [];
+end
 
 % Close file
 if ~isempty(fopen(fid))

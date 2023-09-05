@@ -1,7 +1,7 @@
 function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isHeader, Factor, Transf)
-% OUT_CHANNEL_CARTOOL: Exports a Brainstorm channel file in an ascii file.
+% OUT_CHANNEL_ASCII: Exports a Brainstorm channel file in an ascii file.
 %
-% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=1, Transf=[]);
+% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=.01, Transf=[]);
 %
 % INPUT: 
 %     - BstFile    : full path to Brainstorm file to export
@@ -67,11 +67,29 @@ Label  = {};
 if isEEG && isfield(BstMat, 'Channel') && ~isempty(BstMat.Channel)
     for i = 1:length(BstMat.Channel)
         if ~isempty(BstMat.Channel(i).Loc) && ~all(BstMat.Channel(i).Loc(:) == 0)
-            Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
-            Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
+            
+            if size(BstMat.Channel(i).Loc,2) == 1
+                Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
+                Label{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
+            else
+                CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
+                toks = regexp(strrep(BstMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
+
+                Loc(:,end+1) = BstMat.Channel(i).Loc(:,1);
+                Label{end+1} = sprintf('S%s',toks{1}{1} );
+
+                Loc(:,end+1) = BstMat.Channel(i).Loc(:,2);
+                Label{end+1} = sprintf('D%s',toks{1}{2} );
+            end
         end
     end
+
+    % Remove duplicate optodes / electrodes 
+    [Label, I] = unique(Label, 'stable');
+    Loc = Loc(:,I);
+    
 end
+
 if isHeadshape && isfield(BstMat, 'HeadPoints') && ~isempty(BstMat.HeadPoints) && ~isempty(BstMat.HeadPoints.Loc)
     Loc   = [Loc, BstMat.HeadPoints.Loc];
     Label = cat(2, Label, BstMat.HeadPoints.Label);

@@ -23,7 +23,7 @@ function OutputFile = db_add(iTarget, InputFile, isReload)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2019
+% Authors: Francois Tadel, 2011-2022
 
 %% ===== GET INPUT FILE =====
 if (nargin < 3) || isempty(isReload)
@@ -91,10 +91,15 @@ if isstruct(InputFile)
     end
     % Surfaces subtypes
     if ismember(fileType, {'fibers', 'fem'})
-        fileSubType = fileType;
         fileType = 'tess';
+        fileSubType = [fileType, '_'];
     end
     isAnatomy = ismember(fileType, {'subjectimage', 'tess'});
+    % Spikes: file tag is data
+    if strcmp(fileType, 'spike')
+        fileType = 'data';
+        fileSubType = '0ephys_';
+    end
     % Create a new output filename
     c = clock;
     strTime = sprintf('%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));

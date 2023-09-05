@@ -160,6 +160,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         TimeRange = [];
     end
+    % Get split parameter
+    if isfield(sProcess.options, 'split') && isfield(sProcess.options.split, 'Value') && iscell(sProcess.options.split.Value) && ~isempty(sProcess.options.split.Value)
+        Split = sProcess.options.split.Value{1};
+    else
+        Split = 0;
+    end
     % Channel align: only if not import from a link to raw file
     if isfield(sProcess.options, 'channelalign') && ~isempty(sProcess.options.channelalign.Value)
         ChannelReplace = 2;
@@ -174,8 +180,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ImportOptions.UseEvents        = 0;
     ImportOptions.TimeRange        = TimeRange;
     ImportOptions.iEpochs          = 1;
-    ImportOptions.SplitRaw         = (sProcess.options.split.Value{1} > 0);
-    ImportOptions.SplitLength      = sProcess.options.split.Value{1};
+    ImportOptions.SplitRaw         = (Split > 0);
+    ImportOptions.SplitLength      = Split;
     ImportOptions.UseCtfComp       = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp           = sProcess.options.usessp.Value;
     ImportOptions.events           = [];
@@ -189,11 +195,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
         % BaselineRange
-        if ~isempty(sProcess.options.baseline.Value{1})
+        if isequal(sProcess.options.baseline.Value{1}, 'all')
+            ImportOptions.RemoveBaseline = 'all';
+            ImportOptions.BaselineRange  = [];
+        elseif ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
-        else
-            ImportOptions.RemoveBaseline = 'all';
         end
         % BaselineSensorType
         if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           

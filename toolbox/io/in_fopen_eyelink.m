@@ -221,8 +221,8 @@ for i = 1:length(events)
         events(i).times = round(events(i).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     end
     % Add channels and notes fields
-    events(i).channels = cell(1, size(events(i).times, 2));
-    events(i).notes    = cell(1, size(events(i).times, 2));
+    events(i).channels = [];
+    events(i).notes    = [];
 end
 
 % Import this list

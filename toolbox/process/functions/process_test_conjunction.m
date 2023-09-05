@@ -39,6 +39,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
+    sProcess.isSeparator = 1;
     % Definition of the options
     sProcess.options.label.Comment = ['For each value in the input file (each signal, time, and frequency):<BR>' ...
                                       'Return the statistic that corresponds to the largest p-value (max pmap).<BR><BR>' ...

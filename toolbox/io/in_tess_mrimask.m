@@ -1,8 +1,8 @@
-function TessMat = in_tess_mrimask(MriFile, isMni, SelLabels)
+function [TessMat, Labels] = in_tess_mrimask(MriFile, isMni, SelLabels)
 % IN_TESS_MRIMASK: Import an MRI as a mask or atlas, and tesselate the volumes in it
 %
-% USAGE:  TessMat = in_tess_mrimask(MriFile, isMni=0, SelLabels=[all])
-%         TessMat = in_tess_mrimask(sMri,    isMni=0, SelLabels=[all])
+% USAGE:  [TessMat, Labels] = in_tess_mrimask(MriFile, isMni=0, SelLabels=[all])
+%         [TessMat, Labels] = in_tess_mrimask(sMri,    isMni=0, SelLabels=[all])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,7 @@ function TessMat = in_tess_mrimask(MriFile, isMni, SelLabels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 % Parse inputs
 if (nargin < 3) || isempty(SelLabels)
@@ -31,6 +31,7 @@ end
 if (nargin < 2) || isempty(isMni)
     isMni = 0;
 end
+Labels = [];
 
 % Read MRI volume
 if ischar(MriFile)
@@ -45,6 +46,9 @@ if ischar(MriFile)
         if strcmp(AtlasName, 'svreg')
             sMri.Cube = mod(sMri.Cube,1000);
         end
+        if isfield(sMri, 'Labels') && ~isempty(sMri.Labels)
+            Labels = sMri.Labels;
+        end
     end
     if isempty(sMri)
         TessMat = [];
@@ -53,7 +57,6 @@ if ischar(MriFile)
 else
     sMri = MriFile;
     MriFile = [];
-    Labels = [];
     AtlasName = [];
 end
 % Convert to double and keep only the first volume (if multiple)
@@ -73,6 +76,9 @@ if any(allValues ~= round(allValues))
     % Binarize based on background level
     sMri.Cube = (sMri.Cube > Histogram.bgLevel);
     allValues = [0,1];
+else
+    % Remove zero (background)
+    allValues = setdiff(allValues, 0);
 end
 % Display warning when no MNI transformation available
 if isMni && (~isfield(sMri, 'NCS') || ...
@@ -105,6 +111,7 @@ if (length(allValues) > 10) && ~isempty(MriFile) && ~isempty(Labels)
         sMri.Cube(sMri.Cube == 179) = 16;
         % Update unique values
         allValues = unique(sMri.Cube);
+        allValues = setdiff(allValues, 0);
         
     % BrainSuite SVREG
     elseif strcmp(AtlasName, 'svreg') 
@@ -128,9 +135,8 @@ if (length(allValues) > 10) && ~isempty(MriFile) && ~isempty(Labels)
 else
     Labels = {};
 end
-% Remove zero (background)
-allValues = setdiff(allValues, 0);
-    
+
+% Initialize returned structure
 TessMat = repmat(struct('Comment', [], 'Vertices', [], 'Faces', []), [1, 0]);
 % Generate a tesselation for all the others
 for i = 1:length(allValues)

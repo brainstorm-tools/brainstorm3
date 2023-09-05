@@ -81,6 +81,9 @@ for iFile = 1:length(TessFiles)
         if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Sphere') && isfield(oldTess.Reg.Sphere, 'Vertices') && ~isempty(oldTess.Reg.Sphere.Vertices)
             NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
         end
+        if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
+        end
     % Check number of vertices
     elseif (size(NewTess.Vertices,1) ~= size(oldTess.Vertices,1))
         errMsg = sprintf('The number of vertices is different in surface #1 (%d) and surface #%d (%d).', size(NewTess.Vertices,1), iFile, size(oldTess.Vertices,1));

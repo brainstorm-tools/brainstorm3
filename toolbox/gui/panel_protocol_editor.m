@@ -295,7 +295,7 @@ function [subjectDir, studyDir, protocolName] = SelectProtocolDir(protocolDir)
     studyDir   = [];
     protocolName = [];
     % Select folder
-    protocolDir = java_getfile('open', 'Load protocol...', bst_fileparts(protocolDir, 1), 'single', 'dirs', ...
+    protocolDir = java_getfile('open', 'Load protocol...', protocolDir, 'single', 'dirs', ...
                                {{'*'}, 'Brainstorm protocol (folder)', 'protocol'}, 1);
     % Show again main frame
     jBstFrame = bst_get('BstFrame');

@@ -119,7 +119,21 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     if isempty(sProcesses)
         return
     end   
-    
+    % Timefreq and Connectivity: make sure the advanced options were reviewed
+    for iProc = 1 : length(sProcesses)
+        procFunc = func2str(sProcesses(iProc).Function);
+        if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
+                                (~isfield(sProcesses(iProc).options.edit, 'Value') || isempty(sProcesses(iProc).options.edit.Value))) || ... % check 'edit' field
+           (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
+                               'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                               'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
+                                (~isfield(sProcesses(iProc).options.tfedit, 'Value') || isempty(sProcesses(iProc).options.tfedit.Value)))    % check 'tfedit' field
+            bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before running the pipeline.'], 'Pipeline editor', 0);
+            panel_process_select('ShowPanel', {sFiles.FileName}, sProcesses);
+            return
+        end
+    end
+
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sFiles, [], 1);
     

@@ -115,7 +115,7 @@ for i = 1:length(iCheck)
                 ChannelMat.Channel(iChan).Type = 'Misc';
             elseif ~isempty(strfind(chName, 'mast'))
                 ChannelMat.Channel(iChan).Type = 'MAST';
-            elseif ~isempty(strfind(chName, 'trig'))
+            elseif ~isempty(strfind(chName, 'trig')) && (length(chName) < 12)
                 ChannelMat.Channel(iChan).Type = 'STIM';
             % Head points (ZEBRIS)
             elseif ~isempty(strfind(chName, 'sfh')) || ~isempty(strfind(chName, 'sfl')) || ~isempty(strfind(chName, 'SL_')) || ~isempty(strfind(chName, 'SP_')) 

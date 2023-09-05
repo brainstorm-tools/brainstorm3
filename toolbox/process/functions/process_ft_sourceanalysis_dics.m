@@ -124,8 +124,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     PostStim = sProcess.options.poststim.Value{1};
     FOI      = sProcess.options.foi.Value{1};
     TprFreq  = sProcess.options.tpr.Value{1};
-    % Output folder (for figures and FieldTrip structures)
-    TmpDir = bst_get('BrainstormTmpDir');
     % Progress bar
     bst_progress('start', 'ft_sourceanalysis', 'Loading input files...', 0, 2*length(sInputs));
 
@@ -186,7 +184,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ftData.trial = cell(1,length(sInputs));
     ftData.time = cell(1,length(sInputs));
     % Load all the trials
-    
     AllChannelFiles = unique({sInputs.ChannelFile});
     iChanInputs = find(ismember({sInputs.ChannelFile}, AllChannelFiles{1}));
     for iInput = 1:length(sInputs)
@@ -195,8 +192,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ftData.trial{iInput} = DataMat.F(iChannelsData,:);
         ftData.time{iInput} = DataMat.Time;
     end
-    
-    
+
     % ===== FIELDTRIP: ft_freqanalysis =====
     bst_progress('text', 'Calling FieldTrip function: ft_freqanalysis...');
     % Compute tfr-decomposition
@@ -233,7 +229,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     cfg = [];
     ep_data.app = ft_appenddata(cfg, ep_data.bsl, ep_data.pst);
     
-    
+    % ===== TEMPORARY FOLDER =====
+    % Output folder (for figures and FieldTrip structures)
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'dics');
+
     % ===== FIELDTRIP: SPECTRAL ANALYSIS =====
     cfg_main = [];
     cfg_main.fmax = MaxFreq;
@@ -445,6 +444,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Expand data node
     panel_protocols('SelectNode', [], newResult.FileName);
 
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
     % Save database
     db_save();
     % Hide progress bar

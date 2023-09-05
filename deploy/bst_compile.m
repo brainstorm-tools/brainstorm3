@@ -28,7 +28,7 @@
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2021
+% Authors: Francois Tadel, 2011-2023
 
       
 %% ===== PARSE INPUTS =====
@@ -42,8 +42,9 @@ end
 JdkDir = getenv('JAVA_HOME');
 if isempty(JdkDir) || ~exist(fullfile(JdkDir, 'bin'), 'file')
     error(['You must install OpenJDK 8 and set the environment variable JAVA_HOME to point at it.' 10 ...
-        'Download: https://adoptopenjdk.net/?variant=openjdk8' 10 ...
-        'Set environment from Matlab: setenv(''JAVA_HOME'', ''C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot'')']);
+        'Download: https://adoptium.net/temurin/releases/?version=8' 10 ...
+        'Install Ubuntu package: sudo apt install openjdk-8-jdk' 10 ...
+        'Set environment variable from Matlab: setenv(''JAVA_HOME'', ''/path/to/jdk-8.0.../'')']);
 end
 disp([10 'COMPILE> JAVA_HOME=' JdkDir]);
 % Check if compiler is available
@@ -64,14 +65,14 @@ rmpath(bst_get('UserProcessDir'));
 % Root brainstorm directory
 bstDir = bst_get('BrainstormHomeDir');
 % Deploy folder: .brainstorm/tmp/deploy
-deployDir = fullfile(bst_get('BrainstormTmpDir'), 'deploy');
+TmpDir = bst_get('BrainstormTmpDir', 0, 'deploy');
 % Get Matlab version
 ReleaseName = bst_get('MatlabReleaseName');
 % Javabuilder output
-compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
+compilerDir = fullfile(TmpDir, ReleaseName, 'bst_javabuilder');
 outputDir = fullfile(compilerDir, 'for_testing');
 % Packaging folders
-packageDir = fullfile(deployDir, ReleaseName, 'package');
+packageDir = fullfile(TmpDir, ReleaseName, 'package');
 binDir = fullfile(bstDir, 'bin', ReleaseName);
 jarDir = fullfile(packageDir, 'jar');
 % Delete existing folders
@@ -90,7 +91,7 @@ if exist(packageDir, 'dir')
     end
 end
 % Create new folders
-dirToCreate = {deployDir, fullfile(deployDir, ReleaseName), jarDir, binDir, outputDir};
+dirToCreate = {fullfile(TmpDir, ReleaseName), jarDir, binDir, outputDir};
 for i = 1:length(dirToCreate)    
     if ~exist(dirToCreate{i}, 'file')
         isCreated = mkdir(dirToCreate{i});
@@ -137,24 +138,25 @@ spmtripDir = fullfile(bst_get('BrainstormUserDir'), 'spmtrip');
 if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     disp(['COMPILE> SPMTRIP folder not found: ' spmtripDir]);
     disp('COMPILE> Running bst_spmtrip... (to disable this, call bst_compile with argument "noplugs")');
-    % Windows only
-    if ~ispc
-        error('Preparing the folder spmtrip with bst_spmtrip.m is available only for Windows (for the moment).');
-    end
     % Initialize FieldTrip
     [isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
         error(['Could not install FieldTrip: ' errMsg]);
     end
     FieldTripDir = fullfile(PlugFt.Path, PlugFt.SubFolder);
-    % Install SPM
+    % Initialize SPM
     [isInstalled, errMsg, PlugSpm] = bst_plugin('Install', 'spm12');
     if ~isInstalled
         error(['Could not install SPM12: ' errMsg]);
     end
     SpmDir = fullfile(PlugSpm.Path, PlugSpm.SubFolder);
+    % If CAT12 is installed, it must be unlinked before compiling SPM
+    if ~isempty(bst_plugin('GetInstalled', 'cat12'))
+        bst_plugin('LinkCatSpm', 0);
+    end
     % Extract functions to compile from SPM and Fieldtrip
     bst_spmtrip(SpmDir, FieldTripDir, spmtripDir);
+    % Add to Matlab path
     addpath(spmtripDir);
 end
 
@@ -190,6 +192,28 @@ if isPlugs
             if ~isInstalled
                 error(['Could not install plugin "' PlugDesc(iPlug).Name '": ' 10 errMsg]);
             end
+
+            % Delete unwanted files (block of code copied from bst_plugins>Install)
+            if ~isempty(PlugDesc(iPlug).DeleteFilesBin) && iscell(PlugDesc(iPlug).DeleteFilesBin)
+                warning('off', 'MATLAB:RMDIR:RemovedFromPath');
+                for iDel = 1:length(PlugDesc(iPlug).DeleteFilesBin)
+                    if ~isempty(PlugInst.SubFolder)
+                        fileDel = bst_fullfile(PlugInst.Path, PlugInst.SubFolder, PlugDesc(iPlug).DeleteFilesBin{iDel});
+                    else
+                        fileDel = bst_fullfile(PlugInst.Path, PlugDesc(iPlug).DeleteFilesBin{iDel});
+                    end
+                    if file_exist(fileDel)
+                        try
+                            file_delete(fileDel, 1, 3);
+                            disp(['BST> Plugin ' PlugDesc(iPlug).Name ': Deleted file: ' PlugDesc(iPlug).DeleteFilesBin{iDel}]);
+                        catch
+                            disp(['BST> Plugin ' PlugDesc(iPlug).Name ': Could not delete file: ' PlugDesc(iPlug).DeleteFilesBin{iDel}]);
+                        end
+                    end
+                end
+                warning('on', 'MATLAB:RMDIR:RemovedFromPath');
+            end
+
             % Add to list of compiled folders
             strCall = [strCall '-a "' fullfile(PlugInst.Path, PlugInst.SubFolder) '" '];
             strCall = [strCall '-a "' fullfile(PlugInst.Path, 'plugin.mat') '" '];
@@ -246,8 +270,8 @@ system(['cd "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.
 
 %% ===== PACKAGE ZIP =====
 % Deploy folder
-baseDir = fullfile(deployDir, 'brainstorm3');
-destDir = fullfile(deployDir, 'brainstorm3', 'bin', ReleaseName);
+baseDir = fullfile(TmpDir, 'brainstorm3');
+destDir = fullfile(TmpDir, 'brainstorm3', 'bin', ReleaseName);
 % Delete existing folder brainstorm3_deploy/brainstorm3
 if isdir(baseDir)
     try
@@ -265,22 +289,27 @@ copyfile(fullfile(binDir, '*.*'), destDir);
 % Create output filename
 c = clock;
 strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
-zipFile = fullfile(deployDir, ['bst_bin_' ReleaseName '_' strDate '.zip']);
+zipFile = fullfile(TmpDir, ['bst_bin_' ReleaseName '_' strDate '.zip']);
 % Zip folder
 zip(zipFile, baseDir, fileparts(baseDir));
+% Display output file
+disp(['COMPILE> Package: ' zipFile]);
 % Delete newly created dir
 try
     rmdir(baseDir, 's');
 catch
     disp(['ERROR: Could not delete folder: "' baseDir '"']);
 end
+% Delete the temporary files
+% file_delete(TmpDir, 1, 1);
 
 
 %% ===== TERMINATION =====
-% Close Brainstorm (if it was started in this script)
-if isNogui
-    brainstorm stop;
-end
+% Do not close Brainstorm, otherwise it deletes the compiled package from the tmp folder
+% % Close Brainstorm (if it was started in this script)
+% if isNogui
+%     brainstorm stop;
+% end
 % Done
 stopTime = toc(tCompile);
 if (stopTime > 60)

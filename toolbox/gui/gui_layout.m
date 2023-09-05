@@ -247,7 +247,7 @@ function ScreenDef = GetScreenClientArea()
         % === SCALING ===
         try
             % Adjust with the OS scaling factor (for high-DPI screens)
-            javaScreenSize = jScreens(i).getDisplayMode().getWidth();
+            javaScreenSize = jScreens(i).getDefaultConfiguration().getBounds().getWidth();
             if (i == 1) || (i > size(MonitorPositions,1))
                 matlabScreenSize = MonitorPositions(1,3) - MonitorPositions(1,1) + 1;
             else
@@ -791,6 +791,7 @@ function CreateNewSetup()
         'FigureId', [], ...
         'AppData',  [], ...
         'Position', [], ...
+        'Color',    [], ...
         'Camera',   []), 0);
     DataFile = [];
     nWarningSkip = 0;
@@ -826,6 +827,7 @@ function CreateNewSetup()
             sSetup.Figures(iSaveFig).FigureId = Figure.Id;
             sSetup.Figures(iSaveFig).AppData  = AppData;
             sSetup.Figures(iSaveFig).Position = get(Figure.hFigure, 'Position');
+            sSetup.Figures(iSaveFig).Color    = get(Figure.hFigure, 'Color');
             % 3D figures: Get camera
             hAxes = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'Axes3D');
             if strcmpi(Figure.Id.Type, '3DViz') && ~isempty(hAxes)
@@ -933,9 +935,11 @@ function LoadSetup(iSetup)
         end
         if isfield(AppData, 'TsInfo') && isfield(AppData.TsInfo, 'FileName') && ~isempty(AppData.TsInfo.FileName)
             AppData.TsInfo.FileName = DataFile;
-        end
-        if isfield(AppData, 'TsInfo') && ~isempty(AppData.TsInfo)
             AppData.TsInfo = struct_copy_fields(AppData.TsInfo, db_template('TsInfo'), 0);
+        end
+        if isfield(AppData, 'TopoInfo') && isfield(AppData.TopoInfo, 'FileName') && ~isempty(AppData.TopoInfo.FileName)
+            AppData.TopoInfo.FileName = DataFile;
+            AppData.TopoInfo = struct_copy_fields(AppData.TopoInfo, db_template('TopoInfo'), 0);
         end
         if isfield(AppData, 'Surface') && ~isempty(AppData.Surface)
             % Save old surfaces
@@ -949,7 +953,12 @@ function LoadSetup(iSetup)
         else
             Surface = [];
         end
-        AppData.DataFile = DataFile;
+        if isfield(AppData, 'StudyFile') && ~isempty(AppData.StudyFile)
+            sStudy = bst_get('AnyFile', DataFile);
+            AppData.StudyFile = sStudy.FileName;
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            AppData.SubjectFile = sSubject.FileName;
+        end
         % Set AppData
         for field = fieldnames(AppData)'
             setappdata(hFig, field{1}, AppData.(field{1}));
@@ -1029,6 +1038,10 @@ function LoadSetup(iSetup)
                 
             otherwise
                 bst_figures('ReloadFigures', hFig);
+        end
+        % Set background
+        if isfield(sSetup.Figures(i), 'Color') && ~isempty(sSetup.Figures(i).Color)
+            set(hFig, 'Color', sSetup.Figures(i).Color);
         end
     end
     % Close all the figures that haven't been updated

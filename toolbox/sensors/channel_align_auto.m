@@ -1,4 +1,4 @@
-function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance)
+function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance)
 % CHANNEL_ALIGN_AUTO: Aligns the channels to the scalp using Polhemus points.
 %
 % USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0)
@@ -27,6 +27,8 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_aut
 %     - isSkip       : If 1, processing was skipped because there was not enough information in the file
 %     - isUserCancel : If 1, user cancelled the alignment
 %     - strReport    : Text description of the quality of the alignment (distance between headpoint and scalp surface)
+%     - tolerance    : The same tolerance input if alignment was performed, otherwise empty
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -132,6 +134,7 @@ if (isConfirm || isWarning)
                                 'Refine registration', [], num2str(round(tolerance*100)));
     if isempty(res) || isnan(str2double(res))
         isUserCancel = 1;
+        tolerance = [];
         bst_progress('stop');
         return
     end
@@ -150,6 +153,7 @@ if ~isempty(tolerance)
         end
         % Cancel processing as a user error
         isUserCancel = 1;
+        tolerance = [];
         bst_progress('stop');
         return
     end
@@ -175,6 +179,7 @@ end
 if isempty(R)
     bst_progress('stop');
     isSkip = 1;
+    tolerance = [];
     return;
 end
 % Distance between fitted points and reference surface

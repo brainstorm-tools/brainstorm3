@@ -30,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Z-score with surrogate (mean on sources: A z-scored with respect to B)';
+    sProcess.Comment     = 'PAC: Z-score with surrogate';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Standardize';%{'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -52,7 +52,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
 %     sProcess.options.analyze_type.Type    = 'radio';
 %     sProcess.options.analyze_type.Value   = 1;
     
-        % === Using phase
+    % === Label
+    sProcess.options.label.Comment = 'Mean on sources: <B>Files A</B> Z-scored with respect to <B>Files B</B><BR><BR>';
+    sProcess.options.label.Type    = 'label';
+    % === Using phase
     sProcess.options.usePhase.Comment = 'Use phase in averaging (mean)';
     sProcess.options.usePhase.Type    = 'checkbox';
     sProcess.options.usePhase.Value   = 0;

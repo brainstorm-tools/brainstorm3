@@ -28,7 +28,7 @@ function fileType = file_gettype( fileName )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== INPUT: FILE =====
@@ -36,6 +36,11 @@ if ischar(fileName)
     % Detect links
     if (length(fileName) > 5) && strcmpi(fileName(1:5),'link|')
         fileType = 'link';
+        return;
+    end
+    % Detect spikes directory
+    if ~isempty(regexp(fileName, '_\w+_spikes$', 'once'))
+        fileType = 'dirspikes';
         return;
     end
     % Initialize possible types and formats to empty lists
@@ -58,7 +63,9 @@ if ischar(fileName)
 
     % If it is a Matlab .mat file : look for valid tags in fileName
     if (length(fileExt) >= 4) && (isequal(fileExt(1:4), '.mat'))
-        if ~isempty(strfind(fileName, '_data'))
+        if ~isempty(strfind(fileName, '_data_0ephys'))
+            fileType = 'spike';
+        elseif ~isempty(strfind(fileName, '_data'))
             fileType = 'data';
         elseif ~isempty(strfind(fileName, '_results'))
             fileType = 'results';
@@ -175,9 +182,7 @@ elseif isstruct(fileName)
     elseif isfield(sMat, 'VideoStart')
         fileType = 'videolink';
     elseif isfield(sMat, 'Spikes')
-        fileType = 'spikes';
-    elseif isfield(sMat, 'Points')
-        fileType = 'fibers';
+        fileType = 'spike';
     else
         fileType = 'unknown';
     end

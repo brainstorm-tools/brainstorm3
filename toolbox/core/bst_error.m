@@ -25,7 +25,7 @@ function fullErrMsg = bst_error(errMsg, errTitle, isStack)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 global GlobalData;
 
@@ -131,8 +131,16 @@ if (nargout == 0)
     if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || (GlobalData.Program.GuiLevel >= 0)
         % Hide progress bar
         bst_progress('stop');
+        % If there are too many lines, truncate the message
+        MAX_LINES = 30;
+        if (nnz(fullErrMsg == 10) > MAX_LINES)
+            iCut = find(fullErrMsg == 10, MAX_LINES);
+            fullErrMsgDlg = [fullErrMsg(1:iCut(end)-1) 10 '...' 10 '[See command window for full error message]'];
+        else
+            fullErrMsgDlg = fullErrMsg;
+        end
         % Display error message window
-        java_dialog('errorhelp', fullErrMsg, errTitle);
+        java_dialog('errorhelp', fullErrMsgDlg, errTitle);
     end
     % Display error message in Matlab console
     disp(consoleMsg);

@@ -89,7 +89,14 @@ F = zeros(length(selectedChannels), nSamples);
 for iStream = 1:length(streams_to_load)
     
     data = TDTbin2mat(sFile.filename, 'TYPE', 4, 'STORE', streams_to_load{iStream}, 'T1', SamplesBounds(1)/Fs, 'T2', SamplesBounds(2)/Fs);
-    data = data.streams.(streams_to_load{iStream});
+    
+    % TDTbin2mat return values only when the stream is enabled within the
+    % requested time period. If nothing is returned, fill it with zeros.
+    if ~isempty(data.streams)
+        data = data.streams.(streams_to_load{iStream});
+    else
+        data.data = zeros(length(selected_channels_from_stream{iStream}),nSamples);
+    end
     
 
     % DO THE EXTRAPOLATION HERE FOR THE LOW SAMPLED SIGNALS (EYE TRACES ETC.)
@@ -117,7 +124,6 @@ for iStream = 1:length(streams_to_load)
     % DROP SAMPLES HERE FOR THE HIGH SAMPLED SIGNALS (LED, EMG ETC.)
     elseif stream_info(iStream).fs > Fs
         
-        
        high_sampled_signal = double(data.data(selected_channels_from_stream{iStream},:));
        
        % Make sure the signal has all the samples we expect
@@ -126,7 +132,6 @@ for iStream = 1:length(streams_to_load)
        high_sampled_signal2 = zeros(size(high_sampled_signal,1), nExpectedSamples);
        high_sampled_signal2(:,1:min(nGottenSamples,nExpectedSamples)) = high_sampled_signal;
        high_sampled_signal = high_sampled_signal2;
-        
         
 %         high_sampled_signal = double(data.data(selected_channels_from_stream{iStream},:));        
         

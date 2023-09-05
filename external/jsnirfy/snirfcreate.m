@@ -26,7 +26,7 @@ function snf=snirfcreate(varargin)
 %
 %    this file is part of JSNIRF specification: https://github.com/fangq/snirf
 %
-%    License: GPLv3 or Apache 2.0, see https://github.com/fangq/jsnirf for details
+%    License: GPLv3 or Apache 2.0, see https://github.com/NeuroJSON/jsnirf for details
 %
 
 if(nargin==1)

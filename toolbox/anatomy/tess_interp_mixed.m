@@ -59,6 +59,7 @@ hFig1 = [];
 % Process each region separately
 for iScoutSrc = 1:length(ResultsMat.GridAtlas.Scouts)
     sScoutSrc = ResultsMat.GridAtlas.Scouts(iScoutSrc);
+    sScoutSrc.Vertices = sScoutSrc.Vertices(:)';
     % Check if the source model has been flattened
     if (sScoutSrc.Region(3) ~= 'C')
         error('Source maps must be flattened before being projected with this function.');

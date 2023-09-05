@@ -22,7 +22,7 @@ function [Gain, errMsg] = bst_duneuro(cfg)
 % =============================================================================@
 %
 % Authors: Takfarinas Medani, Juan Garcia-Prieto, 2019-2021
-%          Francois Tadel 2020-2021
+%          Francois Tadel 2020-2023
 
 % Initialize returned values
 Gain = [];
@@ -39,13 +39,6 @@ if ispc
 else
     DuneuroExe = [DuneuroExe, '.app'];
 end
-% Empty temp folder
-gui_brainstorm('EmptyTempFolder');
-% Get temp folder
-TmpDir = bst_get('BrainstormTmpDir');
-% Display message
-bst_progress('text', 'DUNEuro: Writing temporary files...');
-disp(['DUNEURO> Writing temporary files to: ' TmpDir]);
 
 
 %% ===== SENSORS =====
@@ -179,9 +172,17 @@ else
     MeshFile = 'head_model.geo';
     cfg.UseTensor = true;
 end
+
+% Get temp folder
+TmpDir = bst_get('BrainstormTmpDir', 0, 'duneuro');
+% Display message
+bst_progress('text', 'DUNEuro: Writing temporary files...');
+disp(['DUNEURO> Writing temporary files to: ' TmpDir]);
+
 % Write mesh model
 MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
+
 
 %% ====== SOURCE SPACE =====
 % Source space type
@@ -209,6 +210,8 @@ switch (cfg.HeadModelType)
             % Install/load iso2mesh plugin
             [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', cfg.Interactive);
             if ~isInstalled
+                % Delete the temporary files
+                file_delete(TmpDir, 1, 1);
                 return;
             end
             % Extract GM vertices and elements
@@ -598,6 +601,10 @@ end
 if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
 end
+
+% Delete the temporary files
+file_delete(TmpDir, 1, 1);
+
 
 %% ===== SAVE TRANSFER MATRIX ======
 disp('DUNEURO> TODO: Save transferOut.dat to database.')

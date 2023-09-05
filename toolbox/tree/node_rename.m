@@ -22,7 +22,7 @@ function node_rename(bstNode, newComment)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== INITIALIZATION =====
@@ -185,7 +185,7 @@ switch lower(nodeType)
         end    
         
 %% ===== DATA (Comment) =====
-    case {'data', 'rawdata'}
+    case {'data', 'rawdata', 'spike'}
         iStudy = iItem;
         iData = iSubItem;
         sStudy = bst_get('Study', iStudy);

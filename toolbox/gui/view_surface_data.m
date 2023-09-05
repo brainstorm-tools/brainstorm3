@@ -164,10 +164,9 @@ switch (DataType)
         % Load timefreq file
         [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', OverlayFile, 1, isLoadResults);
         OverlayType = 'Timefreq';
-end
-% If no DataSet is accessible : error
-if isempty(iDS)
-    error(['Cannot load file: "', OverlayFile, '"']);
+    case 'headmodel'
+        OverlayType = 'HeadModel';
+        iDS = bst_memory('GetDataSetSubject', sSubject.FileName, 1);
 end
 
 

@@ -156,12 +156,11 @@ DataAvg = [];
 if OPTIONS.RemoveEvoked && (length(Data) > 1)
     % Input=file names
     if ischar(Data{1})
-        [Stat, Messages] = bst_avg_files(Data, [], 'mean', 0, 0, 0, 0, 1);
+        [DataAvg, Messages] = process_remove_evoked('ComputeEvokeResponse', Data);
         if ~isempty(Messages)
             isError = 1;
             return;
         end
-        DataAvg = Stat.mean;
     % Input=data blocks
     elseif all(cellfun(@(c)isequal(size(c), size(Data{1})), Data))
         DataAvg = mean(cat(4, Data{:}), 4);

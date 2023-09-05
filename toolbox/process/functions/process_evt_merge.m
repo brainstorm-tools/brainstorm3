@@ -19,58 +19,68 @@ function varargout = process_evt_merge( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Merge events';
+    sProcess.Comment     = 'Duplicate / merge events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 54;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % Explanations
+    sProcess.options.desc.Comment  = [...
+        '<FONT COLOR="#707070"><I>Combine the input events and save them as a new event group.<BR>' ... 
+        'To duplicate an event: select it in input and uncheck "delete".</I></FONT><BR><BR>'];
+    sProcess.options.desc.Type     = 'label';
     % Event name
-    sProcess.options.evtnames.Comment  = 'Events to merge (separated with commas): ';
+    sProcess.options.evtnames.Comment  = 'Events to copy (separated with commas): ';
     sProcess.options.evtnames.Type     = 'text';
     sProcess.options.evtnames.Value    = '';
     % New name
     sProcess.options.newname.Comment = 'New event name: ';
     sProcess.options.newname.Type    = 'text';
     sProcess.options.newname.Value   = '';
+    % Delete original events
+    sProcess.options.delete.Comment = 'Delete the original events';
+    sProcess.options.delete.Type    = 'checkbox';
+    sProcess.options.delete.Value   = 1; 
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     % Return all the input files
     OutputFiles = {};
     
     % Get options
     EvtNames = strtrim(sProcess.options.evtnames.Value);
     NewName  = strtrim(sProcess.options.newname.Value);
+    isDelete = sProcess.options.delete.Value;
     if isempty(EvtNames) || isempty(NewName)
         bst_report('Error', sProcess, [], 'You must enter a list of events to merge and a destination name.');
         return;
     end
     % Split names
     EvtNames = strtrim(str_split(EvtNames, ',;'));
-    if (length(EvtNames) < 2) || isempty(EvtNames{1})
-        bst_report('Error', sProcess, [], 'You must enter at least to event names to merge.');
+    if (length(EvtNames) < 1) || isempty(EvtNames{1})
+        bst_report('Error', sProcess, [], 'You must enter at least one event name to copy.');
         return;
     end
 
@@ -81,26 +91,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events');
+            sEvents = DataMat.Events;
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Call the renaming function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames, NewName);
+        [sEvents, isModified] = Compute(sInputs(iFile), sEvents, EvtNames, NewName, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);
@@ -111,8 +122,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== RENAME EVENTS =====
-function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
+%% ===== MERGE EVENTS =====
+function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDelete)
     % No modification
     isModified = 0;
 
@@ -134,8 +145,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
         end
     end
     % Make sure there are at least two events to merge
-    if (length(iEvents) < 2)
-        bst_report('Error', 'process_evt_merge', sInput, 'You must enter at least to valid event names to merge.');
+    if (length(iEvents) < 1)
+        bst_report('Error', 'process_evt_merge', sInput, 'You must enter at least one event name to copy.');
         return;
     end
 
@@ -144,9 +155,17 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
     newEvent.label      = NewName;
     newEvent.times      = [events(iEvents).times];
     newEvent.epochs     = [events(iEvents).epochs];
-    newEvent.channels   = [events(iEvents).channels];
-    newEvent.notes      = [events(iEvents).notes];
-    % Reaction time: only if all the events have reaction time set
+    % Reaction time, channels, notes: only if all the events have them
+    if all(~cellfun(@isempty, {events(iEvents).channels}))
+        newEvent.channels = [events(iEvents).channels];
+    else
+        newEvent.channels = [];
+    end
+    if all(~cellfun(@isempty, {events(iEvents).notes}))
+        newEvent.notes = [events(iEvents).notes];
+    else
+        newEvent.notes = [];
+    end
     if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
         newEvent.reactTimes = [events(iEvents).reactTimes];
     else
@@ -156,14 +175,23 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
     [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
     newEvent.times    = newEvent.times(:,iSort);
     newEvent.epochs   = newEvent.epochs(iSort);
-    newEvent.channels = newEvent.channels(iSort);
-    newEvent.notes    = newEvent.notes(iSort);
+    if ~isempty(newEvent.channels)
+        newEvent.channels = newEvent.channels(iSort);
+    end
+    if ~isempty(newEvent.notes)
+        newEvent.notes = newEvent.notes(iSort);
+    end
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end
     
     % Remove merged events
-    events(iEvents) = [];
+    if isDelete
+        events(iEvents) = [];
+    % If creating new events without deleting the existing: use a new color
+    else
+        newEvent.color = panel_record('GetNewEventColor', length(events) + 1, events);
+    end
     % Add new event
     events(end + 1) = newEvent;
 

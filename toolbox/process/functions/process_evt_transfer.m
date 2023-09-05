@@ -20,6 +20,7 @@ function varargout = process_evt_transfer(varargin )
 % =============================================================================@
 %
 % Authors: Martin Voelker, 2015
+%          Raymundo Cassani, 2023
 
 eval(macro_method);
 end
@@ -32,6 +33,7 @@ function sProcess = GetDescription()
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Synchronize';
     sProcess.Index       = 680;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EyetrackSynchro';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
@@ -62,179 +64,108 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     OutputFiles = {};
     
-    % === GET OPTIONS ===
-    strComment = '';
-    %...
-    
-    % === Sync event management === %
+    % Names for sync events
     SyncEventName.A = sProcess.options.src.Value;
     SyncEventName.B = sProcess.options.dest.Value;
     
-    % ===== LOAD FILES =====   
+    % Rearrange input files
     sInputs = struct();
     sInputs.A = sInputsA;
     sInputs.B = sInputsB;
     clear sInputsA sInputsB;
-    
-    % === Load events from dataset(s) in A & B ===
-    for set = ['A', 'B'];
-        nTrials.(set) = numel(sInputs.(set));
-        for iTrial = 1:nTrials.(set)
 
-            % Get file descriptor
-            isRaw = strcmpi(sInputs.(set)(iTrial).FileType, 'raw');
-            % Load the raw file descriptor
+    % Load events from datasets A and B
+    for set = ['A', 'B']
+        for iInput = 1 : length(sInputs.(set))
+            % Get file descriptors
+            isRaw = strcmpi(sInputs.(set)(iInput).FileType, 'raw');
             if isRaw
-                sMat.(set)(iTrial) = in_bst_data(sInputs.(set)(iTrial).FileName, 'F');
-                sEvents.(set){iTrial} = sMat.(set)(iTrial).F.events;
-                sFreq.(set)(iTrial) = sMat.(set)(iTrial).F.prop.sfreq;
+                DataMatTmp = in_bst_data(sInputs.(set)(iInput).FileName, 'F');
+                sFileTmp = DataMatTmp.F;
+                % Error for epoched CTF and NWB files
+                if ismember(sFileTmp.format, {'CTF', 'NWB'})
+                    bst_report('Error', sProcess, sInputs.(set)(iInput), 'Impossible to process native epoched files. Please import them in database or convert them to continuous.');
+                end
+                timeExtension(iInput).(set) = sFileTmp.prop.times;
             else
-                sMat.(set)(iTrial) = in_bst_data(sInputs.(set)(iTrial).FileName, 'Events', 'Time');
-                sEvents.(set){iTrial} = sMat.(set)(iTrial).Events;
-                sFreq.(set)(iTrial) = 1 ./ (sMat.(set)(iTrial).Time(2) - sMat.(set)(iTrial).Time(1));
+                DataMatTmp = in_bst_data(sInputs.(set)(iInput).FileName, 'Events', 'Time');
+                sFileTmp.events = DataMatTmp.Events;
+                sFileTmp.prop.sfreq = 1 ./ (DataMatTmp.Time(2) - DataMatTmp.Time(1));
+                timeExtension(iInput).(set) = [DataMatTmp.Time(1), DataMatTmp.Time(end)];
             end
-            % Look for events
-            iEvt = find(strcmp({sEvents.(set){iTrial}.label}, SyncEventName.(set)));
-            if isempty(iEvt)
-                bst_report('Error', sProcess, sInputs.(set)(iTrial), ['Event "' SyncEventName.(set) '" not found.']);
-                return;
+            % Concatenate events
+            if iInput == 1
+                sFile.(set).events = sFileTmp.events;
+                sFile.(set).prop.sfreq = sFileTmp.prop.sfreq;
+            elseif ~isempty(sFileTmp.events)
+                sFile.(set) = import_events(sFile.(set), [], sFileTmp.events);
             end
-            % Save info
-            nEvents.(set)(iTrial) = numel(sEvents.(set){iTrial});            
-            iSyncEvent.(set)(iTrial) = find(strcmp({sEvents.(set){iTrial}.label}, SyncEventName.(set)));
-            nSyncEvent.(set)(iTrial) = numel(sEvents.(set){iTrial}(iSyncEvent.(set)(iTrial)).times);
         end
-    end    
+        % Events used for synchronization
+        iSyncEvent.(set) = find(strcmp({sFile.(set).events.label}, SyncEventName.(set)));
+        nSyncEvent.(set) = length(sFile.(set).events(iSyncEvent.(set)).times);
+    end
     
-    %% Make sure the number of synchronization events is the same in both datasets
-
-    % Error if number of sync triggers is not the same in both data sets
-    if sum(nSyncEvent.A) ~= sum(nSyncEvent.B)
+    % Check for same number of sync events in datasets A and B
+    if nSyncEvent.A ~= nSyncEvent.B
         bst_report('Error', sProcess, sInputs.A, 'Cannot process inputs with a different number of synchronization triggers.');
         return;
     end
-    
-    syncCountA = 0;      % keeps track of the sync event was last processed (within current trial of data set A)    
-    iTrialA = 1;         % keeps track of the data set(s) A trial currently in use
-     
-    % === Loop through epochs in set B, transfer events from A to B ===
-    nTrials = numel(sInputs.B);    
-    for iTrialB = 1:nTrials
-        syncCountB = 0;
-        
-        while syncCountB < nSyncEvent.B(iTrialB)  %loop trough multiple trials in A, if multiple trials are associated with one trial in B
-        
-            % Decide which trial of data set A must be used
-            if nSyncEvent.A(iTrialA) == syncCountA   %last event of this trial already used, skip to next trial
-                iTrialA = iTrialA+1;
-                syncCountA = 0;
-            elseif nSyncEvent.A(iTrialA) < syncCountA % this should hopefully not happen.
-                bst_report('Error', sProcess, sInputs.A, 'Error in chosing the right trial in data set A.');
-            end            
-        
-            % === Synchronization ===  
-            
-            % Calculation of offset between the two data sets
-            syncIdcsA = syncCountA+1 : syncCountA + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indeces in this trial of A to use now
-            syncIdcsB = syncCountB+1 : syncCountB + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indeces in this trial of B to use now
-            
-            Offsets = sEvents.A{iTrialA}(iSyncEvent.A(iTrialA)).times(syncIdcsA) - sEvents.B{iTrialB}(iSyncEvent.B(iTrialB)).times(syncIdcsB);
-            tOffsetA = median(Offsets);
-            offsetVar = var(Offsets);
-            offsetStd = std(Offsets);
-            disp(['The variance of the sample offset is ' num2str(offsetVar*1000) 'ms (std: ' num2str(offsetStd*1000) 'ms)']);
-            
-            % find current epoch number of set B
-            currentEpoch = unique(sEvents.B{iTrialB}(iSyncEvent.B(iTrialB)).epochs(syncIdcsB));
-            %Error if more than one epoch...
-            if numel(currentEpoch) > 1
-                bst_report('Error', sProcess, sInputs.A, 'There is more than one epoch within this sync period. Aborting.');
-            end
 
-            % find time window within which to pick events of this trial in set A
-            t_min = min([sEvents.B{iTrialB}.times]); % first event time in this trial of set B
-            t_max = max([sEvents.B{iTrialB}.times]); % last event time in this trial of set B
-            syncWindow = [t_min, t_max] + tOffsetA;        
+    % Verify that files in datasets A and B do not overlap in time
+    if any(diff([timeExtension.A]) < 0)
+        bst_report('Error', sProcess, sInputs.A, 'There is time overlap for A files.');
+    end
+    if any(diff([timeExtension.B]) < 0)
+        bst_report('Error', sProcess, sInputs.B, 'There is time overlap for B files.');
+    end
 
-            % Transfer events, calculate new samples
-            for iEventA = 1:nEvents.A(iTrialA)
-                
-                %find out if this event type is already present in this trial of set B
-                if isempty(find(strcmp(sEvents.A{iTrialA}(iEventA).label, {sEvents.B{iTrialB}(:).label}), 1)) %label not found, create new event type    
-                    
-                    iEventB = nEvents.B(iTrialB)+iEventA; % = new event
-                    nEvtExst = 0; %number of existing events of this type = 0                   
-                    
-                    sEvents.B{iTrialB}(iEventB) = sEvents.A{iTrialA}(iEventA);
-                    nTimes = numel(sEvents.B{iTrialB}(iEventB).times);
-                    sEvents.B{iTrialB}(iEventB).times    = nan(1,nTimes);
-                    sEvents.B{iTrialB}(iEventB).epochs   = ones(1,nTimes)*currentEpoch;
-                    sEvents.B{iTrialB}(iEventB).channels = cell(1,nTimes);
-                    sEvents.B{iTrialB}(iEventB).notes    = cell(1,nTimes);
-                else % label found, use existing event                    
-                    iEventB = find(strcmp(sEvents.A{iTrialA}(iEventA).label, {sEvents.B{iTrialB}(:).label}));
-                    nEvtExst = numel(sEvents.B{iTrialB}(iEventB).times);
-                    
-                    nTimes = numel(sEvents.A{iTrialA}(iEventA).times);
-                    sEvents.B{iTrialB}(iEventB).times    = [sEvents.B{iTrialB}(iEventB).times,    nan(1,nTimes)];
-                    sEvents.B{iTrialB}(iEventB).epochs   = [sEvents.B{iTrialB}(iEventB).epochs,   ones(1,nTimes)*currentEpoch];
-                    sEvents.B{iTrialB}(iEventB).channels = [sEvents.B{iTrialB}(iEventB).channels, cell(1,nTimes)]; 
-                    sEvents.B{iTrialB}(iEventB).notes    = [sEvents.B{iTrialB}(iEventB).notes,    cell(1,nTimes)]; 
-                end
-                
-                for iTime = 1:numel(sEvents.A{iTrialA}(iEventA).times)
-                    % use only events in sync time window
-                    if sEvents.A{iTrialA}(iEventA).times(iTime)  > syncWindow(2) % already over maximum, break loop to save time
-                        break
-                    end
+    % Calculation of offset between the two datasets
+    Offsets  = sFile.A.events(iSyncEvent.A).times - sFile.B.events(iSyncEvent.B).times;
+    tOffsetA  = median(Offsets);
+    offsetStd = std(Offsets);
+    disp(['The population standard deviation of the offsets is ' num2str(offsetStd*1000) ' ms.']);
 
-                    if syncWindow(1) <= sEvents.A{iTrialA}(iEventA).times(iTime)
-                        % Calculation of samples and timepoints in dataset B.               
-                        sEvents.B{iTrialB}(iEventB).times(iTime+nEvtExst) = round((sEvents.A{iTrialA}(iEventA).times(iTime)-tOffsetA) *sFreq.B(iTrialB)) ./ sFreq.B(iTrialB);
-                    end                
-                end  
-                % delete out-of-window times, samples & epochs
-                if ~isempty(find(isnan(sEvents.B{iTrialB}(iEventB).times), 1))
-                    invalidEvts = find(isnan(sEvents.B{iTrialB}(iEventB).times)); % out of time window
-                    sEvents.B{iTrialB}(iEventB).times(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).epochs(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).channels(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).notes(invalidEvts) = [];
-                end
-           end 
+    % Apply offset to dataset A events and update their label
+    iEventGroupsToTransfer = setdiff(1 : length(sFile.A.events), iSyncEvent.A);
+    for ix = 1 : length(iEventGroupsToTransfer)
+        sFile.A.events(iEventGroupsToTransfer(ix)).times = sFile.A.events(iEventGroupsToTransfer(ix)).times - tOffsetA;
+        sFile.A.events(iEventGroupsToTransfer(ix)).label = ['sync ', sFile.A.events(iEventGroupsToTransfer(ix)).label];
+    end
 
-            % Manage sync event counters
-            syncCount = numel(syncIdcsA);
-            syncCountA = syncCountA + syncCount;
-            syncCountB = syncCountB + syncCount;
-        end
-        
-        % Store events in output
+    % Loop files in dataset B, transfer events from dataset A
+    for iFilesB = 1 : length(sInputs.B)
+        % Load events in B file
         if isRaw
-            sMat.B(iTrialB).F.events = sEvents.B{iTrialB};
+            DataMat = in_bst_data(sInputs.B(iFilesB).FileName, 'F');
+            sFileTmp = DataMat.F;
         else
-            sMat.B(iTrialB).Events = sEvents.B{iTrialB};
+            DataMat = in_bst_data(sInputs.B(iFilesB).FileName);
+            sFileTmp.events = DataMat.Events;
+            sFileTmp.prop.sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
-            
+        % Transfer events from dataset A to file B, if their occurence belongs to file B
+        for ix = 1 : length(iEventGroupsToTransfer)
+            newEvents  = sFile.A.events(iEventGroupsToTransfer(ix));
+            curreTimes = timeExtension(iFilesB).B;
+            validTimes = and(newEvents.times >= curreTimes(1), newEvents.times <= curreTimes(2));
+            if any(validTimes)
+                newEvents.times  = newEvents.times(validTimes);
+                newEvents.epochs = ones(1,length(newEvents.times));
+                sFileTmp = import_events(sFileTmp, [], newEvents);
+            end
+        end
+        % Update events and comment in output
+        if isRaw
+            DataMat.F.events = sFileTmp.events;
+        else
+            DataMat.Events = sFileTmp.events;
+            DataMat.Comment = [DataMat.Comment, ' | sync_events'];
+        end
+        % Save output file
+        bst_save(file_fullpath(sInputs.B(iFilesB).FileName), DataMat, 'v6', 1);
+        OutputFiles{iFilesB} = sInputs.B(iFilesB).FileName;
     end
-    
-    % === CREATE OUTPUT STRUCTURE ===
-    % Get output study
-%     [sStudy, iStudy] = bst_process('GetOutputStudy', sProcess, [sInputs.A, sInputs.B]);
-
-    % === SAVE FILES ===
-    OutputFiles = cell(1, numel(sMat.B));
-    for iTrialB = 1:numel(sMat.B)
-        % Output filename
-        sMat.B(iTrialB).Comment = [sInputs.B(iTrialB).Condition, ' + events(', sInputs.A(1).Condition, ')', strComment];
-        
-        bst_save(file_fullpath(sInputs.B(iTrialB).FileName), sMat.B(iTrialB), 'v6', 1);
-        OutputFiles{iTrialB} = sInputs.B(iTrialB).FileName;
-
-    end
+    db_reload_studies(sInputs.B(1).iStudy);
 end
-
-
-
-
 

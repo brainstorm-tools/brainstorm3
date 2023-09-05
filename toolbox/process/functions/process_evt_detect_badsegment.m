@@ -92,6 +92,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Time window to process
     RefTimeWindow = 1; %seconds
    
+    % Ignore bad segments? (not in the options: always enforced)
+    isIgnoreBad = 1;
+
     % Option structure for function in_fread()
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode = 'Time';
@@ -197,26 +200,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cleanRMS = min(refRMS);
 
             % ===== BAD SEGMENTS =====
-            % If ignore bad segments
-            isIgnoreBad = 1;
+            % Create file mask
+            Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
             if isIgnoreBad
-                % Get list of bad segments in file
-                badSeg = panel_record('GetBadSegments', sFile);
-                % Adjust with beginning of file
-                badSeg = badSeg - fileSamples(1) + 1;
-                if ~isempty(TimeWindow)
-                    badSeg = badSeg - (bst_closest(TimeWindow(1), DataMat.Time) - 1);
-                end
-                % Create file mask
-                Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
+                badSeg = process_evt_detect('GetBadSegments', sFile, TimeWindow, DataMat.Time, diff(TimeSamples) + 1);
                 if ~isempty(badSeg) 
                     % Loop on each segment: mark as bad
                     for iSeg = 1:size(badSeg, 2)
                         Fmask(badSeg(1,iSeg):badSeg(2,iSeg)) = true;
                     end
                 end
-            else
-                Fmask = [];
             end
         
             % ===== DETECT ARTIFACTS =====
@@ -331,8 +324,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 %sEvent.times    = (detectedEvt{i} + TimeSamples(1)) ./ sfreq - sFile.prop.times(1);
                 sEvent.times    = detectedEvt{i} ./ sfreq;
                 sEvent.epochs   = ones(1, size(sEvent.times,2));
-                sEvent.channels = cell(1, size(sEvent.times, 2));
-                sEvent.notes    = cell(1, size(sEvent.times, 2));
+                sEvent.channels = [];
+                sEvent.notes    = [];
                 % Add to events structure
                 sFile.events(iEvt) = sEvent;
                 nEvents = nEvents + 1;

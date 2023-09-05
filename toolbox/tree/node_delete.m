@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -32,6 +32,7 @@ ProtocolSubjects = bst_get('ProtocolSubjects');
 iModifiedStudies  = [];
 iModifiedSubjects = [];
 isTreeUpdateModel = 0;
+errStudies = {};
 % Get all nodes descriptions
 nodeType = cell(length(bstNodes), 1);
 iItem    = zeros(1, length(bstNodes));
@@ -82,7 +83,7 @@ switch (lower(nodeType{1}))
             iSubjects = iItem;
         end
         % Delete
-        db_delete_subjects(iSubjects);
+        errStudies = db_delete_subjects(iSubjects);
 
 
 %% ===== CONDITION =====
@@ -122,7 +123,10 @@ switch (lower(nodeType{1}))
             iStudies = setdiff(iStudies, [iAnalysisStudy, iDefaultStudy]);
             % Delete them
             if ~isempty(iStudies)
-                db_delete_studies(iStudies);
+                errSt = db_delete_studies(iStudies);
+                if ~isempty(errSt)
+                    errStudies = cat(2, errStudies, errSt);
+                end
             end
         end
         iModifiedStudies  = -1;
@@ -295,10 +299,10 @@ switch (lower(nodeType{1}))
     case {'data', 'datalist', 'rawdata'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Get data files do delete
-        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data' );
-        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data', -1 );
+        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_data, -10) || isequal(iStudies_results, -10) || isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -385,8 +389,8 @@ switch (lower(nodeType{1}))
         % Get results files
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.STUDIES,f), FileName', 'UniformOutput',0);
         % Get dependent time-freq files
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -478,8 +482,8 @@ switch (lower(nodeType{1}))
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         FullFilesList = {};
         % Get dependent time-freq files
-        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
+        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10)
             disp('BST> Error in tree_dependencies.');
@@ -531,7 +535,26 @@ switch (lower(nodeType{1}))
             end
             iModifiedStudies = unique(iItem);
         end
-        
+
+%% ===== SPIKE FILE =====
+    case 'spike'
+        bst_progress('start', 'Delete nodes', 'Deleting files...');
+        % Delete file
+        FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.STUDIES,f), FileName', 'UniformOutput',0);
+        if (file_delete(FullFilesList, ~isUserConfirm) == 1)
+            iUniqueStudy = unique(iItem);
+            for i=1:length(iUniqueStudy)
+                iStudy = iUniqueStudy(i);
+                iData = iSubItem(iItem == iStudy);
+                sStudy = bst_get('Study', iStudy);
+                % Remove file description from database
+                sStudy.Data(iData) = [];
+                % Study was modified
+                bst_set('Study', iStudy, sStudy);
+            end
+            iModifiedStudies = unique(iItem);
+        end
+
 %% ===== TIMEFREQ FILE =====
     case {'timefreq', 'spectrum'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
@@ -621,10 +644,15 @@ end
 db_save();
 bst_progress('stop');
 
-return
+% ===== DISPLAY ERRORS =====
+% If not all the studies were deleted
+if ~isempty(errStudies) && isUserConfirm
+    errMsg = [...
+        'The following folders could not be deleted: ' 10 ...
+        sprintf(' - %s\n', errStudies{:}), 10 ...
+        'To fix this problem, try the following:' 10 ...
+        ' - Close Matlab,' 10 ...
+        ' - Delete these folders manually,' 10 ...
+        ' - Restart Brainstorm and reload the protocol.'];
+    bst_error(errMsg, 'Delete folders', 0);
 end
-
-
-
-
-

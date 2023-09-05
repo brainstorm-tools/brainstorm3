@@ -209,7 +209,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jTextEventsTimeStop.setFont(jFontText);
             jPanelEvents.add(jTextEventsTimeStop);
             % Set callbacks
-            TimeBoundsEvents = {-500, 500, sFile.prop.sfreq};
+            TimeBoundsEvents = {-10000, 10000, sFile.prop.sfreq};
             gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @EpochTime_Callback);
             gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @EpochTime_Callback);
             TimeUnitBl = [];
@@ -1083,8 +1083,12 @@ function s = GetPanelContents() %#ok<DEFNU>
         for iEvent = 1:length(s.events)
             s.events(iEvent).epochs   = s.events(iEvent).epochs(iSelSmp{iEvent});
             s.events(iEvent).times    = s.events(iEvent).times(:, iSelSmp{iEvent});
-            s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
-            s.events(iEvent).notes    = s.events(iEvent).notes(iSelSmp{iEvent});
+            if ~isempty(s.events(iEvent).channels)
+                s.events(iEvent).channels = s.events(iEvent).channels(iSelSmp{iEvent});
+            end
+            if ~isempty(s.events(iEvent).notes)
+                s.events(iEvent).notes = s.events(iEvent).notes(iSelSmp{iEvent});
+            end
         end
         % Import mode
         s.ImportMode = 'Event';

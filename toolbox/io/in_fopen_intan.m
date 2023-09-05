@@ -70,9 +70,9 @@ hdr.chan_files = {};
 % Read the header
 switch (hdr.FileExt)
     case '.rhd'
-        newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
+        newHeader = read_Intan_RHD2000_bst_2022(DataFile,1,1,1,100);
     case '.rhs'
-        newHeader = read_Intan_RHS2000_file(DataFile,1,1,1,100);
+        newHeader = read_Intan_RHS2000_bst_2018(DataFile,1,1,1,100);
 end
 newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 
@@ -217,8 +217,8 @@ if areThereEvents
             events(iEvt).select     = 1;
             events(iEvt).times      = event_samples(event_labels == event_labels_unique(iEvt))' ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(events(iEvt).times));    % Epoch: set as 1 for all the occurrences
-            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).channels   = [];
+            events(iEvt).notes      = [];
         end
         % Import this list
         sFile = import_events(sFile, [], events);

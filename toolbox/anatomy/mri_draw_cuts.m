@@ -241,6 +241,10 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
         % Reduce array amplitude to the the colormap size
         A = floor( (A - intensityBounds(1)) ./ (intensityBounds(2)-intensityBounds(1)) .* (size(CMap,1)-1) ) + 1;
     end
+    % If slice is full of NaNs (FOOOF @ 0Hz)
+    if (nnz(isnan(A)) > 0)
+        A(isnan(A)) = 1;
+    end
     % Create RGB array
     cmapA = cat(3, reshape(CMap(A,1), size(A)), ...
                    reshape(CMap(A,2), size(A)), ...

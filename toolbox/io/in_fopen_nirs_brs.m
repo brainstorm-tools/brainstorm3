@@ -97,25 +97,38 @@ sFile.device     = 'NIRS Brainsight system';
 sFile.byteorder  = 'l';
 
 % Properties of the recordings
-% Round to microsec to avoid floating imprecision
-sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+% Truncate significant digits to avoid numerical errors in the conversion time<->samples
+sFile.prop.sfreq = 1 ./ ( round(mean(diff(nirs.t)) .* 1e6) ./ 1e6); %sec
+sFile.prop.times = (round(nirs.t(1) .* sFile.prop.sfreq) + [0, length(nirs.t)-1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg  = 1;
 
+% Warning: Unstable sampling frequency
+if (abs(sFile.prop.times(2) - nirs.t(end)) > 1e-3)
+    disp([10, 'BST> WARNING: Unstable sampling frequency in NIRS file.']);
+    disp(sprintf('BST>   | MEAN: mean(1./diff(t))=%1.12f Hz   |   STD: std(1./diff(t))=%1.12f Hz', mean(1./diff(nirs.t)), std(1./diff(nirs.t))));
+    disp(sprintf('BST>   | Time of last sample reported in the NIRS file: %1.12f s', nirs.t(end)));
+    disp(sprintf('BST>   | Time of last sample as imported in Brainstorm: %1.12f s\n', sFile.prop.times(2)));
+end
+
 % Reading events 
-if isfield(nirs,'CondNames')
-    n_event = length(nirs.CondNames);
+if isfield(nirs,'s') && size(nirs.s,2) > 0
+    n_event = size(nirs.s,2);
     events = repmat(db_template('event'), 1, length(n_event));
     for iEvt = 1:n_event
         % Assume simple event (non-extended)
         eventSample = find(nirs.s(:,iEvt)) - 1;
         evtTime     =  eventSample ./ sFile.prop.sfreq;
+
         % Events structure
-        events(iEvt).label      = nirs.CondNames{iEvt};
+        if isfield(nirs, 'CondNames')
+            events(iEvt).label      = nirs.CondNames{iEvt};
+        else
+            events(iEvt).label      = sprintf('%d',iEvt);
+        end
         events(iEvt).times      = evtTime(:)';
         events(iEvt).epochs     = ones(1, length(evtTime));
-        events(iEvt).notes      = cell(1, length(evtTime));
-        events(iEvt).channels   = cell(1, length(evtTime));
+        events(iEvt).notes      = [];
+        events(iEvt).channels   = [];
         events(iEvt).reactTimes = [];
     end
     sFile.events = events;
@@ -140,7 +153,7 @@ if isfield(nirs,'brainsight') && ~isempty(find(nirs.brainsight.acquisition.satur
         event.label      = sprintf('Saturation %d',saturated_channels(i_chan));
         event.times      = evtTime(:)';
         event.epochs     = ones(1, length(evtTime));
-        event.notes      = cell(1, length(evtTime));
+        event.notes      = [];
         event.channels   = channels_saturated;
         event.reactTimes = [];
         sFile.events = [sFile.events event];
@@ -226,17 +239,8 @@ else % take optode coordinates from nirs data structure
     end
     if ~isfield(nirs.SD,'SpatialUnit')
         scale = 0.01; % assume coordinate are in cm
-    else    
-        switch strtrim(nirs.SD.SpatialUnit)
-            case 'mm'
-                scale = 0.001;
-            case 'cm'
-                scale = 0.01;
-            case 'm'
-                scale = 1;
-            otherwise
-                scale = 1;
-        end
+    else
+        scale = bst_units_ui(nirs.SD.SpatialUnit);
     end
     % Apply units
     src_coords = scale .* src_coords;

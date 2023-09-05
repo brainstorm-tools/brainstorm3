@@ -128,7 +128,7 @@ sSimScout = bst_process('CallProcess', 'process_simulate_matrix', [], [], ...
                     'Data(2,:) =             sin(fnoise*2*pi*t + pi*rand(1)) + 4 * (0.5 - rand(1,length(t)));']);
 % Process: Set channel file
 bst_process('CallProcess', 'process_import_channel', sSimScout, [], ...
-    'usedefault',   3);  % Colin27: 10-20 19
+    'usedefault',   'Colin27: 10-20 19');  % Colin27: 10-20 19
 % Process: Compute head model
 bst_process('CallProcess', 'process_headmodel', sSimScout, [], ...
     'sourcespace', 1, ...  % Cortex surface
@@ -152,8 +152,8 @@ DataMat.Events.label   = 'sin+';
 DataMat.Events.color   = [0 1 0];
 DataMat.Events.times   = round((.5:1:nfiles) * sfreq) ./ sfreq;
 DataMat.Events.epochs  = ones(size(DataMat.Events.times));
-DataMat.Events.channels = cell(1, size(DataMat.Events.times, 2));
-DataMat.Events.notes    = cell(1, size(DataMat.Events.times, 2));
+DataMat.Events.channels = [];
+DataMat.Events.notes    = [];
 bst_save(file_fullpath(sSimData.FileName), DataMat, 'v6', 1);
 % Save as an EGI raw file
 RawFile = bst_fullfile(test_dir, 'run01.raw');
@@ -182,7 +182,7 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'evtmode',        'value');
 % Process: Set channel file
 bst_process('CallProcess', 'process_import_channel', sFilesRaw, [], ...
-    'usedefault',   3);  % Colin27: 10-20 19
+    'usedefault',   'Colin27: 10-20 19');  % Colin27: 10-20 19
 % Process: Refine registration
 bst_process('CallProcess', 'process_headpoints_refine', sFilesRaw, []);
 % Process: Project electrodes on scalp

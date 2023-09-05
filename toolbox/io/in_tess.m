@@ -1,7 +1,7 @@
-function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
+function [TessMat, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
 % IN_TESS: Detect file format and load tesselation file.
 %
-% USAGE:  TessMat = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[], SelLabels=[all]);
+% USAGE:  [TessMat, Labels] = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[], SelLabels=[all]);
 %
 % INPUT: 
 %     - TessFile   : full path to a tesselation file
@@ -34,7 +34,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(SelLabels)
@@ -52,6 +52,7 @@ end
 isConvertScs = 1;
 % Initialize returned variables
 TessMat = [];
+Labels = [];
 
 
 %% ===== DETECT FILE FORMAT ====
@@ -87,7 +88,7 @@ elseif strcmpi(FileFormat, 'ALL')
         case '.mat'
             FileFormat = 'BST';
         case '.msh'
-            FileFormat = 'SIMNIBS';
+            FileFormat = 'SIMNIBS3';
         case '.nwb'
             FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
@@ -154,7 +155,7 @@ switch (FileFormat)
         TessMat = in_tess_gii(TessFile);
         % Process all the surfaces
         for iTess = 1:length(TessMat)
-            % Convert from MNI to MRI coordinates
+            % Convert from WORLD to MRI coordinates
             if ~isempty(sMri)
                 TessMat(iTess).Vertices = cs_convert(sMri, 'world', 'mri', TessMat(iTess).Vertices);
                 if isempty(TessMat(iTess).Vertices)
@@ -190,8 +191,8 @@ switch (FileFormat)
         TessMat = in_tess_curry(TessFile);
         TessMat.Vertices = TessMat.Vertices / 1000;
 
-    case 'SIMNIBS'
-        TessMat = in_tess_simnibs(TessFile);
+    case {'SIMNIBS', 'SIMNIBS3', 'SIMNIBS4'}
+        TessMat = in_tess_simnibs(TessFile, FileFormat);
         % World/voxel => SCS coordinates
         if ~isempty(sMri)
             TessMat.Vertices = TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
@@ -214,7 +215,7 @@ switch (FileFormat)
         end
         
     case 'MRI-MASK'
-        TessMat = in_tess_mrimask(TessFile, 0, SelLabels);
+        [TessMat, Labels] = in_tess_mrimask(TessFile, 0, SelLabels);
         
     case 'MRI-MASK-MNI'
         TessMat = in_tess_mrimask(TessFile, 1, SelLabels);

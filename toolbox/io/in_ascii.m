@@ -29,7 +29,7 @@ function F = in_ascii(DataFile, SkipLines, isText)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2022
 
 % Parse inputs 
 if (nargin < 2) || isempty(SkipLines)
@@ -69,8 +69,13 @@ else
             if (i <= SkipLines) || isempty(strtrim(strLine))
                 continue;
             end
-            % Split line
-            tmp = textscan(strLine, '%s');
+            % If there are more commas than spaces or tabs: this is a CSV file
+            if nnz(strLine == ',') > (nnz(strLine == ' ') + nnz(strLine == sprintf('\t')))
+                tmp{1} = str_split(strLine, ',');
+            % Else: Split line with tabs and spaces
+            else
+                tmp = textscan(strLine, '%s');
+            end
             if isempty(tmp)
                 continue;
             end

@@ -1,8 +1,8 @@
-function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy)
+function [NewFiles, iStudyImport] = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy)
 % IMPORT_DATA: Imports a list of datafiles in a Study of Brainstorm database
 % 
-% USAGE:  NewFiles = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
-%         NewFiles = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
+% USAGE:  [NewFiles, iStudyImport] = import_data(DataFiles, [],         FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
+%         [NewFiles, iStudyImport] = import_data(sFile,     ChannelMat, FileFormat, iStudyInit, iSubjectInit, ImportOptions, DateOfStudy=[])
 %
 % INPUT:
 %    - DataFiles     : Cell array of full filenames of the data files to import (requires FileFormat to be set)
@@ -19,7 +19,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 %                      Must be specified if iStudyInit is not defined.
 %                      In this case, default study is created for the target subject.
 %    - ImportOptions : Structure that describes how to import the recordings.
-%     - DateOfStudy  : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
+%    - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
 %
 % NOTE : Some data filenames can be interpreted as subjects/conditions/run :
 %    - cell<i>_<conditionName>_obs<j>.erp     : subject #j, condition #i, conditionName
@@ -42,7 +42,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2023
 
 
 %% ===== PARSE INPUTS =====
@@ -87,6 +87,7 @@ end
 ProtocolInfo = bst_get('ProtocolInfo');
 % Initialize returned variable
 NewFiles = {};
+iStudyImport = [];
 
 
 %% ===== SELECT DATA FILE =====
@@ -132,11 +133,6 @@ if isempty(DataFiles)
         end
     end
 end
-
-
-%% ===== EMPTY TEMPORARY DIRECTORY =====
-bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
-gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== IMPORT SELECTED DATA =====
@@ -279,6 +275,7 @@ for iFile = 1:length(DataFiles)
     % ===== STORE IMPORTED FILES IN DB =====
     bst_progress('start', 'Import MEG/EEG recordings', 'Saving imported files in database...', 0, length(ImportedDataMat));
     strTag = '';
+    importedPath = [];
     % Store imported data files in Brainstorm database
     for iImported = 1:length(ImportedDataMat)
         bst_progress('inc', 1);
@@ -405,9 +402,15 @@ for iFile = 1:length(DataFiles)
         else
             % Add filename to list of newly created files
             NewFiles{end+1} = finalImportedFile;
+            iStudyImport(end+1) = iStudies(end);
         end
     end
     clear sStudy studySubDir
+
+    % Delete temporary import folder
+    if ~isempty(importedPath)
+        file_delete(importedPath, 1, 1);
+    end
 
     % Remove NaN and duplicated values in studies list
     iStudies = unique(iStudies(~isnan(iStudies)));
@@ -452,7 +455,7 @@ for iFile = 1:length(DataFiles)
         % Remove fiducials only from polhemus and ascii files
         isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
         % Perform the NAS/LPA/RPA registration for some specific file formats
-        isAlign = ismember(FileFormat, {'NIRS-BRS'});
+        isAlign = ismember(FileFormat, {'NIRS-BRS','NIRS-SNIRF'});
         % Detect auxiliary EEG channels
         ChannelMat = channel_detect_type(ChannelMat, isAlign, isRemoveFid);
         % Do not align data coming from Brainstorm exported files (already aligned)

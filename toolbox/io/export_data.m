@@ -55,7 +55,7 @@ if iscell(DataFile)
     else
         AllOutputs = cell(1,length(DataFile));
         % Call function once to get the output path
-        AllOutputs{1} = export_data(DataFile{1}, ChannelMat, ExportFile);
+        [AllOutputs{1}, sFileOut1] = export_data(DataFile{1}, ChannelMat, ExportFile);
         if isempty(AllOutputs{1})
             ExportFile = [];
             return;
@@ -72,7 +72,7 @@ if iscell(DataFile)
             newFile = strrep(newFile, '0raw_', '');
             AllOutputs{i} = newFile;
             % Export file
-            export_data(DataFile{i}, ChannelMat, AllOutputs{i});
+            export_data(DataFile{i}, ChannelMat, AllOutputs{i}, sFileOut1.format);
         end
         ExportFile = AllOutputs;
         return;

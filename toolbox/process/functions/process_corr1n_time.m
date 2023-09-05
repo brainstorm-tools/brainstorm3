@@ -65,15 +65,17 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scalarprod.Type       = 'checkbox';
     sProcess.options.scalarprod.Value      = 0;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
-%     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
-%     sProcess.options.outputmode.Type    = 'radio';
-%     sProcess.options.outputmode.Value   = 1;
+    % Why is this disabled just for corr1n_time?
+%     sProcess.options.outputmode.Comment = {'separately for each file', 'average over files/epochs', 'Estimate & save:'; ...
+%                                             'input', 'avg', ''};
+%     sProcess.options.outputmode.Type    = 'radio_linelabel';
+%     sProcess.options.outputmode.Value   = 'input';
+%     sProcess.options.outputmode.Group   = 'output';
     % === OUTPUT COMMENT TAG
     sProcess.options.commenttag.Comment = 'Comment tag: ';
     sProcess.options.commenttag.Type    = 'text';
-    sProcess.options.commenttag.Value   = '';    
+    sProcess.options.commenttag.Value   = '';   
+    sProcess.options.commenttag.Group   = 'output';
 end
 
 
@@ -96,59 +98,56 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+
+    CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method     = 'corr';
     OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
     OPTIONS.isSave     = 0;
-    % Time windows options
-    CommentTag    = sProcess.options.commenttag.Value;
-    EstTimeWinLen = sProcess.options.win.Value{1};
-    Overlap       = sProcess.options.overlap.Value{1}/100;
+    % Sliding time windows options
+    WinLength  = sProcess.options.win.Value{1};
+    WinOverlap = sProcess.options.overlap.Value{1};
     
     % Read time information
     TimeVector   = in_bst(sInputA(1).FileName, 'Time');
     sfreq        = round(1/(TimeVector(2) - TimeVector(1)));
-    winLen       = round(sfreq * EstTimeWinLen);
-    overlapSamps = round(Overlap * winLen);
-    if ~isempty(OPTIONS.TimeWindow)
-        SampTimeWin = bst_closest(OPTIONS.TimeWindow, TimeVector); % number of baseline sample to ignore
-    else
-        SampTimeWin = [1, length(TimeVector)];
-    end
-    timeSamps = [SampTimeWin(1),winLen+SampTimeWin(1)];  
-    iTime = 1;
-    % Error management
-    if (timeSamps(2) >= SampTimeWin(2))
+    % Select input time window
+    TimeVector = TimeVector((TimeVector >= OPTIONS.TimeWindow(1)) & (TimeVector <= OPTIONS.TimeWindow(2)));
+    nTime      = length(TimeVector);
+
+    % Compute sliding windows length
+    Lwin  = round(WinLength * sfreq);
+    Loverlap = round(Lwin * WinOverlap / 100);
+    Nwin = floor((nTime - Loverlap) ./ (Lwin - Loverlap));
+    % If window is bigger than the data
+    if (Lwin > nTime)
         bst_report('Error', sProcess, sInputA, 'Sliding window for the coherence estimation is too long compared with the epochs in input.');
         return;
     end
-    
+
     % Loop over all the time windows
-    while (timeSamps(2) < SampTimeWin(2))
-        % select time window
-        OPTIONS.TimeWindow = TimeVector(timeSamps);
+    for iWin = 1:Nwin
+        % Select time window
+        iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
+        OPTIONS.TimeWindow = TimeVector(iTimes([1,end]));
         % Compute metric
-        ConnectMat = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+        ConnectMat = bst_connectivity(sInputA, [], OPTIONS);
         % Processing errors
         if isempty(ConnectMat) || ~iscell(ConnectMat) || ~isstruct(ConnectMat{1}) || isempty(ConnectMat{1}.TF)
             bst_report('Error', sProcess, sInputA, 'Correction for the selected time segment could not be calculated.');
             return;
         end
         % Start a new brainstorm structure
-        if iTime == 1
+        if (iWin == 1)
             NewMat = ConnectMat{1};
-            NewMat.Time = TimeVector(timeSamps(1));             
+            NewMat.Time = OPTIONS.TimeWindow(1);             
             NewMat.TimeBands = [];
         % Add next time point
         else
-            NewMat.TF(:,iTime,:) = ConnectMat{1}.TF;
-            NewMat.Time(end+1) = TimeVector(timeSamps(1));
+            NewMat.TF(:,iWin,:) = ConnectMat{1}.TF;
+            NewMat.Time(end+1) = OPTIONS.TimeWindow(1);
         end
-        % Update to the next time
-        iTime = iTime+1;
-        newStart = timeSamps(2) - overlapSamps;
-        timeSamps = [newStart, newStart+winLen];
     end
     
     % Fix time vector

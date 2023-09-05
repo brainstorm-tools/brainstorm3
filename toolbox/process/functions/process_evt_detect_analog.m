@@ -230,22 +230,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         % ===== BAD SEGMENTS =====
-        % If ignore bad segments
         Fmask = [];
         if isIgnoreBad
-            % Get list of bad segments in file
-            badSeg = panel_record('GetBadSegments', sFile);
-            % Adjust with beginning of file
-            badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
-            if ~isempty(TimeWindow)
-                badSeg = badSeg - (bst_closest(TimeWindow(1), DataMat.Time) - 1);
-            end
+            badSeg = process_evt_detect('GetBadSegments', sFile, TimeWindow, DataMat.Time, length(TimeVector));
             if ~isempty(badSeg)
                 % Create file mask
                 Fmask = true(size(F));
                 % Loop on each segment: mark as bad
                 for iSeg = 1:size(badSeg, 2)
-                    Fmask(badSeg(1,iSeg):badSeg(2,iSeg)) = false;
+                    Fmask(:, badSeg(1,iSeg):badSeg(2,iSeg)) = false;
                 end
             end
         end
@@ -291,8 +284,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Times, samples, epochs
             sEvent.times    = detectedEvt{i};
             sEvent.epochs   = ones(1, size(sEvent.times,2));
-            sEvent.channels = cell(1, size(sEvent.times, 2));
-            sEvent.notes    = cell(1, size(sEvent.times, 2));
+            sEvent.channels = [];
+            sEvent.notes    = [];
             % Add to events structure
             sFile.events(iEvt) = sEvent;
             nEvents = nEvents + 1;

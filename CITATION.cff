@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "Please cite the following reference in your publications if you have used our software for your data analyses."
+title: "Brainstorm"
+authors:
+  - name: "The Brainstorm team"
+url: "https://neuroimage.usc.edu/brainstorm"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Tadel"
+    given-names: "François"
+  - family-names: "Baillet"
+    given-names: "Sylvain"
+  - family-names: "Mosher"
+    given-names: "John C"
+  - family-names: "Pantazis"
+    given-names: "Dimitrios"
+  - family-names: "Leahy"
+    given-names: "Richard M"
+  doi: "10.1155/2011/879716"
+  journal: "Computational intelligence and neuroscience"
+  publisher: "Hindawi"
+  title: "Brainstorm: a user-friendly application for MEG/EEG analysis"
+  volume: 2011
+  year: 2011

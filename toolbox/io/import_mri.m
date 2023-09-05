@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
+function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
+% USAGE: [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
@@ -16,6 +16,8 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - Labels        : Labels attached to this file (cell array {Nlabels x 3}: {index, text, RGB})
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
+%    - sMri       : Brainstorm MRI structure
+%    - Messages   : String, messages reported by this function
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -35,7 +37,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== PARSE INPUTS =====
 if (nargin < 3) || isempty(FileFormat)
@@ -56,6 +58,7 @@ end
 % Initialize returned variables
 BstMriFile = [];
 sMri = [];
+Messages = [];
 % Get Protocol information
 ProtocolInfo     = bst_get('ProtocolInfo');
 ProtocolSubjects = bst_get('ProtocolSubjects');
@@ -102,10 +105,12 @@ if isempty(MriFile)
 end
 
 %% ===== DICOM CONVERTER =====
+TmpDir = [];
 if strcmpi(FileFormat, 'DICOM-SPM')
     % Convert DICOM to NII
     DicomFiles = MriFile;
-    MriFile = in_mri_dicom_spm(DicomFiles, bst_get('BrainstormTmpDir'), isInteractive);
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'dicom');
+    MriFile = in_mri_dicom_spm(DicomFiles, TmpDir, isInteractive);
     if isempty(MriFile)
         return;
     end
@@ -155,6 +160,12 @@ else
 end
 
 
+%% ===== DELETE TEMPORARY FILES =====
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
+end
+
+
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
 if isempty(Labels) && ~iscell(MriFile)
@@ -177,7 +188,7 @@ if isAtlas && isempty(Comment) && ~iscell(MriFile)
         case 'aseg'
             Comment = 'ASEG';
         case 'aparc+aseg'
-            Comment = 'Deskian-Killiany';
+            Comment = 'Desikan-Killiany';
         case 'aparc.a2009s+aseg'
             Comment = 'Destrieux';
         case {'aparc.DKTatlas+aseg', 'aparc.mapped+aseg'}  % FreeSurfer, FastSurfer
@@ -260,8 +271,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
 
         % === ASK RESLICE ===
         if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras')) && ...
-             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && any(ismember(sMri.InitTransf(:,1),    'vox2ras')) && ...
+            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
              ~isResliceDisabled))
             % If the volumes don't have the same size, add a warning
             if ~isSameSize

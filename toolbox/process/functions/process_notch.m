@@ -126,8 +126,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput.Events.color    = [.8 0 0];
         sInput.Events.epochs   = [1 1];
         sInput.Events.times    = round(trans .* sfreq) ./ sfreq;
-        sInput.Events.channels = cell(1, size(sInput.Events.times, 2));
-        sInput.Events.notes    = cell(1, size(sInput.Events.times, 2));
+        sInput.Events.channels = [];
+        sInput.Events.notes    = [];
     end
     % Comment
     strValue = sprintf('%1.0fHz ', FreqList);
@@ -143,8 +143,6 @@ end
 %% ===== EXTERNAL CALL =====
 % USAGE: x = process_notch('Compute', x, sfreq, FreqList)
 function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth)
-    % Use the signal processing toolbox?
-    UseSigProcToolbox = bst_get('UseSigProcToolbox');
     % Check list of freq to remove
     if isempty(FreqList) || isequal(FreqList, 0)
         return;
@@ -155,6 +153,14 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     if (nargin < 4) || isempty(Method)
         Method = 'hnotch' ;
     end
+    % Use the signal processing toolbox?
+    if bst_get('UseSigProcToolbox')
+        filtfilt_fcn = @filtfilt;
+    else
+        filtfilt_fcn = @oc_filtfilt;
+    end
+    FiltSpec = [];
+    Messages = [] ;
     % Define a default width
     % Remove the mean of the data before filtering
     xmean = mean(x,2);
@@ -163,6 +169,11 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     for ifreq = 1:length(FreqList)
         % Define coefficients of an IIR notch filter
         w0 = 2 * pi * FreqList(ifreq) / sfreq;      %Normalized notch frequncy
+        % Check for valid notch frequency
+        if w0 >= pi
+            Messages = sprintf('Cannot be above %.2f Hz.\n', sfreq/2);
+            return
+        end
         % Pole radius
         switch Method
             case 'hnotch' % (Default after 2019)  radius by a user defined bandwidth (-3dB)
@@ -194,12 +205,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
         
         % Filter signal
         if ~isempty(x)
-            if UseSigProcToolbox
-                x = filtfilt(B,A,x')';
-            else
-                x = filter(B,A,x')';
-                x(:,end:-1:1) = filter(B,A,x(:,end:-1:1)')';
-            end
+            x = filtfilt_fcn(B,A,x')';
         end
     end
     % Restore the mean of the signal
@@ -226,7 +232,6 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     % Compute the effective transient: Number of samples necessary for having 99% of the impulse response energy
     [tmp, iE99] = min(abs(E - 0.99)) ;
     FiltSpec.transient      = iE99 / sfreq ;
-    Messages = [] ; 
 end
 
 
@@ -250,8 +255,9 @@ function DisplaySpec(sfreq)
     end
     % Compute filter specification
     [tmp, FiltSpec, Messages] = Compute([], sfreq, FreqList, Method, bandWidth) ;
-    if isempty(FiltSpec)
+    if isempty(FiltSpec) || ~isempty(Messages)
         bst_error(Messages, 'Filter response', 0);
+        return
     end
 
     b = FiltSpec.NumT; 

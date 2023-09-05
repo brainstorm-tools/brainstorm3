@@ -25,7 +25,7 @@ function [sFile, ChannelMat, errMsg] = in_fopen_kit(RawFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2021
+% Authors: Francois Tadel, 2013-2023
 
 
 %% ===== READ HEADER =====
@@ -73,7 +73,10 @@ if (header.coreg.done == 0)
         FidFile = dir(bst_fullfile(fPath, '*.elp'));
     end
     if isempty(FidFile)
-        disp('KIT>    | Error: Digitized fiducials missing: *_Points.txt or *.elp');
+        FidFile = dir(bst_fullfile(fPath, '*.sfp'));
+    end
+    if isempty(FidFile)
+        disp('KIT>    | Error: Digitized fiducials missing: *_Points.txt / *.elp / *.sfp');
     elseif (length(FidFile) > 1)
         disp(['KIT>    | Error: More than one fiducials files: ' sprintf('%s, ', FidFile.name)]);
         FidFile = [];
@@ -105,7 +108,7 @@ if (header.coreg.done == 0)
         % Read digitized fiducials (the file should contain 8 points)
         xyzDig = ReadPolhemus(FidFile, 0);
         if isempty(xyzDig) || (size(xyzDig,2) ~= 8)
-            error(['The fiducials file must contain 8 points:' FileName]);
+            error(['The fiducials file must contain 8 points:' FidFile]);
         end
         % Read head shape
         if ~isempty(HsFile)
@@ -191,12 +194,18 @@ for i = 1:nChannels
             % Comment including the size (used by ctf_add_coil_defs)
             ChannelMat.Channel(i).Comment = sprintf('KIT Magnetometer size = %1.2f  mm', 1000*header.sensors.channel(i).data.size);
             % Position/Orientation
-            ChannelMat.Channel(i).Loc = [header.sensors.channel(i).data.x; ...
-                                         header.sensors.channel(i).data.y; ...
-                                         header.sensors.channel(i).data.z];
-            ChannelMat.Channel(i).Orient = [sin(header.sensors.channel(i).data.zdir ./ 180 * pi) * cos(header.sensors.channel(i).data.xdir ./ 180 * pi); ...
-                                            sin(header.sensors.channel(i).data.zdir ./ 180 * pi) * sin(header.sensors.channel(i).data.xdir ./ 180 * pi); ...
-                                            cos(header.sensors.channel(i).data.zdir ./ 180 * pi)];
+            if (header.sensors.channel(i).data.x ~= 0) || (header.sensors.channel(i).data.y ~= 0) || (header.sensors.channel(i).data.z ~= 0) || (header.sensors.channel(i).data.xdir ~= 0) || (header.sensors.channel(i).data.zdir ~= 0)
+                ChannelMat.Channel(i).Loc = [header.sensors.channel(i).data.x; ...
+                                             header.sensors.channel(i).data.y; ...
+                                             header.sensors.channel(i).data.z];
+                ChannelMat.Channel(i).Orient = [sin(header.sensors.channel(i).data.zdir ./ 180 * pi) * cos(header.sensors.channel(i).data.xdir ./ 180 * pi); ...
+                                                sin(header.sensors.channel(i).data.zdir ./ 180 * pi) * sin(header.sensors.channel(i).data.xdir ./ 180 * pi); ...
+                                                cos(header.sensors.channel(i).data.zdir ./ 180 * pi)];
+            else
+                ChannelMat.Channel(i).Loc = [];
+                ChannelMat.Channel(i).Orient = [];
+                ChannelMat.Channel(i).Type = 'MEG UNDEFINED';
+            end
             ChannelMat.Channel(i).Weight = 1;
             nMag = nMag + 1;
             
@@ -386,7 +395,7 @@ if ~header.isRegistered
               'In MegLaboratory this function is available under "Import and export" in the "File" menu.' 10 10 ...
               'Alternatively, you can specify the missing information with three files in the same folder:' 10 ...
               ' - *_Marker1_*/*.mrk: File with extension .mrk or .sqd with the HPI coils in MEG device coordinates.' 10 ...
-              ' - *_Points.txt/*.elp: Polhemus file with the fiducials and HPI coils in digitizer coordinates.' 10 ...
+              ' - *_Points.txt/*.elp/.sfp: Polhemus file with the fiducials and HPI coils in digitizer coordinates.' 10 ...
               ' - *_HS.txt/*.hsp: Polhemus file with the head shape points in digitizer coordinates.'];
     % Send to the current report
     bst_report('Warning', 'process_import_data_raw', [], errMsg);
@@ -518,6 +527,19 @@ function [xyz, HeadPoints] = ReadPolhemus(FileName, isHeadShape)
                 xyz = [ChannelMat.HeadPoints.Loc];
             else
                 xyz = [ChannelMat.Channel.Loc];
+            end
+       % BESA format
+        case '.sfp'
+            ChannelMat = in_channel_ascii(FileName, {'Name','-Y','X','Z'}, 0, .001);
+            % Get the positions of the required fiducials: {'fidnz', 'fidt9', 'fidt10', 'LPA', 'RPA', 'CPF', 'LPF', 'RPF'}
+            for fid = {'fidnz', 'fidt9', 'fidt10', 'Coil1', 'Coil2', 'Coil3', 'Coil4', 'Coil5'}
+                iChan = find(strcmpi({ChannelMat.Channel.Name}, fid{1}));
+                if isempty(iChan)
+                    xyz = [];
+                    return;
+                else
+                    xyz(1:3,end+1) = mean([ChannelMat.Channel(iChan).Loc], 2);
+                end
             end
     end
 end

@@ -45,9 +45,9 @@ if sFile.header.chan_headers.AcqType==1
     % Read the corresponding recordings
     switch (sFile.header.FileExt)
         case '.rhd'
-            data_and_headers = read_Intan_RHD2000_file(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples, precision);
+            data_and_headers = read_Intan_RHD2000_bst_2022(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples, precision);
         case '.rhs'
-            data_and_headers = read_Intan_RHS2000_file(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples);
+            data_and_headers = read_Intan_RHS2000_bst_2018(sFile.header.DataFile, 1, 0, SamplesBounds(1) + 1, nSamples);
     end
 end
     

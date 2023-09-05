@@ -42,7 +42,7 @@ uniqueLabels = unique(labels{2});
 sScouts = repmat(db_template('scout'), 1, length(uniqueLabels));
 % Create one scout per label
 for i = 1:length(uniqueLabels)
-    sScouts(i).Vertices = double(labels{1}(labels{2} == uniqueLabels(i))');
+    sScouts(i).Vertices = reshape(double(labels{1}(labels{2} == uniqueLabels(i))'), 1, []);
     sScouts(i).Seed  = [];
     sScouts(i).Color = [];
     sScouts(i).Label = num2str(uniqueLabels(i));

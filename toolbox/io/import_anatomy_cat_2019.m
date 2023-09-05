@@ -10,8 +10,9 @@ function errorMsg = import_anatomy_cat_2019(iSubject, CatDir, nVertices, isInter
 %    - nVertices    : Number of vertices in the file cortex surface
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
+%                     Or full MRI structure with fiducials defined in the SCS structure, to be registered with the FS MRI
 %    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
-%    - isKeepMri    : 0=Delete all existing anatomy files
+%    - isKeepMri    : 0=Delete all existing anatomy files (when importing a segmentation folder generated without Brainstorm into an empty subject)
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
 %    - isTissues     : If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
@@ -37,7 +38,7 @@ function errorMsg = import_anatomy_cat_2019(iSubject, CatDir, nVertices, isInter
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Francois Tadel, 2019-2022
 
 %% ===== PARSE INPUTS =====
 % Import tissues
@@ -229,8 +230,6 @@ if isExtraMaps
     FDLhFile = file_find(CatDir, 'lh.fractaldimension.*', 2);
     FDRhFile = file_find(CatDir, 'rh.fractaldimension.*', 2);
 end
-% Find fiducials definitions
-FidFile = file_find(CatDir, 'fiducials.m');
 % Report errors
 if ~isempty(errorMsg)
     if isInteractive
@@ -241,8 +240,11 @@ end
 
 
 %% ===== IMPORT MRI =====
+% Context: Execution of CAT12 from an MRI already imported in the Brainstorm database
 if isKeepMri && ~isempty(sSubject.Anatomy)
     BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    sMri = in_mri_bst(BstT1File);
+% Context: CAT12 was executed independently from Brainstorm, now importing the output folder in an empty subject
 else
     % Read MRI
     [BstT1File, sMri] = import_mri(iSubject, T1File);
@@ -256,89 +258,20 @@ else
 end
 
 
-%% ===== DEFINE FIDUCIALS =====
-% If fiducials file exist: read it
-isComputeMni = 0;
-if ~isempty(FidFile)
-    % Execute script
-    fid = fopen(FidFile, 'rt');
-    FidScript = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-    % Execute script
-    eval(FidScript);    
-    % If not all the fiducials were loaded: ignore the file
-    if ~exist('NAS', 'var') || ~exist('LPA', 'var') || ~exist('RPA', 'var') || isempty(NAS) || isempty(LPA) || isempty(RPA)
-        FidFile = [];
-    end
-    % If the normalized points were not defined: too bad...
-    if ~exist('AC', 'var')
-        AC = [];
-    end
-    if ~exist('PC', 'var')
-        PC = [];
-    end
-    if ~exist('IH', 'var')
-        IH = [];
-    end
-    % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
-end
-% Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
-    % Use fiducials from file
-    if ~isempty(FidFile)
-        % Already loaded
-    % Compute them from MNI transformation
-    elseif isempty(sFid)
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
-        isComputeMni = 1;
-        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
-    % Else: use the defined ones
-    else
-        NAS = sFid.NAS;
-        LPA = sFid.LPA;
-        RPA = sFid.RPA;
-        AC = sFid.AC;
-        PC = sFid.PC;
-        IH = sFid.IH;
-        % If the NAS/LPA/RPA are defined, but not the others: Compute them
-        if ~isempty(NAS) && ~isempty(LPA) && ~isempty(RPA) && isempty(AC) && isempty(PC) && isempty(IH)
-            isComputeMni = 1;
+%% ===== DEFINE FIDUCIALS / MNI NORMALIZATION =====
+% Set fiducials and/or compute linear MNI normalization
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, CatDir, BstT1File, sFid, isKeepMri, isInteractive);
+% Error handling
+if ~isempty(errCall)
+    errorMsg = [errorMsg, errCall];
+    if isempty(isComputeMni)
+        if isInteractive
+            bst_error(errorMsg, 'Import CAT12 folder', 0);
         end
+        return;
     end
-    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
-        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
-    end
-% Define with the MRI Viewer
-elseif ~isKeepMri
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstT1File, 'EditFiducials');
-    drawnow;
-    bst_progress('stop');
-    % Wait for the MRI Viewer to be closed
-    waitfor(hFig);
-end
-% Load SCS and NCS field to make sure that all the points were defined
-sMri = in_mri_bst(BstT1File);
-if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
-    errorMsg = ['Could not import CAT12 folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
-    if isInteractive
-        bst_error(errorMsg, 'Import CAT12 folder', 0);
-    end
-    return;
 end
 
-%% ===== MNI NORMALIZATION =====
-if isComputeMni
-    % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstT1File);
-    % Error handling
-    errorMsg = [errorMsg errCall];
-end
 
 %% ===== IMPORT SURFACES =====
 % Left pial
@@ -528,7 +461,7 @@ if isExtraMaps && ~isempty(CortexHiFile)
     % Create a condition "CAT12"
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
-    if ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
+    if ~isempty(ThickLhFile) && ~isempty(ThickRhFile)
         import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
     end
     % Import gyrification

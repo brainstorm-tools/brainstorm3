@@ -720,8 +720,8 @@ function InitializeRealtimeMeasurement(ReComputeHeadModel)
         sSurf = in_tess_bst(ResultsMat.SurfaceFile);
         verts=[];
         for ii = 1:length(RTConfig.scoutName)
-            iScout = find(strcmpi({sSurf.Atlas(sSurf.iAtlas).Scouts.Label},RTConfig.scoutName{ii}));
-            verts = [verts sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices];
+            iScout = find(strcmpi({sSurf.Atlas(sSurf.iAtlas).Scouts.Label}, RTConfig.scoutName{ii}));
+            verts = [verts, sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices(:)'];
         end
         RTConfig.ScoutVertices = verts; % group all scouts together
     end

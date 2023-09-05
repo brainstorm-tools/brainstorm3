@@ -35,13 +35,16 @@ function [iNewFibers, OutputFiles, nFibers] = import_fibers(iSubject, FibersFile
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2019
-%          Francois Tadel, 2021
+%          Francois Tadel, 2021-2022
 
 
 %% ===== PARSE INPUTS =====
 % Check command line
-if ~isnumeric(iSubject) || (iSubject < 0)
-    error('Invalid subject indice.');
+if nargin < 5
+    CS = [];
+end
+if nargin < 4
+    nPoints = [];
 end
 if (nargin < 3) || isempty(FibersFiles)
     FibersFiles = {};
@@ -54,13 +57,13 @@ else
         error('When you pass a FibersFiles argument, FileFormat must be defined too.');
     end
 end
-if nargin < 4
-    nPoints = [];
+if ~isnumeric(iSubject) || (iSubject < 0)
+    error('Invalid subject indice.');
 end
+% Inialize returned values
 iNewFibers = [];
 OutputFiles = {};
 nFibers = [];
-CS = [];
 % Get subject
 sSubject = bst_get('Subject', iSubject);
 

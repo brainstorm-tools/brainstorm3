@@ -38,8 +38,8 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel & Alexandre Gramfort, 2011-2021
-
+% Authors: Francois Tadel, 2011-2023
+%          Alexandre Gramfort, 2011-2020
 
 %% ===== PARSE INPUTS =====
 
@@ -102,7 +102,7 @@ if isSeeg && OPTIONS.isAdjoint
     return;
 end
 % Get temp folder
-TmpDir = bst_get('BrainstormTmpDir');
+TmpDir = bst_get('BrainstormTmpDir', 0, 'openmeeg');
 % Open log file
 logFile = bst_fullfile(TmpDir, 'openmeeg_log.txt');
 fid_log = fopen(logFile, 'w');
@@ -147,9 +147,9 @@ for i = 1:length(OPTIONS.BemFiles)
     iDipOutside = find(~inpolyhd(vDipoles, vLayer, TessMat.Faces));
     if ~isempty(iDipOutside)
         errMsg = sprintf(['WARNING: %d dipole(s) outside the BEM layer "%s".\n' ...
-                          'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipOutside), OPTIONS.BemNames{i});
+                          'The leadfield for these dipoles could be incorrect.'], length(iDipOutside), OPTIONS.BemNames{i});
         if strcmpi(OPTIONS.HeadModelType, 'surface')
-            errMsg = [errMsg, 'First, try to recompute BEM surfaces with more vertices.' 10 ...
+            errMsg = [errMsg, 10 10 'First, try to recompute BEM surfaces with more vertices.' 10 ...
                 'Otherwise, right-click on the cortex file > Force inside skull.' 10 ...
                 'See the OpenMEEG BEM tutorial, section "Warning: dipoles outside".'];
         end
@@ -158,6 +158,8 @@ for i = 1:length(OPTIONS.BemFiles)
             isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
             if ~isConfirm
                 errMsg = [];
+                % Delete the temporary files
+                file_delete(TmpDir, 1, 1);
                 return;
             end
         end
@@ -177,6 +179,8 @@ for i = 1:length(OPTIONS.BemFiles)
                 isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
                 if ~isConfirm
                     errMsg = [];
+                    % Delete the temporary files
+                    file_delete(TmpDir, 1, 1);
                     return;
                 end
             end
@@ -409,16 +413,8 @@ if ~isempty(fid_log) && (fid_log >= 0) && ~isempty(fopen(fid_log))
 end
 % Go back to initial folder
 cd(curdir);
-% Delete intermediary files
-allfiles = setdiff({geomfile, condfile, dipfile, dsmfile, ...
-                    eegloc_file, h2emfile, eeggain_file, ...
-                    megloc_file, h2mmfile, ds2megfile, meggain_file, ...
-                    ecogloc_file, h2ecogmfile, ecoggain_file, ...
-                    seegloc_file, h2ipmfile, ds2ipmfile, seeggain_file}, {''});
-if ~OPTIONS.isAdjoint && ~isempty(hmfile)
-    allfiles{end+1} = hmfile;
-end
-file_delete(cat(2, trifiles, allfiles), 1);
+% Delete the temporary files
+file_delete(TmpDir, 1, 1);
 % Remove OpenMEEG image
 bst_plugin('SetProgressLogo', []);
 

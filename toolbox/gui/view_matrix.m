@@ -78,6 +78,12 @@ else
     end
     StatInfo = [];
 end
+% Display units
+if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
+    DisplayUnits = sMat.DisplayUnits;
+else
+    DisplayUnits = [];
+end
 
 % Duplicate time if only one time frame
 if (size(Value,2) == 1)
@@ -98,7 +104,7 @@ switch lower(DisplayMode)
             AxesLabels = sMat.Comment;
             LinesLabels = sMat.Description;
         end
-        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std);
+        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
         
     case 'image'
         % Load file

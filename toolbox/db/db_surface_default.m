@@ -21,7 +21,7 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2022
 
 % Get protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
@@ -104,6 +104,25 @@ if isUpdate
         end
     else
         panel_protocols('UpdateNode', 'Subject', iSubject);
+    end
+end
+
+% ===== REMOVE INTERPOLATIONS =====
+% If the default MRI changes, all the surface-MRI interpolations saved in the surface files must be updated
+if strcmpi(SurfaceType, 'Anatomy')
+    for i = 1:length(sSubject.Surface)
+        % Load surface
+        TessFile = file_fullpath(sSubject.Surface(i).FileName);
+        TessMat = in_tess_bst(TessFile, 0);
+        % If there is an interpolation
+        if isfield(TessMat, 'tess2mri_interp') && ~isempty(TessMat.tess2mri_interp)
+            % Remove interpolation
+            TessMat.tess2mri_interp = [];
+            % Save cleaned surface file
+            bst_save(TessFile, TessMat, 'v7');
+            % Unload from memory
+            bst_memory('UnloadSurface', TessFile, 1);
+        end
     end
 end
 

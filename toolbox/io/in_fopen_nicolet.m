@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_nicolet(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2018
+% Authors: Francois Tadel, 2017-2022
 
 
 %% ===== READ HEADER =====
@@ -46,6 +46,9 @@ if ~isempty(iIgnored)
     end
     fprintf(1, '\n');
 end
+% Save value to indicate the version of the NicoletFile object
+NICOLET_VER = 2;
+hdr.objversion = NICOLET_VER;
 
 
 %% ===== FILL STRUCTURE =====
@@ -150,8 +153,8 @@ for iEvt = 1:length(uniqueEvt)
         sFile.events(iEvt).epochs  = [sFile.events(iEvt).epochs,  iEpoch * ones(size(allTime))];
     end
     % Add channels and notes fields
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 
 

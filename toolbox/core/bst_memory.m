@@ -8,7 +8,7 @@ function [ varargout ] = bst_memory( varargin )
 %      [iDS, iResult] = bst_memory('LoadResultsFileFull',  ResultsFile)
 %      [iDS, iDipole] = bst_memory('LoadDipolesFile',      DipolesFile)
 %       [iDS, iTimef] = bst_memory('LoadTimefreqFile',     TimefreqFile)
-%                       bst_memory('LoadMri',              iDS, MriFile);
+%        [sMri, iMri] = bst_memory('LoadMri',              iDS, MriFile);
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
@@ -67,7 +67,8 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2023
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -555,6 +556,7 @@ function LoadChannelFile(iDS, ChannelFile)
         % Save in DataSet structure
         GlobalData.DataSet(iDS).ChannelFile     = file_win2unix(ChannelFile);
         GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).Clusters        = ChannelMat.Clusters;
         GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
         GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
         GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
@@ -581,8 +583,9 @@ function LoadChannelFile(iDS, ChannelFile)
             GlobalData.DataSet(iDS).Channel(i).Loc  = [0;0;0];
             GlobalData.DataSet(iDS).Channel(i).Type = 'EEG';
         end
-        GlobalData.DataSet(iDS).MegRefCoef      = []; 
-        GlobalData.DataSet(iDS).Projector       = []; 
+        GlobalData.DataSet(iDS).MegRefCoef      = [];
+        GlobalData.DataSet(iDS).Projector       = [];
+        GlobalData.DataSet(iDS).Clusters        = [];
         GlobalData.DataSet(iDS).IntraElectrodes = [];
     end
 end
@@ -670,6 +673,18 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
                 isRetry = 0;
             end
         end
+
+        % Check version of Nicolet object (after change introduced on 5-Sep-2022)
+        NICOLET_VER = 2;
+        if strcmpi(sFile.format, 'EEG-NICOLET') && (~isfield(sFile.header, 'objversion') || isempty(sFile.header.objversion) || (sFile.header.objversion < NICOLET_VER))
+            disp(['BST> Updating outdated NicoletFile object: ', DataFile]);
+            % Update NicoletFile object
+            sFile.header.obj = NicoletFile(sFile.filename);
+            sFile.header.objversion = NICOLET_VER;
+            % Save modifications in file
+            DataMat.F = sFile;
+            bst_save(file_fullpath(DataFile), DataMat, 'v6', 1);
+        end
     else
         MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits');
         Time = MeasuresMat.Time;
@@ -731,10 +746,12 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     if ~isempty(iDS) && ~isReloadForced
         if ~isempty(sStudy.BrainStormSubject) && ~file_compare(sStudy.BrainStormSubject, GlobalData.DataSet(iDS).SubjectFile)
             iDS = [];
+        % Check time window
+        elseif ~isStatic && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (Measures.NumberOfSamples > 2) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples ~= Measures.NumberOfSamples)
+            error('Time definition is incompatible with previously loaded data.');
         else
             GlobalData.DataSet(iDS).Measures.DataType    = Measures.DataType;
             GlobalData.DataSet(iDS).Measures.ChannelFlag = Measures.ChannelFlag;
-            % GlobalData.DataSet(iDS).Measures.sFile       = Measures.sFile;
             if ~isempty(Measures.sFile) && isempty(GlobalData.DataSet(iDS).Measures.sFile)
                 GlobalData.DataSet(iDS).Measures.sFile = Measures.sFile;
             end
@@ -1443,7 +1460,7 @@ function [iDS, iDipoles] = LoadDipolesFile(DipolesFile, isTimeCheck) %#ok<DEFNU>
     if isempty(iDipoles) && isempty(iResults)
         GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
         if ~isempty(ChannelFile)
-            GlobalData.DataSet(iDS).ChannelFile = file_short(ChannelFile);
+            LoadChannelFile(iDS, ChannelFile);
         end
         GlobalData.DataSet(iDS).DataFile    = '';
     end
@@ -1543,6 +1560,11 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
 
     % ===== GET ALL INFORMATION =====
+    % If the input data is derivated dataset
+    LoadedFile = TimefreqFile;
+    if any(TimefreqFile == '$')
+        TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
+    end
     % Get file information
     [sStudy, iTf, ChannelFile, FileType, sItem] = GetFileInfo(TimefreqFile);
     TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'DataType');
@@ -1580,9 +1602,9 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
     % Load timefreq file
     if ~isempty(iDS)
-        iTimefreq = GetTimefreqInDataSet(iDS, TimefreqFile);
+        iTimefreq = GetTimefreqInDataSet(iDS, LoadedFile);
     else
-        [iDS, iTimefreq] = GetDataSetTimefreq(TimefreqFile);
+        [iDS, iTimefreq] = GetDataSetTimefreq(LoadedFile);
     end
     % If dataset for target file already exists, just return its index
     if ~isForceReload && ~isempty(iDS) && ~isempty(iTimefreq)
@@ -1812,19 +1834,19 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
         % Copy list to all modalities
         GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities = Modality;
+        % PSD: dataset channel flag from parent data file
+        if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
+            ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
+            if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
+                GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
+            end
+        end
         % If only one modality: consider it as the "type" of the file
         if (length(Modality) == 1)
             GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality = Modality{1};
             % If the good/bad channels for the dataset are not defined yet
             if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
-                % PSD: Remove bad channels defined in parent data file
-                if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
-                    ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
-                    if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
-                        GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
-                    end
-                end
-                % Otherwise: Set all the channels as good by default
+                % Set all the channels as good by default
                 if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
                     GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
                 end
@@ -2258,7 +2280,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         isFooof = false;
         isSPRiNT = false;
     else
-        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)));
         isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT);
     end
     % Default RefRowName: all
@@ -2369,53 +2391,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % Extract values
     % FOOOF: Swap TF data for relevant FOOOF data
     if isFooof && ~isequal(FooofDisp, 'spectrum')
-        isFooofFreq = ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs);
-        if isequal(FooofDisp, 'overlay')
-            nFooofRow = 4;
-        else
-            nFooofRow = numel(iRow);
-        end
-        [s1 s2 s3] = size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF);
-        Values = NaN([nFooofRow, s2, s3 ]);
-        nFooofFreq = sum(isFooofFreq);
-        % Check for old structure format with extra .FOOOF. level.
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
-            for iiRow = 1:numel(iRow)
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).fooofed_spectrum = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.fooofed_spectrum;
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).ap_fit = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.ap_fit;
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).peak_fit = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.peak_fit;
-            end
-        end
-        % Get requested FOOOF measure
-        switch FooofDisp
-            case 'overlay'
-                Values(1,1,:) = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, 1, :);
-                Values(4,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
-                Values(2,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
-                % Peaks are fit in log space, so they are multiplicative in linear space and not in the same scale, show difference instead. 
-                Values(3,1,isFooofFreq) = Values(4,1,isFooofFreq) - Values(2,1,isFooofFreq); 
-                %Values(3,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
-                % Use TF min as cut-off level for peak display.
-                YLowLim = min(Values(1,1,:));
-                Values(3,1,Values(3,1,:) < YLowLim) = NaN;
-            case 'model'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'aperiodic'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'peaks'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'error'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'exponent'
-                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).exponent]';
-            case 'offset'
-                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).offset]';
-            otherwise
-                error('Unknown FOOOF display option.');
-        end
+        Values = process_extract_fooof('Compute', GlobalData.DataSet(iDS).Timefreq(iTimefreq), FooofDisp, iRow);
         if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
             Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
             if (nnz(isnan(Values)) > 0) && length(iFreqs) == 1 % If freqslice full of NaNs (e.g., 0Hz)
@@ -2516,7 +2492,6 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         end
     end
 end
-
 
 %% ===== GET PAC VALUES =====
 % Calculate an average on the fly if there are several rows
@@ -3234,8 +3209,6 @@ function isCancel = UnloadAll(varargin)
             % Get next surface
             panel_scout('SetCurrentSurface', CurrentSurface);
         end
-        % Unload clusters
-        panel_cluster('RemoveAllClusters');
     end
     % Empty the clipboard
     bst_set('Clipboard', []);
@@ -3274,7 +3247,7 @@ function isCancel = UnloadAll(varargin)
             delete(hFigHist);
         end
         % Close spike sorting figure
-        process_spikesorting_supervised('CloseFigure');
+        panel_spikes('CloseFigure');
         % Restore default window manager
         if ~ismember(bst_get('Layout', 'WindowManager'), {'TileWindows', 'WeightWindows', 'FullArea', 'FullScreen', 'None'})
             bst_set('Layout', 'WindowManager', 'TileWindows');
@@ -3294,6 +3267,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('Stat');
         gui_hide('iEEG');
         gui_hide('Spikes');
+        gui_hide('Cluster');
     end
     if isNewProgress
         bst_progress('stop');
@@ -3559,6 +3533,7 @@ function SaveChannelFile(iDS)
     % Get modified fields
     ChannelMat.Channel         = GlobalData.DataSet(iDS).Channel;
     ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    ChannelMat.Clusters        = GlobalData.DataSet(iDS).Clusters;
     % History: Edit channel file
     ChannelMat = bst_history('add', ChannelMat, 'edit', 'Edited manually');
     % Save file

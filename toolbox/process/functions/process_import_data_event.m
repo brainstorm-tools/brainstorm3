@@ -194,6 +194,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     else
         TimeRange = [];
     end
+    % Get split parameter
+    if isfield(sProcess.options, 'split') && isfield(sProcess.options.split, 'Value') && iscell(sProcess.options.split.Value) && ~isempty(sProcess.options.split.Value)
+        Split = sProcess.options.split.Value{1};
+    else
+        Split = 0;
+    end
     % Event names
     EvtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
     if isempty(EvtNames)
@@ -217,8 +223,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.UseEvents         = 1;
     ImportOptions.EventsTimeRange   = EventsTimeRange;
     ImportOptions.iEpochs           = 1;
-    ImportOptions.SplitRaw          = (sProcess.options.split.Value{1} > 0);
-    ImportOptions.SplitLength       = sProcess.options.split.Value{1};
+    ImportOptions.SplitRaw          = (Split > 0);
+    ImportOptions.SplitLength       = Split;
     ImportOptions.UseCtfComp        = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp            = sProcess.options.usessp.Value;
     ImportOptions.CreateConditions  = CreateConditions;
@@ -231,11 +237,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
         % BaselineRange
-        if ~isempty(sProcess.options.baseline.Value{1})
+        if isequal(sProcess.options.baseline.Value{1}, 'all')
+            ImportOptions.RemoveBaseline = 'all';
+            ImportOptions.BaselineRange  = [];
+        elseif ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
-        else
-            ImportOptions.RemoveBaseline = 'all';
         end
         % BaselineSensorType
         if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
@@ -342,8 +349,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             % Get the selected occurrences
             newEvt.times    = newEvt.times(:, iOcc);
             newEvt.epochs   = newEvt.epochs(iOcc);
-            newEvt.channels = newEvt.channels(iOcc);
-            newEvt.notes    = newEvt.notes(iOcc);
+            if ~isempty(newEvt.channels)
+                newEvt.channels = newEvt.channels(iOcc);
+            end
+            if ~isempty(newEvt.notes)
+                newEvt.notes = newEvt.notes(iOcc);
+            end
             % Add to the list of events to import
             events(end+1) = newEvt;
         end

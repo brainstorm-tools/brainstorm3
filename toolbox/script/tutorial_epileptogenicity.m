@@ -5,7 +5,7 @@ function tutorial_epileptogenicity(tutorial_dir)
 %     https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the tutorial_epimap.zip file has been unzipped
+%     tutorial_dir: Directory where the tutorial_epimap_bids.zip file has been unzipped
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,7 +25,7 @@ function tutorial_epileptogenicity(tutorial_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2017
+% Author: Francois Tadel, 2017-2022
 
 
 % ===== FILES TO IMPORT =====
@@ -34,15 +34,15 @@ if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial dataset folder.');
 end
 % Build the path of the files to import
-Sz1File     = fullfile(tutorial_dir, 'tutorial_epimap', 'seeg', 'SZ1.TRC');
-Sz2File     = fullfile(tutorial_dir, 'tutorial_epimap', 'seeg', 'SZ2.TRC');
-Sz3File     = fullfile(tutorial_dir, 'tutorial_epimap', 'seeg', 'SZ3.TRC');
-MriFilePre  = fullfile(tutorial_dir, 'tutorial_epimap', 'anat', 'MRI', '3DT1pre_deface.nii');
-MriFilePost = fullfile(tutorial_dir, 'tutorial_epimap', 'anat', 'MRI', '3DT1post_deface.nii');
-ElecPosFile = fullfile(tutorial_dir, 'tutorial_epimap', 'anat', 'implantation', 'elec_pos_patient.txt');
+MriFilePre  = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-preimp',  'anat', 'sub-01_ses-preimp_T1w.nii.gz');
+MriFilePost = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-postimp', 'anat', 'sub-01_ses-postimp_T1w.nii.gz');
+Sz1File     = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-postimp', 'ieeg', 'sub-01_ses-postimp_task-seizure_run-01_ieeg.eeg');
+Sz2File     = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-postimp', 'ieeg', 'sub-01_ses-postimp_task-seizure_run-02_ieeg.eeg');
+Sz3File     = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-postimp', 'ieeg', 'sub-01_ses-postimp_task-seizure_run-03_ieeg.eeg');
+ElecPosFile = fullfile(tutorial_dir, 'tutorial_epimap_bids', 'sub-01', 'ses-postimp', 'ieeg', 'sub-01_ses-postimp_space-ScanRAS_electrodes.tsv');
 % Check if the folder contains the required files
 if ~file_exist(Sz1File)
-    error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_epimap.zip.']);
+    error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_epimap_bids.zip.']);
 end
 % Subject name
 SubjectName = 'Subject01';
@@ -58,7 +58,7 @@ end
 % Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolName);
 % Create new protocol
-gui_brainstorm('CreateProtocol', ProtocolName, 0, 1);
+gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Start a new report
 bst_report('Start');
 
@@ -67,11 +67,10 @@ bst_report('Start');
 % Create subject
 [sSubject, iSubject] = db_add_subject(SubjectName, [], 0, 0);
 % Import both volumes
-DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0);
-DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0);
-% Compute the MNI coordinates for both volumes
-[sMriPre, errMsg]  = bst_normalize_mni(DbMriFilePre);
-[sMriPost, errMsg] = bst_normalize_mni(DbMriFilePost);
+DbMriFilePre = import_mri(iSubject, MriFilePre, 'ALL', 0, 0, 'T1pre');
+DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0, 'T1post');
+% Compute the non-linear MNI coordinates for both volumes
+[sMriPre, errMsg]  = bst_normalize_mni(DbMriFilePre, 'segment');
 % Volumes are not registered: Register with SPM
 isRegistered = 1;
 if ~isRegistered
@@ -83,32 +82,8 @@ end
 % Reslice the "post" volume
 [DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, 'vox2ras', 'vox2ras');
 
-            
-% ===== SORT ANATOMY FOLDER =====
-% Get updated subject structure
-[sSubject, iSubject] = bst_get('Subject', SubjectName);
-% Delete non-registered post MRI
-file_delete(DbMriFilePost, 1);
-sSubject.Anatomy(2) = [];
-% Anatomy folder
-AnatDir = bst_fileparts(file_fullpath(sSubject.FileName));
-MriPre = fullfile(AnatDir, 'subjectimage_pre.mat');
-MriPost = fullfile(AnatDir, 'subjectimage_post_orig.mat');
-MriPostReslice = fullfile(AnatDir, 'subjectimage_post.mat');
-% Rename imported volumes
-file_move(file_fullpath(DbMriFilePre), MriPre);
-file_move(file_fullpath(DbMriFilePostReg), MriPost);
-file_move(file_fullpath(DbMriFilePostReslice), MriPostReslice);
-sSubject.Anatomy(1).FileName = file_short(MriPre);
-sSubject.Anatomy(2).FileName = file_short(MriPost);
-sSubject.Anatomy(3).FileName = file_short(MriPostReslice);
-% Update database
-bst_set('Subject', iSubject, sSubject);
-panel_protocols('UpdateNode', 'Subject', iSubject);
-% Save MRI pre as permanent default
-db_surface_default(iSubject, 'Anatomy', 1, 0);
 % Compute SPM canonical surfaces
-SurfResolution = 4;   %1=5124V, 2=8196V, 3=20484V 4=7861V+hip+amyg
+SurfResolution = 3;   %1=5124V, 2=8196V, 3=20484V 4=7861V+hip+amyg
 process_generate_canonical('Compute', iSubject, 1, SurfResolution, 0);
 
 
@@ -116,16 +91,15 @@ process_generate_canonical('Compute', iSubject, 1, SurfResolution, 0);
 % Process: Create link to raw file
 sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',    SubjectName, ...
-    'datafile',       {{Sz1File, Sz2File, Sz3File}, 'EEG-MICROMED'}, ...
+    'datafile',       {{Sz1File, Sz2File, Sz3File}, 'SEEG-ALL'}, ...
     'channelreplace', 0, ...
     'channelalign',   0);
 % Process: Add EEG positions
 bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
-    'channelfile', {ElecPosFile, 'ASCII_NXYZ'});
-% Process: Set channels type
-sFilesRaw = bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], ...
-    'sensortypes', 'EEG', ...
-    'newtype',     'SEEG');
+    'channelfile', {ElecPosFile, 'BIDS-SCANRAS-MM'}, ...
+    'fixunits',    0, ...
+    'vox2ras',     1, ...
+    'mrifile',     {file_fullpath(DbMriFilePostReslice), 'BST'});
 % Process: Power spectrum density (Welch)
 sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
     'timewindow',  [], ...
@@ -148,16 +122,15 @@ bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(1), [], 'sensorty
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(2), [], 'sensortypes', 'v''1, t''8');
 bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensortypes', 'o''1, t''8');
 % Define events
-sfreq = 512;
 sEvt1 = db_template('event');
 sEvt1(1).label   = 'Onset';
 sEvt1(1).epochs  = 1;
-sEvt1(1).channels= {{}};
-sEvt1(1).notes   = {[]};
+sEvt1(1).channels= [];
+sEvt1(1).notes   = [];
 sEvt1(2).label   = 'Baseline';
 sEvt1(2).epochs  = 1;
-sEvt1(2).channels= {{}};
-sEvt1(2).notes   = {[]};
+sEvt1(2).channels= [];
+sEvt1(2).notes   = [];
 % SZ1
 sEvt1(1).times   = 120.800;
 sEvt1(2).times   = [72.800; 77.800];
@@ -199,6 +172,16 @@ sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFilesRaw
     'createcond',  0, ...
     'ignoreshort', 0, ...
     'usessp',      0);
+% Rename folders
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-01_ieeg'), bst_fullfile(SubjectName, 'run-01'));
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-02_ieeg'), bst_fullfile(SubjectName, 'run-02'));
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-03_ieeg'), bst_fullfile(SubjectName, 'run-03'));
+% Search again for files
+sFilesBaselines = bst_process('CallProcess', 'process_select_search', [], [], ...
+    'search', '([name CONTAINS "Baseline"])');
+sFilesOnsets = bst_process('CallProcess', 'process_select_search', [], [], ...
+    'search', '([name CONTAINS "Onset"])');
+
 
 % ===== BIPOLAR MONTAGE =====
 MontageName = [SubjectName, ': SEEG (bipolar 2)[tmp]'];

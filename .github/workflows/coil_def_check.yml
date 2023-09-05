@@ -1,0 +1,49 @@
+name: 'coil_def.dat Update Checker' 
+on: 
+  schedule:
+    # runs at 9:00h UTC, every day of the month, every month, on Mondays to Fridays.
+    - cron: '0 9 * * 1-5'
+
+permissions:
+  issues: write
+
+jobs:
+  Compare-coil_def-updates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone brainstorm repo
+        uses: actions/checkout@v3
+        
+      - name: Download coil_def.dat from mne-python repo
+        run: |
+          coilDefUrl=https://raw.githubusercontent.com/mne-tools/mne-python/main/mne/data/coil_def.dat
+          curl $coilDefUrl -o toolbox/io/private/coil_def.dat
+          if [[ $(git diff) ]]; then
+            echo 'detected diferences between coil_def.dat versions'
+            echo 'COILDEF_FILES_DIFERENT=TRUE' >> $GITHUB_ENV
+          else
+            echo 'no diferences between coil_def.dat versions'
+            echo 'COILDEF_FILES_DIFERENT=FALSE' >> $GITHUB_ENV
+          fi
+          
+      - name: Create Issue if different
+        if: ${{ env.COILDEF_FILES_DIFERENT == 'TRUE' }}
+        uses: dacbd/create-issue-action@main
+        with:
+          token: ${{secrets.GITHUB_TOKEN}}
+          title: coil_def.dat needs update
+          body: |
+            ### Context
+            This issue is automatically created because ```coil_def.dat``` between Brainstorm and MNE-Python have diverged.
+            ### Review Differences
+            - MNE-Python version: [mne-python/mne/data/coil_def.dat](https://github.com/mne-tools/mne-python/blob/main/mne/data/coil_def.dat).
+            - Brainstorm version: [brainstorm3/toolbox/io/private/coil_def.dat](https://github.com/brainstorm-tools/brainstorm3/blob/master/toolbox/io/private/coil_def.dat).
+            ### Update changes
+            - Manually verify the changes and if needed, update ```coil_def.dat``` and create a pull request.
+
+
+
+            
+
+
+

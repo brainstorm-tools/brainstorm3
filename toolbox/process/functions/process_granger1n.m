@@ -72,7 +72,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
         OutputFiles = {};
         return
     end
-    
+
     % Metric options
     OPTIONS.Method = 'granger';
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
@@ -81,7 +81,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.Freqs        = 0;
     
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
 end
 
 

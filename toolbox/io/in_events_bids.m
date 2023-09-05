@@ -25,7 +25,7 @@ function events = in_events_bids(sFile, EventFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Francois Tadel, 2019-2022
 
 % Read tsv file
 % https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
@@ -89,6 +89,9 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).label  = uniqueEvt{iEvt};
     events(iEvt).epochs = ones(1, length(iMrk));
     events(iEvt).times  = [onsets{:}];
+    % Convert latencies from the first sample in the file to the real timing 
+    % See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+    events(iEvt).times = events(iEvt).times + sFile.prop.times(1);
     % Extended events if durations are defined for all the markers
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
@@ -100,7 +103,7 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
     events(iEvt).channels   = channels;
-    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = [];
 end
 
 

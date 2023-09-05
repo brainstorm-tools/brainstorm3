@@ -36,7 +36,7 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== INITIALIZATION =====
 global GlobalData;
@@ -219,7 +219,8 @@ if isNewFig
     TsInfo.RowNames      = RowNames;
     TsInfo.MontageName   = [];
     TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
-    TsInfo.FlipYAxis     = ~isempty(Modality) && ismember(Modality, {'EEG','MEG','MEG GRAD','MEG MAG','SEEG','ECOG','NIRS'}) && ~isStat && bst_get('FlipYAxis');
+    TsInfo.DisplayUnits  = GlobalData.DataSet(iDS).Measures.DisplayUnits;
+    TsInfo.FlipYAxis     = ~isempty(Modality) && ismember(Modality, {'EEG','MEG','MEG GRAD','MEG MAG','SEEG','ECOG'}) && ~isStat && bst_get('FlipYAxis');
     TsInfo.AutoScaleY    = bst_get('AutoScaleY');
     TsInfo.NormalizeAmp  = 0;
     TsInfo.Resolution    = [0 0];
@@ -311,6 +312,10 @@ if isNewFig
 else
     % Update figure name
     bst_figures('UpdateFigureName', hFig);
+end
+% Open Cluster tab
+if ~isempty(GlobalData.DataSet(iDS).Clusters)
+    gui_brainstorm('ShowToolTab', 'Cluster');
 end
 % Close progress bar
 drawnow;

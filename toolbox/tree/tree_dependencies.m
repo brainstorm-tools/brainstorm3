@@ -9,6 +9,7 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 %     - bstNodes       : Array of BstNode
 %     - targetNodeType : {'data', 'results', 'pdata', 'presults','ptimefreq','pspectrum', 'pmatrix', 'raw', 'rawcondition', 'matrix', 'any'}
 %     - NodelistOptions: Structure to filter the files by name or comment
+%                        If -1, disable all search filters
 %     - GetBadTrials   : If 1, get all the data files (default)
 %                        If 0, get only the data files that are NOT marked as bad trials 
 %
@@ -35,7 +36,8 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 % Parse inputs
 if (nargin < 3) || isempty(NodelistOptions)
@@ -77,17 +79,23 @@ if strcmpi(targetNodeType, 'any') && (length(bstNodes) >= 1)
     end
 end
 
-iSearch = panel_protocols('GetSelectedSearch');
-
-% Pre-process file filters
-if ~isempty(NodelistOptions)
-    if ~isempty(strtrim(NodelistOptions.String))
-        % Options
-        NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
+% If search filters are disabled
+if isequal(NodelistOptions, -1)
+    iSearch = 0;
+    NodelistOptions = [];
+else
+    % Get current search tab
+    iSearch = panel_protocols('GetSelectedSearch');
+    % Pre-process file filters
+    if ~isempty(NodelistOptions)
+        if ~isempty(strtrim(NodelistOptions.String))
+            % Options
+            NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
+        end
+    elseif iSearch > 0
+        NodelistOptions = bst_get('NodelistOptions');
+        NodelistOptions.String = '';
     end
-elseif iSearch > 0
-    NodelistOptions = bst_get('NodelistOptions');
-    NodelistOptions.String = '';
 end
 
 % Capture selection errors

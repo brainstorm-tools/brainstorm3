@@ -19,7 +19,7 @@ function varargout = process_generate_bem( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2023
 
 eval(macro_method);
 end
@@ -61,6 +61,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.thickness.Comment = 'Skull thickness (default=4): ';
     sProcess.options.thickness.Type    = 'value';
     sProcess.options.thickness.Value   = {4, 'mm', 1};
+    % Option: Method
+    sProcess.options.method.Comment = {'Brainstorm', 'FieldTrip', 'Method:'; ...
+        'brainstorm', 'fieldtrip', ''};
+    sProcess.options.method.Type    = 'radio_linelabel';
+    sProcess.options.method.Value   = 'brainstorm';
 end
 
 
@@ -90,28 +95,28 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid values.');
         return;
     end
-      
-    % ===== GET SUBJECT =====
+    % Method
+    if isfield(sProcess.options, 'method') && isfield(sProcess.options.method, 'Value') && ~isempty(sProcess.options.method.Value)
+        Method = sProcess.options.method.Value;
+    else
+        Method = 'mni';
+    end
+
+    % ===== COMPUTE BEM SURFACES =====
     % Get subject 
     [sSubject, iSubject] = bst_get('Subject', SubjectName);
     if isempty(iSubject)
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
         return
     end
-    % Check if a MRI and cortex surface are available for the subject
-    if isempty(sSubject.Anatomy) || isempty(sSubject.iCortex)
-        bst_report('Error', sProcess, [], ['No MRI or cortex surface available for subject "' SubjectName '".']);
-        return
-    end
-    
-    % ===== IMPORT FILES =====
     % BEM options
-    BemOptions.nvert     = [nScalp, nOuter, nInner];
-    BemOptions.thickness = [7 skullThickness 3]; 
-    % Generate BEM layers for Subject01
-    isOk = tess_bem(iSubject, BemOptions);
-    if ~isOk
-        bst_report('Error', sProcess, [], 'An error occurred in tess_bem function.');
+    BemOptions.nvert = [nScalp, nOuter, nInner];
+    BemOptions.thickness = [7, skullThickness, 3];   % See panel_bem.m for values
+    % Run computation
+    errMsg = Compute(iSubject, [], Method, BemOptions);
+    % Error handling
+    if ~isempty(errMsg)
+        bst_report('Error', sProcess, [], errMsg);
         return
     end
 
@@ -119,9 +124,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
+%% ===== COMPUTE =====
+function errMsg = Compute(iSubject, iMri, Method, BemOptions)
+    errMsg = [];
+    % Call appropriate method
+    switch lower(Method)
+        case 'brainstorm'
+            isOk = tess_bem(iSubject, BemOptions);
+            if ~isOk
+                errMsg = 'Error while executing tess_bem.m';
+            end
+        case 'fieldtrip'
+            OPTIONS.layers     = {'scalp', 'skull', 'csf'};
+            OPTIONS.nVertices  = BemOptions.nvert;
+            OPTIONS.isSaveTess = 1;
+            process_ft_volumesegment('Compute', iSubject, iMri, OPTIONS);
+        otherwise
+            errMsg = ['Invalid method: ' Method];
+    end
+end
+
+
 %% ===== COMPUTE/INTERACTIVE =====
-function isOk = ComputeInteractive(iSubject, iMri) %#ok<DEFNU>
-    isOk = 0;
+function ComputeInteractive(iSubject, iMri) %#ok<DEFNU>
     % Get inputs
     if (nargin < 2) || isempty(iMri)
         iMri = [];
@@ -130,27 +155,22 @@ function isOk = ComputeInteractive(iSubject, iMri) %#ok<DEFNU>
     res = java_dialog('question', [...
         '<HTML><B>Brainstorm</B>:<BR>Create BEM surfaces from <B>T1</B> MRI, <B>scalp</B> and <B>cortex</B> surfaces.<BR>' ...
         'Warp MNI template skull surfaces to fit the head shape of the subject.<BR><BR>' ...
-        '<B>FieldTrip</B>:<BR>Call ft_volumesegment to segment ft_prepare_mesh to mesh the <B>T1 MRI</B>.<BR>' ...
+        '<B>FieldTrip</B>:<BR>Call ft_volumesegment to segment and ft_prepare_mesh to mesh the <B>T1 MRI</B>.<BR>' ...
         '<FONT COLOR="#707070"><I>FieldTrip is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
         ], 'BEM mesh generation method', [], {'Brainstorm','FieldTrip'}, 'Brainstorm');
     if isempty(res)
         return
     end
     Method = lower(res);
-    % Call appropriate method
-    switch (Method)
-        case 'brainstorm'
-            % Get subject
-            sSubject = bst_get('Subject', iSubject);
-            % If there are no scalp and no cortex: Only FieldTrip available
-            if isempty(sSubject.iCortex) || isempty(sSubject.iScalp)
-                bst_error('The selected method requires the cortex and scalp surfaces.', 'Generate BEM surfaces', 0);
-                return;
-            end
-            % Run computation
-            isOk = tess_bem(iSubject);
-        case 'fieldtrip'
-            process_ft_volumesegment('ComputeInteractive', iSubject, iMri);
+    % Ask BEM options
+    BemOptions = gui_show_dialog('BEM surfaces options', @panel_bem);
+    if isempty(BemOptions)
+        return;
+    end
+    % Call Compute function
+    errMsg = Compute(iSubject, iMri, Method, BemOptions);
+    % Handling error
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Compute BEM surfaces', 0);
     end
 end
-

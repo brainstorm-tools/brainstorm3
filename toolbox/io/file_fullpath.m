@@ -22,7 +22,7 @@ function [FileName, FileType, isAnatomy] = file_fullpath( FileName )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2012
+% Authors: Francois Tadel, 2011-2022
 
 % Empty input
 if isempty(FileName)
@@ -49,7 +49,7 @@ switch lower(FileType)
             tmpFile = bst_fullfile(ProtocolInfo.SUBJECTS, FileName);
         end
         isAnatomy = 1;
-    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spikes'}
+    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spike', 'dirspikes'}
         if ~file_exist(FileName)
             tmpFile = bst_fullfile(ProtocolInfo.STUDIES, FileName);
         end

@@ -53,6 +53,7 @@ end
 
 % ===== CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
+ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nChannels);
 for i = 1:nChannels
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Name    = ErpMat.ERP.chanlocs(i).labels;

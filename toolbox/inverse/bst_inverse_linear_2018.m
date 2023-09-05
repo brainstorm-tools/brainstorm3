@@ -242,7 +242,7 @@ nChannels = length(Var_noise);
 % Detect if the input noise covariance matrix is or should be diagonal
 if (norm(C_noise,'fro') - norm(Var_noise,'fro')) < eps(single(norm(Var_noise,'fro')))
     % no difference between the full matrix and the diagonal matrix
-    disp(['BST_INVERSE > Detected diagonal noise covariance, ignoring option NoiseMethod="' OPTIONS.NoiseMethod '".']);
+    disp(['BST_INVERSE > Detected diagonal noise covariance, enforcing option NoiseMethod="' OPTIONS.NoiseMethod '".']);
     OPTIONS.NoiseMethod = 'diag';
 end
 

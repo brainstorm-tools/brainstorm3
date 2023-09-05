@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2021
+% Authors: Francois Tadel, 2009-2022
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -93,6 +93,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_msr(DataFile);
     case 'EEG-AXION'
         [sFile, ChannelMat] = in_fopen_axion(DataFile);
+    case 'EEG-BCI2000'
+        [sFile, ChannelMat] = in_fopen_bci2000(DataFile);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
@@ -150,9 +152,21 @@ switch (FileFormat)
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
     case 'EEG-INTAN'
-        [sFile, ChannelMat] = in_fopen_intan(DataFile);
+        [fPath, fBase, fExt] = bst_fileparts(DataFile);
+        switch lower(fExt)
+            case '.rhd'  % New Intan reader, with conversion to .bst format for faster access
+                [DataMat, ChannelMat] = in_data_rhd(DataFile);
+            case '.rhs'  % Old Intan reader
+                [sFile, ChannelMat] = in_fopen_intan(DataFile);
+        end
     case 'EEG-PLEXON'
-        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+        [fPath, fBase, fExt] = bst_fileparts(DataFile);
+        switch lower(fExt)
+            case '.plx'  % New Plexon reader, with conversion to .bst format for faster access
+                [DataMat, ChannelMat] = in_data_plx(DataFile);
+            case '.pl2'  % Old Plexon reader
+                [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+        end
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}
@@ -161,6 +175,8 @@ switch (FileFormat)
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
+    case 'BST-MATRIX'
+        [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(DataFile);
         
     % ===== OBJECTS IN MEMORY =====
     case 'MNE-PYTHON'
@@ -171,6 +187,8 @@ switch (FileFormat)
         [DataMat, ChannelMat] = in_data_ascii(DataFile);
     case 'EEG-BESA'
         [DataMat, ChannelMat] = in_data_besa(DataFile);
+    case 'EEG-BIOPAC'
+        [DataMat, ChannelMat] = in_data_biopac(DataFile);
     case 'EEG-BRAINVISION'
         DataMat = in_data_ascii(DataFile);
     case 'EEG-CARTOOL'
@@ -191,6 +209,8 @@ switch (FileFormat)
         DataMat = in_data_neuroscan_dat(DataFile);
     case 'EEG-TVB'
         [DataMat, ChannelMat] = in_data_tvb(DataFile);
+    case 'EEG-XDF'
+        [DataMat, ChannelMat] = in_data_xdf(DataFile);
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, ImportOptions.DisplayMessages);
         % Check that time is linear

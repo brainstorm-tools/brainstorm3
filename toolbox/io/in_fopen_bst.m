@@ -51,7 +51,7 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if (hdr.version > 51)
+if (hdr.version > 52)
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -149,23 +149,39 @@ for iEvt = 1:nevt
     end
     % Rebuild missing information
     events(iEvt).epochs = ones(1, nOcc);
-    events(iEvt).channels = cell(1, nOcc);
-    events(iEvt).notes = cell(1, nOcc);
     % April 2019: Channels and notes are added to events
     if (hdr.version >= 51)
+        % March 2023: Added boolean to check if the channel list is present
+        if (hdr.version >= 52)
+            isChannels = fread(fid, [1 1], 'uint8');
+        else
+            isChannels = 1;
+        end
         % Read list of channels associated to each event
-        for iOcc = 1:nOcc
-            nChannels = fread(fid, [1 1], 'uint16');                   % UINT16(1) : Number of channels associated to this event
-            events(iEvt).channels{iOcc} = cell(1, nChannels);
-            for iChan = 1:nChannels
-                labelLength = fread(fid, [1 1], 'uint8');                          % UINT8(1) : Length of channel name (1 to 255)
-                events(iEvt).channels{iOcc}{iChan} = str_read(fid, labelLength);   % CHAR(??) : Channel name
+        if isChannels
+            events(iEvt).channels = cell(1, nOcc);
+            for iOcc = 1:nOcc
+                nChannels = fread(fid, [1 1], 'uint16');                   % UINT16(1) : Number of channels associated to this event
+                events(iEvt).channels{iOcc} = cell(1, nChannels);
+                for iChan = 1:nChannels
+                    labelLength = fread(fid, [1 1], 'uint8');                          % UINT8(1) : Length of channel name (1 to 255)
+                    events(iEvt).channels{iOcc}{iChan} = str_read(fid, labelLength);   % CHAR(??) : Channel name
+                end
             end
         end
+        % March 2023: Added boolean to check if the notes list is present
+        if (hdr.version >= 52)
+            isNotes = fread(fid, [1 1], 'uint8');
+        else
+            isNotes = 1;
+        end
         % Read list of notes associated to each event
-        for iOcc = 1:nOcc
-            labelLength = fread(fid, [1 1], 'uint16');               % UINT16(1) : Length of note text
-            events(iEvt).notes{iOcc} = str_read(fid, labelLength);   % CHAR(??) : Note text
+        if isNotes
+            events(iEvt).notes = cell(1, nOcc);
+            for iOcc = 1:nOcc
+                labelLength = fread(fid, [1 1], 'uint16');               % UINT16(1) : Length of note text
+                events(iEvt).notes{iOcc} = str_read(fid, labelLength);   % CHAR(??) : Note text
+            end
         end
     end
 end

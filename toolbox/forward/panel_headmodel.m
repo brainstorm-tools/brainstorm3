@@ -329,10 +329,14 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             isEeg  = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'EEG'));
             isEcog = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'ECOG'));
             isSeeg = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'SEEG'));
+            isNIRS = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'NIRS'));
         end
     end
     % Check that at least one modality is available
-    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
+    if isNIRS
+        errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
+        return;
+    elseif ~isMeg && ~isEeg && ~isEcog && ~isSeeg
         errMessage = 'No valid sensor types to estimate a head model.';
         return;
     end
@@ -525,33 +529,12 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
         
         % ===== Fields Related to Source Localization =====
-        % Overlapping spheres and no inner skull: warning
-%         if isempty(sSubject.iInnerSkull) && strcmpi(OPTIONS.MEGMethod, 'os_meg')
-%             errMessage = ['Overlapping sphere model would be more accurate based on an inner skull surface.' 10 ...
-%                           'Please consider importing one, or computing the BEM surfaces for this subject.'];
-%             disp(['HEADMODEL> ' errMessage]);
-%         end
-        % OpenMEEG and no inner skull: Generate BEM surfaces
+        % OpenMEEG and no inner skull: Ask for BEM surfaces
         if isempty(sSubject.iInnerSkull) && isOpenMEEG
-            % Ask confirmation
-            if OPTIONS.Interactive
-                isOk = java_dialog('confirm', ...
-                    ['You need at least the inner skull surface for this head model.' 10 10 ...
-                     'Generate BEM surfaces now?'], 'Subject definition');
-                if ~isOk
-                    return;
-                end
-            else
-                errMessage = ['OpenMEEG: Inner skull surface not available for this subject.' 10 ...
-                              'You should generate the BEM surfaces first.'];
-                return;
-            end
-            % Generate BEM surfaces
-            if ~tess_bem(iSubject)
-                return
-            end
-            % Get subject definition again
-            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            errMessage = ['OpenMEEG: Inner skull surface not available for this subject.' 10 ...
+                          'You should generate the BEM surfaces first:' 10 ...
+                          'Right-click on subject folder > MRI segmentation > Generate BEM surfaces.'];
+            return;
         end
         % Get all the layers available
         if ~isempty(sSubject.iInnerSkull)
@@ -761,6 +744,7 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
     % Get cortex surface
     CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
     HeadFile = sSubject.Surface(sSubject.iScalp).FileName;
+    InnerSkullFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
     OutSurfaceFile = CortexFile;
     
     % ===== GET GRID ====
@@ -774,23 +758,20 @@ function OutputFile = GenerateSourceGrid(iStudy, isInteractive) %#ok<DEFNU>
         % Get the options the user selected
         GridLoc = sGrid.GridLoc;
         GridOptions = sGrid.GridOptions;
-        % If using the full head volume: change the surface file that is used as a reference
-        if strcmpi(GridOptions.Method, 'isohead')
-            OutSurfaceFile = HeadFile;
-        end
     else
         % Get the saved options of the computation of the Grid
         GridOptions = bst_get('GridOptions_headmodel');
         % Compute the grid with these options
-        if strcmpi(GridOptions.Method, 'isohead')
-            GridLoc = panel_sourcegrid('GetGrid', GridOptions, HeadFile);
-            OutSurfaceFile = HeadFile;
-        else
-            GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
-        end
+        GridLoc = panel_sourcegrid('GetGrid', GridOptions, CortexFile);
     end
     if isempty(GridLoc)
         return;
+    end
+    % If using the full head volume: change the surface file that is used as a reference
+    if strcmpi(GridOptions.Method, 'isohead')
+        OutSurfaceFile = HeadFile;
+    elseif strcmpi(GridOptions.Method, 'isokull')
+        OutSurfaceFile = InnerSkullFile;
     end
 
     % ===== SAVE FILE =====

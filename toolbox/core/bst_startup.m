@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2021
+%          Francois Tadel, 2008-2023
 
 
 %% ===== MATLAB CHECK =====
@@ -70,6 +70,10 @@ GlobalData.Program.GuiLevel = GuiLevel;
 GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
+% Debugging: show path in compiled application
+if isCompiled
+    disp(['BST> BrainstormHomeDir = ' BrainstormHomeDir]);
+end
 % Test for headless mode
 if (GuiLevel >= 0) && (java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadless() || java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadlessInstance())
     disp(' ');
@@ -143,10 +147,7 @@ localRel.day   = str2num(Release(5:6));
 if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
-% % Force Matlab to recycle the files instead of deleting them
-% if exist('recycle','builtin') && strcmpi(recycle, 'off')
-%     recycle('on');
-% end
+
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
 if (GuiLevel == 1)
@@ -162,11 +163,6 @@ if (GuiLevel == 1)
     bst_memory();
     bst_navigator();
 end
-
-
-%% ===== EMPTY TEMPORARY DIRECTORY =====
-% gui_brainstorm('EmptyTempFolder');
-% Execute when closing instead, to avoid conflicts
 
 
 %% ===== EMPTY REPORTS DIRECTORY =====
@@ -280,6 +276,10 @@ if ~isempty(bstOptions)
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
+    end
+    % Reset previous exploration mode
+    if isfield(GlobalData.Preferences, 'Layout') && isfield(GlobalData.Preferences.Layout, 'PreviousExplorationMode')
+        GlobalData.Preferences.Layout.PreviousExplorationMode = GlobalData.Preferences.Layout.ExplorationMode;
     end
     % Check database structure for updates
     db_update(CurrentDbVersion);
@@ -450,6 +450,40 @@ end
 % Parse process folder
 disp('BST> Reading process folder...');
 panel_process_select('ParseProcessFolder', 1);
+
+
+%% ===== INSTALL ANATOMY TEMPLATE =====
+% Download ICBM152 template if missing (e.g. when cloning from GitHub)
+TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
+if ~isCompiled && ~exist(TemplateDir, 'file')
+    TemplateName = 'ICBM152_2023b';
+    isSkipTemplate = 0;
+    % Template file
+    ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);
+    % If template is not downloaded yet: download it
+    if ~exist(ZipFile, 'file')
+        disp('BST> Downloading ICBM152 template...');
+        % Download file
+        errMsg = gui_brainstorm('DownloadFile', ['http://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
+        % Error message
+        if ~isempty(errMsg)
+            disp(['BST> Error: Could not download template: ' errMsg]);
+            isSkipTemplate = 1;
+        end
+    end
+    % If the template is available as a zip file
+    if ~isSkipTemplate
+        disp('BST> Installing ICBM152 template...');
+        % Create folder
+        mkdir(TemplateDir);
+        % URL: Download zip file
+        try
+            unzip(ZipFile, TemplateDir);
+        catch
+            disp(['BST> Error: Could not unzip anatomy template: ' lasterr]);
+        end
+    end
+end
 
 
 %% ===== LICENSE AGREEMENT =====
@@ -674,6 +708,7 @@ try
 catch
     fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 end
+fclose(fid);
 
 
 %% ===== SET TEMPORARY FOLDER =====
@@ -697,6 +732,9 @@ if ~isempty(strfind(TmpDir, '/home/bic/'))
     % Edit preferences
     gui_show('panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0);
 end
+
+% Empty temporary folder with confirmation (if nogui/server: display warning)
+gui_brainstorm('EmptyTempFolder', 1);
 
 
 %% ===== PREPARE BUG REPORTING =====

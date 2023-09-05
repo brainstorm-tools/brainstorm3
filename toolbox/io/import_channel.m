@@ -1,7 +1,7 @@
-function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
+function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras, RefMriFile)
 % IMPORT_CHANNEL: Imports a channel file (definition of the sensors).
 % 
-% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask], isApplyVox2ras=[ask])
+% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask], isApplyVox2ras=[ask], RefMriFile=[])
 %
 % INPUT:
 %    - iStudies       : Indices of the studies where to import the ChannelFile
@@ -17,9 +17,14 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 %    - isFixUnits     : If 1, tries to convert the distance units to meters automatically
 %                       If 0, does not fix the distance units
 %                       If [], ask for the scaling to apply
-%    - isApplyVox2ras : If 1, uses the existing voxel=>subject transformation from the MRI file, if available
-%                       If 0, does not use the voxel=>subject transformation
+%    - isApplyVox2ras : If 0, does not use the voxel=>subject transformation
+%                       If 1, uses the existing voxel=>subject transformation from the MRI file, if available
+%                       If 2, uses the existing voxel=>subject transformation AND the coregistration transformation (see process_import_bids)
 %                       If [], ask for user decision
+%    - RefMriFile     : Relative file name to a MRI file imported for the current subject
+%                       When isApplyVox2ras=1: use this file instead of the reference MRI for getting the vox2ras transformation
+%                       When isApplyVox2ras=2: uses this file AND reverts the registration matrix that was possibly 
+%                                              applied after the volume was imported (to matche the original .nii)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,10 +44,13 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== PARSE INPUTS =====
 Output = [];
+if (nargin < 9) || isempty(RefMriFile)
+    RefMriFile = [];
+end
 if (nargin < 8) || isempty(isApplyVox2ras)
     isApplyVox2ras = [];
 end
@@ -68,6 +76,7 @@ end
 %% ===== SELECT CHANNEL FILE =====
 % If file to load was not defined : open a dialog box to select it
 if isempty(ChannelFile)
+    isInteractive = 1;
     % Get default import directory and formats
     LastUsedDirs = bst_get('LastUsedDirs');
     DefaultFormats = bst_get('DefaultFormats');
@@ -88,12 +97,13 @@ if isempty(ChannelFile)
     % Save default import format
     DefaultFormats.ChannelIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+else
+    isInteractive = 0;
 end
 
 
 %% ===== LOAD CHANNEL FILE =====
 ChannelMat = [];
-FileUnits = 1;
 % Progress bar
 isProgressBar = bst_progress('isVisible');
 if ~isProgressBar
@@ -117,6 +127,7 @@ switch (FileFormat)
     case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH', 'ITAB', 'MEGSCAN-HDF5'}
         [sFile, ChannelMat] = in_fopen(ChannelFile, FileFormat, ImportOptions);
         if isempty(ChannelMat)
+            bst_progress('stop');
             return;
         end
         FileUnits = 'm';
@@ -125,13 +136,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-ORIG-MM', 'BIDS-OTHER-MM', 'BIDS-MNI-MM'}
+    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM', 'BIDS-CAPTRAK-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
-        FileUnits = 'm';
-    case {'BIDS-ORIG-CM', 'BIDS-OTHER-CM', 'BIDS-MNI-CM'}
+        FileUnits = 'mm';
+    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM', 'BIDS-ALS-CM', 'BIDS-CAPTRAK-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
-        FileUnits = 'm';
-    case {'BIDS-ORIG-M', 'BIDS-OTHER-M', 'BIDS-MNI-M'}
+        FileUnits = 'cm';
+    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M', 'BIDS-ALS-M', 'BIDS-CAPTRAK-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
@@ -231,9 +242,6 @@ switch (FileFormat)
             ChannelMat = AllChannelMats{1};
         end
         
-
-
-        
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
             case 'pts'
@@ -303,17 +311,17 @@ switch (FileFormat)
         FileUnits = 'mm';
         
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI', 'ASCII_XYZ_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case {'ASCII_NXYZ', 'ASCII_NXYZ_MNI', 'ASCII_NXYZ_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case {'ASCII_XYZN', 'ASCII_XYZN_MNI', 'ASCII_XYZN_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case 'ASCII_NXY'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y'}, 0, .000875);
         ChannelMat.Comment = 'Channels';
@@ -330,6 +338,8 @@ switch (FileFormat)
         ChannelMat = in_channel_ascii(ChannelFile, {'TH','PHI'}, 0, .0875);
         ChannelMat.Comment = 'Channels';
         FileUnits = '';
+    otherwise
+        error(['File format is not supported: ' FileFormat]);
 end
 % No data imported
 isHeadPoints = isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints.Loc);
@@ -340,10 +350,16 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS', 'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'})
-    isApplyVox2ras = 1;
+% Use world coordinates by defaults for some specific file formats
+if isempty(isApplyVox2ras)
+    if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
+        isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
+    elseif ismember(FileFormat, {'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'BIDS-ALS-MM', 'BIDS-ALS-CM', 'BIDS-ALS-M'})
+        isApplyVox2ras = 0;   % Disable vox2ras for ASCII formats that are explicitly in SCS
+    elseif ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-SCANRAS-CM', 'BIDS-SCANRAS-M'})
+        isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
+    end
 end
-
 
 
 %% ===== CHECK DISTANCE UNITS =====
@@ -387,6 +403,66 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
     % Do not convert the positions to SCS
     isAlignScs = 0;
     
+%% ===== ACPC TRANSFORMATION =====
+elseif ismember(FileFormat, {'BIDS-ACPC-MM', 'BIDS-ACPC-CM', 'BIDS-ACPC-M'})
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing ACPC positions for multiple subjects: the ACPC transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % If we know the destination study: convert from ACPC to SCS coordinates
+    if ~isempty(iStudies)
+        % Get the subject for the first study
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Get the subject's MRI
+        if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+            error('You need the subject anatomy in order to load sensor positions in ACPC coordinates.');
+        end
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = in_mri_bst(MriFile);
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.NCS, 'AC') || isempty(sMri.NCS.AC) || ~isfield(sMri.NCS, 'PC') || isempty(sMri.NCS.PC) || ~isfield(sMri.NCS, 'IH') || isempty(sMri.NCS.IH)
+            error(['All fiducials must be defined for this subject (NAS,LPA,RPA,AC,PC,IH)' 10 'in order to load sensor positions in ACPC coordinates.']);
+        end
+        % Convert all the coordinates: ACPC => SCS
+        fcnTransf = @(Loc)cs_convert(sMri, 'acpc', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+        ChannelMat = AllChannelMats{1};
+    end
+    % Do not convert the positions to SCS
+    isAlignScs = 0;
+
+%% ===== CAPTRAK TRANSFORMATION =====
+elseif ismember(FileFormat, {'BIDS-CAPTRAK-MM', 'BIDS-CAPTRAK-CM', 'BIDS-CAPTRAK-M'})
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing CapTrak positions for multiple subjects: the CapTrak transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % If we know the destination study: convert from CapTrak to SCS coordinates
+    if ~isempty(iStudies)
+        % Get the subject for the first study
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Get the subject's MRI
+        if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+            error('You need the subject anatomy in order to load sensor positions in CapTrak coordinates.');
+        end
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = in_mri_bst(MriFile);
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'NAS') || isempty(sMri.SCS.NAS) || ~isfield(sMri.SCS, 'LPA') || isempty(sMri.SCS.LPA) || ~isfield(sMri.SCS, 'RPA') || isempty(sMri.SCS.RPA)
+            error(['All fiducials must be defined for this subject (NAS,LPA,RPA)' 10 'in order to load sensor positions in CapTrak coordinates.']);
+        end
+        % Convert all the coordinates: CapTrak => SCS
+        fcnTransf = @(Loc)cs_convert(sMri, 'captrak', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+        ChannelMat = AllChannelMats{1};
+    end
+    % Do not convert the positions to SCS
+    isAlignScs = 0;
+
 %% ===== MRI/NII TRANSFORMATION =====
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
@@ -408,9 +484,33 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     end
     % If there is a MRI for this subject
     if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
-        % Load the MRI
-        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
-        sMri = load(MriFile, 'InitTransf', 'SCS', 'Voxsize');
+        % Get the reference MRI (specified in input, or selected in the database)
+        if isempty(RefMriFile) || ~file_exist(file_fullpath(RefMriFile))
+            % If there are multiple MRIs
+            if (length(sSubject.Anatomy) > 1)
+                % Consider only the volumes that are not volume atlases
+                iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                if (length(iNoAtlas) == 1)
+                    iMri = iNoAtlas;
+                % Interactive: Ask which MRI volume to use
+                elseif isInteractive
+                    mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Import as MRI scanner coordinates', [], {sSubject.Anatomy(iNoAtlas).Comment});
+                    if isempty(mriComment)
+                        bst_progress('stop');
+                        return
+                    end
+                    iMri = iNoAtlas(find(strcmp({sSubject.Anatomy(iNoAtlas).Comment}, mriComment), 1));
+                % Non-interactive: Use the default MRI
+                else
+                    iMri = sSubject.iAnatomy;
+                end
+            else
+                iMri = 1;
+            end
+            RefMriFile = file_fullpath(sSubject.Anatomy(iMri).FileName);
+        end
+        % Load the reference MRI (which contains the vox2mri transformation that should be used to interpret the coordinates)
+        sMri = load(file_fullpath(RefMriFile), 'InitTransf', 'SCS', 'Voxsize');
         % If there is a valid transformation
         if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
             % Ask user if necessary
@@ -424,6 +524,13 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
             if isApplyVox2ras
                 % Get the transformation WORLD=>MRI (in meters)
                 Transf = cs_convert(sMri, 'world', 'mri');
+                % Applies the coregistration transformation to the sensor positions, if requested
+                if (isApplyVox2ras == 2)
+                    iTransfReg = find(strcmpi(sMri.InitTransf(:,1), 'reg'), 1);
+                    if ~isempty(iTransfReg)
+                        Transf = Transf * sMri.InitTransf{iTransfReg,2};
+                    end
+                end
                 % Add the transformation MRI=>SCS
                 if isfield(sMri,'SCS') && isfield(sMri.SCS,'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS,'T') && ~isempty(sMri.SCS.T)
                     Transf = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1] * Transf;

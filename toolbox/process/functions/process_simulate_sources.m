@@ -22,7 +22,7 @@ function varargout = process_simulate_sources( varargin )
 % =============================================================================@
 %
 % Authors: Guiomar Niso, 2013-2016
-%          Francois Tadel, 2013-2020
+%          Francois Tadel, 2013-2022
 
 eval(macro_method);
 end
@@ -58,6 +58,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     sProcess.options.scouts.Group   = 'input';
+    % === UNITS
+    sProcess.options.units.Comment = {'pAm <FONT COLOR="#777777">(*10<UP>-9</UP>)</FONT>', 'Am', 'Other', 'Input signal units:'; ...
+                                      'pam', 'am', 'other', ''};
+    sProcess.options.units.Type    = 'radio_linelabel';
+    sProcess.options.units.Value   = 'pam';
+    sProcess.options.units.Group   = 'input';
     % === ADD NOISE
     sProcess.options.isnoise.Comment    = 'Add noise';
     sProcess.options.isnoise.Type       = 'checkbox';

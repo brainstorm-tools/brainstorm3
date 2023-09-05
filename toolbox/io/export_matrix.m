@@ -66,6 +66,8 @@ if isempty(OutputFile)
             DefaultExt = '.tsv';
         case {'EXCEL', 'EXCEL-TR'}
             DefaultExt = '.xlsx';
+        case 'EEG-EDF'
+            DefaultExt = '.edf';
         otherwise
             DefaultExt = '_matrix.mat';
     end
@@ -100,13 +102,15 @@ if isempty(OutputFile)
     
 % Guess file format based on its extension
 elseif isempty(FileFormat)
-    [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
+    [BstPath, BstBase, BstExt] = bst_fileparts(OutputFile);
     switch lower(BstExt)
         case '.txt',   FileFormat = 'ASCII-SPC';
         case '.csv',   FileFormat = 'ASCII-CSV-HDR';
         case '.tsv',   FileFormat = 'ASCII-TSV-HDR';
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
+        case '.edf',   FileFormat = 'EEG-EDF';
+        case '.bst',   FileFormat = 'BST-BIN';
         otherwise,     error('Unsupported file extension.');
     end
 end
@@ -123,6 +127,9 @@ switch (FileFormat)
     case 'FT-TIMELOCK'
         ftData = out_fieldtrip_matrix(MatrixMat);
         bst_save(OutputFile, ftData, 'v6');
+    case {'BST-BIN', 'EEG-EDF'}
+        [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(MatrixMat);
+        export_data(DataMat, ChannelMat, OutputFile, FileFormat);
     case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
         out_matrix_ascii(OutputFile, MatrixMat.Value, FileFormat, MatrixMat.Description, MatrixMat.Time, []);
     otherwise

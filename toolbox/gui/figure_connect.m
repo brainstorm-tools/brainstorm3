@@ -116,9 +116,6 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DisplayBidirectionalMeasure', 0);
     setappdata(hFig, 'DataThreshold', 0.5);
     setappdata(hFig, 'DistanceThreshold', 0);
-    if isappdata(hFig, 'DataPair')
-        rmappdata(hFig, 'DataPair');
-    end
     if isappdata(hFig, 'HierarchyNodesMask')
         rmappdata(hFig, 'HierarchyNodesMask');
     end
@@ -203,16 +200,17 @@ function UpdateContainer(hFig)
     Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
     colorbarWidth = bsxfun(@times, 15, Scaling); % replaced .* with bsxfun for back compatibility
-    marginHeight  = bsxfun(@times, 25, Scaling);
-    marginWidth   = bsxfun(@times, 45, Scaling);
-    % If there is a colorbar 
+    marginTop     = bsxfun(@times, 10, Scaling);
+    marginRight   = bsxfun(@times, 55, Scaling);
+    marginBottom  = bsxfun(@times, 40, Scaling);
+    % Reposition the colorbar
     if ~isempty(hColorbar)
         % Reposition the colorbar
         set(hColorbar, 'Units',    'pixels', ...
-                       'Position', [figPos(3) - marginWidth, ...
-                                    marginHeight, ...
+                       'Position', [figPos(3) - marginRight, ...
+                                    marginBottom, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - bsxfun(@times, 3, Scaling)))]);
+                                    max(1, figPos(4) - marginTop - marginBottom)]);
         uistack(hColorbar, 'top', 1);
     end
 end
@@ -909,8 +907,20 @@ end
 %  ===========================================================================
  
 %% ===== GET FIGURE DATA =====
-function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig)
+function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector, isStat] = GetFigureData(hFig)
     global GlobalData;
+    % Initialize returned variables
+    Time = [];
+    Freqs = [];
+    TfInfo = [];
+    TF = [];
+    RowNames = [];
+    DataType = [];
+    Method = [];
+    FullTimeVector = [];
+    isStat = [];
+
+
     % === GET FIGURE INFO ===
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
@@ -922,6 +932,8 @@ function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] =
     if isempty(iDS)
         return
     end
+    % Stat results?
+    isStat = strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq');
     
     % ===== GET TIME =====
     [Time, iTime] = bst_memory('GetTimeVector', iDS, [], 'CurrentTimeIndex');
@@ -980,20 +992,25 @@ function IsDirectional = IsDirectionalData(hFig)
     end
 end
  
-function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
+function [DataPair, isStat] = LoadConnectivityData(hFig, Options)
     % Parse input
     if (nargin < 2)
         Options = struct();
-    end
-    if (nargin < 3)
-        Atlas = [];
-        Surface = [];
     end
     % Maximum number of data allowed
     MaximumNumberOfData = 5000;
    
     % === GET DATA ===
-    [~, ~, ~, M, ~, ~, ~, ~] = GetFigureData(hFig);
+    [~, ~, ~, M, ~, ~, ~, ~, isStat] = GetFigureData(hFig);
+
+    % Compute values for all percentiles (for thresholding by percentile)
+    ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
+    if ThresholdAbsoluteValue
+        Percentiles = bst_prctile(abs(M(:)), 0.1:0.1:99.9);
+    else
+        Percentiles = bst_prctile(M(:), 0.1:0.1:99.9);
+    end
+
     % Zero-out the diagonal because its useless
     M = M - diag(diag(M));
     
@@ -1006,7 +1023,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     end
     
     % === THRESHOLD ===
-    if ((size(M, 1) * size(M, 2)) > MaximumNumberOfData)
+    if ~isStat && ((size(M, 1) * size(M, 2)) > MaximumNumberOfData)
         % Validity mask
         Valid = ones(size(M));
         Valid(M == 0) = 0;
@@ -1036,7 +1053,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         M(~Valid) = 0;
     end
  
-    % Convert matrixu to data pair 
+    % Convert matrix to data pair 
     DataPair = MatrixToDataPair(hFig, M);
     fprintf('%.0f Connectivity measure loaded\n', size(DataPair, 1));
  
@@ -1055,6 +1072,8 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     end
     % Update figure variable
     bst_figures('SetFigureHandleField', hFig, 'DataMinMax', DataMinMax);
+    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
+    bst_figures('SetFigureHandleField', hFig, 'Percentiles', Percentiles);
     % Clear memory
     clear M;
 end
@@ -1182,10 +1201,19 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
             % Get the file information file
             SurfaceFile = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SurfaceFile;
             Atlas       = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Atlas;
+            if ~isempty(Atlas)
+                isVolumeAtlas = panel_scout('ParseVolumeAtlas', Atlas.Name);
+            else
+                isVolumeAtlas = 0;
+            end
             % Load surface
             if ~isempty(SurfaceFile) && ischar(SurfaceFile)
                 SurfaceMat = in_tess_bst(SurfaceFile);
-                Vertices = SurfaceMat.Vertices;
+                if ~isVolumeAtlas
+                    Vertices = SurfaceMat.Vertices;
+                else
+                    Vertices = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
+                end
             end
             % If an atlas is available
             if ~isempty(Atlas) && ~isempty(SurfaceFile) && ~isempty(Vertices)
@@ -1310,9 +1338,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     Options.Highest = 1;
     setappdata(hFig, 'LoadingOptions', Options);
     % Clean and compute Datapair
-    DataPair = LoadConnectivityData(hFig, Options, Atlas, SurfaceMat);    
-    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
-    
+    [DataPair, isStat] = LoadConnectivityData(hFig, Options);    
+
     % Compute distance between regions
     MeasureDistance = [];
     if ~isempty(RowLocs)
@@ -1328,8 +1355,11 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         
     %% ===== Init Filters =====
     % Default intensity threshold
-    MinThreshold = 0.9;
-    
+    if isStat
+        MinThreshold = 0;
+    else
+        MinThreshold = 0.9;
+    end
     % Don't refresh display for each filter at loading time
     Refresh = 0;
     
@@ -1440,8 +1470,12 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     
     % Note: DataPair computation already removed diagonal and capped at max 5000 pairs 
     
+    
+    link0  = line(0,0);
+    arrow0 = patch(0,0,'k');
+    Links  = repmat(link0, 1, size(DataPair,1));
+    Arrows = repmat(arrow0, 1, size(DataPair,1));
     %for each link
-    Links = zeros(1, size(DataPair,1));
     for i = 1:size(DataPair,1)
         overlap = false;
         % node positions (rescaled to *unit* circle)
@@ -1938,8 +1972,6 @@ function UpdateFigurePlot(hFig)
     Options = getappdata(hFig, 'LoadingOptions');
     % Clean and Build Datapair
     DataPair = LoadConnectivityData(hFig, Options);
-    % Update structure
-    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
         
     % Update measure distance
     MeasureDistance = [];
@@ -1983,7 +2015,7 @@ function UpdateFigurePlot(hFig)
         Refresh);
     SetMeasureAnatomicalFilterTo(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter'), Refresh);
     SetMeasureThreshold(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold'), Refresh);
-    
+
     % Update region datapair if possible
     RegionFunction = getappdata(hFig, 'RegionFunction');
     if isempty(RegionFunction)
@@ -2439,6 +2471,7 @@ function UpdateColormap(hFig)
     end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
+    ColormapInfo.DisplayUnits = TfInfo.DisplayUnits;
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
     % Set figure colormap
     set(hFig, 'Colormap', sColormap.CMap);

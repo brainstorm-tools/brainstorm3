@@ -22,7 +22,7 @@ function [FileName, FileType, isAnatomy] = file_short( FileName )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2022
 
 % Empty input
 if isempty(FileName)
@@ -49,7 +49,7 @@ switch lower(FileType)
     case {'brainstormsubject', 'subject', 'subjectimage', 'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem', 'other', 'tess'}
         FileName = file_win2unix(strrep(FileName, ProtocolInfo.SUBJECTS, ''));
         isAnatomy = 1;
-    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink'}
+    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spike', 'dirspikes'}
         FileName = file_win2unix(strrep(FileName, ProtocolInfo.STUDIES, ''));
     case 'link'
         % Keep it the way it is

@@ -25,7 +25,7 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2021
+% Authors: Francois Tadel, 2017-2022
 
 eval(macro_method);
 end
@@ -100,13 +100,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         jPanelBottom = gui_river([0,0], [0,0,0,0]);
             % ===== ELECTRODE OPTIONS =====
-            jPanelElecOptions = gui_river([3,3], [0,5,10,3], 'Electrode configuration');
+            jPanelElecOptions = gui_river([0,3], [0,5,10,3], 'Electrode configuration');
                 % Electrode type
                 gui_component('label', jPanelElecOptions, '', 'Type: ');
                 jButtonGroup = ButtonGroup();
                 jRadioSeeg = gui_component('radio', jPanelElecOptions, '', 'SEEG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcog = gui_component('radio', jPanelElecOptions, '', 'ECOG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcogMid = gui_component('radio', jPanelElecOptions, '', 'ECOG-mid', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
+                jRadioSeeg.setMargin(java.awt.Insets(0,0,0,0));
+                jRadioEcog.setMargin(java.awt.Insets(0,0,0,0));
+                jRadioEcogMid.setMargin(java.awt.Insets(0,0,0,0));
                 % Electrode model
                 jPanelModel = gui_river([0,0], [0,0,0,0]);
                     % Title
@@ -132,23 +135,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
                 jTextSpacing = gui_component('text', jPanelElecOptions, 'tab', '');
                 jTextSpacing.setHorizontalAlignment(jTextNcontacts.RIGHT);
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts length
                 jLabelContactLength = gui_component('label', jPanelElecOptions, 'br', 'Contact length: ');
                 jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts diameter
                 gui_component('label', jPanelElecOptions, 'br', 'Contact diameter: ');
                 jTextContactDiam = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Electrode diameter
                 jLabelElecDiameter = gui_component('label', jPanelElecOptions, 'br', 'Electrode diameter: ');
                 jTextElecDiameter  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                jLabelElecDiamUnits = gui_component('label', jPanelElecOptions, '', 'mm');
+                jLabelElecDiamUnits = gui_component('label', jPanelElecOptions, '', ' mm');
                 % Electrode length
                 jLabelElecLength = gui_component('label', jPanelElecOptions, 'br', 'Electrode length: ');
                 jTextElecLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', 'mm');
+                jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', ' mm');
                 % Set electrode position
                 jPanelButtons = gui_component('panel');
                     jCardLayout = java.awt.CardLayout;
@@ -494,14 +497,14 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jTextElecLength.setVisible(1);
         ctrl.jLabelElecLengthUnits.setVisible(1);
         ctrl.jLabelElecDiameter.setText('Electrode diameter: ');
-        ctrl.jLabelElecDiamUnits.setText('mm');
+        ctrl.jLabelElecDiamUnits.setText(' mm');
     else
         ctrl.jLabelContactLength.setText('Contact height: ');
         ctrl.jLabelElecLength.setVisible(0);
         ctrl.jTextElecLength.setVisible(0);
         ctrl.jLabelElecLengthUnits.setVisible(0);
         ctrl.jLabelElecDiameter.setText('Wire width: ');
-        ctrl.jLabelElecDiamUnits.setText('points');
+        ctrl.jLabelElecDiamUnits.setText(' points');
     end
     % Number of contacts
     if (length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).ContactNumber), {sSelElec.ContactNumber})))
@@ -1628,9 +1631,9 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts (round at 1 decimal)
+            % Detect average spacing between adjacent contacts (precision: 0.000001)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
             
             % Center of the electrodes
             M = mean(ElecLoc);
@@ -2036,7 +2039,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
         else
             if isInteractive
-                bst_error(['No inner skull surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No inner skull surface for this subject.' 10 'Compute BEM surfaces first.'], 'Compute contact normals', 0);
             end
             return;
         end
@@ -2045,7 +2048,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         else
             if isInteractive
-                bst_error(['No head surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No head surface for this subject.' 10 'Compute head surface first.'], 'Compute contact normals', 0);
             end
             return;
         end
@@ -2612,9 +2615,13 @@ end
 
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
-% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
-%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile)
-function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
+% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
+%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
+    % Parse inputs
+    if (nargin < 4) || isempty(isEdit)
+        isEdit = 0;
+    end
     % Get MRI to display
     if ischar(iAnatomy)
         MriFile = iAnatomy;
@@ -2639,6 +2646,10 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     % SEEG and ECOG: Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+    % Make electrodes editable
+    if isEdit
+        figure_mri('SetEditChannels', hFig, isEdit);
     end
 end
 

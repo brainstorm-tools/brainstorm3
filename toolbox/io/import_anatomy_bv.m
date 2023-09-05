@@ -10,6 +10,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 %    - nVertices     : Number of vertices in the file cortex surface
 %    - isInteractive : If 0, no input or user interaction
 %    - sFid          : Structure with the fiducials coordinates
+%                      Or full MRI structure with fiducials defined in the SCS structure, to be registered with the FS MRI
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -31,7 +32,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Fiducials
@@ -140,8 +141,6 @@ AnnotRwFiles = {file_find(BvDir, '*_Rwhite_parcels_marsAtlas.gii'), ...
                 file_find(BvDir, '*_Rwhite_sulcalines.gii')};
 AnnotLwFiles(cellfun(@isempty, AnnotLwFiles)) = [];
 AnnotRwFiles(cellfun(@isempty, AnnotRwFiles)) = [];
-% Find fiducials definitions
-FidFile = file_find(BvDir, 'fiducials.m');
 % Find AC-PC file
 ApcFile = file_find(BvDir, '*.APC');
 bst_progress('stop');
@@ -181,10 +180,10 @@ sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 %% ===== READ AC-PC FILE =====
 bst_progress('start', 'Import BrainVISA folder', 'Reading AC/PC positions...');
-AC = [];
-PC = [];
-IH = [];
 if ~isempty(ApcFile)
+    AC = [];
+    PC = [];
+    IH = [];
     % Size of the volume
     cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
     % Read the entire file
@@ -205,100 +204,24 @@ if ~isempty(ApcFile)
             end
         end
     end
+    if ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
+        figure_mri('SetSubjectFiducials', iSubject, [], [], [], AC, PC, IH);
+    end
 end
 
 
 %% ===== DEFINE FIDUCIALS =====
-% If fiducials file exist: read it
-isComputeMni = 0;
-if ~isempty(FidFile)
-    % Execute script
-    fid = fopen(FidFile, 'rt');
-    FidScript = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-    % Execute script
-    eval(FidScript);    
-    % If not all the fiducials were loaded: ignore the file
-    if ~exist('NAS', 'var') || ~exist('LPA', 'var') || ~exist('RPA', 'var') || isempty(NAS) || isempty(LPA) || isempty(RPA)
-        FidFile = [];
-    end
-    % If the normalized points were not defined: too bad...
-    if ~exist('AC', 'var')
-        AC = [];
-    end
-    if ~exist('PC', 'var')
-        PC = [];
-    end
-    if ~exist('IH', 'var')
-        IH = [];
-    end
-    % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
-end
-% Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
-    % Use fiducials from file
-    if ~isempty(FidFile)
-        % Already loaded
-    % Compute them from MNI transformation
-    elseif isempty(sFid)
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
-        isComputeMni = 1;
-        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
-    % Else: use the defined ones
-    else
-        NAS = sFid.NAS;
-        LPA = sFid.LPA;
-        RPA = sFid.RPA;
-        if isempty(AC) || isempty(PC) || isempty(IH) 
-            AC = sFid.AC;
-            PC = sFid.PC;
-            IH = sFid.IH;
+% Set fiducials (with linear MNI normalization disabled)
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, BvDir, BstT1File, sFid, 0, isInteractive, 1);
+% Error handling
+if ~isempty(errCall)
+    errorMsg = [errorMsg, errCall];
+    if isempty(isComputeMni)
+        if isInteractive
+            bst_error(errorMsg, 'Import BrainVISA folder', 0);
         end
+        return;
     end
-    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
-        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
-    end
-    % If the NAS/LPA/RPA are defined, but not the others: Compute them
-    if ~isempty(NAS) && ~isempty(LPA) && ~isempty(RPA) % && isempty(AC) && isempty(PC) && isempty(IH)
-        isComputeMni = 1;
-    end
-% Define with the MRI Viewer
-else
-    % Save the fiducials read from the APC file in the MRI
-    if ~isempty(ApcFile) && (~isempty(AC) || ~isempty(PC) || ~isempty(IH))
-        figure_mri('SetSubjectFiducials', iSubject, [], [], [], AC, PC, IH);
-    end
-    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
-    hFig = view_mri(BstT1File, 'EditFiducials');
-    drawnow;
-    bst_progress('stop');
-    % Wait for the MRI Viewer to be closed
-    waitfor(hFig);
-end
-% Load SCS and NCS field to make sure that all the points were defined
-warning('off','MATLAB:load:variableNotFound');
-sMri = load(BstT1File);
-warning('on','MATLAB:load:variableNotFound');
-if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
-    errorMsg = ['Could not import BrainVISA folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
-    if isInteractive
-        bst_error(errorMsg, 'Import BrainVISA folder', 0);
-    end
-    return;
-end
-
-
-%% ===== MNI NORMALIZATION =====
-if isComputeMni
-    % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstT1File);
-    % Error handling
-    errorMsg = [errorMsg errCall];
 end
 
 
@@ -389,6 +312,8 @@ if ~isempty(HeadFile)
     bst_progress('start', 'Import BrainVISA folder', 'Filling holes in the head surface...');
     % Load head surface
     sHead = load(BstHeadHiFile, 'Vertices', 'Faces', 'Comment');
+    % Reload updated T1 MRI
+    sMri = in_mri_bst(BstT1File);
     % Remove holes
     [sHead.Vertices, sHead.Faces] = tess_fillholes(sMri, sHead.Vertices, sHead.Faces, 2, 2);
     % Save back to file

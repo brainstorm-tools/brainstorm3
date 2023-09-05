@@ -69,7 +69,7 @@ jTextArea = java_create('javax.swing.JTextArea', 'Ljava.lang.String;', wndText);
 jTextArea.setEditable(0);
 jTextArea.setBackground(Color(1,1,1));
 jTextArea.setMargin(java_create('java.awt.Insets', 'IIII', 10,25,10,25));
-jTextArea.setFont(bst_get('Font', 12, 'Courier New'));
+jTextArea.setFont(bst_get('Font', 12, {'Courier New', 'Ubuntu Mono', 'Monospaced'}));
 jFrame.getContentPane.add(JScrollPane(jTextArea));
 
 % Add OK button if need to wait

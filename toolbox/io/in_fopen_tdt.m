@@ -42,18 +42,12 @@ end
 
 hdr.BaseFolder = DataFolder;
 
-
-
-
  %% ===== FILE COMMENT =====
 % Comment: BaseFolder
 Comment = DataFolder;
 
-
 %% ===== READ DATA HEADERS =====
-
-bst_progress('start', 'TDT', 'Reading headers...');
-
+bst_progress('text', 'TDT: Reading headers...');
 
 % Load one second segment to see what type of signals exist in this dataset
 % Use as general sampling rate the rate of the HIGHEST sampled signal
@@ -79,7 +73,6 @@ stream_info = struct;
 
 LFP_label_exists = 0;
 
-
 ii = 1;
 for iStream = 1:length(all_streams)
     stream_info(iStream).label          = all_streams{iStream};
@@ -99,22 +92,25 @@ for iStream = 1:length(all_streams)
         general_sampling_rate = data_new.streams.(all_streams{iStream}).fs;
         LFP_label_exists = 1;
     end
+    popup_labels{iStream} = [all_streams{iStream} ' - ' num2str(stream_info(iStream).fs) ' Hz'];
 end
 
 if ~LFP_label_exists    
     [indx,tf] = listdlg('PromptString',{'Select the label of the electrophysiological signal that is present in this dataset',...
     'If more streams are present, they will be resampled to match the Fs of this stream.',''},...
-    'SelectionMode','single','ListString',all_streams);
+    'SelectionMode','single','ListString', popup_labels);
     
     data_new = TDTbin2mat(DataFolder, 'STORE', all_streams{indx},'T1', 0, 'T2', 1); % 1 second segment       
         
     general_sampling_rate = data_new.streams.(all_streams{indx}).fs;
     LFP_label_exists = 1;
     
+    if isempty(data_new.streams)
+        error('The selected stream is empty');
+    end
     
     if isempty(indx)
-        bst_error('No stream was selected')
-           stop
+        error('No stream was selected');
     end
 end
     
@@ -171,7 +167,7 @@ end
 
 %% Check for acquisition events
 
-bst_progress('start', 'TDT', 'Collecting acquisition events...');
+bst_progress('text', 'TDT: Collecting acquisition events...');
 
 disp('Getting Acquisition System events')
 NO_data = TDTbin2mat(DataFolder, 'TYPE', 2); % Just load epocs / events
@@ -195,8 +191,8 @@ if are_there_events
             events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset';
             events(iindex).reactTimes = [];
             events(iindex).select     = 1;
-            events(iindex).channels   = cell(1, size(events(iindex).times, 2));
-            events(iindex).notes      = cell(1, size(events(iindex).times, 2));
+            events(iindex).channels   = [];
+            events(iindex).notes      = [];
         else
             conditions_in_event = unique(NO_data.epocs.(all_event_Labels{iEvent}).data);
             
@@ -206,14 +202,19 @@ if are_there_events
                 
                 iindex = iindex+1;
                 
-                events(iindex).label      = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
+                
+                if strcmp(all_event_Labels{iEvent}, 'Note')
+                    events(iindex).label  = NO_data.epocs.Note.notes{iCondition};
+                else
+                    events(iindex).label  = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
+                end
                 events(iindex).color      = rand(1,3);
                 events(iindex).epochs     = ones(1,length(selected_Events_for_condition))  ;
                 events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)';
                 events(iindex).reactTimes = [];
                 events(iindex).select     = 1;
-                events(iindex).channels   = cell(1, size(events(iindex).times, 2));
-                events(iindex).notes      = cell(1, size(events(iindex).times, 2));
+                events(iindex).channels   = [];
+                events(iindex).notes      = [];
             end
         end
     end
@@ -222,18 +223,10 @@ end
     
 %% Check for spike events
 
-
 check_for_spikes = 1;
 
-
-
-
-
-
-
 if check_for_spikes
-    bst_progress('start', 'TDT', 'Collecting spiking events...');
-    disp('Getting spiking events')
+    bst_progress('text', 'TDT: Collecting spiking events...');
     NO_data = TDTbin2mat(DataFolder, 'TYPE', 3); % Just load spikes
     are_there_spikes = ~isempty(NO_data.snips);
 else
@@ -241,15 +234,11 @@ else
 end
 
 
-
-
 %%%%%%%%
 disp('***************************************************')
 disp('CHECK THE SPIKES. THEY ARE ONLY ASSIGNED ON RIG TWO')
 disp('***************************************************')
 %%%%%%%%
-
-
 
 
 if are_there_spikes
@@ -302,8 +291,8 @@ if are_there_spikes
                     events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
                     events(last_event_index).reactTimes = [];
                     events(last_event_index).select     = 1;
-                    events(last_event_index).channels   = cell(1, size(events(last_event_index).times, 2));
-                    events(last_event_index).notes      = cell(1, size(events(last_event_index).times, 2));
+                    events(last_event_index).channels   = repmat({{ChannelMat.Channel(channels_are_EEG_on_selected_RIG(iChannel)).Name}}, 1, size(events(last_event_index).times, 2));
+                    events(last_event_index).notes      = [];
                 end
             end
         end
@@ -312,6 +301,5 @@ end
 
 % Import this list
 sFile = import_events(sFile, [], events);
+
 end
-
-

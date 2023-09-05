@@ -28,7 +28,8 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
+%          Marc Lalancette, 2022
 
 global GlobalData;
 
@@ -202,10 +203,10 @@ HeadPointsMarkersLoc = [];
 HeadPointsFidLoc     = [];
 HeadPointsHpiLoc     = [];
 if isHeadPoints
+    % More transparency to view points inside.
+    panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
     % Get markers positions
-    HeadPointsMarkersLoc = [get(hHeadPointsMarkers, 'XData')', ...
-                            get(hHeadPointsMarkers, 'YData')', ...
-                            get(hHeadPointsMarkers, 'ZData')'];
+    HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
     if isEeg && ~isempty(HeadPointsMarkersLoc) && ~isempty(SensorsVertices) && (length(SensorsVertices) == length(HeadPointsMarkersLoc)) && (max(abs(SensorsVertices(:) - HeadPointsMarkersLoc(:))) < 0.001)
         set(hHeadPointsMarkers, 'Visible', 'off');
@@ -343,7 +344,7 @@ gChanAlign.hButtonLabels = [];
 gChanAlign.hButtonEditLabel = [];
 gChanAlign.hButtonHelmet = [];
 if gChanAlign.isMeg
-    gChanAlign.hButtonHelmet = uitoggletool(hToolbar, 'CData', java_geticon('ICON_DISPLAY'), 'TooltipString', 'Show/Hide MEG helmet', 'ClickedCallback', @ToggleHelmet, 'State', 'on');
+    gChanAlign.hButtonHelmet = uitoggletool(hToolbar, 'CData', java_geticon('ICON_DISPLAY'), 'TooltipString', 'Show/Hide MEG helmet', 'ClickedCallback', @ToggleHelmet, 'State', get(hHelmetPatch, 'Visible'));
 elseif gChanAlign.isEeg
     gChanAlign.hButtonLabels    = uitoggletool(hToolbar, 'CData', java_geticon('ICON_LABELS'), 'TooltipString', 'Show/Hide electrodes labels', 'ClickedCallback', @ToggleLabels);
     gChanAlign.hButtonEditLabel = uipushtool(  hToolbar, 'CData', java_geticon('ICON_EDIT'),   'TooltipString', 'Edit selected channel label', 'ClickedCallback', @EditLabel);
@@ -364,7 +365,7 @@ elseif gChanAlign.isNirs
     gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
     gChanAlign.hButtonMoveChan = [];
     gChanAlign.hButtonProject = [];
-else
+else % isEeg
     gChanAlign.hButtonResizeX  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_X'),      'TooltipString', 'Resize/X: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation, 'separator', 'on');
     gChanAlign.hButtonResizeY  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Y'),      'TooltipString', 'Resize/Y: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
     gChanAlign.hButtonResizeZ  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Z'),      'TooltipString', 'Resize/Z: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
@@ -392,7 +393,8 @@ end
 % else
     gChanAlign.hButtonAlign = [];
 % end
-gChanAlign.hButtonOk = uipushtool(  hToolbar, 'CData', java_geticon( 'ICON_OK'), 'separator', 'on', 'ClickedCallback', @buttonOk_Callback);% Update figure localization
+gChanAlign.hButtonReset = uipushtool( hToolbar, 'CData', java_geticon('ICON_RELOAD'), 'separator', 'on', 'TooltipString', 'Reset: discard all changes', 'ClickedCallback', @buttonReset_Callback);
+gChanAlign.hButtonOk = uipushtool( hToolbar, 'CData', java_geticon('ICON_OK'), 'TooltipString', 'Save & close', 'ClickedCallback', @buttonOk_Callback);% Update figure localization
 gui_layout('Update');
 % Move a bit the figure to refresh it on all systems
 pos = get(gChanAlign.hFig, 'Position');
@@ -403,10 +405,8 @@ set(gChanAlign.hFig, 'Position', pos);
 if isProgress
     bst_progress('stop');
 end
-    
+
 end
-
-
 
 %% ===== MOUSE CALLBACKS =====  
 %% ===== MOUSE DOWN =====
@@ -640,10 +640,16 @@ function UpdatePoints(iSelChan)
     % Update headpoints markers and labels
     if gChanAlign.isHeadPoints
         % Extra head points
-        set(gChanAlign.hHeadPointsMarkers, ...
-            'XData', gChanAlign.HeadPointsMarkersLoc(:,1), ...
-            'YData', gChanAlign.HeadPointsMarkersLoc(:,2), ...
-            'ZData', gChanAlign.HeadPointsMarkersLoc(:,3));
+        set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
+        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+            % Update distance color
+            Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
+                get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
+            set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
+            % Update axes maximum
+            setappdata(gChanAlign.hFig, 'HeadpointsDistMax', max(Dist));
+            figure_3d('UpdateHeadPointsColormap', gChanAlign.hFig);
+        end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
             set(gChanAlign.hHeadPointsFid, ...
@@ -850,12 +856,12 @@ function AlignClose_Callback(varargin)
             SaveChanged = 1;
         else
             SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
-                                           'Would you like to save changes? ' 10 10], 'Align sensors');
+                    'Would you like to save changes? ' 10 10], 'Align sensors');
         end
-        % Progress bar
-        bst_progress('start', 'Align sensors', 'Updating channel file...');
-        % Save changes and close figure
+        % Save changes to channel file and close figure
         if SaveChanged
+            % Progress bar
+            bst_progress('start', 'Align sensors', 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
@@ -869,14 +875,14 @@ function AlignClose_Callback(varargin)
             [sStudy, iStudy] = bst_get('ChannelFile', gChanAlign.ChannelFile);
             % Reload study file
             db_reload_studies(iStudy);
+            bst_progress('stop');
         end
-        bst_progress('stop');
     else
         SaveChanged = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
-    % Apply to other recordings in the same subject
+    % Apply to other recordings with same sensor locations in the same subject
     if SaveChanged
         CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
     end
@@ -921,7 +927,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
         end
         % Check if the positions of the sensors are similar
         distLoc = sqrt((locDest(1,:) - locSrc(1,:)).^2 + (locDest(2,:) - locSrc(2,:)).^2 + (locDest(3,:) - locSrc(3,:)).^2);
-        % If the sensors are more than 5mm apart in average: skip
+        % If any sensors are more than 5mm apart: skip
         if any(distLoc > 0.005) 
             continue;
         end
@@ -1107,9 +1113,7 @@ function ProjectElectrodesOnSurface(varargin)
     % Copy modification to the head points
     if gChanAlign.isEeg && ~isempty(gChanAlign.SensorsVertices) && ~isempty(gChanAlign.HeadPointsMarkersLoc) && (length(gChanAlign.SensorsVertices) == length(gChanAlign.HeadPointsMarkersLoc))
         gChanAlign.HeadPointsMarkersLoc = gChanAlign.SensorsVertices;
-        set(gChanAlign.hHeadPointsMarkers, 'XData', gChanAlign.HeadPointsMarkersLoc(:,1), ...
-                                           'YData', gChanAlign.HeadPointsMarkersLoc(:,2), ...
-                                           'ZData', gChanAlign.HeadPointsMarkersLoc(:,3));
+        set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
     end
     % Mark current channel file as modified
     gChanAlign.isChanged = 1;
@@ -1146,13 +1150,21 @@ function RefineWithHeadPoints(varargin)
 end
 
 
-%% ===== VALIDATION BUTTONS =====
+%% ===== VALIDATION BUTTON =====
 function buttonOk_Callback(varargin)
     global gChanAlign;
     % Close 3DViz figure
     close(gChanAlign.hFig);
 end
 
+%% ===== RESET BUTTON =====
+function buttonReset_Callback(varargin)
+    global gChanAlign;
+    % Close figure
+    gChanAlign.Figure3DCloseRequest_Bak(gChanAlign.hFig, []);
+    % Call function again, which resets gChanAlign.
+    channel_align_manual(gChanAlign.ChannelFile, gChanAlign.Modality, 1);
+end
 
 %% ===== REMOVE ELECTRODES =====
 function RemoveElectrodes(varargin)

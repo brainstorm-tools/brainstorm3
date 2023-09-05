@@ -33,7 +33,7 @@ function numElems = node_create_study(nodeStudy, nodeRoot, sStudy, iStudy, isExp
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2020
 
     
@@ -198,7 +198,9 @@ for i = 1:length(iNeededNodes)
         % Node modifier (0=none, 1=bad)
         Modifier = sStudy.Data(iData).BadTrial;
         % Create node
-        if strcmpi(sStudy.Data(iData).DataType, 'raw')
+        if ~isempty(strfind(sStudy.Data(iData).FileName, 'data_0ephys'))
+            nodeType = 'spike';
+        elseif strcmpi(sStudy.Data(iData).DataType, 'raw')
             nodeType = 'rawdata';
         else
             nodeType = 'data';
@@ -417,7 +419,8 @@ for i = 1:length(sStudy.Timefreq)
     % If node should be created
     if nodeParent ~= 0
         % TF or PSD node
-        if ~isempty(strfind(sStudy.Timefreq(i).FileName, '_psd')) || ~isempty(strfind(sStudy.Timefreq(i).FileName, '_fft'))
+        [fPath, fBase] = bst_fileparts(sStudy.Timefreq(i).FileName);
+        if ~isempty(strfind(fBase, '_psd')) || ~isempty(strfind(fBase, '_fft'))
             nodeType = 'spectrum';
         else
             nodeType = 'timefreq';
@@ -494,7 +497,8 @@ if isfield(sStudy, 'Stat')
                 nodeType = 'presults';
             case 'timefreq'
                 % TF or PSD node
-                if ~isempty(strfind(sStudy.Stat(iStat).FileName, '_psd')) || ~isempty(strfind(sStudy.Stat(iStat).FileName, '_fft'))
+                [fPath, fBase] = bst_fileparts(sStudy.Stat(iStat).FileName);
+                if ~isempty(strfind(fBase, '_psd')) || ~isempty(strfind(fBase, '_fft'))
                     nodeType = 'pspectrum';
                 else
                     nodeType = 'ptimefreq';

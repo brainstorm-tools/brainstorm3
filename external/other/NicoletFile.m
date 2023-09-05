@@ -21,13 +21,8 @@ classdef NicoletFile < handle
   %   where these structures are located in the .e file, the appropriate
   %   TSINFO structure should be used. However, there seems to be a bug in
   %   the Nicolet .e file writer which sometimes renders the TSINFO structures
-  %   unreadable on disk (verify with hex-edit). Therefore, this class only
-  %   uses the first TSINFO structure found in the .e file.
-  %
-  %
-  
+  %   unreadable on disk (verify with hex-edit).
  
-  
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % Copyright 2013 Trustees of the University of Pennsylvania
   % 
@@ -47,6 +42,7 @@ classdef NicoletFile < handle
   % Joost Wagenaar, Jan 2015
   % Cristian Donos, Dec 2015
   % Jan Brogger, Jun 2016
+  % Callum Stewart, Apr 2018
   
   properties
     fileName
@@ -59,7 +55,7 @@ classdef NicoletFile < handle
     sections
     index
     sigInfo
-    tsInfo
+    tsInfos
     chInfo
     notchFreq
     montage
@@ -373,39 +369,42 @@ classdef NicoletFile < handle
         'city','state','country','language','height','weight','race','religion',...
         'maritalStatus'};
       
-      infoIdx = Tags(find(strcmp({Tags.IDStr},'PATIENTINFOGUID'),1)).index;
-      indexInstance = Index(find([Index.sectionIdx]==infoIdx,1));
-      fseek(h, indexInstance.offset,'bof');
-      guid = fread(h, 16, 'uint8'); %#ok<NASGU>
-      lSection = fread(h, 1, 'uint64'); %#ok<NASGU>
-%       reserved = fread(h, 3, 'uint16'); %#ok<NASGU>
-      nrValues = fread(h,1,'uint64');
-      nrBstr = fread(h,1,'uint64');
-      
-      for i = 1:nrValues
-        id = fread(h,1,'uint64');
-        switch id
-          case {7,8}
-            unix_time = (fread(h,1, 'double')*(3600*24)) - 2209161600;% 2208988800; %8 
-            obj.segments(i).dateStr = datestr(unix_time/86400 + datenum(1970,1,1));
-            value = datevec( obj.segments(i).dateStr );
-            value = value([3 2 1]);
-          case {23,24}
-            value = fread(h,1,'double');
-          otherwise
-            value = 0;
+      infoIdxStruct = Tags(find(strcmp({Tags.IDStr},'PATIENTINFOGUID'),1));
+      if ~isempty(infoIdxStruct)
+        infoIdx = infoIdxStruct.index;
+        indexInstance = Index(find([Index.sectionIdx]==infoIdx,1));
+        fseek(h, indexInstance.offset,'bof');
+        guid = fread(h, 16, 'uint8'); %#ok<NASGU>
+        lSection = fread(h, 1, 'uint64'); %#ok<NASGU>
+%        reserved = fread(h, 3, 'uint16'); %#ok<NASGU>
+        nrValues = fread(h,1,'uint64');
+        nrBstr = fread(h,1,'uint64');
+    
+        for i = 1:nrValues
+          id = fread(h,1,'uint64');
+          switch id
+            case {7,8}
+              unix_time = (fread(h,1, 'double')*(3600*24)) - 2209161600;% 2208988800; %8 
+              obj.segments(i).dateStr = datestr(unix_time/86400 + datenum(1970,1,1));
+              value = datevec( obj.segments(i).dateStr );
+              value = value([3 2 1]);
+            case {23,24}
+              value = fread(h,1,'double');
+              otherwise
+              value = 0;
+          end
+          info.(infoProps{id}) = value;  
         end
-        info.(infoProps{id}) = value;  
+      
+        strSetup = fread(h,nrBstr*2,'uint64');
+      
+        for i=1:2:(nrBstr*2)
+          id  = strSetup(i);
+          value = deblank(cast(fread(h, strSetup(i+1) + 1, 'uint16'),'char')');
+          info.(infoProps{id}) = value;
+        end
       end
       
-      strSetup = fread(h,nrBstr*2,'uint64');
-      
-      for i=1:2:(nrBstr*2)
-        id  = strSetup(i);
-        value = deblank(cast(fread(h, strSetup(i+1) + 1, 'uint16'),'char')');
-        info.(infoProps{id}) = value;
-      end
-
       obj.patientInfo = info;
       
       %% Get INFOGUID
@@ -476,46 +475,46 @@ classdef NicoletFile < handle
       %% To simplify things, we only read the first TSINFO.
 	  tsPackets = dynamicPackets(strcmp({dynamicPackets.IDStr},'TSGUID'));
 
-      if length(tsPackets) > 1
-          warning(['Multiple TSinfo packets detected; using first instance ' ...
-            ' ac for all segments. See documentation for info.']);
-      end
       if isempty(tsPackets)
-          warning('No TSINFO found');
-      else    
-          tsPacket = tsPackets(1);
-
-          obj.tsInfo = struct();                  
+          warning(['No TSINFO found']);
+      else  
+          obj.tsInfos = {};
+          for j = 1:length(tsPackets)
+              
+          tsPacket = tsPackets(j);               
           elems = typecast(tsPacket.data(753:756),'uint32');        
-          %alloc = typecast(tsPacket.data(757:760),'uint32');        
+          alloc = typecast(tsPacket.data(757:760),'uint32');        
 
           offset = 761;
+          tsInfo = struct();
           for i = 1:elems
               internalOffset = 0;
-              obj.tsInfo(i).label = deblank(char(typecast(tsPacket.data(offset:(offset+obj.TSLABELSIZE-1))','uint16')));
+              tsInfo(i).label = deblank(char(typecast(tsPacket.data(offset:(offset+obj.TSLABELSIZE-1))','uint16')));
               internalOffset = internalOffset + obj.TSLABELSIZE*2;
-              obj.tsInfo(i).activeSensor = deblank(char(typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+obj.LABELSIZE))','uint16')));
+              tsInfo(i).activeSensor = deblank(char(typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+obj.LABELSIZE))','uint16')));
               internalOffset = internalOffset + obj.TSLABELSIZE;
-              obj.tsInfo(i).refSensor = deblank(char(typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','uint16')));
+              tsInfo(i).refSensor = deblank(char(typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','uint16')));
               internalOffset = internalOffset + 8;
               internalOffset = internalOffset + 56;
-              obj.tsInfo(i).dLowCut = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
+              tsInfo(i).dLowCut = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
               internalOffset = internalOffset + 8;
-              obj.tsInfo(i).dHighCut = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
+              tsInfo(i).dHighCut = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
               internalOffset = internalOffset + 8;
-              obj.tsInfo(i).dSamplingRate = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
+              tsInfo(i).dSamplingRate = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
               internalOffset = internalOffset + 8;
-              obj.tsInfo(i).dResolution = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
+              tsInfo(i).dResolution = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
               internalOffset = internalOffset + 8;
-              obj.tsInfo(i).bMark = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+2))','uint16');
+              tsInfo(i).bMark = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+2))','uint16');
               internalOffset = internalOffset + 2;
-              obj.tsInfo(i).bNotch = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+2))','uint16');
+              tsInfo(i).bNotch = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+2))','uint16');
               internalOffset = internalOffset + 2;
-              obj.tsInfo(i).dEegOffset = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
+              tsInfo(i).dEegOffset = typecast(tsPacket.data(offset+internalOffset:(offset+internalOffset-1+8))','double');
               offset = offset + 552;
               %disp([num2str(i) ' : ' TSInfo(i).label ' : ' TSInfo(i).activeSensor ' : ' TSInfo(i).refSensor ' : ' num2str(TSInfo(i).samplingRate)]);
-            
-          end        
+              
+          end
+          obj.tsInfos{j} = tsInfo;
+          end
       end
       
       % -- -- -- 
@@ -544,12 +543,16 @@ classdef NicoletFile < handle
       
       % Get nrValues per segment and channel
       for iSeg = 1:length(obj.segments)
-       
+        if iSeg > length(obj.tsInfos)
+            obj.tsInfos{iSeg} = obj.tsInfos{iSeg-1}
+        end
+          
+          
         % Add Channel Names to segments
-        obj.segments(iSeg).chName = {obj.tsInfo.label};
-        obj.segments(iSeg).refName = {obj.tsInfo.refSensor};
-        obj.segments(iSeg).samplingRate = [obj.tsInfo.dSamplingRate];
-        obj.segments(iSeg).scale = [obj.tsInfo.dResolution];
+        obj.segments(iSeg).chName = {obj.tsInfos{iSeg}.label};
+        obj.segments(iSeg).refName = {obj.tsInfos{iSeg}.refSensor};
+        obj.segments(iSeg).samplingRate = [obj.tsInfos{iSeg}.dSamplingRate];
+        obj.segments(iSeg).scale = [obj.tsInfos{iSeg}.dResolution];
         
       end
 
@@ -571,6 +574,9 @@ classdef NicoletFile < handle
       HCEVENT_EXAMSTART         =  '{96315D79-5C24-4A65-B334-E31A95088D55}';
       HCEVENT_HYPERVENTILATION  =  '{A5A95608-A7F8-11CF-831A-0800091B5BDA}';                            
       HCEVENT_IMPEDANCE         =  '{A5A95617-A7F8-11CF-831A-0800091B5BDA}';
+      HCEVENT_AMPLIFIERDISCONNECT = '{A71A6DB5-4150-48BF-B462-1C40521EBD6F}';
+      HCEVENT_AMPLIFIERRECONNECT = '{6387C7C8-6F98-4886-9AF4-FA750ED300DE}';
+      HCEVENT_PAUSED = '{71EECE80-EBC4-41C7-BF26-E56911426FB4}';
 
       DAYSECS = 86400.0;  % From nrvdate.h
       
@@ -629,6 +635,12 @@ classdef NicoletFile < handle
                   obj.eventMarkers(i).IDStr = 'Hyperventilation';
               case HCEVENT_IMPEDANCE
                   obj.eventMarkers(i).IDStr = 'Impedance';
+              case HCEVENT_AMPLIFIERDISCONNECT
+                  obj.eventMarkers(i).IDStr = 'Amplifier Disconnect';
+              case HCEVENT_AMPLIFIERRECONNECT
+                  obj.eventMarkers(i).IDStr = 'Amplifier Reconnect';
+              case HCEVENT_PAUSED
+                  obj.eventMarkers(i).IDStr = 'Recording Paused';
               otherwise
                   obj.eventMarkers(i).IDStr = 'UNKNOWN';
           end
@@ -697,6 +709,24 @@ classdef NicoletFile < handle
       out = obj.segments(segment).samplingRate .* obj.segments(segment).duration;
       
     end
+          
+    function cSumSegs = getCSumSegs(obj, chI)
+      % GETCSUMSEGS  Returns the cumulative sum of a channels segments 
+      %
+      %   CSUMSEGS = GETCSUMSEGS(OBJ, CHI) returns a 1xn array of the
+      %   cumulative sum of the given channel, where chI is the channel
+      %   index. Different TsInfos can have different numbers of channels
+      %   and different sampling rates.
+      samplingRates = zeros(1, length(obj.tsInfos));
+      for ts_i = 1:length(obj.tsInfos)
+          if length(obj.tsInfos{ts_i}) < chI
+              continue
+          else
+              samplingRates(ts_i) = obj.tsInfos{ts_i}(chI).dSamplingRate;
+          end
+      end
+      cSumSegs = [0 cumsum(samplingRates.*[obj.segments.duration])];
+  end
     
     function out = getdata(obj, segment, range, chIdx)
       % GETDATA  Returns data from Nicolet file.
@@ -707,12 +737,16 @@ classdef NicoletFile < handle
       %   and CHIDX is a vector of channel indeces.
      
       % Assert range is 1x2 vector
+      if isempty([obj.tsInfos{segment}.label])
+          warning('Segment %d has an empty tsInfo. Skipping', segment)
+          out = 0;
+          return
+      end
+
       assert(length(range) == 2, 'Range is [firstIndex lastIndex]');
       assert(length(segment) == 1, 'Segment must be single value.');
 
-      % Get cumulative sum segments.
-      cSumSegments = [0 cumsum([obj.segments.duration])];
-      
+ 
       % Reopen .e file.
       h = fopen(obj.fileName,'r','ieee-le');
       
@@ -723,11 +757,14 @@ classdef NicoletFile < handle
         tmp = find(strcmp(num2str(chIdx(i)-1),{obj.sections.tag}),1);
         sectionIdx(i) = obj.sections(tmp).index;
       end
+
       
       % Iterate over all requested channels and populate array. 
       out = zeros(range(2) - range(1) + 1, lChIdx); 
       for i = 1 : lChIdx
-        
+        % Get cumulative sum segments.
+        cSumSegments = obj.getCSumSegs(chIdx(i));   
+
         % Get sampling rate for current channel
         curSF = obj.segments(segment).samplingRate(chIdx(i));
         mult = obj.segments(segment).scale(chIdx(i));
@@ -740,7 +777,7 @@ classdef NicoletFile < handle
         sectionLengths = [obj.index(allSections).sectionL]./2;
         cSectionLengths = [0 cumsum(sectionLengths)];
         
-        skipValues = cSumSegments(segment) * curSF;
+        skipValues = cSumSegments(segment);
         firstSectionForSegment = find(cSectionLengths > skipValues, 1) - 1 ;
         lastSectionForSegment = firstSectionForSegment + ...
           find(cSectionLengths > curSF*obj.segments(segment).duration,1) - 2 ;
@@ -815,14 +852,17 @@ classdef NicoletFile < handle
       %
       % Andrei Barborica, Dec 2015
       %
-     
+      if isempty([obj.tsInfos{segment}.label])
+          warning('Segment %d has an empty tsInfo. Skipping', segment)
+          out = 0;
+          return
+      end
+ 
       % Assert range is 1x2 vector
       assert(length(range) == 2, 'Range is [firstIndex lastIndex]');
       assert(length(segment) == 1, 'Segment must be single value.');
 
-      % Get cumulative sum segments.
-      cSumSegments = [0 cumsum([obj.segments.duration])];
-      
+     
       % Reopen .e file.
       h = fopen(obj.fileName,'r','ieee-le');
       
@@ -839,7 +879,9 @@ classdef NicoletFile < handle
       % Iterate over all requested channels and populate array. 
       out = zeros(range(2) - range(1) + 1, lChIdx); 
       for i = 1 : lChIdx
-        
+        % Get cumulative sum segments.
+        cSumSegments = obj.getCSumSegs(chIdx(i));   
+ 
         % Get sampling rate for current channel
         curSF = obj.segments(segment).samplingRate(chIdx(i));
         mult = obj.segments(segment).scale(chIdx(i));
@@ -852,7 +894,7 @@ classdef NicoletFile < handle
         sectionLengths = [obj.index(allSections).sectionL]./2;
         cSectionLengths = [0 cumsum(sectionLengths)];
         
-        skipValues = cSumSegments(segment) * curSF;
+        skipValues = cSumSegments(segment);
         firstSectionForSegment = find(cSectionLengths > skipValues, 1) - 1 ;
         lastSectionForSegment = firstSectionForSegment + ...
           find(cSectionLengths > curSF*obj.segments(segment).duration,1) - 2 ;
@@ -906,6 +948,8 @@ classdef NicoletFile < handle
       
       % Extract specified channels
       for i = 1 : lChIdx
+        % Get cumulative sum segments.
+        cSumSegments = obj.getCSumSegs(chIdx(i));   
         
         % Get sampling rate for current channel
         curSF = obj.segments(segment).samplingRate(chIdx(i));
@@ -919,7 +963,7 @@ classdef NicoletFile < handle
         sectionLengths = [obj.index(allSections).sectionL]./2;
         cSectionLengths = [0 cumsum(sectionLengths)];
         
-        skipValues = cSumSegments(segment) * curSF;
+        skipValues = cSumSegments(segment);
         firstSectionForSegment = find(cSectionLengths > skipValues, 1) - 1 ;
         lastSectionForSegment = firstSectionForSegment + ...
           find(cSectionLengths > curSF*obj.segments(segment).duration,1) - 2 ;

@@ -3,6 +3,9 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
 %         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
+%         [Vertices, Faces]    = tess_isohead(sMri,     nVertices=10000, erodeFactor=0, fillFactor=2)
+%
+% If input is loaded MRI structure, no surface file is created and the surface vertices and faces are returned instead.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,25 +31,40 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % Initialize returned variables
 HeadFile = [];
 iSurface = [];
+isSave = true;
 % Parse inputs
 if (nargin < 5) || isempty(Comment)
     Comment = [];
 end
 % MriFile instead of subject index
+sMri = [];
 if ischar(iSubject)
     MriFile = iSubject;
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
-else
+elseif isnumeric(iSubject)
     % Get subject
     sSubject = bst_get('Subject', iSubject);
     MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+elseif isstruct(iSubject)
+    sMri = iSubject;
+    MriFile = sMri.FileName;
+    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    % Don't save a surface file, instead return surface directly.
+    isSave = false;  
+else
+    error('Wrong input type.');
 end
 
 %% ===== LOAD MRI =====
-% Load MRI 
-bst_progress('start', 'Generate head surface', 'Loading MRI...');
-sMri = bst_memory('LoadMri', MriFile);
-bst_progress('stop');
+isProgress = ~bst_progress('isVisible');
+if isempty(sMri)
+    % Load MRI
+    bst_progress('start', 'Generate head surface', 'Loading MRI...');
+    sMri = bst_memory('LoadMri', MriFile);
+    if isProgress
+        bst_progress('stop');
+    end
+end
 % Save current scouts modifications
 panel_scout('SaveModifications');
 % If subject is using the default anatomy: use the default subject instead
@@ -157,24 +175,31 @@ erodeFinal = 3;
 
 
 %% ===== SAVE FILES =====
-bst_progress('text', 'Saving new file...');
-% Create output filenames
-ProtocolInfo = bst_get('ProtocolInfo');
-SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
-% Save head
-if ~isempty(Comment)
-    sHead.Comment = Comment;
+if isSave
+    bst_progress('text', 'Saving new file...');
+    % Create output filenames
+    ProtocolInfo = bst_get('ProtocolInfo');
+    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
+    % Save head
+    if ~isempty(Comment)
+        sHead.Comment = Comment;
+    else
+        sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, round(bgLevel));
+    end
+    sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
+    bst_save(HeadFile, sHead, 'v7');
+    iSurface = db_add_surface( iSubject, HeadFile, sHead.Comment);
 else
-    sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, round(bgLevel));
+    % Return surface
+    HeadFile = sHead.Vertices;
+    iSurface = sHead.Faces;
 end
-sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
-bst_save(HeadFile, sHead, 'v7');
-iSurface = db_add_surface( iSubject, HeadFile, sHead.Comment);
 
 % Close, success
-bst_progress('stop');
-
+if isProgress
+    bst_progress('stop');
+end
 
 
 

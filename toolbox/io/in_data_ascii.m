@@ -54,10 +54,6 @@ switch OPTIONS.MatrixOrientation
         % Transpose needed
         DataMat.F = DataMat.F';
 end
-% Build time vector
-DataMat.Time = ((0:size(DataMat.F,2)-1) ./ OPTIONS.SamplingRate - OPTIONS.BaselineDuration);
-% ChannelFlag
-DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
 % If channel names is included: extract and convert data matrix to numeric values
 if OPTIONS.isChannelName
@@ -71,9 +67,9 @@ if OPTIONS.isChannelName
     [ChannelMat.Channel.Type] = deal('EEG');
     [ChannelMat.Channel.Name] = deal(chNames{:});
 end
+
 % Replace NaN with 0
 DataMat.F(isnan(DataMat.F)) = 0;
-
 % Apply voltage units (in Brainstorm: recordings are stored in Volts)
 switch (OPTIONS.VoltageUnits)
     case '\muV'
@@ -85,6 +81,11 @@ switch (OPTIONS.VoltageUnits)
     case 'None'
         % Nothing to change
 end
+
+% Build time vector
+DataMat.Time = (0:size(DataMat.F,2)-1) ./ OPTIONS.SamplingRate - OPTIONS.BaselineDuration;
+% ChannelFlag
+DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 % Save number of trials averaged
 DataMat.nAvg = OPTIONS.nAvg;
 

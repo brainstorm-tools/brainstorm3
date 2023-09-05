@@ -1,4 +1,4 @@
-function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
+function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
@@ -8,7 +8,10 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 %     - isInteractive : 0 or 1
 %     - isNormalize   : If 1, converts values to uint8 and scales between 0 and 1
 % OUTPUT:
-%     - MRI         : Standard brainstorm structure for MRI volumes
+%     - MRI       : Standard brainstorm structure for MRI volumes
+%     - vox2ras   : [4x4] transformation matrix: voxels 0-based to RAS coordinates
+%                   (corresponds to MNI coordinates if the volume is registered to the MNI space)
+%     - tReorient : [4x4] transformation matrix: (voxels 0-based scanner) TO (voxels 0-based Brainstorm)
 
 % NOTES:
 %     - MRI structure:
@@ -45,7 +48,7 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
@@ -65,17 +68,19 @@ end
 % Initialize returned variables
 MRI = [];
 vox2ras = [];
+tReorient = [];
 
 % ===== GUNZIP FILE =====
+TmpDir = [];
 if ~iscell(MriFile)
     % Get file extension
-    [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    [fPath, fBase, fExt] = bst_fileparts(MriFile);
     % If file is gzipped
-    if strcmpi(fileExt, '.gz')
+    if strcmpi(fExt, '.gz')
         % Get temporary folder
-        tmpDir = bst_get('BrainstormTmpDir');
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'importmri');
         % Target file
-        gunzippedFile = bst_fullfile(tmpDir, fileBase);
+        gunzippedFile = bst_fullfile(TmpDir, fBase);
         % Unzip file
         res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
         if ~res
@@ -83,12 +88,14 @@ if ~iscell(MriFile)
         end
         % Import gunzipped file
         MriFile = gunzippedFile;
-        [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+        [fPathTmp, fBase, fExt] = bst_fileparts(MriFile);
     end
     % Default comment
-    Comment = fileBase;
+    Comment = fBase;
 else
     Comment = 'MRI';
+    fBase = [];
+    fPath = [];
 end
 
                 
@@ -97,7 +104,7 @@ isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
-    switch (lower(fileExt))
+    switch (lower(fExt))
         case '.mri',                  FileFormat = 'CTF';
         case {'.ima', '.dim'},        FileFormat = 'GIS';
         case {'.img','.hdr','.nii'},  FileFormat = 'Nifti1';
@@ -118,15 +125,15 @@ switch (FileFormat)
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
         if isInteractive
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, [], []);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], []);
         else
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, 1, 0);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, 0);
         end
     case 'MGH'
         if isInteractive
-            [MRI, vox2ras] = in_mri_mgh(MriFile, [], []);
+            [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, [], []);
         else
-            [MRI, vox2ras] = in_mri_mgh(MriFile, 1, 0);
+            [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, 1, 0);
         end
     case 'KIT'
         error('Not supported yet');
@@ -138,7 +145,7 @@ switch (FileFormat)
         MRI = in_mri_fieldtrip(MriFile);
     case 'BST'
         % Check that the filename contains the 'subjectimage' tag
-        if ~isempty(strfind(lower(fileBase), 'subjectimage'))
+        if ~isempty(strfind(lower(fBase), 'subjectimage'))
             MRI = load(MriFile);
         end
     case 'SPM-TPM'
@@ -154,14 +161,17 @@ end
 if ~isfield(MRI, 'Comment') || isempty(MRI.Comment)
     MRI.Comment = Comment;
 end
-% If a transformation was defined
+% Prepare the history of transformations
+if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
+    MRI.InitTransf = cell(0,2);
+end
+% If a world/scanner transformation was defined: save it
 if ~isempty(vox2ras)
-    % Prepare the history of transformations
-    if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
-        MRI.InitTransf = cell(0,2);
-    end
-    % Save this transformation in the MRI
     MRI.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
+end
+% If an automatic reorientation of the volume was performed: save it
+if ~isempty(tReorient)
+    MRI.InitTransf(end+1,[1 2]) = {'reorient', tReorient};
 end
 
 
@@ -234,6 +244,56 @@ if isfield(MRI, 'talCS') && isfield(MRI.talCS, 'FiducialName') && ~isempty(MRI.t
 end
 
 
+%% ===== READ FIDUCIALS FROM BIDS JSON =====
+if ~isempty(fPath)
+    % Look for adjacent .json file with fiducials definitions (NAS/LPA/RPA)
+    jsonFile = bst_fullfile(fPath, [fBase, '.json']);
+    % If json file exists
+    if file_exist(jsonFile)
+        % Load json file: 0-based voxel coordinates
+        json = bst_jsondecode(jsonFile);
+        [sFid, msg] = process_import_bids('GetFiducials', json, 'voxel');
+        if ~isempty(msg)
+            disp(['BIDS> ' jsonFile ': ' msg]);
+        end
+        % If there are fiducials defined in the json file
+        if ~isempty(sFid)
+            % Apply re-orientation of the volume to the fiducials coordinates
+            iTransf = find(strcmpi(MRI.InitTransf(:,1), 'reorient'));
+            if ~isempty(iTransf)
+                tReorient = MRI.InitTransf{iTransf(1),2};  % Voxel 0-based transformation, from original to Brainstorm
+                fidNames = fieldnames(sFid);
+                for f = fidNames(:)'
+                    if ~isempty(sFid.(f{1}))
+                        sFid.(f{1}) = (tReorient * [sFid.(f{1}), 1]')';
+                        sFid.(f{1}) = sFid.(f{1})(1:3);
+                    end
+                end
+            end
+            % Convert from (0-based VOXEL) to (1-based voxel) to (MRI)
+            if ~isempty(sFid.NAS)
+                MRI.SCS.NAS = (sFid.NAS + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.LPA)
+                MRI.SCS.LPA = (sFid.LPA + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.RPA)
+                MRI.SCS.RPA = (sFid.RPA + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.AC)
+                MRI.NCS.AC = (sFid.AC + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.PC)
+                MRI.NCS.PC = (sFid.PC + 1) .* MRI.Voxsize;
+            end
+            if ~isempty(sFid.IH)
+                MRI.NCS.IH = (sFid.IH + 1) .* MRI.Voxsize;
+            end
+        end
+    end
+end
+
+
 %% ===== COMPUTE SCS TRANSFORMATION =====
 % If SCS was defined but transformation not computed
 if isfield(MRI, 'SCS') && all(isfield(MRI.SCS, {'NAS','LPA','RPA'})) ...
@@ -270,5 +330,8 @@ if isMni && ~isempty(vox2ras) && (~isfield(MRI, 'NCS') || ~isfield(MRI.NCS, 'R')
 end
 
 
-
+%% ===== DELETE TEMPORARY FILE =====
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
+end
 

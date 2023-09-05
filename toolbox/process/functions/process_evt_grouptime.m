@@ -37,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 52;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'raw', 'data'};
-    sProcess.OutputTypes = {'raw', 'data'};
+    sProcess.InputTypes  = {'raw', 'data', 'matrix'};
+    sProcess.OutputTypes = {'raw', 'data', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
@@ -66,26 +66,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
+            sFreq = DataMat.F.prop.sfreq;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events', 'Time');
+            sEvents = DataMat.Events;
+            sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sFile.events, sFile.proc.sfreq);
+        [sEvents, isModified] = Compute(sEvents, sFreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);
@@ -128,8 +131,16 @@ function [events, isModified] = Compute(events, sfreq)
             if (i == 1)
                 newTime     = events(iEvts(i)).times(iOcc);
                 newEpoch    = events(iEvts(i)).epochs(iOcc);
-                newChannels = events(iEvts(i)).channels(iOcc);
-                newNotes    = events(iEvts(i)).notes(iOcc);
+                if ~isempty(events(iEvts(i)).channels)
+                    newChannels = events(iEvts(i)).channels(iOcc);
+                else
+                    newChannels = [];
+                end
+                if ~isempty(events(iEvts(i)).notes)
+                    newNotes = events(iEvts(i)).notes(iOcc);
+                else
+                    newNotes = [];
+                end
             % Add all the labels to the new event category
             else
                 % Try to convert to numerical values
@@ -146,8 +157,12 @@ function [events, isModified] = Compute(events, sfreq)
             % Remove this occurrence
             events(iEvts(i)).times(iOcc)    = [];
             events(iEvts(i)).epochs(iOcc)   = [];
-            events(iEvts(i)).channels(iOcc) = [];
-            events(iEvts(i)).notes(iOcc)    = [];
+            if ~isempty(events(iEvts(i)).channels)
+                events(iEvts(i)).channels(iOcc) = [];
+            end
+            if ~isempty(events(iEvts(i)).notes)
+                events(iEvts(i)).notes(iOcc) = [];
+            end
         end
         
         % Find this event in the list
@@ -166,13 +181,25 @@ function [events, isModified] = Compute(events, sfreq)
         % Add occurrences
         events(iNewEvt).times    = [events(iNewEvt).times,   newTime];
         events(iNewEvt).epochs   = [events(iNewEvt).epochs,  newEpoch];
-        events(iNewEvt).channels = [events(iNewEvt).channels,  newChannels];
-        events(iNewEvt).notes    = [events(iNewEvt).notes,  newNotes];
         % Sort
         [events(iNewEvt).times, indSort] = unique(events(iNewEvt).times);
         events(iNewEvt).epochs   = events(iNewEvt).epochs(indSort);
-        events(iNewEvt).channels = events(iNewEvt).channels(indSort);
-        events(iNewEvt).notes    = events(iNewEvt).notes(indSort);
+        % Channels
+        if ~isempty(newChannels)
+            if isempty(events(iNewEvt).channels) 
+                events(iNewEvt).channels = cell(1, size(events(iNewEvt).times,2) - size(newTime,2));
+            end
+            events(iNewEvt).channels = [events(iNewEvt).channels, newChannels];
+            events(iNewEvt).channels = events(iNewEvt).channels(indSort);
+        end
+        % Notes
+        if ~isempty(newNotes)
+            if isempty(events(iNewEvt).notes) 
+                events(iNewEvt).notes = cell(1, size(events(iNewEvt).times,2) - size(newTime,2));
+            end
+            events(iNewEvt).notes = [events(iNewEvt).notes, newNotes];  
+            events(iNewEvt).notes = events(iNewEvt).notes(indSort);
+        end
         isModified = 1;
     end
 end

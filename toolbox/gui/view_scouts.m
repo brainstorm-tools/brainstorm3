@@ -23,7 +23,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2023
 
 global GlobalData;  
 %% ===== PARSE INPUTS =====
@@ -137,7 +137,6 @@ end
 % Initialize common descriptors (between all files)
 SubjectFile    = '*';
 StudyFile      = '*';
-FigureDataFile = '*';
 
 % Get display options        
 ScoutsOptions = panel_scout('GetScoutsOptions');
@@ -156,33 +155,59 @@ axesLabels     = cell(length(ResultsFiles), length(iScouts));
 allComponents  = [];
 TimeVector     = [];
 issloreta      = 0;
+DisplayUnits   = [];
+Freqs          = [];
 % Process each Results file
 for iResFile = 1:length(ResultsFiles)
     % Is stat
     isStat = ismember(FileType{iResFile}, {'presults', 'ptimefreq'});
     isTimefreq = ismember(FileType{iResFile}, {'timefreq', 'ptimefreq'});
+    isPsd = isTimefreq && (~isempty(strfind(ResultsFiles{iResFile}, '_psd')) || ~isempty(strfind(ResultsFiles{iResFile}, '_fft')));
     
     % ===== GET/CREATE RESULTS DATASET =====
     bst_progress('start', 'Display scouts time series', ['Loading results file: "' ResultsFiles{iResFile} '"...']);
     % Load results
     if ~isTimefreq
         [iDS, iResult] = bst_memory('LoadResultsFileFull', ResultsFiles{iResFile});
+        if isempty(iDS)
+            disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
+            bst_progress('stop');
+            return;
+        end
         if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta'))
             issloreta = 1;
         end
+        fileUnits = GlobalData.DataSet(iDS).Results(iResult).DisplayUnits;
     else
-        %[iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 1);
         [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 0);
+        if isempty(iDS)
+            disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
+            bst_progress('stop');
+            return;
+        end
+        fileUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
+        % Check frequencies
+        if isempty(Freqs)
+            Freqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs;
+        elseif length(Freqs) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs)
+            error('The frequencies must match across all files.');
+        end
     end
-    % If no DataSet is accessible : error
-    if isempty(iDS)
-        disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
-        bst_progress('stop');
-        return;
+    % Make sure that units are the same for all the files
+    if ~isempty(fileUnits)
+        if isempty(DisplayUnits)
+            DisplayUnits = fileUnits;
+        elseif ~strcmpi(fileUnits, DisplayUnits)
+            DisplayUnits = 'Mixed units';
+        end
     end
 
-    % Get results subjectName/condition/#solInverse (FOR TITLE ONLY)
+    % Get study
     [sStudy,   iStudy]   = bst_get('Study',   GlobalData.DataSet(iDS).StudyFile);
+    if isempty(sStudy)
+        error(['No study registered for file: ' strrep(ResultsFiles{iResFile},'\\','\')]);
+    end
+    % Get results subjectName/condition/#solInverse (FOR TITLE ONLY)
     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
     isInterSubject = (iStudy == -2);
     % Get identification of figure
@@ -200,33 +225,7 @@ for iResFile = 1:length(ResultsFiles)
             StudyFile = [];
         end
     end
-    if ~isempty(FigureDataFile)
-        if (FigureDataFile(1) == '*')
-            FigureDataFile = GlobalData.DataSet(iDS).DataFile;
-        elseif ~file_compare(FigureDataFile, GlobalData.DataSet(iDS).DataFile)
-            FigureDataFile = [];
-        end
-    end
-    % If DataFile is not defined for this dataset
-    if isempty(FigureDataFile)
-        % Get DataFile associated to results file in brainstorm database
-        [sDbStudy, iDbStudy, iDbRes] = bst_get('ResultsFile', ResultsFiles{iResFile});
-        if ~isempty(iDbRes)
-            if isStat
-                DataFile = sStudy.Stat(iDbRes).DataFile;
-            else
-                DataFile = sStudy.Result(iDbRes).DataFile;
-            end
-        else
-            DataFile = '';
-        end
-    else
-        DataFile = FigureDataFile;
-    end
-    % If no study loaded: ignore file
-    if isempty(sStudy)
-        error(['No study registered for file: ' strrep(ResultsFiles{iResFile},'\\','\')]);
-    end
+    DataFile = GlobalData.DataSet(iDS).DataFile;
    
     % ===== Prepare cell array containing time series to display =====
     TfFunction = [];
@@ -254,7 +253,13 @@ for iResFile = 1:length(ResultsFiles)
         if ~isTimefreq
             [DataToPlot, nComponents, DataStd] = bst_memory('GetResultsValues', iDS, iResult, iVertices, 'UserTimeWindow', 0, isVolumeAtlas);
         else
-            iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
+            % PSD: Get all the frequencies, display as a spectrum
+            if isPsd
+                iFreqs = [];
+            % Other time-frequency files: Get only the selected time, display as time series
+            else
+                iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
+            end
             [DataToPlot, iTimeBands, iRow, nComponents] = bst_memory('GetTimefreqValues', iDS, iTimefreq, iVertices, iFreqs, 'UserTimeWindow', []);
             DataStd = [];
             % If the values are complex: try to get the measure from the Display tab
@@ -303,7 +308,7 @@ for iResFile = 1:length(ResultsFiles)
             % Get atlas "Source model"
             GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
             % Get the vertex indices of the scout in GridLoc
-            [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
+            [iRows, iRegionScouts, iGrid] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
             % Do not accept scouts that span over multiple regions
             if isempty(iRegionScouts)
                 bst_error(['Scout "' sScouts(k).Label '" is not included in the source model.' 10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).'], 'Display scouts', 0);
@@ -323,7 +328,7 @@ for iResFile = 1:length(ResultsFiles)
             % Set the scout computation properties based on the information in the "Source model" atlas
             if strcmpi(GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
                 nComponents = 1;
-                VertNormals = GlobalData.DataSet(iDS).Results(iResult).GridOrient(iVertices,:);
+                VertNormals = GlobalData.DataSet(iDS).Results(iResult).GridOrient(iGrid,:);
             else
                 nComponents = 3;
                 VertNormals = [];
@@ -362,6 +367,16 @@ for iResFile = 1:length(ResultsFiles)
             if ScoutsOptions.displayAbsolute
                 scoutsActivity{iResFile,iTrace} = abs(scoutsActivity{iResFile,iTrace});
             end
+        % More than one component and PCA: do PCA on scout & components at the same time.
+        elseif strncmpi(ScoutFunction, 'pca', 3) 
+            iTrace = k;
+            if ScoutsOptions.displayAbsolute
+                scoutsActivity{iResFile,iTrace} = abs(bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction));
+            else
+                scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, ScoutFunction);
+            end
+            % It doesn't make sense to run pca on std.
+            scoutsStd{iResFile,iTrace} = [];
         % More than one component & Absolute: Display the norm
         elseif ScoutsOptions.displayAbsolute
             iTrace = k;
@@ -373,6 +388,8 @@ for iResFile = 1:length(ResultsFiles)
             end
         % More than one component & Relative: Display the three components
         else
+            % This doesn't work for mixed models: iTrace should depend on previous regions' nComponents.
+            % But that case (mixed and relative) is flagged and an error is generated below (Legend section).
             iTrace = nComponents * (k-1) + (1:nComponents);
             tmp = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, 'none');
             for iComp = 1:nComponents
@@ -625,8 +642,17 @@ switch (file_gettype(ResultsFiles{1}))
     otherwise
         Modality = 'none';
 end
+% Plot spectrum
+if isPsd
+    if (length(scoutsActivity) > 1)
+        error(['Scouts on PSD plots can only show one graph at a time.' 10 ... 
+               'Open only one file at a time and enable the "overlay" options.']);
+    end
+    hFig = view_spectrum_matrix(ResultsFiles, 'Spectrum', scoutsActivity{1}, scoutsLabels, TimeVector, Freqs, 'Scout', DisplayUnits);
 % Plot time series
-hFig = view_timeseries_matrix(ResultsFiles, scoutsActivity, TimeVector, Modality, axesLabels, scoutsLabels, scoutsColors, hFig, scoutsStd);
+else
+    hFig = view_timeseries_matrix(ResultsFiles, scoutsActivity, TimeVector, Modality, axesLabels, scoutsLabels, scoutsColors, hFig, scoutsStd, DisplayUnits);
+end
 % Associate the file with one specific result file 
 setappdata(hFig, 'ResultsFiles', ResultsFiles);
 if (length(ResultsFiles) == 1)
@@ -637,11 +663,4 @@ end
 % Update figure name
 bst_figures('UpdateFigureName', hFig);
 % Set the time label visible
-figure_timeseries('SetTimeVisible', hFig, 1);
-
-    
-end
-
-
- 
- 
+figure_timeseries('SetTimeVisible', hFig, 1); 

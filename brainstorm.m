@@ -43,7 +43,7 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 % Make sure that "more" is off
 more off
@@ -52,6 +52,13 @@ more off
 isCompiled = exist('isdeployed', 'builtin') && isdeployed;
 if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
+    % Some versions of the compiler use different subfolders: search for the doc folder
+    if ~exist(bst_fullfile(BrainstormHomeDir, 'doc'), 'file')
+        docDir = file_find(BrainstormHomeDir, 'doc', 4, 1);
+        if ~isempty(docDir)
+            BrainstormHomeDir = fileparts(docDir);
+        end
+    end
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -71,14 +78,27 @@ end
 
 % Set dynamic JAVA CLASS PATH
 if ~exist('org.brainstorm.tree.BstNode', 'class')
-    % Download Brainstorm JARs if missing
-    BstJar = [BrainstormHomeDir '/java/brainstorm.jar'];
+    % Brainstorm jar file
+    BstJar = fullfile(BrainstormHomeDir, 'java', 'brainstorm.jar');
+    UpdateFile = fullfile(BrainstormHomeDir, 'java', 'outdated_jar.txt');
+    % If there is a flag file indicating that brainstorm.jar should be deleted (see bst_update.m)
+    if exist(UpdateFile, 'file')
+        delete(BstJar);
+        delete(UpdateFile);
+        if exist(UpdateFile, 'file') || exist(BstJar, 'file')
+            errordlg(['The following files could not be deleted automatically:' 10 BstJar 10 UpdateFile 10 10 ...
+                      'An error occurred during the Brainstorm update.' 10 ...
+                      'Delete this brainstorm3 folder and download manually' 10 ...
+                      'a new one from the Brainstorm website.']);
+        end
+    end
+    % Download brainstorm.jar if missing
     if ~exist(BstJar, 'file')
         disp('BST> Downloading brainstorm.jar...');
         bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
     % Add Brainstorm JARs to classpath
-    javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
+    javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
     javaaddpath(BstJar);
 end
 
@@ -253,28 +273,35 @@ switch action
         
     otherwise
         % Check if trying to execute a script
-        if file_exist(action)
-            ScriptFile = action;
-        elseif file_exist(fullfile(pwd, action))
-            ScriptFile = fullfile(pwd, action);
+        if file_exist(varargin{1})
+            ScriptFile = varargin{1};
+        elseif file_exist(fullfile(pwd, varargin{1}))
+            ScriptFile = fullfile(pwd, varargin{1});
         else
             ScriptFile = [];
         end
         % Execute script
         if ~isempty(ScriptFile)
             % Start brainstorm in server mode (local database or not)
-            if (length(varargin) > 1) && any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
-                brainstorm server local;
-                params = setdiff(varargin(2:end), 'local');
+            % With extra parameters
+            if (length(varargin) > 1)
+                params = varargin(2:end);
+                if any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
+                    brainstorm server local;
+                    params(cellfun(@(c)isequal(c,'local'), params)) = [];
+                else
+                    brainstorm server;
+                end
+            % Without extra parameters
             else
                 brainstorm server;
                 params = [];
             end
             % Execute script
             if ~isempty(params)
-                panel_command('ExecuteScript', ScriptFile, params{:});
+                bst_call(@panel_command, 'ExecuteScript', ScriptFile, params{:});
             else
-                panel_command('ExecuteScript', ScriptFile);
+                bst_call(@panel_command, 'ExecuteScript', ScriptFile);
             end
             % Quit
             brainstorm stop;
