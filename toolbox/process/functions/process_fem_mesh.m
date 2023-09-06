@@ -68,7 +68,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mergemethod.Type    = 'radio_linelabel';
     sProcess.options.mergemethod.Value   = 'mergemesh';
     % Iso2mesh: Max tetrahedral volume
-    sProcess.options.maxvol.Comment = 'Max tetrahedral volume (in cm3) (10=coarse, 0.0001=fine, default=0.1): ';
+    sProcess.options.maxvol.Comment = 'Max tetrahedral volume (in cm<SUP>3</SUP>) (10=coarse, 0.0001=fine, default=0.1): ';
     sProcess.options.maxvol.Type    = 'value';
     sProcess.options.maxvol.Value   = {OPTIONS.MaxVol, '', 4};
     % Iso2mesh: keepratio: Percentage of elements being kept after the simplification
@@ -1183,7 +1183,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             end
             OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
-            res = java_dialog('input', {'Max tetrahedral volume (in cm3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
+            res = java_dialog('input', {['Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):'], 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
             if isempty(res)
                 return
@@ -1211,7 +1211,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             end
             OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
-            res = java_dialog('input', {'Max tetrahedral volume (in cm3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
+            res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
             if isempty(res)
                 return
