@@ -143,7 +143,6 @@ BsDirMultiParc = fullfile(BsDir,'multiparc');
 
 SvregFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
 SvregResectionFile = file_find(BsDir, [FilePrefix '.resection.mask.nii.gz']);
-
 OtherSvregFiles = file_find(BsDirMultiParc, [FilePrefix '.svreg.*.label.nii.gz'], 2, 0);
 
 % Find surfaces
@@ -430,7 +429,7 @@ if isVolumeAtlas && ~isempty(SvregFile)
         'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...
         'Accumbens R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus R', ...
         'Brainstem', 'Cerebellum'};
-    [iSvreg, BstSvregFile] = import_surfaces(iSubject, SvregFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');    
+    [iSvreg, BstSvregFile] = import_surfaces(iSubject, SvregFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');
     % Extract cerebellum only
     try
         BstCerebFile = tess_extract_struct(BstSvregFile{1}, {'Cerebellum'}, 'svreg | cerebellum');
@@ -451,8 +450,6 @@ if isVolumeAtlas && ~isempty(SvregFile)
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);
     end
-
-
 end
 
 %% ==== Import Resection Mask ====
