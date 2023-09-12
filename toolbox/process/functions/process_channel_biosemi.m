@@ -43,7 +43,6 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % TODO: Add a text describing the changes, with a link to Biosemi info
-
 end
 
 
@@ -77,10 +76,9 @@ function OutputFiles = Run(sProcess, sInputs)
         % Use the indices to filter the channels
         eegChannels = ChannelMat.Channel(eegIndices);
         [m, n] = size(eegChannels);
+        disp(eegChannels)
     
-        % Initialize a cell array
-        eegarray = cell(m, n);
-        eegcarray=cell(m,n);
+        
         
         %       - Current channels names correspond to Biosemi style: A1...A32, B1...B32 C1... and so on, AND
         %         (Be aware of multiple naming e.g., A1 == A01 === A001, ...)
@@ -88,7 +86,10 @@ function OutputFiles = Run(sProcess, sInputs)
         %        channel name using regex 
 
         % Remove leading zeros before digits 1-9
-        for i = 1:length(eegarray)
+        eegarray = cell(m, n);
+        eegcarray = cell(size(eegarray)); % Initialize eegcarray with the same size
+        
+        for i = 1:numel(eegarray) % Use numel to loop through all elements
             channel = eegarray{i};
             % Find the first non-zero digit
             firstNonZero = find(channel ~= '0', 1);
@@ -97,18 +98,24 @@ function OutputFiles = Run(sProcess, sInputs)
                 eegcarray{i} = channel(firstNonZero:end);
             end
         end
-            eegChannels=eegcarray;
+        
+        % Concatenate the non-empty elements into a character array
+        eegcarray = cat(2, eegcarray{:});
+        
+        % Convert eegcarray to a character array
+        eegcarray = char(eegcarray);
+
+
         %        AND
         %       - All EEG channels make up a Biosemi cap, no 1 channel more, no 1 channel less.
         
         ChannelMaps=GetBiosemiMaps(eegChannels);
         %ChannelMapcarray=cellfun(keys(ChannelMaps));
 
-        keysArray = keys(ChannelMaps);
-        keysCellArray = cellstr(keysArray);
+        keysCellArray = cellstr(keys(ChannelMaps));
 
         missingEEGElectrodes = setdiff(keysCellArray, eegcarray);
-        extraEEGElectrodes = setdiff(eegcarray, keysCellArray);
+        %extraEEGElectrodes = setdiff(eegcarray, keysCellArray);
 
         %       - Otherwise return without changes
 
@@ -117,7 +124,7 @@ function OutputFiles = Run(sProcess, sInputs)
                   
         % Display the results
 
-        if isempty(missingEEGElectrodes) && isempty(extraEEGElectrodes)
+        if isempty(missingEEGElectrodes)
                             % Channel data and channel map
                             
                                                        
@@ -131,11 +138,11 @@ function OutputFiles = Run(sProcess, sInputs)
          else
                             if ~isempty(missingEEGElectrodes)
                                 
-                                bst_report('Error', sProcess, [], 'There are missing EEG channels.', num2str(missingElectrodes));
+                                bst_report('Error', sProcess, [], 'There are missing EEG channels.');
                             end
                             if ~isempty(extraEEGElectrodes)
                                
-                                bst_report('Error', sProcess, [], 'There are extra EEG channels.', num2str(extraElectrodes));
+                                bst_report('Error', sProcess, [], 'There are extra EEG channels.');
                             end
             
         end
