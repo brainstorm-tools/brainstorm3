@@ -1241,20 +1241,6 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
                 src.DataFile(1) = [];
             end
         end
-    % Reading other files with references: remove references
-    elseif ismember(srcType, {'results', 'headmodel', 'timefreq', 'spectrum', 'presults', 'ptimefreq', 'pspectrum', 'dipoles'})
-        src = load(file_fullpath(srcFile));
-        if (iSrcStudy ~= iTarget)
-            if isfield(src, 'DataFile')
-                src.DataFile = '';
-            end
-            if isfield(src, 'HeadModelFile') && ~isSameSubjChan
-                src.HeadModelFile = '';
-            end
-            if isfield(src, 'SurfaceFile') && ~isSameSubjAnat
-                src.SurfaceFile = '';
-            end
-        end
     else
         src = srcFile;
     end
@@ -1262,6 +1248,26 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
     destFile = db_add(iTarget, src, 0);
     if isempty(destFile)
         return
+    end
+    % Remove references from destination file
+    if ismember(srcType, {'results', 'headmodel', 'timefreq', 'spectrum', 'presults', 'ptimefreq', 'pspectrum', 'dipoles'})
+        destMat = load(file_fullpath(destFile));
+        if (iSrcStudy ~= iTarget)
+            update = struct();
+            if isfield(destMat, 'DataFile')
+                update.DataFile = '';
+            end
+            if isfield(destMat, 'HeadModelFile') && ~isSameSubjChan
+                update.HeadModelFile = '';
+            end
+            if isfield(destMat, 'SurfaceFile') && ~isSameSubjAnat
+                update.SurfaceFile = '';
+            end
+            % Update destination file
+            if ~isempty(fields(update))
+                bst_save(file_fullpath(destFile), update, [], 1);
+            end
+        end
     end
     % If reading a surface file: ignore all the intermediate computations
     if ismember(srcType, {'cortex','scalp','innerskull','outerskull','other'})
