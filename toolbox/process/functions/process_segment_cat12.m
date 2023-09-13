@@ -189,8 +189,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
             ' - http://www.neuro.uni-jena.de/cat/index.html#DOWNLOAD'];
         return;
     end
-    % Get default TPM.nii template
-    if isempty(TpmNii)
+    % Check provided TPM.nii
+    if isempty(TpmNii) || ~file_exist(TpmNii)
         TpmNii = bst_get('SpmTpmAtlas');
     end
     if isempty(TpmNii) || ~file_exist(TpmNii)
