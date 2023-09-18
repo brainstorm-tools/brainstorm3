@@ -43,7 +43,7 @@ if ~exist('openNSx', 'file')
         error(errMsg);
     end
 end
-
+openNSxVer = openNSx('ver');
 
 %% ===== READ HEADER =====
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
@@ -60,7 +60,11 @@ readOptions = {};
 NPMKSettings.ShowuVWarning = 0;
 if isfield(NPMKSettings, 'ShowZeroPadWarning')
     NPMKSettings.ShowZeroPadWarning = 0;
-    readOptions{end+1} = 'nozeropad';
+    % 'nozeropad' is needed for verions before 7.4.4.0 (April 2023),
+    % after that no zeropadding is the default behaviour and 'nozeropad' is not a valid argument
+    if bst_plugin('CompareVersions', openNSxVer, '7.4.4.0') < 0
+        readOptions{end+1} = 'nozeropad';
+    end
 end
 settingsManager(NPMKSettings);
 % Read the firs two samples of the file to get the header information
