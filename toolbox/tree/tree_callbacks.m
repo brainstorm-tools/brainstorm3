@@ -895,7 +895,10 @@ switch (lower(action))
                 if (length(bstNodes) == 1) && ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Edit channel file', IconLoader.ICON_EDIT, [], @(h,ev)gui_edit_channel(filenameRelative));
                 end
-		% TO DO - Add BioSemi GUI 
+                % === RENAME CHANNELS BIOSEMI ===
+                if ~isempty(regexp(char(bstNodes(1).getComment()), 'BDF'))
+                    gui_component('MenuItem', jPopup, [], 'BioSemi channels names to 10-10 system', IconLoader.ICON_EDIT, [], @(h,ev)process_channel_biosemi('ComputeInteractive', filenameRelative));
+                end
   
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
