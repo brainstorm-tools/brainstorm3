@@ -73,7 +73,9 @@ end
 function ComputeInteractive(ChannelFile)
     [~, errorMsg] = Compute(ChannelFile);
     if ~isempty(errorMsg)
-        bst_error(errorMsg);
+        bst_error(errorMsg, 'Rename EEG BioSemi channels', 0);
+    else
+        java_dialog('msgbox', 'EEG BioSemi channels were renamed.');
     end
 end
 
