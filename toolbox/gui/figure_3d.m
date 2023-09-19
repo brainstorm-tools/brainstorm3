@@ -1836,10 +1836,10 @@ function DisplayFigurePopup(hFig)
             end
             % Show/Hide atlas
             if ~strcmpi(AtlasNameFig, 'none')
-                if isempty(TessInfo.DataSource.FileName)
+                if isempty(TessInfo(iTess).DataSource.FileName)
                     jMenuAtlas.addSeparator();
                     gui_component('MenuItem', jMenuAtlas, [], 'Show atlas', [], [], @(h,ev)panel_surface('SetSurfaceData', hFig, 1, 'Anatomy', AtlasFiles{iAtlas}, 0));
-                elseif file_compare(AtlasFiles{iAtlas}, TessInfo.DataSource.FileName)
+                elseif file_compare(AtlasFiles{iAtlas}, TessInfo(iTess).DataSource.FileName)
                     jMenuAtlas.addSeparator();
                     gui_component('MenuItem', jMenuAtlas, [], 'Hide atlas', [], [], @(h,ev)panel_surface('RemoveSurfaceData', hFig, 1));
                 end
@@ -1972,12 +1972,14 @@ function DisplayFigurePopup(hFig)
         end
         % === SAVE SURFACE ===
         if ~isempty(TessInfo)
-            if ~isempty([TessInfo.hPatch]) && any([TessInfo.nVertices] > 5)
-                jMenuSave.addSeparator();
-            end
+            addSeparator = 1;
             % Loop on all the surfaces
             for it = 1:length(TessInfo)
                 if ~isempty(TessInfo(it).SurfaceFile) && ~isempty(TessInfo(it).hPatch) && (TessInfo(it).nVertices > 5)
+                    if addSeparator == 1
+                        jMenuSave.addSeparator();
+                        addSeparator = 0;
+                    end
                     jItem = gui_component('MenuItem', jMenuSave, [], ['Save surface: ' TessInfo(it).Name], IconLoader.ICON_SAVE, [], @(h,ev)SaveSurface(TessInfo(it)));
                 end
             end
@@ -4957,7 +4959,7 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     % Get surfaces list
     TessInfo = getappdata(hFig, 'Surface');
     % Find the first anatomy entry
-    iTess = find(~isempty(strcmpi(TessInfo.Name, 'Anatomy')));
+    iTess = find(file_compare({TessInfo.Name}, 'Anatomy'));    
     % Get available atlases for this figure
     [AtlasNames, AtlasFiles] = figure_mri('GetVolumeAtlases', hFig);
     if isempty(AtlasNames)

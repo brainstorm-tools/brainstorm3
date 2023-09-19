@@ -2049,7 +2049,7 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
     
     % ===== CONFIGURE COLORBAR =====
     % DataType for 3D topography with surface
-    if (length(iSurfaces) == 1) && isempty(TessInfo.DataSource.Type) && isempty(TessInfo.ColormapType)
+    if (length(iSurfaces) == 1) && isempty(TessInfo(iTess).DataSource.Type) && isempty(TessInfo(iTess).ColormapType)
         DataType = upper(ColormapInfo.Type);
     end
     % Display only one colorbar (preferentially the results colorbar)
