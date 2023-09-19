@@ -190,11 +190,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         return;
     end
     % Check provided TPM.nii
-    if isempty(TpmNii) || ~file_exist(TpmNii)
+    if isempty(TpmNii)
         TpmNii = bst_get('SpmTpmAtlas');
-    end
-    if isempty(TpmNii) || ~file_exist(TpmNii)
-        error('Missing file TPM.nii');
     end
     
     % ===== GET SUBJECT =====

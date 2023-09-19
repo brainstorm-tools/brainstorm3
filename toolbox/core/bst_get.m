@@ -2837,8 +2837,7 @@ switch contextName
         if ~isempty(tpmSpm)
             disp([' - ' tpmSpm]);
         end
-        % Return the preferred location: .brainstorm/defaults/spm/TPM.nii
-        argout1 = tpmUser;
+        argout1 = [];
         
     case 'PythonExe'
         % Get saved value

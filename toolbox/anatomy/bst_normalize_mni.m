@@ -80,8 +80,8 @@ end
 bst_plugin('SetProgressLogo', 'spm12');
 % Get template file
 TpmFile = bst_get('SpmTpmAtlas');
-% If it does not exist: download
-if isempty(TpmFile) || ~file_exist(TpmFile)
+% If it is not found: download
+if isempty(TpmFile)
     % Create folder
     if ~file_exist(bst_fileparts(TpmFile))
         mkdir(bst_fileparts(TpmFile));
@@ -115,7 +115,7 @@ if isempty(TpmFile) || ~file_exist(TpmFile)
     file_delete(tpmZip, 1);
     % Get template file
     TpmFile = bst_get('SpmTpmAtlas');
-    if isempty(TpmFile) || ~file_exist(TpmFile)
+    if isempty(TpmFile)
         errMsg = 'Missing file TPM.nii';
         return;
     end

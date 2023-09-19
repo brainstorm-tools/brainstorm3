@@ -594,7 +594,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             bst_plugin('SetProgressLogo', 'brain2mesh');
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
-            if isempty(tpmFile) || ~file_exist(tpmFile)
+            if isempty(tpmFile)
                 error('Missing file TPM.nii');
             end
             
