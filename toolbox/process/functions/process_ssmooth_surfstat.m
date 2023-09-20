@@ -108,6 +108,16 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     
     % ===== PROCESS =====
+    % Smooth surface
+    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM);
+    bst_report('Info', sProcess, sInput, msgInfo);
+
+    % Force the output comment
+    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
+end
+
+function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM)
+
     % Convert surface to SurfStat format
     cortS.tri = SurfaceMat.Faces;
     cortS.coord = SurfaceMat.Vertices';
@@ -116,23 +126,18 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     [vi,vj] = find(SurfaceMat.VertConn);
     Vertices = SurfaceMat.VertConn;
     meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+    
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
     FWHMedge = FWHM ./ meanDist;
     
     % Display the result of this conversion
     msgInfo = ['Average distance between two vertices: ' num2str(round(meanDist*10000)/10) ' mm' 10 ...
                'SurfStatSmooth called with FWHM=' num2str(round(FWHMedge * 1000)/1000) ' edges'];
-    bst_report('Info', sProcess, sInput, msgInfo);
-    disp(['SMOOTH> ' strrep(msgInfo, char(10), [10 'SMOOTH> '])]);   
-    
-    % Smooth surface
-    for iFreq = 1:size(sInput.A,3)
-        sInput.A(:,:,iFreq) = SurfStatSmooth(sInput.A(:,:,iFreq)', cortS, FWHMedge)';
-    end
-    
-    % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
-end
+    disp(['SMOOTH> ' strrep(msgInfo, char(10), [10 'SMOOTH> '])]); 
 
+    for iFreq = 1:size(sData,3)
+        sData(:,:,iFreq) = SurfStatSmooth(sData(:,:,iFreq)', cortS, FWHMedge)';
+    end
+end
 
 
