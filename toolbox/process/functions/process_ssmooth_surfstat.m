@@ -164,8 +164,9 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
 
             sSubRegion.VertConn = SurfaceMat.VertConn( subgraph{i},subgraph{i});
 
-            sData( subgraph{i},:,:) = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, '2023_fixed');
+            [sData( subgraph{i},:,:), msgInfo] = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, '2023_fixed');
         end
+        return;
     end
     % Convert surface to SurfStat format
     cortS.tri = SurfaceMat.Faces;
