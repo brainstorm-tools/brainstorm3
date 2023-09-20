@@ -124,7 +124,8 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM)
 
     % Get the average edge length
     [vi,vj] = find(SurfaceMat.VertConn);
-    Vertices = SurfaceMat.VertConn;
+
+    Vertices = SurfaceMat.Vertices;
     meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
     
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
