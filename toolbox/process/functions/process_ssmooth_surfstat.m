@@ -147,8 +147,20 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
         for i = 1:length(subgraph)
             sSubRegion = SurfaceMat;
             sSubRegion.Vertices = SurfaceMat.Vertices(subgraph{i},:);
-            sSubRegion.Faces    = SurfaceMat.Faces(subgraph{i},:);
 
+            iRemoveVert = setdiff(1:size(SurfaceMat.Vertices,1) , subgraph{i}  );
+            iKeptVert = subgraph{i};
+
+            iVertMap = zeros(1, size(SurfaceMat.Vertices ,1));
+            iVertMap(iKeptVert) = 1:length(iKeptVert);
+
+            iRemoveFace = find(sum(ismember(SurfaceMat.Faces, iRemoveVert), 2));
+
+            sSubRegion.Faces    = SurfaceMat.Faces;
+            % Remove faces from list
+            sSubRegion.Faces(iRemoveFace, :) = [];
+            % Renumber indices
+            sSubRegion.Faces = iVertMap(sSubRegion.Faces );
 
             sSubRegion.VertConn = SurfaceMat.VertConn( subgraph{i},subgraph{i});
 
