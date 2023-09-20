@@ -109,23 +109,65 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== PROCESS =====
     % Smooth surface
-    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM);
+    version = '2023_adptive';
+
+    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM,version);
     bst_report('Info', sProcess, sInput, msgInfo);
 
     % Force the output comment
     sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
 end
 
-function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM)
+function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
 
+    if strcmp(version,'2023_adptive')
+        % smooth each connenected part of the surface separately 
+        % first estimate the connected regions 
+
+        A = SurfaceMat.VertConn;
+        G = digraph(A);
+    
+        subgraph={};
+        for k=1:G.numnodes
+            nn_in = nearest(G,k,Inf);
+            nn_in = sort([ k; nn_in]);
+            found = 0;
+            for i=1:length(subgraph)
+                if length(nn_in) == length(subgraph{i}) &&  all(nn_in == subgraph{i})
+                    found = 1;
+                    break;
+                end    
+            end
+            if ~found
+                subgraph{end+1} = nn_in;
+            end
+        end
+
+        %smooth each region separately 
+        for i = 1:length(subgraph)
+            sSubRegion = SurfaceMat;
+            sSubRegion.Vertices = SurfaceMat.Vertices(subgraph{i},:);
+            sSubRegion.Faces    = SurfaceMat.Faces(subgraph{i},:);
+
+
+            sSubRegion.VertConn = SurfaceMat.VertConn( subgraph{i},subgraph{i});
+
+            sData( subgraph{i},:,:) = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, '2023_fixed');
+        end
+    end
     % Convert surface to SurfStat format
     cortS.tri = SurfaceMat.Faces;
     cortS.coord = SurfaceMat.Vertices';
 
     % Get the average edge length
     [vi,vj] = find(SurfaceMat.VertConn);
+    
+    if strcmp(version,'2016')
+        Vertices = SurfaceMat.VertConn;
+    elseif strcmp(version,'2023_fixed')
+        Vertices = SurfaceMat.Vertices;
+    end
 
-    Vertices = SurfaceMat.Vertices;
     meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
     
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
@@ -139,6 +181,8 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM)
     for iFreq = 1:size(sData,3)
         sData(:,:,iFreq) = SurfStatSmooth(sData(:,:,iFreq)', cortS, FWHMedge)';
     end
+
+
 end
 
 
