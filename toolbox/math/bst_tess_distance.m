@@ -26,12 +26,12 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
 
     Vertices = SurfaceMat.Vertices;
     if strcmp(metric,'euclidean')
-        Dist = zeros(length(VerticesB),1); 
+        Dist = zeros(length(VerticesA),length(VerticesB)); 
 
         y = Vertices(VerticesA,:)'*1000; 
         for i = 1:length(VerticesB)
             x = Vertices(VerticesB(i),:)'*1000; 
-            Dist(i)=sum((y-x).^2).^0.5; %euclidean distance calculation
+            Dist(:,i)=sum((y-x).^2).^0.5; %euclidean distance calculation
         end
 
     elseif contains(metric,'geodesic') 
@@ -49,10 +49,10 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
         end
 
         G    = graph(D);
-        Dist = distances(G, VerticesA,VerticesB)';
+        Dist = distances(G, VerticesA,VerticesB);
     end 
 
     if ~keepAll
-        Dist = min(Dist);
+        Dist = min(Dist)';
     end
 end
