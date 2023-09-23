@@ -24,9 +24,10 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
 %
 % Authors: Edouard Delaire 2023
 
-    Dist = zeros(length(VerticesB),1); 
     Vertices = SurfaceMat.Vertices;
     if strcmp(metric,'euclidean')
+        Dist = zeros(length(VerticesB),1); 
+        
         y = Vertices(VerticesA,:)'*1000; 
         for i = 1:length(VerticesB)
             x = Vertices(VerticesB(i),:)'*1000; 
@@ -50,10 +51,7 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
         end
 
         G = digraph(D);
-        tmp =  distances(G, VerticesA);
-        for i =1:length(VerticesB)
-            Dist(i)=min(tmp(:,VerticesB(i)));
-        end
-        
+        Dist =  min(distances(G, VerticesA,VerticesB))';
+
     end 
 end
