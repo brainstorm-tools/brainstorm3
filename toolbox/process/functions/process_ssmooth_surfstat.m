@@ -20,6 +20,7 @@ function varargout = process_ssmooth_surfstat( varargin )
 % =============================================================================@
 %
 % Authors: Peter Donhauser, Francois Tadel, 2015-2016
+%          Edouard Delaire, 2023
 
 eval(macro_method);
 end
@@ -54,6 +55,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.fwhm.Comment = '<B>FWHM</B> (Full width at half maximum):  ';
     sProcess.options.fwhm.Type    = 'value';
     sProcess.options.fwhm.Value   = {3, 'mm', 0};
+
+
+    sProcess.options.method.Comment = {'2016 (old)', '2023 - fixed FWHM (recomended)','2023 - Changing FWHM (slow)','Method :'; ...
+                                            '2016', '2023_fixed', '2023_adptive',''};
+    sProcess.options.method.Type    = 'radio_linelabel';
+    sProcess.options.method.Value   = '2016';
 end
 
 
@@ -109,9 +116,9 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== PROCESS =====
     % Smooth surface
-    version = '2023_adptive';
+    method = sProcess.options.method.Value;
 
-    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM,version);
+    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM,method);
     bst_report('Info', sProcess, sInput, msgInfo);
 
     % Force the output comment
