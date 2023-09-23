@@ -50,10 +50,10 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
         end
 
         G = digraph(D);
-
+        tmp =  distances(G, VerticesA);
         for i =1:length(VerticesB)
-            Dist(i)=min( distances(G, VerticesA,VerticesB(i)));
+            Dist(i)=min(tmp(:,VerticesB(i)));
         end
-
+        
     end 
 end
