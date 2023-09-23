@@ -1,4 +1,4 @@
-function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
+function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
 % bst_tess_distance: For every vertex B, return the minimum distance to the vertices A using
 % either the euclidean metric (metric = euclidean), or geodesic mesuring the distance either as
 % number of edge (metric = geodesic_edge) or path lenght (geodesic_length)
@@ -31,7 +31,7 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
         y = Vertices(VerticesA,:)'*1000; 
         for i = 1:length(VerticesB)
             x = Vertices(VerticesB(i),:)'*1000; 
-            Dist(i)=min( sum((y-x).^2).^0.5); %euclidean distance calculation
+            Dist(i)=sum((y-x).^2).^0.5; %euclidean distance calculation
         end
 
     elseif contains(metric,'geodesic') 
@@ -49,7 +49,10 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
         end
 
         G    = graph(D);
-        Dist = min(distances(G, VerticesA,VerticesB))';
-
+        Dist = distances(G, VerticesA,VerticesB)';
     end 
+
+    if ~keepAll
+        Dist = min(Dist);
+    end
 end
