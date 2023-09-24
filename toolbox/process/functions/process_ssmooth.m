@@ -138,7 +138,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         % Load surface file
         SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
         % Compute the smoothing operator
-        WInterp = tess_smooth_sources(SurfaceMat.Vertices, SurfaceMat.Faces, SurfaceMat.VertConn, FWHM, Method);
+        WInterp = tess_smooth_sources(SurfaceMat,  FWHM, Method);
         % Check for errors
         if isempty(WInterp)
             sInput = [];

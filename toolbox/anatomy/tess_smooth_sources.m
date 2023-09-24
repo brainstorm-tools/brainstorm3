@@ -58,7 +58,7 @@ nv = size(Vertices,1);
 Sigma = FWHM / (2 * sqrt(2*log2(2)));
 
 [vi,vj] = find(VertConn);
-meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2)) * 1000;
 
 
 % ===== COMPUTE DISTANCE =====
