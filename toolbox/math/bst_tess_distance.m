@@ -1,9 +1,22 @@
 function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
-% bst_tess_distance: For every vertex B, return the minimum distance to the vertices A using
-% either the euclidean metric (metric = euclidean), or geodesic mesuring the distance either as
-% number of edge (metric = geodesic_edge) or path lenght (geodesic_length)
-% When using the geodesic distance, if two nodes are not
-% connected, the distance is infinite. 
+% bst_tess_distance: Distance computation between two set of vertices (A,
+% and B)
+%
+% USAGE:  W = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
+%
+% INPUT:
+%    - Vertices : SurfaceMat: cortical surface matrix
+%    - VerticesA    : Vertices from region A
+%    - VerticesB : Vertices from region A
+%    - Method   : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_length'}
+%    - keepAll  : if false, for each vertex in region B, return the minimum
+%    distance to region A
+% OUPUT:
+%    - Dist: distance matrix. D(i,j) is the distance between vertex VerticesA(i), and
+%    VerticesB(j). If keepAll = 0, Dist is a nVertexB x 1 vector where
+%    Dist(i) is the minimum distance between VerticesB(i) and the region A.
+%    
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -28,10 +41,10 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
     if strcmp(metric,'euclidean')
         Dist = zeros(length(VerticesA),length(VerticesB)); 
 
-        y = Vertices(VerticesA,:)'*1000; 
+        x = Vertices(VerticesA,:)'*1000; 
         for i = 1:length(VerticesB)
-            x = Vertices(VerticesB(i),:)'*1000; 
-            Dist(:,i)=sum((y-x).^2).^0.5; %euclidean distance calculation
+            y = Vertices(VerticesB(i),:)'*1000; 
+            Dist(:,i)=sum((x-y).^2).^0.5; 
         end
 
     elseif contains(metric,'geodesic') 
