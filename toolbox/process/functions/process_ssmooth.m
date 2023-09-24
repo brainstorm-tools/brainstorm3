@@ -20,6 +20,7 @@ function varargout = process_ssmooth( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2010-2016        
+%          Edouard Delaire, 2023
 
 eval(macro_method);
 end
@@ -28,11 +29,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Spatial smoothing (DEPRECATED)';
+    sProcess.Comment     = 'Spatial smoothing (Brainstorm)';
     sProcess.FileTag     = 'ssmooth';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
-    sProcess.Index       = 0;
+    sProcess.Index       = 337;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results', 'timefreq'};
@@ -53,8 +54,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Comment = '<BR><U>Distance between vertices</U> (v1,v2):';
     sProcess.options.label2.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Euclidean distance</B>: norm(v1-v2)', ...
-                                       '<B>Path length</B>: number of edges between v1 and v2', ...
-                                       '<B>Average</B>: (euclidian distance + path length) / 2'};
+                                       '<B>Path length (edge)</B>: number of edges between v1 and v2', ...
+                                       '<B>Path length (distance)</B>: (recommanded) geodesic between v1 and v2'};
     sProcess.options.method.Type    = 'radio';
     sProcess.options.method.Value   = 3; 
 end
@@ -71,8 +72,8 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     % Method
     switch (sProcess.options.method.Value)
         case 1,    Method = 'euclidian';
-        case 2,    Method = 'path';
-        case 3,    Method = 'average';
+        case 2,    Method = 'geodesic_edge';
+        case 3,    Method = 'geodesic_length';
         otherwise, error(['Unknown method: ' sProcess.options.method.Value]);
     end
     % Final comment
@@ -84,11 +85,12 @@ end
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     global GlobalData;
     % Get options
-    FWHM = sProcess.options.fwhm.Value{1} / 1000;
+    FWHM = sProcess.options.fwhm.Value{1};
+
     switch (sProcess.options.method.Value)
         case 1,    Method = 'euclidian';
-        case 2,    Method = 'path';
-        case 3,    Method = 'average';
+        case 2,    Method = 'geodesic_edge';
+        case 3,    Method = 'geodesic_length';
         otherwise, error(['Unknown method: ' sProcess.options.method.Value]);
     end
 
@@ -123,7 +125,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 
     % ===== COMPUTE SMOOTHING OPERATOR =====
     % Get existing interpolation for this surface
-    Signature = sprintf('ssmooth(%d,%s):%s', round(FWHM*1000), Method, FileMat.SurfaceFile);
+    Signature = sprintf('ssmooth(%d,%s):%s', round(FWHM), Method, FileMat.SurfaceFile);
     WInterp = [];
     if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
         iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
@@ -159,7 +161,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput.A(:,:,iFreq) = WInterp * sInput.A(:,:,iFreq);
     end
     % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000), Method(1)];
+    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM), Method(1)];
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
