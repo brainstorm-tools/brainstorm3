@@ -63,6 +63,17 @@ isCancel = false;
 sStudy = bst_get('ChannelFile', ChannelFile);
 % Get subject
 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+% Check if default anatomy.
+if sSubject.UseDefaultAnat
+    Message = 'Digitized nasion and ear points cannot be applied to default anatomy.';
+    if isWarning
+        bst_error(Message, 'Apply digitized anatomical fiducials to MRI', 0);
+    else
+        disp(Message);
+    end
+    isCancel = true;
+    return;
+end
 % Get Channels
 ChannelMat = in_bst_channel(ChannelFile);
 
@@ -70,10 +81,11 @@ ChannelMat = in_bst_channel(ChannelFile);
 % Note that these coordinates are NOT currently updated when doing refine with head points (below).
 % They are in "initial SCS" coordinates, updated in channel_detect_type.
 if ~all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) || ~(length(ChannelMat.SCS.NAS) == 3) || ~(length(ChannelMat.SCS.LPA) == 3) || ~(length(ChannelMat.SCS.RPA) == 3)
+    Message = 'Digitized nasion and ear points not found.';
     if isWarning
-        bst_error('Digitized nasion and ear points not found.', 'Apply digitized anatomical fiducials to MRI', 0);
+        bst_error(Message, 'Apply digitized anatomical fiducials to MRI', 0);
     else
-        disp('BST> Digitized nasion and ear points not found.');
+        disp(Message);
     end
     isCancel = true;
     return;
@@ -108,6 +120,16 @@ elseif isConfirm
     [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA to match a set of' 10 ...
         'aligned digitized points is mainly used for exporting registration to a BIDS dataset.' 10 ...
         'It will break any previous alignment of this subject with all other functional datasets!' 10 10 ...
+        'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+    if ~Proceed || isCancel
+        isCancel = true;
+        return;
+    end
+end
+% If EEG, warn that only linear transformation would be saved this way.
+if ~isempty([good_channel(ChannelMat.Channel, [], 'EEG'), good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')])
+    [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will only save' 10 ...
+        'global rotations and translations. Any other changes to EEG channels will be lost.' 10 10 ...
         'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
     if ~Proceed || isCancel
         isCancel = true;

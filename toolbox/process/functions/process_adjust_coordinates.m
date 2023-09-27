@@ -236,18 +236,13 @@ function OutputFiles = Run(sProcess, sInputs)
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.scs.Value
             % TODO Maybe make this a separate process, since it should only run on one channel file
-            % per subject.
+            % per subject. Possibly have hidden option for no interactive warnings.
 
-            % Get subject
-            sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
-            % Check if default anatomy.
-            if sSubject.UseDefaultAnat
-                bst_report('Error', sProcess, sInputs(iFile), ...
-                    'Digitized nasion and ear points cannot be applied to default anatomy.');
+            [~, isCancel] = channel_align_scs(ChannelFile, eye(4), true, false); % interactive warnings but no confirmation
+            if isCancel
                 continue;
             end
-            DigToMriTransf = channel_align_scs(ChannelFile, eye(4), true, false); % interactive warnings but no confirmation
-            % TODO Verify if it worked.
+            % TODO Verify
         end
 
         % ----------------------------------------------------------------

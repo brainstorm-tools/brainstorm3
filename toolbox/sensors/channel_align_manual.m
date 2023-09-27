@@ -746,6 +746,7 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     end
     % Ask if needed to update also the other modalities
     if isempty(isAll)
+        % TODO We might have < 10 but still want to update electrodes. Verify instead if there are real EEG (not just ECG EOG)
         if (gChanAlign.isMeg || gChanAlign.isNirs) && (length(iEeg) > 10)
             isAll = java_dialog('confirm', 'Do you want to apply the same transformation to the EEG electrodes ?', 'Align sensors');
         elseif ~gChanAlign.isMeg && ~isempty(iMeg)
