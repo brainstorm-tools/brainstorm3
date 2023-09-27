@@ -23,7 +23,7 @@ function varargout = process_convert_raw_to_lfp( varargin )
 % =============================================================================@
 %
 % Authors: Konstantinos Nasiotis 2018
-%          Francois Tadel, 2022
+%          Francois Tadel, 2022-2023
 
 eval(macro_method);
 end
@@ -103,7 +103,6 @@ function OutputFiles = Run(sProcess, sInput)
     UseSsp = sProcess.options.usessp.Value;
     % Get protocol info
     ProtocolInfo = bst_get('ProtocolInfo');
-    BrainstormTmpDir = bst_get('BrainstormTmpDir');
     
     % ===== DEPENDENCIES =====
     % Not available in the compiled version
@@ -138,8 +137,10 @@ function OutputFiles = Run(sProcess, sInput)
         % This should never be an issue. Never heard of an acquisition system that doesn't record in multiples of 1kHz.
         bst_report('Warning', sProcess, sInput, ['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(LFP_fs) ' Hz']);
     end
+    % Create temporary folder
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'raw2lfp');
     % Demultiplex channels
-    demultiplexDir = bst_fullfile(BrainstormTmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
+    demultiplexDir = bst_fullfile(TmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
     ElecFiles = out_demultiplex(sInput.FileName, sInput.ChannelFile, demultiplexDir, UseSsp, BinSize * 1e9, isParallel);
     % Load channel file
     ChannelMat = in_bst_channel(sInput.ChannelFile);
@@ -214,6 +215,9 @@ function OutputFiles = Run(sProcess, sInput)
     [tmp, iSubject] = bst_get('Subject', sStudyInput.BrainStormSubject, 1);
     % Import the output RAW file in the database
     OutputFiles = import_raw({sFileOut.filename}, 'BST-BIN', iSubject);
+
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
 end
 
 
@@ -221,6 +225,7 @@ end
 function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileIn, ChannelMat, cleanChannelNames, LFP_fs)
     % Load electrode file
     load(ElecFile, 'data', 'sr');
+    % Convert column vector to row vector
     data = data';
     % Apply notch filter
     if ~isempty(NotchFreqs)
@@ -231,7 +236,7 @@ function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileI
         % Get channel name from electrode file name
         [tmp, ChannelName] = fileparts(ElecFile);
         ChannelName = strrep(ChannelName, 'raw_elec_', '');
-        data = BayesianSpikeRemoval(ChannelName, data, sr, sFileIn, ChannelMat, cleanChannelNames, BandPass);
+        data = BayesianSpikeRemoval(ChannelName, data', sr, sFileIn, ChannelMat, cleanChannelNames, BandPass);
         data = data';
     end
     % Band-pass filter
@@ -276,7 +281,7 @@ function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, Chann
         % from spktimes to obtain the start times of the spikes
   
         if mod(length(data),2)~=0
-            data_temp = [data 0]';
+            data_temp = [data; 0];
             g = fitLFPpowerSpectrum(data_temp,BandPass(1),BandPass(2),sFile.prop.sfreq);
             S = zeros(length(data_temp),1);
             iSpk = round(spkSamples - nSegment/2);

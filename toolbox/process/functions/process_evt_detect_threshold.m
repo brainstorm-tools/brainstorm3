@@ -264,8 +264,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Times, samples, epochs
             sEvent.times    = detectedEvt{i};
             sEvent.epochs   = ones(1, size(sEvent.times,2));
-            sEvent.channels = cell(1, size(sEvent.times, 2));
-            sEvent.notes    = cell(1, size(sEvent.times, 2));
+            sEvent.channels = [];
+            sEvent.notes    = [];
             % Add to events structure
             sFile.events(iEvt) = sEvent;
             nEvents = nEvents + 1;

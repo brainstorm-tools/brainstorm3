@@ -21,7 +21,8 @@ function import_subject(ZipFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2015-2023
+%          Martin Cousineau, 2019
 
 global GlobalData
 
@@ -44,17 +45,7 @@ iProtocol = bst_get('iProtocol');
 
 %% ===== UNZIP =====
 % Get temporary folder
-ProtocolDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'LoadedProtocol');
-% Delete existing folder
-if file_exist(ProtocolDir)
-    file_delete(ProtocolDir, 1, 3);
-end
-% Create output folder
-isOk = mkdir(ProtocolDir);
-if ~isOk
-    bst_error(['Could not create folder: ' ProtocolDir], 'Import subjects', 0);
-    return
-end
+ProtocolDir = bst_get('BrainstormTmpDir', 0, 'protocol');
 % Progress bar
 bst_progress('start', 'Import subjects', 'Unzipping file...');
 % Unzip file
@@ -75,7 +66,7 @@ if isempty(subjectFile) || isempty(studyFile)
                'A protocol directory must contain at least two subdirectories: ' 10 ...
                'one for the subjects'' anatomies, and one for the recordings/results.'], ...
               'Import subjects', 0);
-    file_delete(ProtocolDir, 1, 3);
+    file_delete(ProtocolDir, 1, 1);
     return;
 end
 % Extract first level of subdir
@@ -180,7 +171,7 @@ db_update(LatestDbVersion, iProtocol, 0);
 GlobalData.DataBase.DbVersion = LatestDbVersion;
 
 % Delete temporary folder
-file_delete(ProtocolDir, 1, 3);
+file_delete(ProtocolDir, 1, 1);
 % Close progress bar
 bst_progress('stop');
 

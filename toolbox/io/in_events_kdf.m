@@ -45,8 +45,8 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).times      = AllEvt(iMrk,1)' ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
-    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).channels   = [];
+    events(iEvt).notes      = [];
 end
 
 

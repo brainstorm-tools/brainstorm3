@@ -27,7 +27,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2022
+% Authors: Francois Tadel, 2010-2023
 
 eval(macro_method);
 end
@@ -1186,10 +1186,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case {'cluster', 'cluster_confirm'}
                     % Get available and selected clusters
-                    [jList, sClusters] = GetClusterList(iProcess, optNames{iOpt});
+                    jList = GetClusterList(sProcess, optNames{iOpt});
                     % If no clusters
                     if isempty(jList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No cluster available.');
+                        gui_component('label', jPanelOpt, [], '<HTML>Error: No clusters available in channel file.');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1199,7 +1199,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                                 strCheck = 'Use cluster time series:';
                             end
                             jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
-                            java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, []));
+                            java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []));
                             jCheckCluster.setSelected(1)
                             jList.setEnabled(1);
                         else
@@ -1207,8 +1207,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             gui_component('label', jPanelOpt, [], ' Select cluster:');
                         end
                         % Set callbacks
-                        java_setcb(jList, 'ValueChangedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, ev));
-                        Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, []);
+                        java_setcb(jList, 'ValueChangedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, ev));
+                        Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []);
                         % Create scroll panel
                         jScroll = javax.swing.JScrollPane(jList);
                         jPanelOpt.add('br hfill vfill', jScroll);
@@ -1830,22 +1830,32 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
     %% ===== OPTIONS: GET CLUSTER LIST =====
-    function [jList, sClusters] = GetClusterList(iProcess, optName)
+    function jList = GetClusterList(sProcess, optName)
         import org.brainstorm.list.*;
-        % Get process
-        sCurProcess = GlobalData.Processes.Current(iProcess);
-        % Get available clusters 
-        sClusters = panel_cluster('GetClusters');
-        if isempty(sClusters)
-            jList = [];
-            return
+        % Initialize returned values
+        jList = [];
+
+        % Get the current channel file
+        if isfield(sProcess.options.(optName), 'InputTypesB') && ~isempty(sFiles2)
+            ChannelFile = sFiles2(1).ChannelFile;
+        else
+            ChannelFile = sFiles(1).ChannelFile;
         end
+        if isempty(ChannelFile)
+            return;
+        end
+        % Load clusters from channel file
+        ChannelMat = in_bst_channel(ChannelFile, 'Clusters');
+        if isempty(ChannelMat.Clusters)
+            return;
+        end
+
         % Get all clusters labels
-        allLabels = {sClusters.Label};
+        allLabels = {ChannelMat.Clusters.Label};
         % Create a list mode of the existing clusters/scouts
         listModel = javax.swing.DefaultListModel();
-        for iClust = 1:length(sClusters)
-            listModel.addElement(BstListItem(sClusters(iClust).Label, '', [' ' allLabels{iClust} ' '], iClust));
+        for iClust = 1:length(ChannelMat.Clusters)
+            listModel.addElement(BstListItem(ChannelMat.Clusters(iClust).Label, '', [' ' allLabels{iClust} ' '], iClust));
         end
 
         % Create list
@@ -1854,33 +1864,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
         jList.setVisibleRowCount(-1);
         jList.setCellRenderer(BstStringListRenderer(fontSize));
-
-        % Get selected clusters
-        [tmp__, iSelClusters] = panel_cluster('GetSelectedClusters');
-        % Get selected indices
-        if ~isempty(sCurProcess.options.(optName).Value)
-            labels = {sCurProcess.options.(optName).Value.Label};
-        else
-            labels = {};
-        end
-        % If a selection has already been made for this option
-        if ~isempty(labels)
-            % Get the selected clusters indices
-            iSelClusters = [];
-            for i = 1:length(labels)
-                iSelClusters = [iSelClusters, find(strcmpi(labels{i}, {sClusters.Label}))];
-            end
-        elseif ~isempty(iSelClusters)
-            sCurProcess.options.(optName).Value = sClusters(iSelClusters);
-        end
-        if ~isempty(iSelClusters)
-            jList.setSelectedIndices(iSelClusters - 1);
-        end
     end
 
 
     %% ===== OPTIONS: CLUSTER CALLBACK =====
-    function Cluster_ValueChangedCallback(iProcess, optName, sClusters, jList, jCheck, ev)
+    function Cluster_ValueChangedCallback(iProcess, optName, jList, jCheck, ev)
         % Enable/disable jList
         if ~isempty(jCheck)
             isChecked = jCheck.isSelected();
@@ -1894,9 +1882,17 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % If not currently editing
         elseif isempty(ev) || ~ev.getValueIsAdjusting()
             % Get selected clusters
-            iSel = jList.getSelectedIndices() + 1;
+            selObj = jList.getSelectedValues();
+            if (length(selObj) == 0)
+                strList = [];
+            else
+                strList = cell(1, length(selObj));
+                for iObj = 1:length(selObj)
+                    strList{iObj} = char(selObj(iObj).getType());
+                end
+            end
             % Set value
-            SetOptionValue(iProcess, optName, sClusters(iSel));
+            SetOptionValue(iProcess, optName, strList);
         end
     end
 
@@ -2373,8 +2369,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             % Get process info
             procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
             procFunc    = func2str(sExportProc(iProc).Function);
-            % Time-freq: make sure the options were selected
-            if ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd', 'process_henv1', 'process_henv1n', 'process_henv2'}) && (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))
+            % Timefreq and Connectivity: make sure the advanced options were selected
+            if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
+                                    (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))) || ... % check 'edit' field
+               (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
+                                   'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                                   'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
+                                    (~isfield(sExportProc(iProc).options.tfedit, 'Value') || isempty(sExportProc(iProc).options.tfedit.Value)))    % check 'tfedit' field
                 bst_error('Please check the advanced options of the process before generating the script.', 'Generate script', 0);
                 return;
             end
@@ -2519,7 +2520,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         str = [str 'bst_report(''Open'', ReportFile);' 10];
         str = [str '% bst_report(''Export'', ReportFile, ExportDir);' 10];
         str = [str '% bst_report(''Email'', ReportFile, username, to, subject, isFullReport);' 10 10];
-        
+        str = [str '% Delete temporary files' 10];
+        str = [str '% gui_brainstorm(''EmptyTempFolder'');' 10 10];
+
         % Save script
         if isSave
             % Get default folders
@@ -2843,20 +2846,24 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                 field = [func2str(sProcesses(iProcess).Function), '__', optNames{iOpt}];
                 % If this field was saved in the user preferences, and if is of the correct type
                 if isfield(ProcessOptions.SavedParam, field) && strcmpi(class(ProcessOptions.SavedParam.(field)), class(option.Value))
+                    savedOpt = ProcessOptions.SavedParam.(field);
                     % Radio button: check the index of the selection
-                    if ismember(option.Type, {'radio','radio_line'}) && (ProcessOptions.SavedParam.(field) > length(option.Comment))
+                    if ismember(option.Type, {'radio','radio_line'}) && (savedOpt > length(option.Comment))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(ProcessOptions.SavedParam.(field), option.Comment(2,:))
+                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(savedOpt, option.Comment(2,:))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(ProcessOptions.SavedParam.(field), option.Comment(2,1:end-1))
+                    elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(savedOpt, option.Comment(2,1:end-1))
+                        % Error: ignoring previous option
+                    % Combobox: check the format
+                    elseif strcmpi(option.Type, 'combobox_label') && ((length(savedOpt) ~= 2) || ~ischar(savedOpt{1}) || (size(savedOpt{2},1) ~= 2) || ~ismember(savedOpt{1}, option.Value{2}(2,:)))
                         % Error: ignoring previous option
                     % Value: restore the 'time' units, if it was updated
                     elseif strcmpi(option.Type, 'value') && iscell(option.Value) && strcmpi(option.Value{2}, 'time')
-                        option.Value = ProcessOptions.SavedParam.(field);
+                        option.Value = savedOpt;
                         option.Value{2} = 'time';
                     % Else: use the saved option
                     else
-                        option.Value = ProcessOptions.SavedParam.(field);
+                        option.Value = savedOpt;
                     end
                 end
             end
@@ -3067,6 +3074,20 @@ function [sOutputs, sProcesses] = ShowPanel(FileNames, ProcessNames, FileTimeVec
     if isempty(sProcesses)
         return;
     end
+    % Timefreq and Connectivity: make sure the advanced options were reviewed
+    for iProc = 1 : length(sProcesses)
+        procFunc = func2str(sProcesses(iProc).Function);
+        if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
+                                (~isfield(sProcesses(iProc).options.edit, 'Value') || isempty(sProcesses(iProc).options.edit.Value))) || ... % check 'edit' field
+           (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
+                               'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                               'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
+                                (~isfield(sProcesses(iProc).options.tfedit, 'Value') || isempty(sProcesses(iProc).options.tfedit.Value)))    % check 'tfedit' field
+            bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before running the pipeline.'], 'Pipeline editor', 0);
+            return
+        end
+    end
+
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sInputs, sInputs2, 1);
 end

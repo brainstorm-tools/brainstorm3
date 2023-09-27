@@ -25,7 +25,7 @@ function [sMriT1, TpmFiles] = mri_normalize_segment(sMriT1, TpmFile, sMriT2)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2020-2021
+% Authors: Francois Tadel, 2020-2023
 
 % === PARSE INPUTS ===
 if (nargin < 3) || isempty(sMriT2)
@@ -35,15 +35,14 @@ end
 % === SAVE FILES IN TMP FOLDER ===
 % Output variables
 TpmFiles = [];
-% Empty temporary folder
-gui_brainstorm('EmptyTempFolder');
 % Save T1 MRI in .nii format
 baseName = 'spm_segment_T1.nii';
-T1Nii = bst_fullfile(bst_get('BrainstormTmpDir'), baseName);
+TmpDir = bst_get('BrainstormTmpDir', 0, 'spmsegment');
+T1Nii = bst_fullfile(TmpDir, baseName);
 out_mri_nii(sMriT1, T1Nii);
 % Save T2 MRI in .nii format
 if ~isempty(sMriT2)
-    T2Nii = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_segment_T2.nii');
+    T2Nii = bst_fullfile(TmpDir, 'spm_segment_T2.nii');
     out_mri_nii(sMriT1, T2Nii);
 else
     T2Nii = [];
@@ -105,8 +104,8 @@ warning('off', 'MATLAB:RandStream:ActivatingLegacyGenerators');
 % === LOAD DEFORMATION ===
 bst_progress('text', 'Loading deformation fields...');
 % Output files
-RegFile = bst_fullfile(bst_get('BrainstormTmpDir'), ['y_' baseName]);
-RegInvFile = bst_fullfile(bst_get('BrainstormTmpDir'), ['iy_' baseName]);
+RegFile = bst_fullfile(TmpDir, ['y_' baseName]);
+RegInvFile = bst_fullfile(TmpDir, ['iy_' baseName]);
 if ~file_exist(RegFile) || ~file_exist(RegInvFile)
     disp('BST> SPM Segment failed.');
     sMriT1 = [];
@@ -117,12 +116,15 @@ sMriT1 = import_mnireg(sMriT1, RegFile, RegInvFile, 'segment');
 
 % === LOAD TISSUES ===
 TpmFiles = {...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c2' baseName]), ...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c1' baseName]), ...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c3' baseName]), ...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c4' baseName]), ...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c5' baseName]), ...
-    bst_fullfile(bst_get('BrainstormTmpDir'), ['c6' baseName])};
+    bst_fullfile(TmpDir, ['c2' baseName]), ...
+    bst_fullfile(TmpDir, ['c1' baseName]), ...
+    bst_fullfile(TmpDir, ['c3' baseName]), ...
+    bst_fullfile(TmpDir, ['c4' baseName]), ...
+    bst_fullfile(TmpDir, ['c5' baseName]), ...
+    bst_fullfile(TmpDir, ['c6' baseName])};
 if ~all(cellfun(@file_exist, TpmFiles))
     TpmFiles = [];
 end
+
+% Files must not be deleted because TPM files are returned by the function
+% They must be deleted in the calling function

@@ -1,12 +1,12 @@
 function bst_userstat(isSave, PlugName)
 % BST_USERSTAT: Plot statistics about the Brainstorm users
 % 
-% USAGE:  bst_userstat(isSave=0, PlugName=[])         : 
+% USAGE:  bst_userstat(isSave=0, PlugName=[])
 %         bst_userstat(1)        :
 %         bst_userstat(PlugName) : Display the download statistics for a specific plugin
 % INPUTS:
 %    - isSave   : If 0, display the usage statistics in Matlab figures
-%                 If 1, save usage statistics figures on the hard drive
+%                 If 1, save usage statistics figures on user directory
 %    - PlugName : If string, display the download statistics of a specific plugin
 %                 If empty, display Brainstorm statistics: users, downloads, forum posts, publications
 
@@ -28,7 +28,8 @@ function bst_userstat(isSave, PlugName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2022
+% Authors: Francois Tadel,   2012-2023
+%          Raymundo Cassani, 2023
 
 % Parse inputs
 if (nargin < 2) || isempty(PlugName)
@@ -47,7 +48,9 @@ Hs = [ScreenDef(1).matlabPos(2), ScreenDef(1).matlabPos(4)];
 hf = 230;
 hFig = [];
 % Output folder for images
-ImgDir = 'C:\Work\Doc\Brainstorm\site\stat';
+ImgDir = bst_get('BrainstormUserDir');
+boldMoinMoin = ['''', '''', ''''];
+italMoinMoin = ['''', ''''];
 
 % ===== NUMBER OF USERS =====
 if isempty(PlugName)
@@ -65,6 +68,9 @@ if isempty(PlugName)
                [2005, max(year)], [0, ceil(nUsersTotal(end)/1000)*1000], ...
                sprintf('User accounts: %d', length(dates)), [], 'Number of users', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'users.png'));
+    % String for MoinMoin website
+    strWebsite = sprintf('Number of user accounts registered on the website: %s%.3f%s\r', boldMoinMoin, length(dates)/1000, boldMoinMoin);
+    fprintf(strrep(strWebsite, '.', ','));
 end
        
 % ===== LOG ANALYSIS =====
@@ -80,16 +86,18 @@ if isempty(PlugName)
     iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
     [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
     % Look for all dates in the current year (exclude current month)
-%    iAvg = find((xUpdate >= 2021) & (xUpdate < 2022));
-    iAvg = find((xUpdate >= 2022) & (xUpdate < 2023));
+    year = 2023;
+    iAvg = find((xUpdate >= year) & (xUpdate < year+1));
     % Remove invalid data
     iBad = ((nUpdate < 100) | (nUpdate > 4000));
     nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
     % Plot number of downloads
     [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
                [2005, max(xUpdate(1:end-1))], [], ...
-               sprintf('Downloads per month: Avg(2022)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+               sprintf('Downloads per month: Avg(%d)=%d', year, round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
+    % String for MoinMoin website
+    fprintf('Number of software downloads per month: (average %d = %s%d/month%s)\r', year, boldMoinMoin, round(mean(nUpdate(iAvg))), boldMoinMoin);
 end
 
 
@@ -108,19 +116,26 @@ if isempty(PlugName)
                [2005, max(year)], [0 ceil(max(nPosts(1:end-1))/100)*100], ...
                sprintf('Posts on the forum: %d', length(dates)), [], 'Forum posts per month', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'posts.png'));
+    % String for MoinMoin website
+    strWebsite = sprintf('Number of messages posted on the forum: %s%.3f%s\r', boldMoinMoin, length(dates)/1000, boldMoinMoin);
+    fprintf(strrep(strWebsite, '.', ','));
 end
 
 % ===== PUBLICATIONS =====
 if isempty(PlugName)
     % Hard coded list of publications
-    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021]; 
-    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  392];
-    nPubliCurYear = 289;
+    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022]; 
+    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
+    nPubliCurYear = 118; % Updated March 2023
+    strPubDate = 'Up to March 2023';
     % Plot figure
     hFig(end+1) = fig_report(year, nPubli, 1, ...
                [2000 max(year)], [], ...
                sprintf('Peer-reviewed articles and book chapters: %d', sum(nPubli) + nPubliCurYear), [], 'Publications per year', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'publications.png'));
+    % String for MoinMoin website
+    strWebsite = sprintf('Number of peer-reviewed articles and book chapters published using Brainstorm: %s%d%s', boldMoinMoin, sum(nPubli) + nPubliCurYear, boldMoinMoin);
+    fprintf([strWebsite, ' <<BR>> ', sprintf('%s(%s)%s\r', italMoinMoin, strPubDate, italMoinMoin)]);
 end
 
 % ===== PLUGINS =====
@@ -129,7 +144,7 @@ if ~isempty(PlugName)
     url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
     str =  bst_webread(url);
     % Process report
-    str = str_split(str, newline);
+    str = str_split(str, char(10));
     nTotal = length(str);
     dates = cellfun(@(x)str_split(x,':'), str, 'UniformOutput', 0);
     year = cellfun(@(x)str2double(x{1}(1:4)), dates);

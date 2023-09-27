@@ -142,6 +142,7 @@ end
 BsDirMultiParc = fullfile(BsDir,'multiparc');
 
 SvregFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+SvregResectionFile = file_find(BsDir, [FilePrefix '.resection.mask.nii.gz']);
 OtherSvregFiles = file_find(BsDirMultiParc, [FilePrefix '.svreg.*.label.nii.gz'], 2, 0);
 
 % Find surfaces
@@ -451,6 +452,11 @@ if isVolumeAtlas && ~isempty(SvregFile)
     end
 end
 
+%% ==== Import Resection Mask ====
+if ~isempty(SvregResectionFile)
+    [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregResectionFile, [], 0, 1, 'resection_mask');
+    [iSvregResection, BstSvregResectionFile] = import_surfaces(iSubject, SvregResectionFile, 'MRI-MASK', 0, [], [], 'resection');
+end
 
 %% ===== UPDATE GUI =====
 % Set default cortex

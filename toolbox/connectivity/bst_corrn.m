@@ -60,17 +60,21 @@ R = Xc * Yc';
 % end
 
 % Use t-test and standard Gaussian
-nTimes = size(X,2);
-pValues = zeros(size(R));
-ip = (abs(R) < 1-eps);
-tmp = abs(R(ip)) ./ sqrt(1 - abs(R(ip)).^2) * sqrt(nTimes - 2);
-pValues(ip) = 1 - (1/2 * erfc(-1 * tmp / sqrt(2)));     % 1 - normcdf(., 0, 1);
+if nargout > 1
+    nTimes = size(X,2);
+    pValues = zeros(size(R));
+    ip = (abs(R) < 1-eps);
+    tmp = abs(R(ip)) ./ sqrt(1 - abs(R(ip)).^2) * sqrt(nTimes - 2);
+    pValues(ip) = 1 - (1/2 * erfc(-1 * tmp / sqrt(2)));     % 1 - normcdf(., 0, 1);
+end
 
 end
 
 function x = normr(x)
     n = sqrt(sum(x.^2,2));
-    x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
+    if any(n~=0)
+        x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
+    end
     x(n==0,:) = 1 ./ sqrt(size(x,2));
 end
 

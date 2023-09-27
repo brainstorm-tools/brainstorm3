@@ -78,5 +78,5 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isOrth = sProcess.options.isorth.Value;
     
     % Compute metric
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity(sInputA, [], OPTIONS);
 end

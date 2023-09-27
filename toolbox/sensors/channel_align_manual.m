@@ -28,7 +28,8 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
+%          Marc Lalancette, 2022
 
 global GlobalData;
 
@@ -864,46 +865,15 @@ function AlignClose_Callback(varargin)
         if (nargin == 3)
             SaveChanges = 1;
         else
-            % If head points present, offer to update MRI anat fids to match digitized ones.
-            if gChanAlign.isHeadPoints
-                [Choice, isCancel] = java_dialog('question', ['The sensors locations changed.' 10 ...
-                    'Would you like to save changes?' 10 10], 'Align sensors', [], {'Yes', 'Update MRI', 'No'}, 'Yes');
-                if strcmpi(Choice, 'Yes')
-                    SaveChanges = 1;
-                else
-                    SaveChanges = 0;
-                end
-                if strcmpi(Choice, 'Update MRI')
-                    % If EEG, warn that only linear transformation would be saved this way.
-                    if gChanAlign.isEeg
-                        [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will only save' 10 ...
-                            'global rotations and translations. Any other changes to EEG channels will be lost.' 10 10 ...
-                            'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
-                        if ~Proceed || isCancel
-                            isCancel = true;
-                        end
-                    end
-                    if ~isCancel
-                        % Get final transformation matrix
-                        Transform = eye(4);
-                        Transform(1:3,1:3) = gChanAlign.FinalTransf(1:3,1:3);
-                        Transform(1:3,4)   = gChanAlign.FinalTransf(1:3,4);
-                        % Update MRI (and surfaces), after more warning and confirmation. Also
-                        % offers to reset all associated channel files.
-                        [~, isCancel] = channel_align_scs(gChanAlign.ChannelFile, Transform, 1, 1); % warn & confirm
-                    end
-                end
-            else % no head points
-                [SaveChanges, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
-                    'Would you like to save changes? ' 10 10], 'Align sensors');
-            end
+            [SaveChanges, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
+                'Would you like to save changes? ' 10 10], 'Align sensors');
         end
         % Don't close figure if cancelled.
         if isCancel
             return;
         end
         % Report (in command window) max head and sensor displacements from changes.
-        if SaveChanges || (gChanAlign.isHeadPoints && ~strcmpi(Choice, 'No'))
+        if SaveChanges || gChanAlign.isHeadPoints
             process_adjust_coordinates('CheckCurrentAdjustments', ChannelMat, ChannelMatOrig);
         end
         % Save changes to channel file and close figure

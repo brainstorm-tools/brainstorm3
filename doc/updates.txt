@@ -1,6 +1,52 @@
+June 2023
+- PCA: Major fixes and improvements for Scouts and Flattening unconstrained sources
+|  New tutorial page. Fix 1st PC sign inconsistency across epochs and conditions
+|  PCA for scouts rescaled. "% power kept" fixed and saved in history
+- Connectivity: New option to flatten unconstrained sources with PCA
+- Connectivity: Fix scouts on volume and mixed models
+--------------------------------------------------------------
+May 2023
+- FOOOF: Add option to display model only for freq range of analysis
+- Plugin: Get Blackrock NPMK library from its GitHub HEAD
+- Anatomy: Support of FreeSurfer wfiles as textures
+- Bugfix: Error in averaging PAC and tPAC
+--------------------------------------------------------------
+April 2023
+- NIRS: Project channel files between subjects
+- 3DViewer: Overlay any type of surfaces
+--------------------------------------------------------------
+March 2023
+- Parallel computing: Handle temporary files per process, to avoid conflicts
+- Recordings: Optional storage of events channels and notes
+- Anatomy: New template ICBM152 2023b: New BEM and cortex for OpenMEEG
+- Anatomy: Contralateral projection of volume scouts
+--------------------------------------------------------------
+February 2023
+- Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)
+- Anatomy: Compute FEM mesh statistics
+- Anatomy: FEM mesh generation with SimNIBS4/CHARM
+- Anatomy: Menu to merge/rename/delete FEM layers
+- Anatomy: Fixes in template ICBM152 2023 (T1 contrast & tissue labels)
+- Bugfix: Error in data covariance computation: Baseline not removed
+| when baseline time window was not included in data time window
+--------------------------------------------------------------
+January 2023
+- Anatomy: New template ICBM152 2023
+- Anatomy: Remove selection of fiducials when setting anatomy template
+- Anatomy: Project scouts between hemispheres using the anatomy template
+- Distrib: Enable compilation on Linux and MacOS
+- IO: Export matrix files as EDF+
+- Inverse: Display scouts on source-level PSD as PSD figures
+- Clusters: Save clusters in channel file, load automatically
+- Clusters: Import from process
+- Distrib: Brainstorm compiled with Matlab 2022b
+--------------------------------------------------------------
 November 2022
 - Forward: Display leadfield sensitivity (surface, MRI, isosurface)
 - BIDS import: Added support for ACPC and CapTrak coordinate systems
+- BIDS import: Added support for NIRS
+- Database: References to .bst files without full path, for portability
+- Anatomy: New template ICBM152 2022
 --------------------------------------------------------------
 October 2022
 - EEG: Project channel files between subjects

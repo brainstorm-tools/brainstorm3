@@ -52,6 +52,13 @@ more off
 isCompiled = exist('isdeployed', 'builtin') && isdeployed;
 if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
+    % Some versions of the compiler use different subfolders: search for the doc folder
+    if ~exist(bst_fullfile(BrainstormHomeDir, 'doc'), 'file')
+        docDir = file_find(BrainstormHomeDir, 'doc', 4, 1);
+        if ~isempty(docDir)
+            BrainstormHomeDir = fileparts(docDir);
+        end
+    end
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -266,10 +273,10 @@ switch action
         
     otherwise
         % Check if trying to execute a script
-        if file_exist(action)
-            ScriptFile = action;
-        elseif file_exist(fullfile(pwd, action))
-            ScriptFile = fullfile(pwd, action);
+        if file_exist(varargin{1})
+            ScriptFile = varargin{1};
+        elseif file_exist(fullfile(pwd, varargin{1}))
+            ScriptFile = fullfile(pwd, varargin{1});
         else
             ScriptFile = [];
         end
@@ -278,12 +285,12 @@ switch action
             % Start brainstorm in server mode (local database or not)
             % With extra parameters
             if (length(varargin) > 1)
+                params = varargin(2:end);
                 if any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
                     brainstorm server local;
-                    params = setdiff(varargin(2:end), 'local');
+                    params(cellfun(@(c)isequal(c,'local'), params)) = [];
                 else
                     brainstorm server;
-                    params = varargin(2:end);
                 end
             % Without extra parameters
             else

@@ -19,7 +19,7 @@ function varargout = process_pac_dynamic( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Soheila Samiee, Francois Tadel, 2013-2020
+% Authors: Soheila Samiee, Sylvain Baillet, Francois Tadel, 2013-2023
 % 
 % Updates:
 %   - 1.0.4:  Soheila
@@ -38,7 +38,6 @@ function varargout = process_pac_dynamic( varargin )
 %   - 1.1.4:  Soheila, (isFull) display is fixed - Line 175, also comment is modified in save file section, June 2016
 %   - 1.2.0:  Soheila, optimizing in terms of running time with decreasing
 %             loop over time, July 2016
-%
 %   - 2.0.1: Soheila : MAJOR CHANGES (Oct. 2016)
 %                - Loop on Fa before time => faster + Less edge artifact
 %                - Filters bandwidth and stop band: modified
@@ -49,35 +48,32 @@ function varargout = process_pac_dynamic( varargin )
 %                - Detection of Fp => Not multiplied by normalizing vector
 %                  but check if any peak available in PSD of original 
 %                  signal close by
-%                  
 %   - 2.1.0: SS, Nov. 2016
 %                - Filters are all updated to new filters in Brainstorm
 %                  (bst_bandpass_hfilter)
 %   - 2.1.1: SS, Dec. 2016
 %                - Improve in confirmation of fp* selected in the algorithm
-%
 %   - 2.2.0: SS, Dec. 2016
 %                - Complete saving of phase info.
-%
 %   - 2.3.0: SS. Dec. 2016
 %                - Adding the possibility of importing data with margin
 %                included in it
-%
 %   - 2.3.1: SS. Feb. 2017
 %                - Number of points for Fourier transform is changed
-%
 %   - 2.3.2: SS. May. 2017
 %                - Add one point to the beginning and the end fp of interest 
 %                in the spectrum for better estimation of local extermum in 
 %                fp* detection  (line 830)
-%
 %   - 2.4: SS. Aug. 2017 
 %                - "dpac" name changed to "tPAC"
-%   
 %   - 2.5: SS. Aug. 2018: Bug fix
 %                - Adding TimeInit for files with "all recording" option
 %                checked
 %                - Fixing the iPhase estimation in compute function 
+%   - 2.5: SB. Apr. 2023:
+%                - Fixed the bandwdith of filters applied for detection of fP and fA, using the 2019 version of Brainstorm filters
+%                - Refined the procedure of PAC derivatives (fP, Fa, phase and PAC strength)
+
 
 eval(macro_method);
 end
@@ -86,7 +82,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'tPAC ';
+    sProcess.Comment     = 'tPAC';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Frequency','Time-resolved Phase-Amplitude Coupling'};
@@ -96,6 +92,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutPac#Time-resolved_PAC_estimation_with_tPAC';
 
     % === TIME WINDOW
     sProcess.options.timewindow.Comment = 'Time:';
@@ -103,11 +100,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Value   = [];
     
     % === Margin for filtering
-    sProcess.options.label0.Comment = '<U><B>Buffer:</B></U> Is 2 seconds of extra data for buffer (from both sides) included in input time window?';
-    sProcess.options.label0.Type    = 'label';
+%     sProcess.options.label0.Comment = '<U><B>Buffer:</B></U> Is 2 seconds of extra data for buffer (from both sides) included in input time window?';
+%     sProcess.options.label0.Type    = 'label';
     sProcess.options.margin.Comment = {'No', 'Yes'};
     sProcess.options.margin.Type    = 'radio';
     sProcess.options.margin.Value   = 1;
+    sProcess.options.margin.Hidden  = 1;
 
     % === NESTING FREQ
     sProcess.options.nesting.Comment = 'Frequency for phase band (low):';
@@ -117,18 +115,24 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.nested.Comment = 'Frequency for amplitude band (high):';
     sProcess.options.nested.Type    = 'range';
     sProcess.options.nested.Value   = {[40, 150], 'Hz', 2};
-        % Band for fa
-%     sProcess.options.label_fa.Comment = 'F_A frequency band:';
-%     sProcess.options.label_fa.Type    = 'label';
-    sProcess.options.fa_type.Comment = {'   Single band', ...
-                                        '   More than one center frequencies (default: 20)' };
-    sProcess.options.fa_type.Type    = 'radio';
-    sProcess.options.fa_type.Value   = 2;
+
+%         % Band for fa
+% %     sProcess.options.label_fa.Comment = 'F_A frequency band:';
+% %     sProcess.options.label_fa.Type    = 'label';
+%     sProcess.options.fa_type.Comment = {'   Single band', ...
+%                                         '   More than one center frequencies (default: 20)' };
+%     sProcess.options.fa_type.Type    = 'radio';
+%     sProcess.options.fa_type.Value   = 2;
+ 
+    % === FREQ RESOLUTION FOR FREQ-FOR-AMPLITUDE
+    sProcess.options.fAResolution.Comment = 'Frequency resolution for frequency for amplitude:';
+    sProcess.options.fAResolution.Type    = 'value';
+    sProcess.options.fAResolution.Value   = {2, 'Hz', 2};
     
     % === WINDOW LENGTH
     sProcess.options.winLen.Comment = 'Length of sliding time window:';
     sProcess.options.winLen.Type    = 'value';
-    sProcess.options.winLen.Value   = {1.10, 'S', 2};
+    sProcess.options.winLen.Value   = {1.10, 's', 2};
     
     % === SOURCES
     sProcess.options.label5.Comment = '<U><B>Sensors/sources to be investigated :</B></U>';
@@ -185,7 +189,6 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA) %#ok<DEFNU>
-tic
     % Get options
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
         OPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
@@ -229,7 +232,7 @@ tic
     if (length(sInputsA) == 1)
         OPTIONS.isAvgOutput = 0;
     end
-    OPTIONS.HighFreqs    = sProcess.options.fa_type.Value;
+    OPTIONS.fAResolution = sProcess.options.fAResolution.Value{1};
     
     % ===== INITIALIZE =====
     % Initialize output variables
@@ -266,8 +269,8 @@ tic
             return;
         end
         
-        % Get time window of first file if none specified in parameters
-        if isempty(OPTIONS.TimeWindow)
+        % Set time window of first file if none specified in parameters and average across trials is requested
+        if isempty(OPTIONS.TimeWindow) && OPTIONS.isAvgOutput
             OPTIONS.TimeWindow = sInput.Time([1, end]);
         end
         
@@ -279,7 +282,7 @@ tic
             strMsg = sprintf('Higher nesting frequency is too high (%d Hz) compared with sampling frequency (%d Hz): Limiting to %d Hz', round(OPTIONS.BandNested(2)), round(sRate), round(sRate/3));
             disp([10 'process_pac> ' strMsg]);
             bst_report('Warning', sProcess, [], strMsg);
-            % Fix higher frequencyy
+            % Fix higher frequency
             OPTIONS.BandNested(2) = sRate/3;
         end
         % Check the extent of bandNested band
@@ -293,11 +296,12 @@ tic
         MAX_BLOCK_SIZE = OPTIONS.MaxSignals;
         nBlocks = ceil(nSignals / MAX_BLOCK_SIZE);
         sPAC = [];
-        % Display processing time
-        disp(sprintf('Processing %d blocks of %d signals each.', nBlocks, MAX_BLOCK_SIZE));
+        % Display processing time if more than one block, otherwise confusing because there may not even be MAX_BLOCK_SIZE signals. 
+        if nBlocks > 1 
+            fprintf('Processing %d blocks of %d signals each.\n', nBlocks, MAX_BLOCK_SIZE);
+        end
         % Process each block of signals
         for iBlock = 1:nBlocks
-%             tic
             bst_progress('text', sprintf('PAC: File %d/%d - Block %d/%d', iFile, length(sInputsA), iBlock, nBlocks));
             bst_progress('set', round(startValue + (iFile-1)/length(sInputsA)*100 + iBlock/nBlocks*100));    
             % Indices of the signals
@@ -315,13 +319,8 @@ tic
             PACoptions.overlap = 0.5;                       % Time window over lap (0<= value <1)
             PACoptions.margin = 2;
             PACoptions.margin_included = OPTIONS.margin_included;
+            PACoptions.fAResolution = OPTIONS.fAResolution;
             
-            if OPTIONS.HighFreqs ==1
-                PACoptions.nHighFreqs = 1;                  % Number of high frequency centers
-                PACoptions.doInterpolation = 0;
-            else
-                PACoptions.nHighFreqs = 20; %4               % Number of high frequency centers
-            end
             OPTIONS.PACoptions = PACoptions;
             
              
@@ -388,9 +387,9 @@ tic
             if (length(sInput.RowNames) == 1)
                 % Find the scout name
                 scoutName = sInput.RowNames{1};
-                k = strfind(scoutName,'.');     
-                if isempty(k)
-                    Comment = [Comment, ': ' scoutName];      
+                k = strfind(scoutName,'.');
+                if 1%isempty(k)
+                    Comment = [Comment, ': ' scoutName];
                 else
                     Comment = [Comment, ': ' scoutName(1:k-1)];
                 end
@@ -491,7 +490,7 @@ function NewFile = SaveFile(sPAC, iOuptutStudy, DataFile, sInput, Comment, nAvg,
     elseif strcmpi(sInput.DataType, 'results') && ~isempty(OPTIONS.Target)
         FileMat.DataType = 'matrix';
         if isnumeric(sInput.RowNames)
-        	FileMat.RowNames = cellfun(@num2str, num2cell(sInput.RowNames), 'UniformOutput', 0);
+            FileMat.RowNames = cellfun(@num2str, num2cell(sInput.RowNames), 'UniformOutput', 0);
         else
             FileMat.RowNames = sInput.RowNames;
         end
@@ -515,15 +514,13 @@ function NewFile = SaveFile(sPAC, iOuptutStudy, DataFile, sInput, Comment, nAvg,
     % Get output study
     sOutputStudy = bst_get('Study', iOuptutStudy);
     % File tag
-%     if OPTIONS.isFullMaps
-        fileTag = 'timefreq_dpac_fullmaps';
+    fileTag = 'timefreq_dpac_fullmaps';
     % Output filename
     NewFile = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), fileTag);
     % Save file
     bst_save(NewFile, FileMat, 'v6');
     % Add file to database structure
     db_add_data(iOuptutStudy, NewFile, FileMat);
-    toc
 end
 
 
@@ -546,8 +543,7 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 %    - ValPAC:         [nChannels, nTimeOut] Maximum PAC strength in each  time point
 %    - NestedFreq:     [nChannels, nTimeOut] Fnested corresponding to maximum synchronization index in each time point
 %    - NestingFreq:    [nChannels, nTimeOut] Fnesting corresponding to maximum synchronization index in each time point
-%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum
-%                      synchronization index in each time point (rad)
+%    - phasePAC:       [nChannels, nTimeOut] Phase corresponding to maximum synchronization index in each time point (rad)
 %    - DynamicNesting: [nNestedCenters,nTimeOut,nChannels] Estimated nesting frequency (fp) for all times, channels and nested intervals
 %    - DynamicPAC:     [nNestedCenters,nTimeOut,nChannels] full array of PAC
 %    - DynamicPhase:   [nNestedCenters,nTimeOut,nChannels] Preferred phase
@@ -557,7 +553,9 @@ function sPAC = Compute(Xinput, sRate, faBand, fpBand, winLen, Options)
 %   Estimation of Phase Amplitude Coupling (PAC) with tPAC method.
 %
 % Author:  Soheila Samiee, 2013-2017
-%
+
+% Note: dimension order is inconsistent in output fields: DynamicX variables are permuted outside
+% this function to put channels first, while the ones for max PAC are permuted inside this function.
 
 if (nargin < 4) || isempty(fpBand)
     fpBand = [4, 8];
@@ -570,12 +568,13 @@ if ~isfield(Options, 'overlap')
 end
 sProcess_name = 'Process_pac_dynamic';
 
-if fpBand(2)>faBand(1)
-    fpBand(2) = faBand(1)/2;
-    error_msg = ['Maximum of Fp should be less than half of the minimum of Fa!' 10 10 ...
-        'max{Fp} modified to ', num2str(fpBand(2))];
+if fpBand(2)>faBand(1)/2
+    error_msg = ['Maximum of Fp should be less than half of the minimum of Fa' 10 ...
+                 sprintf(' max(Fp) = %.1f Hz \n min(Fa) = %.1f Hz', fpBand(2), faBand(1))];
     bst_report('Error', sProcess_name, [], error_msg);
-    disp(['Warning: ' error_msg]);    
+    disp(['Error: ' error_msg]);
+    sPAC = [];
+    return
 end
 
 if winLen < 1/fpBand(1)        
@@ -598,16 +597,18 @@ end
 tStep = winLen*(1-Options.overlap);        % Time step for sliding window on time (Sec) (Overlap: 50%)
 margin = Options.margin;%1                 % Margin (in time) for filtering (Sec) --- default: 2sec -> changed to 1 sec in May12,2016
 hilMar = 1/5;                              % Percentage of margin for Hilber transform
-bandNestingLen= max(2,1/(winLen+margin));  % Length of band nesting -- considering the resolution in FFT domain with available window length
+%bandNestingLen= max(2,1/(winLen+margin));  % Width of bandpass filter around fP, based on FFT frequency resolution from time window length.
 isMirror = 0;                              % Mirroring the data in filtering
-isRelax  = 1;                              % Attenuation of the filter in the stopband (1 => 40 dB, 0 => 60 dB)
-Method = 'bst-hfilter-2016';               % Version of the filter 
+isRelax  = 0;  %1                            % Attenuation of the filter in the stopband (1 => 40 dB, 0 => 60 dB)
+Method = 'bst-hfilter-2019';               % Version of the filters
 minExtracFreq = max(1/winLen, fpBand(1));  % minimum frequency that could be extracted as nestingFreq
-doInterpolation = Options.doInterpolation; % Applying interpolation in frequency and time domain
+doInterpolation = 0;%Options.doInterpolation; % Applying interpolation in frequency and time domain
 logCenters = Options.logCenters;           % Choose the center frequencies for f_A with log space in faBand
-nHighFreqs = Options.nHighFreqs;           % Number of high frequency centers
+%nHighFreqs = Options.nHighFreqs;           % Number of high frequency centers
 missedPcount = 0;                          % Number of intervals that do not have peak in their F_A envelope PSD 
 % mirrorEffectSample = 40;                 % Number of samples that can be affected due to mirroring effect
+fAResolution = Options.fAResolution;       % Frequency resolution for frequency for amplitude (Hz)
+nHighFreqs = round((faBand(end)-faBand(1))/fAResolution); % Number of frequency bins for fA exploration
 
 % ==== ADDING MARGIN TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
 nMargin = fix(margin*sRate);
@@ -637,21 +638,22 @@ if nHighFreqs > 1 %strcmp(Mode,'map')
     else
         nestedCenters = linspace(faBand(1),faBand(end),nHighFreqs);
     end
-    Fstep = diff(nestedCenters)/2;  % the range of frequency around each nested center
+    Fstep = diff(nestedCenters);  % the range of frequency around each nested center
     Fstep = [Fstep(1),Fstep,Fstep(end)];
-    Fstep = max(Fstep, fpBand(2)/2);  % Minimum band width is defined to cover the whole interval between consecutive centre frequencies and at the same time consider all coupled frequencies to it in the range of interest.        
-    fArolloff = [];
+    Fstep = max(Fstep, fpBand(2));  % Minimum band width is defined to cover the whole interval between consecutive centre frequencies
+    % also consider the fastest possible fP.
+    fArolloff = []; % Transition band of the filters.
 else
     nestedCenters = mean(faBand);
     Fstep    = abs(faBand-nestedCenters);
     fArolloff = [];
 end
 
-fProlloff = [];            % roll off frequency for filtering
+fProlloff = [];% transition band of filters to determine fP
 sPAC.HighFreqs = nestedCenters;
 nFa = length(nestedCenters);
 nSources = size(Xinput,1);
-isources = 1:nSources;
+% isources = 1:nSources;
 nTime = fix((nTS-fix(winLen*sRate))/fix(tStep*sRate))+1;
 TimeOut = winLen/2 : tStep : winLen/2+(nTime-1)*tStep;        % seconds
 PAC = zeros(nFa,nTime,nSources);                              % PAC measure
@@ -698,21 +700,21 @@ for ifreq=1:nFa
         % Finding the corresponding frequency component
         ind = bst_closest([minExtracFreq, fpBand(2)], freq);
         
-        % Removing the points that are outside the range of interest
-        if ind(1)<fpBand(1)
-            ind(1) = ind(1)+1;
-        end
-        if ind(2)>fpBand(2)
-            ind(2) = ind(2)-1;
-        end
+        %         % Removing the points that are outside the range of interest
+        %         if freq(ind(1))<fpBand(1)
+        %             ind(1) = ind(1)+1;
+        %         end
+        %         if freq(ind(2))>fpBand(2)
+        %             ind(2) = ind(2)-1;
+        %         end
         
-        % Add previous and next point to the interval to give the algorithm 
-        % to find the local peaks even if they are in the first and last 
-        % point of interst in the spectrum
-        if ind(1)>1
-            ind(1) = ind(1)-1;
-        end
-        ind(2) = ind(2)+1;
+        %         % Add previous and next point to the interval to give the algorithm
+        %         % to find the local peaks even if they are in the first and last
+        %         % point of interest in the spectrum
+        %         if ind(1)>1
+        %             ind(1) = ind(1)-1;
+        %         end
+        %         ind(2) = ind(2)+1;
         
         if freq(ind(1))<(minExtracFreq-diff(freq(1:2)))
             ind(1) = ind(1)+1;
@@ -734,19 +736,23 @@ for ifreq=1:nFa
                 [pks_orig, I] = sort(pks_orig, 'descend');
                 locs_orig = locs_orig(I);
             end
-            % Ignore small peaks
+            % Ignore small peaks from original signal
             pks_orig = pks_orig/max(pks_orig);
-            locs_orig = locs_orig(pks_orig>0.1);            
+            locs_orig = locs_orig(pks_orig>0.1);
             
             % Confirming the peak
             max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in evelope and the original signal's PSD
             count = 1;
             check_pks = 1;
             fp_loc = [];
+            ind_fPrange = [ind(1):ind(2)];
             while check_pks && count<=length(locs_env) && ~isempty(locs_orig)
-                index = bst_closest(freq(locs_env(count)), freq(locs_orig));
-                if abs(freq(locs_orig(index))-freq(locs_env(count)))<=max_dist
-                    fp_loc = locs_env(count);
+                %%%index = bst_closest(freq(locs_env(count)), freq(locs_orig));
+                index = bst_closest(freq(ind_fPrange(locs_env(count))), freq(ind_fPrange(locs_orig)));
+                %%%if abs(freq(locs_orig(index))-freq(locs_env(count)))<=max_dist
+                if abs(freq(ind_fPrange(locs_orig(index)))-freq(ind_fPrange(locs_env(count))))<=max_dist
+                    %%%fp_loc = locs_env(count);
+                    fp_loc = ind_fPrange(locs_env(count));
                     check_pks = 0;
                 else
                     count = count+1;
@@ -760,54 +766,59 @@ for ifreq=1:nFa
             
             indm(iSource) = fp_loc(1);
             clear pks_env locs_env
-        end
-        
-        nestingFreq(ifreq,iTime,isources) = freq(ind(1)+indm-1);     
-        bandNesting = [max([squeeze(nestingFreq(ifreq,iTime,isources))-bandNestingLen/2,zeros(size(nestingFreq,3),1)],[],2),...
-            squeeze(nestingFreq(ifreq,iTime,isources))+bandNestingLen/2];
-        bandNesting(bandNesting<.15)=.15;
-        
-        % Filtering in fP band
-        if length(unique(bandNesting(:,1)))==1 && length(unique(bandNesting(:,2)))==1
-            Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, [], fProlloff, Method);    % Filtering
-        else
-            Xnesting = zeros(size(X));
-            for i=1:length(isources)
-                Xnesting(i,:) = bst_bandpass_hfilter(X(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, [], fProlloff, Method);    % Filtering
-            end
-        end        
-        Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        
-        % Hilbert transform
-        Z = hilbert_fcn(Xnesting')';        
-        % Phase detection
-        nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency        
-        nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
-                
-        for ii=1:length(isources)
-            iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==2 | ...
-                     sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0)-1;            
-%             iphase = find(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))==-2 | ...
-%                      sign(nestingPh(ii,2:end)-nestingPh(ii,1))==0 | ...
-%                     -(diff(sign(nestingPh(ii,:) - nestingPh(ii,1)))-1).*diff(nestingPh(ii,:)-nestingPh(ii,1)) >6 )-1;
+            %%% end
+
+            %%%nestingFreq(ifreq,iTime,isources) = freq(ind(1)+indm-1);
+            nestingFreq(ifreq,iTime,iSource) = freq(indm(iSource));
+            %             bandNesting = [max([squeeze(nestingFreq(ifreq,iTime,iSource))-bandNestingLen/2,zeros(size(nestingFreq,3),1)],[],2),...
+            %                 squeeze(nestingFreq(ifreq,iTime,iSource))+bandNestingLen/2];
+            %             bandNesting(bandNesting<.15)=.15;
+
+            bandNesting = [max(0, freq(indm(iSource)) - .5) ; freq(indm(iSource)) + .5];
+
+            % Filtering in fP band
+            Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1), bandNesting(2), isMirror, isRelax, [], fProlloff, Method);    % Filtering
+            Xnesting = Xnesting(:, nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin
+            % Hilbert transform
+            Z = hilbert_fcn(Xnesting')';
+            % Phase detection
+            nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency
+            nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin
+
+            %%% Refine PAC estimation
+            refine_bandNested = [nestedCenters(ifreq)-1.1*bandNesting(2),nestedCenters(ifreq)+1.1*bandNesting(2)];
+
+            % Filtering in fA band
+            refine_Xnested = bst_bandpass_hfilter(X, sRate,refine_bandNested(1), refine_bandNested(2), isMirror, isRelax, [], fArolloff, Method);    % Filtering
+            refine_Xnested = refine_Xnested(:, nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin
+
+            % Hilbert transform
+            refine_Z = hilbert_fcn(refine_Xnested')';
+
+            % Phase and envelope detection
+            refine_nestedEnv = abs(refine_Z);                                              % Envelope of nested frequency rhythms
+            refine_nestedEnv = refine_nestedEnv(:,nHilMar:fix(winLen*sRate)+nHilMar-1);   % Removing the margin
+
+            iphase = find(diff(sign(nestingPh(iSource, :) - nestingPh(iSource, 1))) == 2 | sign(nestingPh(iSource, 2:end)-nestingPh(iSource, 1)) == 0) - 1;
             if isempty(iphase)
-                iphase = length(nestingPh(ii,:));
+                iphase = length(nestingPh(iSource,:));
             end
             
-            PAC(ifreq,iTime,isources(ii)) = sum(nestedEnv(ii,1:max(iphase)).*exp(1i*nestingPh(ii,1:max(iphase))),2)...
-                ./max(iphase)./sqrt(mean(nestedEnv(ii,1:max(iphase)).^2,2));
+            PAC(ifreq,iTime,iSource) = sum(refine_nestedEnv(iSource,1:max(iphase)).*exp(1i*nestingPh(iSource,1:max(iphase))),2)...
+                ./max(iphase)./sqrt(mean(refine_nestedEnv(iSource,1:max(iphase)).^2,2));
             
-            if indm(ii)==ind(2)-ind(1)+1 % Fp not confirmed and arbitrary value for fp
-                PAC(ifreq,iTime,isources(ii)) = 0;
+            if indm(iSource)==ind(2)-ind(1)+1 % Fp not confirmed and arbitrary value for fp
+                PAC(ifreq,iTime,iSource) = 0;
             end
-            DynamicPhase(ifreq,iTime,isources(ii)) = angle(PAC(ifreq,iTime,isources(ii)));
- 
+            DynamicPhase(ifreq,iTime,iSource) = angle(PAC(ifreq,iTime,iSource));
         end
-        
     end
 end
 
 
 % ===== EXTRACTING THE PAC RELATED VALUES ===== %
+% Max PAC across fA
+% PAC size is [nFreq, nTime, nChannel], but we output these max fields with nChannel first.
 [PACmax,maxInd] = max(abs(PAC),[],1); 
 Fnested  = squeeze(nestedCenters(maxInd))';
 Sind     = repmat((1:nSources), nTime, 1);           % Source indices
@@ -884,7 +895,7 @@ else
 end
 
 if missedPcount>0
-disp(['Missed Peaks:',num2str(missedPcount),'/',num2str(nFa*nTime*nSources)])
+    disp(['Missed Peaks:',num2str(missedPcount),'/',num2str(nFa*nTime*nSources)])
 end
 
 % ===== OUTPUTS ===== %
@@ -898,7 +909,7 @@ if nTime >1
     sPAC.DynamicNesting(:,:,1:nSources)  = nestingFreq;
     sPAC.DynamicPhase(:,:,1:nSources)  = DynamicPhase;
     
-        % == Generating two time points for Brainstorm structure ==
+    % == Generating two time points for Brainstorm structure ==
 else        
     sPAC.ValPAC = [PACmax(:), PACmax(:)];
     sPAC.NestingFreq = [Fnesting(:), Fnesting(:)];
@@ -906,8 +917,8 @@ else
     sPAC.PhasePAC = [phase_value(:), phase_value(:)];
     sPAC.TimeOut  = [TimeOut, TimeOut+0.001];
     sPAC.DynamicPAC(:,1:2,1:nSources) = repmat(abs(PAC),[1,2,1]);
-    sPAC.DynamicNesting(:,1:2,1:nSources)  = repmat(abs(nestingFreq),[1,2,1]);
-    sPAC.DynamicPhase(:,1:2,1:nSources)  = repmat(abs(DynamicPhase),[1,2,1]);
+    sPAC.DynamicNesting(:,1:2,1:nSources)  = repmat(nestingFreq,[1,2,1]);
+    sPAC.DynamicPhase(:,1:2,1:nSources)  = repmat(DynamicPhase,[1,2,1]);
 end
 
 end

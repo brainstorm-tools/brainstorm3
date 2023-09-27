@@ -19,7 +19,7 @@ function varargout = process_mri_deface( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2023
 %          Inspired from SPM12 function spm_deface
 
 eval(macro_method);
@@ -137,10 +137,11 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         iSubject = MriFiles;
         % Get volumes to deface
         sSubject = bst_get('Subject', iSubject);
-        MriFiles = {sSubject.Anatomy.FileName};
+        iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+        MriFiles = {sSubject.Anatomy(iNoAtlas).FileName};
         % Put the default volume first
-        if ~isempty(sSubject.iAnatomy)
-            iOrder = [sSubject.iAnatomy, setdiff(1:length(sSubject.Anatomy), sSubject.iAnatomy)];
+        if ~isempty(sSubject.iAnatomy) && ismember(sSubject.iAnatomy, iNoAtlas)
+            iOrder = [sSubject.iAnatomy, setdiff(1:length(iNoAtlas), sSubject.iAnatomy)];
             MriFiles = MriFiles(iOrder);
         end
     end
@@ -227,14 +228,15 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 disp(['BST> Deface: Using ' exePath]);
                 % Save temporary MRI file
                 bst_progress('text', 'Saving temporary nii file...');
-                fileNii = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig.nii');
+                TmpDir = bst_get('BrainstormTmpDir', 0, 'deface');
+                fileNii = bst_fullfile(TmpDir, 'orig.nii');
                 out_mri_nii(sMri, fileNii, 'int16');
                 % Change current folder to .brainstorm/tmp, because mri_deface saves a useless log in the current folder
                 curdir = pwd;
-                cd(bst_get('BrainstormTmpDir'));
+                cd(TmpDir);
                 % Call mri_deface
                 bst_progress('text', 'Running mri_deface...');
-                fileNiiDefaced = bst_fullfile(bst_get('BrainstormTmpDir'), 'orig_defaced.nii');
+                fileNiiDefaced = bst_fullfile(TmpDir, 'orig_defaced.nii');
                 cmdDeface = [exePath ' ' fileNii ' ' talFile ' ' faceFile ' ' fileNiiDefaced];
                 status = system(cmdDeface);
                 if (status ~= 0)
@@ -251,6 +253,8 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 sMriDefaced = in_mri_nii(fileNiiDefaced, 0, 0, 0);
                 % Saves defaced volume
                 sMri.Cube = sMriDefaced.Cube;
+                % Delete the temporary files
+                file_delete(TmpDir, 1, 1);
                 
             case 'brainsuite'
                 % Get ICBM152 defacing template

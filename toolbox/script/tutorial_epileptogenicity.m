@@ -83,7 +83,7 @@ end
 [DbMriFilePostReslice, errMsg, fileTag, sMriPostReslice] = mri_reslice(DbMriFilePostReg, DbMriFilePre, 'vox2ras', 'vox2ras');
 
 % Compute SPM canonical surfaces
-SurfResolution = 4;   %1=5124V, 2=8196V, 3=20484V 4=7861V+hip+amyg
+SurfResolution = 3;   %1=5124V, 2=8196V, 3=20484V 4=7861V+hip+amyg
 process_generate_canonical('Compute', iSubject, 1, SurfResolution, 0);
 
 
@@ -96,7 +96,10 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'channelalign',   0);
 % Process: Add EEG positions
 bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
-    'channelfile', {ElecPosFile, 'BIDS-SCANRAS-MM'});
+    'channelfile', {ElecPosFile, 'BIDS-SCANRAS-MM'}, ...
+    'fixunits',    0, ...
+    'vox2ras',     1, ...
+    'mrifile',     {file_fullpath(DbMriFilePostReslice), 'BST'});
 % Process: Power spectrum density (Welch)
 sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
     'timewindow',  [], ...
@@ -122,12 +125,12 @@ bst_process('CallProcess', 'process_channel_setbad', sFilesRaw(3), [], 'sensorty
 sEvt1 = db_template('event');
 sEvt1(1).label   = 'Onset';
 sEvt1(1).epochs  = 1;
-sEvt1(1).channels= {{}};
-sEvt1(1).notes   = {[]};
+sEvt1(1).channels= [];
+sEvt1(1).notes   = [];
 sEvt1(2).label   = 'Baseline';
 sEvt1(2).epochs  = 1;
-sEvt1(2).channels= {{}};
-sEvt1(2).notes   = {[]};
+sEvt1(2).channels= [];
+sEvt1(2).notes   = [];
 % SZ1
 sEvt1(1).times   = 120.800;
 sEvt1(2).times   = [72.800; 77.800];

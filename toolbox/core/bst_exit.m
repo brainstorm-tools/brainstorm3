@@ -24,7 +24,7 @@ function status = bst_exit()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2023
 global GlobalData
 
 % Check that Brainstorm was fully started
@@ -108,10 +108,6 @@ fclose('all');
 if file_exist(StartFile)
     file_delete(StartFile, 1);
 end
-
-
-%% ===== EMPTY TEMPORARY DIRECTORY =====
-gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== RESET ALL VARIABLES =====

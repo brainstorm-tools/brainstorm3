@@ -127,7 +127,11 @@ for is = 1:length(iStudies)
             % Replace "'" with "p"
             chName = strrep(chName, '''', 'p');
             % Look for the exact channel name
-            idef = find(strcmpi(chName, locChanNames));
+            idef = find(strcmp(chName, locChanNames));
+            % If channel name not found, search with different case
+            if isempty(idef)
+                idef = find(strcmpi(chName, locChanNames));
+            end
         
             % If not found, look for an alternate version (with or without trailing zeros...)
             if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
@@ -150,7 +154,9 @@ for is = 1:length(iStudies)
             end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
-            ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            if ~isempty(LocChannelMat.Channel(idef).Weight)
+                ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            end
             nUpdated = nUpdated + 1;
 
             % Convert from MNI to subject space, if needed

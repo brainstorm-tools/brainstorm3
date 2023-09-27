@@ -641,7 +641,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                     IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_ROYAL_GRAMMA, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_DORY];
     for i = 1:length(cmapList_seq)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_seq{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_seq{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_seq{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuSeq, [], cmapDispName, iconList_seq(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_seq{i}));
@@ -653,7 +653,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                     IconLoader.ICON_COLORMAP_MANDRILL,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
     for i = 1:length(cmapList_div)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_div{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_div{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_div{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuDiv, [], cmapDispName, iconList_div(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_div{i}));
@@ -665,7 +665,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
                         IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS, IconLoader.ICON_COLORMAP_TURBO];
     for i = 1:length(cmapList_rainbow)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList_rainbow{i}, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(cmapList_rainbow{i}, sColormap.Name);
         % Create menu item
         cmapDispName = strrep(cmapList_rainbow{i}, 'cmap_', '');
         jItem = gui_component('CheckBoxMenuItem', jMenuRainbow, [], cmapDispName, iconList_rainbow(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_rainbow{i}));
@@ -680,7 +680,7 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     isCustom = 0;
     for i = 1:length(CustomColormaps)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(CustomColormaps(i).Name, sColormap.Name);
+        isSelected = ~isempty(sColormap.Name) && strcmpi(CustomColormaps(i).Name, sColormap.Name);
         if isSelected
             isCustom = 1;
         end
@@ -1513,7 +1513,14 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         % Update ticks of the colorbar
         set(hColorbar, 'YTick',      YTickNorm, ...
                        'YTickLabel', YTickLabel);
-        xlabel(hColorbar, fUnits);
+        % Units label
+        figPos = get(hFig, 'Position');
+        colorbarPos = get(hColorbar, 'Position');
+        hText = xlabel(hColorbar, fUnits, 'Units', 'pixels');
+        xlabelPos = get(hText, 'Extent');
+        if colorbarPos(1) + xlabelPos(1) + xlabelPos(3) > figPos(3)
+            set(hText, 'Rotation', 90, 'Units', 'normalized', 'Position', [-1.5, 0.5]);
+        end
     end    
 end
 

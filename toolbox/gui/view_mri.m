@@ -92,7 +92,15 @@ switch lower(FileType)
         % Get modality
         iResChan = GlobalData.DataSet(iDS).Results(iDSResult).GoodChannel;
         if ~isempty(iResChan)
-            Modality = GlobalData.DataSet(iDS).Channel().Type;
+            AllModalities = unique({GlobalData.DataSet(iDS).Channel(iResChan).Type});
+            % Replace MEG GRAD+MEG MAG with "MEG"
+            if all(ismember({'MEG GRAD', 'MEG MAG'}, AllModalities))
+                AllModalities{end+1} = 'MEG';
+                AllModalities = setdiff(AllModalities, {'MEG GRAD', 'MEG MAG'});
+            end
+            if ~isempty(AllModalities)
+                Modality = AllModalities{1};
+            end
         end
         % Get subject file
         SubjectFile = GlobalData.DataSet(iDS).SubjectFile;

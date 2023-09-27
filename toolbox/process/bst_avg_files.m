@@ -326,6 +326,12 @@ for iFile = 1:nFiles
         if strcmpi(matName, 'ImageGridAmp') && (sMat2.nComponents ~= 1) && ismember(Function, {'norm', 'rms', 'normdiff', 'normdiffnorm'})
             sMat2 = process_source_flat('Compute', sMat2, 'rms');
         end
+        % Connectivity matrix: unpack NxN matrices
+        if strcmpi(matName, 'TF') && (length(sMat2.RefRowNames) > 1) && isfield(sMat2, 'Options') && isfield(sMat2.Options, 'isSymmetric') && isequal(sMat2.Options.isSymmetric, 1)
+            sMat2.TF = process_compress_sym('Expand', sMat2.TF, length(sMat2.RowNames));
+            sMat2.Options.isSymmetric = 0;
+        end
+
         % Re-order rows in matrix/timefreq files
         if ~isempty(DestRowNames) && ~isequal(AllRowNames{nFiles + iFile}, DestRowNames)
             tmpValues = zeros(length(DestRowNames), size(sMat2.(matName),2), size(sMat2.(matName),3));

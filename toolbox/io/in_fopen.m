@@ -175,6 +175,8 @@ switch (FileFormat)
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
+    case 'BST-MATRIX'
+        [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(DataFile);
         
     % ===== OBJECTS IN MEMORY =====
     case 'MNE-PYTHON'

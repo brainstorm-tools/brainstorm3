@@ -753,13 +753,13 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS ===
-    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data')
+    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && isempty(strfind(TfInfo.FileName, '_mtmconvol'))
         jPopup.addSeparator();
-        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(sTimefreq.DataFile));
+        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_call(@view_timeseries, sTimefreq.DataFile));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS (one sensor) ===
-    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'})
+    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'}) && isempty(strfind(TfInfo.FileName, '_mtmconvol'))
         jItem = gui_component('MenuItem', jPopup, [], 'Recordings (one sensor)', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)ShowTimeSeries(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
     end
@@ -935,6 +935,13 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
             setappdata(hFig, 'Timefreq', TfInfo);
             % Get data, providing FOOOFDisp.
             [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName, TfInfo.FOOOFDisp);       
+            % Keep FT and Freqs up to maximum frequency for FOOOF analysis
+            if TfInfo.FOOOFDispRange
+                freqMax = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.options.freq_range(2);
+                iFreqMax = find(Freqs > freqMax, 1, 'first');
+                TF = TF(:,:,1:iFreqMax);
+                Freqs = Freqs(1:iFreqMax);
+            end
         else
             % Override figure definition and get all rows
             % Get data

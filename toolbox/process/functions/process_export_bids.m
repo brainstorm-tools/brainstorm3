@@ -20,6 +20,7 @@ function varargout = process_export_bids( varargin )
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2018-2019
+%          Francois Tadel, 2023
 
 eval(macro_method);
 end
@@ -75,6 +76,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     sProcess.options.label1.Comment = '<U><B>Sidecar required fields</B></U>:';
     sProcess.options.label1.Type    = 'label';
+    % Dewar position during MEG scan
+    sProcess.options.authors.Comment = 'Authors, separated with commas: ';
+    sProcess.options.authors.Type    = 'text';
+    sProcess.options.authors.Value   = '';
     % Powerline frequency
     sProcess.options.powerline.Comment = {'50 Hz', '60 Hz', 'Power line frequency: '};
     sProcess.options.powerline.Type    = 'radio_line';
@@ -106,6 +111,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     outputFolder  = sProcess.options.bidsdir.Value{1};
     defaceMri     = sProcess.options.defacemri.Value;
     overwrite     = sProcess.options.overwrite.Value;
+    authors       = sProcess.options.authors.Value;
     dewarPosition = sProcess.options.dewarposition.Value;
     eegReference  = sProcess.options.eegreference.Value;
     emptyRoomKeywords = strtrim(str_split(lower(sProcess.options.emptyroom.Value), ',;'));
@@ -146,7 +152,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         megMetadata = struct();
     end
-    
+    if isempty(authors) || isempty(strtrim(authors))
+        bst_report('Error', sProcess, sInputs, 'List of authors cannot be empty.');
+        return;
+    end
+
     % Default naming schemes
     if isfield(sProcess.options, 'subscheme') && ~isempty(sProcess.options.subscheme.Value)
         if sProcess.options.subscheme.Value == 1
@@ -176,9 +186,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputs, ['Could not create output folder:' 10 errMsg]);
             return;
         end
+        data = EmptyData();
+    % If folder exist, detect existing naming scheme
     else
-        
-        % If folder exist, detect existing naming scheme
         [prevSubScheme, prevSesScheme, prevRunScheme] = DetectNamingScheme(outputFolder);
         if isempty(prevSubScheme) || isempty(prevSesScheme) || isempty(prevRunScheme)
             data = EmptyData();
@@ -210,7 +220,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata);
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors);
     firstAcq = [];
     lastAcq = [];
     StimChannelNames = {};
@@ -228,15 +238,15 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         isCtf = strcmpi(sFile.device, 'CTF');
         isElekta = strcmpi(sFile.device, 'Neuromag');
         isMeg = isCtf || isElekta;
-        isEeg = strncmpi(sFile.format, 'EEG-', 4);
+        isEeg = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', sInputs(iInput).ChannelTypes);
         isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
         if ~isMeg && ~isEeg
             disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
             continue;
         end
         
-        % If BST binary file, find original raw file
-        if strcmpi(sFile.format, 'BST-BIN')
+        % If BST/CTF binary file, find original raw file
+        if strcmpi(sFile.format, 'BST-BIN') && strcmpi(sFile.device, 'CTF')
             sFile.filename = ExtractOriginalBstFilename(DataMat);
             disp(['Warning: File "', sFile.comment, '" already imported in binary format.', ...
                 10, '         Using raw link "', sFile.filename, '" instead.']);
@@ -451,22 +461,22 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         if ~isempty(powerline)
             metadata = addField(metadata, 'PowerLineFrequency', powerline);
         end
+        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
         if isMeg
             metadata = addField(metadata, 'DewarPosition', dewarPosition);
+            metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
+            metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         elseif isEeg
             metadata = addField(metadata, 'EEGReference', eegReference);
         end
-        [hasHeadPoints, hasLandmarks] = ExtractHeadPoints(ChannelMat);
-        metadata = addField(metadata, 'DigitizedLandmarks', bool2str(hasLandmarks));
-        metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
-        
+
         % Extract format-specific metadata
         if isCtf
             customMetadata = ExtractCtfMetadata(fileparts(sFile.filename));
         elseif isElekta
             customMetadata = ExtractFifMetadata(sFile.filename);
         else
-            customMetadata = struct('SoftwareFilters', 'N/A');
+            customMetadata = struct('SoftwareFilters', 'n/a');
         end
         metadata = struct_copy_fields(metadata, customMetadata, 0);
         
@@ -492,7 +502,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         if isCtf
             rawExt = '.ds';
         elseif isEeg && ~isEegBids
-            rawExt = '.edf';
+            rawExt = '.eeg';
         end
         newPath = bst_fullfile(megFolder, [newName, rawExt]);
         if exist(newPath, 'file') == 0 || overwrite
@@ -514,10 +524,24 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isEeg && ~isEegBids
                 % For EEG-BIDS, only a handful of formats are supported.
                 % Convert unsupported formats to EDF.
-                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to EDF.']);
-                export_data(sInput.FileName, [], newPath, 'EEG-EDF');
+                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
+                export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
             else
+                % Copy raw data file
                 file_copy(sFile.filename, newPath);
+                % Copy BrainVision meta-data files (.vhdr, .vmrk)
+                if strcmp(sFile.format, 'EEG-BRAINAMP')
+                    % Copy header file
+                    VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
+                    if file_exist(VhdrFile)
+                        file_copy(VhdrFile, bst_fullfile(megFolder, [newName, '.vhdr']));
+                    end
+                    % Copy marker file
+                    VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
+                    if file_exist(VmrkFile)
+                        file_copy(VmrkFile, bst_fullfile(megFolder, [newName, '.vmrk']));
+                    end
+                end
             end
             % Create JSON sidecar
             jsonFile = bst_fullfile(megFolder, [newName '.json']);
@@ -709,7 +733,7 @@ function CreateMegJson(jsonFile, metadata)
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite, description)
+function CreateDatasetDescription(parentFolder, overwrite, description, authors)
     if nargin < 3
         description = struct();
     end
@@ -722,7 +746,7 @@ function CreateDatasetDescription(parentFolder, overwrite, description)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
-    description = addField(description, 'Authors', []);
+    description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     
     fid = fopen(jsonFile, 'wt');
     jsonText = bst_jsonencode(description);
@@ -746,29 +770,29 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
         OPTIONS.ProjID = ProtocolInfo.Comment;
     end
     
-    % Default Project description / participant categories: N/A
+    % Default Project description / participant categories: n/a
     if isempty(OPTIONS.ProjDesc)
-        OPTIONS.ProjDesc = 'N/A';
+        OPTIONS.ProjDesc = 'n/a';
     end
     if isempty(OPTIONS.Categories)
-        OPTIONS.Categories = 'N/A';
+        OPTIONS.Categories = 'n/a';
     end
     
-    % Default acquisition dates: N/A
+    % Default acquisition dates: n/a
     if isempty(firstAcq)
-        firstAcq = 'N/A';
+        firstAcq = 'n/a';
     else
         firstAcq = datestr(firstAcq, 'dd/mm/yyyy');
     end
     if isempty(lastAcq)
-        lastAcq = 'N/A';
+        lastAcq = 'n/a';
     else
         lastAcq = datestr(lastAcq, 'dd/mm/yyyy');
     end
     
     % Channels & Events
     if isempty(AllChannelNames)
-        channels = ['N/A' 10];
+        channels = ['n/a' 10];
     else
         channels = [];
         for iChannel = 1:length(AllChannelNames)
@@ -776,7 +800,7 @@ function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq
         end
     end
     if isempty(AllEventNames)
-        events = 'N/A';
+        events = 'n/a';
     else
         events = [];
         for iEvent = 1:length(AllEventNames)

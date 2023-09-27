@@ -100,11 +100,9 @@ end
 
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
-% Check that the matrix is square: cannot display [NxM] connectivity matrix where N~=M
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
-    bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
-              length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
-              'View connectivity matrix', 0);
+% Check that the matrix is square, and have same RowNames cannot display [NxM] connectivity matrix where N~=M
+if ~isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames) && ~strcmpi(DisplayMode, 'Image')
+    bst_error('The connectivity matrix cannot be displayed as the row and column names are not equal', 'View connectivity matrix', 0);
     return;
 end
 
@@ -121,15 +119,6 @@ if strcmpi(DisplayMode, 'Image')
     TF = bst_memory('GetTimefreqValues', iDS, iTimefreq, [], [], [], TfFunction);
     % Get connectivity matrix
     C = bst_memory('ReshapeConnectMatrix', iDS, iTimefreq, TF);
-    % Remove diagonals for NxN
-    if isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) || ...
-       isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames')
-        N = size(C,1);
-        M = size(C,3)*size(C,4);
-        indDiag = (1:N) + N*(0:N-1);
-        indDiag = repmat(indDiag',1,M) + N*N*repmat(0:M-1,N,1);
-        C(indDiag) = 0;
-    end
     % Get time vector
     if (size(TF,3) < 2)
         TimeVector = [];
@@ -148,7 +137,7 @@ if strcmpi(DisplayMode, 'Image')
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    hFig = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
+    [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq', GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits);
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
@@ -273,6 +262,8 @@ if isStaticFreq
 else
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
 end
+% Display units
+TfInfo.DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);
 % Display options panel (not for stat, as the thresholding is already done)

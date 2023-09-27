@@ -5,7 +5,7 @@ function varargout = panel_sourcegrid(varargin)
 %            bstPanel = panel_sourcegrid('CreatePanel', CortexFile)         : Called from the interactive interface
 %                grid = panel_sourcegrid('GetPanelContents')                : When called from the interactive interface
 %         GridOptions = panel_sourcegrid('GetPanelContents')                : When called from the pipeline editor
-%                grid = panel_sourcegrid('GetGrid', GridOptions)
+%                grid = panel_sourcegrid('GetGrid', GridOptions, CortexSurface)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -57,28 +57,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         GridOptions_name = 'GridOptions_headmodel';
         % Default options
         GridOptions = bst_get(GridOptions_name);
-        % Create an envelope of the cortex surface
-        [sEnvelope, sCortex] = tess_envelope(CortexFile, 'convhull', GridOptions.nVerticesInit, .001, []);
-        if isempty(sEnvelope)
-            bstPanelNew = [];
-            return;
-        end
         % Find subject 
         [sSubject, iSubject] = bst_get('SurfaceFile', CortexFile);
-        % Load head surface
-        if ~isempty(sSubject.iScalp)
-            HeadFile = sSubject.Surface(sSubject.iScalp).FileName;
-            sHead = bst_memory('LoadSurface', HeadFile);
-        else
-            HeadFile = CortexFile;
-            sHead = sEnvelope;
-        end
-        % Load inner skull if available
-        if ~isempty(sSubject.iInnerSkull)
-            sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
-        else
-            sInner = [];
-        end
         % If this is the default subject: do not show the option "use group grid"
         if (iSubject == 0)
             isShowGroup = 0;
@@ -108,12 +88,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if isempty(GridOptions)
             GridOptions = bst_get(GridOptions_name);
         end
-        % No surfaces
-        sEnvelope = [];
-        sCortex = [];
-        sHead = [];
-        sInner = [];
-        HeadFile = [];
     end
 
     % ===== GRID OPTIONS =====
@@ -147,7 +121,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % RADIO: Isotropic
         jRadioIsotropic = gui_component('radio', jPanelOpt, 'br', 'Regular grid (isotropic):', jButtonGroup, [], @(h,ev)UpdatePanel, []);
-        jRadioBrain = gui_component('radio', jPanelOpt, [], 'Brain', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
+        jRadioCortex = gui_component('radio', jPanelOpt, [], 'Cortex', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
+        jRadioSkull = gui_component('radio', jPanelOpt, [], 'Inner skull', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
         jRadioHead  = gui_component('radio', jPanelOpt, [], 'Head', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
         % Grid resolution
         gui_component('label', jPanelOpt, 'br', '     ');
@@ -196,28 +171,31 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     switch (GridOptions.Method) 
         case 'adaptive'
             jRadioGenerate.setSelected(1);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'isotropic'
             jRadioIsotropic.setSelected(1);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
+        case 'isoskull'
+            jRadioIsotropic.setSelected(1);
+            jRadioSkull.setSelected(1);            
         case 'isohead'
             jRadioIsotropic.setSelected(1);
             jRadioHead.setSelected(1);
         case 'file'
             jRadioFile.setSelected(1);
             jTextFile.setText(GridOptions.FileName);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'var'
             jRadioVar.setSelected(1);
             jTextVar.setText(GridOptions.FileName);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'group'
             if ~isempty(jRadioGroup) && jRadioGroup.isEnabled()
                 jRadioGroup.setSelected(1);
             else
                 jRadioGenerate.setSelected(1);
             end
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         otherwise
             jRadioGenerate.setSelected(1);
     end
@@ -237,16 +215,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     bst_mutex('create', panelName);
     % Controls list
     ctrl = struct('CortexFile',       CortexFile, ...
-                  'HeadFile',         HeadFile, ...
                   'isPreview',        isPreview, ...
                   'GridOptions_name', GridOptions_name, ...
-                  'sEnvelope',        sEnvelope, ...
-                  'sCortex',          sCortex, ...
-                  'sHead',            sHead, ...
-                  'sInner',           sInner, ...
                   'jRadioGenerate',   jRadioGenerate, ...
                   'jRadioIsotropic',  jRadioIsotropic, ...
-                  'jRadioBrain',      jRadioBrain, ...
+                  'jRadioCortex',     jRadioCortex, ...
+                  'jRadioSkull',      jRadioSkull, ...
                   'jRadioHead',       jRadioHead, ...
                   'jRadioFile',       jRadioFile, ...
                   'jRadioVar',        jRadioVar, ...
@@ -320,7 +294,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         isIsotropic = jRadioIsotropic.isSelected();
         jLabelResolution.setEnabled(isIsotropic);
         jTextResolution.setEnabled(isIsotropic);
-        jRadioBrain.setEnabled(isIsotropic);
+        jRadioCortex.setEnabled(isIsotropic);
+        jRadioSkull.setEnabled(isIsotropic);
         jRadioHead.setEnabled(isIsotropic);
         jLabelResUnits.setEnabled(isIsotropic);
         % RADIO: File
@@ -335,11 +310,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             % Get the options
             GridOptions = GetOptions(ctrl);
             % Get grid of source points
-            if strcmpi(GridOptions.Method, 'isohead')
-                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.HeadFile, ctrl.sHead, ctrl.sHead, ctrl.sHead);
-            else
-                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.CortexFile, ctrl.sCortex, ctrl.sEnvelope, ctrl.sInner);
-            end
+            gGridLoc = bst_call(@GetGrid, GridOptions, ctrl.CortexFile);
             % Variable not found
             if strcmpi(GridOptions.Method, 'var') && isempty(gGridLoc)
                 ctrl.jTextVar.setText('');
@@ -416,8 +387,10 @@ function GridOptions = GetOptions(ctrl)
     if ctrl.jRadioGenerate.isSelected()
         GridOptions.Method = 'adaptive';
     elseif ctrl.jRadioIsotropic.isSelected()
-        if ctrl.jRadioBrain.isSelected()
+        if ctrl.jRadioCortex.isSelected()
             GridOptions.Method = 'isotropic';
+        elseif ctrl.jRadioSkull.isSelected()
+            GridOptions.Method = 'isoskull';
         elseif ctrl.jRadioHead.isSelected()
             GridOptions.Method = 'isohead';
         end
@@ -454,49 +427,51 @@ end
 
 
 %% ===== GET GRID =====
-% USAGE:  [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope, sInner)
-%                      grid = GetGrid(GridOptions, CortexFile)
-function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope, sInner)
+% USAGE:  grid = GetGrid(GridOptions, CortexFile)
+function grid = GetGrid(GridOptions, CortexFile)
     grid = [];
     % Progress bar
     bst_progress('start', 'Volume grid', 'Creating grid...');
-    % Surfaces are not loaded yet
-    if (nargin < 4) || isempty(sCortex) || isempty(sEnvelope)
-        % Create an envelope of the cortex surface
-        [sEnvelope, sCortex] = tess_envelope(CortexFile, 'convhull', GridOptions.nVerticesInit, .001, []);
-        if isempty(sEnvelope)
-            return;
-        end
+    % Get subject surfaces
+    sSubject = bst_get('SurfaceFile', CortexFile);
+    if ~isempty(sSubject.iInnerSkull)
+        InnerSkullFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+    else
+        InnerSkullFile = [];
     end
-    % Inner skull
-    if (nargin < 5) || isempty(sInner)
-        sSubject = bst_get('SurfaceFile', CortexFile);
-        if ~isempty(sSubject.iInnerSkull)
-            sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
-        else
-            sInner = sEnvelope;
-        end
+    if ~isempty(sSubject.iScalp)
+        HeadFile = sSubject.Surface(sSubject.iScalp).FileName;
+    else
+        HeadFile = [];
     end
+
     % Switch between methods
     switch (GridOptions.Method)
         case 'adaptive'
-            % If default number of points changed, remesh envelope
-            if (GridOptions.nVerticesInit ~= 4000)
-                center = mean(sEnvelope.Vertices);
-                sEnvelope.Vertices = bst_bsxfun(@minus, sEnvelope.Vertices, center);
-                [sEnvelope.Vertices, sEnvelope.Faces] = tess_remesh(sEnvelope.Vertices, GridOptions.nVerticesInit);
-                sEnvelope.Vertices = bst_bsxfun(@plus, sEnvelope.Vertices, center);
+            % Compute grid
+            grid = bst_sourcegrid(GridOptions, CortexFile, InnerSkullFile);
+
+        case 'isotropic'
+            grid = bst_sourcegrid(GridOptions, CortexFile, InnerSkullFile);
+
+        case 'isoskull'
+            if isempty(InnerSkullFile)
+                error('No inner skull surface available.');
             end
-            % Compute grid
-            grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
-        case {'isotropic', 'isohead'}
-            % Compute grid
-            grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
+            grid = bst_sourcegrid(GridOptions, InnerSkullFile);
+
+        case 'isohead'
+            if isempty(HeadFile)
+                error('No head surface available.');
+            end
+            grid = bst_sourcegrid(GridOptions, HeadFile);
+
         case {'file', 'var'}
             % Read grid
             if ~isempty(GridOptions.FileName)
                 grid = ReadGrid(GridOptions.FileName, GridOptions.Method);
             end
+
         case 'group'
             % === GET SUBJECT ===
             % Get subject using cortex surface

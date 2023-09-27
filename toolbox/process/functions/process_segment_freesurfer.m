@@ -23,7 +23,7 @@ function varargout = process_segment_freesurfer( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021-2022
+% Authors: Francois Tadel, 2021-2023
 
 eval(macro_method);
 end
@@ -60,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Extra command-line parameters
     sProcess.options.param.Comment = 'Command-line options:';
     sProcess.options.param.Type    = 'text';
-    sProcess.options.param.Value   = '-contrasurfreg';
+    sProcess.options.param.Value   = '';
     % Option: Delete existing subject
     sProcess.options.delete.Comment = 'Delete FreeSurfer subject if it already exists';
     sProcess.options.delete.Type    = 'checkbox';
@@ -197,7 +197,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
 
     % ===== SAVE T1 MRI AS NII =====
     % Get temporary folder
-    TmpDir = bst_get('BrainstormTmpDir');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'freesurfer');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
     T1Nii = bst_fullfile(TmpDir, [subjid, 'T1.nii']);
@@ -228,6 +228,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
         if ~isequal(size(sMriT1.Cube), size(sMriT2.Cube)) || ~isequal(size(sMriT1.Voxsize), size(sMriT2.Voxsize))
             errMsg = [errMsg, 'Input images have different dimension, you must register and reslice them first.' 10 ...
                       sprintf('T1:(%d x %d x %d),   T2:(%d x %d x %d)', size(sMriT1.Cube), size(sMriT2.Cube))];
+            % Delete temporary files
+            if ~isempty(TmpDir)
+                file_delete(TmpDir, 1, 1);
+            end
             return;
         end
     else

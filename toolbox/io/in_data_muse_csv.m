@@ -249,8 +249,6 @@ if ~isempty(iTimeEvt)
         DataMat.Events(iEvt).times    = unique(round(evtTime(iOcc) .* sfreq)) ./ sfreq;
         DataMat.Events(iEvt).epochs   = 1 + 0*DataMat.Events(iEvt).times;
         DataMat.Events(iEvt).select   = 1;
-        DataMat.Events(iEvt).channels = cell(1, size(DataMat.Events(iEvt).times, 2));
-        DataMat.Events(iEvt).notes    = cell(1, size(DataMat.Events(iEvt).times, 2));
     end
 end
 

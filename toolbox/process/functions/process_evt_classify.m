@@ -154,8 +154,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         newEvents(iNew).epochs   = sEvent.epochs(iOcc);
         newEvents(iNew).times    = sEvent.times(:,iOcc);
         newEvents(iNew).color    = [];
-        newEvents(iNew).channels = cell(1, size(newEvents(iNew).times, 2));
-        newEvents(iNew).notes    = cell(1, size(newEvents(iNew).times, 2));
+        newEvents(iNew).channels = [];
+        newEvents(iNew).notes    = [];
     end
     
     % ===== SAVE MODIFICATIONS =====

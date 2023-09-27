@@ -23,7 +23,8 @@ function varargout = process_dwi2dti( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Takfarinas Medani, Anand Joshi, Francois Tadel, 2020
+% Authors: Francois Tadel, 2020-2023
+%          Takfarinas Medani, Anand Joshi, 2020
 
 eval(macro_method);
 end
@@ -151,7 +152,11 @@ end
 function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
     DtiFile = [];
     errMsg = '';
-    
+    if ~ispc
+        bdp_exe = 'bdp.sh';
+    else
+        bdp_exe = 'bdp';
+    end
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
@@ -193,7 +198,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== INSTALL BRAINSUITE =====
     bst_progress('text', 'Testing BrainSuite installation...');
     % Check BrainSuite installation
-    status = system('bdp --version');
+    status = system([bdp_exe ' --version']);
     if (status ~= 0)
         % Get BrainSuite path from Brainstorm preferences
         BsDir = bst_get('BrainSuiteDir');
@@ -205,7 +210,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
             disp(['BST> Adding to system path: ' BsBdpDir]);
             setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
             % Check again
-            status = system('bdp --version');
+            status = system([bdp_exe  ' --version']);
         end
         % Brainsuite is not installed
         if (status ~= 0)
@@ -218,25 +223,21 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
 
     % ===== TEMPORARY FOLDER =====
     bst_progress('text', 'Preparing temporary folder...');
-    % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
     % Create temporary folder for segmentation files
-    tmpDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'brainsuite');
-    mkdir(tmpDir);
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'brainsuite');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
-    T1Nii = bst_fullfile(tmpDir, [subjid 'T1.nii']);
+    T1Nii = bst_fullfile(TmpDir, [subjid 'T1.nii']);
     out_mri_nii(T1BstFile, T1Nii);
-
     
     % ===== 1. BRAIN SURFACE EXTRACTOR (BSE) =====
     bst_progress('text', '1/3: Brain surface extractor...');
     strCall = [...
         'bse -i "' T1Nii '" --auto' ...
-        ' -o "' fullfile(tmpDir, 'skull_stripped_mri.nii.gz"') ...
-        ' --mask "' fullfile(tmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
-        ' --hires "' fullfile(tmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
-        ' --cortex "' fullfile(tmpDir, 'bse_cortex_file.nii.gz"')];
+        ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
+        ' --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
+        ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
+        ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
     disp(['BST> System call: ' strCall]);
     status = system(strCall)
     % Error handling
@@ -248,8 +249,8 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== 2. BIAS FIELD CORRECTION (BFC) =====
     bst_progress('text', '2/3: Bias field correction...');
     strCall = [...
-        'bfc -i "' fullfile(tmpDir, 'skull_stripped_mri.nii.gz"') ...
-        ' -o "' fullfile(tmpDir, 'output_mri.bfc.nii.gz"') ...
+        'bfc -i "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
+        ' -o "' fullfile(TmpDir, 'output_mri.bfc.nii.gz"') ...
         ' -L 0.5 -U 1.5'];
     disp(['BST> System call: ' strCall]);
     status = system(strCall)
@@ -262,9 +263,9 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== 3. BRAINSUITE DIFFUSION PIPELINE (BDP) =====
     bst_progress('text', '3/3: BrainSuite Diffusion Pipeline...');
     strCall = [...
-        'bdp "' fullfile(tmpDir,'output_mri.bfc.nii.gz"') ...
+        bdp_exe ' "' fullfile(TmpDir,'output_mri.bfc.nii.gz"') ...
         ' --tensor --nii "' DwiFile '"' ...
-        ' --t1-mask "' fullfile(tmpDir, 'bse_smooth_brain.mask.nii.gz"')...
+        ' --t1-mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"')...
         ' -g "' BvecFile '" -b "' BvalFile '"'];
     disp(['BST> System call: ' strCall]);
     % Error handling
@@ -274,16 +275,20 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         return
     end
     % Check output file: output_mri.dwi.RAS.correct.T1_coord.eig.nii.gz
-    dirEig = dir(fullfile(tmpDir,'*.eig.nii.gz'));
+    dirEig = dir(fullfile(TmpDir,'*.eig.nii.gz'));
     if isempty(dirEig)
-        errMsg = ['Missing *.eig.nii.gz in output folder.', 10, 'Check the Matlab command window for more information.'];
+        errMsg = ['BrainSuite failed at step 3/3 (BDP).', 10, 'Missing *.eig.nii.gz in output folder.', 10, 'Check the Matlab command window for more information.'];
+        return
     end
-    DtiNii = fullfile(tmpDir, dirEig.name);
+    DtiNii = fullfile(TmpDir, dirEig.name);
 
     % ===== 4. EIG2NIFTI =====
     bst_progress('text', 'Saving output data...');
     % Reading volumes
     DtiFile = import_mri(iSubject, DtiNii, 'Nifti1', 0, 0, 'DTI-EIG');
+
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
 end
 
 

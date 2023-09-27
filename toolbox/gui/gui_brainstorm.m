@@ -8,6 +8,7 @@ function varargout = gui_brainstorm( varargin )
 %                   gui_brainstorm('DeleteProtocol', ProtocolName)
 %                   gui_brainstorm('SetExplorationMode', ExplorationMode)    % ExplorationMode = {'Subjects','StudiesSubj','StudiesCond'}
 % BrainstormDbDir = gui_brainstorm('SetDatabaseFolder')
+%       isDeleted = gui_brainstorm('EmptyTempFolder', isUserConfirm=0)
 %  [keyEvent,...] = gui_brainstorm('ConvertKeyEvent', ev)
 
 % @=============================================================================
@@ -28,7 +29,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 eval(macro_method);
 end
@@ -1190,6 +1191,8 @@ function ShowToolTab(tabTitle)
             panel_surface('UpdatePanel');
         case 'iEEG'
             panel_ieeg('UpdatePanel');
+        case 'Cluster'
+            panel_cluster('UpdatePanel');
     end
     % Select tab
     SetSelectedTab(tabTitle, 0);
@@ -1378,24 +1381,66 @@ end
 
 
 %% ===== EMPTY TEMPORARY FOLDER =====
-function isDeleted = EmptyTempFolder()
+% USAGE:  isDeleted = gui_brainstorm('EmptyTempFolder', isUserConfirm=0)
+function isDeleted = EmptyTempFolder(isUserConfirm)
+    % Parse inputs
+    if (nargin < 1) || isempty(isUserConfirm)
+        isUserConfirm = 0;
+    end
+    isDeleted = 0;
     % Get temporary directory
-    tmpDir = bst_get('BrainstormTmpDir');
+    TmpDir = bst_get('BrainstormTmpDir');
+    % If directory doesn't exist
+    if ~isdir(TmpDir)
+        return;
+    end
     % Make sure Matlab is not currently in a subfolder of the temp directory
-    if ~isempty(strfind(pwd, tmpDir)) && ~file_compare(pwd, tmpDir)
-        cd(tmpDir);
+    if ~isempty(strfind(pwd, TmpDir)) && ~file_compare(pwd, TmpDir)
+        cd(TmpDir);
     end
-    % If directory exists
-    if isdir(tmpDir)
-        disp('BST> Emptying temporary directory...');
-        % Delete contents of directory
-        tmpFiles = dir(bst_fullfile(tmpDir, '*'));
-        tmpFiles = setdiff({tmpFiles.name}, {'.','..'});
-        tmpFiles = cellfun(@(c)bst_fullfile(tmpDir,c), tmpFiles, 'UniformOutput', 0);
-        isDeleted = file_delete(tmpFiles, 1, 3);
-    else 
-        isDeleted = 0;
+
+    % Get contents of directory
+    tmpFiles = dir(bst_fullfile(TmpDir, '*'));
+    tmpFiles = setdiff({tmpFiles.name}, {'.','..'});
+    % If there are no files in the temp folder
+    if isempty(tmpFiles)
+        return;
     end
+    % Ask user confirmation
+    if isUserConfirm
+        % Prepare message
+        strTitle = sprintf('The temporary directory contains %d file(s):', length(tmpFiles));
+        strList = '';
+        NMAX = 15;
+        for iFile = 1:min(NMAX, length(tmpFiles))
+            strList = [strList, 10, ' |- ', tmpFiles{iFile}];
+        end
+        if (length(tmpFiles) > NMAX)
+            strList = [strList, 10, ' |- ...'];
+        end
+        % GUI: Show dialog message
+        if (bst_get('GuiLevel') == 1)
+            isConfirmed = java_dialog('confirm', ['<HTML>' strTitle, '<BR><FONT color="#707070"><PRE>', TmpDir, filesep, strrep(strList,char(10),'<BR>'), '</PRE></FONT><BR>', ...
+                'They might still be in use from other processes.<BR>', ...
+                'Delete all these files now?<BR><BR>'], 'Delete temporary files');
+            if ~isConfirmed
+                return;
+            end
+        % No GUI: Generate warning and reject deletion
+        else
+            strWarning = ['WARNING: ', strTitle, 10, TmpDir, filesep, strList, 10, 'If these files are not in use from another process, they will not be deleted automatically.', 10 ...
+                'To delete all the temporary files, add the following command to your script: ' 10 ...
+                'gui_brainstorm(''EmptyTempFolder'');'];
+            % Display warning in Matlab command window
+            disp([strrep(strWarning, char(10), [char(10), 'BST> ']), 10]);
+            return;
+        end
+    end
+    % Get full path
+    tmpFiles = cellfun(@(c)bst_fullfile(TmpDir,c), tmpFiles, 'UniformOutput', 0);
+    % Delete files
+    disp('BST> Emptying temporary directory...');
+    isDeleted = file_delete(tmpFiles, 1, 1);
 end
 
 

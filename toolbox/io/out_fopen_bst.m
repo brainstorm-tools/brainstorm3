@@ -36,7 +36,8 @@ sFileOut.header.device    = sFileOut.device;
 sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
-sFileOut.header.version   = 51;   % April 2019
+% sFileOut.header.version   = 51;   % April 2019
+sFileOut.header.version   = 52;   % March 2023
 sFileOut.header.nsamples  = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
@@ -159,22 +160,30 @@ for iEvt = 1:length(sFileOut.events)
         % Write latencies
         fwrite(fid, sFileOut.events(iEvt).times, 'float32');                 % FLOAT32(2*N) : Time in seconds
         % Write list of channels associated to each event
-        for iOcc = 1:nOcc
-            nChannels = length(sFileOut.events(iEvt).channels{iOcc});
-            fwrite(fid, nChannels, 'uint16');                                % UINT16(1) : Number of channels associated to this event
-            for iChan = 1:nChannels
-                chLabel = sFileOut.events(iEvt).channels{iOcc}{iChan};
-                labelLength = length(chLabel);
-                fwrite(fid, labelLength, 'uint8');                           % UINT8(1) : Length of channel name (1 to 255)
-                fwrite(fid, str_zeros(chLabel, labelLength), 'char');        % CHAR(??) : Channel name
+        isChannels = ~isempty(sFileOut.events(iEvt).channels);
+        fwrite(fid, uint8(isChannels), 'uint8');                             % UINT8(1) : 1 if channels list is present, 0 otherwise
+        if isChannels
+            for iOcc = 1:nOcc
+                nChannels = length(sFileOut.events(iEvt).channels{iOcc});
+                fwrite(fid, nChannels, 'uint16');                            % UINT16(1) : Number of channels associated to this event
+                for iChan = 1:nChannels
+                    chLabel = sFileOut.events(iEvt).channels{iOcc}{iChan};
+                    labelLength = length(chLabel);
+                    fwrite(fid, labelLength, 'uint8');                       % UINT8(1) : Length of channel name (1 to 255)
+                    fwrite(fid, str_zeros(chLabel, labelLength), 'char');    % CHAR(??) : Channel name
+                end
             end
         end
         % Read list of notes associated to each event
-        for iOcc = 1:nOcc
-            noteLabel = sFileOut.events(iEvt).notes{iOcc};
-            labelLength = length(noteLabel);
-            fwrite(fid, labelLength, 'uint16');                              % UINT16(1) : Length of note text
-            fwrite(fid, str_zeros(noteLabel, labelLength), 'char');          % CHAR(??) : Note text
+        isNotes = ~isempty(sFileOut.events(iEvt).notes);
+        fwrite(fid, uint8(isNotes), 'uint8');                                % UINT8(1) : 1 if notes list is present, 0 otherwise
+        if isNotes
+            for iOcc = 1:nOcc
+                noteLabel = sFileOut.events(iEvt).notes{iOcc};
+                labelLength = length(noteLabel);
+                fwrite(fid, labelLength, 'uint16');                          % UINT16(1) : Length of note text
+                fwrite(fid, str_zeros(noteLabel, labelLength), 'char');      % CHAR(??) : Note text
+            end
         end
     end
 end

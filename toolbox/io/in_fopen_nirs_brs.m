@@ -127,8 +127,8 @@ if isfield(nirs,'s') && size(nirs.s,2) > 0
         end
         events(iEvt).times      = evtTime(:)';
         events(iEvt).epochs     = ones(1, length(evtTime));
-        events(iEvt).notes      = cell(1, length(evtTime));
-        events(iEvt).channels   = cell(1, length(evtTime));
+        events(iEvt).notes      = [];
+        events(iEvt).channels   = [];
         events(iEvt).reactTimes = [];
     end
     sFile.events = events;
@@ -153,7 +153,7 @@ if isfield(nirs,'brainsight') && ~isempty(find(nirs.brainsight.acquisition.satur
         event.label      = sprintf('Saturation %d',saturated_channels(i_chan));
         event.times      = evtTime(:)';
         event.epochs     = ones(1, length(evtTime));
-        event.notes      = cell(1, length(evtTime));
+        event.notes      = [];
         event.channels   = channels_saturated;
         event.reactTimes = [];
         sFile.events = [sFile.events event];

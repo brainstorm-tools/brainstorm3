@@ -48,7 +48,7 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
@@ -71,16 +71,16 @@ vox2ras = [];
 tReorient = [];
 
 % ===== GUNZIP FILE =====
-gunzippedFile = [];
+TmpDir = [];
 if ~iscell(MriFile)
     % Get file extension
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     % If file is gzipped
     if strcmpi(fExt, '.gz')
         % Get temporary folder
-        tmpDir = bst_get('BrainstormTmpDir');
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'importmri');
         % Target file
-        gunzippedFile = bst_fullfile(tmpDir, fBase);
+        gunzippedFile = bst_fullfile(TmpDir, fBase);
         % Unzip file
         res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
         if ~res
@@ -331,7 +331,7 @@ end
 
 
 %% ===== DELETE TEMPORARY FILE =====
-if ~isempty(gunzippedFile)
-    file_delete(gunzippedFile, 1, 3);
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
 end
 

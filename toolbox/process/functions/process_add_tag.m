@@ -23,6 +23,7 @@ function varargout = process_add_tag( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Raymundo Cassani, 2023
 
 eval(macro_method);
 end
@@ -47,13 +48,19 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % === FILENAME / COMMENT
-    sProcess.options.output.Comment = {'Add to file name', 'Add to file path'};
-    sProcess.options.output.Type    = 'radio';
-    sProcess.options.output.Value   = 1;
+    sProcess.options.output.Comment = {'Add to file name', 'Add to file path', 'Add to file name and file path'; ...
+                                       'name', 'path', 'name_path'};
+    sProcess.options.output.Type    = 'radio_label';
+    sProcess.options.output.Value   = 'name';
     % === WARNING
     sProcess.options.label_warning.Comment    = '&nbsp;<FONT color=#7F7F7F>Warning: Tags cannot contain square brackets.</FONT>';
     sProcess.options.label_warning.Type       = 'label';
+    % === WARNING
+    sProcess.options.label_warning2.Comment   = '&nbsp;<FONT color=#7F7F7F>Warning: Tags cannot be added to file path if there are dependent files.</FONT>';
+    sProcess.options.label_warning2.Type      = 'label';
+
 end
+
 
 
 %% ===== FORMAT COMMENT =====
@@ -79,8 +86,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'Tags cannot contain square brackets.');
         return
     end
+    % Where to add tag
+    isNameTag = 0;
+    isPathTag = 0;
+    switch sProcess.options.output.Value
+        case {1, 'name'}
+            isNameTag = 1;
+        case {2, 'path'}
+            isPathTag = 1;
+        case {3, 'name_path'}
+            isNameTag = 1;
+            isPathTag = 1;
+    end
     % Standardize tag for file name
-    if (sProcess.options.output.Value == 2)
+    if isPathTag
         fileTag = file_standardize(tag);
         if (fileTag(1) ~= '_')
             fileTag = ['_', fileTag];
@@ -88,15 +107,28 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % Update each file
+    reloadDatabase   = 0;
+    subjectsToReload = [];
+    studiesToReload  = [];
     RenamedKernels = {};
     for i = 1:length(sInputs)
         % Get file type
         fileType = file_gettype(sInputs(i).FileName);
             
         % === ADD TO COMMENT ===
-        if (sProcess.options.output.Value == 1)
+        if isNameTag
             % Rename link => Rename shared kernel instead
             if strcmpi(fileType, 'link')
+                % Handle reload depending on kernel in GlobalDefault, Default and Normal Study
+                sStudy = bst_get('Study', sInputs(i).iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+                if sSubject.UseDefaultChannel == 2
+                    reloadDatabase = 1;
+                elseif sSubject.UseDefaultChannel == 1
+                    subjectsToReload(end+1) = iSubject;
+                elseif sSubject.UseDefaultChannel == 0
+                    studiesToReload(end+1) = sInputs(i).iStudy;
+                end
                 KernelFile = file_resolve_link(sInputs(i).FileName);
                 % Check if this kernel has already been renamed
                 if ismember(KernelFile, RenamedKernels)
@@ -111,16 +143,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             FileMat.Comment = [FileMat.Comment ' | ' tag];
             % Save file
             bst_save(FileName, FileMat, 'v6', 1);
+        end
 
         % === ADD TO FILE NAME ===
-        else
+        if isPathTag
             % Get study structure
             sStudy = bst_get('Study', sInputs(i).iStudy);
             % Check if files has dependent files
             AllDepFiles = {sStudy.Dipoles.DataFile, sStudy.Result.DataFile, sStudy.Timefreq.DataFile};
             AllDepFiles(cellfun(@isempty, AllDepFiles)) = [];
             if any(cellfun(@(c)file_compare(c,sInputs(i).FileName), AllDepFiles))
-                bst_report('Error', sProcess, sInputs(i), 'The input file has some dependent files. In order to preserve the links in the database, it cannot be renamed.');
+                bst_report('Error', sProcess, sInputs(i), ...
+                    ['The input file has some dependent files.' ...
+                    'To preserve links in the database, a tag cannot be added to the file path.']);
                 continue;
             end
             % Rename link => Rename shared kernel instead
@@ -130,6 +165,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 [fPath, fBase, fExt] = bst_fileparts(OldFileName);
                 NewFileName = bst_fullfile(fPath, [fBase, fileTag, fExt]);
                 OutputFiles{i} = strrep(sInputs(i).FileName, file_short(OldFileName), file_short(NewFileName));
+                % Handle reload depending on kernel in GlobalDefault, Default and Normal Study
+                sStudy = bst_get('Study', sInputs(i).iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+                if sSubject.UseDefaultChannel == 2
+                    reloadDatabase = 1;
+                elseif sSubject.UseDefaultChannel == 1
+                    subjectsToReload(end+1) = iSubject;
+                elseif sSubject.UseDefaultChannel == 0
+                    studiesToReload(end+1) = sInputs(i).iStudy;
+                end
                 % Check if this kernel has already been renamed
                 if ismember(OldFileName, RenamedKernels)
                     continue;
@@ -152,8 +197,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
     end
-    % Reload studies
-    db_reload_studies(unique([sInputs.iStudy]));
+    % Reload necessary subjects and studies
+    if reloadDatabase
+        db_reload_database('current');
+    else
+        if ~isempty(subjectsToReload)
+            db_reload_conditions(unique(subjectsToReload));
+        end
+        db_reload_studies(unique([studiesToReload, sInputs.iStudy]));
+    end
 end
 
 

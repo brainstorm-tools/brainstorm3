@@ -130,8 +130,8 @@ for iChan = 1:length(iMarkerChan)
     sFile.events(iEvt).times    = round(double(timeEvt).* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
     sFile.events(iEvt).select   = 1;
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 % Display missing channels
 if ~isempty(iChanMissing)

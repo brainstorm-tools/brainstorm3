@@ -161,8 +161,8 @@ for iFile = 1:length(dirres)
             events(iClu).select     = 1;
             events(iClu).times      = spikeSmp(iTime) ./ sFile.prop.sfreq;
             events(iClu).epochs     = ones(1, length(iTime));
-            events(iClu).channels   = cell(1, size(events(iClu).times, 2));
-            events(iClu).notes      = cell(1, size(events(iClu).times, 2));
+            events(iClu).channels   = [];
+            events(iClu).notes      = [];
         end
     % No clusters: one event per file
     else
@@ -173,8 +173,8 @@ for iFile = 1:length(dirres)
         events.select     = 1;
         events.times      = spikeSmp ./ sFile.prop.sfreq;
         events.epochs     = ones(1, length(spikeSmp));
-        events.channels   = cell(1, size(events.times, 2));
-        events.notes      = cell(1, size(events.times, 2));
+        events.channels   = [];
+        events.notes      = [];
     end
     % Import this list
     sFile = import_events(sFile, [], events);

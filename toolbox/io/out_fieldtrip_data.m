@@ -53,6 +53,10 @@ else
 end
 if isstruct(DataFile)
     DataMat  = DataFile;
+    isRawIn  = 0;
+    if isstruct(DataMat.F) || strcmpi(DataMat.DataType, 'raw')
+        isRawIn  = 1;
+    end
     DataFile = [];
 end
 
@@ -60,7 +64,15 @@ end
 % ===== LOAD INPUTS =====
 % Load data file
 if ~isempty(DataFile)
+    isRawIn = ~isempty(strfind(DataFile, '_0raw'));
     DataMat = in_bst_data(DataFile);
+    % Get raw file structure
+    if isRawIn
+        sFileIn = DataMat.F;
+        if (length(sFileIn.epochs) > 1)
+            error('Cannot export epoched files.');
+        end
+    end
     % Get ChannelFile if not provided
     if isempty(ChannelFile)
         ChannelFile = bst_get('ChannelFileForStudy', DataFile);
@@ -91,21 +103,34 @@ else
     iChannels = 1:size(DataMat.F,1);
 end
 
-% ===== RECORDINGS =====
+% Get recordings
+if isRawIn
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.ImportMode      = 'Time';
+    ImportOptions.DisplayMessages = 0;
+    ImportOptions.UseCtfComp      = 0;
+    ImportOptions.UseSsp          = 0;
+    ImportOptions.RemoveBaseline  = 'no';
+    F = in_fread(sFileIn, ChannelMat, 1, [], iChannels, ImportOptions);
+else
+    F = DataMat.F(iChannels,:);
+end
+
 % Convert to FieldTrip data structure
 ftData = struct();
-ftData.dimord  = 'chan_time';
+
+% ===== RECORDINGS =====
 % Timelock structure: see ft_datatype_timelock.m
 if isTimelock
-    ftData.avg  = DataMat.F(iChannels,:);
+    ftData.dimord  = 'chan_time';
+    ftData.avg  = F;
     ftData.time = DataMat.Time;
 %     if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
 %         ftData.var = DataMat.Std(iChannels,:);
 %     end
 % Raw structure: see ft_datatype_raw.m
 else
-    ftData.trial{1} = DataMat.F(iChannels,:);
-    ftData.time{1}  = DataMat.Time;
+    ftData.trial{1} = F;
 end
 
 % ===== CHANNEL INFO =====

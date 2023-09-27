@@ -20,9 +20,7 @@ function varargout = process_import_bids( varargin )
 %    - EEG  : https://openneuro.org/datasets/ds004024 : OK
 %    - iEEG : https://openneuro.org/datasets/ds003688 : ERROR: Wrong interpretation of ACPC coordinates (easier to see in ECOG for sub-02)
 %    - iEEG : https://openneuro.org/datasets/ds003848 : WARNING: Impossible to interepret correctly the coordinates in electrodes.tsv
-%    - iEEG : https://openneuro.org/datasets/ds004085 : ERROR: FreeSurfer not imported (not in a "freesurfer" pipeline subfolder)
-%                                                       ERROR: Some subjects (1,2,10,11) have incorrect channel names in the electrodes.tsv => Not imported
-%                                                       ERROR: Inaccurate electrode positioning because AC/PC landmarks are not defined in the MRI
+%    - iEEG : https://openneuro.org/datasets/ds004473 : OK
 %    - iEEG : https://openneuro.org/datasets/ds004126 : OK (ACPC OK)
 %    - STIM : https://openneuro.org/datasets/ds002799 : WARNING: No channel file imported because there are no SEEG recordings
 %    - MEG  : https://openneuro.org/datasets/ds000117 : 
@@ -232,9 +230,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
     subjDir = [...
         dir(bst_fullfile(BidsDir, 'sub-*')); ...
         dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', 'sub-*'))];
+        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer*', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12*', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite*', 'sub-*'))];
     % If the folders include the session: remove it
     for i = 1:length(subjDir)
         iUnder = find(subjDir(i).name == '_', 1);
@@ -504,9 +502,14 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
             % Compute non-linear MNI normalization if requested (the linear was already computed during the import)
-            if isempty(errorMsg) && isequal(OPTIONS.MniMethod, 'segment')
-                sSubject = bst_get('Subject', sSubject);
-                [sMri, errorMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
+            if isequal(OPTIONS.MniMethod, 'segment')
+                sSubject = bst_get('Subject', iSubject);
+                if ~isempty(sSubject.Anatomy)
+                    [sMri, errMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
+                    if ~isempty(errMsg)
+                        errorMsg = [errorMsg, 10, errMsg];
+                    end
+                end
             end
         end
 
@@ -517,10 +520,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             % Import first MRI
             [BstMriFile, sMri] = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
-                if ~isempty(errorMsg)
-                    errorMsg = [errorMsg, 10];
-                end
-                errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
+                errorMsg = [errorMsg, 10, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
                 % If there was no segmentation imported before: normalize and create head surface
@@ -528,11 +528,15 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Compute MNI normalization
                     switch (OPTIONS.MniMethod)
                         case 'maff8'
-                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'maff8');
+                            [sMri, errMsg] = bst_normalize_mni(BstMriFile, 'maff8');
                         case 'segment'
-                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'segment');
+                            [sMri, errMsg] = bst_normalize_mni(BstMriFile, 'segment');
                         case 'no'
                             % Nothing to do
+                            errMsg = '';
+                    end
+                    if ~isempty(errMsg)
+                        errorMsg = [errorMsg, 10, errMsg];
                     end
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
@@ -569,6 +573,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             sSubject.Anatomy(iMri) = [];
                             % Update database
                             bst_set('Subject', iSubject, sSubject);
+                            % Refresh tree
+                            panel_protocols('UpdateNode', 'Subject', iSubject);
                         end
                     end
                     % Replace the MRI file path in the matching matrix
@@ -617,13 +623,18 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
         end
         % Error handling
         if ~isempty(errorMsg)
-            Messages = [Messages, 10, errorMsg];
-            if OPTIONS.isInteractive
-                bst_error(Messages, 'Import BIDS dataset', 0);
-                return;
-            else
-                continue;
+            % If first character is newline: remove it
+            if (errorMsg(1) == newline)
+                errorMsg = errorMsg(2:end);
             end
+            Messages = [Messages, 10, 'Error importing anatomy for: ', SubjectName{iSubj}, 10, errorMsg, 10];
+            % DO NOT STOP PROCESSING IF THERE IS AN IMPORT ISSUE IN THE ANATOMY OF ONE SUBJECT
+            % if OPTIONS.isInteractive
+            %     bst_error(Messages, 'Import BIDS dataset', 0);
+            %     return;
+            % else
+            %     continue;
+            % end
         end
             
         % === IMPORT MEG/EEG FILES ===
@@ -870,7 +881,6 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
-                        'usedefault',  1, ...
                         'fixunits',    0, ...
                         'vox2ras',     isVox2ras, ...
                         'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
@@ -897,7 +907,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Read tsv file
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
-                    if strcmp(mod,'nirs')
+                    if strcmp(fExt,'.snirf')
                           ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
                           ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
                           ChanInfo(:,2)  = ChanInfo_tmp(:,2);
@@ -929,7 +939,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 % Look for corresponding channel in Brainstorm channel file
                                 iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                 if isempty(iChanBst)
-                                    continue;
+                                    iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                    if isempty(iChanBst)
+                                        continue;
+                                    end
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
@@ -946,8 +959,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                         case {'NIRSCWAMPLITUDE'}
                                              chanType = 'NIRS';
                                     end
-                                    ChannelMat.Channel(iChanBst).Type = chanType;
-                                    isModifiedChan = 1;
+                                    % Keep the "EEG_NO_LOC" type
+                                    if ~isequal(ChannelMat.Channel(iChanBst).Type, 'EEG_NO_LOC') || (~isempty(ChannelMat.Channel(iChanBst).Loc) && ~all(ChannelMat.Channel(iChanBst).Loc(:) == 0))
+                                        ChannelMat.Channel(iChanBst).Type = chanType;
+                                        isModifiedChan = 1;
+                                    end
                                 end
                                 % Copy group
                                 if ~isempty(ChanInfo{iChanBids,3}) && ~strcmpi(ChanInfo{iChanBids,3},'n/a')
@@ -1054,6 +1070,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             end
         end
     end
+
+    % If first character is newline: remove it
+    if ~isempty(Messages) && (Messages(1) == newline)
+        Messages = Messages(2:end);
+    end
 end
 
 
@@ -1064,39 +1085,52 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
     AnatFormat = [];
     DerivDir = bst_fullfile(BidsDir, 'derivatives');
     % FreeSurfer
-    if file_exist(bst_fullfile(DerivDir, 'freesurfer', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz');
+    subDir = dir(bst_fullfile(DerivDir, 'freesurfer*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'T1.mgz');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'FreeSurfer';
+            return;
         end
+    end
     % CAT12
-    elseif file_exist(bst_fullfile(DerivDir, 'cat12', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii');
+    subDir = dir(bst_fullfile(DerivDir, 'cat12*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'lh.central.*.gii');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'CAT12';
         end
+    end
     % BrainSuite
-    elseif file_exist(bst_fullfile(DerivDir, 'brainsuite', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs');
+    subDir = dir(bst_fullfile(DerivDir, 'cat12*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, '*.left.pial.cortex.svreg.dfs');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(TestFile);
             AnatFormat = 'BrainSuite';
+            return;
         end
+    end
     % BrainVISA
-    elseif file_exist(bst_fullfile(DerivDir, 'brainvisa', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*');
+    subDir = dir(bst_fullfile(DerivDir, 'brainvisa*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'nobias_*.*');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(bst_fileparts(bst_fileparts(TestFile))));
             AnatFormat = 'BrainVISA';
+            return;
         end
+    end
     % CIVET
-    elseif file_exist(bst_fullfile(DerivDir, 'civet', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc');
+    subDir = dir(bst_fullfile(DerivDir, 'civet*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, '*_t1.mnc');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'CIVET';
+            return;
         end
     end
 end

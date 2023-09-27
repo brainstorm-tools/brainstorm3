@@ -290,7 +290,15 @@ end
 %% ===== HELPER FUNCTIONS =====
 function sout = str_zeros(sin, N)
     if (isnumeric(sin))
-        sin = num2str(sin);
+        sin_str = num2str(sin);
+        if (length(sin_str) > N)
+            if ((sin > 10^-(N-3)) && (sin < 10^N-1)) || (N < 7)
+                sin_str = sprintf('%f', sin);
+            else
+                sin_str = sprintf(sprintf('%%0.%de',N-7), sin);
+            end
+        end
+        sin = sin_str;
     end
 
     sout = char(double(' ') * ones(1,N));

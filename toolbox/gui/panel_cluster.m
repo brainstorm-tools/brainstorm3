@@ -3,6 +3,7 @@ function varargout = panel_cluster(varargin)
 % 
 % USAGE:  bstPanelNew = panel_cluster('CreatePanel')
 %                       panel_cluster('UpdatePanel')
+%                       panel_cluster('CurrentFigureChanged_Callback')
 %                       
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +23,7 @@ function varargout = panel_cluster(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2023
 
 eval(macro_method);
 end
@@ -49,19 +50,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % First buttons
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_NEW_SEL, '<HTML><B>Create new cluster: mouse selection.</B><BR>Use sensors selected in any time series or topography figure.', @(h,ev)CreateNewCluster('Selection'));
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_NEW_IND, '<HTML><B>Create new cluster: list of indices/names.</B><BR>Type the list of sensors indices, names or types you want in the new cluster.', @(h,ev)CreateNewCluster('Indices'));
-        gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display cluster time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @DisplayClusters);
-        
-%         % === MENU NEW ===
-%         jMenu = gui_component('Menu', jMenuBar, [], 'New', IconLoader.ICON_MENU, [], [], 11);
-%         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
-%             gui_component('MenuItem', jMenu, [], 'New cluster: Use selected sensors', IconLoader.ICON_NEW_SEL, [], @(h,ev)CreateNewCluster('Selection'));
-%             gui_component('MenuItem', jMenu, [], 'New cluster: List of indices or names', IconLoader.ICON_NEW_IND, [], @(h,ev)CreateNewCluster('Indices'));
+        gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display cluster time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @(h,ev)view_clusters());
 
         % === MENU EDIT ===
         jMenu = gui_component('Menu', jMenuBar, [], 'Edit', IconLoader.ICON_MENU, [], [], 11);
         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
+            % Set color
+            gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditClusterColor));
             % Menu: Set cluster function
-            jMenuTs = gui_component('Menu', jMenu, [], 'Set cluster function', IconLoader.ICON_PROPERTIES, [], []);
+            jMenuTs = gui_component('Menu', jMenu, [], 'Set function', IconLoader.ICON_PROPERTIES, [], []);
                 gui_component('MenuItem', jMenuTs, [], 'Mean',    [], [], @(h,ev)SetClusterFunction('Mean'));
                 gui_component('MenuItem', jMenuTs, [], 'Mean+Std',    [], [], @(h,ev)SetClusterFunction('Mean+Std'));
                 gui_component('MenuItem', jMenuTs, [], 'Mean+StdErr',    [], [], @(h,ev)SetClusterFunction('Mean+StdErr'));
@@ -74,11 +71,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             gui_component('MenuItem', jMenu, [], 'Rename   [Double-click]', IconLoader.ICON_EDIT,    [], @(h,ev)EditClusterLabel);
             gui_component('MenuItem', jMenu, [], 'Remove   [DEL]',          IconLoader.ICON_DELETE,  [], @(h,ev)RemoveClusters);
             gui_component('MenuItem', jMenu, [], 'Deselect all  [ESC]',     IconLoader.ICON_RELOAD,  [], @(h,ev)SetSelectedClusters(0));
-
-%         % === MENU VIEW ===
-%         jMenu = gui_component('Menu', jMenuBar, [], 'View', IconLoader.ICON_MENU, [], [], 11);
-%         jMenu.setBorder(BorderFactory.createEmptyBorder(0,2,0,2));
-%             gui_component('MenuItem', jMenu, [], 'View time series', IconLoader.ICON_TS_DISPLAY, [], @DisplayClusters);
+            jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportClustersToMatlab));
+            gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportClustersFromMatlab));
+            jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Copy to other folders', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllConditions'));
+            gui_component('MenuItem', jMenu, [], 'Copy to other subjects', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllSubjects'));
 
     % ===== PANEL MAIN =====
     jPanelMain = java_create('javax.swing.JPanel');
@@ -169,7 +167,7 @@ function ListKeyTyped_Callback(h, ev)
         case {ev.VK_DELETE, ev.VK_BACK_SPACE}
             RemoveClusters();
         case ev.VK_ENTER
-            view_clusters();
+            tree_view_clusters();
         case ev.VK_ESCAPE
             SetSelectedClusters([]);
     end
@@ -188,52 +186,84 @@ end
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+%% ===== CURRENT FIGURE CHANGED =====
+function CurrentFigureChanged_Callback(hFig)
+    % Update list of clusters in the panel
+    UpdatePanel();
+    % Update sensor selection
+    UpdateChannelSelection();
+end
+
 %% ===== UPDATE CALLBACK =====
-function UpdatePanel() %#ok<DEFNU>
+function UpdatePanel()
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Cluster');
     if isempty(ctrl)
         return;
     end
-%     % No raw time or no events structure: exit
-%     if isempty(GlobalData.DataSet)
-%         gui_enable([ctrl.jPanelList, ctrl.jPanelOptions, ctrl.jMenuBar, ctrl.jToolbar, ctrl.jToolbar2], 0, 1);
-%         return
-%     else
-%         gui_enable([ctrl.jPanelList, ctrl.jPanelOptions, ctrl.jMenuBar, ctrl.jToolbar, ctrl.jToolbar2], 1, 1);
-%     end
-    % Get current clusters
-    sClusters = GetClusters();
-%     % If some clusters are available
-%     isEnable = ~isempty(sClusters);
-%     gui_enable([ctrl.jPanelList, ctrl.jPanelOptions, ctrl.jToolbar2], isEnable, 1);
     % Update clusters JList
-    UpdateClustersList(sClusters);
+    UpdateClustersList();
 end
 
 
 %% ===== UPDATE CLUSTERS LIST =====
-function UpdateClustersList(sClusters)
+function UpdateClustersList()
     import org.brainstorm.list.*;
     % Get "Cluster" panel controls
     ctrl = bst_get('PanelControls', 'Cluster');
     if isempty(ctrl)
         return;
     end
-    % If clusters list was not defined : get it
-    if (nargin < 1)
-        sClusters = GetClusters();
+    % Get clusters
+    sClusters = GetClusters();
+
+    % Remove temporarily the list callback
+    callbackBak = java_getcb(ctrl.jListClusters, 'ValueChangedCallback');
+    java_setcb(ctrl.jListClusters, 'ValueChangedCallback', []);
+    % Get selected clusters
+    SelNames = {};
+    selValues = ctrl.jListClusters.getSelectedValues();
+    for i = 1:length(selValues)
+        SelNames{end+1} = char(selValues(i));
+    end
+    if ~isempty(SelNames) && ~isempty(sClusters)
+        iSelected = find(ismember({sClusters.Label}, SelNames));
+    else
+        iSelected = [];
     end
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
-    % Add an item in list for each cluster found for target figure
-    for iCluster = 1:length(sClusters)
-        listModel.addElement(BstListItem(sClusters(iCluster).Function, '', sClusters(iCluster).Label, iCluster));
+    % Get font with which the list is rendered
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    jFont = java.awt.Font('Dialog', java.awt.Font.PLAIN, fontSize);
+    tk = java.awt.Toolkit.getDefaultToolkit();
+    % Add an item in list for each cluster
+    Wmax = 0;
+    for i = 1:length(sClusters)
+        itemType  = sClusters(i).Function;
+        itemText  = sClusters(i).Label;
+        itemColor = sClusters(i).Color;
+        listModel.addElement(BstListItem(itemType, [], itemText, i, itemColor(1), itemColor(2), itemColor(3)));
+        % Get longest string
+        W = tk.getFontMetrics(jFont).stringWidth(sClusters(i).Label);
+        if (W > Wmax)
+            Wmax = W;
+        end
     end
     % Update list model
     ctrl.jListClusters.setModel(listModel);
+    % Update cell rederer based on longest channel name
+    ctrl.jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
+    % Select previously selected clusters
+    if ~isempty(iSelected)
+        ctrl.jListClusters.setSelectedIndices(iSelected - 1);
+    end
     % Reset cluster comments
     ctrl.jLabelClusterSize.setText('');
+
+    % Restore callback
+    drawnow;
+    java_setcb(ctrl.jListClusters, 'ValueChangedCallback', callbackBak);
 end
 
 
@@ -276,31 +306,97 @@ function UpdateChannelSelection()
 end
 
 
-%% ===== GET ALL CLUSTERS =====
-% USAGE:  panel_cluster('GetClusters', iClusters)
-%         panel_cluster('GetClusters', labels)
-function [sClusters, iClusters] = GetClusters(iClusters)
+%% ===== GET CLUSTERS =====
+% USAGE:  [sClusters, iDSall, iFigall, hFigall] = panel_cluster('GetClusters')
+function [sClusters, iDSall, iFigall, hFigall] = GetClusters()
     global GlobalData;
-    if (nargin < 1)
-        iClusters = 1:length(GlobalData.Clusters);
-    elseif ischar(iClusters) || iscell(iClusters)
-        if ischar(iClusters)
-            labels = {iClusters};
-        else
-            labels = iClusters;
+    % Get current figure
+    [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
+    % Check if there are electrodes defined for this file
+    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).Clusters) || isempty(GlobalData.DataSet(iDSall).Clusters)
+        sClusters = [];
+        return;
+    end
+    % Return all the available electrodes
+    sClusters = GlobalData.DataSet(iDSall).Clusters;
+    ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
+    % Get all the figures that share this channel file
+    for iDS = 1:length(GlobalData.DataSet)
+        % Skip if not the correct channel file
+        if ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
+            continue;
         end
-        iClusters = [];
-        for i = 1:length(labels)
-            ind = find(strcmpi({GlobalData.Clusters.Label}, labels{i}));
-            iClusters = [iClusters, ind];
+        % Get all the figures
+        for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
+            if ((iDS ~= iDSall(1)) || (iFig ~= iFigall(1))) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'DataTimeSeries', '3DViz', 'Topography'})
+                iDSall(end+1) = iDS;
+                iFigall(end+1) = iFig;
+                hFigall(end+1) = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+            end
         end
     end
-    sClusters = GlobalData.Clusters(iClusters);
+end
+
+
+%% ===== SET CLUSTER =====
+% USAGE:  iClusters = SetClusters(iClusters=[], sClusters)
+%         iClusters = SetClusters('Add', sClusters)
+function iClusters = SetClusters(iClusters, sClusters)
+    global GlobalData;
+    % Parse input
+    isAdd = ~isempty(iClusters) && ischar(iClusters) && strcmpi(iClusters, 'Add');
+    % Get dataset
+    [sClustersOld, iDSall] = GetClusters();
+    % If there is no selected dataset
+    if isempty(iDSall)
+        return;
+    end
+    % Perform operations only once per dataset
+    iDSall = unique(iDSall);
+    for iDS = iDSall
+        % Reset clusters list
+        if isempty(sClusters)
+            GlobalData.DataSet(iDS).Clusters(iClusters) = [];
+        % Set clusters
+        else
+            % Add new clusters
+            if isAdd
+                iClusters = length(GlobalData.DataSet(iDS).Clusters) + (1:length(sClusters));
+                % Add clusters
+                for i = 1:length(sClusters)
+                    % Default cluster name
+                    if isempty(sClusters(i).Label)
+                        sClusters(i).Label = sprintf('c%d', iClusters(i));
+                    end
+                    % Make new cluster names unique
+                    if ~isempty(GlobalData.DataSet(iDS).Clusters)
+                        sClusters(i).Label = file_unique(sClusters(i).Label, {GlobalData.DataSet(iDS).Clusters.Label, sClusters(1:i-1).Label});
+                    end
+                end
+            end
+            % Set clusters in global structure
+            if isempty(GlobalData.DataSet(iDS).Clusters)
+                GlobalData.DataSet(iDS).Clusters = sClusters;
+            else
+                GlobalData.DataSet(iDS).Clusters(iClusters) = sClusters;
+            end
+        end
+        % Add color if not defined yet
+        for i = 1:length(GlobalData.DataSet(iDS).Clusters)
+            if isempty(GlobalData.DataSet(iDS).Clusters(i).Color)
+                ColorTable = panel_scout('GetScoutsColorTable');
+                iColor = mod(i-1, length(ColorTable)) + 1;
+                GlobalData.DataSet(iDS).Clusters(i).Color = ColorTable(iColor,:);
+            end
+        end
+    end
+    % Mark channel file as modified (only in first dataset)
+    GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
 end
 
 
 %% ===== GET SELECTED CLUSTERS =====
-% NB: Returned indices are indices in GlobalData.Clusters array
+% NB: Returned indices are indices in Clusters array
 function [sSelClusters, iSelClusters] = GetSelectedClusters()
     sSelClusters = [];
     iSelClusters = [];
@@ -310,22 +406,21 @@ function [sSelClusters, iSelClusters] = GetSelectedClusters()
         return;
     end
     % Get current clusters
-    [sClusters, iClusters] = GetClusters();
+    sClusters = GetClusters();
     if isempty(sClusters)
         return
     end
     % Get JList selected indices
     iSelClusters = uint16(ctrl.jListClusters.getSelectedIndices())' + 1;
-    if isempty(iClusters)
+    if isempty(iSelClusters)
         return
     end
     sSelClusters = sClusters(iSelClusters);
-    iSelClusters = iClusters(iSelClusters);
 end
 
 
 %% ===== SET SELECTED CLUSTERS =====
-% WARNING: Input indices are references in the GlobalData.Clusters array, not in the JList
+% WARNING: Input indices are references in the Clusters array, not in the JList
 function SetSelectedClusters(iSelClusters, isUpdateMouseSel)
     if (nargin < 2) || isempty(isUpdateMouseSel)
         isUpdateMouseSel = 1;
@@ -376,7 +471,7 @@ function ClustersOptions = GetClusterOptions() %#ok<DEFNU>
         ClustersOptions = [];
         return;
     end
-    % Get current scouts
+    % Get current clusters
     sClusters = GetClusters();
     % If at least one of the cluster functions is "All", ignore the overlay checkboxes
     if any(strcmpi({sClusters.Function}, 'All'))
@@ -403,23 +498,17 @@ end
 
 
 %% ===== SET CLUSTER FUNCTION =====
-% USAGE:  SetClusterFunction(Function, iClusters)
-%         SetClusterFunction(Function)            : Set the function for the selected clusters
-function SetClusterFunction(Function, iClusters)
-    global GlobalData;
-    % Get clusters
-    if (nargin < 2) || isempty(iClusters)
-        [sClusters, iClusters] = GetSelectedClusters();
-        if isempty(iClusters)
-            return
-        end
-    else
-        sClusters = GetClusters(iClusters);
+% USAGE:  SetClusterFunction(Function)
+function SetClusterFunction(Function)
+    % Get select clusters
+    [sClusters, iClusters] = GetSelectedClusters();
+    if isempty(iClusters)
+        return
     end
     % Set function
     [sClusters.Function] = deal(Function);
     % Save clusters
-    GlobalData.Clusters(iClusters) = sClusters;
+    SetClusters(iClusters, sClusters);
     % Update JList
     UpdateClustersList();
     % Select edited clusters (selection was lost during update)
@@ -428,7 +517,7 @@ end
 
 
 %% ===== GET CHANNELS IN CLUSTER =====
-function [iChannel, Modality] = GetChannelsInCluster(sCluster, Channel, ChannelFlag) %#ok<DEFNU>
+function [iChannel, Modality] = GetChannelsInCluster(sCluster, Channel, ChannelFlag)
     % Get channels
     iChannel = zeros(1, length(sCluster.Sensors));
     for ic = 1:length(iChannel)
@@ -522,32 +611,14 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
 
     % === NEW CLUSTER ===
     % New cluster structure
-    sCluster  = db_template('Cluster');
-    iCluster = length(GlobalData.Clusters) + 1;
+    sCluster = db_template('Cluster');
     % Store current cluster sensors list
     sCluster.Sensors = Sensors;
-    
-    % === CLUSTER LABEL ===
-    % Get other clusters with same surface file
-    sOtherClusters = GetClusters();
-    % Define clusters labels (Label=index)
-    iDisplayIndice = length(sOtherClusters) + 1;
-    clusterLabel = ['c', int2str(iDisplayIndice)];
-    % Check that the cluster name does not exist yet (else, add a ')
-    sCluster.Label = UniqueClusterLabel(clusterLabel);
-    
-    % === CHECK CLUSTER UNICITY ===
-    for i = 1:length(sOtherClusters)
-        if isequal(sort(Sensors), sort(sOtherClusters(i).Sensors))
-            bst_error('Cluster already exists.', 'Create new cluster', 0);
-            sCluster = sOtherClusters(i);
-            iCluster = i;
-            return
-        end
-    end
-    
-    % === Register new cluster ===
-    GlobalData.Clusters(iCluster) = sCluster;
+    % Add clusters
+    iCluster = SetClusters('Add', sCluster);
+    % Retrieve added cluster
+    sClusters = GetClusters();
+    sCluster  = sClusters(iCluster);
     % Update clusters list
     UpdateClustersList();
     % Select new cluster
@@ -555,106 +626,76 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
 end
 
 
-%% ===== UNIQUE CLUSTER LABEL =====
-function label = UniqueClusterLabel(label)
-    % Get other clusters with same surface file
-    sOtherClusters = GetClusters();
-    % Check that the scout name does not exist yet (else, add a ')
-    if ~isempty(sOtherClusters)
-        while ismember(label, {sOtherClusters.Label})
-            label = [label, ''''];
-        end
-    end
-end
-
-
-%% ===== VIEW CLUSTERS =====
-function DisplayClusters(varargin)
-    % Display clusters
-    view_clusters();
-end
-
 %% ===============================================================================
 %  ====== CLUSTERS OPERATIONS ====================================================
 %  ===============================================================================
 %% ===== REMOVE CLUSTERS =====
-% Usage : RemoveClusters(iClusters) : remove a list of clusters
-%         RemoveClusters()          : remove the clusters selected in the JList 
-function RemoveClusters(varargin)
+% Usage : RemoveClusters()  : remove the clusters selected in the JList 
+function RemoveClusters()
     global GlobalData;
-    % If clusters list is not defined
-    if (nargin == 0)
-        % Get selected clusters
-        [sClusters, iClusters] = GetSelectedClusters();
-        % Check whether a cluster is selected
-        if isempty(sClusters)
-            java_dialog('warning', 'No cluster selected.', 'Remove cluster');
-            return
-        end
-    elseif (nargin == 1)
-        iClusters = varargin{1};
-        sClusters = GlobalData.Clusters(iClusters);
-    else
-        bst_error('Invalid call to RemoveClusters.', 'Clusters', 0);
+    % Get dataset
+    [sClusters, iDSall, iFigall] = GetClusters();
+    if isempty(iDSall)
+        return;
+    end
+    % Get selected clusters
+    [sClusters, iClusters] = GetSelectedClusters();
+    % Check whether a cluster is selected
+    if isempty(sClusters)
+        java_dialog('warning', 'No cluster selected.', 'Remove cluster');
         return
     end
-
+    % Ask for confirmation
+    if (length(sClusters) == 1)
+        strConfirm = ['Delete cluster "' sClusters(1).Label '"?'];
+    else
+        strConfirm = ['Delete ' num2str(length(sClusters)) ' clusters?'];
+    end
+    if ~java_dialog('confirm', strConfirm)
+        return;
+    end
     % Remove clusters definitions from global data structure
-    GlobalData.Clusters(iClusters) = [];
+    for iDS = unique(iDSall)
+        GlobalData.DataSet(iDS).Clusters(iClusters) = [];
+        GlobalData.DataSet(iDS).isChannelModified = 1;
+    end
     % Update Clusters list
     UpdateClustersList();
+    % Reset list of selected sensors
+    bst_figures('SetSelectedRows', [], 0);
 end
 
-%% ===== REMOVE ALL CLUSTERS =====
-function RemoveAllClusters()
-    global GlobalData;
-    if ~isempty(GlobalData.Clusters)
-        RemoveClusters(1:length(GlobalData.Clusters));
-    end
-end
 
 %% ===== EDIT CLUSTER LABEL =====
-% Usage : EditClusterLabel()                   : Interactive edition of cluster name
-%         EditClusterLabel(newLabel, iCluster) : Update label of iCluster to newLabel, if newLabel is unique
-function EditClusterLabel(newLabel, iCluster)
-    global GlobalData;
-    % If newLabel and iCluster are provided
-    if (nargin == 2)
-        % Get input cluster
-        sCluster = GetClusters(iCluster);
-        if isempty(sCluster)
-            error('Invalid cluster index.');
-        elseif strcmpi(newLabel, sCluster.Label)
-            return;
-        elseif any(strcmpi({GlobalData.Clusters.Label}, newLabel))
-            error('Label already exists.');
-        end
-    % Interactive edit
-    else
-        % Get selected clusters
-        [sCluster, iCluster] = GetSelectedClusters();
-        % Warning message if no cluster selected
-        if isempty(sCluster)
-            java_dialog('warning', 'No cluster selected.', 'Rename selected cluster');
-            return;
-        % If more than one cluster selected: keep only the first one
-        elseif (length(sCluster) > 1)
-            iCluster = iCluster(1);
-            sCluster = sCluster(1);
-            SetSelectedClusters(iCluster);
-        end
-        % Ask user for a new Cluster Label
-        newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
-                               'Rename selected cluster', [], sCluster.Label);
-        if isempty(newLabel) || strcmpi(newLabel, sCluster.Label)
-            return
-        elseif any(strcmpi({GlobalData.Clusters.Label}, newLabel))
-            java_dialog('warning', 'Cluster name already exists.', 'Rename selected cluster');
-            return;
-        end
+% Usage : EditClusterLabel()  : Interactive edition of cluster name
+function EditClusterLabel()
+    % Get all clusters
+    sClustersAll = GetClusters();
+    % Get selected clusters
+    [sCluster, iCluster] = GetSelectedClusters();
+    % Warning message if no cluster selected
+    if isempty(sCluster)
+        java_dialog('warning', 'No cluster selected.', 'Rename selected cluster');
+        return;
+    % If more than one cluster selected: keep only the first one
+    elseif (length(sCluster) > 1)
+        iCluster = iCluster(1);
+        sCluster = sCluster(1);
+        SetSelectedClusters(iCluster);
     end
+    % Ask user for a new Cluster Label
+    newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
+                           'Rename selected cluster', [], sCluster.Label);
+    if isempty(newLabel) || strcmpi(newLabel, sCluster.Label)
+        return
+    elseif ~isempty(sClustersAll) && any(strcmpi({sClustersAll.Label}, newLabel))
+        java_dialog('warning', 'Cluster name already exists.', 'Rename selected cluster');
+        return;
+    end
+
     % Update cluster definition
-    GlobalData.Clusters(iCluster).Label = newLabel;
+    sCluster.Label = newLabel;
+    SetClusters(iCluster, sCluster);
     % Update JList
     UpdateClustersList();
     % Select edited clusters (selection was lost during update)
@@ -662,19 +703,43 @@ function EditClusterLabel(newLabel, iCluster)
 end
 
 
+%% ===== EDIT CLUSTER COLOR =====
+function EditClusterColor(newColor)
+    % Get selected clusters
+    [sSelClusters, iSelClusters] = GetSelectedClusters();
+    if isempty(iSelClusters)
+        java_dialog('warning', 'No cluster selected.', 'Edit cluster color');
+        return
+    end
+    % If color is not specified in argument : ask it to user
+    if (nargin < 1)
+        newColor = java_dialog('color');
+        if (length(newColor) ~= 3) || all(sSelClusters(1).Color(:) == newColor(:))
+            return
+        end
+    end
+    % Update cluster color
+    for i = 1:length(sSelClusters)
+        sSelClusters(i).Color = newColor;
+    end
+    % Save clusters
+    SetClusters(iSelClusters, sSelClusters);
+    % Update clusters list
+    UpdateClustersList();
+end
+
+
 %% ===== SAVE CLUSTERS =====
 function SaveClusters(varargin)
-    global GlobalData;
-    % Get protocol description
-    ProtocolInfo = bst_get('ProtocolInfo');
     % Get selected clusters
     sClusters = GetSelectedClusters();
     if isempty(sClusters)
         return
     end
+    % Default folder name
+    ClusterDir = GetDefaultClusterDir();
     % Build a default file name
-    ClusterFile = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(GlobalData.CurrentScoutsSurface), ...
-                         ['cluster', sprintf('_%s', sClusters.Label), '.mat']);
+    ClusterFile = bst_fullfile(ClusterDir, ['cluster', sprintf('_%s', sClusters.Label), '.mat']);
     % Get filename where to store the filename
     ClusterFile = java_getfile( 'save', 'Save selected clusters', ClusterFile, ... 
                                 'single', 'files', ...
@@ -687,75 +752,124 @@ function SaveClusters(varargin)
         [filePath, fileBase, fileExt] = bst_fileparts(ClusterFile);
         ClusterFile = bst_fullfile(filePath, ['cluster_' fileBase fileExt]);
     end
-    
     % Save file
     FileMat.Clusters = sClusters;
     bst_save(ClusterFile, FileMat, 'v7');
 end
 
 
-%% ===== LOAD CLUSTER =====
-function LoadClusters(varargin)
+%% ===== GET DEFAULT CLUSTER DIR =====
+function ClusterDir = GetDefaultClusterDir()
     global GlobalData;
-    % === SELECT FILES TO LOAD ===
-    % Get protocol description
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % Get current subject directory
-    sSubject = bst_get('Subject');
-    % If no current subject (no recordings were loaded yet)
-    curFig = bst_figures('GetCurrentFigure');
-    if isempty(sSubject) && ~isempty(curFig)
-        % Get subject of current figure 
-        curFig = bst_figures('GetCurrentFigure');
-        SubjectFile = getappdata(curFig, 'SubjectFile');
-        if ~isempty(SubjectFile)
-            sSubject = bst_get('Subject', SubjectFile);
+    % Get subject of current figure 
+    [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
+    if ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).SubjectFile)
+        SubjectFile = GlobalData.DataSet(iDS).SubjectFile;
+    % Get current subject in the database
+    else
+        sSubject = bst_get('Subject');
+        if ~isempty(sSubject)
+            SubjectFile = sSubject.FileName;
+        else
+            SubjectFile = [];
         end
     end
-    if isempty(sSubject)
-        return;
+    % Get subject anatomy folder
+    if ~isempty(SubjectFile)
+        ClusterDir = bst_fileparts(file_fullpath(SubjectFile));
+    else
+        ClusterDir = '';
     end
-    clusterSubDir = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.FileName));
+end
 
+
+%% ===== LOAD CLUSTER =====
+function LoadClusters(varargin)
+    % Get default cluster folder
+    ClusterDir = GetDefaultClusterDir();
     % Ask user which are the files to be loaded
-    ClusterFiles = java_getfile('open', 'Import clusters', clusterSubDir, ... 
-                                'multiple', 'files', ...
-                                {{'_cluster'},      'Sensor clusters (*cluster*.mat)', 'BST'}, 1);
+    [ClusterFiles, FileFormat] = java_getfile(...
+        'open', 'Import clusters', ClusterDir, ... 
+        'multiple', 'files', ...
+        bst_get('FileFilters', 'clusterin'), 1);
     if isempty(ClusterFiles)
         return
     end
     
     % ==== CREATE AND DISPLAY ====
-    iNewClustersList = [];
+    iNewClusters = [];
     bst_progress('start', 'Load clusters', 'Load cluster file');
     % Load all files selected by user
     for iFile = 1:length(ClusterFiles)
-        % Try to load cluster file
-        ClusterMat = load(ClusterFiles{iFile});
-        % Loop on all the new clusters
-        for i = 1:length(ClusterMat.Clusters)
-            % Make all clusters names unique
-            ClusterMat.Clusters(i).Label = UniqueClusterLabel(ClusterMat.Clusters(i).Label);
-            % Add "Function" field if is doesnt exist
-            if ~isfield(ClusterMat.Clusters, 'Function')
-                defCluster = db_template('cluster');
-                ClusterMat.Clusters(i).Function   = defCluster.Function;
-            end
-        end
+        % Load clusters
+        sClusters = in_clusters(ClusterFiles{iFile}, FileFormat);
         % Add to current clusters
-        iNewClustersList = [iNewClustersList, (1:length(ClusterMat.Clusters))+length(GlobalData.Clusters)];
-        GlobalData.Clusters = [GlobalData.Clusters, ClusterMat.Clusters];
+        iNewClusters = [iNewClusters, SetClusters('Add', sClusters)];
     end
     % Update cluster list
     UpdateClustersList();
     % Select first cluster
-    SetSelectedClusters(iNewClustersList(1));
+    if isempty(iNewClusters)
+        SetSelectedClusters(iNewClusters(1));
+    end
     bst_progress('stop');
 end
 
 
+%% ===== COPY CLUSTERS =====
+function CopyClusters(Target)
+    global GlobalData;
+    % Get loaded clusters
+    [sClusters, iDSall] = GetSelectedClusters();
+    if isempty(sClusters)
+        bst_error('No clusters selected.', 'Copy clusters', 0);
+        return
+    end
+    % Copy clusters
+    db_set_clusters(GlobalData.DataSet(iDSall(1)).ChannelFile, Target, sClusters);
+end
 
 
+%% ===== EXPORT CLUSTERS TO MATLAB =====
+function ExportClustersToMatlab()
+    % Get selected clusters
+    sClusters = GetSelectedClusters();
+    % If nothing selected, take all clusters
+    if isempty(sClusters)
+        sClusters = GetClusters();
+    end
+    % If nothing: exit
+    if isempty(sClusters)
+        return;
+    end
+    % Export to the base workspace
+    export_matlab(sClusters, []);
+    % Display in the command window the selected clusters
+    disp([10 'List of sensors for each cluster:']);
+    for i = 1:length(sClusters)
+        disp(['   ' sClusters(i).Label ': ' sprintf('%s ', sClusters(i).Sensors{:})]);
+    end
+    disp(' ');
+end
 
 
-
+%% ===== IMPORT CLUSTERS FROM MATLAB =====
+function ImportClustersFromMatlab()
+    % Export to the base workspace
+    sClusters = in_matlab_var([], 'struct');
+    if isempty(sClusters)
+        return;
+    end
+    % Check structure
+    sTemplate = db_template('cluster');
+    if isempty(sClusters) || ~isequal(fieldnames(sClusters), fieldnames(sTemplate))
+        bst_error('Invalid clusters structure.', 'Import from Matlab', 0);
+        return;
+    end
+    % Save new cluster
+    iNewCluster = SetClusters('Add', sClusters);
+    % Update "Clusters Manager" panel
+    UpdateClustersList();
+    % Select last cluster in list (new cluster)
+    SetSelectedClusters(iNewCluster);
+end

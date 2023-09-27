@@ -151,7 +151,7 @@ end
 % Transparency and color
 if (size(SurfColor,2) ~= Ntissue)
     ColorOrder = panel_scout('GetScoutsColorTable');
-    SurfColor = ColorOrder(1:Ntissue, :);
+    SurfColor = ColorOrder(mod((1:Ntissue)-1, length(ColorOrder)) + 1, :);
     labels = lower(FemMat.TissueLabels);
     % Get default color for each layer
     for iTissue = 1:Ntissue
@@ -181,6 +181,7 @@ if (size(Resect,2) ~= 3)
     Resect = [0, 0.01, 0];
 end
 % Plot each tissue as a patch object
+iTess = 0;
 for iTissue = 1:Ntissue
     % Progress bar
     MeshName = [SurfaceFile, '(', FemMat.TissueLabels{iTissue}, ')'];
@@ -190,6 +191,9 @@ for iTissue = 1:Ntissue
     end
     % Select elements of this tissue
     Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
+    if isempty(Elements)
+        continue;
+    end
     % Create a surface for the outside surface of this tissue
     Faces = tess_voledge(FemMat.Vertices, Elements, Resect);
     % Plot as a new surface
@@ -203,7 +207,8 @@ for iTissue = 1:Ntissue
                 'SpecularExponent', 0.3, ...
                 'UserData',         Elements);
     % Show edges
-    panel_surface('SetSurfaceEdges', hFig, iTissue, 1);
+    iTess = iTess + 1;
+    panel_surface('SetSurfaceEdges', hFig, iTess, 1);
 end
 if isProgress
     bst_progress('text', 'Creating figure...');

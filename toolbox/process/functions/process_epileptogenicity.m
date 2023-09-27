@@ -23,7 +23,7 @@ function varargout = process_epileptogenicity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2021
+% Authors: Francois Tadel, 2017-2023
 
 eval(macro_method);
 end
@@ -149,25 +149,13 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 
     % ===== EXPORT INPUT FILES =====
-    % Empty temporary folder
-    gui_brainstorm('EmptyTempFolder');
     % Work in Brainstorm's temporary folder
-    workDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'ImaGIN_epileptogenicity');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'epileptogenicity');
     % Make sure Matlab is not currently in the work directory
     curDir = pwd;
-    if ~isempty(strfind(pwd, workDir))
-        curDir = bst_fileparts(workDir);
+    if ~isempty(strfind(pwd, TmpDir))
+        curDir = bst_fileparts(TmpDir);
         cd(curDir);
-    end
-    % Erase if it already exists
-    if file_exist(workDir)
-        file_delete(workDir, 1, 3);
-    end
-    % Create empty work folder
-    res = mkdir(workDir);
-    if ~res
-        bst_report('Error', sProcess, sInputsB, ['Cannot create temporary directory: "' workDir '".']);
-        return;
     end
     % Initialize file counter
     fileCounter = ones(1, max([sInputsB.iStudy]));
@@ -223,8 +211,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             fileCounter(iStudyFile) = fileCounter(iStudyFile) + 1;
         end
         % Export file names
-        BaselineFiles{iInput} = file_unique(bst_fullfile(workDir, ['baseline_' fileTag '.mat']));
-        OnsetFiles{iInput}    = file_unique(bst_fullfile(workDir, [fileTag '.mat']));
+        BaselineFiles{iInput} = file_unique(bst_fullfile(TmpDir, ['baseline_' fileTag '.mat']));
+        OnsetFiles{iInput}    = file_unique(bst_fullfile(TmpDir, [fileTag '.mat']));
         % Export to SPM .mat/.dat format
         BaselineFiles{iInput} = export_data(DataMatBaseline, ChannelMat, BaselineFiles{iInput}, 'SPM-DAT');
         OnsetFiles{iInput}    = export_data(DataMatOnset,    ChannelMat, OnsetFiles{iInput},    'SPM-DAT');
@@ -244,7 +232,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         sSubject = bst_get('Subject', SubjectName);
     end
     % Load cortex mesh
-    MeshFile = bst_fullfile(workDir, 'cortex.gii');
+    MeshFile = bst_fullfile(TmpDir, 'cortex.gii');
     MeshMat = in_tess_bst(sSubject.Surface(sSubject.iCortex).FileName);
     % Apply same transformation as the sensors
     if ~isempty(Tscs2mri)
@@ -258,7 +246,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     switch lower(OPTIONS.OutputType)
         case 'volume'
             % Export MRI
-            MriFile = bst_fullfile(workDir, 'mri.nii');
+            MriFile = bst_fullfile(TmpDir, 'mri.nii');
             export_mri(sMri, MriFile);
             % Additional options
             OPTIONS.Atlas        = 'Human';
@@ -324,10 +312,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== READ EPILEPTOGENICITY MAPS =====
     % List all the epileptogenicity maps in output
-    listSpmDir = dir(bst_fullfile(workDir, 'SPM_*'));
+    listSpmDir = dir(bst_fullfile(TmpDir, 'SPM_*'));
     spmFiles = {};
     for i = 1:length(listSpmDir)
-        tFile = bst_fullfile(workDir, listSpmDir(i).name, ['spmT_0001', fileExt]);
+        tFile = bst_fullfile(TmpDir, listSpmDir(i).name, ['spmT_0001', fileExt]);
         if file_exist(tFile)
             spmFiles{end+1} = tFile;
         end
@@ -364,20 +352,20 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== READ DELAY MAPS =====
     % List all the epileptogenicity maps in output
-    listFiles = dir(bst_fullfile(workDir, ['Delay_*', fileExt]));
+    listFiles = dir(bst_fullfile(TmpDir, ['Delay_*', fileExt]));
     % Import all the stat files
     for i = 1:length(listFiles)
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's', [min(fileLatency), max(fileLatency)]);
+        tmpFile = import_sources(iStudy, [], bst_fullfile(TmpDir, listFiles(i).name), [], fileFormat, Comment, 's', [min(fileLatency), max(fileLatency)]);
         % Add history field
         tmpFile = bst_history('add', tmpFile, 'epilepto', strHistory);
     end
     
     % ===== READ CONTACT VALUES =====
     % List all the epileptogenicity index files in output
-    listFiles = dir(bst_fullfile(workDir, 'EI_*.txt'));
+    listFiles = dir(bst_fullfile(TmpDir, 'EI_*.txt'));
     strGoup = cell(1,length(listFiles));
     fileLatency = zeros(1,length(listFiles));
     % Get the list of groups (one group = all the latencies for a file or group)
@@ -414,7 +402,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         [tmp,I] = sort(fileLatency(iFiles));
         iFiles = iFiles(I);
         % Full file names, sorted by latency
-        groupFiles = cellfun(@(c)bst_fullfile(workDir, c), {listFiles(iFiles).name}, 'UniformOutput', 0);
+        groupFiles = cellfun(@(c)bst_fullfile(TmpDir, c), {listFiles(iFiles).name}, 'UniformOutput', 0);
         % Import files
         DataMat = [];
         for i = 1:length(groupFiles)
@@ -422,6 +410,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             ImportedDataMat = in_data(groupFiles{i}, ChannelMat, 'EEG-ASCII', ImportOptions);
             fileMat = load(ImportedDataMat.FileName);
             fileMat.F = fileMat.F(:,1);
+            file_delete(bst_fileparts(ImportedDataMat.FileName), 1, 1);
             % Concatenate with previous files
             if isempty(DataMat)
                 DataMat = fileMat;
@@ -442,5 +431,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         db_add_data(iStudy, OutputFile, DataMat);
         panel_protocols('UpdateNode', 'Study', iStudy);
     end
+
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
 end
 

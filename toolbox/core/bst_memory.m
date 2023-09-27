@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 %          Martin Cousineau, 2019
 
 eval(macro_method);
@@ -556,6 +556,7 @@ function LoadChannelFile(iDS, ChannelFile)
         % Save in DataSet structure
         GlobalData.DataSet(iDS).ChannelFile     = file_win2unix(ChannelFile);
         GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).Clusters        = ChannelMat.Clusters;
         GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
         GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
         GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
@@ -582,8 +583,9 @@ function LoadChannelFile(iDS, ChannelFile)
             GlobalData.DataSet(iDS).Channel(i).Loc  = [0;0;0];
             GlobalData.DataSet(iDS).Channel(i).Type = 'EEG';
         end
-        GlobalData.DataSet(iDS).MegRefCoef      = []; 
-        GlobalData.DataSet(iDS).Projector       = []; 
+        GlobalData.DataSet(iDS).MegRefCoef      = [];
+        GlobalData.DataSet(iDS).Projector       = [];
+        GlobalData.DataSet(iDS).Clusters        = [];
         GlobalData.DataSet(iDS).IntraElectrodes = [];
     end
 end
@@ -744,6 +746,9 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     if ~isempty(iDS) && ~isReloadForced
         if ~isempty(sStudy.BrainStormSubject) && ~file_compare(sStudy.BrainStormSubject, GlobalData.DataSet(iDS).SubjectFile)
             iDS = [];
+        % Check time window
+        elseif ~isStatic && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (Measures.NumberOfSamples > 2) && (GlobalData.DataSet(iDS).Measures.NumberOfSamples ~= Measures.NumberOfSamples)
+            error('Time definition is incompatible with previously loaded data.');
         else
             GlobalData.DataSet(iDS).Measures.DataType    = Measures.DataType;
             GlobalData.DataSet(iDS).Measures.ChannelFlag = Measures.ChannelFlag;
@@ -1555,6 +1560,11 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
 
     % ===== GET ALL INFORMATION =====
+    % If the input data is derivated dataset
+    LoadedFile = TimefreqFile;
+    if any(TimefreqFile == '$')
+        TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
+    end
     % Get file information
     [sStudy, iTf, ChannelFile, FileType, sItem] = GetFileInfo(TimefreqFile);
     TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'DataType');
@@ -1592,9 +1602,9 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
     % Load timefreq file
     if ~isempty(iDS)
-        iTimefreq = GetTimefreqInDataSet(iDS, TimefreqFile);
+        iTimefreq = GetTimefreqInDataSet(iDS, LoadedFile);
     else
-        [iDS, iTimefreq] = GetDataSetTimefreq(TimefreqFile);
+        [iDS, iTimefreq] = GetDataSetTimefreq(LoadedFile);
     end
     % If dataset for target file already exists, just return its index
     if ~isForceReload && ~isempty(iDS) && ~isempty(iTimefreq)
@@ -1824,19 +1834,19 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
         end
         % Copy list to all modalities
         GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities = Modality;
+        % PSD: dataset channel flag from parent data file
+        if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
+            ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
+            if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
+                GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
+            end
+        end
         % If only one modality: consider it as the "type" of the file
         if (length(Modality) == 1)
             GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality = Modality{1};
             % If the good/bad channels for the dataset are not defined yet
             if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
-                % PSD: Remove bad channels defined in parent data file
-                if strcmpi(Timefreq.Method, 'psd') && ~isempty(Timefreq.DataFile) && strcmpi(file_gettype(Timefreq.DataFile), 'data')
-                    ParentMat = in_bst_data(Timefreq.DataFile, 'ChannelFlag');
-                    if ~isempty(ParentMat) && ~isempty(ParentMat.ChannelFlag)
-                        GlobalData.DataSet(iDS).Measures.ChannelFlag = ParentMat.ChannelFlag;
-                    end
-                end
-                % Otherwise: Set all the channels as good by default
+                % Set all the channels as good by default
                 if isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
                     GlobalData.DataSet(iDS).Measures.ChannelFlag = ones(length(GlobalData.DataSet(iDS).Channel), 1);
                 end
@@ -3199,8 +3209,6 @@ function isCancel = UnloadAll(varargin)
             % Get next surface
             panel_scout('SetCurrentSurface', CurrentSurface);
         end
-        % Unload clusters
-        panel_cluster('RemoveAllClusters');
     end
     % Empty the clipboard
     bst_set('Clipboard', []);
@@ -3259,6 +3267,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('Stat');
         gui_hide('iEEG');
         gui_hide('Spikes');
+        gui_hide('Cluster');
     end
     if isNewProgress
         bst_progress('stop');
@@ -3524,6 +3533,7 @@ function SaveChannelFile(iDS)
     % Get modified fields
     ChannelMat.Channel         = GlobalData.DataSet(iDS).Channel;
     ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    ChannelMat.Clusters        = GlobalData.DataSet(iDS).Clusters;
     % History: Edit channel file
     ChannelMat = bst_history('add', ChannelMat, 'edit', 'Edited manually');
     % Save file

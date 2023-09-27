@@ -23,7 +23,7 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2017
+% Authors: Francois Tadel, 2012-2023
 
 %% ===== PARSE INPUTS =====
 nChannels      = sFile.header.nsignal;
@@ -32,14 +32,15 @@ iBadChan       = find(sFile.channelflag == -1);
 iChanSignal    = setdiff(1:nChannels, iChanAnnot);
 iChanWrongRate = find([sFile.header.signal(iChanSignal).sfreq] ~= max([sFile.header.signal(setdiff(iChanSignal,iBadChan)).sfreq]));   
 iChanSkip      = union(iChanAnnot, iChanWrongRate);
+% By default: Read all the channels
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
+% By default: Read all the file, at the main file frequency
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
-nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
-iTimes = SamplesBounds(1):SamplesBounds(2);
+
 % Block of times/channels to extract
 nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);
 % Read annotations instead of real data ?
@@ -72,6 +73,9 @@ if (ChannelsRange(1) ~= ChannelsRange(2))
                '(right-click on data file > Good/bad channels > Edit good/bad channels)']);
     end
 end
+% Number of time samples to read
+nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
+iTimes = SamplesBounds(1):SamplesBounds(2);
 
 
 %% ===== READ ALL NEEDED EPOCHS =====

@@ -1,9 +1,6 @@
 function varargout = process_extract_cluster( varargin )
 % PROCESS_EXTRACT_CLUSTER: Extract clusters values.
 %
-% THIS FUNCTION IS NOW DEPRECATED FOR EXTRACTING SCOUT TIME SERIES
-% PLEASE USE PROCESS_EXTRACT_SCOUT INSTEAD
-
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -22,14 +19,14 @@ function varargout = process_extract_cluster( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2023
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
     sProcess.Comment     = 'Clusters time series';
     sProcess.Category    = 'Custom';
@@ -37,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 351;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ChannelClusters';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'matrix'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'matrix', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     
@@ -64,24 +61,28 @@ end
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
     % Only accept data files in input
-    Comment = 'Extract clusters time series:';
+    Comment = 'Extract clusters: ';
     % Get selected clusters
-    sClusters = sProcess.options.clusters.Value;
-    % Format comment
-    if isempty(sClusters)
-        Comment = [Comment, '[no selection]'];
-    elseif (length(sClusters) > 15)
-        Comment = [Comment, sprintf('[%d clusters]', length(sClusters))];
+    if isstruct(sProcess.options.clusters.Value)
+        ClusterLabels = {sProcess.options.clusters.Value.Label};
     else
-        for i = 1:length(sClusters)
-            Comment = [Comment, ' ', sClusters(i).Label];
-        end
+        ClusterLabels = sProcess.options.clusters.Value;
+    end
+    % Format comment
+    if isempty(ClusterLabels)
+        Comment = [Comment, '[no selection]'];
+    elseif (length(ClusterLabels) > 15)
+        Comment = [Comment, sprintf('[%d clusters]', length(ClusterLabels))];
+    else
+        Comment = [Comment, sprintf('%s ', ClusterLabels{:})];
     end
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
+    % Initialize returned variable
+    OutputFiles = {};
     % REDIRECTING SCOUT CALLS TO PROCESS_EXTRACT_SCOUTS
     if ismember(sInputs(1).FileType, {'results', 'timefreq'})
         % Issue redirection warning
@@ -97,6 +98,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     
+    % Get clusters: Old version (full structures) or new version (cell list of strings)
+    if isempty(sProcess.options.clusters.Value)
+        bst_report('Error', sProcess, [], 'No cluster selected.');
+        return;
+    elseif isstruct(sProcess.options.clusters.Value)
+        sClusters = sProcess.options.clusters.Value;
+        ClusterLabels = [];
+    % New version: passing only the name of the clusters
+    else
+        ClusterLabels = sProcess.options.clusters.Value;
+    end
+
     % Concatenate values ?
     isConcatenate = sProcess.options.concatenate.Value && (length(sInputs) > 1);
     isSave = sProcess.options.save.Value;
@@ -106,24 +119,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         TimeWindow = [];
     end
-    OutputFiles = {};
-    % Get clusters
-    sClusters = sProcess.options.clusters.Value;
-    if isempty(sClusters)
-        bst_report('Error', sProcess, [], 'No cluster/scout selected.');
-        return;
-    end
     
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
-        sResults = [];
-        % === READ FILES ===
-        % Load recordings
-        sMat = in_bst_data(sInputs(iInput).FileName);
-        matValues = sMat.F;
-        stdValues = sMat.Std;
-        % Input filename
-        condComment = sInputs(iInput).FileName;
+        % === READ CHANNEL FILE ===
         % Check for channel file
         if isempty(sInputs(iInput).ChannelFile)
             bst_report('Error', sProcess, sInputs(iInput), 'This process requires a channel file.');
@@ -131,9 +130,36 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Get channel file
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+        if (~isfield(ChannelMat, 'Clusters') || isempty(ChannelMat.Clusters)) && ~isstruct(sProcess.options.clusters.Value)
+            bst_report('Error', sProcess, [], ['No clusters available in channel file: ' sInputs(iInput).ChannelFile]);
+            return;
+        end
 
+        % === READ RECORDINGS ===
+        % Load data file
+        sMat = in_bst_data(sInputs(iInput).FileName);
+        % Raw file
+        isRaw = strcmpi(sInputs(iInput).FileType, 'raw');
+        if isRaw
+            % Convert time bounds into samples
+            sFile = sMat.F;
+            if ~isempty(TimeWindow)
+                SamplesBounds = round(sFile.prop.times(1) .* sFile.prop.sfreq) + bst_closest(TimeWindow, sMat.Time) - 1;
+            else
+                SamplesBounds = [];
+            end
+            % Read data
+            [matValues, sMat.Time] = in_fread(sFile, ChannelMat, 1, SamplesBounds, []);
+            stdValues = [];
+            % Remember that time selection is already applied
+            TimeWindow = [];
+        % Epoched data file
+        else
+            matValues = sMat.F;
+            stdValues = sMat.Std;
+        end
         % Nothing loaded
-        if isempty(sMat) || (isempty(matValues) && (isempty(sResults) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
+        if isempty(sMat) || isempty(matValues)
             bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
             return;
         end
@@ -167,7 +193,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
             continue;
         end
-              
+
+        % === GET CLUSTERS ===
+        if ~isempty(ClusterLabels)
+            iClusters = zeros(1, length(ClusterLabels));
+            for iClust = 1:length(ClusterLabels)
+                iFound = find(strcmp(ClusterLabels{iClust}, {ChannelMat.Clusters.Label}));
+                if isempty(iFound)
+                    bst_report('Error', sProcess, [], ['Requested cluster is not available in channel file: ' ClusterLabels{iClust}]);
+                    return;
+                end
+                iClusters(iClust) = iFound(1);
+            end
+            sClusters = ChannelMat.Clusters(iClusters);
+        end
+
         % === TIME ===
         % Check time vectors
         if (iInput == 1)
@@ -247,9 +287,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             scoutStds = cat(1, scoutStds, tmpStd);
             for iRow = 1:size(tmpScout,1)
                 if ~isempty(RowNames)
-                    Description = cat(1, Description, [sClusters(iClust).Label '.' RowNames{iRow} ' @ ' condComment]);
+                    Description = cat(1, Description, [sClusters(iClust).Label '.' RowNames{iRow} ' @ ' sInputs(iInput).FileName]);
                 else
-                    Description = cat(1, Description, [sClusters(iClust).Label ' @ ' condComment]);
+                    Description = cat(1, Description, [sClusters(iClust).Label ' @ ' sInputs(iInput).FileName]);
                 end
             end
         end

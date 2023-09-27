@@ -1631,9 +1631,9 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts (round at 1 decimal)
+            % Detect average spacing between adjacent contacts (precision: 0.000001)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
             
             % Center of the electrodes
             M = mean(ElecLoc);

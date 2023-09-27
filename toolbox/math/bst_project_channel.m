@@ -2,6 +2,7 @@ function OutputFile = bst_project_channel(ChannelFile, iSubjectDest, isInteracti
 % BST_PROJECT_CHANNEL: Project a channel file between subjects, using the MNI normalization.
 %
 % USAGE:  OutputFile = bst_project_channel(ChannelFile, iSubjectDest=[ask], isInteractive=1)
+%        OutputFiles = bst_project_channel(ChannelFiles, ...)
 % 
 % INPUT:
 %    - ChannelFile   : Relative path to channel file to project
@@ -26,14 +27,22 @@ function OutputFile = bst_project_channel(ChannelFile, iSubjectDest, isInteracti
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2022
+% Authors: Francois Tadel, 2022-2023
 
 % ===== PARSE INPUTS ======
 if (nargin < 3) || isempty(isInteractive)
-    isInteractive = [];
+    isInteractive = 1;
 end
 if (nargin < 2) || isempty(iSubjectDest)
     iSubjectDest = [];
+end
+% Calling recursively on multiple channel files
+if iscell(ChannelFile)
+    OutputFile = cell(size(ChannelFile));
+    for i = 1:length(ChannelFile)
+        OutputFile{i} = bst_project_channel(ChannelFile{i}, iSubjectDest, isInteractive);
+    end
+    return;
 end
 OutputFile = [];
 
@@ -68,6 +77,7 @@ sSubjectDest = bst_get('Subject', iSubjectDest);
 [sStudySrc, iStudySrc] = bst_get('ChannelFile', ChannelFile);
 [sSubjectSrc, iSubjectSrc] = bst_get('Subject', sStudySrc.BrainStormSubject);
 % Check subjects
+errMsg = [];
 if (iSubjectSrc == iSubjectDest)
     errMsg = 'Source and destination subjects are identical';
 elseif (sSubjectDest.UseDefaultChannel && (iSubjectDest ~= 0)) || (sSubjectSrc.UseDefaultChannel && (iSubjectSrc ~= 0))
@@ -75,19 +85,28 @@ elseif (sSubjectDest.UseDefaultChannel && (iSubjectDest ~= 0)) || (sSubjectSrc.U
 elseif isempty(sSubjectDest.Anatomy) || isempty(sSubjectSrc.Anatomy)
     errMsg = 'Source or destination subject do not have any anatomical MRI.';
 end
+% Error handling
+if ~isempty(errMsg)
+    if isInteractive
+        bst_error(errMsg, 'Project channel file', 0);
+    else
+        bst_report('Error', 'bst_project_channel', [], errMsg);
+    end
+    return;
+end
 
 % Load source MRI
 sMriSrc = in_mri_bst(sSubjectSrc.Anatomy(sSubjectSrc.iAnatomy).FileName);
-if cs_convert(sMriSrc, 'scs', 'mni', [0, 0, 0])
+if isempty(cs_convert(sMriSrc, 'scs', 'mni', [0, 0, 0]))
     errMsg = ['Compute MNI normalization for subject "' sSubjectSrc.Name '" first.'];
 end
 % Load destination MRI
 sMriDest = in_mri_bst(sSubjectDest.Anatomy(sSubjectDest.iAnatomy).FileName);
-if cs_convert(sMriDest, 'scs', 'mni', [0, 0, 0])
+if isempty(cs_convert(sMriDest, 'scs', 'mni', [0, 0, 0]))
     errMsg = ['Compute MNI normalization for subject "' sSubjectDest.Name '" first.'];
 end
 % Error handling
-if isempty(errMsg)
+if ~isempty(errMsg)
     if isInteractive
         bst_error(errMsg, 'Project channel file', 0);
     else
@@ -111,7 +130,12 @@ end
 ChannelMatDest.Channel  = ChannelMatSrc.Channel;
 for i = 1:length(ChannelMatSrc.Channel)
     if ~isempty(ChannelMatSrc.Channel(i).Loc)
-        ChannelMatDest.Channel(i).Loc = proj(ChannelMatSrc.Channel(i).Loc);
+        if size(ChannelMatSrc.Channel(i).Loc,2) == 2
+            ChannelMatDest.Channel(i).Loc(:,1) = proj(ChannelMatSrc.Channel(i).Loc(:,1));
+            ChannelMatDest.Channel(i).Loc(:,2) = proj(ChannelMatSrc.Channel(i).Loc(:,2));
+        else
+            ChannelMatDest.Channel(i).Loc = proj(ChannelMatSrc.Channel(i).Loc);
+        end
     end
 end
 % Project head points
@@ -126,7 +150,8 @@ for i = 1:length(ChannelMatSrc.IntraElectrodes)
         ChannelMatDest.IntraElectrodes(i).Loc = proj(ChannelMatSrc.IntraElectrodes(i).Loc);
     end
 end
-
+% Copy clusters
+ChannelMatDest.Clusters = ChannelMatSrc.Clusters;
 
 % ===== SAVE NEW FILE =====
 bst_progress('text', 'Saving results...');
@@ -137,7 +162,12 @@ if (iSubjectDest == 0)
     if isempty(sSubjectDest)
         [sSubjectDest, iSubjectDest] = db_add_subject(SubjectName, [], 1, 0);
     end
-    folderDest = [sSubjectSrc.Name, '_', sStudySrc.Name];
+    % SEEG/ECOG: typically one implementation per patient only
+    if any(ismember({'SEEG', 'ECOG'}, {ChannelMatSrc.Channel.Type}))
+        folderDest = strrep(sSubjectSrc.Name, 'sub-', '');
+    else
+        folderDest = [strrep(sSubjectSrc.Name, 'sub-', ''), '_', strrep(sStudySrc.Name, '@raw', '')];
+    end
 else
     folderDest = sStudySrc.Name;
 end
@@ -153,7 +183,7 @@ else
     end
 end
 % Error handling
-if isempty(errMsg)
+if ~isempty(errMsg)
     if isInteractive
         bst_error(errMsg, 'Project channel file', 0);
     else

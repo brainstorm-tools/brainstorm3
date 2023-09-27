@@ -48,7 +48,7 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Francois Tadel, 2019-2023
 
 
 % ===== SPM STANDALONE =====
@@ -297,6 +297,9 @@ listDep(iExclude) = [];
 % Remove all the classes
 iClass = find(~cellfun(@(c)isempty(strfind(c, '@')), listDep));
 listDep(iClass) = [];
+% Remove all the files from external/signal (already available from the signal processing toolbox)
+iSignal = find(~cellfun(@(c)isempty(strfind(c, ['external' filesep 'signal'])), listDep));
+listDep(iSignal) = [];
 % Add all the 64bit versions of all the included mex-files
 iMex = find(~cellfun(@(c)isempty(strfind(c, '.mexw64')), listDep));
 for i = 1:length(iMex)
@@ -317,17 +320,17 @@ listDep = unique(listDep);
 disp('SPMTRIP> Copying files...');
 % Copy the FieldTrip class folders entirely
 for className = {'@config'}
-    system(['xcopy "' fullfile(FieldTripDir, className{1}), '" "', fullfile(OutputDir, className{1}), '" /s /e /y /q /i']);
+    copydir(fullfile(FieldTripDir, className{1}), fullfile(OutputDir, className{1}));
 end
 % Copy the SPM class folders entirely
 for className = {'@file_array', '@gifti', '@meeg', '@nifti', '@xmltree'}
-    system(['xcopy "' fullfile(SpmDir, className{1}), '" "', fullfile(OutputDir, className{1}), '" /s /e /y /q /i']);
+    copydir(fullfile(SpmDir, className{1}), fullfile(OutputDir, className{1}));
 end
 % Copy SPM matlabbatch
-system(['xcopy "' fullfile(SpmDir, 'config'), '" "', fullfile(OutputDir, 'config'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'matlabbatch'), '" "', fullfile(OutputDir, 'matlabbatch'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'toolbox', 'DAiSS'), '" "', fullfile(OutputDir, 'toolbox', 'DAiSS'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'toolbox', 'TSSS'), '" "', fullfile(OutputDir, 'toolbox', 'TSSS'), '" /s /e /y /q /i']);
+copydir(fullfile(SpmDir, 'config'), fullfile(OutputDir, 'config'));
+copydir(fullfile(SpmDir, 'matlabbatch'), fullfile(OutputDir, 'matlabbatch'));
+copydir(fullfile(SpmDir, 'toolbox', 'DAiSS'), fullfile(OutputDir, 'toolbox', 'DAiSS'));
+copydir(fullfile(SpmDir, 'toolbox', 'TSSS'), fullfile(OutputDir, 'toolbox', 'TSSS'));
 % Copy all the dependency files
 for i = 1:length(listDep)
     % If file not found: ignore
@@ -388,5 +391,16 @@ if (stopTime > 60)
     disp(sprintf('SPMTRIP> Done in %dmin\n', round(stopTime/60)));
 else
     fprintf('SPMTRIP> Done in %ds\n\n', round(stopTime));
+end
+end
+
+
+%% ===== COPY =====
+function copydir(src, dest)
+    if ispc
+        system(['xcopy "', src, '" "', dest, '" /s /e /y /q /i']);
+    else
+        system(['cp -rf "', src, '" "', dest, '"']);
+    end
 end
 

@@ -45,16 +45,16 @@ function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, 
 
 
 % ===== PASRSE INPUTS =====
-if (nargin < 6) || ismpety(isInteractive)
+if (nargin < 6) || isempty(isInteractive)
     isInteractive = 1;
 end
-if (nargin < 5) || ismpety(isProba)
+if (nargin < 5) || isempty(isProba)
     isProba = [];
 end
-if (nargin < 4) || ismpety(Radius)
+if (nargin < 4) || isempty(Radius)
     Radius = [];
 end
-if (nargin < 3) || ismpety(TsvFile)
+if (nargin < 3) || isempty(TsvFile)
     TsvFile = [];
 end
 if (nargin < 2) || isempty(Modality)

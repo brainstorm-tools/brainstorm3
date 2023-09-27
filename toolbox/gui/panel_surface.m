@@ -770,6 +770,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
             return;
         end
+        % Add "other", to allow importing all the other surfaces
+        typesList{end+1} = 'Other';
         % Ask user which kind of surface he wants to add to the figure 3DViz
         surfaceType = java_dialog('question', 'What kind of surface would you like to display ?', 'Add surface', [], typesList, typesList{1});
     end
@@ -796,6 +798,14 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(iSubCortical).FileName;
         case 'White'
             SurfaceFile = sSubject.Surface(iWhite).FileName;
+        case 'Other'
+            % Offer all the other surfaces
+            Comment = java_dialog('combo', '<HTML>Select the surface to add:<BR><BR>', 'Select surface', [], {sSubject.Surface.Comment});
+            if isempty(Comment)
+                return;
+            end
+            iSurface = find(strcmp({sSubject.Surface.Comment}, Comment), 1);
+            SurfaceFile = sSubject.Surface(iSurface).FileName;
         otherwise
             return;
     end
@@ -1911,19 +1921,19 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
             (size(TessInfo.DataWmat,2) ~= length(selChan)) || ...
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
         % EEG: Use smoothed display, as in 2D/3D topography
-        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'eeg')
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'EEG')
             TopoInfo.UseSmoothing = 1;
             TopoInfo.Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
             Faces = get(TessInfo.hPatch, 'Faces');
             [bfs_center, bfs_radius] = bst_bfs(Vertices);
             TessInfo.DataWmat = figure_topo('GetInterpolation', iDS, iFig, TopoInfo, Vertices, Faces, bfs_center, bfs_radius, chan_loc);
         else
-            switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
-                case 'eeg',       excludeParam = .3;
-                case 'ecog',      excludeParam = -.015;
-                case 'seeg',      excludeParam = -.015;
-                case 'ecog+seeg', excludeParam = -.015;
-                case 'meg',       excludeParam = .5;
+            switch (GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+                case 'EEG',       excludeParam = bst_get('ElecInterpDist', 'EEG');   % Should never reach this statement, already taken care of above
+                case 'ECOG',      excludeParam = -bst_get('ElecInterpDist', 'ECOG');
+                case 'SEEG',      excludeParam = -bst_get('ElecInterpDist', 'SEEG');
+                case 'ECOG+SEEG', excludeParam = -bst_get('ElecInterpDist', 'ECOG+SEEG');
+                case 'MEG',       excludeParam = bst_get('ElecInterpDist', 'MEG');
                 otherwise,        excludeParam = 0;
             end
             nbNeigh = 4;
@@ -2038,6 +2048,10 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
     end
     
     % ===== CONFIGURE COLORBAR =====
+    % DataType for 3D topography with surface
+    if (length(iSurfaces) == 1) && isempty(TessInfo(iTess).DataSource.Type) && isempty(TessInfo(iTess).ColormapType)
+        DataType = upper(ColormapInfo.Type);
+    end
     % Display only one colorbar (preferentially the results colorbar)
     if ~isempty(ColormapInfo.Type)
         bst_colormaps('ConfigureColorbar', hFig, ColormapInfo.Type, DataType, ColormapInfo.DisplayUnits);
@@ -2492,7 +2506,7 @@ function SetSurfaceSmooth(hFig, iSurf, value, isSave)
     if strcmpi(TessInfo(iSurf).Name, 'FEM')
         return;
     end
-    % Update surface transparency
+    % Update surface smooth
     TessInfo(iSurf).SurfSmoothValue = value;
     setappdata(hFig, 'Surface', TessInfo);
     % Update panel controls

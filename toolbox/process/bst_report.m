@@ -17,7 +17,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
-%         bst_report('ClearHistory')
+%         bst_report('ClearHistory', isUserConfirm=1)
 % 
 %         bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
@@ -141,9 +141,11 @@ end
 
 
 %% ===== SNAPSHOT =====
-% USAGE:  bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
+% USAGE:  bst_report('Snapshot', SnapType,       FileName,     Comment, ...)
+%   img = bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
 %         bst_report('Snapshot', 'noiscov',      AnyFile,      Comment)
+%         bst_report('Snapshot', 'ndatacov',     AnyFile,      Comment)
 %         bst_report('Snapshot', 'headmodel',    AnyFile,      Comment)
 %         bst_report('Snapshot', 'data',         DataFile,     Comment, Modality, Time=start, RowName=[All])
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
@@ -154,9 +156,13 @@ end
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
 %         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
+%         bst_report('Snapshot', 'connectimage', ConnectFile,  Comment, Time=start, Freq=0)
+%         bst_report('Snapshot', 'connectgraph', ConnectFile,  Comment, Threshold=0, Time=start, Freq=0)
 %         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
+%
+% Optional output img is a cell array of cell arrays with image(s) data for each FileName
 % Note: All the input files can be either strings (one file) or cell-array of strings (many files)
-function Snapshot(SnapType, FileName, Comment, varargin)
+function img = Snapshot(SnapType, FileName, Comment, varargin)
     % No file in input: nothing to do
     if (nargin < 1)
         return;
@@ -169,11 +175,22 @@ function Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Recustive call if inputs are cell arrays of filenames
     if ~isempty(FileName) && iscell(FileName)
-        for iFile = 1:length(FileName)
-            Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+        if nargout > 0
+            % Output: cell array of cell arrays with image(s) for each FileName
+            imgs = cell(1, length(FileName));
+            for iFile = 1:length(FileName)
+                imgs{iFile} = Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+            end
+            img = imgs;
+        else
+            for iFile = 1:length(FileName)
+                Snapshot(SnapType, FileName{iFile}, Comment, varargin{:});
+            end
         end
         return;
     end
+    % Use short file name
+    FileName = file_short(FileName);
     % Get current window layout
     curLayout = bst_get('Layout', 'WindowManager');
     if ~isempty(curLayout)
@@ -364,7 +381,7 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 if (length(varargin) >= 4) && ~isempty(varargin{4})
                     SurfSmooth = varargin{4};
                 else
-                    SurfSmooth = [];
+                    SurfSmooth = 0.3;
                 end
                 if (length(varargin) >= 5) && ~isempty(varargin{5}) && ~isequal(varargin{5}, 0)
                     Freq = varargin{5};
@@ -666,6 +683,8 @@ function Snapshot(SnapType, FileName, Comment, varargin)
         Error('process_snapshot', FileName, strErr);
         hFig = [];
     end
+    % Output images
+    imgs = cell(1, length(hFig));
     % If a figure was created
     for i = 1:length(hFig)
         drawnow;
@@ -684,6 +703,10 @@ function Snapshot(SnapType, FileName, Comment, varargin)
         end
         % Add image to report
         Add('image', Comment, FileName, img);
+        % Append images (only if requested)
+        if nargout > 0
+            imgs{i} = img;
+        end
         % Close figure
         if ~strcmpi(SnapType, 'figure')
             close(hFig(i));
@@ -705,6 +728,8 @@ function Snapshot(SnapType, FileName, Comment, varargin)
     if ~isempty(curLayout)
         bst_set('Layout', 'WindowManager', curLayout);
     end
+    % Output: cell array with image(s)
+    img = imgs;
 end
 
 
@@ -1305,12 +1330,18 @@ end
 
 
 %% ===== CLEAR HISTORY =====
-function ClearHistory()
-    % Ask for confirmation
-    isConfirm = java_dialog('confirm', 'Delete all the saved process reports?', 'Clear process history');
-    if ~isConfirm
-        return;
-    end 
+function ClearHistory(isUserConfirm)
+    % Parse inputs
+    if (nargin < 1) || isempty(isUserConfirm) || (isUserConfirm ~= 0)
+        isUserConfirm = 1;
+    end
+    if isUserConfirm
+        % Ask for confirmation
+        isConfirm = java_dialog('confirm', 'Delete all the saved process reports?', 'Clear process history');
+        if ~isConfirm
+            return;
+        end
+    end
     % Get all the available reports
     ProtocolInfo = bst_get('ProtocolInfo');
     ProtocolName = file_standardize(ProtocolInfo.Comment);
@@ -1566,39 +1597,59 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     if ~exist('webread', 'file')
         error('Sending email requires Matlab >= 2014b.');
     end
-    % Check ReportFile 
-    if ~exist(ReportFile, 'file') || isempty(ReportFile)
-        ReportFile = 'current';
-    end
     % Get report
-    if any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
-        Reports = GetReport(ReportFile);
-    else
+    if exist(ReportFile, 'file')
         ReportMat = load(ReportFile);
         Reports = ReportMat.Reports;
-    end    
-    % Print report
+    else
+        if isempty(ReportFile) || ~any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
+            ReportFile = 'current';
+        end
+        Reports = GetReport(ReportFile);
+    end
+    html = '';
+    % RESTful arguments
+    restArgs = {'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html};
+    if ~bst_verlessthan(901)
+        restArgs{end+1} = weboptions('CertificateFilename','');
+    end
+    % Full report: prepare and send
     if isFullReport
         html = PrintToHtml(Reports, isFullReport);
-    else
+        restArgs{10} = html;
+        try
+            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+        catch ME
+            % Try to send as compact report if Error413: "Request Entity Too Large"
+            if ~isempty(strfind(lower(ME.identifier), 'http413'))
+                isFullReport = 0;
+            else
+                resp = 'bad';
+            end
+        end
+    end
+    % Compact report: prepare and send
+    if ~isFullReport
         html = '';
         for iEntry = 1:size(Reports,1)
             if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
                 html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
                 if ~isempty(Reports{iEntry,2})
-                    html = [html, ' - ' func2str(Reports{iEntry,2}.Function)];
+                    if isstruct(Reports{iEntry,2})
+                        html = [html, 9, ' - ' func2str(Reports{iEntry,2}.Function)];
+                    elseif ischar(Reports{iEntry,2})
+                        html = [html, 9, ' - ' Reports{iEntry,2}];
+                    end
                 end
                 html = [html, 10];
             end
         end
-    end
-    % Send by email
-    % Matlab <= 2016a
-    if bst_verlessthan(901)
-        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
-    else
-        options = weboptions('CertificateFilename','');
-        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html, options);
+        restArgs{10} = html;
+        try
+            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+        catch
+            resp = 'bad';
+        end
     end
     % Return status
     isOk = isequal(resp, 'ok');

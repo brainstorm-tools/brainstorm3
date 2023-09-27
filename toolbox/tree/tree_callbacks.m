@@ -30,13 +30,12 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
 import javax.swing.KeyStroke;
 
-global GlobalData;
 
 %% ===== PARSE INPUTS =====
 if (nargin == 0)
@@ -896,7 +895,11 @@ switch (lower(action))
                 if (length(bstNodes) == 1) && ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Edit channel file', IconLoader.ICON_EDIT, [], @(h,ev)gui_edit_channel(filenameRelative));
                 end
-                
+                % === RENAME CHANNELS BIOSEMI ===
+                if ~isempty(regexp(char(bstNodes(1).getComment()), 'BDF'))
+                    gui_component('MenuItem', jPopup, [], 'BioSemi channels names to 10-10 system', IconLoader.ICON_EDIT, [], @(h,ev)process_channel_biosemi('ComputeInteractive', filenameRelative));
+                end
+  
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
@@ -906,6 +909,11 @@ switch (lower(action))
                 % === SEEG CONTACT LABELLING ===
                 if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
+                end
+                
+                % === NIRS CHANNEL LABELLING ===
+                if (length(bstNodes) == 1) && any(ismember({'NIRS'}, AllMod))
+                    gui_component('MenuItem', jPopup, [], 'NIRS atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_nirs_atlas, filenameRelative));
                 end
                 
                 % === ONLY ONE FILE SELECTED ===
@@ -1017,7 +1025,7 @@ switch (lower(action))
                 for iFile = 1:length(bstNodes)
                     iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
-                mriComment = char(bstNodes(1).getComment());
+                mriComment = lower(char(bstNodes(1).getComment()));
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     
                 if (length(bstNodes) == 1)
@@ -1172,7 +1180,7 @@ switch (lower(action))
                     % No read-only
                     if ~bst_get('ReadOnly')
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(filenameFull, [], []));
-                        gui_component('MenuItem', jPopup, [], 'Remesh...', IconLoader.ICON_FLIP, [], @(h,ev)tess_remesh(filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Remesh...', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@tess_remesh, filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Swap faces', IconLoader.ICON_FLIP, [], @(h,ev)SurfaceSwapFaces_Callback(filenameFull));
                         if strcmpi(nodeType, 'scalp')
                             gui_component('MenuItem', jPopup, [], 'Fill holes', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceFillHoles_Callback(filenameFull));
@@ -1215,10 +1223,10 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
+                    gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Compute mesh volume', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeFemVolume', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_meshstats, filenameRelative));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
                     AddSeparator(jPopup);
@@ -1234,6 +1242,7 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
                     end
+                    
                     % === MENU: ALIGN SURFACE MANUALLY ===
                     % Get subject
                     iSubject = bstNodes(1).getStudyIndex();
@@ -1410,7 +1419,7 @@ switch (lower(action))
                             % Create the menu
                             jMenuModality = gui_component('Menu', jPopup, [], channelTypeDisplay, IconLoader.ICON_DATA, [], []);
                             % === DISPLAY TIME SERIES ===
-                            gui_component('MenuItem', jMenuModality, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(filenameRelative, AllMod{iMod}, [], 'NewFigure'));
+                            gui_component('MenuItem', jMenuModality, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_call(@view_timeseries, filenameRelative, AllMod{iMod}, [], 'NewFigure'));
                             gui_component('MenuItem', jMenuModality, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(filenameRelative, 'trialimage', AllMod{iMod}));
                             % == DISPLAY TOPOGRAPHY ==
                             if ismember(AllMod{iMod}, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
@@ -2359,6 +2368,10 @@ switch (lower(action))
                 
 %% ===== POPUP: MATRIX =====
             case {'matrix', 'pmatrix'}
+                % Get subject structure
+                iStudy = bstNodes(1).getStudyIndex();
+                sStudy = bst_get('Study', iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                 % For only one file
                 if (length(bstNodes) == 1)
                     % Basic displays
@@ -2366,11 +2379,13 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display as image',       IconLoader.ICON_NOISECOV,   [], @(h,ev)view_matrix(filenameFull, 'Image'));
                     gui_component('MenuItem', jPopup, [], 'Display as table',       IconLoader.ICON_MATRIX,     [], @(h,ev)view_matrix(filenameFull, 'Table'));
                     % === STAT CLUSTERS ===
-                    if ~isempty(strfind(filenameRelative, '_cluster'))
+                    if strcmpi(nodeType, 'pmatrix') && ~isempty(strfind(filenameRelative, '_cluster'))
                         AddSeparator(jPopup);
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
+                    AddSeparator(jPopup);
+		    gui_component('MenuItem', jPopup, [], 'Review as raw', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw(filenameFull, 'BST-MATRIX', iSubject));
                 else
                     gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', 'none'));
                 end
@@ -2772,7 +2787,8 @@ end % END SWITCH( ACTION )
 %% ===== MENU: CLUSTERS TIME SERIES =====
     function fcnPopupClusterTimeSeries()
         import org.brainstorm.icon.*;
-        if ~isempty(GlobalData.Clusters)
+        sClusters = panel_cluster('GetClusters');
+        if ~isempty(sClusters)
             gui_component('MenuItem', jPopup, [], 'Clusters time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)tree_view_clusters(bstNodes));
         end
     end
@@ -3111,7 +3127,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         end
           
     % === TISSUE SEGMENTATION ===
-    elseif (length(iAnatomy) == 1) && ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, 'tissues'))
+    elseif (length(iAnatomy) == 1) && ~isempty(strfind(lower(sSubject.Anatomy(iAnatomy).Comment), 'tissues'))
         gui_component('MenuItem', jPopup, [], 'Generate triangular meshes', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@tess_meshlayer, sSubject.Anatomy(iAnatomy).FileName));
         gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));
     end

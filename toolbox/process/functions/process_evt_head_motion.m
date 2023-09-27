@@ -281,8 +281,8 @@ function sFile = CreateEvents(sFile, EvtName, Events)
     sFile.events(iEvt).times      = Events;
     sFile.events(iEvt).epochs     = ones(1, size(sFile.events(iEvt).times,2));
     sFile.events(iEvt).reactTimes = [];
-    sFile.events(iEvt).channels   = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes      = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels   = [];
+    sFile.events(iEvt).notes      = [];
 end
 
 

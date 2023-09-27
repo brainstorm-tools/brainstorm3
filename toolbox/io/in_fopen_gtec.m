@@ -163,8 +163,8 @@ for iEvt = 1:length(hdr.markername)
     end
     sFile.events(iEvt).times    = samples ./ sFile.prop.sfreq;
     sFile.events(iEvt).select   = 1;
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).channels = [];
+    sFile.events(iEvt).notes    = [];
 end
 
 

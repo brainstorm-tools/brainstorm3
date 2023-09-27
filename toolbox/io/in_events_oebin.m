@@ -83,13 +83,8 @@ for iEvt = 1:length(evtGroupLabel)
     events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
-%     if ~isempty(evtChan)
-%         events(iEvt).channels = {num2cell({sFile.header.continuous.channels(evtChan).channel_name})};
-%     else
-%         events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
-%     end
-    events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = [];
+    events(iEvt).channels   = [];
 end
 
 

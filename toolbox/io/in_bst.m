@@ -13,7 +13,7 @@ function [sMatrix, matName] = in_bst(FileName, TimeBounds, isLoadFull, isIgnoreB
 %    - TimeBounds : [Start,Stop] values of the time segment to read (in seconds)
 %    - isLoadFull : If 0, read the kernel-based results separately as Kernel+Recordings
 %    - isIgnoreBad: If 1, do not return the bad segments in the file
-%    - RemoveBaseline: {'all','no'}, only usefull when reading RAW files
+%    - RemoveBaseline: {'all','no'}, only used when reading RAW files
 %
 % OUTPUT:
 %    - sMatrix     : Full content of the file
@@ -278,6 +278,20 @@ switch(fileType)
     case 'headmodel'
         sMatrix = in_bst_headmodel(FileName);
         matName = 'Gain';
+
+    case 'unknown'
+        if isempty(FileName)
+            disp('BST> Warning: No file provided.');
+        else
+            disp('BST> Error: Unknown file type.');
+        end
+        sMatrix = [];
+        matName = '';
+        
+    otherwise
+        disp('BST> Error: Unrecognized file type.');
+        sMatrix = [];
+        matName = '';
 end
 end
 

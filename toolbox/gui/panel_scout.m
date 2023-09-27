@@ -58,7 +58,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2023
 
 eval(macro_method);
 end
@@ -402,7 +402,7 @@ function UpdateMenus(sAtlas, sSurf)
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
     % Create atlas from volumes in subject anatomy
     jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
-    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#') && ~any(sSurf.FileName == '|')
         sSubject = bst_get('SurfaceFile', sSurf.FileName);
         if ~isempty(sSubject.Anatomy)
             iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
@@ -492,6 +492,8 @@ function UpdateMenus(sAtlas, sSurf)
     % === MENU PROJECT ====
     % Offer these projection menus only for Cortex surfaces
     if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
+        % Project to contralateral hemisphere
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
@@ -525,12 +527,7 @@ function UpdateMenus(sAtlas, sSurf)
                 % Project to this cortex surface
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
-        end
-        % Project to contralateral hemisphere
-        if (nMenus >= 1)
-            jMenuProject.addSeparator();
-        end
-        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
+        end        
         % Add scroller
         if (nMenus > 20)
             darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
@@ -1158,8 +1155,9 @@ function iScouts = SetScouts(SurfaceFile, iScouts, sScouts)
     end
     % Save the previous scouts configuration
     sScoutsOld = GlobalData.Surface(iSurf).Atlas(sSurf.iAtlas).Scouts;
-    % Detect region if not defined yet (only for new scouts)
-    if isAdd
+    isVolumeAtlas = ParseVolumeAtlas(GlobalData.Surface(iSurf).Atlas(sSurf.iAtlas).Name);
+    % Detect region if not defined yet (only for new surface scouts)
+    if isAdd && ~isVolumeAtlas
         for i = 1:length(sScouts)
             if ~isempty(sScouts(i).Seed) && (isempty(sScouts(i).Region) || strcmpi(sScouts(i).Region, 'UU'))
                 sScouts(i) = SetRegionAuto(sSurf, sScouts(i));
@@ -4041,6 +4039,35 @@ function ProjectScoutsContralateral(srcSurfFile)
 
     % Get current atlas
     [sAtlas, iAtlas, sSurf] = GetAtlas();
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
+    % Volume atlas: Get anatomy surface and grid of points
+    if isVolumeAtlas
+        % Get current figure
+        hFig = bst_figures('GetCurrentFigure', '3D');
+        if isempty(hFig) || ~ishandle(hFig)
+            return
+        end
+        % Get figure Anatomy surface
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+        % Warning when using linear MNI registration
+        if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'y') || isempty(sMri.NCS.y)
+            % Error when no MNI registration at all
+            if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+                bst_error('Compute MNI registration first.', 'Project volume scouts', 0);
+                return;
+            else
+                isConfirm = java_dialog('confirm', ['To project volume scouts, it is advised to compute a nonlinear MNI normalization first.' 10 10 'Proceed with linear MNI registration anyway?' 10 10], 'Project volume scouts');
+                if ~isConfirm
+                    return;
+                end
+            end
+        end
+    else
+        sMri = [];
+        GridLoc = [];
+    end
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4052,20 +4079,16 @@ function ProjectScoutsContralateral(srcSurfFile)
     % Progress bar
     bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
-    sScoutsNew = bst_project_scouts_contra(srcSurfFile, sAtlas);
-    if isempty(sScoutsNew)
+    sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas, sMri, GridLoc);
+    if isempty(sAtlas.Scouts)
         return;
     end
     
-    % Set default seeds
-    sScoutsNew = SetScoutsSeed(sScoutsNew, sSurf.Vertices);
     % Set handles structure
     sTemplate = db_template('scout');
-    for i = 1:length(sScoutsNew)
-        sScoutsNew(i).Handles = sTemplate.Handles;
-    end
+    [sAtlas.Scouts.Handles] = deal(sTemplate.Handles);
     % Save new scout
-    iNewScouts = SetScouts([], 'Add', sScoutsNew);
+    iNewScouts = SetScouts([], 'Add', sAtlas.Scouts);
     % Display new scout
     PlotScouts(iNewScouts);
     % Update "Scouts Manager" panel
@@ -5277,7 +5300,8 @@ function SaveScouts(varargin)
     [ScoutFile, FileFormat] = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
                              'single', 'files', ...
                              {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
-                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'}, 1);
+                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'; ...
+                              {'.annot'}, 'FreeSurfer annotation, multiple scouts (*.annot)', 'FS-ANNOT'}, 1);
     if isempty(ScoutFile)
         return;
     end
@@ -5295,7 +5319,76 @@ function SaveScouts(varargin)
             % Save file
             bst_save(ScoutFile, sAtlas, 'v7');
         case 'FS-LABEL-SINGLE'
-            out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            if length(sScouts) == 1
+                out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
+            else
+                bst_error('FreeSurfer label file can only store a single scout. Please export each scout separatly');
+                return;
+            end
+        case 'FS-ANNOT'
+            vertices = [];
+            label = [];
+            ct = struct();
+            ct.numEntries   = length(sScouts);
+            ct.orig_tab     = sAtlas.Name;
+            ct.struct_names = {sScouts.Label};
+            ct.table = zeros(length(sScouts),5);
+
+            % Address duplicate colors
+            sScouts = arrayfun(@(s) setfield(s,'Color', round(255*s.Color)), sScouts);  % Scale colors to 0-255
+            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');                          % Unique colors
+            if length(C) ~= length(sScouts)
+                % Space to search neightbors, includes [0, 0, 0]
+                [~, nMostRep] = mode(ic);
+                sideCube  = ceil(nMostRep^(1/3)) - 1;
+                [R, G, B] = meshgrid(-sideCube:sideCube, -sideCube:sideCube, -sideCube:sideCube);
+                seachRGB= [R(:), G(:), B(:)];
+                for iia = 1 : length(ia)
+                    rep = find(ic == ic(ia(iia)));
+                    % If duplicate colors, get neighboring colors
+                    if length(rep) > 1
+                        colorNeighbors = bst_bsxfun(@plus, seachRGB, sScouts(rep(1)).Color);
+                        colorNeighbors(any(colorNeighbors > 255, 2) | any(colorNeighbors < 0, 2) , :) = [];
+                        [~, iClosest] = sort(sum((bsxfun(@minus, colorNeighbors, sScouts(rep(1)).Color) .^2), 2));
+                        colorNeighbors = colorNeighbors(iClosest(1: length(rep)), :);
+                        for irep = 1 : length(rep)
+                            sScouts(rep(irep)).Color = colorNeighbors(irep, :);
+                        end
+                    end
+                end
+            end
+            % Check again for unique colors, if duplicate colors get random RGB
+            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');
+            if length(C) ~= length(sScouts)
+                % Find indexes of duplicate colors
+                repIxs = [];
+                for iia = 1 : length(ia)
+                    rep = find(ic == ic(ia(iia)));
+                    if length(rep) > 1
+                        repIxs = [repIxs, rep(2:end)];
+                    end
+                end
+                % Get a unique random color for each duplicate color
+                colorsRnd = [];
+                while size(colorsRnd, 1) < length(repIxs)
+                     colorRnd = randi(256, 1, 3) - 1;
+                     if ~ismember(colorRnd, C)
+                         C = [C; colorRnd];
+                         colorsRnd = [colorsRnd; colorRnd];
+                     end
+                end
+                for ix = 1 : length(repIxs)
+                    sScouts(repIxs(ix)).Color = colorsRnd(ix, :);
+                end
+            end
+
+            for iScout = 1:length(sScouts)
+                ct.table(iScout,1:3) = sScouts(iScout).Color;
+                ct.table(iScout,5)   = ct.table(iScout,1)  + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
+                vertices = [vertices , sScouts(iScout).Vertices - 1];
+                label    = [label ,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
+            end
+            write_annotation(ScoutFile, vertices, label, ct)
     end
 end
 

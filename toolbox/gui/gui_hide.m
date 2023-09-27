@@ -70,71 +70,28 @@ isAccepted = 1;
 switch (panelName)
     case 'ChannelEditor'
         isAccepted = panel_channel_editor('PanelHidingCallback');
+    case 'Coordinates'
+        if gui_brainstorm('isTabVisible', 'Coordinates')
+            panel_coordinates('RemoveSelection');
+        end
+    case 'Digitize'
+        isAccepted = panel_digitize('PanelHidingCallback');
+    case 'Dipinfo'
+        if gui_brainstorm('isTabVisible', 'Dipinfo')
+            panel_dipinfo('RemoveSelection');
+        end
     case 'EditBfs'
         % Close BFS check 3D viz
         close(findobj(0, '-depth', 1, 'Tag', 'SphereVisuFigure'));
         % Release mutex
         bst_mutex('release', 'EditBfs');
-    case 'EeglabConditions'
-        bst_mutex('release', 'EeglabConditions');
-    case 'ImportBstRawData'
-        bst_mutex('release', 'ImportBstRawData');
-    case 'ImportEegRawOptions'
-        bst_mutex('release', 'ImportEegRawOptions');
-    case 'ImportDataOptions'
-        bst_mutex('release', 'ImportDataOptions');
-    case 'HeadmodelOptions'
-        bst_mutex('release', 'HeadmodelOptions');
-    case 'InverseOptions'
-        bst_mutex('release', 'InverseOptions');
-    case 'InverseOptionsBeamformer'
-        bst_mutex('release', 'InverseOptionsBeamformer');
-    case 'InverseOptionsMinnormOld'
-        bst_mutex('release', 'InverseOptionsMinnormOld');
-    case 'InverseOptionsWMNE'
-        bst_mutex('release', 'InverseOptionsWMNE');
-    case 'InverseOptionsMEM'
-        bst_mutex('release', 'InverseOptionsMEM');
-    case 'OpenmeegOptions'
-        bst_mutex('release', 'OpenmeegOptions');
-    case 'DuneuroOptions'
-        bst_mutex('release', 'DuneuroOptions');
-    case 'FemCondOptions'
-        bst_mutex('release', 'FemCondOptions');
-    case 'BemOptions'
-        bst_mutex('release', 'BemOptions');
-    case 'SourceGrid'
-        bst_mutex('release', 'SourceGrid');
-    case 'NoiseCovOptions'
-        bst_mutex('release', 'NoiseCovOptions');
-    case 'TimefreqOptions'
-        bst_mutex('release', 'TimefreqOptions');
-    case 'SpikesortingOptions'
-        bst_mutex('release', 'SpikesortingOptions');
-    case 'ExportBidsOptions'
-        bst_mutex('release', 'ExportBidsOptions');
-    case 'SearchDatabase'
-        bst_mutex('release', 'SearchDatabase');
-    case 'Coordinates'
-        if gui_brainstorm('isTabVisible', 'Coordinates')
-            panel_coordinates('RemoveSelection');
-        end
-    case 'Dipinfo'
-        if gui_brainstorm('isTabVisible', 'Dipinfo')
-            panel_dipinfo('RemoveSelection');
-        end
-    case 'Command'
-        
-    case 'Record'
-        panel_record('PanelHidingCallback');
+
     case 'EditSsp'
         panel_ssp_selection('PanelHidingCallback');
-    case 'ProcessOne'
-        bst_mutex('release', 'ProcessOne');
-    case 'ProcessTwo'
-        bst_mutex('release', 'ProcessTwo');
-    case 'Digitize'
-        isAccepted = panel_digitize('PanelHidingCallback');
+    case 'Record'
+        panel_record('PanelHidingCallback');
+    otherwise    % Most panels
+        bst_mutex('release', panelName);
 end
 % If closing was not accepted
 if ~isAccepted

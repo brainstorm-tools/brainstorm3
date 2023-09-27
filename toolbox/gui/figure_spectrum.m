@@ -21,7 +21,7 @@ function varargout = figure_spectrum( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2023
 %          Martin Cousineau, 2017
 %          Marc Lalancette, 2020
 
@@ -1069,18 +1069,15 @@ end
 %% ===========================================================================
 %  ===== PLOT FUNCTIONS ======================================================
 %  ===========================================================================
-%% ===== PLOT FIGURE =====
+%% ===== UPDATE FIGURE =====
 function UpdateFigurePlot(hFig, isForced)
-    global GlobalData;
     if (nargin < 2) || isempty(isForced)
         isForced = 0;
     end
     % ===== GET DATA =====
-    % Get figure description
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-    sFig = GlobalData.DataSet(iDS).Figure(iFig);
     % If spectrum: get current time only
-    isSpectrum = strcmpi(sFig.Id.SubType, 'Spectrum');
+    FigureId = getappdata(hFig, 'FigureId');
+    isSpectrum = strcmpi(FigureId.SubType, 'Spectrum');
     if isSpectrum
         TimeDef = 'CurrentTimeIndex';
     else
@@ -1091,6 +1088,19 @@ function UpdateFigurePlot(hFig, isForced)
     if isempty(TF)
         return;
     end
+    % Plot figure
+    PlotFigure(hFig, isForced, isSpectrum, Time, Freqs, TfInfo, TF, RowNames, iTimefreq);
+end
+
+
+%% ===== PLOT FIGURE =====
+function PlotFigure(hFig, isForced, isSpectrum, Time, Freqs, TfInfo, TF, RowNames, iTimefreq)
+    global GlobalData;
+
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    sFig = GlobalData.DataSet(iDS).Figure(iFig);
+
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
         RowNames = {RowNames};
@@ -1119,6 +1129,14 @@ function UpdateFigurePlot(hFig, isForced)
             LinesLabels{i} = num2str(RowNames(i));
         end
     end
+    % Replicate inputs when ScoutFunction='All'
+    nLines = size(TF,1);
+    if ~isempty(LinesLabels) && (size(LinesLabels,1) == 1) && (size(LinesLabels,2) == nLines) && (nLines > 1)
+        LinesLabels = LinesLabels';
+    elseif ~isempty(LinesLabels) && (length(LinesLabels) == 1) && (nLines > 1)
+        LinesLabels = repmat(LinesLabels, nLines, 1);
+    end
+
     % Remove the first frequency bin (0) : SPECTRUM ONLY, EXCLUDE CONNECTIVITY
     isConnectivity = ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames); % To check, but RowNames not only connectivity
     if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1) && ~isConnectivity
@@ -1190,7 +1208,8 @@ function UpdateFigurePlot(hFig, isForced)
     end
     % Auto-detect if legend should be displayed, reset if changed FOOOF display.
     if isempty(TsInfo.ShowLegend) || (isfield(TfInfo, 'isFooofDispChanged') && TfInfo.isFooofDispChanged)
-        TsInfo.ShowLegend = (length(LinesLabels) <= 15);
+        % If more than 15 lines, or all lines have the same label: do not show legend
+        TsInfo.ShowLegend = (length(LinesLabels) <= 15) && ~((length(LinesLabels) > 1) && all(cellfun(@(c)isequal(c,LinesLabels{1}), LinesLabels)));
         setappdata(hFig, 'TsInfo', TsInfo);
     end
         
@@ -1232,7 +1251,10 @@ function UpdateFigurePlot(hFig, isForced)
     end
     if isempty(DisplayUnits)
         % Get signal units and display factor 
-        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        if ~isempty(regexp(TfInfo.FileName, '_connect[1n]', 'once'))
+            DisplayUnits  = 'No units';
+            DisplayFactor = 1;
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
         else
             DisplayUnits = 'signal units';
@@ -1350,7 +1372,6 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         end
     else
         cla(hAxes);
-        delete(legend(hAxes));
     end
     % Redimension TF according to what we want to display
     switch (TfInfo.DisplayMode)
@@ -1369,6 +1390,16 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
         ColorOrder = DefaultColor;
     end
     set(hAxes, 'ColorOrder', ColorOrder);
+    % Update XLim if needed
+    XLimOld = get(hAxes, 'XLim');
+    if ~isequal(XLim, XLimOld)
+        hAllFigs = bst_figures('GetFiguresByType', 'Spectrum');
+        % Loop over all the spectrum figures found
+        for i = 1:length(hAllFigs)
+            hAxes = findobj(hAllFigs(i), '-depth', 1, 'Tag', 'AxesGraph');
+            set(hAxes, 'XLim', XLim);
+        end
+    end
 
     % Create handles structure
     PlotHandles = db_template('DisplayHandlesTimeSeries');
@@ -1531,12 +1562,14 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Granger causality';
                     case {'plv', 'plvt'}
                         strAmp = 'Phase locking value';
-                    case {'ciplv', 'ciplvt'}
-                        strAmp = 'Weighted phase lag index';
                     case {'wpli', 'wplit'}
+                        strAmp = 'Weighted phase lag index';
+                    case {'ciplv', 'ciplvt'}
                         strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
+                    case {'pte'}
+                        strAmp = 'Phase transfer entropy';
                     case 'aec'      % DEPRECATED
                         strAmp = 'Average envelope correlation';
                         % Hilbert (time-varying)

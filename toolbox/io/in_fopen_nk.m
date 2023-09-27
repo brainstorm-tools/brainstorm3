@@ -471,8 +471,8 @@ if ~isempty(hdr.logs)
         sFile.events(iEvt).label   = str_clean(uniqueEvt{iEvt});
         sFile.events(iEvt).select  = 1;
         sFile.events(iEvt).times   = t;
-        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).channels = [];
+        sFile.events(iEvt).notes    = [];
     end
 end
 

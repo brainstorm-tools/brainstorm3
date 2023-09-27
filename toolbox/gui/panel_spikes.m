@@ -448,14 +448,9 @@ function SaveElectrode()
     % Save through Spike Sorting software
     switch lower(GlobalData.SpikeSorting.Data.Device)
         case 'waveclus'
-            % WaveClus takes a screenshot of the figure when saving, which
-            % is pretty slow. If we change the figure tag it skips this.
             save_button = findall(GlobalData.SpikeSorting.Fig, 'Tag', 'save_clusters_button');
-            fig_tag = GlobalData.SpikeSorting.Fig.Tag;
-            GlobalData.SpikeSorting.Fig.Tag = 'wave_clus_tmp';
             wave_clus('save_clusters_button_Callback', save_button, ...
                 [], guidata(GlobalData.SpikeSorting.Fig), 0);
-            GlobalData.SpikeSorting.Fig.Tag = fig_tag;
 
         case 'ultramegasort2000'
             figdata = get(GlobalData.SpikeSorting.Fig, 'UserData');
@@ -587,7 +582,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             newEvents(1).times      = tmpEvents(1).times;
             newEvents(1).reactTimes = [];
             newEvents(1).select     = 1;
-            newEvents(1).notes      = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).notes      = [];
             newEvents(1).channels   = repmat({{electrodeName}}, 1, size(newEvents(1).times, 2));
 
             
@@ -599,7 +594,7 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
                 newEvents(iNeuron).times      = tmpEvents(iNeuron).times;
                 newEvents(iNeuron).reactTimes = [];
                 newEvents(iNeuron).select     = 1;
-                newEvents(iNeuron).notes      = cell(1, size(newEvents(iNeuron).times, 2));
+                newEvents(iNeuron).notes      = [];
                 newEvents(iNeuron).channels   = repmat({{electrodeName}}, 1, size(newEvents(iNeuron).times, 2));
 
             end
@@ -611,8 +606,8 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             newEvents(1).times      = [];
             newEvents(1).reactTimes = [];
             newEvents(1).select     = 1;
-            newEvents(1).channels = cell(1, size(newEvents(1).times, 2));
-            newEvents(1).notes    = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).channels = [];
+            newEvents(1).notes    = [];
         end
     end
 

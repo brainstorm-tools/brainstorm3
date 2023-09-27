@@ -23,17 +23,18 @@ function varargout = process_source_flat( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2013-2015
+%          Marc Lalancette, 2023
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % ===== PROCESS =====
     % Description the process
     sProcess.Comment     = 'Unconstrained to flat map';
-    sProcess.Category    = 'File';
+    sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 337;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation?highlight=(Unconstrained+to+flat+map)#Z-score';
@@ -48,60 +49,87 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)'};
-    sProcess.options.method.Type    = 'radio';
-    sProcess.options.method.Value   = 1;
+                                       '<B>PCA</B>: First mode of svd(x,y,z), maximizes retained power'; ...
+                                       'norm', 'pca'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'norm';
+    sProcess.options.method.Controller.pca = 'pca';
+    % Options: PCA
+    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
+    sProcess.options.pcaedit.Type    = 'editpref';
+    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults or saved preferences.
+    sProcess.options.pcaedit.Class   = 'pca';
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {};
     % Get options
     switch(sProcess.options.method.Value)
-        case 1, Method = 'rms';  fileTag = 'norm';
-        case 2, Method = 'pca';  fileTag = 'pca';
+        case {1, 'norm'}, Method = 'rms';  fileTag = 'norm';
+        case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
     end
 
-    % ===== PROCESS INPUT =====
-    % Load the source file
-    ResultsMat = in_bst_results(sInput.FileName, 1);
-    % Error: Not an unconstrained model
-    if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
-        bst_report('Error', sProcess, sInput, 'The input file is not an unconstrained source model.');
-        return;
-    end
-    % Compute flat map
-    ResultsMat = Compute(ResultsMat, Method);
+    % ===== PCA 2023 =====
+    if strcmpi(Method, 'pca') && isfield(sProcess.options, 'pcaedit') && isfield(sProcess.options.pcaedit, 'Value') && ...
+            ~isempty(sProcess.options.pcaedit.Value) && ~strcmpi(sProcess.options.pcaedit.Value.Method, 'pca')
+        PcaOptions = sProcess.options.pcaedit.Value;
+        OutputFiles = bst_pca(sProcess, sInputs, PcaOptions); 
 
-    % ===== SAVE FILE =====
-    % File tag
-    if ~isempty(strfind(sInput.FileName, '_abs_zscore'))
-        FileType = 'results_abs_zscore';
-    elseif ~isempty(strfind(sInput.FileName, '_zscore'))
-        FileType = 'results_zscore';
+    % ===== Norm or legacy PCA =====
     else
-        FileType = 'results';
+        if strcmpi(Method, 'pca')
+            disp('BST> Warning: Running deprecated legacy PCA.');
+            bst_report('Warning', sProcess, sInputs, 'Running deprecated legacy PCA separately on each file/epoch, with arbitrary signs which can lead to averaging issues. See tutorial linked in PCA options panel.');
+        end
+        nFiles = numel(sInputs);
+        bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, 100);
+
+        for iInput = 1:nFiles
+            % Load the source file with full data.
+            ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
+            % Error: Not an unconstrained model
+            if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
+                bst_report('Error', sProcess, sInputs(iInput), 'The input file is not an unconstrained source model.');
+                OutputFiles = {};
+                return;
+            end
+            % Compute flat map
+            ResultsMat = Compute(ResultsMat, Method);
+            
+            % Save file
+            % File tag
+            if ~isempty(strfind(sInputs(iInput).FileName, '_abs_zscore'))
+                FileType = 'results_abs_zscore';
+            elseif ~isempty(strfind(sInputs(iInput).FileName, '_zscore'))
+                FileType = 'results_zscore';
+            else
+                FileType = 'results';
+            end
+            % Get study description
+            sStudy = bst_get('Study', sInputs(iInput).iStudy);
+            % Output filename
+            OutputFiles{iInput} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]);
+            % Save on disk
+            bst_save(OutputFiles{iInput}, ResultsMat, 'v6');
+            % Register in database
+            db_add_data(sInputs(iInput).iStudy, OutputFiles{iInput}, ResultsMat);
+            bst_progress('set', round(100*iInput/nFiles));
+        end
     end
-    % Get study description
-    sStudy = bst_get('Study', sInput.iStudy);
-    % Output filename
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]);
-    % Save on disk
-    bst_save(OutputFiles{1}, ResultsMat, 'v6');
-    % Register in database
-    db_add_data(sInput.iStudy, OutputFiles{1}, ResultsMat);
 end
 
 
 %% ===== COMPUTE =====
-function ResultsMat = Compute(ResultsMat, Method, Field)
+function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field)
+    % TODO check: only linear Methods work for ImagingKernel. mean,sum,pca,max.
     % Field to process
     if (nargin < 3) || isempty(Field)
         Field = 'ImageGridAmp';
@@ -114,7 +142,8 @@ function ResultsMat = Compute(ResultsMat, Method, Field)
         % Mixed source models
         case 0
             % Apply orientations for each region independently
-            [ResultsMat.(Field), ResultsMat.GridAtlas] = bst_source_orient([], ResultsMat.nComponents, ResultsMat.GridAtlas, ResultsMat.(Field), Method);        % Constrained source models
+            [ResultsMat.(Field), ResultsMat.GridAtlas] = bst_source_orient([], ResultsMat.nComponents, ResultsMat.GridAtlas, ResultsMat.(Field), Method);
+        % Constrained source models
         case 1
             % The input file is not an unconstrained source model, nothing to do
         case 2
@@ -123,16 +152,17 @@ function ResultsMat = Compute(ResultsMat, Method, Field)
         case 3
             % Apply source orientations
             ResultsMat.(Field) = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method);
-            % Set the number components
+            % Set the number of components
             ResultsMat.nComponents = 1;
     end
-    % Save new file function
-    ResultsMat.Function = Method;
-    
+    % Save new file function; Disabled 2023-06: for result files, Function is the inverse method. This is saved elsewhere: tag and history.
+    %     ResultsMat.Function = Method;
+
     % File tag
     switch(Method)
         case 'rms',  fileTag = 'norm';
-        case 'pca',  fileTag = 'pca';
+        otherwise
+            fileTag = Method;
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)
