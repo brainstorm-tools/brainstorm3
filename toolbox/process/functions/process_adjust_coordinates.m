@@ -70,9 +70,8 @@ function sProcess = GetDescription()
     sProcess.options.tolerance.Value   = {0, '%', 0};
     sProcess.options.tolerance.Class = 'Refine';
     sProcess.options.scs.Type    = 'checkbox';
-    sProcess.options.scs.Comment = 'Also ajust MRI nasion and ear points.';
+    sProcess.options.scs.Comment = 'Replace MRI nasion and ear points with digitized landmarks (cannot undo).';
     sProcess.options.scs.Value   = 0;
-    sProcess.options.scs.Class = 'Refine';
     sProcess.options.remove.Type    = 'checkbox';
     sProcess.options.remove.Comment = 'Remove selected adjustments (if present) instead of adding them.';
     sProcess.options.remove.Value   = 0;
@@ -173,8 +172,8 @@ function OutputFiles = Run(sProcess, sInputs)
             end % TransfLabel loop
 
             % We cannot change back the MRI fiducials, but in order to be able to update it again
-            % from digitized fids, we must edit the MRI history.
-            if sProcess.options.points.Value && sProcess.options.scs.Value
+            % from digitized fids without warnings, edit the MRI history.
+            if sProcess.options.scs.Value
                 % Get subject in database, with subject directory
                 sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
                 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -221,7 +220,7 @@ function OutputFiles = Run(sProcess, sInputs)
                 Tolerance = sProcess.options.tolerance.Value{1} / 100;
             end
             [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(sInputs(iFile).ChannelFile, ...
-                ChannelMat, isWarning, 0, Tolerance, sProcess.options.scs.Value); % No confirmation
+                ChannelMat, isWarning, 0, Tolerance); % No confirmation
             % ChannelFile needed to find subject and scalp surface, but not used otherwise when
             % ChannelMat is provided.
             if ~isempty(strReport)
@@ -234,6 +233,23 @@ function OutputFiles = Run(sProcess, sInputs)
             
         end % refine registration with head points
         
+        % ----------------------------------------------------------------
+        if ~sProcess.options.remove.Value && sProcess.options.scs.Value
+            % TODO Maybe make this a separate process, since it should only run on one channel file
+            % per subject.
+
+            % Get subject
+            sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
+            % Check if default anatomy.
+            if sSubject.UseDefaultAnat
+                bst_report('Error', sProcess, sInputs(iFile), ...
+                    'Digitized nasion and ear points cannot be applied to default anatomy.');
+                continue;
+            end
+            DigToMriTransf = channel_align_scs(ChannelFile, eye(4), true, false); % interactive warnings but no confirmation
+            % TODO Verify if it worked.
+        end
+
         % ----------------------------------------------------------------
         % Save channel file.
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
@@ -983,16 +999,14 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
         if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
+            isMriMatch = false;
             if isPrint
                 disp('BST> MRI fiducials previously updated, but different than current digitized fiducials.');
-            else
-                isMriMatch = false;
             end
         else
+            isMriMatch = true;
             if isPrint
                 disp('BST> MRI fiducials previously updated, and match current digitized fiducials.');
-            else
-                isMriMatch = true;
             end
         end
     end

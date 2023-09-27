@@ -6,13 +6,13 @@ function [Transform, isCancel] = channel_align_scs(ChannelFile, Transform, isWar
 % DESCRIPTION: 
 %       After modifying registration between digitized head points and MRI (with "refine with head
 %       points" or manually), this function allows saving the change in the MRI fiducials so that
-%       they exactly match the digitized anatomical points (nasion and ears), instead of saving a
-%       registration adjustment transformation for a single functional dataset. This affects all
-%       files registered to the MRI and should therefore be done as one of the first steps after
-%       importing, and with only one set of digitized points (one session). Surfaces are adjusted to
-%       maintain alignment with the MRI. Additional sessions for the same subject, with separate
-%       digitized points, will still need the usual "per dataset" registration adjustment to align
-%       with the same MRI.
+%       they exactly match the digitized anatomical points (nasion and ears). This would replace
+%       having to save a registration adjustment transformation for each functional dataset sharing
+%       this set of digitized points. This affects all files registered to the MRI and should
+%       therefore be done as one of the first steps after importing, and with only one set of
+%       digitized points (one session). Surfaces are adjusted to maintain alignment with the MRI.
+%       Additional sessions for the same subject, with separate digitized points, will still need
+%       the usual "per dataset" registration adjustment to align with the same MRI.
 %
 %       This function will not modify an MRI that it changed previously without user confirmation
 %       (if both isWarning and isConfirm are false). In that case, the Transform is returned unaltered.
@@ -21,6 +21,9 @@ function [Transform, isCancel] = channel_align_scs(ChannelFile, Transform, isWar
 %     - ChannelFile : Channel file to align with its anatomy
 %     - Transform   : Transformation matrix from digitized SCS coordinates to MRI SCS coordinates, 
 %                     after some alignment is made (auto or manual) and the two no longer match.
+%                     This transform should not already be saved in the ChannelFile, though the
+%                     file may already contain similar adjustments, in which case Transform would be
+%                     an additional adjustment to add.
 %     - isWarning   : If 1, display warning in case of errors, or if this was already done 
 %                     previously for this MRI. 
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding.
@@ -51,7 +54,9 @@ function [Transform, isCancel] = channel_align_scs(ChannelFile, Transform, isWar
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Marc Lalancette 2022
+% Authors: Marc Lalancette 2022-2023
+
+% TODO if Transform is missing, get equivalent from ChannelMat, from all auto/manual adjustments.
 
 isCancel = false;
 % Get study
@@ -110,7 +115,8 @@ elseif isConfirm
     end
 end
 
-% Convert to MRI SCS coordinates.
+% Convert digitized fids to MRI SCS coordinates.
+% Here, ChannelMat.SCS already may contain some auto/manual adjustment, and we're adding a new one.
 % To do this we need to apply the transformation provided.
 sMri = sMriOld;
 sMri.SCS.NAS = (Transform(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
@@ -121,7 +127,7 @@ sMri.SCS.RPA = (Transform(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
 sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
 sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
 sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;
-% Re-compute transformation
+% Re-compute transformation in this struct
 [~, sMri] = cs_compute(sMri, 'scs');
 
 % Compare with existing MRI fids, replace if changed (> 1um), and update surfaces.
@@ -194,7 +200,7 @@ function isError = ResetChannelFiles(ChannelMatSrc, sSubject)
         % Progress bar
         bst_progress('start', 'Align sensors', 'Updating other datasets...');
         % Update files
-        channel_apply_transf(ChannelFiles, Transf, iChannels, 1);
+        channel_apply_transf(ChannelFiles, Transf);
         % Give report to the user
         bst_progress('stop');
         java_dialog('msgbox', sprintf('Updated %d additional file(s):\n%s', length(ChannelFiles), strMsg));

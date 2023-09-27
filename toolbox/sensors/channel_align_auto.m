@@ -1,7 +1,7 @@
-function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance, isAdjustScs)
+function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance)
 % CHANNEL_ALIGN_AUTO: Aligns the channels to the scalp using Polhemus points.
 %
-% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0, isAdjustScs=0)
+% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0)
 %
 % DESCRIPTION: 
 %     Aligns the channels to the scalp using Polhemus points stored in channel structure.
@@ -18,7 +18,6 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channe
 %     - isWarning   : If 1, display warning in case of errors (default = 1)
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding
 %     - tolerance   : Percentage of outliers head points, ignored in the final fit
-%     - isAdjustScs : If 1 and not already done for this subject, update MRI to use digitized nasion and ear points.
 %
 % OUTPUTS:
 %     - ChannelMat   : The same ChannelMat structure input in, with the head points and sensors rotated and translated to match the head points to the scalp.
@@ -49,12 +48,10 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channe
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Syed Ashrafulla, 2009, Francois Tadel, 2009-2021, Marc Lalancette 2022
+% Authors: Syed Ashrafulla, 2009
+%          Francois Tadel, 2009-2021
 
 %% ===== PARSE INPUTS =====
-if (nargin < 6) || isempty(isAdjustScs)
-    isAdjustScs = 0;
-end
 if (nargin < 5) || isempty(tolerance)
     tolerance = 0;
 end
@@ -96,27 +93,12 @@ if isempty(HeadPoints) || (length(HeadPoints.Label) < MIN_NPOINTS)
 end
 % M x 3 matrix of head points
 HP = double(HeadPoints.Loc');
-% % Add anatomical points.
-% if isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
-%         (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
-%     HP(end+1,:) = ChannelMat.SCS.NAS;
-%     HP(end+1,:) = ChannelMat.SCS.LPA;
-%     HP(end+1,:) = ChannelMat.SCS.RPA;
-% end
 
 %% ===== LOAD SCALP SURFACE =====
 % Get study
 sStudy = bst_get('ChannelFile', ChannelFile);
 % Get subject
-[sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
-% Check if default anatomy. (Usually also checked before calling this function.)
-if sSubject.UseDefaultAnat
-    if isWarning
-        bst_error('Digitized nasion and ear points cannot be applied to default anatomy.', 'Automatic EEG-MEG/MRI registration', 0);
-    end
-    bst_progress('stop');
-    return
-end
+sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 if isempty(sSubject) || isempty(sSubject.iScalp)
     if isWarning
         bst_error('No scalp surface available for this subject', 'Automatic EEG-MEG/MRI registration', 0);
@@ -212,15 +194,6 @@ strReport = ['Distance between ' num2str(length(dist)) ' head points and head su
 DigToMriTransf = eye(4);
 DigToMriTransf(1:3,1:3) = R;
 DigToMriTransf(1:3,4)   = T;
-
-
-%% ===== ADJUST MRI FIDUCIALS AND SCS =====
-if isAdjustScs
-    DigToMriTransf = channel_align_scs(ChannelFile, DigToMriTransf, isWarning, isConfirm);
-    R = DigToMriTransf(1:3,1:3);
-    T = DigToMriTransf(1:3,4);
-end
-
 
 %% ===== ROTATE SENSORS AND HEADPOINTS =====
 if ~isequal(DigToMriTransf, eye(4))
