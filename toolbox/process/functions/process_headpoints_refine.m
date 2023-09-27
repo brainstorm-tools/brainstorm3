@@ -47,9 +47,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tolerance.Comment = 'Tolerance (outlier points to ignore):';
     sProcess.options.tolerance.Type    = 'value';
     sProcess.options.tolerance.Value   = {0, '%', 0};
-    sProcess.options.scs.Type    = 'checkbox';
-    sProcess.options.scs.Comment = 'Also ajust MRI nasion and ear points.';
-    sProcess.options.scs.Value   = 0;
 end
 
 
@@ -68,7 +65,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Loop on all the channel files
     for i = 1:length(uniqueChan)
         % Refine registration
-        [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(uniqueChan{i}, [], 0, 0, tolerance, sProcess.options.scs.Value);
+        [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(uniqueChan{i}, [], 0, 0, tolerance);
         if ~isempty(strReport)
             bst_report('Info', sProcess, sInputs(iUniqFiles(i)), strReport);
         end

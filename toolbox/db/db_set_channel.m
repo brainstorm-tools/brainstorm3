@@ -16,7 +16,6 @@ function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality, Tolera
 %    - ChannelAlign   : 0, do not perform automatic headpoints-based alignment
 %                       1, perform automatic alignment after user confirmation
 %                       2, perform automatic alignment without user confirmation
-%                       3, as 2, but also updating MRI SCS from digitized points
 %    - Tolerance      : Percentage of outliers head points, ignored in the final fit
 %
 % OUTPUT:
@@ -181,12 +180,7 @@ if (ChannelAlign >= 1)
     end
     
     % Call automatic registration for MEG
-    if ChannelAlign >= 3
-        % Also adjust MRI SCS from digitized points.
-        [ChannelMat, R, T, isSkip, isUserCancel, strReport, Tolerance] = channel_align_auto(OutputFile, [], 0, isConfirm, Tolerance, 1);
-    else
-        [ChannelMat, R, T, isSkip, isUserCancel, strReport, Tolerance] = channel_align_auto(OutputFile, [], 0, isConfirm, Tolerance);
-    end
+    [ChannelMat, R, T, isSkip, isUserCancel, strReport, Tolerance] = channel_align_auto(OutputFile, [], 0, isConfirm, Tolerance);
     % User validated: keep this answer for the next round (force alignment for next call)
     if ~isSkip
         if isUserCancel || isempty(ChannelMat)
