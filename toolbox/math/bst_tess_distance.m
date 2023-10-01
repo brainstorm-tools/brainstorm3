@@ -48,13 +48,11 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
         end
 
     elseif contains(metric,'geodesic') 
-
-        [vi,vj] = find(SurfaceMat.VertConn);
-
         if strcmp(metric,'geodesic_length')
-            nv = size(Vertices,1);
-            x  = Vertices(vi,:)' * 1000;
-            y  = Vertices(vj,:)' * 1000;
+            [vi,vj] = find(SurfaceMat.VertConn);
+            nv      = size(Vertices,1);
+            x       = Vertices(vi,:)' * 1000;
+            y       = Vertices(vj,:)' * 1000;
 
             D  = sparse(vi, vj, sum((x-y).^2).^0.5, nv, nv);
         else
