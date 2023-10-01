@@ -78,18 +78,16 @@ end
 
 % ===== APPLY GAUSSIAN FUNCTION =====
 % Gaussian function
-function y = fun(x)
-    y = Kernel(x, Sigma^2);
-    function y = Kernel(x,sigma2)
-        y = 1 / sqrt(2*pi*sigma2);
-        y = y .* exp(-(x.^2/(2*sigma2)));
-    end
+function y = Kernel(x,sigma2)
+    y = 1 / sqrt(2*pi*sigma2);
+    y = y .* exp(-(x.^2/(2*sigma2)));
 end
+
 
 % Calculate interpolation as a function of distance
 [vi, vj, x] = find(Dist);
-W           = sparse(vi, vj,fun(x), nv, nv) + ...
-              speye (nv) .* fun(0);
+W           = sparse(vi, vj,Kernel(x,Sigma^2), nv, nv) + ...
+              speye (nv) .* Kernel(0,Sigma^2);
 
 % Normalize columns
 W       = bst_bsxfun(@rdivide, W, sum(W,1));
