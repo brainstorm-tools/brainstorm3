@@ -57,19 +57,19 @@ nv = size(Vertices,1);
 % Calculate Gaussian kernel properties
 Sigma = FWHM / (2 * sqrt(2*log2(2)));
 
-[vi,vj] = find(VertConn);
-meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2)) * 1000;
-
 
 % ===== COMPUTE DISTANCE =====
 switch lower(Method)
     % === METHOD 1: USE EUCLIDIAN DISTANCE ===
     case 'euclidian'
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'euclidian', 1);
+        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'euclidean', 1);
     % === METHOD 2: USE NUMBER OF CONNECTIONS =====
     case {'geodesic_edge'}
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_edge', 1);
-        Dist = Dist .* meanDist;
+        [vi,vj] = find(VertConn);
+        meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2)) * 1000;
+
+        Dist        = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_edge', 1);
+        Dist        = Dist .* meanDist;
     % ===== METHOD 3: Use geodesic distance  =====
     case {'geodesic_length'}
         Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_length', 1);
@@ -78,24 +78,21 @@ end
 
 % ===== APPLY GAUSSIAN FUNCTION =====
 % Gaussian function
-fun     = @(x,sigma2) 1 / sqrt(2*pi*sigma2) * exp(-(x.^2/(2*sigma2)));
+function y = fun(x)
+    y = Kernel(x, Sigma^2);
+    function y = Kernel(x,sigma2)
+        y = 1 / sqrt(2*pi*sigma2);
+        y = y .* exp(-(x.^2/(2*sigma2)));
+    end
+end
 
 % Calculate interpolation as a function of distance
-[vi,vj] = find(Dist>0);
-vind    = sub2ind([nv,nv], vi, vj);
-w       = fun(Dist(vind), Sigma^2);
+[vi, vj, x] = find(Dist);
+W           = sparse(vi, vj,fun(x), nv, nv) + ...
+              speye (nv) .* fun(0);
 
-% Build final symmetric matrix
-W       = sparse(vi, vj, w, nv, nv);
-% Add the diagonal
-W       = W + fun(0,Sigma^2) * speye(nv);
 % Normalize columns
 W       = bst_bsxfun(@rdivide, W, sum(W,1));
-% Remove insignificant values
-%[vi,vj]     = find(W>0.005);
-%vind        = sub2ind([nv,nv], vi, vj);
-%W           = sparse(vi, vj, W(vind), nv, nv);
-
 
 % ===== FIX BAD TRIANGLES =====
 % Only for methods including neighbor distance
