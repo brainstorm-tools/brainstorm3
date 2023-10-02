@@ -81,6 +81,11 @@ elseif ischar(ScoutsArg) && strcmpi(ScoutsArg, 'SelectedScouts')
 % Else: use directly the scout indices in argument
 else
     iScouts = ScoutsArg;
+    % Get current atlas
+    sAtlas = panel_scout('GetAtlas');
+    % Volume scout: Get number of vertices of the atlas
+    [isVolumeAtlas, nAtlasGrid] = panel_scout('ParseVolumeAtlas', sAtlas.Name);
+    % Get selected scouts
     [sScouts, sSurf] = panel_scout('GetScouts', iScouts);
 end
 if isempty(sScouts)
