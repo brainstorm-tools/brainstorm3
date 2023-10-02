@@ -2804,16 +2804,22 @@ switch contextName
         end
         
     case 'SpmTpmAtlas'
+        preferSpm = 0;
+        % CALL: bst_get('SpmTpmAtlas', 'SPM')
+        if (nargin >= 2) && strcmpi(varargin{2}, 'SPM')
+            preferSpm = 1;
+        end
+
         % Get template file
         tpmUser = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
-        if file_exist(tpmUser)
+        if file_exist(tpmUser) && ~preferSpm
             argout1 = tpmUser;
             disp(['BST> SPM12 template found: ' tpmUser]);
             return;
         end
         % If it does not exist: check in brainstorm3 folder
         tpmDistrib = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
-        if file_exist(tpmDistrib)
+        if file_exist(tpmDistrib) && ~preferSpm
             argout1 = tpmDistrib;
             disp(['BST> SPM12 template found: ' tpmDistrib]);
             return;
@@ -2826,6 +2832,9 @@ switch contextName
                 argout1 = tpmSpm;
                 disp(['BST> SPM12 template found: ' tpmSpm]);
                 return;
+            elseif preferSpm
+               argout1 = bst_get('SpmTpmAtlas');
+               return
             end
         else
             tpmSpm = '';
