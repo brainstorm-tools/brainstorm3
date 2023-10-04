@@ -224,6 +224,24 @@ for iNew = 1:length(newEvents)
                 newEvents(iNew).times = [newEvents(iNew).times; newEvents(iNew).times + 0.001];
             end
         end
+        % Expand 'channels' field for event occurrences if needed
+        if ~isempty(sFile.events(iEvt).channels) || ~isempty(newEvents(iNew).channels)
+            if isempty(sFile.events(iEvt).channels)
+                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times), 2);
+            end
+            if isempty(newEvents(iNew).channels)
+                newEvents(iNew).channels = cell(1, size(newEvents(iNew).times), 2);
+            end
+        end
+        % Expand 'notes' field for event occurrences if needed
+        if ~isempty(sFile.events(iEvt).notes) || ~isempty(newEvents(iNew).notes)
+            if isempty(sFile.events(iEvt).notes)
+                sFile.events(iEvt).notes = cell(1, size(sFile.events(iEvt).times, 2));
+            end
+            if isempty(newEvents(iNew).notes)
+                newEvents(iNew).notes = cell(1, size(newEvents(iNew).times, 2));
+            end
+        end
         % Merge events occurrences
         sFile.events(iEvt).times      = [sFile.events(iEvt).times, newEvents(iNew).times];
         sFile.events(iEvt).epochs     = [sFile.events(iEvt).epochs, newEvents(iNew).epochs];
