@@ -3,7 +3,7 @@
 ## Thank you for contributing to **Brainstorm**!
 This repository (repo) holds the source code for the [Brainstorm application](https://neuroimage.usc.edu/brainstorm/Introduction).
 
-<a name="contact"></a> When contributing, please ***first discuss the change*** you wish to make in one of the three following ways:
+When contributing, please ***first discuss the change*** you wish to make in one of the three following ways:
 
 - A post in the [Brainstorm forum](https://neuroimage.usc.edu/forums/) (preferred communication method)
 - A [GitHub issue](https://github.com/brainstorm-tools/brainstorm3/issues)
@@ -15,6 +15,15 @@ Contributions to ***this*** repository include:
 - :star: Development of new features
 
 To know other ways in which you can collaborate with Brainstorm, visit the [Contribute](https://neuroimage.usc.edu/brainstorm/Contribute) page.
+
+## MATLAB resources
+Brainstorm is developed with [MATLAB](https://www.mathworks.com/products/matlab.html) (and bit of [Java](https://www.java.com/en/) for the GUI).
+This is a brief list of resources to get started with MATLAB if you are new or come from a different programming language:
+- [Get Started with MATLAB](https://www.mathworks.com/help/matlab/getting-started-with-matlab.html)
+- [MATLAB Fundamentals](https://matlabacademy.mathworks.com/details/matlab-fundamentals/mlbe)
+- [Introduction to MATLAB for Python Users](https://blogs.mathworks.com/student-lounge/2021/02/19/introduction-to-matlab-for-python-users/)
+- [MATLAB for Brain and Cognitive Scientists](https://mitpress.mit.edu/9780262035828/)
+- [Brainstorm scripting](https://neuroimage.usc.edu/brainstorm/Tutorials/Scripting)
 
 ## Git and GitHub resources
 Before starting a new contribution, you need to be familiar with [Git](https://git-scm.com/) and [GitHub](https://github.com/) concepts like: ***commit, branch, push, pull, remote, fork, repository***, etc. There are plenty resources online to learn Git and GitHub, for example:
