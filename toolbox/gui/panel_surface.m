@@ -1784,6 +1784,14 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
+                elseif ~isempty(strfind(TessInfo(iTess).DataSource.FileName, '_connect1'))
+                    TessInfo(iTess).DataSource.Atlas = [];
+                    if size(TessInfo(iTess).Data, 1) ~= nVertices
+                        bst_error(sprintf(['Number of connectivity values (%d) is different from number of vertices (%d).\n\n' ...
+                                  'Please compute the connectivity metric.'], size(TessInfo(iTess).Data, 1), nVertices), 'Data mismatch', 0);
+                        isOk = 0;
+                        return;
+                    end
                 elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
