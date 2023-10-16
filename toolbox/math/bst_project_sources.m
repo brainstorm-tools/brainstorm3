@@ -254,8 +254,8 @@ for iGroup = 1:nGroup
         end
         % Remove link with original file
         ResultsMat.DataFile = [];
-        % Check if the file was reprojected on an atlas
-        if isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas)
+        % Check if the file was reprojected on an atlas (only for results files)
+        if isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isTimefreq
             wrnMsg = ['Cannot process atlas-based source files: Skipping file "' ResultsFile '"...'];
             if isInteractive
                 disp(wrnMsg);
