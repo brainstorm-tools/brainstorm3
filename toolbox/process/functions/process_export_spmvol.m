@@ -194,6 +194,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('inc',1);
         
         % ===== LOAD RESULTS =====
+        % Check the data type: timefreq must be source/surface based
+        if strcmpi(file_gettype(sInputs(iFile).FileName), 'timefreq')
+            ResMat = in_bst_timefreq(sInputs(iFile).FileName, 0, 'DataType');
+            if ~strcmpi(ResMat.DataType, 'results')
+                errMsg = 'Only surface or volume maps can be exported.';
+                bst_report('Error', func2str(sProcess.Function), sInputs(iFile).FileName, errMsg);
+                continue;
+            end
+        end
         % Load results
         sInput = bst_process('LoadInputFile', sInputs(iFile).FileName, [], TimeWindow, LoadOptions);
         if isempty(sInput.Data)
@@ -250,8 +259,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Unconstrained sources: combine orientations (norm of all dimensions)
         sInput.Data = bst_source_orient([], sInput.nComponents, ResultsMat.GridAtlas, sInput.Data, 'rms');
-        % If an atlas exists
-        if strcmpi(ResultsMat.HeadModelType, 'surface') && isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isempty(ResultsMat.Atlas.Scouts)
+        % If an atlas exists and it is not from a 1xN connectivity file (1 Scout x N Sources)
+        if strcmpi(ResultsMat.HeadModelType, 'surface') && isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isempty(ResultsMat.Atlas.Scouts) && isempty(strfind(sInputs(iFile).FileName, '_connect1'))
             Atlas = ResultsMat.Atlas;
         else
             Atlas = [];

@@ -82,7 +82,13 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             FileMat = in_bst_results(sInput.FileName, 0, 'SurfaceFile', 'GridLoc', 'Atlas', 'nComponents', 'HeadModelType');
             nComponents = FileMat.nComponents;
         case 'timefreq'
-            FileMat = in_bst_timefreq(sInput.FileName, 0, 'SurfaceFile', 'GridLoc', 'Atlas', 'HeadModelType');
+            FileMat = in_bst_timefreq(sInput.FileName, 0, 'DataType', 'SurfaceFile', 'GridLoc', 'Atlas', 'HeadModelType');
+            % Check the data type: timefreq must be source/surface based, and no kernel-based file
+            if ~strcmpi(FileMat.DataType, 'results')
+                errMsg = 'Only cortical maps can be smoothed.';
+                bst_report('Error', 'process_ssmooth_surfstat', sInput.FileName, errMsg);
+                return;
+            end
             nComponents = 1;
         otherwise
             error('Unsupported file format.');
@@ -93,7 +99,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     % Error: cannot smooth results that are already based on atlases
-    elseif ~isempty(FileMat.Atlas)
+    elseif ~isempty(FileMat.Atlas) && isempty(strfind(sInput.FileName, '_connect1'))
         bst_report('Error', sProcess, sInput, 'Spatial smoothing is not supported for sources based on atlases.');
         sInput = [];
         return;
