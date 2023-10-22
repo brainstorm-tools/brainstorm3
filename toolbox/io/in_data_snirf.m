@@ -44,8 +44,8 @@ scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     
-    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
-    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
+    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D', jnirs.nirs.probe.sourceLabels);
+    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D', jnirs.nirs.probe.detectorLabels);
 
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
     
@@ -227,7 +227,7 @@ for iEvt = 1:length(jnirs.nirs.stim)
     else
         DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
     end
-    if ~isfield(jnirs.nirs.stim(iEvt), 'data')
+    if ~isfield(jnirs.nirs.stim(iEvt), 'data') || isempty(jnirs.nirs.stim(iEvt).data) 
             % Events structure
         warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
         continue

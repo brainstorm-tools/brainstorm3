@@ -54,13 +54,9 @@ end
 [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(nirs_channels).Name});
 
 src_pos= zeros(length(unique(isrcs)),3); 
+src_label = cell(1,length(unique(isrcs)));
 det_pos= zeros(length(unique(idets)),3); 
-
-
-% Todo : export detectorLabels and sourceLabels (string array)
-snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
-snirfdata.SNIRFData.probe.sourcePos=src_pos;
-snirfdata.SNIRFData.probe.detectorPos=det_pos;
+det_label= cell(1,length(unique(idets)));
 
 % Set landmark position (eg fiducials) 
 n_landmark=length(ChannelMatOut.HeadPoints.Label);
@@ -74,29 +70,33 @@ end
 for ichan=1:n_channel
     measurement=struct('sourceIndex',[],'detectorIndex',[],...
               'wavelengthIndex',[],'dataType',1,'dataTypeIndex',1); 
-    [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
+    [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
 
-    src_pos(isrcs,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
-    det_pos(idets,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
+    src_pos(isrc,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
+    src_label{isrc} = sprintf('S%d',isrc);
+    det_pos(idet,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
+    det_label{idet} = sprintf('D%d',idet);
 
-    measurement.sourceIndex=isrcs;
-    measurement.detectorIndex=idets;
+    measurement.sourceIndex=isrc;
+    measurement.detectorIndex=idet;
     measurement.wavelengthIndex=find(ChannelMatOut.Nirs.Wavelengths==chan_measures);
 
     snirfdata.SNIRFData.data.measurementList(ichan)=measurement;      
 
 end 
 
-% Todo : export detectorLabels and sourceLabels (string array)
 snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
 
 snirfdata.SNIRFData.probe.sourcePos=src_pos;
 snirfdata.SNIRFData.probe.sourcePos(:,3)=0; % set z to 0
 snirfdata.SNIRFData.probe.sourcePos3D=src_pos;
+snirfdata.SNIRFData.probe.sourceLabels = src_label';
 
 snirfdata.SNIRFData.probe.detectorPos=det_pos; 
 snirfdata.SNIRFData.probe.detectorPos(:,3)=0; % set z to 0 
 snirfdata.SNIRFData.probe.detectorPos3D=det_pos;
+snirfdata.SNIRFData.probe.detectorLabels=det_label';
+
 
 % Set Stim 
 nEvt = length(DataMat.Events);
