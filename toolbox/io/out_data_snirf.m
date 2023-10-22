@@ -85,7 +85,7 @@ for ichan=1:n_channel
     if ~any(cellfun(@(x)strcmp(x, sprintf('D%d',idet )), det_label))
         det_label{nDet} = sprintf('D%d',idet );
         det_Index(nDet) = idet;
-        det_pos(nDet,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
+        det_pos(nDet,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
 
         nDet = nDet + 1;
     end
@@ -119,9 +119,11 @@ snirfdata.SNIRFData.probe.detectorLabels=det_label';
 
 % Set Stim 
 nEvt = length(DataMat.Events);
+evt_include = true(1,length(DataMat.Events));
 for iEvt = 1:nEvt
     % Skip empty events
     if isempty(DataMat.Events(iEvt).times)
+        evt_include(iEvt) = false;
         continue;
     end
     % Event structure
@@ -144,7 +146,11 @@ for iEvt = 1:nEvt
     stim.data = data;
     snirfdata.SNIRFData.stim(iEvt) = stim;   
 end    
-
+if any(evt_include)
+    snirfdata.SNIRFData.stim = snirfdata.SNIRFData.stim(evt_include);
+else
+    snirfdata.SNIRFData = rmfield(snirfdata.SNIRFData,'stim');
+end
 % Save snirf file. 
 savesnirf(snirfdata, ExportFile);
 
