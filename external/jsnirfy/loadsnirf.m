@@ -36,7 +36,7 @@ if(nargin==0 || ~ischar(fname))
     error('you must provide a file name');
 end
 
-data=loadh5(fname);
+data=loadh5(fname, 'stringarray', 1);
 
 opt=struct;
 
