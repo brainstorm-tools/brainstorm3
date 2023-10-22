@@ -47,6 +47,7 @@ for i_aux=1:n_aux
     snirfdata.SNIRFData.aux(i_aux).name=ChannelMatOut.Channel(aux_channel(i_aux)).Name;
     snirfdata.SNIRFData.aux(i_aux).dataTimeSeries=DataMat.F(aux_channel(i_aux),:)';
     snirfdata.SNIRFData.aux(i_aux).time=DataMat.Time';
+    snirfdata.SNIRFData.aux(i_aux).timeOffset = 0;
 end    
 
 % Set Probe; maybe can be simplified with the export of the measurment list

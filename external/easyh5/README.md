@@ -1,9 +1,14 @@
+![](https://neurojson.org/wiki/upload/neurojson_banner_long.png)
+
 # EasyH5 Toolbox - An easy-to-use HDF5 data interface (loadh5 and saveh5)
 
-* Copyright (C) 2019  Qianqian Fang <q.fang at neu.edu>
+* Copyright (C) 2019,2022  Qianqian Fang <q.fang at neu.edu>
 * License: GNU General Public License version 3 (GPL v3) or 3-clause BSD license, see LICENSE*.txt
-* Version: 0.8 (code name: Go - Japanese 5)
-* URL: http://github.com/fangq/easyh5
+* Version: 0.9 (code name: Daseot - Korean 5)
+* URL: http://github.com/NeuroJSON/easyh5
+* Compatibility: MATLAB R2010b or newer
+* Acknowledgement: This project is supported by US National Institute of Health (NIH)
+  grant [U24-NS124027 (NeuroJSON)](https://reporter.nih.gov/project-details/10308329)
 
 ## Overview
 
@@ -15,7 +20,7 @@ and `containers.Map` objects. All other data classes (such as a table, digraph,
 etc) can also be stored/loaded seemlessly using an undocumented data serialization 
 interface (MATLAB only).
 
-EasyH5 stores complex numerical arrays using a special compound data type in an
+EasyH5 stores complex-valued arrays using a special compound data type in an
 HDF5 dataset. The real-part of the data are stored as `Real` and the imaginary
 part is stored as the `Imag` component. The `loadh5.m` automatically converts
 such data structure to a complex array. Starting from v0.8, EasyH5 also supports
@@ -57,6 +62,8 @@ Example:
   saveh5(a,'test.h5');
   saveh5(a(1),'test2.h5','rootname','');
   saveh5(a(1),'test2.h5','compression','deflate','compressarraysize',1);
+  saveh5('appending data to existing file','test.h5','rootname','/name','append',1);
+  saveh5(a,'test.h5j','jdata',1);
 ```
 ### `loadh5` - Load data in an HDF5 file to a MATLAB structure.
 Load data in an HDF5 file to a MATLAB structure.
@@ -91,12 +98,13 @@ Example:
 - EasyH5 currently does not support 2D cell and struct arrays
 - If a cell name ends with a number, such as `a10={...}`; `regrouph5` can not group the cell correctly
 - If a database/group name is longer than 63 characters, it may have the risk of being truncated
+- When saving a dynamic expression instead of a named variable, the data are stored under path `/data`
 
 ## Contribute to EasyH5
 
 Please submit your bug reports, feature requests and questions to the Github Issues page at
 
-https://github.com/fangq/easyh5/issues
+https://github.com/NeuroJSON/easyh5/issues
 
 Please feel free to fork our software, making changes, and submit your revision back
 to us via "Pull Requests". EasyH5 is open-source and welcome to your contributions!

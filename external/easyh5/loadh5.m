@@ -28,6 +28,10 @@ function varargout=loadh5(filename, varargin)
 %                  as possible keywords for the real and the imaginary part
 %                  of a complex array, respectively (sparse arrays not supported);
 %                  a common list of keypairs is used even without this option
+%            Transpose: [1|0] - if set to 1 (default), the row-majored HDF5
+%                  datasets are transposed (to column-major) so that the 
+%                  output MATLAB array has the same dimensions as in the
+%                  HDF5 dataset header.
 %
 %    output
 %        data: a structure (array) or cell (array)
@@ -60,10 +64,10 @@ end
 if(isa(filename,'H5ML.id'))
     loc=filename;
 else
-    if(exist('h5read','file'))
-        loc = H5F.open(filename);
-    else
-        error('HDF5 is not supported');
+    try
+        loc = H5F.open(filename,'H5F_ACC_RDONLY','H5P_DEFAULT');
+    catch ME
+        error('fail to open file');
     end
 end
 
@@ -72,6 +76,9 @@ opt.rootpath=path;
 if(~(isfield(opt,'complexformat') && iscellstr(opt.complexformat) && numel(opt.complexformat)==2))
     opt.complexformat={'Real','Imag'};
 end
+
+opt.dotranspose=jsonopt('Transpose',1,opt);
+opt.stringarray=jsonopt('StringArray',0,opt);
 
 opt.releaseid=0;
 vers=ver('MATLAB');
@@ -173,7 +180,7 @@ try
 	  H5G.close(group_loc);
 	  rethrow(ME);
 	end
-	if(encodename)
+    if(encodename)
         name=encodevarname(name);
     else
         name=genvarname(name);
@@ -186,18 +193,25 @@ try
     name = regexprep(objname, '.*/', '');
   
 	dataset_loc = H5D.open(group_id, name);
-	try
+    try
 	  sub_data = H5D.read(dataset_loc, ...
 	      'H5ML_DEFAULT', 'H5S_ALL','H5S_ALL','H5P_DEFAULT');
+      try
           [status, count, attr]=H5A.iterate(dataset_loc, 'H5_INDEX_NAME', 'H5_ITER_INC', 0, @getattribute, attr);
-	  H5D.close(dataset_loc);
+      catch
+          attr=[];
+      end
+      H5D.close(dataset_loc);
 	catch exc
 	  H5D.close(dataset_loc);
 	  rethrow(exc);
-	end
-	
+    end
+    
+    if((isnumeric(sub_data) && inputdata.opt.dotranspose) || (iscell(sub_data) && length(sub_data)>1))
+        sub_data=permute(sub_data,ndims(sub_data):-1:1);
+    end
 	sub_data = fix_data(sub_data, attr, inputdata.opt);
-	if(encodename)
+    if(encodename)
         name=encodevarname(name);
     else
         name=genvarname(name);
@@ -270,6 +284,13 @@ if(isa(data,'uint8') || isa(data,'int8'))
          data=getArrayFromByteStream(data); % use undocumented function
       end
   end
+end
+
+% handeling string arrays (or cell of char strings)
+if(iscell(data) && length(data)>1)
+    if(all(cellfun(@ischar, data)) && exist('string') && opt.stringarray)
+        data=string(data);
+    end
 end
 
 %--------------------------------------------------------------------------

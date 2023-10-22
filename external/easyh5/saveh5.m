@@ -29,6 +29,17 @@ function saveh5(data, fname, varargin)
 %                         compression level
 %            Chunk: a size vector or empty - breaking a large array into
 %                         small chunks of size specified by this parameter
+%            Append [0|1]: if set to 1, new data will be appended to an
+%                         file if already exists under the user-defined
+%                         'rootname' path; if set to 0, old data
+%                         will be overwritten if the file exists.
+%            VariableLengthString [0|1]: if set to 1, strings and char arrays will be
+%                         saved with type 'H5T_C_S1' and size 'H5T_VARIABLE'
+%            Transpose: [1|0] - if set to 1 (default), MATLAB arrays are
+%                         transposed (from column-major to row-major) so
+%                         that the output HDF5 dataset shows the same
+%                         dimensions as in MATLAB when reading from other
+%                         tools.
 %            ComplexFormat: {'realKey','imagKey'}: use 'realKey' and 'imagKey'
 %                  as keywords for the real and the imaginary part of a
 %                  complex array, respectively (sparse arrays not supported);
@@ -40,6 +51,7 @@ function saveh5(data, fname, varargin)
 %        saveh5(a(1),'test2.h5','rootname','');
 %        saveh5(a(1),'test2.h5','compression','deflate','compressarraysize',1);
 %        saveh5(a,'test.h5j','jdata',1);
+%        saveh5(a,'test.h5j','rootname','/newroot','append',1);
 %
 %    this file is part of EasyH5 Toolbox: https://github.com/fangq/easyh5
 %
@@ -64,6 +76,8 @@ opt.compression=jsonopt('Compression','',opt);
 opt.compresslevel=jsonopt('CompressLevel',5,opt);
 opt.compressarraysize=jsonopt('CompressArraySize',100,opt);
 opt.unpackhex=jsonopt('UnpackHex',1,opt);
+opt.dotranspose=jsonopt('Transpose',1,opt);
+opt.variablelengthstring=jsonopt('VariableLengthString',0,opt);
 
 opt.releaseid=0;
 vers=ver('MATLAB');
@@ -76,6 +90,10 @@ if(isfield(opt,'rootname'))
    rootname=['/' opt.rootname];
 end
 
+if(~isfield(opt,'rootname') && ~isempty(regexp(rootname,'/$', 'once')))
+   rootname = [rootname 'data'];
+end
+
 if(jsonopt('JData',0,opt))
    data=jdataencode(data,'Base64',0,'UseArrayZipSize',0,opt);
 end
@@ -84,7 +102,11 @@ try
     if(isa(fname,'H5ML.id'))
         fid=fname;
     else
-        fid = H5F.create(fname, 'H5F_ACC_TRUNC', H5P.create('H5P_FILE_CREATE'), H5P.create('H5P_FILE_ACCESS'));
+        if(jsonopt('append',0,opt) && exist(fname,'file'))
+            fid = H5F.open(fname,'H5F_ACC_RDWR','H5P_DEFAULT');
+        else
+            fid = H5F.create(fname, 'H5F_ACC_TRUNC', H5P.create('H5P_FILE_CREATE'), H5P.create('H5P_FILE_ACCESS'));
+        end
     end
     obj2h5(rootname,data,fid,1,opt);
 catch ME
@@ -198,10 +220,12 @@ end
 
 %%-------------------------------------------------------------------------
 function oid=mat2h5(name, item,handle,level,varargin)
-if(isa(item,'string'))
-    item=char(item);
-end
 typemap=h5types;
+
+opt=varargin{1};
+if(opt.dotranspose)
+    item=permute(item, ndims(item):-1:1);
+end
 
 pd = 'H5P_DEFAULT';
 gcpl = H5P.create('H5P_GROUP_CREATE');
@@ -210,7 +234,6 @@ indexed = H5ML.get_constant_value('H5P_CRT_ORDER_INDEXED');
 order = bitor(tracked,indexed);
 H5P.set_link_creation_order(gcpl,order);
 
-opt=varargin{1};
 if(~(isfield(opt,'complexformat') && iscellstr(opt.complexformat) && numel(opt.complexformat)==2) || strcmp(opt.complexformat{1},opt.complexformat{2}))
     opt.complexformat={'Real','Imag'};
 end
@@ -249,18 +272,43 @@ if(isempty(item) && opt.skipempty)
     return;
 end
 
-if(isreal(item))
+if(isreal(item) || isa(item, 'string'))
     if(issparse(item))
         idx=find(item);
-        oid=sparse2h5(name,struct('Size',size(item),'SparseIndex',idx,'Real',item(idx)),handle,level,varargin{:});
+        oid=sparse2h5(name,struct('Size',size(item),'SparseIndex',idx,'Real',full(item(idx))),handle,level,varargin{:});
     else
-        oid=H5D.create(handle,name,H5T.copy(typemap.(class(item))),H5S.create_simple(ndims(item), fliplr(size(item)),fliplr(size(item))),pd);
-        H5D.write(oid,'H5ML_DEFAULT','H5S_ALL','H5S_ALL','H5P_DEFAULT',item);
+        itemtype=H5T.copy(typemap.(class(item)));
+        if((ischar(item) || isa(item,'string')) && isfield(opt, 'variablelengthstring')  && opt.variablelengthstring)
+            H5T.set_size(itemtype, 'H5T_VARIABLE');
+            itemsize=H5S.create('H5S_SCALAR');
+            if(isa(item, 'string') && length(item)>1)
+                itemsize=H5S.create_simple(ndims(item), fliplr(size(item)),fliplr(size(item)));
+            end
+        else
+            itemsize=H5S.create_simple(ndims(item), fliplr(size(item)),fliplr(size(item)));
+        end
+        try
+            oid=H5D.create(handle,name,itemtype,itemsize,pd);
+        catch ME
+            if(jsonopt('append',0,opt)==1)
+                H5L.delete(handle,name,'H5P_DEFAULT');
+                oid=H5D.create(handle,name,itemtype,H5S.create_simple(ndims(item), fliplr(size(item)),fliplr(size(item))),pd);
+            end
+        end
+        if((ischar(item) || isa(item,'string')) && isfield(opt, 'variablelengthstring')  && opt.variablelengthstring)
+            if(isa(item, 'string'))
+                H5D.write(oid,'H5ML_DEFAULT','H5S_ALL','H5S_ALL','H5P_DEFAULT',cellstr(item));
+            else
+                H5D.write(oid,'H5ML_DEFAULT','H5S_ALL','H5S_ALL','H5P_DEFAULT',{item});
+            end
+        else
+            H5D.write(oid,'H5ML_DEFAULT','H5S_ALL','H5S_ALL','H5P_DEFAULT',item);
+        end
     end
 else
     if(issparse(item))
         idx=find(item);
-        oid=sparse2h5(name,struct('Size',size(item),'SparseIndex',idx,'Real',real(item(idx)),'Imag',imag(item(idx))),handle,level,varargin{:});
+        oid=sparse2h5(name,struct('Size',size(item),'SparseIndex',idx,'Real',full(real(item(idx))),'Imag',full(imag(item(idx)))),handle,level,varargin{:});
     else
         typeid=H5T.copy(typemap.(class(item)));
         elemsize=H5T.get_size(typeid);

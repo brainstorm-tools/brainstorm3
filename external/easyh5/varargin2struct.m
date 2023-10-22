@@ -30,7 +30,7 @@ while(i<=len)
     if(isstruct(varargin{i}))
         opt=mergestruct(opt,varargin{i});
     elseif(ischar(varargin{i}) && i<len)
-        opt=setfield(opt,lower(varargin{i}),varargin{i+1});
+        opt.(lower(varargin{i}))=varargin{i+1};
         i=i+1;
     else
         error('input must be in the form of ...,''name'',value,... pairs or structs');

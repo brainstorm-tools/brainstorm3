@@ -4,9 +4,9 @@ function newdata=jdatadecode(data,varargin)
 %
 % Convert all JData object (in the form of a struct array) into an array
 % (accepts JData objects loaded from either loadjson/loadubjson or 
-% jsondecode for MATLAB R2018a or later)
+% jsondecode for MATLAB R2016b or later)
 %
-% This function implements the JData Specification Draft 2 (Oct. 2019)
+% This function implements the JData Specification Draft 3 (Jun. 2020)
 % see http://github.com/fangq/jdata for details
 %
 % authors:Qianqian Fang (q.fang <at> neu.edu)
@@ -33,6 +33,10 @@ function newdata=jdatadecode(data,varargin)
 %                         jsondecode(), the prefix is 'x'; this function
 %                         attempts to automatically determine the prefix;
 %                         for octave, the default value is an empty string ''.
+%               FullArrayShape: [0|1] if set to 1, converting _ArrayShape_ 
+%                         objects to full matrices, otherwise, stay sparse
+%               MaxLinkLevel: [0|int] When expanding _DataLink_ pointers,
+%                         this sets the maximum level of recursion
 %               FormatVersion: [2|float]: set the JSONLab output version; 
 %                         since v2.0, JSONLab uses JData specification Draft 1
 %                         for output format, it is incompatible with all
@@ -61,6 +65,8 @@ function newdata=jdatadecode(data,varargin)
     elseif(nargin>2)
         opt=varargin2struct(varargin{:});
     end
+    opt.fullarrayshape=jsonopt('FullArrayShape',0,opt);
+    opt.maxlinklevel=jsonopt('MaxLinkLevel',0,opt);
 
     %% process non-structure inputs
     if(~isstruct(data))
@@ -110,38 +116,91 @@ function newdata=jdatadecode(data,varargin)
       for j=1:len
         if(isfield(data,N_('_ArrayZipSize_')) && isfield(data,N_('_ArrayZipData_')))
             zipmethod='zip';
+            if(isstruct(data(j).(N_('_ArrayZipSize_'))))
+                data(j).(N_('_ArrayZipSize_'))=jdatadecode(data(j).(N_('_ArrayZipSize_')),opt);
+            end
+	    dims=data(j).(N_('_ArrayZipSize_'))(:)';
+            if(length(dims)==1)
+                 dims=[1 dims];
+            end
             if(isfield(data,N_('_ArrayZipType_')))
                 zipmethod=data(j).(N_('_ArrayZipType_'));
             end
-            if(~isempty(strmatch(zipmethod,{'zlib','gzip','lzma','lzip','lz4','lz4hc'})))
+            if(ismember(zipmethod,{'zlib','gzip','lzma','lzip','lz4','lz4hc','base64'}))
                 decompfun=str2func([zipmethod 'decode']);
-                if(needbase64)
-                    ndata=reshape(typecast(decompfun(base64decode(data(j).(N_('_ArrayZipData_')))),data(j).(N_('_ArrayType_'))),data(j).(N_('_ArrayZipSize_'))(:)');
+                arraytype=data(j).(N_('_ArrayType_'));
+                chartype=0;
+                if(strcmp(arraytype,'char') || strcmp(arraytype,'logical'))
+                    chartype=1;
+                    arraytype='uint8';
+                end
+                if(needbase64 && strcmp(zipmethod,'base64')==0)
+                    ndata=reshape(typecast(decompfun(base64decode(data(j).(N_('_ArrayZipData_')))),arraytype),dims);
                 else
-                    ndata=reshape(typecast(decompfun(data(j).(N_('_ArrayZipData_'))),data(j).(N_('_ArrayType_'))),data(j).(N_('_ArrayZipSize_'))(:)');
+                    ndata=reshape(typecast(decompfun(data(j).(N_('_ArrayZipData_'))),arraytype),dims);
+                end
+                if(chartype)
+                    ndata=char(ndata);
                 end
             else
                 error('compression method is not supported');
             end
         else
+            if(isstruct(data(j).(N_('_ArrayData_'))))
+                data(j).(N_('_ArrayData_'))=jdatadecode(data(j).(N_('_ArrayData_')),opt);
+            end
+            if(isstruct(data(j).(N_('_ArrayData_'))) && isfield(data(j).(N_('_ArrayData_')),N_('_ArrayType_')))
+                data(j).(N_('_ArrayData_'))=jdatadecode(data(j).(N_('_ArrayData_')),varargin{:});
+            end
             if(iscell(data(j).(N_('_ArrayData_'))))
                 data(j).(N_('_ArrayData_'))=cell2mat(cellfun(@(x) double(x(:)),data(j).(N_('_ArrayData_')),'uniformoutput',0)).';
             end
             ndata=cast(data(j).(N_('_ArrayData_')),char(data(j).(N_('_ArrayType_'))));
         end
         if(isfield(data,N_('_ArrayZipSize_')))
-            ndata=reshape(ndata(:),fliplr(data(j).(N_('_ArrayZipSize_'))(:)'));
+            if(isstruct(data(j).(N_('_ArrayZipSize_'))))
+                data(j).(N_('_ArrayZipSize_'))=jdatadecode(data(j).(N_('_ArrayZipSize_')),opt);
+            end
+	    dims=data(j).(N_('_ArrayZipSize_'))(:)';
+            if(iscell(dims))
+                dims=cell2mat(dims);
+            end
+            if(length(dims)==1)
+                 dims=[1 dims];
+            end
+            ndata=reshape(ndata(:),fliplr(dims));
             ndata=permute(ndata,ndims(ndata):-1:1);
         end
         iscpx=0;
-        if(isfield(data,N_('_ArrayIsComplex_')))
-            if(data(j).(N_('_ArrayIsComplex_')))
-               iscpx=1;
+        if(isfield(data,N_('_ArrayIsComplex_')) && isstruct(data(j).(N_('_ArrayIsComplex_'))) )
+                data(j).(N_('_ArrayIsComplex_'))=jdatadecode(data(j).(N_('_ArrayIsComplex_')),opt);
+        end
+        if(isfield(data,N_('_ArrayIsComplex_')) && data(j).(N_('_ArrayIsComplex_')) )
+                iscpx=1;
+        end
+        iscol=0;
+        if(isfield(data,N_('_ArrayOrder_')))
+            arrayorder=data(j).(N_('_ArrayOrder_'));
+            if(~isempty(arrayorder) && (arrayorder(1)=='c' || arrayorder(1)=='C'))
+                iscol=1;
             end
+        end
+        if(isfield(data,N_('_ArrayIsSparse_')) && isstruct(data(j).(N_('_ArrayIsSparse_'))) )
+                data(j).(N_('_ArrayIsSparse_'))=jdatadecode(data(j).(N_('_ArrayIsSparse_')),opt);
         end
         if(isfield(data,N_('_ArrayIsSparse_')) && data(j).(N_('_ArrayIsSparse_')))
                 if(isfield(data,N_('_ArraySize_')))
-                    dim=double(data(j).(N_('_ArraySize_'))(:)');
+                    if(isstruct(data(j).(N_('_ArraySize_'))))
+                        data(j).(N_('_ArraySize_'))=jdatadecode(data(j).(N_('_ArraySize_')),opt);
+                    end
+                    dim=data(j).(N_('_ArraySize_'))(:)';
+                    if(iscell(dim))
+                        dim=cell2mat(dim);
+                    end
+                    dim=double(dim);
+		    if(length(dim)==1)
+			dim=[1 dim];
+		    end
                     if(iscpx)
                         ndata(end-1,:)=complex(ndata(end-1,:),ndata(end,:));
                     end
@@ -164,16 +223,114 @@ function newdata=jdatadecode(data,varargin)
                     end
                     ndata=sparse(ndata(1,:),ndata(2,:),ndata(3,:));
                 end
+        elseif(isfield(data,N_('_ArrayShape_')))
+                if(isstruct(data(j).(N_('_ArrayShape_'))))
+                    data(j).(N_('_ArrayShape_'))=jdatadecode(data(j).(N_('_ArrayShape_')),opt);
+                end
+                if(iscpx)
+                    if(size(ndata,1)==2)
+                        dim=size(ndata);
+                        dim(end+1)=1;
+                        arraydata=reshape(complex(ndata(1,:),ndata(2,:)),dim(2:end));
+                    else
+                        error('The first dimension must be 2 for complex-valued arrays');
+                    end
+                else
+                    arraydata=data.(N_('_ArrayData_'));
+                end
+                shapeid=data.(N_('_ArrayShape_'));
+                if(isfield(data,N_('_ArrayZipSize_')))
+                        datasize=data.(N_('_ArrayZipSize_'));
+                        if(iscell(datasize))
+                            datasize=cell2mat(datasize);
+                        end
+                        datasize=double(datasize);
+                        if(iscpx)
+                            datasize=datasize(2:end);
+                        end
+                else
+                        datasize=size(arraydata);
+                end
+                if(isstruct(data(j).(N_('_ArraySize_'))))
+                    data(j).(N_('_ArraySize_'))=jdatadecode(data(j).(N_('_ArraySize_')),opt);
+                end
+                arraysize=data.(N_('_ArraySize_'));
+
+                if(iscell(arraysize))
+                    arraysize=cell2mat(arraysize);
+                end
+                arraysize=double(arraysize);
+                if(ischar(shapeid))
+                        shapeid={shapeid};
+                end
+                arraydata=double(arraydata).';
+                if(strcmpi(shapeid{1},'diag'))
+                        ndata=spdiags(arraydata(:),0,arraysize(1),arraysize(2));
+                elseif(strcmpi(shapeid{1},'upper') || strcmpi(shapeid{1},'uppersymm'))
+                        ndata=zeros(arraysize);
+                        ndata(triu(true(size(ndata)))')=arraydata(:);
+                        if(strcmpi(shapeid{1},'uppersymm'))
+                            ndata(triu(true(size(ndata))))=arraydata(:);
+                        end
+                        ndata=ndata.';
+                elseif(strcmpi(shapeid{1},'lower') || strcmpi(shapeid{1},'lowersymm'))
+                        ndata=zeros(arraysize);
+                        ndata(tril(true(size(ndata)))')=arraydata(:);
+                        if(strcmpi(shapeid{1},'lowersymm'))
+                            ndata(tril(true(size(ndata))))=arraydata(:);
+                        end
+                        ndata=ndata.';
+                elseif(strcmpi(shapeid{1},'upperband') || strcmpi(shapeid{1},'uppersymmband'))
+                        if(length(shapeid)>1 && isvector(arraydata))
+                            datasize=double([shapeid{2}+1, prod(datasize)/(shapeid{2}+1)]);
+                        end
+                        ndata=spdiags(reshape(arraydata,min(arraysize),datasize(1)),-datasize(1)+1:0,arraysize(2),arraysize(1)).';
+                        if(strcmpi(shapeid{1},'uppersymmband'))
+                            diagonal=diag(ndata);
+                            ndata=ndata+ndata.';
+                            ndata(1:arraysize(1)+1:end)=diagonal;
+                        end
+                elseif(strcmpi(shapeid{1},'lowerband') || strcmpi(shapeid{1},'lowersymmband'))
+                        if(length(shapeid)>1 && isvector(arraydata))
+                            datasize=double([shapeid{2}+1, prod(datasize)/(shapeid{2}+1)]);
+                        end
+                        ndata=spdiags(reshape(arraydata,min(arraysize),datasize(1)),0:datasize(1)-1,arraysize(2),arraysize(1)).';
+                        if(strcmpi(shapeid{1},'lowersymmband'))
+                            diagonal=diag(ndata);
+                            ndata=ndata+ndata.';
+                            ndata(1:arraysize(1)+1:end)=diagonal;
+                        end
+                elseif(strcmpi(shapeid{1},'band'))
+                        if(length(shapeid)>1 && isvector(arraydata))
+                            datasize=double([shapeid{2}+shapeid{3}+1, prod(datasize)/(shapeid{2}+shapeid{3}+1)]);
+                        end
+                        ndata=spdiags(reshape(arraydata,min(arraysize),datasize(1)),double(shapeid{2}):-1:-double(shapeid{3}),arraysize(1),arraysize(2));
+                elseif(strcmpi(shapeid{1},'toeplitz'))
+                        arraydata=reshape(arraydata,flipud(datasize(:))');
+                        ndata=toeplitz(arraydata(1:arraysize(1),2),arraydata(1:arraysize(2),1));
+                end
+                if(opt.fullarrayshape && issparse(ndata))
+                        ndata=cast(full(ndata),data(j).(N_('_ArrayType_')));
+                end
         elseif(isfield(data,N_('_ArraySize_')))
+            if(isstruct(data(j).(N_('_ArraySize_'))))
+                data(j).(N_('_ArraySize_'))=jdatadecode(data(j).(N_('_ArraySize_')),opt);
+            end
             if(iscpx)
                 ndata=complex(ndata(1,:),ndata(2,:));
             end
-            if(format>1.9)
+            if(format>1.9 && iscol==0)
                 data(j).(N_('_ArraySize_'))=data(j).(N_('_ArraySize_'))(end:-1:1);
             end
             dims=data(j).(N_('_ArraySize_'))(:)';
+            if(iscell(dims))
+                dims=cell2mat(dims);
+            end
+	    if(length(dims)==1)
+		dims=[1 dims];
+	    end
             ndata=reshape(ndata(:),dims(:)');
-            if(format>1.9)
+            if(format>1.9 && iscol==0)
                 ndata=permute(ndata,ndims(ndata):-1:1);
             end
         end
@@ -190,15 +347,19 @@ function newdata=jdatadecode(data,varargin)
         for j=1:len
             ndata=data(j).(N_('_TableRecords_'));
             if(iscell(ndata))
-                rownum=length(ndata);
-                colnum=length(ndata{1});
-                nd=cell(rownum, colnum);
-                for i1=1:rownum;
-                    for i2=1:colnum
-                        nd{i1,i2}=ndata{i1}{i2};
+                if(iscell(ndata{1}))
+                    rownum=length(ndata);
+                    colnum=length(ndata{1});
+                    nd=cell(rownum, colnum);
+                    for i1=1:rownum
+                        for i2=1:colnum
+                            nd{i1,i2}=ndata{i1}{i2};
+                        end
                     end
+                    newdata{j}=cell2table(nd);
+                else
+                    newdata{j}=cell2table(ndata);
                 end
-                newdata{j}=cell2table(nd);
             else
                 newdata{j}=array2table(ndata);
             end
@@ -272,7 +433,7 @@ function newdata=jdatadecode(data,varargin)
                     else
                         newdata{j}=graph(edgetable,nodetable);
                     end
-                elseif(ismatrix(edgedata) && isstruct(nodetable))
+                elseif(ndims(edgedata)==2 && isstruct(nodetable))
                     newdata{j}=digraph(edgedata,fieldnames(nodetable));
                 end
             end
@@ -283,7 +444,7 @@ function newdata=jdatadecode(data,varargin)
     end
 
     %% handle bytestream and arbitrary matlab objects
-    if(isfield(data,N_('_ByteStream_')) && isfield(data,N_('_DataInfo_'))==2)
+    if(isfield(data,N_('_ByteStream_')) && isfield(data,N_('_DataInfo_')))
         newdata=cell(len,1);
         for j=1:len
             if(isfield(data(j).(N_('_DataInfo_')),'MATLABObjectClass'))
@@ -296,6 +457,45 @@ function newdata=jdatadecode(data,varargin)
         end
         if(len==1)
             newdata=newdata{1};
+        end
+    end
+
+    %% handle data link
+    if(opt.maxlinklevel>0 && isfield(data,N_('_DataLink_')))
+        if(ischar(data.(N_('_DataLink_'))))
+            datalink=data.(N_('_DataLink_'));
+            if(regexp(datalink,'\:\$'))
+                ref=regexp(datalink, '^(?<proto>[a-zA-Z]+://)*(?<path>.+)(?<delim>\:)()*(?<jsonpath>(?<=:)\$\d*\.*.*)*', 'names');
+            else
+                ref=regexp(datalink, '^(?<proto>[a-zA-Z]+://)*(?<path>.+)(?<delim>\:)*(?<jsonpath>(?<=:)\$\d*\..*)*', 'names');
+            end
+            if(~isempty(ref.path))
+                uripath=[ref.proto ref.path];
+                [fpath, fname, fext]=fileparts(uripath);
+                opt.maxlinklevel=opt.maxlinklevel-1;
+                switch(lower(fext))
+                    case {'.json','.jnii','.jdt','.jdat','.jmsh','.jnirs'}
+                        newdata=loadjson(uripath, opt);
+                    case {'.bjd' ,'.bnii','.jdb','.jbat','.bmsh','.bnirs', '.jamm'}
+                        newdata=loadbj(uripath, opt);
+                    case {'.ubj'}
+                        newdata=loadubjson(uripath, opt);
+                    case {'.msgpack'}
+                        newdata=loadmsgpack(uripath, opt);
+                    case {'.h5','.hdf5','.snirf'}  % this requires EasyH5 toolbox
+                        newdata=loadh5(uripath, opt);
+                    otherwise
+                        % _DataLink_ url does not specify type, assuming JSON format
+                        if(regexpi(datalink,'^\s*(http|https|ftp|file)://'))
+                            newdata=loadjson(uripath, opt);
+                        else
+                            warning('_DataLink_ url is not supported')
+                        end
+                end
+                if(~isempty(ref.jsonpath))
+                    newdata=getfromjsonpath(newdata,ref.jsonpath);
+                end
+            end
         end
     end
 
