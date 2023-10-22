@@ -222,7 +222,11 @@ end
 DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 for iEvt = 1:length(jnirs.nirs.stim)
     
-    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
+    if iscell(jnirs.nirs.stim(iEvt))
+        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim{iEvt}.name)));
+    else
+        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
+    end
     if ~isfield(jnirs.nirs.stim(iEvt), 'data')
             % Events structure
         warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
