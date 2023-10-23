@@ -98,7 +98,7 @@ for iChan = 1:nChannels
         ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                              jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
                                                              jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-        ChannelMat.Channel(iChan).Group = sprintf('WL%s', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+        ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
 
     end
     ChannelMat.Channel(iChan).Type = 'NIRS';
