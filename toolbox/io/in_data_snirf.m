@@ -44,8 +44,8 @@ scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     
-    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D', jnirs.nirs.probe.sourceLabels);
-    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D', jnirs.nirs.probe.detectorLabels);
+    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
+    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
 
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
     
@@ -91,7 +91,16 @@ ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
 for iChan = 1:nChannels
     % This assume measure are raw; need to change for Hbo,HbR,HbT
     channel = jnirs.nirs.data.measurementList(iChan);
-    [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+    if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+        [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+    else
+
+        ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
+                                                             jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
+                                                             jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+        ChannelMat.Channel(iChan).Group = sprintf('WL%s', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+
+    end
     ChannelMat.Channel(iChan).Type = 'NIRS';
     ChannelMat.Channel(iChan).Weight = 1;
     if ~isempty(src_pos) && ~isempty(det_pos)

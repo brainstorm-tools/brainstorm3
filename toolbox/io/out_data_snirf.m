@@ -62,10 +62,10 @@ end
 [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(nirs_channels).Name});
 
 src_pos     = zeros(length(unique(isrcs)),3); 
-src_label   = repmat( {''}, 1,length(unique(isrcs)));
+src_label   = repmat( "", 1,length(unique(isrcs)));
 src_Index   = zeros(length(unique(isrcs)),1);
 det_pos     = zeros(length(unique(idets)),3); 
-det_label   = repmat( {''}, 1,length(unique(idets)));
+det_label   = repmat( "", 1,length(unique(idets)));
 det_Index   = zeros(length(unique(isrcs)),1);
 
 % Set Measurment list
@@ -75,7 +75,7 @@ for ichan=1:n_channel
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
 
     if ~any(cellfun(@(x)strcmp(x, sprintf('S%d',isrc )), src_label))
-        src_label{nSrc} = sprintf('S%d',isrc );
+        src_label(nSrc) = sprintf("S%d",isrc );
         src_Index(nSrc) = isrc;
         src_pos(nSrc,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
 
@@ -83,7 +83,7 @@ for ichan=1:n_channel
     end
 
     if ~any(cellfun(@(x)strcmp(x, sprintf('D%d',idet )), det_label))
-        det_label{nDet} = sprintf('D%d',idet );
+        det_label(nDet) = sprintf("D%d",idet );
         det_Index(nDet) = idet;
         det_pos(nDet,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
 
@@ -110,11 +110,11 @@ snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
 
 snirfdata.SNIRFData.probe.sourcePos2D=src_pos(:,[1,2]);
 snirfdata.SNIRFData.probe.sourcePos3D=src_pos;
-snirfdata.SNIRFData.probe.sourceLabels = src_label';
+snirfdata.SNIRFData.probe.sourceLabels = src_label;
 
 snirfdata.SNIRFData.probe.detectorPos2D=det_pos(:,[1,2]);
 snirfdata.SNIRFData.probe.detectorPos3D=det_pos;
-snirfdata.SNIRFData.probe.detectorLabels=det_label';
+snirfdata.SNIRFData.probe.detectorLabels=det_label;
 
 
 % Set Stim 
