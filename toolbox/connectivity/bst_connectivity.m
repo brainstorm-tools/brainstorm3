@@ -153,9 +153,10 @@ end
 % Load kernel-based results as kernel+data for coherence and phase metrics only.
 % This is always for 1xN, i.e. the B side has all sources and the A side has only one signal.
 % Kernel on the A side is not implemented.
+methodsKernelBased = {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere'};
 LoadOptionsA.LoadFull = 1; % ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere','plv','ciplv','wpli'});  
 LoadOptionsB = LoadOptionsA;
-LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere','plv','ciplv','wpli'});
+LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, methodsKernelBased);
 % Use the signal processing toolbox?
 if bst_get('UseSigProcToolbox')
     hilbert_fcn = @hilbert;
@@ -472,6 +473,10 @@ for iFile = 1:nFiles
     sfreq = round(sfreq * 1e6) * 1e-6;
     nA = size(sInputA.Data,1);
     nB = size(sInputB.Data,1);
+    % Number of sources if B is kernel-based
+    if ~isempty(sInputB.ImagingKernel) && ismember(OPTIONS.Method, methodsKernelBased)
+        nB = size(sInputB.ImagingKernel, 1);
+    end
     
     % ===== CHECK UNCONSTRAINED SOURCES =====
     % Unconstrained models?
@@ -837,6 +842,10 @@ for iFile = 1:nFiles
                                     end
                                     HB = morlet_transform(sInputB.Data, sInputB.Time, OPTIONS.Freqs(iBand), OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
                                 end
+                        end
+                        % Apply kernel if needed
+                        if ~isConnNN && ~isempty(sInputB.ImagingKernel)
+                            HB = sInputB.ImagingKernel * HB;
                         end
                         % PLV: Normalize first, keep only phase info.
                         if ismember(OPTIONS.Method, {'plv', 'ciplv'})
