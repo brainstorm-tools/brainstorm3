@@ -1920,6 +1920,7 @@ switch (lower(action))
                 else
                     DataType = sStudy.Timefreq(iTimefreq).DataType;
                     DataFile = sStudy.Timefreq(iTimefreq).DataFile;
+                    Comment  = sStudy.Timefreq(iTimefreq).Comment;
                 end
                 % Get source model
                 if strcmpi(DataType, 'results')
@@ -1971,7 +1972,8 @@ switch (lower(action))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
-                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
+                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
@@ -1989,7 +1991,8 @@ switch (lower(action))
                             case 'results'
                                 % One channel
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))...
-                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
+                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
                                     gui_component('MenuItem', jMenuConn1, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     AddSeparator(jMenuConn1);
                                 end
@@ -2010,7 +2013,8 @@ switch (lower(action))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
-                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
+                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));

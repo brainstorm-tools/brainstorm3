@@ -546,8 +546,35 @@ for iFile = 1:nFiles
             DisplayUnits = 'Correlation';
             bst_progress('text', sprintf('Calculating: Correlation [%dx%d]...', nA, nB));
             Comment = 'Corr';
-            % All the correlations with one call
-            R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean); 
+            % Verify WinLen argument for windowed metric
+            if strcmpi(OPTIONS.TimeRes, 'windowed')
+                % Window length and overlap in samples
+                nWinLenSamples    = round(OPTIONS.WinLen * sfreq);
+                nWinOvelapSamples = round(OPTIONS.WinOverlap * nWinLenSamples);
+                if nWinLenSamples >= nTime
+                    Message = 'File time duration too short wrt requested window length. Only computing one estimate across all time.';
+                    bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                    % Avoid further checks and error messages.
+                    OPTIONS.TimeRes = 'none';
+                end
+            end
+            % Compute correlation
+            if strcmpi(OPTIONS.TimeRes, 'windowed')
+                Comment = [Comment '-time'];
+                % Get [start, end] indices for windows
+                [~, ixs] = bst_epoching(1 : length(sInputA.Time), nWinLenSamples, nWinOvelapSamples);
+                nTimeOut = size(ixs,1);
+                % Center of the time window (sample 1 = 0 s)
+                Time = reshape((mean(ixs, 2)-1) ./ sfreq, 1, []);
+                % Initialize R
+                R = zeros(nA, nB, nTimeOut);
+                for iWin = 1 : size(ixs, 1)
+                    R(:,:,iWin) = bst_corrn(sInputA.Data(:, ixs(iWin,1) : ixs(iWin,2)), sInputB.Data(:, ixs(iWin,1): ixs(iWin,2)), OPTIONS.RemoveMean);
+                end
+            else
+                % All the correlations with one call
+                R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean);
+            end
             
         % ==== GRANGER ====
         case 'granger'
@@ -1112,11 +1139,11 @@ function CleanExit
 end
 
 
+%% ===== ASSEMBLE CONNECTIVITY METRIC FROM ACCUMULATED TERMS =====
 function NewFile = Finalize(DataFile)
     if nargin < 1
         DataFile = [];
     end
-    %% ===== ASSEMBLE CONNECTIVITY METRIC FROM ACCUMULATED TERMS =====
     if isstruct(R)
         switch OPTIONS.Method
             case 'plv'
