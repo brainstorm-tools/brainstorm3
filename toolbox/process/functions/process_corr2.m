@@ -22,6 +22,7 @@ function varargout = process_corr2( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Raymundo Cassani, 2023
 
 eval(macro_method);
 end
@@ -44,6 +45,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
+    % === TIME RESOLUTION
+    sProcess.options.timeres.Comment = {'Windowed', 'None', '<B>Time resolution:</B>'; ...
+                                        'windowed', 'none', ''};
+    sProcess.options.timeres.Type    = 'radio_linelabel';
+    sProcess.options.timeres.Value   = 'none';
+    sProcess.options.timeres.Controller = struct('windowed', 'windowed', 'none', 'nowindowed');
+    % === WINDOW LENGTH
+    sProcess.options.avgwinlength.Comment = '&nbsp;&nbsp;&nbsp;Time window length:';
+    sProcess.options.avgwinlength.Type    = 'value';
+    sProcess.options.avgwinlength.Value   = {1, 's', []};
+    sProcess.options.avgwinlength.Class   = 'windowed';
+    % === WINDOW OVERLAP
+    sProcess.options.avgwinoverlap.Comment = '&nbsp;&nbsp;&nbsp;Time window overlap:';
+    sProcess.options.avgwinoverlap.Type    = 'value';
+    sProcess.options.avgwinoverlap.Value   = {50, '%', []};
+    sProcess.options.avgwinoverlap.Class   = 'windowed';
     % === SCALAR PRODUCT
     sProcess.options.scalarprod.Comment = 'Compute scalar product instead of correlation<BR>(do not remove average of the signal)';
     sProcess.options.scalarprod.Type    = 'checkbox';
@@ -76,6 +93,12 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.Method     = 'corr';
     OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
+    if strcmpi(sProcess.options.timeres.Value, 'windowed')
+        OPTIONS.WinLen = sProcess.options.avgwinlength.Value{1};
+        OPTIONS.WinOverlap = sProcess.options.avgwinoverlap.Value{1}/100;
+    end
+    % Time-resolved; now option, no longer separate process
+    OPTIONS.TimeRes = sProcess.options.timeres.Value;
     
     % Compute metric
     OutputFiles = bst_connectivity(sInputA, sInputB, OPTIONS);

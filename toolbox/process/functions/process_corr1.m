@@ -45,7 +45,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
-    % === TIME AVERAGING
+    % === TIME RESOLUTION
     sProcess.options.timeres.Comment = {'Windowed', 'None', '<B>Time resolution:</B>'; ...
                                         'windowed', 'none', ''};
     sProcess.options.timeres.Type    = 'radio_linelabel';
@@ -99,6 +99,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
     % Time-resolved; now option, no longer separate process
     OPTIONS.TimeRes = sProcess.options.timeres.Value;
+
     % Compute metric
     OutputFiles = bst_connectivity(sInputA, sInputA, OPTIONS);
 end
