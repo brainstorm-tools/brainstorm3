@@ -300,22 +300,28 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF',
 end
 
 
+%% ===== INTERNET CONNECTION =====
+% Check internet connection
+fprintf(1, 'BST> Checking internet connectivity... ');
+[GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
+if GlobalData.Program.isInternet
+    disp('ok');
+else
+    disp('failed');
+end
+
+
 %% ===== AUTOMATIC UPDATES =====
-% Automatic updates disabled: do not check for internet connection
+% Automatic updates disabled
 if ~bst_get('AutoUpdates')
     disp('BST> Warning: Automatic updates are disabled.');
     disp('BST> Warning: Make sure your version of Brainstorm is up to date.');
 % Matlab is running: check for updates
 elseif ~isCompiled && (GuiLevel == 1)
-    % Check internect connection
-    fprintf(1, 'BST> Checking internet connectivity... ');
-    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
     % If no internet connection
     if ~GlobalData.Program.isInternet
-        disp('failed');
         disp('BST> Could not check for Brainstorm updates.')
     else
-        disp('ok');
         % Determine if release is old (local version > 30 days older than online version)
         daysOnline = onlineRel.year*365 + onlineRel.month*30 + onlineRel.day;
         daysLocal  =  localRel.year*365 +  localRel.month*30 +  localRel.day;
