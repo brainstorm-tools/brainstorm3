@@ -156,6 +156,8 @@ end
 if ~isempty(FileName) && strcmpi(file_gettype(FileName), 'timefreq') && ~isempty(strfind(FileName, '_connectn'))
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesImage');
     set(hAxes, 'DataAspectRatio', [1 1 1]);
+    title(hAxes, DisplayUnits)
+    DisplayUnits = '';
 end
 
 
