@@ -273,6 +273,8 @@ end
 
 %% ===== DRAW FIGURE =====
 figure_connect('LoadFigurePlot', hFig);
+% Update figure title
+bst_figures('UpdateFigureName', hFig);
 
 %% ===== UPDATE ENVIRONMENT =====
 % Update figure selection
