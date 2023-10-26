@@ -52,6 +52,26 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
                   'WindowScrollWheelFcn',  @(h, ev)FigureMouseWheelCallback(h, ev), ...
                   bst_get('ResizeFunction'), @(h, ev)ResizeCallback(h, ev));
+
+    % === CREATE AXES ===
+    hAxeT = axes('Parent',        hFig, ...
+                 'Units',         'normalized', ...
+                 'Position',      [0 .95 1 .05], ...
+                 'Tag',           'AxesTitle', ...
+                 'FontName',      'Default', ...
+                 'Visible',       'off', ...
+                 'BusyAction',    'queue', ...
+                 'Interruptible', 'off');
+
+    hTxtT = text(0.5, 0.5, '', ...
+                 'Parent',              hAxeT, ...
+                 'color',               [1,1,1], ...
+                 'Units',               'normalized', ...
+                 'FontSize',            1.1 * bst_get('FigFont') , ... % title() is 1.1 FontSize
+                 'FontWeight',          'bold', ...
+                 'HorizontalAlignment', 'center', ...
+                 'Tag',                 'TextTitle', ...
+                 'ButtonDownFcn',       @TitleButtonDownFcn);
     
     % === CREATE AXES ===
     hAxes = axes('Parent',        hFig, ...
@@ -61,6 +81,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                  'Visible',       'off', ...
                  'BusyAction',    'queue', ...
                  'Interruptible', 'off');
+
 
     % === APPDATA STRUCTURE ===
     setappdata(hFig, 'FigureId', FigureId);
@@ -1410,6 +1431,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     RefreshTextDisplay(hFig);
     % Display region and hem lobes?
     SetHierarchyNodeIsVisible(hFig, DispOptions.HierarchyNodeIsVisible);
+    % Set title
+    SetTitle(hFig, TfInfo.DisplayUnits);
     % Position camera
     DefaultCamera(hFig);
 end
@@ -2471,7 +2494,7 @@ function UpdateColormap(hFig)
     end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
-    ColormapInfo.DisplayUnits = TfInfo.DisplayUnits;
+    ColormapInfo.DisplayUnits = 'No units';
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
     % Set figure colormap
     set(hFig, 'Colormap', sColormap.CMap);
@@ -3976,4 +3999,19 @@ function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
     %
     bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
-end 
+end
+
+%% ===== SET TITLE =====
+function SetTitle(hFig, title)
+    hTxtT = findobj(hFig, '-depth', 2, 'Tag', 'TextTitle');
+    set(hTxtT, 'String', title);
+    TitleButtonDownFcn(hFig, 0);
+end
+
+%% Callbacks for Title
+% Set current axes to AxesConnect
+function TitleButtonDownFcn(src, ~)
+    hFig = ancestor(src, 'figure');
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
+    axes(hAxes);
+end

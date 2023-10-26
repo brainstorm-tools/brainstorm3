@@ -99,16 +99,7 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
-    if ~isempty(sProcess.options.cohmeasure.Value)
-        iMethod = find(strcmpi(sProcess.options.cohmeasure.Comment(2,:), sProcess.options.cohmeasure.Value));
-        if ~isempty(iMethod)
-            Comment = str_striptag(sProcess.options.cohmeasure.Comment{1,iMethod});
-        else
-            Comment = sProcess.Comment;
-        end
-    else
-        Comment = sProcess.Comment;
-    end
+    Comment = sProcess.Comment;
 end
 
 

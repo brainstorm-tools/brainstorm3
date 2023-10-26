@@ -53,9 +53,9 @@ function sProcess = GetDescription()
     sProcess.options.label1.Comment = '<B>Connectivity Metric:</B>';
     sProcess.options.label1.Type    = 'label';
     sProcess.options.cohmeasure.Comment = {...
-        'Magnitude-squared coherence:  |C|^2 = |Cxy|^2/(Cxx*Cyy)', ...
-        'Imaginary coherence:  IC = |imag(C)|', ...
-        'Lagged coherence / Corrected imaginary coherence:  LC = |imag(C)|/sqrt(1-real(C)^2)'; ...
+        'Magnitude-squared coherence', ...
+        'Imaginary coherence', ...
+        'Lagged coherence / Corrected imaginary coherence'; ...
         'mscohere', 'icohere2019','lcohere2019'}; % , 'icohere'
 %         '<FONT color="#777777"> Squared Lagged Coherence ("imaginary coherence" before 2019)</FONT>' ...
     sProcess.options.cohmeasure.Type    = 'radio_label';
@@ -99,16 +99,7 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
-    if ~isempty(sProcess.options.cohmeasure.Value)
-        iMethod = find(strcmpi(sProcess.options.cohmeasure.Comment(2,:), sProcess.options.cohmeasure.Value));
-        if ~isempty(iMethod)
-            Comment = str_striptag(sProcess.options.cohmeasure.Comment{1,iMethod});
-        else
-            Comment = sProcess.Comment;
-        end
-    else
-        Comment = sProcess.Comment;
-    end
+    Comment = sProcess.Comment;
 end
 
 
