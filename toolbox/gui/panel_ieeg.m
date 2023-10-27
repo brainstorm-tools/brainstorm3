@@ -122,9 +122,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     % ComboBox change selection callback
                     jModel = jComboModel.getModel();
                     java_setcb(jModel, 'ContentsChangedCallback', @(h,ev)bst_call(@ComboModelChanged_Callback,h,ev));
+                    % Actions
+                    gui_component('label',  jPanelModel, 'br', 'Actions: ');
                     % Add/remove models
-                    gui_component('button', jPanelModel,'right',[], {IconLoader.ICON_PLUS, java_scaled('dimension',22,22)}, 'Add new electrode model', @(h,ev)bst_call(@AddElectrodeModel));
-                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_MINUS, java_scaled('dimension',22,22)}, 'Remove electrode model', @(h,ev)bst_call(@RemoveElectrodeModel));
+                    gui_component('button', jPanelModel, [],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode model', @(h,ev)bst_call(@AddElectrodeModel));
+                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove electrode model', @(h,ev)bst_call(@RemoveElectrodeModel));
+                    % Save/load models
+                    gui_component('button', jPanelModel, [],[], {IconLoader.ICON_SAVE, TB_DIM}, 'Save electrode model to file', @(h,ev)bst_call(@SaveElectrodeModel));
+                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_FOLDER_OPEN, TB_DIM}, 'Load electrode model from file', @(h,ev)bst_call(@LoadElectrodeModel));
+                    % Export/import models
+                    gui_component('button', jPanelModel, [],[], {IconLoader.ICON_MATLAB_EXPORT, TB_DIM}, 'Export electrode model to Matlab', @(h,ev)bst_call(@ExportElectrodeModel));
+                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_MATLAB_IMPORT, TB_DIM}, 'Import electrode model from Matlab', @(h,ev)bst_call(@ImportElectrodeModel));
                 jPanelElecOptions.add('br hfill', jPanelModel);
 
                 % Number of contacts
@@ -1343,67 +1351,72 @@ function SetSelectedModel(selModel)
 end
 
 %% ===== ADD ELECTRODE MODEL =====
-function AddElectrodeModel()
+function AddElectrodeModel(sNewModel)
     global GlobalData;
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl) || isempty(ctrl.jListElec)
         return
     end
-    % === ECOG ===
-    if ctrl.jRadioEcog.isSelected() || ctrl.jRadioEcogMid.isSelected()
-        % Ask for all the elecgtrode options
-        res = java_dialog('input', {...
-            'Manufacturer and model (ECOG):', ...
-            'Number of contacts:', ...
-            'Contact spacing (mm):', ...
-            'Contact height (mm):', ...
-            'Contact diameter (mm):', ...
-            'Wire width (points):'}, 'Add new model', [], ...
-            {'', '', '3.5', '0.8', '2', '0.5'});
-        if isempty(res) || isempty(res{1})
-            return;
+    % If sNewModel is not provided, ask the user
+    if (nargin < 1) || isempty(sNewModel)
+        % === ECOG ===
+        if ctrl.jRadioEcog.isSelected() || ctrl.jRadioEcogMid.isSelected()
+            % Ask for all the electrode options
+            res = java_dialog('input', {...
+                'Manufacturer and model (ECOG):', ...
+                'Number of contacts:', ...
+                'Contact spacing (mm):', ...
+                'Contact height (mm):', ...
+                'Contact diameter (mm):', ...
+                'Wire width (points):'}, 'Add new model', [], ...
+                {'', '', '3.5', '0.8', '2', '0.5'});
+            if isempty(res) || isempty(res{1})
+                return;
+            end
+            % Get all the values
+            sNew = db_template('intraelectrode');
+    %         if ctrl.jRadioEcog.isSelected()
+    %             sNew.Type = 'ECOG';
+    %         elseif ctrl.jRadioEcogMid.isSelected()
+    %             sNew.Type = 'ECOG-mid';
+    %         end
+            sNew.Type            = 'ECOG';
+            sNew.Model           = res{1};
+            sNew.ContactNumber   = str2num(res{2});
+            sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
+            sNew.ContactLength   = str2num(res{4}) ./ 1000;
+            sNew.ContactDiameter = str2num(res{5}) ./ 1000;
+            sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
+            sNew.ElecLength      = 0;
+        % === SEEG ===
+        else
+            % Ask for all the electrode options
+            res = java_dialog('input', {...
+                'Manufacturer and model (SEEG):', ...
+                'Number of contacts:', ...
+                'Contact spacing (mm):', ...
+                'Contact length (mm):', ...
+                'Contact diameter (mm):', ...
+                'Electrode diameter (mm):', ...
+                'Electrode length (mm):'}, 'Add new model', [], ...
+                {'', '', '3.5', '2', '0.8', '0.7', '70'});
+            if isempty(res) || isempty(res{1})
+                return;
+            end
+            % Get all the values
+            sNew = db_template('intraelectrode');
+            sNew.Model           = res{1};
+            sNew.Type            = 'SEEG';
+            sNew.ContactNumber   = str2num(res{2});
+            sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
+            sNew.ContactLength   = str2num(res{4}) ./ 1000;
+            sNew.ContactDiameter = str2num(res{5}) ./ 1000;
+            sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
+            sNew.ElecLength      = str2num(res{7}) ./ 1000;
         end
-        % Get all the values
-        sNew = db_template('intraelectrode');
-%         if ctrl.jRadioEcog.isSelected()
-%             sNew.Type = 'ECOG';
-%         elseif ctrl.jRadioEcogMid.isSelected()
-%             sNew.Type = 'ECOG-mid';
-%         end
-        sNew.Type            = 'ECOG';
-        sNew.Model           = res{1};
-        sNew.ContactNumber   = str2num(res{2});
-        sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
-        sNew.ContactLength   = str2num(res{4}) ./ 1000;
-        sNew.ContactDiameter = str2num(res{5}) ./ 1000;
-        sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
-        sNew.ElecLength      = 0;
-    % === SEEG ===
     else
-        % Ask for all the elecgtrode options
-        res = java_dialog('input', {...
-            'Manufacturer and model (SEEG):', ...
-            'Number of contacts:', ...
-            'Contact spacing (mm):', ...
-            'Contact length (mm):', ...
-            'Contact diameter (mm):', ...
-            'Electrode diameter (mm):', ...
-            'Electrode length (mm):'}, 'Add new model', [], ...
-            {'', '', '3.5', '2', '0.8', '0.7', '70'});
-        if isempty(res) || isempty(res{1})
-            return;
-        end
-        % Get all the values
-        sNew = db_template('intraelectrode');
-        sNew.Model           = res{1};
-        sNew.Type            = 'SEEG';
-        sNew.ContactNumber   = str2num(res{2});
-        sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
-        sNew.ContactLength   = str2num(res{4}) ./ 1000;
-        sNew.ContactDiameter = str2num(res{5}) ./ 1000;
-        sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
-        sNew.ElecLength      = str2num(res{7}) ./ 1000;
+        sNew = sNewModel;
     end
     % Get available models
     sModels = GetElectrodeModels();
@@ -1446,6 +1459,117 @@ function RemoveElectrodeModel()
     GlobalData.Preferences.IntraElectrodeModels = sModels;
     % Update list of models
     UpdateElecProperties();
+end
+
+
+%% ===== SAVE ELECTRODE MODEL =====
+function SaveElectrodeModel()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl) || isempty(ctrl.jListElec)
+        return
+    end
+    % Get selected model
+    [iModel, sModels] = GetSelectedModel();
+    if isempty(iModel)
+        return;
+    end
+    % Build a default file name
+    LastUsedDirs = bst_get('LastUsedDirs');
+    ModelFile = bst_fullfile(LastUsedDirs.ExportChannel, ['intraelectrode_', file_standardize(sModels(iModel).Model), '.mat']);
+    % Get filename where to store the filename
+    [ModelFile, FileFormat] = java_getfile('save', 'Save selected electrode model', ModelFile, ...
+                             'single', 'files', ...
+                             {{'_model'}, 'Brainstorm intracranial electrode model (*intraelectrode*.mat)', 'BST'}, 1);
+    if isempty(ModelFile)
+        return;
+    end
+    % Save last used folder
+    LastUsedDirs.ExportChannel = bst_fileparts(ModelFile);
+    bst_set('LastUsedDirs',  LastUsedDirs);
+    % Switch file format
+    switch (FileFormat)
+        case 'BST'
+            % Make sure that filename contains the 'intraelectrode' tag
+            if isempty(strfind(ModelFile, '_intraelectrode')) && isempty(strfind(ModelFile, 'intraelectrode_'))
+                [filePath, fileBase, fileExt] = bst_fileparts(ModelFile);
+                ModelFile = bst_fullfile(filePath, ['intraelectrode_' fileBase fileExt]);
+            end
+            % Save file
+            bst_save(ModelFile, sModels(iModel), 'v7');
+    end
+end
+
+
+%% ===== LOAD ELECTRODE MODEL =====
+function LoadElectrodeModel()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl) || isempty(ctrl.jListElec)
+        return
+    end
+    % Get last used folder
+    LastUsedDirs = bst_get('LastUsedDirs');
+    % Get label files
+    [ModelFiles, FileFormat] = java_getfile( 'open', ...
+       'Import intracranial electrode models...', ...  % Window title
+       LastUsedDirs.ImportChannel, ...                 % Default directory
+       'multiple', 'files', ...                        % Selection mode
+       {{'_intraelectrode'}, 'Brainstorm intracranial electrode model (*intraelectrode*.mat)', 'BST'}, ...
+       'BST');
+    % If no file was selected: exit
+    if isempty(ModelFiles)
+        return
+    end
+    % Save last used dir
+    LastUsedDirs.ImportChannel = bst_fileparts(ModelFiles{1});
+    bst_set('LastUsedDirs',  LastUsedDirs);
+    for iFile = 1 : length(ModelFiles)
+        switch FileFormat
+            case 'BST'
+                % Load file
+                sModel = load(ModelFiles{iFile});
+                % Add electrode model
+                AddElectrodeModel(sModel);
+                fprintf(1, 'Intracranial electrode model "%s" was loaded\n', sModel.Model);
+        end
+    end
+end
+
+
+%% ===== EXPORT ELECTRODE MODEL =====
+function ExportElectrodeModel()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl) || isempty(ctrl.jListElec)
+        return
+    end
+    % Get selected model
+    [iModel, sModels] = GetSelectedModel();
+    if isempty(iModel)
+        return;
+    end
+    % Export to the base workspace
+    export_matlab(sModels(iModel), []);
+end
+
+
+%% ===== IMPORT ELECTRODE MODEL =====
+function ImportElectrodeModel()
+    % Import from base workspace
+    sModel = in_matlab_var([], 'struct');
+    if isempty(sModel)
+        return;
+    end
+    % Check structure
+    sTemplate = db_template('intraelectrode');
+    if ~isequal(fieldnames(sModel), fieldnames(sTemplate))
+        bst_error('Invalid intracranial electrode model structure.', 'Import from Matlab', 0);
+        return;
+    end
+    % Add electrode model
+    AddElectrodeModel(sModel);
+    fprintf(1, 'Intracranial electrode model "%s" was imported\n', sModel.Model);
 end
 
 
