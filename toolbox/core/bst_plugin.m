@@ -598,6 +598,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
+
+    % === NEUROMAPS ===
+    PlugDesc(end+1)              = GetStruct('neuromaps');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/thuy-n/bst-neuromaps/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = '';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_corr_maps.m';
     % ================================================================================================================
     
     % Select only one plugin
