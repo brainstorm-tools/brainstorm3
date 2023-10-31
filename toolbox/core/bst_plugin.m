@@ -766,8 +766,11 @@ end
 %% ===== GET GITHUB COMMIT =====
 % Get SHA of the GitHub HEAD commit
 function sha = GetGithubCommit(URLzip)
+    zipUri = matlab.net.URI(URLzip);
+    % Primary branch name: master or main
+    [~, primaryBranch] = bst_fileparts(char(zipUri.Path(end)));
     % Default result
-    sha = 'github-master';
+    sha = ['github-', primaryBranch];
     % Only available after Matlab 2016b (because of matlab.net.http.RequestMessage)
     if (bst_get('MatlabVersion') < 901)
         return;
@@ -779,7 +782,7 @@ function sha = GetGithubCommit(URLzip)
         gitUser = char(zipUri.Path(2));
         gitRepo = char(zipUri.Path(3));
         % Request last commit SHA with GitHub API
-        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/master']);
+        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/' primaryBranch]);
         request = matlab.net.http.RequestMessage;
         request = request.addFields(matlab.net.http.HeaderField('Accept', 'application/vnd.github.VERSION.sha'));
         r = send(request, apiUri);
