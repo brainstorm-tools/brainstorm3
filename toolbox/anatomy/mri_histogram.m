@@ -23,11 +23,11 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 %         |- max[4]     : array of the 4 most important maxima (structure)
 %         |    |- x     : intensity of the given maximum
 %         |    |- y     : amplitude of this maximum (number of MRI voxels with this value)
-%         |    |- power : difference of this maximum and the adjacent minima
+%         |    |- power : difference of this maximum and the adjacent minimum
 %         |- min[4]     : array of the 3 most important minima (structure)
 %         |    |- x     : intensity of the given minimum
 %         |    |- y     : amplitude of this minimum (number of MRI voxels with this value)
-%         |    |- power : difference of this minimum and the adjacent maxima
+%         |    |- power : difference of this minimum and the adjacent maximum
 %         |- bgLevel    : intensity value that separates the background and the objects (estimation)
 %         |- whiteLevel : white matter threshold
 %         |- intensityMax : maximum value in the volume
@@ -179,7 +179,7 @@ else
         Histogram.max(i).y = histoY(maxIndex(i));
         if(length(minIndex)>=1)
             % If there is at least a minimum, power = distance between
-            % maximum and adjacent minima
+            % maximum and adjacent minimum
             Histogram.max(i).power = histoY(maxIndex(i)) - (histoY(minIndex(max(1, i-1))) + histoY(minIndex(min(length(minIndex), i))))./2;
         else
             % Else power = maximum value
@@ -237,12 +237,12 @@ switch(volumeType)
         elseif (length(cat(1,Histogram.max.x)) < 2)
             Histogram.bgLevel = defaultBg;
             Histogram.whiteLevel = defaultWhite;
-        % Else if there is more than one maxima :
+        % Else if there is more than one maximum :
         else
-            % If the highest maxima is > (3*second highest maxima) : 
-            % it is a background maxima : use the first minima after the
-            % background maxima as background threshold
-            % (and if this minima exist)
+            % If the highest maximum is > (3*second highest maximum) : 
+            % it is a background maximum : use the first minimum after the
+            % background maximum as background threshold
+            % (and if this minimum exist)
             [orderedMaxVal, orderedMaxInd] = sort(cat(1,Histogram.max.y), 'descend');
             if ((orderedMaxVal(1) > 3*orderedMaxVal(2)) && (length(Histogram.min) >= orderedMaxInd(1)))
                 Histogram.bgLevel = Histogram.min(orderedMaxInd(1)).x;
@@ -251,7 +251,20 @@ switch(volumeType)
                 Histogram.bgLevel = defaultBg;
             end
         end
-        
+
+    case 'headgrad'
+        dX = mean(diff(Histogram.smoothFncX));
+        %Deriv = gradient(Histogram.smoothFncY, dX);
+        %SecondDeriv = gradient(Deriv, dX);
+        RemainderCumul = Histogram.smoothFncY ./ cumsum(Histogram.smoothFncY, 2, 'reverse');
+        DerivRC = gradient(RemainderCumul, dX);
+        %DerivRC2 = Deriv ./ cumsum(Histogram.smoothFncY, 2, 'reverse');
+        %figure; plot(Histogram.smoothFncX', [RemainderCumul', DerivRC']); legend({'hist/remaining', 'derivative'});
+        % Pick point where things flatten.
+        Histogram.bgLevel = Histogram.smoothFncX(find(DerivRC > -0.005 & DerivRC < DerivRC([2:end, end]), 1) + 2);
+        % Can't get white matter with gradient.
+        Histogram.whiteLevel = 0;
+
     case 'brain'
         % Determine an intensity value for the background/gray matter limit
         % and the gray matter/white matter level
@@ -327,6 +340,5 @@ switch(volumeType)
 end % --- END SWITCH ---
 
 end
-
 
     

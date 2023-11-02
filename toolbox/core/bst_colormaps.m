@@ -376,18 +376,23 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        % Find 1st surface that match this ColormapType
-                        iTess = find(strcmpi({TessInfo.ColormapType}, ColormapType), 1);
+                        % Find surfaces that match this ColormapType
+                        iSurfaces = find(strcmpi({TessInfo.ColormapType}, ColormapType));
                         DataFig = [];
-                        if ~isempty(iTess) && ~isempty(TessInfo(iTess).DataSource.Type)
-                            DataFig = TessInfo(iTess).DataMinMax;
-                            DataType = TessInfo(iTess).DataSource.Type;
-                            % For Data: use the modality instead
-                            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
-                                DataType = upper(ColormapInfo.Type);
-                            % sLORETA: Do not use regular source scaling (pAm)
-                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
-                                DataType = 'sLORETA';
+                        for i = 1:length(iSurfaces)
+                            iTess = iSurfaces(i);
+                            if ~isempty(TessInfo(iTess).DataSource.Type)
+                                DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
+                                    max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
+                                % We'll keep the last non-empty DataType
+                                DataType = TessInfo(iTess).DataSource.Type;
+                                % For Data: use the modality instead
+                                if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                    DataType = upper(ColormapInfo.Type);
+                                % sLORETA: Do not use regular source scaling (pAm)
+                                elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
+                                    DataType = 'sLORETA';
+                                end
                             end
                         end
                         if isempty(DataFig)
@@ -1329,7 +1334,7 @@ function SetColormapRealMin(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
-function SetMaxMode(ColormapType, maxmode, DisplayUnits)
+function SetMaxMode(ColormapType, maxmode, DisplayUnits, varargin)
     % Parse inputs
     if (nargin < 3) || isempty(DisplayUnits)
         DisplayUnits = [];
@@ -1340,7 +1345,7 @@ function SetMaxMode(ColormapType, maxmode, DisplayUnits)
     end
     % Custom: ask for custom values
     if strcmpi(maxmode, 'custom')
-        SetMaxCustom(ColormapType, DisplayUnits);
+        SetMaxCustom(ColormapType, DisplayUnits, varargin{:});
     else
         % Update colormap
         sColormap = GetColormap(ColormapType);
