@@ -2030,8 +2030,15 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
                 DataType = upper(ColormapInfo.Type);
             % sLORETA: Do not use regular source scaling (pAm)
-            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
-                DataType = 'sLORETA';
+            elseif strcmpi(DataType, 'Source')
+                if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
+                    DataType = 'sLORETA';
+                else
+                    sResultsMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'Function');
+                    if ~isempty(strfind(lower(sResultsMat.Function), 'sloreta'))
+                        DataType = 'sLORETA';
+                    end
+                end
             end
         end     
         % === DISPLAY ON MRI ===
