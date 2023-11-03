@@ -1957,6 +1957,7 @@ end
 
 %% ===== UPDATE SURFACE COLORMAP =====
 function UpdateSurfaceColormap(hFig, iSurfaces)
+    global GlobalData;
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
@@ -2034,8 +2035,8 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
                 if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                     DataType = 'sLORETA';
                 else
-                    sResultsMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'Function');
-                    if ~isempty(strfind(lower(sResultsMat.Function), 'sloreta'))
+                    [iDS, iResult] = bst_memory('LoadResultsFile', TessInfo(iTess).DataSource.FileName, 0);
+                    if ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'));
                         DataType = 'sLORETA';
                     end
                 end
