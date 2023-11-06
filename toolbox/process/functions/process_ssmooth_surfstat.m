@@ -55,12 +55,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.fwhm.Comment = '<B>FWHM</B> (Full width at half maximum):  ';
     sProcess.options.fwhm.Type    = 'value';
     sProcess.options.fwhm.Value   = {3, 'mm', 0};
-
-
-    sProcess.options.method.Comment = {'2016 (old)', '2023 - fixed FWHM (recomended)','2023 - Changing FWHM (slow)','Method :'; ...
-                                            '2016', '2023_fixed', '2023_adptive',''};
-    sProcess.options.method.Type    = 'radio_linelabel';
-    sProcess.options.method.Value   = '2016';
+    % === METHOD
+    sProcess.options.label.Comment = '<B>Method:</B>';
+    sProcess.options.label.Type    = 'label';
+    sProcess.options.method.Comment = {'<FONT color="#777777">Before 2023 (not recommended)</FONT>', ...
+                                       'Fixed FWHM for all surfaces', ...
+                                       'Adjust FWHM for each disconnected surface (slower)'; ...
+                                       'before_2023', 'fixed_fwhm', 'adaptive_fwhm'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'before_2023';
 end
 
 
@@ -80,6 +83,11 @@ end
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
+    if ~isfield(sProcess.options, 'method') || isempty(sProcess.options.method.Value)
+        method = 'before_2023';
+    else
+        method = sProcess.options.method.Value;
+    end
     FWHM = sProcess.options.fwhm.Value{1} / 1000;
 
     % ===== LOAD DATA =====
@@ -116,9 +124,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== PROCESS =====
     % Smooth surface
-    method = sProcess.options.method.Value;
-
-    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM,method);
+    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
     bst_report('Info', sProcess, sInput, msgInfo);
 
     % Force the output comment
@@ -127,8 +133,8 @@ end
 
 function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
 
-    if strcmp(version,'2023_adptive')
-        % smooth each connenected part of the surface separately 
+    if strcmp(version,'adaptive_fwhm')
+        % Smooth each connenected part of the surface separately
         % first estimate the connected regions 
 
         A = SurfaceMat.VertConn;
@@ -150,7 +156,7 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
             end
         end
 
-        %smooth each region separately 
+        % Smooth each region separately
         for i = 1:length(subgraph)
             sSubRegion = SurfaceMat;
             sSubRegion.Vertices = SurfaceMat.Vertices(subgraph{i},:);
@@ -171,7 +177,7 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
 
             sSubRegion.VertConn = SurfaceMat.VertConn( subgraph{i},subgraph{i});
 
-            [sData( subgraph{i},:,:), msgInfo] = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, '2023_fixed');
+            [sData( subgraph{i},:,:), msgInfo] = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, 'fixed_fwhm');
         end
         return;
     end
@@ -181,10 +187,9 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
 
     % Get the average edge length
     [vi,vj] = find(SurfaceMat.VertConn);
-    
-    if strcmp(version,'2016')
+    if strcmp(version,'before_2023')
         Vertices = SurfaceMat.VertConn;
-    elseif strcmp(version,'2023_fixed')
+    elseif strcmp(version,'fixed_fwhm')
         Vertices = SurfaceMat.Vertices;
     end
 
