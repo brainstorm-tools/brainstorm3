@@ -610,7 +610,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = '';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).TestFile       = 'process_corr_maps.m';
+    PlugDesc(end).TestFile       = 'process_np_fetch_maps.m';
     % ================================================================================================================
     
     % Select only one plugin
