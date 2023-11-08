@@ -105,7 +105,8 @@ function [varargout] = bst_plugin(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel 2021-2023
+% Authors: Francois Tadel, 2021-2023
+%          Chinmay Chinara, 2023
 
 eval(macro_method);
 end
