@@ -106,7 +106,6 @@ function [varargout] = bst_plugin(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2021-2023
-%          Chinmay Chinara, 2023
 
 eval(macro_method);
 end

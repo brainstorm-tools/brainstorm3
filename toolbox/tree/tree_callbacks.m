@@ -31,7 +31,6 @@ function jPopup = tree_callbacks( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2023
-%          Chinmay Chinara, 2023
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
