@@ -3767,7 +3767,4 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
     if isempty(MriFileReg) || ~isempty(errMsg)
         bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
     end
-end
-
-
-    
+end 

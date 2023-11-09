@@ -465,10 +465,4 @@ else
     if ~isProgress
         bst_progress('stop');
     end
-end
-
-
-
-
-
-    
+end 
