@@ -38,6 +38,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2016-2023
+%          Chinmay Chinara, 2023
 
 % ===== LOAD INPUTS =====
 % Parse inputs
@@ -233,7 +234,60 @@ switch lower(Method)
         end
         % Output file tag
         fileTag = '_mni';
+
+    % ===== CT2MRIREG =====
+    case 'ct2mri'
+        % Check if ct2mrireg plugin is installed
+        [isInstalled, errMsg] = bst_plugin('Install', 'ct2mrireg');
+        if ~isInstalled
+            if ~isProgress
+                bst_progress('stop');
+            end
+            return;
+        end
+
+        % Save files in tmp directory
+        bst_progress('text', 'Saving temporary files...');
+        % Get temporary folder
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'ct2mrireg');
+        % Save source CT in .nii format
+        NiiSrcFile = bst_fullfile(TmpDir, 'ct2mri_src.nii');
+        out_mri_nii(sMriSrc, NiiSrcFile);
+        % Save reference MRI in .nii format
+        NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
+        out_mri_nii(sMriRef, NiiRefFile);
+
+        % Save registered file in .nii.gz format
+        NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
+        bst_progress('text', 'Performing co-registration using ct2mrireg plugin...');
+        NiiRegFile = ct2mrireg(NiiSrcFile, NiiRefFile, NiiRegFile);
+
+        % Read output volume
+        sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
+
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
+        % Output file tag
+        fileTag = '_ct2mri';
         
+        % === UPDATE FIDUCIALS ===
+        if isReslice
+            % Use the reference SCS coordinates
+            if isfield(sMriRef, 'SCS')
+                sMriReg.SCS = sMriRef.SCS;
+            end
+            % Use the reference NCS coordinates
+            if isfield(sMriRef, 'NCS')
+                sMriReg.NCS = sMriRef.NCS;
+            end
+
+            % Reslice the volume
+            [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
+        else
+            isUpdateScs = 1;
+            isUpdateNcs = 1;
+        end
+
     % ===== VOX2RAS =====
     case 'vox2ras'
         % Nothing to do, just reslice if needed
