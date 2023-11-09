@@ -106,7 +106,6 @@ function [varargout] = bst_plugin(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2021-2023
-%          Chinmay Chinara, 2023
 
 eval(macro_method);
 end
@@ -192,7 +191,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
-    
+
     % === ANATOMY: CT2MRIREG ===
     % this plugin is used for performing CT to MRI co-registration
     PlugDesc(end+1)              = GetStruct('ct2mrireg');
@@ -202,7 +201,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLzip         = 'https://github.com/ajoshiusc/USCCleveland/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/USCCleveland/tree/master/ct2mrireg';
     PlugDesc(end).TestFile       = 'ct2mrireg.m';
-    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).ReadmeFile     = 'ct2mrireg/README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'ct2mrireg'};
     PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
@@ -2806,4 +2805,3 @@ function SetProgressLogo(PlugDesc)
         end
     end
 end
-

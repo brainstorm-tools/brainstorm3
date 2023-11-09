@@ -1,5 +1,5 @@
 function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
-% IMPORT_MRI: Import a MRI/CT file in a subject of the Brainstorm database
+% IMPORT_MRI: Import a volume file (MRI, Atlas, CT, etc) in a subject of the Brainstorm database
 % 
 % USAGE: [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
@@ -70,6 +70,15 @@ if (iSubject == 0)
 else
     sSubject = ProtocolSubjects.Subject(iSubject);
 end
+% Volume type
+volType = 'MRI';
+if ~isempty(strfind(Comment, 'CT'))
+    volType = 'CT';
+end
+% Get node comment from filename
+if ~isempty(strfind(Comment, 'Import'))
+    Comment = [];
+end
 
 %% ===== SELECT MRI FILE =====
 % If MRI file to load was not defined : open a dialog box to select it
@@ -83,22 +92,12 @@ if isempty(MriFile)
     end
 
     % Get MRI/CT file
-    if strcmpi(Comment, 'Import CT')
-        [MriFile, FileFormat, FileFilter] = java_getfile( 'open', ...
-        'Import CT...', ...              % Window title
+    [MriFile, FileFormat, FileFilter] = java_getfile( 'open', ...
+        ['Import ' volType '...'], ...   % Window title
         LastUsedDirs.ImportAnat, ...      % Default directory
         'multiple', 'files_and_dirs', ... % Selection mode
         bst_get('FileFilters', 'mri'), ...
         DefaultFormats.MriIn);
-    else
-        [MriFile, FileFormat, FileFilter] = java_getfile( 'open', ...
-        'Import MRI...', ...              % Window title
-        LastUsedDirs.ImportAnat, ...      % Default directory
-        'multiple', 'files_and_dirs', ... % Selection mode
-        bst_get('FileFilters', 'mri'), ...
-        DefaultFormats.MriIn);
-    end
-
     % If no file was selected: exit
     if isempty(MriFile)
         return
@@ -152,11 +151,7 @@ end
 %% ===== LOAD MRI FILE =====
 isProgress = bst_progress('isVisible');
 if ~isProgress
-    if strcmpi(Comment, 'Import CT')
-        bst_progress('start', 'Import CT', 'Loading CT file...');
-    else
-        bst_progress('start', 'Import MRI', 'Loading MRI file...');
-    end
+    bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
 end
 % MNI / Atlas?
 isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
@@ -231,11 +226,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     else
         % If some transformation where made to the intial volume: apply them to the new one ?
         if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), {'permute', 'flipdim'}))
-            if strcmpi(Comment, 'Import CT')
-                isApplyTransformation = java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], 'Import CT');
-            else
-                isApplyTransformation = java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], 'Import MRI');
-            end
+            isApplyTransformation = java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], ['Import ', volType]);
             if ~isInteractive || isApplyTransformation
                 % Apply step by step all the transformations that have been applied to the original MRI
                 for it = 1:size(sMriRef.InitTransf,1)
@@ -268,29 +259,22 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Initialize list of options to register this new MRI with the existing one
             strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
             cellOptions = {};
-
-            if strcmpi(Comment, 'Import CT')
+            % Register with the SPM
+            strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (requires SPM toolbox).'];
+            cellOptions{end+1} = 'SPM';
+            % Register with the MNI transformation
+            strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
+            cellOptions{end+1} = 'MNI';
+            if strcmpi(volType, 'CT')
                 % Register with the ct2mrireg plugin
                 strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC ct2mrireg plugin.'];
                 cellOptions{end+1} = 'CT2MRI';
-            else
-                % Register with the SPM
-                strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (requires SPM toolbox).'];
-                cellOptions{end+1} = 'SPM';
-                % Register with the MNI transformation
-                strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
-                cellOptions{end+1} = 'MNI';
             end
-            
             % Skip registration
             strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
             cellOptions{end+1} = 'Ignore';
             % Ask user to make a choice
-            if strcmpi(Comment, 'Import CT')
-                RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], 'Import CT', [], cellOptions, 'Reg+reslice');
-            else
-                RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], 'Import MRI', [], cellOptions, 'Reg+reslice');
-            end
+            RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
 
         % In non-interactive mode: ignore if possible, or use the first option available
         else
@@ -315,19 +299,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 strSizeWarn = [];
             end
             % Ask to reslice
-            if strcmpi(Comment, 'Import CT')
-                isReslice = java_dialog('confirm', [...
-                    '<HTML><B>Reslice the volume?</B><BR><BR>' ...
-                    'This operation rewrites the new CT to match the alignment, <BR>size and resolution of the original volume.' ...
-                    strSizeWarn ...
-                    '<BR><BR></HTML>'], 'Import CT');
-            else
-                isReslice = java_dialog('confirm', [...
-                    '<HTML><B>Reslice the volume?</B><BR><BR>' ...
-                    'This operation rewrites the new MRI to match the alignment, <BR>size and resolution of the original volume.' ...
-                    strSizeWarn ...
-                    '<BR><BR></HTML>'], 'Import MRI');
-            end
+            isReslice = java_dialog('confirm', [...
+                '<HTML><B>Reslice the volume?</B><BR><BR>' ...
+                ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
+                strSizeWarn ...
+                '<BR><BR></HTML>'], ['Import ', volType]);
         % In non-interactive mode: never reslice
         else
             isReslice = 0;
@@ -379,8 +355,8 @@ end
 
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
-% Add a Comment field in MRI structure, if it does not exist yet and if not importing a CT
-if ~isempty(Comment) && ~strcmpi(Comment, 'Import CT')
+% Add a Comment field in MRI structure, if it does not exist yet
+if ~isempty(Comment)
     sMri.Comment = Comment;
     importedBaseName = file_standardize(Comment);
 else
