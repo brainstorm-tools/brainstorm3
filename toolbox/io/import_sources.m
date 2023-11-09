@@ -318,7 +318,11 @@ if isStat
 else
     % New results structure
     ResultsMat = db_template('resultsmat');
-    ResultsMat.ImageGridAmp  = [map, map];
+    if size(map, 2) > 1
+        ResultsMat.ImageGridAmp  = map;
+    else
+        ResultsMat.ImageGridAmp  = [map, map];
+    end
     ResultsMat.ImagingKernel = [];
     FileType = 'results';
     % Time vector
