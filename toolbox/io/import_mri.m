@@ -89,11 +89,11 @@ if isempty(MriFile)
 
     % Get MRI/CT file
     [MriFile, FileFormat, FileFilter] = java_getfile( 'open', ...
-    ['Import ' volType '...'], ...   % Window title
-    LastUsedDirs.ImportAnat, ...      % Default directory
-    'multiple', 'files_and_dirs', ... % Selection mode
-    bst_get('FileFilters', 'mri'), ...
-    DefaultFormats.MriIn);
+        ['Import ' volType '...'], ...   % Window title
+        LastUsedDirs.ImportAnat, ...      % Default directory
+        'multiple', 'files_and_dirs', ... % Selection mode
+        bst_get('FileFilters', 'mri'), ...
+        DefaultFormats.MriIn);
     % If no file was selected: exit
     if isempty(MriFile)
         return
@@ -255,7 +255,6 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Initialize list of options to register this new MRI with the existing one
             strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
             cellOptions = {};
-
             % Register with the SPM
             strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (requires SPM toolbox).'];
             cellOptions{end+1} = 'SPM';
