@@ -234,7 +234,7 @@ switch lower(Method)
         end
         % Output file tag
         fileTag = '_mni';
-    
+
     % ===== CT2MRIREG =====
     case 'ct2mri'
         % Check if ct2mrireg plugin is installed
@@ -245,7 +245,7 @@ switch lower(Method)
             end
             return;
         end
-        
+
         % Save files in tmp directory
         bst_progress('text', 'Saving temporary files...');
         % Get temporary folder
@@ -256,12 +256,12 @@ switch lower(Method)
         % Save reference MRI in .nii format
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
-        
+
         % Save registered file in .nii.gz format
         NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
         bst_progress('text', 'Performing co-registration using ct2mrireg plugin...');
         NiiRegFile = ct2mrireg(NiiSrcFile, NiiRefFile, NiiRegFile);
-        
+
         % Read output volume
         sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
 
