@@ -75,6 +75,10 @@ volType = 'MRI';
 if ~isempty(strfind(Comment, 'CT'))
     volType = 'CT';
 end
+% Get node comment from filename
+if ~isempty(strfind(Comment, 'Import'))
+    Comment = [];
+end
 
 %% ===== SELECT MRI FILE =====
 % If MRI file to load was not defined : open a dialog box to select it
