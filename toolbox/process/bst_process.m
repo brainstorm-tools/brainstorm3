@@ -443,6 +443,11 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     if isfield(sMat, 'Options') && ~isempty(sMat.Options)
         sInput.Options = sMat.Options;
     end
+
+    % Get Events
+    if isfield(matValues, 'events') && ~isempty(matValues.events)
+        sInput.Events = matValues.events;
+    end
     
     % Progress bar comment
     txtProgress = ['Running process: ' sProcess.Comment '...'];
