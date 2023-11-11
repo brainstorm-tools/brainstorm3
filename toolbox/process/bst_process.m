@@ -445,8 +445,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
 
     % Get Events
-    if isfield(matValues, 'events') && ~isempty(matValues.events)
+    if isRaw && isfield(matValues, 'events') && ~isempty(matValues.events)
         sInput.Events = matValues.events;
+    elseif ~isRaw && isfield(sMat, 'Events') && ~isempty(sMat.Events)
+        sInput.Events = sMat.Events;
+    else
+        sInput.Events = [];
     end
     
     % Progress bar comment
