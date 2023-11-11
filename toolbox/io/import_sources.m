@@ -231,6 +231,10 @@ for iFile = 1:length(SourceFiles)
         end
         Comment = strrep(Comment, 'results_', '');
         Comment = strrep(Comment, '_results', '');
+        if strcmp(FileFormat, 'BST')
+            Comment = strrep(Comment, 'surface_', '');
+            Comment = strrep(Comment, 'volume_', '');
+        end
         % If the two files are imported: remove .lh and .rh
         if ~isempty(SourceFiles2)
             Comment = strrep(Comment, 'rh.', '');
