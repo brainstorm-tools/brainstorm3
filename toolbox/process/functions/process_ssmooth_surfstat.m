@@ -124,14 +124,18 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== PROCESS =====
     % Smooth surface
-    [sInput.A, msgInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
+    [sInput.A, msgInfo,warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
     bst_report('Info', sProcess, sInput, msgInfo);
+    if ~isempty(warmInfo)
+        bst_report('Warning', sProcess, sInput, warmInfo);
+    end
 
     % Force the output comment
     sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
 end
 
-function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
+function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
+    warmInfo = '';
 
     if strcmp(version,'adaptive_fwhm')
         % Smooth each connenected part of the surface separately
@@ -198,10 +202,20 @@ function [sData, msgInfo] = compute(SurfaceMat, sData, FWHM, version)
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
     FWHMedge = FWHM ./ meanDist;
     
+
+
     % Display the result of this conversion
     msgInfo = ['Average distance between two vertices: ' num2str(round(meanDist*10000)/10) ' mm' 10 ...
                'SurfStatSmooth called with FWHM=' num2str(round(FWHMedge * 1000)/1000) ' edges'];
     disp(['SMOOTH> ' strrep(msgInfo, char(10), [10 'SMOOTH> '])]); 
+
+    if strcmp(version,'before_2023')
+        Vertices = SurfaceMat.Vertices;
+        true_meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+        used_FWHM = FWHMedge * true_meanDist;
+        
+        warmInfo = sprintf('This process is using a FWHM of %.2f mm instead of %.2f mm. Please consult (+ to update+) for more information.',used_FWHM*1000,FWHM*1000);
+    end
 
     for iFreq = 1:size(sData,3)
         sData(:,:,iFreq) = SurfStatSmooth(sData(:,:,iFreq)', cortS, FWHMedge)';
