@@ -25,6 +25,14 @@ function out_data_snirf(ExportFile, DataMat, ChannelMatOut)
 %
 % Authors: Edouard Delaire, Francois Tadel, 2020
 
+% Install/load JSNIRF Toolbox (https://github.com/NeuroJSON/jsnirfy) as plugin
+if ~exist('jsnirfcreate', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'jsnirfy');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % Create an empty snirf data structure
 snirfdata = jsnirfcreate();
 

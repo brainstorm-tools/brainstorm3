@@ -290,6 +290,18 @@ function PlugDesc = GetSupported(SelPlug)
                                     'NPMK/Dependent Functions/.svn', 'NPMK/Dependent Functions/.DS_Store', 'NPMK/Dependent Functions/bnsx.dat', 'NPMK/Dependent Functions/syncPatternDetectNEV.m', ...
                                     'NPMK/Dependent Functions/syncPatternDetectNSx.m', 'NPMK/Dependent Functions/syncPatternFinderNSx.m'};
 
+    % === I/O: EASYH5 ===
+    PlugDesc(end+1)              = GetStruct('easyh5');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/easyh5/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/easyh5';
+    PlugDesc(end).TestFile       = 'loadh5.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -318,6 +330,19 @@ function PlugDesc = GetSupported(SelPlug)
                                     'f=fopen(''private' filesep 'eeg_emptyset.m'',''wt''); fprintf(f,''function EEG=eeg_emptyset()\nEEG=struct();''); fclose(f);' ...
                                     'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
                                     'cd(d);'];
+
+    % === I/O: JSNIRF ===
+    PlugDesc(end+1)              = GetStruct('jsnirfy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsnirfy/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsnirfy';
+    PlugDesc(end).TestFile       = 'loadsnirf.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).RequiredPlugs  = {'easyh5'};
 
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');

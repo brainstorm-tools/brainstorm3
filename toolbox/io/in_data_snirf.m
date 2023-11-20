@@ -25,7 +25,15 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 %
 % Authors: Edouard Delaire, Francois Tadel, 2020
 
-% Load file header with the JSNIRF Toolbox (https://github.com/fangq/jsnirfy)
+% Install/load JSNIRF Toolbox (https://github.com/NeuroJSON/jsnirfy) as plugin
+if ~exist('loadsnirf', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'jsnirfy');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
+% Load file header
 jnirs = loadsnirf(DataFile);
 
 if isempty(jnirs) || ~isfield(jnirs, 'nirs')
