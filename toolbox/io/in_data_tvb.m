@@ -32,6 +32,14 @@ if (nargin < 2) || isempty(ChannelFile)
     ChannelFile = [];
 end
 
+% Install/load EasyH5 Toolbox (https://github.com/NeuroJSON/easyh5) as plugin
+if ~exist('loadh5', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'easyh5');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % Read data from .h5
 h5ts = loadh5(DataFile);
 % Check data format
