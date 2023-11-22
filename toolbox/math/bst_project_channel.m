@@ -152,11 +152,14 @@ for i = 1:length(ChannelMatSrc.IntraElectrodes)
 end
 % Copy clusters
 ChannelMatDest.Clusters = ChannelMatSrc.Clusters;
-
 % Copy NIRS information
 if isfield(ChannelMatSrc,'Nirs')
     ChannelMatDest.Nirs = ChannelMatSrc.Nirs;
 end
+% Copy history
+ChannelMatDest.History = ChannelMatSrc.History;
+ChannelMatDest = bst_history('add',  ChannelMatDest,  'project', sprintf('Project channel from %s to %s',sSubjectSrc.Name, ...
+                                                                                         sSubjectDest.Name));
 
 
 % ===== SAVE NEW FILE =====
