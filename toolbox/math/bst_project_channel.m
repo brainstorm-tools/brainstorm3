@@ -153,6 +153,12 @@ end
 % Copy clusters
 ChannelMatDest.Clusters = ChannelMatSrc.Clusters;
 
+% Copy NIRS information
+if isfield(ChannelMatSrc,'Nirs')
+    ChannelMatDest.Nirs = ChannelMatSrc.Nirs;
+end
+
+
 % ===== SAVE NEW FILE =====
 bst_progress('text', 'Saving results...');
 % Create group study subject (if not existing yet)
