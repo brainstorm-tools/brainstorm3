@@ -158,9 +158,7 @@ if isfield(ChannelMatSrc,'Nirs')
 end
 % Copy history
 ChannelMatDest.History = ChannelMatSrc.History;
-ChannelMatDest = bst_history('add',  ChannelMatDest,  'project', sprintf('Project channel from %s to %s',sSubjectSrc.Name, ...
-                                                                                         sSubjectDest.Name));
-
+ChannelMatDest = bst_history('add',  ChannelMatDest,  'project', ['Project channel file: ' sSubjectSrc.Name ' => ' sSubjectDest.Name]);
 
 % ===== SAVE NEW FILE =====
 bst_progress('text', 'Saving results...');
