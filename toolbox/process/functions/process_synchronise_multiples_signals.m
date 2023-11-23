@@ -67,6 +67,7 @@ function OutputFiles = Run(sProcess, sInputs)
     fs              = zeros(1, length(sInputs)); 
     
     is_raw = strcmp(sInputs(1).FileType, 'raw');
+    bst_progress('start', 'Synchronizing files', 'Loading data...', 0, 3*length(sInputs));
 
     for i = 1:length(sInputs)
         if strcmp(sInputs(i).FileType, 'data')     % Imported data structure
@@ -82,6 +83,8 @@ function OutputFiles = Run(sProcess, sInputs)
             fs(i)       = sDataRaw{i}.F.prop.sfreq; % in Hz
         end
     end
+    bst_progress('inc', length(sInputs));
+    bst_progress('text', 'Synchronizing...');
 
     new_times       = cell(1,length(sInputs)); 
     new_times{1}    = sData{1}.Time;
@@ -171,6 +174,9 @@ function OutputFiles = Run(sProcess, sInputs)
         end
     end
 
+    bst_progress('inc', length(sInputs));
+    bst_progress('text', 'Saving files...');
+
     % Save data to file
     ProtocolInfo = bst_get('ProtocolInfo');
     for iFile = 1:length(sInputs)
@@ -230,6 +236,9 @@ function OutputFiles = Run(sProcess, sInputs)
             db_add_data(iStudy, OutputFile, sOutMat);
         end
         OutputFiles{iFile} = OutputFile;
+        bst_progress('inc', 1);
     end
+
+    bst_progress('stop');
 
 end    
