@@ -143,10 +143,15 @@ function OutputFiles = Run(sProcess, sInputs)
 
         sDataTmp = sData{iFile};
 
-        new_data{iFile}.Time = new_times{iFile}(index) - new_times{iFile}(index(1)) ;
-        new_data{iFile}.F = sDataTmp.F(:,index);
+        new_data{iFile}.Time    = new_times{iFile}(index) - new_times{iFile}(index(1)) ;
+        new_data{iFile}.F       = sDataTmp.F(:,index);
         
-        tmp_event = new_data{iFile}.Events;
+        if ~is_raw
+            tmp_event = new_data{iFile}.Events;
+        else
+            tmp_event = sDataRaw{iFile}.F.events;
+        end
+
         for i_event = 1:length(tmp_event)
             tmp_event(i_event).times = tmp_event(i_event).times - mean_shifting(iFile) - new_times{iFile}(index(1)) ;
             if isempty(pool_events)
@@ -200,6 +205,8 @@ function OutputFiles = Run(sProcess, sInputs)
             RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
 
             sFileIn = new_data_raw{iFile}.F;
+            sFileIn.header.nsamples = length( new_data{iFile}.Time );
+            sFileIn.prop.times      = [ new_data{iFile}.Time(1),  new_data{iFile}.Time(end)];
             [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
             
             % Set Output sFile structure
