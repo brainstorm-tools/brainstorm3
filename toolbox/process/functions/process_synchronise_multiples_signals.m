@@ -19,7 +19,7 @@ function varargout = process_synchronise_multiples_signals(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire, 2021
+% Authors: Edouard Delaire, 2021-2023
 eval(macro_method);
 end
 
@@ -59,41 +59,41 @@ function OutputFiles = Run(sProcess, sInputs)
     
     
     % === Sync event management === %
-    SyncEventNameA = sProcess.options.src.Value;
+    SyncEventName  = sProcess.options.src.Value;
     
-    sData   = cell(1,length(sInputs)); 
-    sDataRaw = cell(1,length(sInputs)); 
-    sSync   = cell(1,length(sInputs)); 
-    fs      = zeros(1, length(sInputs)); 
+    sData           = cell(1,length(sInputs)); 
+    sDataRaw        = cell(1,length(sInputs)); 
+    sSync           = cell(1,length(sInputs)); 
+    fs              = zeros(1, length(sInputs)); 
     
-    is_raw = strcmp(sInputs(1).FileType, 'data');
+    is_raw = strcmp(sInputs(1).FileType, 'raw');
 
     for i = 1:length(sInputs)
         if strcmp(sInputs(i).FileType, 'data')     % Imported data structure
             sData{i}    = in_bst_data(sInputs(i).FileName);
-            sSync{i}    = sData{i}.Events(strcmp({sData{i}.Events.label}, SyncEventNameA));
+            sSync{i}    = sData{i}.Events(strcmp({sData{i}.Events.label}, SyncEventName));
             fs(i)       = 1/(sData{i}.Time(2) -  sData{i}.Time(1)) ; % in Hz
         elseif strcmp(sInputs(i).FileType, 'raw')  % Continuous data file 
             sData{i}     = in_bst(sInputs(i).FileName, [], 1, 1, 'no');
             sDataRaw{i}    = in_bst_data(sInputs(i).FileName, 'F');
 
             events      = sDataRaw{i}.F.events;
-            sSync{i}    = events(strcmp({events.label}, SyncEventNameA));
+            sSync{i}    = events(strcmp({events.label}, SyncEventName));
             fs(i)       = sDataRaw{i}.F.prop.sfreq; % in Hz
         end
     end
 
-    new_times = cell(1,length(sInputs)); 
-    new_times{1} = sData{1}.Time;
-    mean_shifting = zeros(1, length(sInputs));
+    new_times       = cell(1,length(sInputs)); 
+    new_times{1}    = sData{1}.Time;
+    mean_shifting   = zeros(1, length(sInputs));
     
-    % compute shifiting between file i and first file  
+    % Compute shifiting between file i and first file  
     for iFile = 2:length(sInputs)
         if length(sSync{iFile}.times) == length(sSync{1}.times)
             shifting = sSync{iFile}.times -  sSync{1}.times;
             
-            mean_shifting(iFile)=mean(shifting);
-            offsetStd=std(shifting);
+            mean_shifting(iFile) = mean(shifting);
+            offsetStd = std(shifting);
         
         else
             bst_report('Warning', sProcess, sInputs, 'Files doesnt have the same number of trigger. Using approximation');
@@ -116,11 +116,11 @@ function OutputFiles = Run(sProcess, sInputs)
                blocB(1,i_intra_event) = 1;
             end
             
-            [c,lags]        =xcorr(blocA,blocB);
-            [c_max,colum]   =max(c);
+            [c,lags]        = xcorr(blocA,blocB);
+            [c_max,colum]   = max(c);
             
             
-            mean_shifting(iFile)=lags(colum) / tmp_fs;
+            mean_shifting(iFile) = lags(colum) / tmp_fs;
             offsetStd = 0;
         end    
         disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)',sInputs(1).Condition, sInputs(iFile).Condition,mean_shifting(iFile),offsetStd*1000 ));
@@ -132,12 +132,11 @@ function OutputFiles = Run(sProcess, sInputs)
     new_end     = min(cellfun(@(x)max(x), new_times));
 
     
-    
     new_data =  sData; 
     new_data_raw = sDataRaw;
 
     pool_events = [];
-
+    
     for iFile = 1:length(sInputs)
         
         index = panel_time('GetTimeIndices', new_times{iFile}, [new_start, new_end]);
@@ -152,31 +151,78 @@ function OutputFiles = Run(sProcess, sInputs)
             tmp_event(i_event).times = tmp_event(i_event).times - mean_shifting(iFile) - new_times{iFile}(index(1)) ;
             if isempty(pool_events)
                 pool_events = tmp_event(i_event);
-            elseif ~strcmp(tmp_event(i_event).label,SyncEventNameA)  || (strcmp(tmp_event(i_event).label,SyncEventNameA) && ~any(strcmp({pool_events.label},SyncEventNameA)))
+            elseif ~strcmp(tmp_event(i_event).label,SyncEventName)  || (strcmp(tmp_event(i_event).label,SyncEventName) && ~any(strcmp({pool_events.label},SyncEventName)))
                 pool_events = [pool_events tmp_event(i_event)];
             end   
         end  
     end
-    
 
+    % Add event to file
     for iFile = 1:length(sInputs)
-        
-        new_data{iFile}.Comment = [sDataTmp.Comment ' | Synchronized '];
-
-        if is_raw
-            new_data_raw{1}.F.events = pool_events;
-        else
+        if ~is_raw
             new_data{iFile}.Events = pool_events;
+        else
+            new_data_raw{iFile}.F.events = pool_events;
         end
+    end
 
-        sStudy = bst_get('Study', sInputs(iFile).iStudy);
-        OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'data_sync2');
-        new_data{iFile}.FileName = file_short(OutputFile);
-        bst_save(OutputFile, new_data{iFile}, 'v7');
-        % Register in database
-        db_add_data(sInputs(iFile).iStudy, OutputFile, new_data{iFile});
+    % Save data to file
+    ProtocolInfo = bst_get('ProtocolInfo');
+    for iFile = 1:length(sInputs)
+        if ~is_raw
+            new_data{iFile}.Comment = [sDataTmp.Comment ' | Synchronized '];
+            
+            sStudy      = bst_get('Study', sInputs(iFile).iStudy);
+            OutputFile  = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'data_sync');
+            new_data{iFile}.FileName = file_short(OutputFile);
+            bst_save(OutputFile, new_data{iFile}, 'v7');
+
+            % Register in database
+            db_add_data(sInputs(iFile).iStudy, OutputFile, new_data{iFile});
+        else
+
+            newCondition = [sInputs(iFile).Condition '_synced'];
+            iStudy = db_add_condition(sInputs(iFile).SubjectName, newCondition);
+            sStudy = bst_get('Study', iStudy);
+    
+            % Save channel definition
+            ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
+            [tmp, iChannelStudy] = bst_get('ChannelForStudy', iStudy);
+            db_set_channel(iChannelStudy, ChannelMat, 0, 0);
+
+
+            OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'data_raw_sync');
+            newStudyPath = bst_fullfile(ProtocolInfo.STUDIES, sInputs(iFile).SubjectName,newCondition);
+
+            [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+            rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
+            % Full output filename
+            RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
+
+            sFileIn = new_data_raw{iFile}.F;
+            [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
+            
+            % Set Output sFile structure
+            sOutMat.format = 'BST-BIN';
+            sOutMat.F = sFileOut;
+            sOutMat.DataType        = 'raw'; 
+            sOutMat.History         = new_data{iFile}.History;
+            sOutMat                 = bst_history('add', sOutMat, 'process', 'Synchronisation');
+            sOutMat.ChannelFlag     = new_data{iFile}.ChannelFlag;
+            sOutMat.DisplayUnits    = new_data{iFile}.DisplayUnits;
+            sOutMat.Time            = new_data{iFile}.Time;  
+            sOutMat.Comment         = [new_data{iFile}.Comment ' | Synchronized'];
+
+            % Save new link to raw .mat file
+            bst_save(OutputFile, sOutMat, 'v6');
+            % Create new channel file
+            db_set_channel(iStudy, ChannelMat, 2, 0);
+            % Write block
+            out_fwrite(sFileOut, ChannelMat, 1, [], [], new_data{iFile}.F);
+            % Register in BST database
+            db_add_data(iStudy, OutputFile, sOutMat);
+        end
         OutputFiles{iFile} = OutputFile;
-
     end
 
 end    
