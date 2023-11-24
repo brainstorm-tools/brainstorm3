@@ -66,7 +66,16 @@ function OutputFiles = Run(sProcess, sInputs)
     sSync           = cell(1,length(sInputs)); 
     fs              = zeros(1, length(sInputs)); 
     
-    is_raw = strcmp(sInputs(1).FileType, 'raw');
+    is_raw = strcmp({sInputs.FileType},'raw');
+    if ~all(is_raw) || ~all(~is_raw)
+        bst_error('Please don\''t mix continous and imported data', 'Synchronize sigal', 0);
+        return;
+    else
+        is_raw = is_raw(1);
+    end
+
+
+    
     bst_progress('start', 'Synchronizing files', 'Loading data...', 0, 3*length(sInputs));
 
     for i = 1:length(sInputs)
