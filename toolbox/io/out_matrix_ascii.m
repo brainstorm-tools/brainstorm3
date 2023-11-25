@@ -218,7 +218,7 @@ function [res,errMsg] = xls_write(varargin)
                 writematrix(vars{2}, vars{1}, 'Sheet', vars{3}, 'Range', vars{4});
             end
         catch me
-            res = 1;
+            res = 0;  % Fail
             errMsg = me.message;
         end
     end
