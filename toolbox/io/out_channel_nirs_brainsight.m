@@ -47,10 +47,6 @@ else
     ChannelMat = BstFile;
 end
 
-if ~isfield(ChannelMat, 'Nirs')
-    bst_error('Channel file does not correspond to NIRS data.');
-    return;
-end
 
 Loc     = zeros(3,0);
 Label   = {};
