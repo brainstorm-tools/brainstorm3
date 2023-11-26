@@ -1,5 +1,5 @@
 function varargout = process_synchronise_multiples_signals(varargin)
-% process_synchronise_multiples_signals: Synchronise two signal based on common event
+% process_synchronise_multiples_signals: Synchronise multiple signals based on common event
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -67,7 +67,7 @@ function OutputFiles = Run(sProcess, sInputs)
     fs              = zeros(1, length(sInputs)); 
     
     is_raw = strcmp({sInputs.FileType},'raw');
-    if ~all(is_raw) || ~all(~is_raw)
+    if ~all(is_raw) && ~all(~is_raw)
         bst_error('Please don\''t mix continous and imported data', 'Synchronize sigal', 0);
         return;
     else
@@ -85,7 +85,7 @@ function OutputFiles = Run(sProcess, sInputs)
             fs(i)       = 1/(sData{i}.Time(2) -  sData{i}.Time(1)) ; % in Hz
         elseif strcmp(sInputs(i).FileType, 'raw')  % Continuous data file 
             sData{i}     = in_bst(sInputs(i).FileName, [], 1, 1, 'no');
-            sDataRaw{i}    = in_bst_data(sInputs(i).FileName, 'F');
+            sDataRaw{i}  = in_bst_data(sInputs(i).FileName, 'F');
 
             events      = sDataRaw{i}.F.events;
             sSync{i}    = events(strcmp({events.label}, SyncEventName));
@@ -144,8 +144,8 @@ function OutputFiles = Run(sProcess, sInputs)
     new_end     = min(cellfun(@(x)max(x), new_times));
 
     
-    new_data =  sData; 
-    new_data_raw = sDataRaw;
+    new_data        =  sData; 
+    new_data_raw    = sDataRaw;
 
     pool_events = [];
     
@@ -225,15 +225,12 @@ function OutputFiles = Run(sProcess, sInputs)
             [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
             
             % Set Output sFile structure
-            sOutMat.format = 'BST-BIN';
-            sOutMat.F = sFileOut;
+            sOutMat                 = new_data{iFile};
+            sOutMat.format          = 'BST-BIN';
             sOutMat.DataType        = 'raw'; 
-            sOutMat.History         = new_data{iFile}.History;
-            sOutMat                 = bst_history('add', sOutMat, 'process', 'Synchronisation');
-            sOutMat.ChannelFlag     = new_data{iFile}.ChannelFlag;
-            sOutMat.DisplayUnits    = new_data{iFile}.DisplayUnits;
-            sOutMat.Time            = new_data{iFile}.Time;  
+            sOutMat.F               = sFileOut;
             sOutMat.Comment         = [new_data{iFile}.Comment ' | Synchronized'];
+            sOutMat                 = bst_history('add', sOutMat, 'process', 'Synchronisation');
 
             % Save new link to raw .mat file
             bst_save(OutputFile, sOutMat, 'v6');
