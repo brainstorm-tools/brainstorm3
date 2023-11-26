@@ -57,7 +57,7 @@ Label   = {};
 Type    = {};
 
 for i = 1:length(ChannelMat.Channel)
-    if ~isempty(ChannelMat.Channel(i).Loc) && ~all(ChannelMat.Channel(i).Loc(:) == 0)
+    if strcmp(ChannelMat.Channel(i).Type,'NIRS')
         CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
         toks = regexp(strrep(ChannelMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
     
@@ -68,6 +68,10 @@ for i = 1:length(ChannelMat.Channel)
         Loc(:,end+1) = ChannelMat.Channel(i).Loc(:,2);
         Label{end+1} = sprintf('D%s',toks{1}{2} );
         Type{end+1}  = 'detector';
+    elseif strcmp(ChannelMat.Channel(i).Type,'EEG')
+        Loc(:,end+1) = ChannelMat.Channel(i).Loc;
+        Label{end+1} = ChannelMat.Channel(i).Name;
+        Type{end+1}  = 'EEG';
     end
 end
 
