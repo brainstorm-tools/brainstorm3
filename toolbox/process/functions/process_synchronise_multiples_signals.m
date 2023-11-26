@@ -234,8 +234,6 @@ function OutputFiles = Run(sProcess, sInputs)
 
             % Save new link to raw .mat file
             bst_save(OutputFile, sOutMat, 'v6');
-            % Create new channel file
-            db_set_channel(iStudy, ChannelMat, 2, 0);
             % Write block
             out_fwrite(sFileOut, ChannelMat, 1, [], [], new_data{iFile}.F);
             % Register in BST database
