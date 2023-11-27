@@ -1,14 +1,14 @@
 function W = tess_smooth_sources(SurfaceMat, FWHM, Method)
 % TESS_SMOOTH_SOURCES: Gaussian smoothing matrix over a mesh.
 %
-% USAGE:  W = tess_smooth_sources(SurfaceMat, FWHM=0.010, Method='average')
+% USAGE:  W = tess_smooth_sources(SurfaceMat, FWHM=0.010, Method='geodesic_length')
 %
 % INPUT:
-%    - SurfaceMat : cortical surface matrix
-%    - FWHM     : Full width at half maximum, in mm (default=10mm)
-%    - Method   : {'euclidian', 'geodesic_edge', 'geodesic_length'}
+%    - SurfaceMat : Cortical surface matrix
+%    - FWHM       : Full Width at Half Maximum, in m (default = 0.010m = 10mm)
+%    - Method     : {'euclidian', 'geodesic_edge', 'geodesic_length'}
 % OUPUT:
-%    - W: smoothing matrix (sparse)
+%    - W          : Smoothing matrix (sparse)
 %
 % DESCRIPTION: 
 %    - Gaussian smoothing function on the euclidian distance:
@@ -43,7 +43,7 @@ if (nargin < 3) || isempty(Method)
     Method = 'geodesic_length';
 end
 if (nargin < 2) || isempty(FWHM)
-    FWHM = 10;
+    FWHM = 0.010;
 end
 
 Vertices = SurfaceMat.Vertices;
@@ -60,19 +60,21 @@ Sigma = FWHM / (2 * sqrt(2*log2(2)));
 
 % ===== COMPUTE DISTANCE =====
 switch lower(Method)
-    % === METHOD 1: USE EUCLIDIAN DISTANCE ===
+    % === Euclidian distance
     case 'euclidian'
         Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'euclidean', 1);
-    % === METHOD 2: USE NUMBER OF CONNECTIONS =====
+    % === Geodesic edge distance: number of connections times the average edge lenght
     case {'geodesic_edge'}
-        [vi,vj] = find(VertConn);
-        meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2)) * 1000;
-
-        Dist        = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_edge', 1);
-        Dist        = Dist .* meanDist;
-    % ===== METHOD 3: Use geodesic distance  =====
+        [vi, vj] = find(VertConn);
+        meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_edge', 1);   % in edges
+        Dist = Dist .* meanDist;                                                % in m
+    % === Geodesic distance
     case {'geodesic_length'}
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_length', 1);
+        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_length', 1); % in m
+    otherwise
+        W = [];
+        return
 end
 
 
@@ -83,19 +85,17 @@ function y = Kernel(x,sigma2)
     y = y .* exp(-(x.^2/(2*sigma2)));
 end
 
-
 % Calculate interpolation as a function of distance
 [vi, vj, x] = find(Dist);
 W           = sparse(vi, vj,Kernel(x,Sigma^2), nv, nv) + ...
               speye (nv) .* Kernel(0,Sigma^2);
-
 % Normalize columns
-W       = bst_bsxfun(@rdivide, W, sum(W,1));
+W           = bst_bsxfun(@rdivide, W, sum(W,1));
 
 % ===== FIX BAD TRIANGLES =====
 % Only for methods including neighbor distance
 % Todo: check what this is doing :)
-if ismember(lower(Method), {'geodesic_edge','geodesic_length'}) 
+if contains(lower(Method), 'geodesic')
     % Configurations to detect: 
     %    - One face divided in 3 with a point in the middle of the face
     %    - Square divided into 4 triangles with one point in the middle

@@ -1,15 +1,14 @@
 function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
-% bst_tess_distance: Distance computation between two set of vertices (A,
-% and B)
+% bst_tess_distance: Distance computation between two set of vertices (A and B)
 %
 % USAGE:  W = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
 %
 % INPUT:
-%    - Vertices : SurfaceMat: cortical surface matrix
-%    - VerticesA    : Vertices from region A
-%    - VerticesB : Vertices from region A
-%    - Method   : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_length'}
-%    - keepAll  : if false, for each vertex in region B, return the minimum
+%    - SurfaceMat : Cortical surface matrix
+%    - VerticesA  : Vertices from region A
+%    - VerticesB  : Vertices from region B
+%    - Method     : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_length'}
+%    - keepAll    : if false, for each vertex in region B, return the minimum
 %    distance to region A
 % OUPUT:
 %    - Dist: distance matrix. D(i,j) is the distance between vertex VerticesA(i), and
@@ -40,27 +39,25 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
     Vertices = SurfaceMat.Vertices;
     if strcmp(metric,'euclidean')
         Dist = zeros(length(VerticesA),length(VerticesB)); 
-
-        x = Vertices(VerticesA,:)'*1000; 
+        x = Vertices(VerticesA,:)';
         for i = 1:length(VerticesB)
-            y = Vertices(VerticesB(i),:)'*1000; 
-            Dist(:,i)=sum((x-y).^2).^0.5; 
+            y = Vertices(VerticesB(i),:)';
+            Dist(:,i) = sum((x-y).^2).^0.5; % m
         end
 
     elseif contains(metric,'geodesic') 
         if strcmp(metric,'geodesic_length')
             [vi,vj] = find(SurfaceMat.VertConn);
             nv      = size(Vertices,1);
-            x       = Vertices(vi,:)' * 1000;
-            y       = Vertices(vj,:)' * 1000;
-
-            D  = sparse(vi, vj, sum((x-y).^2).^0.5, nv, nv);
+            x       = Vertices(vi,:)';
+            y       = Vertices(vj,:)';
+            D = sparse(vi, vj, sum((x-y).^2).^0.5, nv, nv); % m
         else
-            D  = SurfaceMat.VertConn;
+            D = SurfaceMat.VertConn;  % edges
         end
 
         G    = graph(D);
-        Dist = distances(G, VerticesA,VerticesB);
+        Dist = distances(G, VerticesA, VerticesB);
     end 
 
     if ~keepAll

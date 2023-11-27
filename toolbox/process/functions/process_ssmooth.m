@@ -85,8 +85,7 @@ end
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     global GlobalData;
     % Get options
-    FWHM = sProcess.options.fwhm.Value{1};
-
+    FWHM = sProcess.options.fwhm.Value{1} / 1000;
     switch (sProcess.options.method.Value)
         case 1,    Method = 'euclidian';
         case 2,    Method = 'geodesic_edge';
