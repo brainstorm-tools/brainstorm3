@@ -53,7 +53,7 @@ Label   = {};
 Type    = {};
 
 for i = 1:length(ChannelMat.Channel)
-    if strcmp(ChannelMat.Channel(i).Type,'NIRS')
+    if strcmpi(ChannelMat.Channel(i).Type,'NIRS')
         CHAN_RE = '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$';
         toks = regexp(strrep(ChannelMat.Channel(i).Name, ' ', '_'), CHAN_RE, 'tokens');
     
@@ -64,11 +64,16 @@ for i = 1:length(ChannelMat.Channel)
         Loc(:,end+1) = ChannelMat.Channel(i).Loc(:,2);
         Label{end+1} = sprintf('D%s',toks{1}{2} );
         Type{end+1}  = 'detector';
-    elseif strcmp(ChannelMat.Channel(i).Type,'EEG')
+    elseif strcmpi(ChannelMat.Channel(i).Type,'EEG')
         Loc(:,end+1) = ChannelMat.Channel(i).Loc;
         Label{end+1} = ChannelMat.Channel(i).Name;
         Type{end+1}  = 'EEG';
     end
+end
+
+if ~isempty(Label)
+    bst_error('Channel file does not contain EEG nor NIRS channels.');
+    return;
 end
 
 % Remove duplicate and sort Sources / Detectors
