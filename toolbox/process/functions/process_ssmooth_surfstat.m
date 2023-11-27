@@ -124,7 +124,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     
     % ===== PROCESS =====
     % Smooth surface
-    [sInput.A, msgInfo,warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
+    [sInput.A, msgInfo, warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
     bst_report('Info', sProcess, sInput, msgInfo);
     if ~isempty(warmInfo)
         bst_report('Warning', sProcess, sInput, warmInfo);
@@ -214,7 +214,7 @@ function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
         true_meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
         used_FWHM = FWHMedge * true_meanDist;
         
-        warmInfo = sprintf('This process is using a FWHM of %.2f mm instead of %.2f mm. Please consult (+ to update+) for more information.',used_FWHM*1000,FWHM*1000);
+        warmInfo = sprintf('This process is using a FWHM of %.2f mm instead of %.2f mm. Please consult https://github.com/brainstorm-tools/brainstorm3/pull/645 for more information.',used_FWHM*1000,FWHM*1000);
     end
 
     for iFreq = 1:size(sData,3)
