@@ -1,5 +1,5 @@
 function varargout = process_ssmooth( varargin )
-% PROCESS_SSMOOTH: Spatial smoothing of the sources (DEPRECATED)
+% PROCESS_SSMOOTH: Spatial smoothing of the sources
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -53,11 +53,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === METHOD
     sProcess.options.label2.Comment = '<BR><U>Distance between vertices</U> (v1,v2):';
     sProcess.options.label2.Type    = 'label';
-    sProcess.options.method.Comment = {'<B>Euclidean distance</B>: norm(v1-v2)', ...
+    sProcess.options.method.Comment = {'<B>Euclidean distance</B>: <code>norm(v1-v2)</code>', ...
                                        '<B>Path length (edge)</B>: number of edges between v1 and v2', ...
-                                       '<B>Path length (distance)</B>: (recommanded) geodesic between v1 and v2'};
-    sProcess.options.method.Type    = 'radio';
-    sProcess.options.method.Value   = 3; 
+                                       '<B>Path length (distance)</B>: (recommanded) geodesic between v1 and v2'; ...
+                                       'euclidian', 'geodesic_edge', 'geodesic_length'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'geodesic_length';
 end
 
 
@@ -69,15 +70,8 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     else
         strAbs = '';
     end
-    % Method
-    switch (sProcess.options.method.Value)
-        case 1,    Method = 'euclidian';
-        case 2,    Method = 'geodesic_edge';
-        case 3,    Method = 'geodesic_length';
-        otherwise, error(['Unknown method: ' sProcess.options.method.Value]);
-    end
     % Final comment
-    Comment = sprintf('%s (%d%c%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, Method(1), strAbs);
+    Comment = sprintf('%s (%1.2f%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
 end
 
 
@@ -86,12 +80,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     global GlobalData;
     % Get options
     FWHM = sProcess.options.fwhm.Value{1} / 1000;
-    switch (sProcess.options.method.Value)
-        case 1,    Method = 'euclidian';
-        case 2,    Method = 'geodesic_edge';
-        case 3,    Method = 'geodesic_length';
-        otherwise, error(['Unknown method: ' sProcess.options.method.Value]);
-    end
+    Method = sProcess.options.method.Value;
 
     % ===== LOAD SURFACE =====
     % Load the surface filename from results file
