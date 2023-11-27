@@ -113,7 +113,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 
     % ===== COMPUTE SMOOTHING OPERATOR =====
     % Get existing interpolation for this surface
-    Signature = sprintf('ssmooth(%d,%s):%s', round(FWHM), Method, FileMat.SurfaceFile);
+    Signature = sprintf('ssmooth(%1.2f,%s):%s', FWHM/1000, Method, FileMat.SurfaceFile);
     WInterp = [];
     if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
         iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
@@ -126,9 +126,10 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         % Load surface file
         SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
         % Compute the smoothing operator
-        WInterp = tess_smooth_sources(SurfaceMat,  FWHM, Method);
+        WInterp = tess_smooth_sources(SurfaceMat, FWHM, Method);
         % Check for errors
         if isempty(WInterp)
+            bst_report('Error', sProcess, sInputs, sprintf('Cannot compute the smoothig %s.', Signature));
             sInput = [];
             return;
         end
