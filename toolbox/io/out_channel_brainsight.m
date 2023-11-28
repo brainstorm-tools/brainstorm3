@@ -71,7 +71,7 @@ for i = 1:length(ChannelMat.Channel)
     end
 end
 
-if ~isempty(Label)
+if isempty(Label)
     bst_error('Channel file does not contain EEG nor NIRS channels.');
     return;
 end
