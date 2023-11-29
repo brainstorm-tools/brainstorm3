@@ -7,10 +7,10 @@ function MRI = out_mri_bst( MRI, MriFile, Version)
 %     - MRI     : Brainstorm MRI structure
 %     - MriFile : full path to file where to save the MRI in brainstorm format
 %     - Version : 'v6', fastest option, bigger files, no files >2Gb
-%                 'v7', slower option, compressed, no files >2Gb
+%                 'v7', slower option, compressed, no files >2Gb (default)
 %                 'v7.3', much slower, compressed, allows files >2Gb
 % OUTPUT:
-%     - MRI : Modificed MRI structure
+%     - MRI : Modified MRI structure
 %
 % NOTES:
 %     - MRI structure:
