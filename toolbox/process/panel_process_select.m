@@ -2634,9 +2634,12 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         bstFunc = union(usrFunc, bstFunc);
     end
     
-    % Get processes from installed plugins ($HOME/.brainstorm/plugins/*)
+    % Get processes from installed (a supported) plugins ($HOME/.brainstorm/plugins/*)
     plugFunc = {};
-    PlugAll = bst_plugin('GetInstalled');
+    PlugSupported = bst_plugin('GetSupported');
+    PlugInstalled = bst_plugin('GetInstalled');
+    [~, iPlug] = intersect({PlugInstalled.Name}, {PlugSupported.Name});
+    PlugAll = PlugInstalled(iPlug);
     for iPlug = 1:length(PlugAll)
         if ~isempty(PlugAll(iPlug).Processes)
             % Keep only the processes with function names that are not already defined in Brainstorm
@@ -2656,6 +2659,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
+        plugList = cellfun(@dir, plugFunc);
         bstFunc = union(plugFunc, bstFunc);
     end
 
@@ -2668,8 +2672,8 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     for i = 1:length(usrList)
         sig = [sig, usrList(i).name, usrList(i).date, num2str(usrList(i).bytes)];
     end
-    for i = 1:length(plugFunc)
-        sig = [sig, plugFunc{i}];
+    for i = 1:length(plugList)
+        sig = [sig, plugList(i).name, plugList(i).date, num2str(plugList(i).bytes)];
     end
     % If signature is same as previously: do not reload all the files
     if ~isForced
@@ -2720,7 +2724,16 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         try
             desc = Function('GetDescription');
         catch
-            disp(['BST> Invalid plug-in function: "' bstFunc{iFile} '"']);
+            if ismember(bstFunc{iFile}, usrFunc)
+                processType = 'User';
+            elseif ismember(bstFunc{iFile}, {bstList.name})
+                processType = 'Brainstorm';
+            elseif ismember(bstFunc{iFile}, plugFunc)
+                processType = 'Plug-in';
+            else
+                processType = char(8); % backspace
+            end
+            disp(['BST> Invalid ' processType ' function: "' bstFunc{iFile} '"']);
             continue;
         end
         % Copy fields to returned structure
