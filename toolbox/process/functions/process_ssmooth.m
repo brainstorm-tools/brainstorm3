@@ -124,13 +124,28 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     if isempty(WInterp)
         % Load surface file
         SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
-        % Compute the smoothing operator
-        WInterp = tess_smooth_sources(SurfaceMat, FWHM, Method);
-        % Check for errors
-        if isempty(WInterp)
-            bst_report('Error', sProcess, sInputs, sprintf('Cannot compute the smoothig %s.', Signature));
-            sInput = [];
-            return;
+        nVertices = size(SurfaceMat.Vertices,1);
+        switch Method
+            case 'geodesic_dist'
+                % One region
+                subRegions(1) = SurfaceMat;
+                subRegions(1).Indices = (1 : nVertices)';
+            case 'geodesic_edge'
+                % Connected regions
+                subRegions = GetConnectedRegions(SurfaceMat);
+        end
+        % Full smooth operator
+        WInterp = sparse(nVertices, nVertices);
+        for iSubRegion = 1:length(subRegions)
+            % Subregion smoothing operator
+            WInterpTmp = tess_smooth_sources(subRegions(iSubRegion), FWHM, Method);
+            % Check for errors
+            if isempty(WInterpTmp)
+                bst_report('Error', sProcess, sInputs, sprintf('Cannot compute the smoothig %s.', Signature));
+                sInput = [];
+                return;
+            end
+            WInterp(subRegions(iSubRegion).Indices, subRegions(iSubRegion).Indices) = WInterpTmp(:,:);
         end
         % Save interpolation in memory for future calls
         sInterp = db_template('interpolation');
@@ -142,8 +157,6 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             GlobalData.Interpolations(end+1) = sInterp;
         end
     end
-
-    % ===== APPLY TO THE DATA =====
     % Apply smoothing operator
     for iFreq = 1:size(sInput.A,3)
         sInput.A(:,:,iFreq) = WInterp * sInput.A(:,:,iFreq);
@@ -153,6 +166,52 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
+    end
+end
+
+function sSubRegions = GetConnectedRegions(SurfaceMat)
+    % Find connenected regions (subregions) of the surface
+    sSubRegion  = struct('Vertices', [], ...
+                         'VertConn', [], ...
+                         'Faces',    [], ...
+                         'Indices',  []);
+    sSubRegions = repmat(sSubRegion, 0, 0);
+
+    A = SurfaceMat.VertConn;
+    G = digraph(A);
+
+    % Find subregions
+    for k=1:G.numnodes
+        nn_in = nearest(G,k,Inf);
+        nn_in = sort([k; nn_in]);
+        found = 0;
+        for i=1:length(sSubRegions)
+            if length(nn_in) == length(sSubRegions(i).Indices) &&  all(nn_in == sSubRegions(i).Indices)
+                found = 1;
+                break;
+            end
+        end
+        if ~found
+            sSubRegions(end+1).Indices = nn_in;
+        end
+    end
+
+    % Subregion elements
+    for i = 1:length(sSubRegions)
+        % Vertices
+        sSubRegions(i).Vertices = SurfaceMat.Vertices(sSubRegions(i).Indices, :);
+        iRemoveVert = setdiff(1:size(SurfaceMat.Vertices,1), sSubRegions(i).Indices);
+        iKeptVert = sSubRegions(i).Indices;
+        iVertMap = zeros(1, size(SurfaceMat.Vertices, 1));
+        iVertMap(iKeptVert) = 1:length(iKeptVert);
+        % Faces
+        sSubRegions(i).Faces = SurfaceMat.Faces;
+        iRemoveFace = find(sum(ismember(SurfaceMat.Faces, iRemoveVert), 2));
+        sSubRegions(i).Faces(iRemoveFace, :) = [];
+        % Renumber indices for faces
+        sSubRegions(i).Faces = iVertMap(sSubRegions(i).Faces);
+        % VertConn
+        sSubRegions(i).VertConn = SurfaceMat.VertConn(sSubRegions(i).Indices, sSubRegions(i).Indices);
     end
 end
 
