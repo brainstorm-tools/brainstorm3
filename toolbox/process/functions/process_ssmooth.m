@@ -20,7 +20,8 @@ function varargout = process_ssmooth( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2010-2016        
-%          Edouard Delaire, 2023
+%          Edouard Delaire, Raymundo Cassani, 2023
+
 
 eval(macro_method);
 end
