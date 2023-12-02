@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Spatial smoothing (Brainstorm)';
+    sProcess.Comment     = 'Spatial smoothing [2024]';
     sProcess.FileTag     = 'ssmooth';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
@@ -51,14 +51,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.fwhm.Type    = 'value';
     sProcess.options.fwhm.Value   = {10, 'mm', 0};
     % === METHOD
-    sProcess.options.label2.Comment = '<BR><U>Distance between vertices</U> (v1,v2):';
+    sProcess.options.label2.Comment = '<U>Distance between a pair of vertices:';
     sProcess.options.label2.Type    = 'label';
-    sProcess.options.method.Comment = {'<B>Euclidean distance</B>: <code>norm(v1-v2)</code>', ...
-                                       '<B>Path length (edge)</B>: number of edges between v1 and v2', ...
-                                       '<B>Path length (distance)</B>: (recommanded) geodesic between v1 and v2'; ...
-                                       'euclidian', 'geodesic_edge', 'geodesic_length'};
+    sProcess.options.method.Comment = {'<B> Geodesic</B> (mm): <I>(recommended)</I>', ...
+                                       '<B> Path length</B> (edges)'; ...
+                                       'geodesic_dist', 'geodesic_edge'};
     sProcess.options.method.Type    = 'radio_label';
-    sProcess.options.method.Value   = 'geodesic_length';
+    sProcess.options.method.Value   = 'geodesic_dist';
 end
 
 
