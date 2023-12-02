@@ -7,7 +7,7 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
 %    - SurfaceMat : Cortical surface matrix
 %    - VerticesA  : Vertices from region A
 %    - VerticesB  : Vertices from region B
-%    - Method     : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_length'}
+%    - Method     : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_dist'}
 %    - keepAll    : if false, for each vertex in region B, return the minimum
 %    distance to region A
 % OUPUT:
@@ -46,14 +46,14 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
         end
 
     elseif contains(metric,'geodesic') 
-        if strcmp(metric,'geodesic_length')
+        if strcmp(metric,'geodesic_dist')
             [vi,vj] = find(SurfaceMat.VertConn);
             nv      = size(Vertices,1);
             x       = Vertices(vi,:)';
             y       = Vertices(vj,:)';
             D = sparse(vi, vj, sum((x-y).^2).^0.5, nv, nv); % m
         else
-            D = SurfaceMat.VertConn;  % edges
+            D = SurfaceMat.VertConn;                        % edges
         end
 
         G    = graph(D);

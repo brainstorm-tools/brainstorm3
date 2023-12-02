@@ -1,12 +1,12 @@
 function W = tess_smooth_sources(SurfaceMat, FWHM, Method)
 % TESS_SMOOTH_SOURCES: Gaussian smoothing matrix over a mesh.
 %
-% USAGE:  W = tess_smooth_sources(SurfaceMat, FWHM=0.010, Method='geodesic_length')
+% USAGE:  W = tess_smooth_sources(SurfaceMat, FWHM=0.010, Method='geodesic_dist')
 %
 % INPUT:
 %    - SurfaceMat : Cortical surface matrix
 %    - FWHM       : Full Width at Half Maximum, in m (default = 0.010m = 10mm)
-%    - Method     : {'euclidian', 'geodesic_edge', 'geodesic_length'}
+%    - Method     : {'euclidian', 'geodesic_edge', 'geodesic_dist' (default)}
 % OUPUT:
 %    - W          : Smoothing matrix (sparse)
 %
@@ -40,62 +40,56 @@ function W = tess_smooth_sources(SurfaceMat, FWHM, Method)
 
 % ===== PARSE INPUTS =====
 if (nargin < 3) || isempty(Method)
-    Method = 'geodesic_length';
+    Method = 'geodesic_dist';
 end
 if (nargin < 2) || isempty(FWHM)
     FWHM = 0.010;
 end
 
-Vertices = SurfaceMat.Vertices;
-VertConn = SurfaceMat.VertConn;
-Faces    = SurfaceMat.Faces;
-
-nv = size(Vertices,1);
-
-
-% ===== ANALYZE INPUT =====
-% Calculate Gaussian kernel properties
-Sigma = FWHM / (2 * sqrt(2*log2(2)));
-
+Method    = lower(Method);
+Vertices  = SurfaceMat.Vertices;
+VertConn  = SurfaceMat.VertConn;
+Faces     = SurfaceMat.Faces;
+nVertices = size(Vertices,1);
 
 % ===== COMPUTE DISTANCE =====
-switch lower(Method)
+switch Method
     % === Euclidian distance
     case 'euclidian'
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'euclidean', 1);
-    % === Geodesic edge distance: number of connections times the average edge lenght
+        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'euclidean', 1);
+    % === Geodesic edge distance: number of connections times the average edge length
     case {'geodesic_edge'}
         [vi, vj] = find(VertConn);
         meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_edge', 1);   % in edges
-        Dist = Dist .* meanDist;                                                % in m
+        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_edge', 1); % in edges
     % === Geodesic distance
-    case {'geodesic_length'}
-        Dist = bst_tess_distance(SurfaceMat, 1:nv, 1:nv, 'geodesic_length', 1); % in m
+    case {'geodesic_dist'}
+        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist', 1); % in m
     otherwise
         W = [];
         return
 end
 
-
-% ===== APPLY GAUSSIAN FUNCTION =====
-% Gaussian function
-function y = Kernel(x,sigma2)
-    y = 1 / sqrt(2*pi*sigma2);
-    y = y .* exp(-(x.^2/(2*sigma2)));
+% Calculate Gaussian kernel properties
+if ismember(Method, {'geodesic_edge'})
+    % Compute Sigma using an integer number of edges
+    Sigma = ceil(FWHM./ meanDist) / (2 * sqrt(2*log2(2)));
+else
+    % Sigma given in meters
+    Sigma = FWHM / (2 * sqrt(2*log2(2)));
 end
 
 % Calculate interpolation as a function of distance
 [vi, vj, x] = find(Dist);
-W           = sparse(vi, vj,Kernel(x,Sigma^2), nv, nv) + ...
-              speye (nv) .* Kernel(0,Sigma^2);
+W           = sparse(vi, vj, GaussianKernel(x,Sigma^2), nVertices, nVertices) + ...
+              speye (nVertices) .* GaussianKernel(0,Sigma^2);
 % Normalize columns
 W           = bst_bsxfun(@rdivide, W, sum(W,1));
 
 % ===== FIX BAD TRIANGLES =====
 % Only for methods including neighbor distance
 % Todo: check what this is doing :)
-if contains(lower(Method), 'geodesic')
+if contains(Method, 'geodesic')
     % Configurations to detect: 
     %    - One face divided in 3 with a point in the middle of the face
     %    - Square divided into 4 triangles with one point in the middle
@@ -110,4 +104,12 @@ if contains(lower(Method), 'geodesic')
     W(iVert,:) = AvgConn';
     W(:,iVert) = AvgConn;
 end
+
+% ===== APPLY GAUSSIAN FUNCTION =====
+% Gaussian function
+function y = GaussianKernel(x,sigma2)
+    y = 1 / sqrt(2*pi*sigma2);
+    y = y .* exp(-(x.^2/(2*sigma2)));
 end
+end
+
