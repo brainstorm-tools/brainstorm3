@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'ssmooth';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
-    sProcess.Index       = 336;
+    sProcess.Index       = 336.1;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results', 'timefreq'};
     sProcess.OutputTypes = {'results', 'timefreq'};

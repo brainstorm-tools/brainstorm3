@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'ssmooth';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
-    sProcess.Index       = 337;
+    sProcess.Index       = 336;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/VisualGroup';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results', 'timefreq'};
