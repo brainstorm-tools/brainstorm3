@@ -72,8 +72,8 @@ end
 
 % Calculate Gaussian kernel properties
 if ismember(Method, {'geodesic_edge'})
-    % Compute Sigma using an integer number of edges
-    Sigma = ceil(FWHM./ meanDist) / (2 * sqrt(2*log2(2)));
+    % Sigma given in (integer) number of edges
+    Sigma = ceil(ceil(FWHM./ meanDist) / (2 * sqrt(2*log2(2))));
 else
     % Sigma given in meters
     Sigma = FWHM / (2 * sqrt(2*log2(2)));
