@@ -79,7 +79,7 @@ end
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     global GlobalData;
     % Get options
-    FWHM = sProcess.options.fwhm.Value{1} / 1000;
+    FWHM = sProcess.options.fwhm.Value{1} / 1000; % meters
     Method = sProcess.options.method.Value;
 
     % ===== LOAD SURFACE =====
@@ -113,7 +113,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 
     % ===== COMPUTE SMOOTHING OPERATOR =====
     % Get existing interpolation for this surface
-    Signature = sprintf('ssmooth(%1.2f,%s):%s', FWHM/1000, Method, FileMat.SurfaceFile);
+    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, FileMat.SurfaceFile);
     WInterp = [];
     if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
         iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
@@ -150,7 +150,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput.A(:,:,iFreq) = WInterp * sInput.A(:,:,iFreq);
     end
     % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM), Method(1)];
+    sInput.CommentTag = [sProcess.FileTag, sprintf(' %.1f %s', FWHM*1000, Method)];
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
