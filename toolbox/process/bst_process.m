@@ -997,7 +997,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         sMat.Comment = sProcess.options.Comment.Value;
     % Modify comment based on modifications in function Run
-    elseif ~isRaw && isfield(sInput, 'Comment') && ~isempty(sInput.Comment) && ~isequal(sMat.Comment, sInput.Comment)
+    elseif ~isRaw && isfield(sInput, 'Comment') && ~isempty(sInput.Comment) && ~isequal(sMat.Comment, sInput.Comment) && ~isAbsolute
         sMat.Comment = sInput.Comment;
     % Add file tag (defined in process Run function)
     elseif isfield(sInput, 'CommentTag') && ~isempty(sInput.CommentTag)
