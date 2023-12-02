@@ -121,7 +121,6 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 	% Load surface
     SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
     
-    
     % ===== PROCESS =====
     % Smooth surface
     [sInput.A, msgInfo, warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
@@ -140,48 +139,10 @@ function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
     if strcmp(version,'adaptive_fwhm')
         % Smooth each connenected part of the surface separately
         % first estimate the connected regions 
-
-        A = SurfaceMat.VertConn;
-        G = digraph(A);
-    
-        subgraph={};
-        for k=1:G.numnodes
-            nn_in = nearest(G,k,Inf);
-            nn_in = sort([ k; nn_in]);
-            found = 0;
-            for i=1:length(subgraph)
-                if length(nn_in) == length(subgraph{i}) &&  all(nn_in == subgraph{i})
-                    found = 1;
-                    break;
-                end    
-            end
-            if ~found
-                subgraph{end+1} = nn_in;
-            end
-        end
-
+        subRegions = process_ssmooth('GetConnectedRegions', SurfaceMat);
         % Smooth each region separately
-        for i = 1:length(subgraph)
-            sSubRegion = SurfaceMat;
-            sSubRegion.Vertices = SurfaceMat.Vertices(subgraph{i},:);
-
-            iRemoveVert = setdiff(1:size(SurfaceMat.Vertices,1) , subgraph{i}  );
-            iKeptVert = subgraph{i};
-
-            iVertMap = zeros(1, size(SurfaceMat.Vertices ,1));
-            iVertMap(iKeptVert) = 1:length(iKeptVert);
-
-            iRemoveFace = find(sum(ismember(SurfaceMat.Faces, iRemoveVert), 2));
-
-            sSubRegion.Faces    = SurfaceMat.Faces;
-            % Remove faces from list
-            sSubRegion.Faces(iRemoveFace, :) = [];
-            % Renumber indices
-            sSubRegion.Faces = iVertMap(sSubRegion.Faces );
-
-            sSubRegion.VertConn = SurfaceMat.VertConn( subgraph{i},subgraph{i});
-
-            [sData( subgraph{i},:,:), msgInfo] = compute(sSubRegion, sData( subgraph{i},:,:), FWHM, 'fixed_fwhm');
+        for i = 1:length(subRegions)
+            [sData(subRegions(i).Indices,:,:), msgInfo] = compute(subRegions(i), sData(subRegions(i).Indices,:,:), FWHM, 'fixed_fwhm');
         end
         return;
     end
@@ -201,8 +162,6 @@ function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
     
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
     FWHMedge = FWHM ./ meanDist;
-    
-
 
     % Display the result of this conversion
     msgInfo = ['Average distance between two vertices: ' num2str(round(meanDist*10000)/10) ' mm' 10 ...
@@ -220,7 +179,6 @@ function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
     for iFreq = 1:size(sData,3)
         sData(:,:,iFreq) = SurfStatSmooth(sData(:,:,iFreq)', cortS, FWHMedge)';
     end
-
 
 end
 
