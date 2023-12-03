@@ -2636,6 +2636,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     
     % Get processes from installed (a supported) plugins ($HOME/.brainstorm/plugins/*)
     plugFunc = {};
+    plugList = [];
     PlugSupported = bst_plugin('GetSupported');
     PlugInstalled = bst_plugin('GetInstalled');
     [~, iPlug] = intersect({PlugInstalled.Name}, {PlugSupported.Name});
