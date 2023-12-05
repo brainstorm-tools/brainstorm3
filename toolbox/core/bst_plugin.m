@@ -631,7 +631,9 @@ function PlugDesc = GetSupported(SelPlug)
     switch(OsType)
         case  'mac64arm'
             PlugDesc(end).URLzip         = 'https://github.com/spm/spm12/archive/refs/heads/maint.zip';
+            PlugDesc(end).Version        = 'github-maint';
         otherwise
+            PlugDesc(end).Version        = 'latest';
             PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
     end
     PlugDesc(end).URLinfo        = 'https://www.fil.ion.ucl.ac.uk/spm/';
