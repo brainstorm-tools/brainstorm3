@@ -628,7 +628,12 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('spm12');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    switch(OsType)
+        case  'mac64arm'
+            PlugDesc(end).URLzip         = 'https://github.com/spm/spm12/archive/refs/heads/maint.zip';
+        otherwise
+            PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    end
     PlugDesc(end).URLinfo        = 'https://www.fil.ion.ucl.ac.uk/spm/';
     PlugDesc(end).TestFile       = 'spm.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
