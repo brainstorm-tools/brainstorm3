@@ -72,7 +72,13 @@ if isempty(OutputFile)
     end
     % Build default output filename
     if ~isempty(BstFile)
-        [BstPath, BstBase, BstExt] = bst_fileparts(BstFile);
+        fileType = file_gettype(BstFile);
+        if strcmp(fileType, 'link')
+            [~, tmp] = file_resolve_link(BstFile);
+            [BstPath, BstBase, BstExt] = bst_fileparts(tmp);
+        else
+            [BstPath, BstBase, BstExt] = bst_fileparts(BstFile);
+        end
     else
         BstBase = file_standardize(ResultsMat.Comment);
     end
