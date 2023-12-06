@@ -1835,9 +1835,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             defaultFilter    = [];
         end
         % Suggest filename
-        suggestOutFile = isempty(DefaultOutFile);
+        inBstFile = selectOptions{1};
+        suggestOutFile = isempty(DefaultOutFile) && ~isempty(inBstFile);
         if suggestOutFile
-            inBstFile = selectOptions{1};
             fileType = file_gettype(inBstFile);
             switch(fileType)
                 case 'data'
@@ -1845,7 +1845,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     BstBase = strrep(BstBase, '_data', '');
                     BstBase = strrep(BstBase, 'data_', '');
                     BstBase = strrep(BstBase, '0raw_', '');
-                    if ~isempty(strfind(selectOptions{1}, '_0raw'))
+                    if ~isempty(strfind(inBstFile, '_0raw'))
                         fileType = 'raw';
                     end
 
