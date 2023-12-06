@@ -1869,6 +1869,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     BstBase = strrep(BstBase, '_matrix', '');
                     BstBase = strrep(BstBase, 'matrix_', '');
 
+                otherwise
+                    % e.g., user set outfile more than once
+                    [~, BstBase] = bst_fileparts(inBstFile);
+
             end
             % Get filters for this InputType
             if isempty(Filters)
