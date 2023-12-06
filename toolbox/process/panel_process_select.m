@@ -1389,8 +1389,16 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jText.setEditable(0);
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
-                    gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
-                    
+                    if length(option.Value) > 7 && strcmp(option.Value{3}, 'save') && strcmp(option.Value{7}, 'files')
+                        % Save file (Export file)
+                        % sFiles(1).FileName is used to suggest filename for new file
+                        GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
+                    else
+                        % Pick file or dir (Open File or Select Dir to Save)
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
+                    end
+
                 case 'editpref'
                     gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;']);
                     gui_component('button', jPanelOpt, [], 'Edit...', [],[], @(h,ev)EditProperties_Callback(iProcess, optNames{iOpt}));
@@ -1793,6 +1801,117 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Close progress bar
         bst_progress('stop');
+    end
+
+
+    %% ===== OPTIONS: SAVE FILE CALLBACK =====
+    function SaveFile_Callback(iProcess, optName, jText, isUpdateTime)
+        % Get default import directory and formats
+        LastUsedDirs = bst_get('LastUsedDirs');
+        DefaultFormats = bst_get('DefaultFormats');
+        % Get file selection options
+        selectOptions = GlobalData.Processes.Current(iProcess).options.(optName).Value;
+        if (length(selectOptions) == 9)
+            DialogType      = selectOptions{3};
+            WindowTitle     = selectOptions{4};
+            DefaultOutFile  = selectOptions{5};
+            SelectionMode   = selectOptions{6};
+            FilesOrDir      = selectOptions{7};
+            Filters         = selectOptions{8};
+            DefaultFormat   = selectOptions{9};
+            % Default filter
+            if isfield(DefaultFormats, DefaultFormat)
+                defaultFilter = DefaultFormats.(DefaultFormat);
+            else
+                defaultFilter = [];
+            end
+        else
+            DialogType       = 'save';
+            WindowTitle      = 'Export file';
+            DefaultOutFile   = '';
+            SelectionMode    = 'single';
+            FilesOrDir       = 'files';
+            Filters          = {{'*'}, 'All files (*.*)', 'ALL'};
+            defaultFilter    = [];
+        end
+        % Suggest filename
+        suggestOutFile = isempty(DefaultOutFile);
+        if suggestOutFile
+            inBstFile = selectOptions{1};
+            fileType = file_gettype(inBstFile);
+            switch(fileType)
+                case 'data'
+                    [~, BstBase] = bst_fileparts(inBstFile);
+                    BstBase = strrep(BstBase, '_data', '');
+                    BstBase = strrep(BstBase, 'data_', '');
+                    BstBase = strrep(BstBase, '0raw_', '');
+                    if ~isempty(strfind(selectOptions{1}, '_0raw'))
+                        fileType = 'raw';
+                    end
+
+                case {'results', 'link'}
+                    fileType = 'results';
+                    if strcmp(fileType, 'link')
+                        [~, tmp] = file_resolve_link(inBstFile);
+                        [~, BstBase] = bst_fileparts(tmp);
+                    else
+                        [~, BstBase] = bst_fileparts(inBstFile);
+                    end
+                    BstBase = strrep(BstBase, '_results', '');
+                    BstBase = strrep(BstBase, 'results_', '');
+
+                case 'timefreq'
+                    [~, BstBase] = bst_fileparts(inBstFile);
+                    BstBase = strrep(BstBase, '_timefreq', '');
+                    BstBase = strrep(BstBase, 'timefreq_', '');
+
+                case 'matrix'
+                    [~, BstBase] = bst_fileparts(inBstFile);
+                    BstBase = strrep(BstBase, '_matrix', '');
+                    BstBase = strrep(BstBase, 'matrix_', '');
+
+            end
+            % Get filters for this InputType
+            if isempty(Filters)
+                Filters = bst_get('FileFilters', [fileType, 'out']);
+            end
+            % Select only Filter if not provided
+            if isempty(defaultFilter)
+                switch fileType
+                    case 'raw'
+                        defaultFilter = 'BST-BIN';
+                    case {'data', 'results', 'timefreq', 'matrix'}
+                        defaultFilter = 'BST';
+                end
+            end
+            % Get extension for filter
+            iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
+            if isempty(iFilter)
+                iFilter = 1;
+            end
+            BstExt = Filters{iFilter, 1}{1};
+            % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
+            if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+                BstExt = [BstExt, '.mat'];
+            end
+            % Suggested filename
+            DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [BstBase, BstExt]);
+        end
+
+        % Pick a file
+        [OutputFiles, FileFormat] = java_getfile(DialogType, WindowTitle, DefaultOutFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
+        % If nothing selected
+        if isempty(OutputFiles)
+            return
+        end
+
+        % Update the values
+        selectOptions{1} = OutputFiles;
+        selectOptions{2} = FileFormat;
+        % Save the new values
+        SetOptionValue(iProcess, optName, selectOptions);
+        % Update the text field
+        jText.setText(OutputFiles);
     end
 
 
