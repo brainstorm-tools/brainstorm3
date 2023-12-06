@@ -2660,8 +2660,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        plugList = cellfun(@dir, plugFunc);
-        bstFunc = union(plugFunc, bstFunc);
+        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        plugList = cellfun(@dir, plugFunc(iFunc));
+        bstFunc  = union(plugFunc, bstFunc);
     end
 
     % ===== CHECK FOR MODIFICATIONS =====
