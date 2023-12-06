@@ -130,11 +130,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Infor of where the file was saved (console and report)
     bst_report('Info', sProcess, sInputs(1), sprintf('File exported as %s', outFileOptions{1}));
-    fprintf('BST: File %s exported as %s', sInputs(1).FileName, outFileOptions{1});
+    fprintf(['BST: File "%s" exported as "%s"' 10], sInputs(1).FileName, outFileOptions{1});
 end
 
 function fileType = FileTypeFromFields(sProcess)
-    % Find File Type from first option field named 'exportINPUTTYPE'
+    % Find InputType from first option field named 'exportINPUTTYPE'
     % FileTypes: 'raw', 'data', 'results', 'timefreq' or 'matrix'
     optFields = fieldnames(sProcess.options);
     iField = find(~cellfun(@isempty, regexp(optFields, '^export')), 1, 'first');
