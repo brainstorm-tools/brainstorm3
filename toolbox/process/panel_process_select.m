@@ -1389,9 +1389,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jText.setEditable(0);
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
-                    if length(option.Value) > 7 && strcmp(option.Value{3}, 'save') && strcmp(option.Value{7}, 'files')
-                        % Save file (Export file)
-                        % sFiles(1).FileName is used to suggest filename for new file
+                    if length(option.Value) > 7 && strcmp(option.Value{3}, 'save') && strcmp(option.Value{6}, 'single') && strcmp(option.Value{7}, 'files')
+                        % Save file (Export file), if not empty sFiles(1).FileName is used to suggest filename for new file
                         GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
                         gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
                     else
