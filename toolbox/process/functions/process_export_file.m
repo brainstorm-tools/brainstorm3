@@ -46,16 +46,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...              % Filename
         '', ...              % FileFormat
         'save', ...          % Dialog type: {open,save}
-        'Export: %s...', ... % Window title
+        '', ...              % Window title
         '', ...              % DefaultFile (Suggested if empty AND 'save' & 'files')
         'single', ...        % Selection mode: {single,multiple}
         'files', ...         % Selection mode: {files,dirs,files_and_dirs}
         '', ...              % Available file formats
         ''};                 % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,AnatIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn}
     exportComment = 'Output file:';
-
+    windowTitle   = 'Export: %s...';
     % === TARGET RAW DATA FILENAME
-    SelectOptions{4} = sprintf(SelectOptions{4}, 'raw data');
+    SelectOptions{4} = sprintf(windowTitle, 'raw data');
     SelectOptions{8} = bst_get('FileFilters', 'rawout');
     SelectOptions{9} = 'DataOut';
     sProcess.options.exportraw.Comment    = exportComment;
@@ -64,7 +64,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.exportraw.InputTypes = {'raw'};
 
     % === TARGET DATA FILENAME
-    SelectOptions{4} = sprintf(SelectOptions{4}, 'data');
+    SelectOptions{4} = sprintf(windowTitle, 'data');
     SelectOptions{8} = bst_get('FileFilters', 'dataout');
     SelectOptions{9} = 'DataOut';
     sProcess.options.exportdata.Comment    = exportComment;
@@ -73,7 +73,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.exportdata.InputTypes = {'data'};
 
     % === TARGET RESULTS FILENAME
-    SelectOptions{4} = sprintf(SelectOptions{4}, 'sources');
+    SelectOptions{4} = sprintf(windowTitle, 'sources');
     SelectOptions{8} = bst_get('FileFilters', 'resultsout');
     SelectOptions{9} = 'ResultsOut';
     sProcess.options.exportresults.Comment    = exportComment;
@@ -82,7 +82,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.exportresults.InputTypes = {'results'};
 
     % === TARGET TIMEFREQ FILENAME
-    SelectOptions{4} = sprintf(SelectOptions{4}, 'time-freq');
+    SelectOptions{4} = sprintf(windowTitle, 'time-freq');
     SelectOptions{8} = bst_get('FileFilters', 'timefreqout');
     SelectOptions{9} = 'TimefreqOut';
     sProcess.options.exporttimefreq.Comment    = exportComment;
@@ -91,7 +91,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.exporttimefreq.InputTypes = {'timefreq'};
 
     % === TARGET MATRIX FILENAME
-    SelectOptions{4} = sprintf(SelectOptions{4}, 'matrix');
+    SelectOptions{4} = sprintf(windowTitle, 'matrix');
     SelectOptions{8} = bst_get('FileFilters', 'matrixout');
     SelectOptions{9} = 'MatrixOut';
     sProcess.options.exportmatrix.Comment    = exportComment;
