@@ -124,13 +124,35 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== PROCESS =====
     % Smooth surface
     [sInput.A, msgInfo, warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
+    if iscell(msgInfo)
+        tmp = sprintf('Smoothing %d independent regions \n',  length(msgInfo));
+        for iRegion = 1:length(msgInfo)
+            tmp = [tmp,  sprintf('Region %d: %s \n', iRegion, msgInfo{iRegion})];
+        end
+        msgInfo = tmp;        
+    end
     bst_report('Info', sProcess, sInput, msgInfo);
+ 
     if ~isempty(warmInfo)
         bst_report('Warning', sProcess, sInput, warmInfo);
     end
 
     % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
+    sInput.CommentTag = sprintf('%s %.1f mm',sProcess.FileTag,FWHM*1000);
+    tmp = strsplit(msgInfo,'\n');
+    HistoryComment = [sprintf('%s %.1f mm',sProcess.FileTag,FWHM*1000) newline];
+    for iLine = 1:length(tmp)
+        if ~isempty(tmp{iLine})
+            HistoryComment = [HistoryComment ...
+                             '|-------- ' strrep(tmp{iLine},'=',':')  newline ];
+        end
+    end
+    if ~isempty(warmInfo)     
+        HistoryComment = [HistoryComment ...
+                         '|-------- ' warmInfo];
+    end
+
+    sInput.HistoryComment = HistoryComment;
 end
 
 function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
@@ -141,8 +163,9 @@ function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
         % first estimate the connected regions 
         subRegions = process_ssmooth('GetConnectedRegions', SurfaceMat);
         % Smooth each region separately
+        msgInfo    = cell(1,length(subRegions));
         for i = 1:length(subRegions)
-            [sData(subRegions(i).Indices,:,:), msgInfo] = compute(subRegions(i), sData(subRegions(i).Indices,:,:), FWHM, 'fixed_fwhm');
+            [sData(subRegions(i).Indices,:,:), msgInfo{i}] = compute(subRegions(i), sData(subRegions(i).Indices,:,:), FWHM, 'fixed_fwhm');
         end
         return;
     end
