@@ -1265,9 +1265,18 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ...
+       ismember(PlugName, {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+                           'openmeeg', 'xdf'})
+        errMsg = ['Plugin ', PlugName ' is not supported on Apple silicon yet.'];
+        PlugDesc = [];
+        return;
+    end
     % Check if there is a URL to download
     if isempty(PlugDesc.URLzip)
-        errMsg = ['No download URL for ', bst_get('OsType', 0), ': ', PlugName ''];
+        errMsg = ['No download URL for ', OsType, ': ', PlugName ''];
         return;
     end
     % Compiled version
