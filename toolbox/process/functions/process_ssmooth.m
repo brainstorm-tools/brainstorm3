@@ -79,6 +79,7 @@ end
 
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
+    global GlobalData;
     % Get options
     FWHM = sProcess.options.fwhm.Value{1} / 1000; % meters
     Method = sProcess.options.method.Value;
@@ -114,13 +115,33 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 
 	% Load surface
     SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
-    [sInput.A, msgInfo, errInfo] = compute(SurfaceMat, sInput.A, FWHM, Method);
-
+    % Get existing interpolation for this surface
+    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, FileMat.SurfaceFile);
+    WInterp = [];
+    if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
+        iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
+        if ~isempty(iInterp)
+            WInterp = GlobalData.Interpolations(iInterp).WInterp;
+        end
+    end
+    % Perform smoothing
+    [sInput.A, msgInfo, WInterp, errInfo] = compute(SurfaceMat, sInput.A, FWHM, Method, WInterp);
+    % Error handling
     if ~isempty(errInfo)
         bst_report('Error', sProcess, sInputs, errInfo);
         return;
     end
-
+    % Save interpolation in memory for future calls
+    if ~isempty(WInterp)
+        sInterp = db_template('interpolation');
+        sInterp.WInterp   = WInterp;
+        sInterp.Signature = Signature;
+        if isempty(GlobalData.Interpolations)
+            GlobalData.Interpolations = sInterp;
+        else
+            GlobalData.Interpolations(end+1) = sInterp;
+        end
+    end
     % Force the output comment
     sInput.CommentTag = FormatComment(sProcess);
     sInput.HistoryComment = msgInfo;
@@ -131,9 +152,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     end
 end
 
-function [sData, msgInfo,errInfo] = compute(SurfaceMat, sData, FWHM, Method)
-    global GlobalData;
-
+function [sData, msgInfo, WInterp, errInfo] = compute(SurfaceMat, sData, FWHM, Method, WInterp)
     msgInfo = '';
     switch Method
         case 'geodesic_dist'
@@ -142,17 +161,6 @@ function [sData, msgInfo,errInfo] = compute(SurfaceMat, sData, FWHM, Method)
             msgInfo = sprintf('Spatial smoothing using %1.2f mm kernel calculating distance using edge path length distance', FWHM*1000);
     end
     errInfo = '';
-
-    % ===== COMPUTE SMOOTHING OPERATOR =====
-    % Get existing interpolation for this surface
-    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, SurfaceMat.Comment);
-    WInterp = [];
-    if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
-        iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
-        if ~isempty(iInterp)
-            WInterp = GlobalData.Interpolations(iInterp).WInterp;
-        end
-    end
     % Calculate new interpolation matrix
     if isempty(WInterp)
         % Load surface file
@@ -178,22 +186,13 @@ function [sData, msgInfo,errInfo] = compute(SurfaceMat, sData, FWHM, Method)
             end
             WInterp(subRegions(iSubRegion).Indices, subRegions(iSubRegion).Indices) = WInterpTmp(:,:);
         end
-        % Save interpolation in memory for future calls
-        sInterp = db_template('interpolation');
-        sInterp.WInterp   = WInterp;
-        sInterp.Signature = Signature;
-        if isempty(GlobalData.Interpolations)
-            GlobalData.Interpolations = sInterp;
-        else
-            GlobalData.Interpolations(end+1) = sInterp;
+    else
+        % Apply smoothing operator
+        for iFreq = 1:size(sData,3)
+            sData(:,:,iFreq) = WInterp * sData(:,:,iFreq);
         end
+        WInterp = [];
     end
-
-    % Apply smoothing operator
-    for iFreq = 1:size(sData,3)
-        sData(:,:,iFreq) = WInterp * sData(:,:,iFreq);
-    end
-
 end
 
 function sSubRegions = GetConnectedRegions(SurfaceMat)
