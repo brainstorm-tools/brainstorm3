@@ -1267,9 +1267,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     % Check if plugin is supported on Apple silicon
     OsType = bst_get('OsType', 0);
-    if strcmpi(OsType, 'mac64arm') && ...
-       ismember(PlugName, {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
-                           'openmeeg', 'xdf'})
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
         errMsg = ['Plugin ', PlugName ' is not supported on Apple silicon yet.'];
         PlugDesc = [];
         return;
@@ -1873,20 +1871,18 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
+        errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
+        return;
+    end
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
         errMsg = ['Plugin ', PlugDesc.Name ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
-
-     OsType = bst_get('OsType', 0);
-     if strcmpi(OsType, 'mac64arm') && ...
-        ismember(PlugDesc.Name, {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
-                            'openmeeg', 'xdf'})
-         errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
-         return;
-     end
     
     % === ALREADY LOADED ===
     % If plugin is already full loaded
@@ -2855,3 +2851,10 @@ function SetProgressLogo(PlugDesc)
     end
 end
 
+
+%% ===== NOT SUPPORTED APPLE SILICON =====
+% Return list of plugins not supported on Apple silicon
+function pluginNames = PluginsNotSupportAppleSilicon()
+    pluginNames = {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+                   'openmeeg', 'xdf'};
+end
