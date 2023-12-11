@@ -1879,6 +1879,14 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         errMsg = ['Plugin ', PlugDesc.Name ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
+
+     OsType = bst_get('OsType', 0);
+     if strcmpi(OsType, 'mac64arm') && ...
+        ismember(PlugDesc.Name, {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+                            'openmeeg', 'xdf'})
+         errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
+         return;
+     end
     
     % === ALREADY LOADED ===
     % If plugin is already full loaded
