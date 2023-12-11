@@ -959,6 +959,14 @@ for iFile = 1:nFiles
                         end
                         % Add the number of averaged windows & files to the report
                         nWinLenSamples = nWinLenAvg;
+                    elseif strcmp(OPTIONS.TimeRes, 'none')
+                        % Add time dimension
+                       for f = 1:numel(Terms)
+                            % Insert a singleton second-to-last dimension
+                            order = 1 : (length(size(S.(Terms{f}))) + 1);
+                            newOrder = [order(1:end-2), order(end:-1:end-1)];
+                            S.(Terms{f}) = permute(S.(Terms{f}), newOrder);
+                       end
                     end
                     % Initial R or Accumulate R
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
@@ -1190,11 +1198,6 @@ function NewFile = Finalize(DataFile)
                         R = imag(R.Sab).^2 ./ (1-real(R.Sab).^2);
                         R(isnan(R(:))) = 0;
                 end
-        end
-        % Static measures may need to be reshaped to add singleton time dimension.
-        if ndims(R) == 3
-            % Push freq to 4th dim.
-            R = permute(R, [1,2,4,3]);
         end
     end
 

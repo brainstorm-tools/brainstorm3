@@ -105,7 +105,7 @@ function [varargout] = bst_plugin(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel 2021-2023
+% Authors: Francois Tadel, 2021-2023
 
 eval(macro_method);
 end
@@ -191,6 +191,20 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
+
+    % === ANATOMY: CT2MRIREG ===
+    % this plugin is used for performing CT to MRI co-registration
+    PlugDesc(end+1)              = GetStruct('ct2mrireg');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/ajoshiusc/USCCleveland/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/USCCleveland/tree/master/ct2mrireg';
+    PlugDesc(end).TestFile       = 'ct2mrireg.m';
+    PlugDesc(end).ReadmeFile     = 'ct2mrireg/README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'ct2mrireg'};
+    PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
 
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
@@ -290,6 +304,18 @@ function PlugDesc = GetSupported(SelPlug)
                                     'NPMK/Dependent Functions/.svn', 'NPMK/Dependent Functions/.DS_Store', 'NPMK/Dependent Functions/bnsx.dat', 'NPMK/Dependent Functions/syncPatternDetectNEV.m', ...
                                     'NPMK/Dependent Functions/syncPatternDetectNSx.m', 'NPMK/Dependent Functions/syncPatternFinderNSx.m'};
 
+    % === I/O: EASYH5 ===
+    PlugDesc(end+1)              = GetStruct('easyh5');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/easyh5/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/easyh5';
+    PlugDesc(end).TestFile       = 'loadh5.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -318,6 +344,19 @@ function PlugDesc = GetSupported(SelPlug)
                                     'f=fopen(''private' filesep 'eeg_emptyset.m'',''wt''); fprintf(f,''function EEG=eeg_emptyset()\nEEG=struct();''); fclose(f);' ...
                                     'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
                                     'cd(d);'];
+
+    % === I/O: JSNIRF ===
+    PlugDesc(end+1)              = GetStruct('jsnirfy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsnirfy/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsnirfy';
+    PlugDesc(end).TestFile       = 'loadsnirf.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).RequiredPlugs  = {'easyh5'};
 
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');

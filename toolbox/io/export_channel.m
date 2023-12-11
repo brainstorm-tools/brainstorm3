@@ -212,12 +212,16 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'indice','-Y','X','Z','name'}, 1, 0, 0, .01);
     case 'EGI'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'name','-Y','X','Z'}, 1, 0, 0, .01);
+
+    % === EEG and NIRS ===
     case {'ASCII_XYZ-EEG', 'ASCII_XYZ_MNI-EEG', 'ASCII_XYZ_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_NXYZ-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_NXYZ_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','X','Y','Z'}, 1, 0, 0, .001, Transf);
     case {'ASCII_XYZN-EEG', 'ASCII_XYZN_MNI-EEG', 'ASCII_XYZN_WORLD-EEG'}
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'X','Y','Z','Name'}, 1, 0, 0, .001, Transf);
+    case 'BRAINSIGHT-TXT'
+        out_channel_brainsight(BstChannelFile, OutputChannelFile, .001, Transf);
 
     % === NIRS ONLY ===
     case 'BIDS-NIRS-SCANRAS-MM'
@@ -229,8 +233,6 @@ switch FileFormat
     case 'BIDS-NIRS-ALS-MM'
         % No transformation: export unchanged SCS/CTF space
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
-    case 'BRAINSIGHT-TXT'
-        out_channel_nirs_brainsight(BstChannelFile, OutputChannelFile, .001, Transf); 
 
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);

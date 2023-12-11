@@ -562,6 +562,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
+                    gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
@@ -1910,7 +1911,7 @@ switch (lower(action))
                 % Get data type
                 isStat = strcmpi(char(bstNodes(1).getType()), 'ptimefreq');
                 if isStat
-                    TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType');
+                    TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType', 'Time');
                     if ~isempty(TimefreqMat.DataType)
                         DataType = TimefreqMat.DataType;
                     else
@@ -1920,7 +1921,6 @@ switch (lower(action))
                 else
                     DataType = sStudy.Timefreq(iTimefreq).DataType;
                     DataFile = sStudy.Timefreq(iTimefreq).DataFile;
-                    Comment  = sStudy.Timefreq(iTimefreq).Comment;
                 end
                 % Get source model
                 if strcmpi(DataType, 'results')
@@ -1951,7 +1951,12 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     % ===== CONNECTIVITY =====
                     if ~isempty(strfind(filenameRelative, '_connectn')) || ~isempty(strfind(filenameRelative, '_connect1'))
-
+                        % Time defined Connectivity file or Stat Connectivity file
+                        if isStat
+                            cnxTimeDef = length(TimefreqMat.Time) > 1;
+                        else
+                            cnxTimeDef = ~isempty(strfind(sStudy.Timefreq(iTimefreq).Comment, '-time'));
+                        end
                         % [NxN] only
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
                             gui_component('MenuItem', jPopup, [], 'Display as graph [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));                               
@@ -1973,7 +1978,7 @@ switch (lower(action))
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
                                         || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
-                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
+                                        || (cnxTimeDef && (~isempty(strfind(filenameRelative, '_corr')) || ~isempty(strfind(filenameRelative, '_cohere'))))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
@@ -1992,7 +1997,7 @@ switch (lower(action))
                                 % One channel
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))...
                                         || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
-                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
+                                        || (cnxTimeDef && (~isempty(strfind(filenameRelative, '_corr')) || ~isempty(strfind(filenameRelative, '_cohere'))))
                                     gui_component('MenuItem', jMenuConn1, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     AddSeparator(jMenuConn1);
                                 end
@@ -2014,7 +2019,7 @@ switch (lower(action))
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
                                         || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) ...
-                                        || (~isempty(strfind(filenameRelative, '_corr')) && ~isempty(strfind(Comment, '-time'))) || (~isempty(strfind(filenameRelative, '_cohere')) && ~isempty(strfind(Comment, '-time')))
+                                        || (cnxTimeDef && (~isempty(strfind(filenameRelative, '_corr')) || ~isempty(strfind(filenameRelative, '_cohere'))))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));

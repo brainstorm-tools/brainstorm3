@@ -323,9 +323,9 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     
     nSamples = SamplesBounds(2) - SamplesBounds(1) + 1;
     
-    iHLU = find(strcmp({ChannelMat.Channel.Type}, 'HLU'));
+    iHLU = find(strcmpi({ChannelMat.Channel.Type}, 'HLU'));
     [Unused, iSortHlu] = sort({ChannelMat.Channel(iHLU).Name});
-    iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
+    iFitErr = find(strcmpi({ChannelMat.Channel.Type}, 'FitErr'));
     [Unused, iSortFitErr] = sort({ChannelMat.Channel(iFitErr).Name});
     nChannels = numel(iHLU);
     if nChannels == 0

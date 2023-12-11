@@ -386,8 +386,15 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                             if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
                                 DataType = upper(ColormapInfo.Type);
                             % sLORETA: Do not use regular source scaling (pAm)
-                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
-                                DataType = 'sLORETA';
+                            elseif strcmpi(DataType, 'Source')
+                                if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
+                                    DataType = 'sLORETA';
+                                else
+                                    [~, iResult] = bst_memory('LoadResultsFile', TessInfo(iTess).DataSource.FileName, 0);
+                                    if ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'));
+                                        DataType = 'sLORETA';
+                                    end
+                                end
                             end
                         end
                         if isempty(DataFig)
@@ -1442,7 +1449,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             elseif strcmpi(ColormapType, 'stat1') || strcmpi(ColormapType, 'stat2')
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');
-                DataType = 'stat';
+                % Keep DataType 'sLORETA' to avoid [pAm] as unit
+                if isempty(strfind(lower(DataType), 'sloreta'));
+                    DataType = 'stat';
+                end
             else
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');

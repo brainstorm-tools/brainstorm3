@@ -123,11 +123,42 @@ end
 
 % ===== PUBLICATIONS =====
 if isempty(PlugName)
-    % Hard coded list of publications
-    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022]; 
-    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
-    nPubliCurYear = 118; % Updated March 2023
-    strPubDate = 'Up to March 2023';
+    % Up to December 2022, citation count was manually curated
+    year_man   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022];
+    nPubli_man = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
+    % nPubliCurYear = 118; % January to March 2023
+    % strPubDate = 'Up to March 2023';
+
+    % From January 2023 onwards, citation count is obtained from Google Scholar, and posted in:
+    % https://neuroimage.usc.edu/bst/citations_count.html
+    % Read list of users
+    str = bst_webread('https://neuroimage.usc.edu/bst/citations_count.html');
+    % Extract values YYYY#nPubli
+    year_Npubli_gs = regexp(str, '[0-9]+#[0-9]+', 'match');
+    year_Npubli_gs = sort(year_Npubli_gs);
+    year_gs = [];
+    nPubli_gs = [];
+    for iRow = 1 : length(year_Npubli_gs)
+        C = textscan(year_Npubli_gs{iRow}, '%d#%d');
+        if C{1} >= 2023
+            year_gs(end+1) = C{1};
+            nPubli_gs(end+1) = C{2};
+        end
+    end
+    % Publications current year (last year in array)
+    nPubliCurYear = nPubli_gs(end);
+    % Remove current year from graph
+    nPubli_gs(end) = [];
+    year_gs(end)   = [];
+
+    % Get month of last update
+    dateCount = regexp(str, 'UpdatedOn#([^<]*)', 'tokens', 'once');
+    C = str_split(dateCount{1}, '-');
+    strPubDate = sprintf('Up to %s %s', C{2}, C{3});
+
+    % Aggregate manual and automatic citation counts
+    year   = [year_man, year_gs];
+    nPubli = [nPubli_man, nPubli_gs];
     % Plot figure
     hFig(end+1) = fig_report(year, nPubli, 1, ...
                [2000 max(year)], [], ...

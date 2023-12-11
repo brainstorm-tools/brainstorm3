@@ -179,7 +179,9 @@ for iResFile = 1:length(ResultsFiles)
             bst_progress('stop');
             return;
         end
-        if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta'))
+        if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ...
+           ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta')) || ...
+           ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'))
             issloreta = 1;
         end
         fileUnits = GlobalData.DataSet(iDS).Results(iResult).DisplayUnits;

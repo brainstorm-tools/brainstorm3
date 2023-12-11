@@ -1141,7 +1141,7 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     SamplingRate = [];
     if any(strcmpi('ImageGridAmp', {File_whos.name}))
         % Load results .Mat
-        ResultsMat = in_bst_results(ResultsFullFile, 0, 'Comment', 'Time', 'ChannelFlag', 'SurfaceFile', 'HeadModelType', 'ColormapType', 'DisplayUnits', 'GoodChannel', 'Atlas');
+        ResultsMat = in_bst_results(ResultsFullFile, 0, 'Comment', 'Time', 'ChannelFlag', 'SurfaceFile', 'HeadModelType', 'ColormapType', 'DisplayUnits', 'GoodChannel', 'Atlas', 'Function');
         % Raw file: Use only the loaded time window
         if ~isempty(DataFile) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(strfind(ResultsFullFile, '_KERNEL_'))
             Time = GlobalData.DataSet(iDS).Measures.Time;
@@ -1226,7 +1226,11 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
     else
         Results.GoodChannel = ResultsMat.GoodChannel;
     end
-    
+    % If Results structure has Function field
+    if isfield(ResultsMat, 'Function')
+        Results.Function = ResultsMat.Function;
+    end
+
     % Store new Results structure in GlobalData
     iResult = length(GlobalData.DataSet(iDS).Results) + 1;
     GlobalData.DataSet(iDS).Results(iResult) = Results;
