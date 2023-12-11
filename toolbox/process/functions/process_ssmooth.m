@@ -73,13 +73,12 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         strAbs = '';
     end
     % Final comment
-    Comment = sprintf('%s (%1.2f%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
+    Comment = sprintf('%s (%1.2f mm%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
 end
 
 
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
-    global GlobalData;
     % Get options
     FWHM = sProcess.options.fwhm.Value{1} / 1000; % meters
     Method = sProcess.options.method.Value;
@@ -113,9 +112,40 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         return;
     end
 
+	% Load surface
+    SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
+    [sInput.A, msgInfo, errInfo] = compute(SurfaceMat, sInput.A, FWHM, Method);
+
+    if ~isempty(errInfo)
+        bst_report('Error', sProcess, sInputs, errInfo);
+        return;
+    end
+
+    % Force the output comment
+    sInput.CommentTag = FormatComment(sProcess);
+    sInput.HistoryComment = msgInfo;
+    
+    % Do not keep the Std field in the output
+    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
+        sInput.Std = [];
+    end
+end
+
+function [sData, msgInfo,errInfo] = compute(SurfaceMat, sData, FWHM, Method)
+    global GlobalData;
+
+    msgInfo = '';
+    switch Method
+        case 'geodesic_dist'
+            msgInfo = sprintf('Spatial smoothing using %1.2f mm kernel calculating distance using geodesic distance', FWHM*1000);
+        case 'geodesic_edge'
+            msgInfo = sprintf('Spatial smoothing using %1.2f mm kernel calculating distance using edge path length distance', FWHM*1000);
+    end
+    errInfo = '';
+
     % ===== COMPUTE SMOOTHING OPERATOR =====
     % Get existing interpolation for this surface
-    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, FileMat.SurfaceFile);
+    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, SurfaceMat.Comment);
     WInterp = [];
     if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
         iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
@@ -126,7 +156,6 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Calculate new interpolation matrix
     if isempty(WInterp)
         % Load surface file
-        SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
         nVertices = size(SurfaceMat.Vertices,1);
         switch Method
             case 'geodesic_dist'
@@ -144,8 +173,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             WInterpTmp = tess_smooth_sources(subRegions(iSubRegion), FWHM, Method);
             % Check for errors
             if isempty(WInterpTmp)
-                bst_report('Error', sProcess, sInputs, sprintf('Cannot compute the smoothig %s.', Signature));
-                sInput = [];
+                errInfo = sprintf('Cannot compute the smoothig %s.', Signature);
                 return;
             end
             WInterp(subRegions(iSubRegion).Indices, subRegions(iSubRegion).Indices) = WInterpTmp(:,:);
@@ -160,16 +188,12 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             GlobalData.Interpolations(end+1) = sInterp;
         end
     end
+
     % Apply smoothing operator
-    for iFreq = 1:size(sInput.A,3)
-        sInput.A(:,:,iFreq) = WInterp * sInput.A(:,:,iFreq);
+    for iFreq = 1:size(sData,3)
+        sData(:,:,iFreq) = WInterp * sData(:,:,iFreq);
     end
-    % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, sprintf(' %.1f %s', FWHM*1000, Method)];
-    % Do not keep the Std field in the output
-    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
-        sInput.Std = [];
-    end
+
 end
 
 function sSubRegions = GetConnectedRegions(SurfaceMat)

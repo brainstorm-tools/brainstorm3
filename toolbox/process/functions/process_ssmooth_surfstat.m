@@ -76,7 +76,7 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         strAbs = '';
     end
     % Final comment
-    Comment = sprintf('%s (%1.2f%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
+    Comment = sprintf('%s (%1.2f mm%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
 end
 
 
@@ -138,7 +138,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     end
 
     % Force the output comment
-    sInput.CommentTag = sprintf('%s %.1f mm',sProcess.FileTag,FWHM*1000);
+    sInput.CommentTag = FormatComment(sProcess);
+    % Format the output history
     tmp = strsplit(msgInfo,'\n');
     HistoryComment = [sprintf('%s %.1f mm',sProcess.FileTag,FWHM*1000) newline];
     for iLine = 1:length(tmp)
