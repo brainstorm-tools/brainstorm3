@@ -628,7 +628,14 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('spm12');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    switch(OsType)
+        case  'mac64arm'
+            PlugDesc(end).URLzip         = 'https://github.com/spm/spm12/archive/refs/heads/maint.zip';
+            PlugDesc(end).Version        = 'github-maint';
+        otherwise
+            PlugDesc(end).Version        = 'latest';
+            PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    end
     PlugDesc(end).URLinfo        = 'https://www.fil.ion.ucl.ac.uk/spm/';
     PlugDesc(end).TestFile       = 'spm.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
@@ -1258,9 +1265,16 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
+        errMsg = ['Plugin ', PlugName ' is not supported on Apple silicon yet.'];
+        PlugDesc = [];
+        return;
+    end
     % Check if there is a URL to download
     if isempty(PlugDesc.URLzip)
-        errMsg = ['No download URL for ', bst_get('OsType', 0), ': ', PlugName ''];
+        errMsg = ['No download URL for ', OsType, ': ', PlugName ''];
         return;
     end
     % Compiled version
@@ -1855,6 +1869,12 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugDesc);
     if ~isempty(errMsg)
+        return;
+    end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
+        errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
         return;
     end
     % Minimum Matlab version
@@ -2831,3 +2851,10 @@ function SetProgressLogo(PlugDesc)
     end
 end
 
+
+%% ===== NOT SUPPORTED APPLE SILICON =====
+% Return list of plugins not supported on Apple silicon
+function pluginNames = PluginsNotSupportAppleSilicon()
+    pluginNames = {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+                   'openmeeg', 'xdf'};
+end
