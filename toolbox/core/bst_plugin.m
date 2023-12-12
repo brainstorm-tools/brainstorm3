@@ -1873,7 +1873,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     end
     % Check if plugin is supported on Apple silicon
     OsType = bst_get('OsType', 0);
-    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugDesc.Name, PluginsNotSupportAppleSilicon())
         errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
         return;
     end
