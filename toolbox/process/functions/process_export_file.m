@@ -41,6 +41,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % Instructions label
+    sProcess.options.label1.Comment = ['<B>One file: </B>Provide filename and format<BR><BR>' ...
+                                       '<B>Multiple files: </B>Provide directory and format<BR>' ...
+                                       '<I><FONT color="#777777">(filenames are obtained from database)</FONT></I><BR><BR>'];
+    sProcess.options.label1.Type    = 'label';
     % File selection options
     SelectOptions = {...
         '', ...              % Filename
