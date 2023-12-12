@@ -148,6 +148,12 @@ if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
 
+% Check for Apple silicon (started with R2023b)
+if (MatlabVersion >= 2302) && strcmp(bst_get('OsType', 0), 'mac64arm')
+    disp(['BST> Warning: Running on Apple silicon, some functions and plugins are not supported yet:' 10 ...
+          '              Use Matlab < 2023b or Matlab for Intel processor for full support']);
+end
+
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
 if (GuiLevel == 1)
