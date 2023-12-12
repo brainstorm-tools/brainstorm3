@@ -1384,14 +1384,23 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create controls
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
+                    jLabel = gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     jText = gui_component('text', jPanelOpt, [], strFiles);
                     jText.setEditable(0);
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
-                    if length(option.Value) > 7 && strcmp(option.Value{3}, 'save') && strcmp(option.Value{6}, 'single') && strcmp(option.Value{7}, 'files')
-                        % Save file (Export file), if not empty sFiles(1).FileName is used to suggest filename for new file
-                        GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                    if strcmp(strFunction, 'process_export_file')
+                        % Export multiple files, suggest dir name to export files (filenames from Brainstorm DB)
+                        jLabel.setText('Output dir');
+                        GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'dirs';
+                        if length(sFiles) < 2
+                            % Export one file, suggest filename for new file from Input file
+                            jLabel.setText('Output file');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'files';
+                            if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1})
+                                GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                            end
+                        end
                         gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
                     else
                         % Pick file or dir (Open File or Select Dir to Save)
@@ -1835,86 +1844,95 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Suggest filename
         inBstFile = selectOptions{1};
-        suggestOutFile = isempty(DefaultOutFile) && ~isempty(inBstFile);
-        if suggestOutFile
-            fileType = file_gettype(inBstFile);
-            switch(fileType)
-                case 'data'
-                    [~, BstBase] = bst_fileparts(inBstFile);
-                    BstBase = strrep(BstBase, '_data', '');
-                    BstBase = strrep(BstBase, 'data_', '');
-                    BstBase = strrep(BstBase, '0raw_', '');
-                    if ~isempty(strfind(inBstFile, '_0raw'))
-                        fileType = 'raw';
-                    end
-
-                case {'results', 'link'}
-                    fileType = 'results';
-                    if strcmp(fileType, 'link')
-                        [~, tmp] = file_resolve_link(inBstFile);
-                        [~, BstBase] = bst_fileparts(tmp);
-                    else
+        
+        switch FilesOrDir
+            case 'files'
+                fileType = file_gettype(inBstFile);
+                switch(fileType)
+                    case 'data'
                         [~, BstBase] = bst_fileparts(inBstFile);
-                    end
-                    BstBase = strrep(BstBase, '_results', '');
-                    BstBase = strrep(BstBase, 'results_', '');
-
-                case 'timefreq'
-                    [~, BstBase] = bst_fileparts(inBstFile);
-                    BstBase = strrep(BstBase, '_timefreq', '');
-                    BstBase = strrep(BstBase, 'timefreq_', '');
-
-                case 'matrix'
-                    [~, BstBase] = bst_fileparts(inBstFile);
-                    BstBase = strrep(BstBase, '_matrix', '');
-                    BstBase = strrep(BstBase, 'matrix_', '');
-
-                otherwise
-                    % e.g., user set outfile more than once
-                    [~, BstBase] = bst_fileparts(inBstFile);
-
-            end
-            % Get filters for this InputType
-            if isempty(Filters)
-                Filters = bst_get('FileFilters', [fileType, 'out']);
-            end
-            % Select only Filter if not provided
-            if isempty(defaultFilter)
-                switch fileType
-                    case 'raw'
-                        defaultFilter = 'BST-BIN';
-                    case {'data', 'results', 'timefreq', 'matrix'}
-                        defaultFilter = 'BST';
+                        BstBase = strrep(BstBase, '_data', '');
+                        BstBase = strrep(BstBase, 'data_', '');
+                        BstBase = strrep(BstBase, '0raw_', '');
+                        if ~isempty(strfind(inBstFile, '_0raw'))
+                            fileType = 'raw';
+                        end
+    
+                    case {'results', 'link'}
+                        fileType = 'results';
+                        if strcmp(fileType, 'link')
+                            [~, tmp] = file_resolve_link(inBstFile);
+                            [~, BstBase] = bst_fileparts(tmp);
+                        else
+                            [~, BstBase] = bst_fileparts(inBstFile);
+                        end
+                        BstBase = strrep(BstBase, '_results', '');
+                        BstBase = strrep(BstBase, 'results_', '');
+    
+                    case 'timefreq'
+                        [~, BstBase] = bst_fileparts(inBstFile);
+                        BstBase = strrep(BstBase, '_timefreq', '');
+                        BstBase = strrep(BstBase, 'timefreq_', '');
+    
+                    case 'matrix'
+                        [~, BstBase] = bst_fileparts(inBstFile);
+                        BstBase = strrep(BstBase, '_matrix', '');
+                        BstBase = strrep(BstBase, 'matrix_', '');
+    
+                    otherwise
+                        % e.g., user set outfile more than once
+                        [~, BstBase] = bst_fileparts(inBstFile);
+    
+                end                
+                % Get filters for this InputType
+                if isempty(Filters)
+                    Filters = bst_get('FileFilters', [fileType, 'out']);
                 end
-            end
-            % Get extension for filter
-            iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
-            if isempty(iFilter)
-                iFilter = 1;
-            end
-            BstExt = Filters{iFilter, 1}{1};
-            % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
-            if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
-                BstExt = [BstExt, '.mat'];
-            end
-            % Suggested filename
-            DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [BstBase, BstExt]);
+                % Select only Filter if not provided
+                if isempty(defaultFilter)
+                    switch fileType
+                        case 'raw'
+                            defaultFilter = 'BST-BIN';
+                        case {'data', 'results', 'timefreq', 'matrix'}
+                            defaultFilter = 'BST';
+                    end
+                end
+                % Get extension for filter
+                iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
+                if isempty(iFilter)
+                    iFilter = 1;
+                end
+                BstExt = Filters{iFilter, 1}{1};
+                % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
+                if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+                    BstExt = [BstExt, '.mat'];
+                end
+                % Suggested filename
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [BstBase, BstExt]);
+            case 'dirs'
+                % Suggest directory
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData);
         end
 
         % Pick a file
-        [OutputFiles, FileFormat] = java_getfile(DialogType, WindowTitle, DefaultOutFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
+        [OutputFile, FileFormat] = java_getfile(DialogType, WindowTitle, DefaultOutFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
         % If nothing selected
-        if isempty(OutputFiles)
+        if isempty(OutputFile)
             return
+        end
+        % Remove extension if dir
+        if strcmp(FilesOrDir, 'dirs')
+            [fPath, fBase] = bst_fileparts(OutputFile);
+            OutputFile = bst_fullfile(fPath, fBase);
         end
 
         % Update the values
-        selectOptions{1} = OutputFiles;
+        selectOptions{1} = OutputFile;
         selectOptions{2} = FileFormat;
         % Save the new values
         SetOptionValue(iProcess, optName, selectOptions);
         % Update the text field
-        jText.setText(OutputFiles);
+        jText.setText(OutputFile);
     end
 
 

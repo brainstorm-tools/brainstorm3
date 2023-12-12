@@ -1,5 +1,5 @@
 function varargout = process_export_file( varargin )
-% PROCESS_FILE_EXPORT: Exports a RawData, Data, Results, TimeFreq or Matrix file
+% PROCESS_FILE_EXPORT: Exports RawData, Data, Results, TimeFreq or Matrix files
 %
 % USAGE:     sProcess = process_export_file('GetDescription')
 %                       process_export_file('Run', sProcess, sInputs)
@@ -47,7 +47,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...              % FileFormat
         'save', ...          % Dialog type: {open,save}
         '', ...              % Window title
-        '', ...              % DefaultFile (Suggested if empty AND 'save' & 'files')
+        '', ...              % DefaultFile
         'single', ...        % Selection mode: {single,multiple}
         'files', ...         % Selection mode: {files,dirs,files_and_dirs}
         '', ...              % Available file formats
@@ -117,20 +117,38 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     fileType       = FileTypeFromFields(sProcess);
     outFileOptions = sProcess.options.(['export' fileType]).Value;
-    % Export file according its type
-    switch fileType
-        case {'data', 'raw'}
-            export_data(sInputs(1).FileName, [], outFileOptions{1}, outFileOptions{2});
-        case 'results'
-            export_result(sInputs(1).FileName, outFileOptions{1}, outFileOptions{2});
-        case 'timefreq'
-            export_timefreq(sInputs(1).FileName, outFileOptions{1}, outFileOptions{2});
-        case 'matrix'
-            export_matrix(sInputs(1).FileName, outFileOptions{1}, outFileOptions{2});
+    isExportDir = isdir(outFileOptions{1});
+    % If dir, generate outFileName
+    if isExportDir
+        % Get dir path
+        fPath = outFileOptions{1};
+        % Get extension for filter
+        Filters = bst_get('FileFilters', [fileType, 'out']);
+        iFilter = find(ismember(Filters(:,3), outFileOptions{2}), 1, 'first');
+        fExt = Filters{iFilter, 1}{1};
     end
-    % Infor of where the file was saved (console and report)
-    bst_report('Info', sProcess, sInputs(1), sprintf('File exported as %s', outFileOptions{1}));
-    fprintf(['BST: File "%s" exported as "%s"' 10], sInputs(1).FileName, outFileOptions{1});
+    % Export files
+    for ix = 1 : length(sInputs)
+        if isExportDir
+            % Base name from Brainstorm database
+            [~, fBase] = bst_fileparts(sInputs(ix).FileName);
+            outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
+        end
+        % Export file according its type
+        switch fileType
+            case {'data', 'raw'}
+                export_data(sInputs(ix).FileName, [], outFileOptions{1}, outFileOptions{2});
+            case 'results'
+                export_result(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+            case 'timefreq'
+                export_timefreq(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+            case 'matrix'
+                export_matrix(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+        end
+        % Info of where the file was saved (console and report)
+        bst_report('Info', sProcess, sInputs(ix), sprintf('File exported as %s', outFileOptions{1}));
+        fprintf(['BST: File "%s" exported as "%s"' 10], sInputs(ix).FileName, outFileOptions{1});
+    end
 end
 
 function fileType = FileTypeFromFields(sProcess)
