@@ -163,7 +163,7 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
         nVertices = size(SurfaceMat.Vertices,1);
         switch Method
             case 'geodesic_dist'
-                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in edges
+                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in meter
                 % One region
                 subRegions(1) = SurfaceMat;
                 subRegions(1).Indices  = (1 : nVertices)';
