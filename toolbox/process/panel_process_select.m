@@ -1827,7 +1827,6 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             FilesOrDir      = selectOptions{7};
             Filters         = selectOptions{8};
             DefaultFormat   = selectOptions{9};
-            % Default filter
             if isfield(DefaultFormats, DefaultFormat)
                 defaultFilter = DefaultFormats.(DefaultFormat);
             else
@@ -1842,75 +1841,78 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             Filters          = {{'*'}, 'All files (*.*)', 'ALL'};
             defaultFilter    = [];
         end
-        % Suggest filename
+
+        % First input file
         inBstFile = selectOptions{1};
-        
+        % Filters and extension according to file type
+        fileType = file_gettype(inBstFile);
+        if strcmp(fileType, 'data') && ~isempty(strfind(inBstFile, '_0raw'))
+            fileType = 'raw';
+        end
+        if isempty(Filters)
+            Filters = bst_get('FileFilters', [fileType, 'out']);
+        end
+        % Select only Filter if not provided
+        if isempty(defaultFilter)
+            switch fileType
+                case 'raw'
+                    defaultFilter = 'BST-BIN';
+                case {'data', 'results', 'timefreq', 'matrix'}
+                    defaultFilter = 'BST';
+            end
+        end
+        % Get extension for filter
+        iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
+        if isempty(iFilter)
+            iFilter = 1;
+        end
+        fExt = Filters{iFilter, 1}{1};
+        % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
+        if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+            fExt = [fExt, '.mat'];
+        end
+
+        % Suggest filename or dir
         switch FilesOrDir
+            % Suggest filename
             case 'files'
-                fileType = file_gettype(inBstFile);
                 switch(fileType)
                     case 'data'
-                        [~, BstBase] = bst_fileparts(inBstFile);
-                        BstBase = strrep(BstBase, '_data', '');
-                        BstBase = strrep(BstBase, 'data_', '');
-                        BstBase = strrep(BstBase, '0raw_', '');
-                        if ~isempty(strfind(inBstFile, '_0raw'))
-                            fileType = 'raw';
-                        end
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_data', '');
+                        fBase = strrep(fBase, 'data_', '');
+                        fBase = strrep(fBase, '0raw_', '');
     
                     case {'results', 'link'}
                         fileType = 'results';
                         if strcmp(fileType, 'link')
-                            [~, tmp] = file_resolve_link(inBstFile);
-                            [~, BstBase] = bst_fileparts(tmp);
+                            [~, tmp]   = file_resolve_link(inBstFile);
+                            [~, fBase] = bst_fileparts(tmp);
                         else
-                            [~, BstBase] = bst_fileparts(inBstFile);
+                            [~, fBase] = bst_fileparts(inBstFile);
                         end
-                        BstBase = strrep(BstBase, '_results', '');
-                        BstBase = strrep(BstBase, 'results_', '');
+                        fBase = strrep(fBase, '_results', '');
+                        fBase = strrep(fBase, 'results_', '');
     
                     case 'timefreq'
-                        [~, BstBase] = bst_fileparts(inBstFile);
-                        BstBase = strrep(BstBase, '_timefreq', '');
-                        BstBase = strrep(BstBase, 'timefreq_', '');
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_timefreq', '');
+                        fBase = strrep(fBase, 'timefreq_', '');
     
                     case 'matrix'
-                        [~, BstBase] = bst_fileparts(inBstFile);
-                        BstBase = strrep(BstBase, '_matrix', '');
-                        BstBase = strrep(BstBase, 'matrix_', '');
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_matrix', '');
+                        fBase = strrep(fBase, 'matrix_', '');
     
                     otherwise
                         % e.g., user set outfile more than once
-                        [~, BstBase] = bst_fileparts(inBstFile);
+                        [~, fBase] = bst_fileparts(inBstFile);
     
                 end                
-                % Get filters for this InputType
-                if isempty(Filters)
-                    Filters = bst_get('FileFilters', [fileType, 'out']);
-                end
-                % Select only Filter if not provided
-                if isempty(defaultFilter)
-                    switch fileType
-                        case 'raw'
-                            defaultFilter = 'BST-BIN';
-                        case {'data', 'results', 'timefreq', 'matrix'}
-                            defaultFilter = 'BST';
-                    end
-                end
-                % Get extension for filter
-                iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
-                if isempty(iFilter)
-                    iFilter = 1;
-                end
-                BstExt = Filters{iFilter, 1}{1};
-                % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
-                if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
-                    BstExt = [BstExt, '.mat'];
-                end
-                % Suggested filename
-                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [BstBase, BstExt]);
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [fBase, fExt]);
+
+            % Suggest directory
             case 'dirs'
-                % Suggest directory
                 DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData);
         end
 
