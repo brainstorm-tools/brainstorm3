@@ -50,32 +50,16 @@ Method    = lower(Method);
 Vertices  = SurfaceMat.Vertices;
 VertConn  = SurfaceMat.VertConn;
 Faces     = SurfaceMat.Faces;
+Dist      = SurfaceMat.VertDist; 
 nVertices = size(Vertices,1);
 
-% ===== COMPUTE DISTANCE =====
-switch Method
-    % === Euclidian distance
-    case 'euclidian'
-        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'euclidean', 1);
-    % === Geodesic edge distance: number of connections times the average edge length
-    case {'geodesic_edge'}
-        [vi, vj] = find(VertConn);
-        meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
-        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_edge', 1); % in edges
-    % === Geodesic distance
-    case {'geodesic_dist'}
-        Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist', 1); % in m
-    otherwise
-        W = [];
-        return
-end
 
 % Calculate Gaussian kernel properties
-if ismember(Method, {'geodesic_edge'})
-    % Sigma given in (integer) number of edges
+if strcmp(Method,'geodesic_edge') % Sigma given in (integer) number of edges
+    [vi, vj] = find(VertConn);
+    meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
     Sigma = ceil(ceil(FWHM./ meanDist) / (2 * sqrt(2*log2(2))));
-else
-    % Sigma given in meters
+else  % Sigma given in meters
     Sigma = FWHM / (2 * sqrt(2*log2(2)));
 end
 

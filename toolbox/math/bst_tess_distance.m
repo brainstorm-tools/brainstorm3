@@ -1,20 +1,17 @@
-function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
+function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
 % bst_tess_distance: Distance computation between two set of vertices (A and B)
 %
-% USAGE:  W = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keepAll)
+% USAGE:  W = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
 %
 % INPUT:
 %    - SurfaceMat : Cortical surface matrix
 %    - VerticesA  : Vertices from region A
 %    - VerticesB  : Vertices from region B
 %    - Method     : Metric used to compute the distance {'euclidean', 'geodesic_edge', 'geodesic_dist'}
-%    - keepAll    : if false, for each vertex in region B, return the minimum
-%    distance to region A
 % OUPUT:
 %    - Dist: distance matrix. D(i,j) is the distance between vertex VerticesA(i), and
-%    VerticesB(j). If keepAll = 0, Dist is a nVertexB x 1 vector where
-%    Dist(i) is the minimum distance between VerticesB(i) and the region A.
-%    
+%    VerticesB(j). 
+
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -60,7 +57,4 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric, keep
         Dist = distances(G, VerticesA, VerticesB);
     end 
 
-    if ~keepAll
-        Dist = min(Dist)';
-    end
 end
