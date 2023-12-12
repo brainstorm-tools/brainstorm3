@@ -128,26 +128,47 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         fExt = Filters{iFilter, 1}{1};
     end
     % Export files
-    for ix = 1 : length(sInputs)
+    for iInput = 1 : length(sInputs)
         if isExportDir
             % Base name from Brainstorm database
-            [~, fBase] = bst_fileparts(sInputs(ix).FileName);
+            fileName = sInputs(iInput).FileName;
+            fileType = file_gettype(fileName);
+            if strcmp(fileType, 'link')
+                [~, tmp]   = file_resolve_link(sInputs(iInput).FileName);
+                [~, fBase] = bst_fileparts(tmp);
+            else
+                [~, fBase] = bst_fileparts(fileName);
+            end
+            % Remove fit type tagsn from fBase
+            switch(fileType)
+                case 'data' % includes 'raw' files
+                    tagsToRemove = {'_data', 'data_', '0raw_'};
+                case {'results', 'link'}
+                    tagsToRemove = {'_results', 'results_'};
+                case 'timefreq'
+                    tagsToRemove = {'_timefreq', 'timefreq_'};
+                case 'matrix'
+                    tagsToRemove = {'_matrix', 'matrix_'};
+            end
+            for iTag = 1 : length(tagsToRemove)
+                fBase = strrep(fBase, tagsToRemove{iTag}, '');
+            end
             outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
         end
         % Export files according their input type
         switch inputType
             case {'data', 'raw'}
-                export_data(sInputs(ix).FileName, [], outFileOptions{1}, outFileOptions{2});
+                export_data(sInputs(iInput).FileName, [], outFileOptions{1}, outFileOptions{2});
             case 'results'
-                export_result(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+                export_result(sInputs(iInput).FileName, outFileOptions{1}, outFileOptions{2});
             case 'timefreq'
-                export_timefreq(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+                export_timefreq(sInputs(iInput).FileName, outFileOptions{1}, outFileOptions{2});
             case 'matrix'
-                export_matrix(sInputs(ix).FileName, outFileOptions{1}, outFileOptions{2});
+                export_matrix(sInputs(iInput).FileName, outFileOptions{1}, outFileOptions{2});
         end
         % Info of where the file was saved (console and report)
-        bst_report('Info', sProcess, sInputs(ix), sprintf('File exported as %s', outFileOptions{1}));
-        fprintf(['BST: File "%s" exported as "%s"' 10], sInputs(ix).FileName, outFileOptions{1});
+        bst_report('Info', sProcess, sInputs(iInput), sprintf('File exported as %s', outFileOptions{1}));
+        fprintf(['BST: File "%s" exported as "%s"' 10], sInputs(iInput).FileName, outFileOptions{1});
     end
 end
 
