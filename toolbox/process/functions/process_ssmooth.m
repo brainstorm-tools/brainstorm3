@@ -131,6 +131,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
 end
 
 function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
+    global GlobalData;
+    
     msgInfo = '';
     errInfo = '';
     sInterp = [];
@@ -145,19 +147,29 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
             msgInfo = sprintf('Spatial smoothing using %1.2f mm kernel calculating distance using edge path length distance', FWHM*1000);
     end
 
+    % Get existing interpolation for this surface
+    Signature = sprintf('ssmooth(%1.2f,%s):%s', round(FWHM*1000), Method, SurfaceFile);
+    WInterp = [];
+    if isfield(GlobalData, 'Interpolations') && ~isempty(GlobalData.Interpolations) && isfield(GlobalData.Interpolations, 'Signature')
+        iInterp = find(cellfun(@(c)isequal(c,Signature), {GlobalData.Interpolations.Signature}), 1);
+        if ~isempty(iInterp)
+            WInterp = GlobalData.Interpolations(iInterp).WInterp;
+        end
+    end
+
     % Calculate new interpolation matrix
     if isempty(WInterp)
         % Load surface file
         nVertices = size(SurfaceMat.Vertices,1);
         switch Method
             case 'geodesic_dist'
-                Dist = bst_tess_distance(SurfaceFile, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in edges
+                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in edges
                 % One region
                 subRegions(1) = SurfaceMat;
                 subRegions(1).Indices  = (1 : nVertices)';
                 subRegions(1).VertDist = Dist;
             case 'geodesic_edge'
-                Dist = bst_tess_distance(SurfaceFile, 1:nVertices, 1:nVertices, 'geodesic_edge'); % in edges
+                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_edge'); % in edges
                 % Connected regions
                 subRegions = GetConnectedRegions(SurfaceMat,Dist);
         end
@@ -174,6 +186,16 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
             end
             WInterp(subRegions(iSubRegion).Indices, subRegions(iSubRegion).Indices) = WInterpTmp(:,:);
         end
+
+        sInterp = db_template('interpolation');
+        sInterp.WInterp   = WInterp;
+        sInterp.Signature = Signature;
+        if isempty(GlobalData.Interpolations)
+            GlobalData.Interpolations = sInterp;
+        else
+            GlobalData.Interpolations(end+1) = sInterp;
+        end
+
     end
 
     % Apply smoothing operator

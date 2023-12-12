@@ -1,4 +1,4 @@
-function Dist = bst_tess_distance(SurfaceFile, VerticesA, VerticesB, metric)
+function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
 % bst_tess_distance: Distance computation between two set of vertices (A and B)
 %
 % USAGE:  W = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
@@ -33,20 +33,7 @@ function Dist = bst_tess_distance(SurfaceFile, VerticesA, VerticesB, metric)
 %
 % Authors: Edouard Delaire 2023
 
-    SurfaceMat = in_tess_bst(SurfaceFile);
     Vertices   = SurfaceMat.Vertices;
-    nVertices  = size(Vertices,1);
-
-    if isfield(SurfaceMat,'VertDist') && ~isempty(SurfaceMat.VertDist) && ...
-        isfield(SurfaceMat,'VertMetric') && strcmp(SurfaceMat.VertMetric,metric)
-
-        if isequal(1:nVertices, VerticesA) &&  isequal(1:nVertices, VerticesB) 
-            Dist = SurfaceMat.VertDist;
-        else
-            Dist = SurfaceMat.VertDist(VerticesA,VerticesB); 
-        end
-        return;
-    end
     
     if strcmp(metric,'euclidean')
         Dist = zeros(length(VerticesA),length(VerticesB)); 
@@ -70,11 +57,4 @@ function Dist = bst_tess_distance(SurfaceFile, VerticesA, VerticesB, metric)
         G    = graph(D);
         Dist = distances(G, VerticesA, VerticesB);
     end 
-
-    if isequal(1:nVertices, VerticesA) &&  isequal(1:nVertices, VerticesB)  && ~isempty(Dist)
-        SurfaceMat.VertDist   = Dist;
-        SurfaceMat.VertMetric = metric;
-        bst_save(file_fullpath(SurfaceFile), SurfaceMat, 'v7', 1);
-    end
-
 end
