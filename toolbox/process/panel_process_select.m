@@ -1927,13 +1927,17 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         if isempty(OutputFile)
             return
         end
-        % Remove extension if dir
+        % Update ExportData path
         if strcmp(FilesOrDir, 'dirs')
+            % Remove extension (introduced by the Filters)
             [fPath, fBase] = bst_fileparts(OutputFile);
             OutputFile = bst_fullfile(fPath, fBase);
             LastUsedDirs.ExportData = OutputFile;
-            bst_set('LastUsedDirs', LastUsedDirs);
+        elseif strcmp(FilesOrDir, 'files')
+            fPath = bst_fileparts(OutputFile);
+            LastUsedDirs.ExportData = fPath;
         end
+        bst_set('LastUsedDirs', LastUsedDirs);
 
         % Update the values
         selectOptions{1} = OutputFile;
