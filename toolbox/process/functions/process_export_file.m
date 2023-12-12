@@ -103,11 +103,11 @@ end
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
-    fileType = FileTypeFromFields(sProcess);
-    if ~isempty(fileType)
-        fileType(1) = upper(fileType(1));
+    inputType = InputTypeFromFields(sProcess);
+    if ~isempty(inputType)
+        inputType(1) = upper(inputType(1));
     end
-    Comment = ['Export to file: ' fileType];
+    Comment = ['Export to file: ' inputType];
 end
 
 %% ===== RUN =====
@@ -115,15 +115,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned files: same as input
     OutputFiles = {sInputs.FileName};
     % Get options
-    fileType       = FileTypeFromFields(sProcess);
-    outFileOptions = sProcess.options.(['export' fileType]).Value;
+    inputType       = InputTypeFromFields(sProcess);
+    outFileOptions = sProcess.options.(['export' inputType]).Value;
     isExportDir = isdir(outFileOptions{1});
     % If dir, generate outFileName
     if isExportDir
         % Get dir path
         fPath = outFileOptions{1};
         % Get extension for filter
-        Filters = bst_get('FileFilters', [fileType, 'out']);
+        Filters = bst_get('FileFilters', [inputType, 'out']);
         iFilter = find(ismember(Filters(:,3), outFileOptions{2}), 1, 'first');
         fExt = Filters{iFilter, 1}{1};
     end
@@ -134,8 +134,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             [~, fBase] = bst_fileparts(sInputs(ix).FileName);
             outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
         end
-        % Export file according its type
-        switch fileType
+        % Export files according their input type
+        switch inputType
             case {'data', 'raw'}
                 export_data(sInputs(ix).FileName, [], outFileOptions{1}, outFileOptions{2});
             case 'results'
@@ -151,14 +151,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 end
 
-function fileType = FileTypeFromFields(sProcess)
+function inputType = InputTypeFromFields(sProcess)
     % Find InputType from first option field named 'exportINPUTTYPE'
     % FileTypes: 'raw', 'data', 'results', 'timefreq' or 'matrix'
     optFields = fieldnames(sProcess.options);
     iField = find(~cellfun(@isempty, regexp(optFields, '^export')), 1, 'first');
     if ~isempty(iField)
-        fileType = regexprep(optFields{iField}, '^export', '');
+        inputType = regexprep(optFields{iField}, '^export', '');
     else
-        fileType = '';
+        inputType = '';
     end
 end
