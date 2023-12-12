@@ -1390,16 +1390,20 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
                     if strcmp(strFunction, 'process_export_file')
-                        % Export multiple files, suggest dir name to export files (filenames from Brainstorm DB)
-                        jLabel.setText('Output dir');
-                        GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'dirs';
-                        if length(sFiles) < 2
+                        if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1}) || strcmp(option.Value{7}, 'dirs')
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                        end
+                        if length(sFiles) > 1
+                            % Export multiple files, suggest dir name to export files (filenames from Brainstorm DB)
+                            jLabel.setText('Output dir');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'dirs';
+                            LastUsedDirs = bst_get('LastUsedDirs');
+                            jText.setText(LastUsedDirs.ExportData);
+                        else
                             % Export one file, suggest filename for new file from Input file
                             jLabel.setText('Output file');
                             GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'files';
-                            if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1})
-                                GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
-                            end
+                            jText.setText(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1});
                         end
                         gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
                     else
@@ -1926,6 +1930,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         if strcmp(FilesOrDir, 'dirs')
             [fPath, fBase] = bst_fileparts(OutputFile);
             OutputFile = bst_fullfile(fPath, fBase);
+            LastUsedDirs.ExportData = OutputFile;
+            bst_set('LastUsedDirs', LastUsedDirs);
         end
 
         % Update the values
