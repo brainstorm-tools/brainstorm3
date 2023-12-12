@@ -118,12 +118,10 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
-	% Load surface
-    SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
-    
+
     % ===== PROCESS =====
     % Smooth surface
-    [sInput.A, msgInfo, warmInfo] = compute(SurfaceMat, sInput.A, FWHM, method);
+    [sInput.A, msgInfo, warmInfo] = compute(FileMat.SurfaceFile, sInput.A, FWHM, method);
     if iscell(msgInfo)
         tmp = sprintf('Smoothing %d independent regions \n',  length(msgInfo));
         for iRegion = 1:length(msgInfo)
@@ -156,9 +154,12 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     sInput.HistoryComment = HistoryComment;
 end
 
-function [sData, msgInfo, warmInfo] = compute(SurfaceMat, sData, FWHM, version)
+function [sData, msgInfo, warmInfo] = compute(SurfaceFile, sData, FWHM, version)
     warmInfo = '';
 
+	% Load surface
+    SurfaceMat = in_tess_bst(SurfaceFile);
+    
     if strcmp(version,'adaptive_fwhm')
         % Smooth each connenected part of the surface separately
         % first estimate the connected regions 
