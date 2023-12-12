@@ -102,7 +102,6 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
-    Comment = sProcess.Comment;
     inputType = InputTypeFromFields(sProcess);
     if ~isempty(inputType)
         inputType(1) = upper(inputType(1));
@@ -115,10 +114,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned files: same as input
     OutputFiles = {sInputs.FileName};
     % Get options
-    inputType       = InputTypeFromFields(sProcess);
+    inputType      = InputTypeFromFields(sProcess);
     outFileOptions = sProcess.options.(['export' inputType]).Value;
     isExportDir = isdir(outFileOptions{1});
-    % If dir, generate outFileName
+    % If dir (export multiple files), find extension for filter
     if isExportDir
         % Get dir path
         fPath = outFileOptions{1};
@@ -129,6 +128,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Export files
     for iInput = 1 : length(sInputs)
+        % Name for one file is already clean of tags
         if isExportDir
             % Base name from Brainstorm database
             fileName = sInputs(iInput).FileName;
