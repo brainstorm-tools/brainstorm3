@@ -145,25 +145,19 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
             msgInfo = sprintf('Spatial smoothing using %1.2f mm kernel calculating distance using edge path length distance', FWHM*1000);
     end
 
-    %try to load already computed interpolation matrix
-    Signature = sprintf('ssmooth(%1.2f,%s)', round(FWHM*1000), Method);
-    if isfield(SurfaceMat,'Interpolations') && isfield(SurfaceMat.Interpolations, 'Signature') && strcmp(SurfaceMat.Interpolations.Signature,Signature)
-        WInterp = SurfaceMat.Interpolations.WInterp;
-    end
-
     % Calculate new interpolation matrix
     if isempty(WInterp)
         % Load surface file
         nVertices = size(SurfaceMat.Vertices,1);
         switch Method
             case 'geodesic_dist'
-                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in edges
+                Dist = bst_tess_distance(SurfaceFile, 1:nVertices, 1:nVertices, 'geodesic_dist'); % in edges
                 % One region
                 subRegions(1) = SurfaceMat;
                 subRegions(1).Indices  = (1 : nVertices)';
                 subRegions(1).VertDist = Dist;
             case 'geodesic_edge'
-                Dist = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_edge'); % in edges
+                Dist = bst_tess_distance(SurfaceFile, 1:nVertices, 1:nVertices, 'geodesic_edge'); % in edges
                 % Connected regions
                 subRegions = GetConnectedRegions(SurfaceMat,Dist);
         end
@@ -180,23 +174,12 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
             end
             WInterp(subRegions(iSubRegion).Indices, subRegions(iSubRegion).Indices) = WInterpTmp(:,:);
         end
-
-        sInterp = db_template('interpolation');
-        sInterp.WInterp   = WInterp;
-        sInterp.Signature = Signature;
     end
 
     % Apply smoothing operator
     for iFreq = 1:size(sData,3)
         sData(:,:,iFreq) = WInterp * sData(:,:,iFreq);
     end
-
-    % Save interpolation in memory for future calls
-    if ~isempty(sInterp) 
-        SurfaceMat.Interpolations = sInterp;
-        bst_save(file_fullpath(SurfaceFile), SurfaceMat, 'v7', 1);
-    end
-
 end
 
 function sSubRegions = GetConnectedRegions(SurfaceMat, Dist)
