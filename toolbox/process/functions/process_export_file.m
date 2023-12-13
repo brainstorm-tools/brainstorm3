@@ -161,6 +161,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 fBase = strrep(fBase, tagsToRemove{iTag}, '');
             end
             outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
+            % Verify that extension for BST format ends in '.ext'
+            if strcmp(outFileOptions{2}, 'BST') && isempty(regexp('at', '\.\w*$', 'once'))
+                fExt = [fExt, '.mat'];
+            end
         end
         % Export files according their input type
         switch inputType
