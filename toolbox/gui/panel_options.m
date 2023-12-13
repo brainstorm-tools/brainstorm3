@@ -530,13 +530,9 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
                 disp('software');
                 disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
         end
-
-        disp('BST> Warning: Brainstorm is not fully tested and supported on the New MATLAB Desktop.');
-
         % OpenGL is always available on New Desktop
         DisableOpenGL = 0;
         return
-
     end
     
     % ===== MATLAB < 2014b =====
