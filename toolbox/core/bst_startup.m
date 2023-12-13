@@ -148,6 +148,11 @@ if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
 
+% Check for New Matlab Desktop (started with R2023a)
+if (MatlabVersion >= 914) && panel_options('isJSDesktop')
+    disp('BST> Warning: Brainstorm is not fully tested and supported on the New Matlab Desktop.');
+end
+
 % Check for Apple silicon (started with R2023b)
 if (MatlabVersion >= 2302) && strcmp(bst_get('OsType', 0), 'mac64arm')
     disp(['BST> Warning: Running on Apple silicon, some functions and plugins are not supported yet:' 10 ...

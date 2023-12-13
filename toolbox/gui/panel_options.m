@@ -72,8 +72,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonGroup.add(jRadioOpenNone);
         jButtonGroup.add(jRadioOpenSoft);
         jButtonGroup.add(jRadioOpenHard);
+        % On JS Desktop: opengl configuration is not applicable
+        if isJSDesktop()
+            jRadioOpenNone.setEnabled(0);
+            jRadioOpenSoft.setEnabled(0);
+            jRadioOpenHard.setEnabled(0);
         % On mac systems: opengl software is not supported
-        if strncmp(computer,'MAC',3)
+        elseif strncmp(computer,'MAC',3)
             jRadioOpenSoft.setEnabled(0);
         end
     jPanelLeft.add('br hfill', jPanelOpengl);
@@ -511,6 +516,24 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
     DisableOpenGL = bst_get('DisableOpenGL');
     isOpenGL = 1;
     isUnixWarning = 0;
+
+    % ===== New JS MATLAB Desktop (Beta in R2023a and R2023b) =====
+    if isJSDesktop()
+        info = rendererinfo();
+        switch info.Details.HardwareSupportLevel
+            case 'Full'
+                disp('hardware');
+            case 'Basic'
+                disp('hardware');
+                disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
+            otherwise
+                disp('software');
+                disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
+        end
+        % OpenGL is always available on New Desktop
+        DisableOpenGL = 0;
+        return
+    end
     
     % ===== MATLAB < 2014b =====
     if (bst_get('MatlabVersion') < 804)
@@ -731,4 +754,18 @@ function PATH = SystemPathAdd(addPath, PATH)
     end
 end
 
+
+%% ===== Check if running in New JS MATLAB Desktop =====
+function TF = isJSDesktop()
+
+    % Fastest way to check for New JS Desktop is with undocumented
+    % "feature" command. If this command fails to run properly, it is safe
+    % to expect MATLAB is NOT running with New JS Desktop. 
+    % This may need changes in R2024a or newer.
+    try
+        TF = feature('webui');
+    catch
+        TF = 0;
+    end
+end
 
