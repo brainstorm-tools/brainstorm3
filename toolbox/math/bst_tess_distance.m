@@ -43,7 +43,7 @@ function Dist = bst_tess_distance(SurfaceMat, VerticesA, VerticesB, metric)
             Dist(:,i) = sum((x-y).^2).^0.5; % m
         end
 
-    elseif contains(metric,'geodesic') 
+    elseif ~isempty(strfind(metric,'geodesic'))
         if strcmp(metric,'geodesic_dist')
             [vi,vj] = find(SurfaceMat.VertConn);
             nv      = size(Vertices,1);

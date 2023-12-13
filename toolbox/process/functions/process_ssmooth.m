@@ -135,8 +135,6 @@ function [sData, msgInfo, errInfo] = compute(SurfaceFile, sData, FWHM, Method)
     
     msgInfo = '';
     errInfo = '';
-    sInterp = [];
-    WInterp = [];
 
     SurfaceMat = in_tess_bst(SurfaceFile);
 
