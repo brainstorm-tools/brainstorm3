@@ -74,8 +74,10 @@ if isempty(OutputFile)
     if ~isempty(BstFile)
         fileType = file_gettype(BstFile);
         if strcmp(fileType, 'link')
-            [~, tmp] = file_resolve_link(BstFile);
-            [BstPath, BstBase, BstExt] = bst_fileparts(tmp);
+            [kernelFile, dataFile] = file_resolve_link(BstFile);
+            [~, kernelBase] = bst_fileparts(kernelFile);
+            [BstPath, BstBase, BstExt] = bst_fileparts(dataFile);
+            BstBase = [kernelBase, '_' ,BstBase];
         else
             [BstPath, BstBase, BstExt] = bst_fileparts(BstFile);
         end

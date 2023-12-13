@@ -1889,10 +1889,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         fBase = strrep(fBase, '0raw_', '');
     
                     case {'results', 'link'}
-                        fileType = 'results';
                         if strcmp(fileType, 'link')
-                            [~, tmp]   = file_resolve_link(inBstFile);
-                            [~, fBase] = bst_fileparts(tmp);
+                            [kernelFile, dataFile] = file_resolve_link(inBstFile);
+                            [~, kBase] = bst_fileparts(kernelFile);
+                            [~, fBase] = bst_fileparts(dataFile);
+                            fBase = [kBase, '_' ,fBase];
                         else
                             [~, fBase] = bst_fileparts(inBstFile);
                         end

@@ -139,8 +139,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             fileName = sInputs(iInput).FileName;
             fileType = file_gettype(fileName);
             if strcmp(fileType, 'link')
-                [~, tmp]   = file_resolve_link(sInputs(iInput).FileName);
-                [~, fBase] = bst_fileparts(tmp);
+                [kernelFile, dataFile] = file_resolve_link(sInputs(iInput).FileName);
+                [~, kBase] = bst_fileparts(kernelFile);
+                [~, fBase] = bst_fileparts(dataFile);
+                fBase = [kBase, '_' ,fBase];
             else
                 [~, fBase] = bst_fileparts(fileName);
             end
