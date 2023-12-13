@@ -63,8 +63,12 @@ if ~ismember(sFile.format, {'CTF-CONTINUOUS', 'SPM-DAT'})
         end
         fclose(sfid);
     end
-    % Open file
-    sfid = fopen(sFile.filename, 'r+', sFile.byteorder);
+    % Open file (using requested encoding)
+    if ~isfield(sFile, 'encoding') || isempty(sFile.encoding)
+        sfid = fopen(sFile.filename, 'r+', sFile.byteorder);
+    else
+        sfid = fopen(sFile.filename, 'r+', sFile.byteorder, sFile.encoding);
+    end
     if (sfid == -1)
         error(['Could not open output file: "' sFile.filename '".']);
     end

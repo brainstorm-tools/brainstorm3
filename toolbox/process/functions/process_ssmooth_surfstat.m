@@ -20,6 +20,7 @@ function varargout = process_ssmooth_surfstat( varargin )
 % =============================================================================@
 %
 % Authors: Peter Donhauser, Francois Tadel, 2015-2016
+%          Edouard Delaire, 2023
 
 eval(macro_method);
 end
@@ -32,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'ssmooth';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Sources';
-    sProcess.Index       = 336;
+    sProcess.Index       = 336.1;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'results', 'timefreq'};
     sProcess.OutputTypes = {'results', 'timefreq'};
@@ -54,6 +55,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.fwhm.Comment = '<B>FWHM</B> (Full width at half maximum):  ';
     sProcess.options.fwhm.Type    = 'value';
     sProcess.options.fwhm.Value   = {3, 'mm', 0};
+    % === METHOD
+    sProcess.options.label.Comment = '<B>Method:</B>';
+    sProcess.options.label.Type    = 'label';
+    sProcess.options.method.Comment = {'<FONT color="#777777">Before 2023 (not recommended)</FONT>', ...
+                                       'Fixed FWHM for all surfaces', ...
+                                       'Adjust FWHM for each disconnected surface (slower)'; ...
+                                       'before_2023', 'fixed_fwhm', 'adaptive_fwhm'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'before_2023';
 end
 
 
@@ -66,13 +76,18 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         strAbs = '';
     end
     % Final comment
-    Comment = sprintf('%s (%1.2f%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
+    Comment = sprintf('%s (%1.2f mm%s)', sProcess.Comment, sProcess.options.fwhm.Value{1}, strAbs);
 end
 
 
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
+    if ~isfield(sProcess.options, 'method') || isempty(sProcess.options.method.Value)
+        method = 'before_2023';
+    else
+        method = sProcess.options.method.Value;
+    end
     FWHM = sProcess.options.fwhm.Value{1} / 1000;
 
     % ===== LOAD DATA =====
@@ -109,36 +124,93 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
-	% Load surface
-    SurfaceMat = in_tess_bst(FileMat.SurfaceFile);
-    
-    
+
     % ===== PROCESS =====
+    % Smooth surface
+    [sInput.A, msgInfo, warmInfo] = compute(FileMat.SurfaceFile, sInput.A, FWHM, method);
+    if iscell(msgInfo)
+        tmp = sprintf('Smoothing %d independent regions \n',  length(msgInfo));
+        for iRegion = 1:length(msgInfo)
+            tmp = [tmp,  sprintf('Region %d: %s \n', iRegion, msgInfo{iRegion})];
+        end
+        msgInfo = tmp;        
+    end
+    bst_report('Info', sProcess, sInput, msgInfo);
+ 
+    if ~isempty(warmInfo)
+        bst_report('Warning', sProcess, sInput, warmInfo);
+    end
+
+    % Force the output comment
+    sInput.CommentTag = FormatComment(sProcess);
+    % Format the output history
+    tmp = strsplit(msgInfo,'\n');
+    HistoryComment = [sprintf('%s %.1f mm',sProcess.FileTag,FWHM*1000) newline];
+    for iLine = 1:length(tmp)
+        if ~isempty(tmp{iLine})
+            HistoryComment = [HistoryComment ...
+                             '|-------- ' strrep(tmp{iLine},'=',':')  newline ];
+        end
+    end
+    if ~isempty(warmInfo)     
+        HistoryComment = [HistoryComment ...
+                         '|-------- ' warmInfo];
+    end
+
+    sInput.HistoryComment = HistoryComment;
+end
+
+function [sData, msgInfo, warmInfo] = compute(SurfaceFile, sData, FWHM, version)
+    warmInfo = '';
+
+	% Load surface
+    SurfaceMat = in_tess_bst(SurfaceFile);
+    
+    if strcmp(version,'adaptive_fwhm')
+        % Smooth each connenected part of the surface separately
+        % first estimate the connected regions 
+        subRegions = process_ssmooth('GetConnectedRegions', SurfaceMat);
+        % Smooth each region separately
+        msgInfo    = cell(1,length(subRegions));
+        for i = 1:length(subRegions)
+            [sData(subRegions(i).Indices,:,:), msgInfo{i}] = compute(subRegions(i), sData(subRegions(i).Indices,:,:), FWHM, 'fixed_fwhm');
+        end
+        return;
+    end
     % Convert surface to SurfStat format
     cortS.tri = SurfaceMat.Faces;
     cortS.coord = SurfaceMat.Vertices';
 
     % Get the average edge length
     [vi,vj] = find(SurfaceMat.VertConn);
-    Vertices = SurfaceMat.VertConn;
+    if strcmp(version,'before_2023')
+        Vertices = SurfaceMat.VertConn;
+    elseif strcmp(version,'fixed_fwhm')
+        Vertices = SurfaceMat.Vertices;
+    end
+
     meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+    
     % FWHM in surfstat is in mesh units: Convert from millimeters to "edges"
     FWHMedge = FWHM ./ meanDist;
-    
+
     % Display the result of this conversion
     msgInfo = ['Average distance between two vertices: ' num2str(round(meanDist*10000)/10) ' mm' 10 ...
                'SurfStatSmooth called with FWHM=' num2str(round(FWHMedge * 1000)/1000) ' edges'];
-    bst_report('Info', sProcess, sInput, msgInfo);
-    disp(['SMOOTH> ' strrep(msgInfo, char(10), [10 'SMOOTH> '])]);   
-    
-    % Smooth surface
-    for iFreq = 1:size(sInput.A,3)
-        sInput.A(:,:,iFreq) = SurfStatSmooth(sInput.A(:,:,iFreq)', cortS, FWHMedge)';
-    end
-    
-    % Force the output comment
-    sInput.CommentTag = [sProcess.FileTag, num2str(FWHM*1000)];
-end
+    disp(['SMOOTH> ' strrep(msgInfo, char(10), [10 'SMOOTH> '])]); 
 
+    if strcmp(version,'before_2023')
+        Vertices = SurfaceMat.Vertices;
+        true_meanDist = mean(sqrt((Vertices(vi,1) - Vertices(vj,1)).^2 + (Vertices(vi,2) - Vertices(vj,2)).^2 + (Vertices(vi,3) - Vertices(vj,3)).^2));
+        used_FWHM = FWHMedge * true_meanDist;
+        
+        warmInfo = sprintf('This process is using a FWHM of %.2f mm instead of %.2f mm. Please consult https://github.com/brainstorm-tools/brainstorm3/pull/645 for more information.',used_FWHM*1000,FWHM*1000);
+    end
+
+    for iFreq = 1:size(sData,3)
+        sData(:,:,iFreq) = SurfStatSmooth(sData(:,:,iFreq)', cortS, FWHMedge)';
+    end
+
+end
 
 
