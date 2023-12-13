@@ -1833,10 +1833,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             FilesOrDir      = selectOptions{7};
             Filters         = selectOptions{8};
             DefaultFormat   = selectOptions{9};
-            if isfield(DefaultFormats, DefaultFormat)
+            if isfield(DefaultFormats, DefaultFormat) && isempty(selectOptions{2})
                 defaultFilter = DefaultFormats.(DefaultFormat);
             else
-                defaultFilter = [];
+                defaultFilter = selectOptions{2};
             end
         else
             DialogType       = 'save';
