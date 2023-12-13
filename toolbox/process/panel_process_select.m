@@ -1402,11 +1402,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             jLabel.setText('Output file');
                             GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'files';
                             if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1}) || strcmp(option.Value{7}, 'dirs')
+                                % Used in SaveFile_Callback() to suggeste name of export file
                                 GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
                             end
                             jText.setText(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1});
                         end
-                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText));
                     else
                         % Pick file or dir (Open File or Select Dir to Save)
                         gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
@@ -1818,7 +1819,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
 
     %% ===== OPTIONS: SAVE FILE CALLBACK =====
-    function SaveFile_Callback(iProcess, optName, jText, isUpdateTime)
+    function SaveFile_Callback(iProcess, optName, jText)
         % Get default import directory and formats
         LastUsedDirs = bst_get('LastUsedDirs');
         DefaultFormats = bst_get('DefaultFormats');
