@@ -1517,72 +1517,9 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         return;
     end
     
-    % === DELETE UNWANTED FILES ===
-    if ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
-        warning('off', 'MATLAB:RMDIR:RemovedFromPath');
-        for iDel = 1:length(PlugDesc.DeleteFiles)
-            if ~isempty(PlugDesc.SubFolder)
-                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
-            else
-                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.DeleteFiles{iDel});
-            end
-            if file_exist(fileDel)
-                try
-                    file_delete(fileDel, 1, 3);
-                catch
-                    disp(['BST> Plugin ' PlugName ': Could not delete file: ' PlugDesc.DeleteFiles{iDel}]);
-                end
-            else
-                disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
-            end
-        end
-        warning('on', 'MATLAB:RMDIR:RemovedFromPath');
-    end
-
-    % === SEARCH PROCESSES ===
-    % Look for process_* functions in the process folder
-    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
-    if ~isempty(PlugProc)
-        % Remove absolute path: use only path relative to the plugin Path
-        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
-    end
-    
-    % === SAVE PLUGIN.MAT ===
-    % Save installation date
-    c = clock();
-    PlugDesc.InstallDate = datestr(datenum(c(1), c(2), c(3), c(4), c(5), c(6)), 'dd-mmm-yyyy HH:MM:SS');
-    % Get readme and logo
-    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
-    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Update plugin.mat after loading
-    PlugDescSave = rmfield(PlugDesc, excludedFields);
-    bst_save(PlugMatFile, PlugDescSave, 'v6');
-    
-    % === CALLBACK: POST-INSTALL ===
-    [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
+    [isOk, errMsg,PlugDesc] = updatePlugDesc(PlugDesc);
     if ~isOk
         return;
-    end
-    
-    % === GET INSTALLED VERSION ===
-    % Get installed version
-    if ~isempty(PlugDesc.GetVersionFcn)
-        testVer = [];
-        try
-            if ischar(PlugDesc.GetVersionFcn)
-                testVer = eval(PlugDesc.GetVersionFcn);
-            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
-                testVer = feval(PlugDesc.GetVersionFcn);
-            end
-        catch
-            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
-        end
-        if ~isempty(testVer)
-            PlugDesc.Version = testVer;
-            % Update plugin.mat
-            PlugDescSave.Version = testVer;
-            bst_save(PlugMatFile, PlugDescSave, 'v6');
-        end
     end
     
     % === SHOW PLUGIN INFO ===
@@ -1620,6 +1557,89 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     isOk = 1;
 end
 
+% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('updatePlugDesc', PlugDesc,doDelete=1)
+function [isOk, errMsg,PlugDesc] = updatePlugDesc(PlugDesc, doDelete)
+    isOk        = 1;
+    errMsg      = '';
+    PlugPath    = PlugDesc.Path;
+    PlugName    = PlugDesc.Name;
+    
+
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
+    
+    if nargin < 2
+        doDelete = 1;
+    end
+    % === DELETE UNWANTED FILES ===
+    if doDelete && ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
+        warning('off', 'MATLAB:RMDIR:RemovedFromPath');
+        for iDel = 1:length(PlugDesc.DeleteFiles)
+            if ~isempty(PlugDesc.SubFolder)
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
+            else
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.DeleteFiles{iDel});
+            end
+            if file_exist(fileDel)
+                try
+                    file_delete(fileDel, 1, 3);
+                catch
+                    disp(['BST> Plugin ' PlugName ': Could not delete file: ' PlugDesc.DeleteFiles{iDel}]);
+                end
+            else
+                disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
+            end
+        end
+        warning('on', 'MATLAB:RMDIR:RemovedFromPath');
+    end
+
+    % === SEARCH PROCESSES ===
+    % Look for process_* functions in the process folder
+    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
+    if ~isempty(PlugProc)
+        % Remove absolute path: use only path relative to the plugin Path
+        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
+    end
+    
+    % === SAVE PLUGIN.MAT ===
+    % Save installation date
+    c = clock();
+    PlugDesc.InstallDate = datestr(datenum(c(1), c(2), c(3), c(4), c(5), c(6)), 'dd-mmm-yyyy HH:MM:SS');
+    % Get readme and logo
+    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
+    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
+    % Update plugin.mat after loading
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
+
+    PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
+    bst_save(PlugMatFile, PlugDescSave, 'v6');
+    
+    % === CALLBACK: POST-INSTALL ===
+    [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
+    if ~isOk
+        return;
+    end
+    
+    % === GET INSTALLED VERSION ===
+    % Get installed version
+    if ~isempty(PlugDesc.GetVersionFcn)
+        testVer = [];
+        try
+            if ischar(PlugDesc.GetVersionFcn)
+                testVer = eval(PlugDesc.GetVersionFcn);
+            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
+                testVer = feval(PlugDesc.GetVersionFcn);
+            end
+        catch
+            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
+        end
+        if ~isempty(testVer)
+            PlugDesc.Version = testVer;
+            % Update plugin.mat
+            PlugDescSave.Version = testVer;
+            bst_save(PlugMatFile, PlugDescSave, 'v6');
+        end
+    end
+end
 
 %% ===== INSTALL INTERACTIVE =====
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive', PlugName)
