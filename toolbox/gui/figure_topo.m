@@ -147,9 +147,20 @@ function UpdateTopoPlot(iDS, iFig)
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
-    % Displaying LOG values: always use the "RealMin" display
-    if ~isempty(TfInfo) && strcmpi(TfInfo.Function, 'log')
-        sColormap.isRealMin = 1;
+    % Displaying LOG values   : always use the "RealMin" display and not absolutes values
+    % Displaying Power values : always use absolutes values
+    if ~isempty(TfInfo)
+        toggleAbsoluteValues = 0;
+        if strcmpi(TfInfo.Function, 'log')
+            sColormap.isRealMin = 1;
+            toggleAbsoluteValues =  sColormap.isAbsoluteValues;
+        elseif strcmpi(TfInfo.Function, 'power')
+            toggleAbsoluteValues = ~sColormap.isAbsoluteValues;
+        end
+        if ~isempty(toggleAbsoluteValues) && toggleAbsoluteValues
+            sColormap.isAbsoluteValues = ~sColormap.isAbsoluteValues;
+            bst_colormaps('SetColormapAbsolute', ColormapInfo.Type, sColormap.isAbsoluteValues);
+        end
     end
     % Get figure maximum
     CLim = bst_colormaps('GetMinMax', sColormap, DataToPlot, TopoHandles.DataMinMax);
