@@ -27,6 +27,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
 %                            bst_plugin('LinkCatSpm',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('UpdateDescription',    PlugDesc, doDelete=0) % Update plugin description after load
 %
 %
 % PLUGIN DEFINITION
@@ -1516,8 +1517,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         bst_progress('removeimage');
         return;
     end
-    
-    [isOk, errMsg,PlugDesc] = updatePlugDesc(PlugDesc);
+    % Update plugin description after first load, and delete unwanted files
+    [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, 1);
     if ~isOk
         return;
     end
@@ -1557,18 +1558,16 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     isOk = 1;
 end
 
-% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('updatePlugDesc', PlugDesc,doDelete=1)
-function [isOk, errMsg,PlugDesc] = updatePlugDesc(PlugDesc, doDelete)
+%% ===== UPDATE DESCRIPTION =====
+% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('UpdateDescription', PlugDesc, doDelete=0)
+function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
     isOk        = 1;
     errMsg      = '';
     PlugPath    = PlugDesc.Path;
     PlugName    = PlugDesc.Name;
-    
 
-    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
-    
     if nargin < 2
-        doDelete = 1;
+        doDelete = 0;
     end
     % === DELETE UNWANTED FILES ===
     if doDelete && ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
@@ -1607,9 +1606,9 @@ function [isOk, errMsg,PlugDesc] = updatePlugDesc(PlugDesc, doDelete)
     % Get readme and logo
     PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
     PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Update plugin.mat after loading
+    % Update plugin.mat
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
     PlugDescSave = rmfield(PlugDesc, excludedFields);
-
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
