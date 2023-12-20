@@ -59,7 +59,7 @@ nFaces    = dim(2);
 Vertices = double(fscanf(fid, '%f', [3 nVertices]));
 % Go to next line
 fgetl(fid);
-% Read faces
+% Read faces, add 1 (convert to 1-based indices)
 Faces = double(fscanf(fid, '%f',[4 nFaces]) + 1);
 Faces = Faces(2:4,:);
 % Close file

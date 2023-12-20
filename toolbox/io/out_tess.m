@@ -91,6 +91,10 @@ switch upper(FileFormat)
         TessMat.Faces = TessMat.Faces(:,[2 1 3]);
         out_tess_obj(TessMat, OutputFile);
     case 'OFF'
+        % Vertices: convert to millimeters
+        TessMat.Vertices = TessMat.Vertices .* 1000;
+        % Swap faces
+        TessMat.Faces    = TessMat.Faces(:,[2 1 3]);
         out_tess_off(TessMat, OutputFile);
     case 'TRI'
         out_tess_tri(TessMat, OutputFile);
