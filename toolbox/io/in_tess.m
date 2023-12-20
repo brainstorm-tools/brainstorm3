@@ -178,6 +178,10 @@ switch (FileFormat)
         TessMat.Faces = TessMat.Faces(:,[2 1 3]);
     case 'OFF'
         TessMat = in_tess_off(TessFile);
+        % Vertices: convert to meters
+        TessMat.Vertices = TessMat.Vertices ./ 1000;
+        % Swap faces
+        TessMat.Faces    = TessMat.Faces(:,[2 1 3]);
     case 'TRI'
         TessMat = in_tess_tri(TessFile);
     case 'DSGL'
