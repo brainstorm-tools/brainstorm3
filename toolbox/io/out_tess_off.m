@@ -30,6 +30,7 @@ function out_tess_off( TessMat, OutputFile )
 % ===== PREPARE VALUES ======
 % Faces : remove 1 (convert to 0-based indices)
 Faces = TessMat.Faces - 1;
+Vertices = TessMat.Vertices;
 
 % ===== SAVE FILE =====
 % Open file
