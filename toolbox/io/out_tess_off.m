@@ -31,7 +31,7 @@ function out_tess_off( TessMat, OutputFile )
 % Faces : remove 1 (convert to 0-based indices)
 Faces = TessMat.Faces - 1;
 % Vertices: convert to millimeters
-Vertices = TessMat.Vertices;
+Vertices = TessMat.Vertices .* 1000;
 
 % ===== SAVE FILE =====
 % Open file
