@@ -86,6 +86,10 @@ switch upper(FileFormat)
         end
         % Export file
         out_tess_fs(TessMat, OutputFile);
+    case 'OBJ'
+        % Swap faces
+        TessMat.Faces = TessMat.Faces(:,[2 1 3]);
+        out_tess_obj(TessMat, OutputFile);
     case 'OFF'
         out_tess_off(TessMat, OutputFile);
     case 'TRI'
