@@ -1558,6 +1558,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     isOk = 1;
 end
 
+
 %% ===== UPDATE DESCRIPTION =====
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('UpdateDescription', PlugDesc, doDelete=0)
 function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
@@ -1569,6 +1570,14 @@ function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
     if nargin < 2
         doDelete = 0;
     end
+
+    % Plug in needs to be installed
+    if isempty(bst_plugin('GetInstalled', PlugDesc.Name))
+        isOk = 0;
+        errMsg = ['Cannot update description, plugin ''' PlugDesc.Name ''' needs to be installed'];
+        return
+    end
+
     % === DELETE UNWANTED FILES ===
     if doDelete && ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
         warning('off', 'MATLAB:RMDIR:RemovedFromPath');
