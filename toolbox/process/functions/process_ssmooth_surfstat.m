@@ -163,13 +163,19 @@ end
 function [sData, msgInfo, warmInfo] = compute(SurfaceFile, sData, FWHM, version)
     warmInfo = '';
 
-	% Load surface
-    SurfaceMat = in_tess_bst(SurfaceFile);
-    
+    % Get surface
+    if ischar(SurfaceFile)
+        SurfaceMat = in_tess_bst(SurfaceFile);
+    else
+        SurfaceMat = SurfaceFile;
+    end
+
     if strcmp(version,'adaptive_fwhm')
         % Smooth each connenected part of the surface separately
         % first estimate the connected regions 
-        subRegions = process_ssmooth('GetConnectedRegions', SurfaceMat);
+        nVertices   = size(SurfaceMat.Vertices,1);
+        Dist        = bst_tess_distance(SurfaceMat, 1:nVertices, 1:nVertices, 'geodesic_edge');
+        subRegions  = process_ssmooth('GetConnectedRegions', SurfaceMat, Dist);
         % Smooth each region separately
         msgInfo    = cell(1,length(subRegions));
         for i = 1:length(subRegions)

@@ -63,6 +63,8 @@ else  % Sigma given in meters
     Sigma = FWHM / (2 * sqrt(2*log2(2)));
 end
 
+% Ignore long distances
+Dist(Dist > 10 * Sigma) = 0;
 % Calculate interpolation as a function of distance
 [vi, vj, x] = find(Dist);
 W           = sparse(vi, vj, GaussianKernel(x,Sigma^2), nVertices, nVertices) + ...
