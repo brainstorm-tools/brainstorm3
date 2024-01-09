@@ -886,6 +886,10 @@ function DeleteFigure(hFigure, varargin)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
+        % Reset "CoordinatesSeeg" panel
+        if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+            panel_coordinates_seeg('RemoveSelection');
+        end
         % Reset "Coordinates" panel
         if gui_brainstorm('isTabVisible', 'Dipinfo')
             panel_dipinfo('RemoveSelection');
@@ -1092,6 +1096,9 @@ function SetCurrentFigure(hFig, Type)
                 if gui_brainstorm('isTabVisible', 'Coordinates')
                     panel_coordinates('CurrentFigureChanged_Callback');
                 end
+                % if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+                %     panel_coordinates_seeg('CurrentFigureChanged_Callback');
+                % end
                 if gui_brainstorm('isTabVisible', 'Dipinfo')
                     panel_dipinfo('CurrentFigureChanged_Callback');
                 end

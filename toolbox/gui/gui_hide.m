@@ -74,6 +74,10 @@ switch (panelName)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
+    case 'CoordinatesSeeg'
+        if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+            panel_coordinates_seeg('RemoveSelection');
+        end
     case 'Digitize'
         isAccepted = panel_digitize('PanelHidingCallback');
     case 'Dipinfo'

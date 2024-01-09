@@ -3092,6 +3092,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         jMenu = gui_component('Menu', jPopup, [], 'MRI segmentation', IconLoader.ICON_ANATOMY);
         % === GENERATE HEAD/BEM ===
         if (length(iAnatomy) <= 1)
+            gui_component('MenuItem', jMenu, [], 'Generate mesh from MRI/CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isomesh(MriFile));
             gui_component('MenuItem', jMenu, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(MriFile));
             gui_component('MenuItem', jMenu, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
         end

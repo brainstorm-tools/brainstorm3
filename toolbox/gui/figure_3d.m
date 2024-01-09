@@ -125,6 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
+    setappdata(hFig, 'isSelectingCoordinatesSeeg',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -543,6 +544,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
+    isSelectingCoordinatesSeeg  = getappdata(hFig, 'isSelectingCoordinatesSeeg');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -618,6 +620,27 @@ function FigureMouseUpCallback(hFig, varargin)
                 if ~isempty(hView3DHeadFig)
                     % Find the closest surface point that was selected
                     [TessInfo, iTess, pout] = panel_coordinates('ClickPointInSurface', hView3DHeadFig);
+                    if isempty(TessInfo)
+                        return
+                    end
+                    % Get linked MRI viewer
+                    hMriViewer = get(hView3DHeadFig, 'UserData');
+                    % Set coordinates in linked MRI viewer
+                    figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
+                end
+            end
+        
+        % === SELECTING POINT SEEG ===
+        elseif isSelectingCoordinatesSeeg
+            % Selecting from Coordinates panel
+            if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+                panel_coordinates_seeg('SelectPoint', hFig);
+            % Selecting fiducials linked with MRI viewer
+            else
+                hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
+                if ~isempty(hView3DHeadFig)
+                    % Find the closest surface point that was selected
+                    [TessInfo, iTess, pout] = panel_coordinates_seeg('ClickPointInSurface', hView3DHeadFig);
                     if isempty(TessInfo)
                         return
                     end
@@ -4158,7 +4181,7 @@ function PlotCoils(hFig, Modality, isDetails)
                     if (nPoints >= 4)
                         % REF Magnetometers:   WHITE
                         if (nPoints == 4)
-                            Color = [1 1 1];
+                            Color = [1 1 1];PlotCoils
                             oriLength = 0.015;
                         % REF Gradiometers (offdiag):   GREEN
                         elseif (nPoints == 8) && ~isempty(Channels(i).Comment) && ~isempty(strfind(Channels(i).Comment, 'offdiag'))

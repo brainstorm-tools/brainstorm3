@@ -236,9 +236,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckOverlayScouts',      jCheckOverlayScouts, ...
                                   'jCheckOverlayConditions',  jCheckOverlayConditions, ...
                                   'jListScouts',                jListScouts));
-                              
-    
-                              
+                     
+                                  
 %% =================================================================================
 %  === INTERNAL CALLBACKS  =========================================================
 %  =================================================================================
@@ -3360,6 +3359,7 @@ function EditScoutsSize(action)
     else
         % Just for the special purpose of editing the scalp surface (remove imperfections)
         patchVertices = get(TessInfo(iTess).hPatch, 'Vertices');
+        % disp(patchVertices);
     end
     
     % Process all the selected scouts
