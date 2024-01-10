@@ -47,6 +47,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                 [], ...
                                 {num2str(10), 'A'});
 
+    % Hack keyboard callback
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    KeyPressFcn_bak = get(hFig, 'KeyPressFcn');
+    set(hFig, 'KeyPressFcn', @KeyPress_Callback);
+
     % ===== CREATE TOOLBAR =====
     jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.NORTH);
     jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
@@ -61,13 +66,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain = gui_river('');   
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('sEEG contact localization');
-            % Dropdown box for Model of electrodes
-            gui_component('label', jPanelCoordinates, '', 'Model: ');
-            % Combo box
-            jComboModel = gui_component('combobox', jPanelCoordinates, 'hfill', [], [], [], []);
-            jComboModel.setFocusable(0);
-            jComboModel.setMaximumRowCount(15);
-            jComboModel.setPreferredSize(java_scaled('dimension',30,20));
+            % % Dropdown box for Model of electrodes
+            % gui_component('label', jPanelCoordinates, '', 'Model: ');
+            % % Combo box
+            % jComboModel = gui_component('combobox', jPanelCoordinates, 'hfill', [], [], [], []);
+            % jComboModel.setFocusable(0);
+            % jComboModel.setMaximumRowCount(15);
+            % jComboModel.setPreferredSize(java_scaled('dimension',30,20));
             
             % Number of contacts and label name
             % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'br', 'Number of contacts: '));
@@ -125,10 +130,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
                            struct('jButtonSelect',     jButtonSelect, ...
-                                  'jComboModel',       jComboModel, ...
                                   'jTextNcontacts',      jTextNcontacts, ...
                                   'jTextLabel', jTextLabel, ...
                                   'jPanelCoordinates', jPanelCoordinates));
+                                  % 'jComboModel',       jComboModel, ...
                                   % 'jLabelCoordMriX',   jLabelCoordMriX, ...
                                   % 'jLabelCoordMriY',   jLabelCoordMriY, ...
                                   % 'jLabelCoordMriZ',   jLabelCoordMriZ));
@@ -218,6 +223,22 @@ function CurrentFigureChanged_Callback() %#ok<DEFNU>
     UpdatePanel();
 end
 
+%% ===== KEYBOARD CALLBACK =====
+function KeyPress_Callback(hFig, keyEvent)
+    switch (keyEvent.Key)
+        case {'w'}
+            res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+                                'Enter Number of contacts', ...
+                                [], ...
+                                {num2str(10), 'A'});
+            ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+            ctrl.jTextNcontacts.setText(res{1});
+            ctrl.jTextLabel.setText(res{2});
+        otherwise
+            KeyPressFcn_bak(hFig, keyEvent); 
+            return;
+    end
+end
 
 %% ===============================================================================
 %  ====== POINTS SELECTION =======================================================
@@ -349,7 +370,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Remove previous mark
     % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1)*0.995, plotLoc(2)*0.995, plotLoc(3)*0.995, ...
+    line(plotLoc(1), plotLoc(2), plotLoc(3)*0.995, ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          'o',  ...
@@ -484,7 +505,8 @@ function ViewInMriViewer(varargin)
     
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
-    Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000 .* 0.995;
+    Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
+    Handles.LocEEG(1,3) = Handles.LocEEG(1,3) * 0.995;
     Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, '');
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
 end
