@@ -76,10 +76,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             
             % Number of contacts and label name
             % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'br', 'Number of contacts: '));
-            jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', res{1});
+            jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', res{1}, [], [], [], 0);
             % jTextNcontacts.setHorizontalAlignment(jTextNcontacts.LEFT);
             % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'br', 'Label Name: '));
-            jTextLabel = gui_component('label', jPanelCoordinates, 'tab', res{2});
+            jTextLabel = gui_component('label', jPanelCoordinates, 'tab', res{2}, [], [], [], 0);
             % jTextLabel.setHorizontalAlignment(jTextLabel.LEFT);
 
             % Uncomment for text type box
@@ -130,8 +130,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
                            struct('jButtonSelect',     jButtonSelect, ...
-                                  'jTextNcontacts',      jTextNcontacts, ...
-                                  'jTextLabel', jTextLabel, ...
+                                  'jTextNcontacts',    jTextNcontacts, ...
+                                  'jTextLabel',        jTextLabel, ...
                                   'jPanelCoordinates', jPanelCoordinates));
                                   % 'jComboModel',       jComboModel, ...
                                   % 'jLabelCoordMriX',   jLabelCoordMriX, ...
@@ -193,7 +193,7 @@ function UpdatePanel()
     ctrl.jPanelCoordinates.add('tab', jLabelCoordMriZ);
     
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        ctrl.jTextNcontacts.setText(sprintf('%d', num_contacts-1));
+        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
     end
 
     % Update coordinates (text fields)
@@ -461,7 +461,7 @@ end
 
 
 %% ===== REMOVE SELECTION =====
-function RemoveSelection(varargin)
+function RemoveSelection(varargin, i)
     % Unselect selection button 
     SetSelectionState(0);
     % Find all selected points
@@ -502,7 +502,8 @@ function ViewInMriViewer(varargin)
     hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
-    
+    % disp(Handles);
+
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
     Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
