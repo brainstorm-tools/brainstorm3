@@ -191,10 +191,6 @@ function UpdatePanel()
     ctrl.jPanelCoordinates.add('tab', jLabelCoordMriX);
     ctrl.jPanelCoordinates.add('tab', jLabelCoordMriY);
     ctrl.jPanelCoordinates.add('tab', jLabelCoordMriZ);
-    
-    if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
-    end
 
     % Update coordinates (text fields)
     % MRI
@@ -289,6 +285,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     if (nargin < 2) || isempty(AcceptMri)
         AcceptMri = 1;
     end
+
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     % Find the closest surface point that was selected
@@ -370,7 +370,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Remove previous mark
     % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1), plotLoc(2), plotLoc(3)*0.995, ...
+    line(plotLoc(1)*0.995, plotLoc(2)*0.995, plotLoc(3)*0.995, ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          'o',  ...
@@ -378,6 +378,14 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
          'LineWidth',       2, ...
          'Parent',          hAxes, ...
          'Tag',             'ptCoordinates');
+
+    text(plotLoc(1), plotLoc(2), plotLoc(3), ...
+        '         ' + string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText()), ...
+        'HorizontalAlignment','center', ...
+        'FontSize', 10, ...
+        'Color',  [1 1 0], ...
+        'Parent', hAxes, ...
+        'Tag', 'ptCoordinates');
 
     % x = [100.5 107 144];
     % y = [96.8 107.9 144.4];
@@ -483,6 +491,9 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+
     % Get current 3D figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
@@ -507,8 +518,18 @@ function ViewInMriViewer(varargin)
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
     Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
-    Handles.LocEEG(1,3) = Handles.LocEEG(1,3) * 0.995;
-    Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, '');
+    Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
+    Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
+    Handles.hTextEEG(1,:)  = figure_mri('PlotText', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], Channels(1).Name, Channels(1).Name);
+    
+    if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
+        num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+    end
+
+    % disp(sMri);
+    % disp(Handles);
+    % disp(Handles.axs);
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
 end
 

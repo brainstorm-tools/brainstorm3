@@ -2337,7 +2337,7 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
             end
         end
     else
-        set(Handles.hTextEEG, 'Visible', 'off');
+        set(Handles.hTextEEG, 'Visible', 'on');
     end
 end
 
