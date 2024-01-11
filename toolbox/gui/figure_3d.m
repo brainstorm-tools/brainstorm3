@@ -1443,6 +1443,14 @@ function GetCoordinates(varargin)
     panel_coordinates('SetSelectionState', 1);
 end
 
+%% ===== GET COORDINATES SEEG =====
+function GetCoordinatesSeeg(varargin)
+    % Show Coordinates panel
+    gui_show('panel_coordinates_seeg', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
+    % Start point selection
+    panel_coordinates_seeg('SetSelectionState', 1);
+end
+
 
 %% ===== APPLY VIEW TO ALL FIGURES =====
 function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
@@ -1963,6 +1971,7 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
+        gui_component('MenuItem', jPopup, [], 'Get coordinates SEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
     end
     
     % ==== MENU: SNAPSHOT ====
