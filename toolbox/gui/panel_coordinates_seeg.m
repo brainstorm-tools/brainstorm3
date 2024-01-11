@@ -31,6 +31,16 @@ end
 %% ===== CREATE PANEL =====
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
     panelName = 'CoordinatesSeeg';
+
+    % global
+    global xxx;
+    global yyy;
+    global zzz;
+
+    xxx = [];
+    yyy = [];
+    zzz = [];
+
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -61,6 +71,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'Del', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
+        % Button "Remove selection"
+        gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
                   
     % ===== Main panel =====
     jPanelMain = gui_river('');   
@@ -221,6 +233,10 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function KeyPress_Callback(hFig, keyEvent)
+    global xxx;
+    global yyy;
+    global zzz;
+
     switch (keyEvent.Key)
         case {'w'}
             res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
@@ -230,6 +246,10 @@ function KeyPress_Callback(hFig, keyEvent)
             ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
+            xxx = [];
+            yyy = [];
+            zzz = [];
+
         otherwise
             KeyPressFcn_bak(hFig, keyEvent); 
             return;
@@ -288,6 +308,11 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+
+    % create global to save values
+    global xxx;
+    global yyy;
+    global zzz;
 
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -387,6 +412,13 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Parent', hAxes, ...
         'Tag', 'ptCoordinates');
 
+    xxx = [xxx, plotLoc(1) * 0.995];
+    yyy = [yyy, plotLoc(2) * 0.995];
+    zzz = [zzz, plotLoc(3) * 0.995];
+    % disp(xxx);
+    % disp(yyy);
+    % disp(zzz);
+
     % x = [100.5 107 144];
     % y = [96.8 107.9 144.4];
     % line(x, y, 'Color','red', 'Parent', hAxes, 'Tag', 'ptCoordinates');
@@ -396,6 +428,22 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     ViewInMriViewer();
 end
 
+%% ===== DRAW LINE =====
+function DrawLine(varargin)
+    global xxx;
+    global yyy;
+    global zzz;
+    
+    % Get axes handle
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    line(xxx, yyy, zzz, ...
+         'Color', [1 1 0], ...
+         'LineWidth',       2, ...
+         'Parent', hAxes, ...
+         'Tag', 'ptCoordinates');
+end
 
 %% ===== POINT SELECTION: Surface detection =====
 function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
@@ -469,7 +517,7 @@ end
 
 
 %% ===== REMOVE SELECTION =====
-function RemoveSelection(varargin, i)
+function RemoveSelection(varargin)
     % Unselect selection button 
     SetSelectionState(0);
     % Find all selected points
