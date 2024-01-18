@@ -36,6 +36,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     global xxx;
     global yyy;
     global zzz;
+    global HandlesIdx;
+    HandlesIdx = 1;
 
     xxx = [];
     yyy = [];
@@ -207,9 +209,9 @@ function UpdatePanel()
     % Update coordinates (text fields)
     % MRI
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        jLabelCoordMriX.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.MRI(1)));
-        jLabelCoordMriY.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.MRI(2)));
-        jLabelCoordMriZ.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.MRI(3)));
+        jLabelCoordMriX.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(1)));
+        jLabelCoordMriY.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(2)));
+        jLabelCoordMriZ.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(3)));
     else
         jLabelCoordMriX.setText('-');
         jLabelCoordMriY.setText('-');
@@ -395,7 +397,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Remove previous mark
     % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1)*0.995, plotLoc(2)*0.995, plotLoc(3)*0.995, ...
+    line(plotLoc(1), plotLoc(2), plotLoc(3) * 0.995, ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          'o',  ...
@@ -412,16 +414,9 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Parent', hAxes, ...
         'Tag', 'ptCoordinates');
 
-    xxx = [xxx, plotLoc(1) * 0.995];
-    yyy = [yyy, plotLoc(2) * 0.995];
+    xxx = [xxx, plotLoc(1)];
+    yyy = [yyy, plotLoc(2)];
     zzz = [zzz, plotLoc(3) * 0.995];
-    % disp(xxx);
-    % disp(yyy);
-    % disp(zzz);
-
-    % x = [100.5 107 144];
-    % y = [96.8 107.9 144.4];
-    % line(x, y, 'Color','red', 'Parent', hAxes, 'Tag', 'ptCoordinates');
     
     % Update "Coordinates" panel
     UpdatePanel();
@@ -438,7 +433,7 @@ function DrawLine(varargin)
     hFig = bst_figures('GetCurrentFigure', '3D');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
-    line(xxx, yyy, zzz, ...
+    line(xxx, yyy, zzz , ...
          'Color', [1 1 0], ...
          'LineWidth',       2, ...
          'Parent', hAxes, ...
@@ -539,6 +534,8 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
+    global HandlesIdx;
+
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
 
@@ -558,18 +555,25 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
     % disp(Handles);
+    
 
     % Select the required point
+    % Handles.isEeg = 1;
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
     Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
     Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
     Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
     Handles.hTextEEG(1,:)  = figure_mri('PlotText', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], Channels(1).Name, Channels(1).Name);
     
+    % Get slices locations
+    % voxXYZ = figure_mri('GetLocation', 'voxel', sMri, Handles);
+    % disp(voxXYZ);
+
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
@@ -579,6 +583,7 @@ function ViewInMriViewer(varargin)
     % disp(Handles);
     % disp(Handles.axs);
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
+    % HandlesIdx = HandlesIdx+1;
 end
 
 %% ===== MODEL SELECTION =====

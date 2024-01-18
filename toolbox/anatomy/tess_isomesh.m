@@ -133,7 +133,7 @@ if isSave
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
     MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
     % Save isosurface
-    sMesh.Comment = sprintf('isoSurface (V_%d,ISO_%d)', 60000, isoValue);
+    sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'bem', 'MRI/CT mesh isosurface generated with Brainstorm');
     bst_save(MeshFile, sMesh, 'v7');
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
@@ -149,11 +149,11 @@ if isProgress
     bst_progress('stop');
 end
 
-%% Manipulate mesh
-% Show Coordinates panel
-gui_show('panel_coordinates_seeg', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
-% Start point selection
-panel_coordinates_seeg('SetSelectionState', 1);
+% %% Manipulate mesh
+% % Show Coordinates panel
+% gui_show('panel_coordinates_seeg', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
+% % Start point selection
+% panel_coordinates_seeg('SetSelectionState', 1);
 
 % Show ieeg panel
 % gui_show('panel_ieeg', 'JavaWindow', 'sEEG', [], 0, 1, 0);
