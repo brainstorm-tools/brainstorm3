@@ -44,7 +44,7 @@ while 1
     % Lines to skip
     if isempty(newLine)
         continue;
-    elseif ~isempty(strfind(newLine, '[Marker Infos]'))
+    elseif ~isempty(strfind(lower(newLine), '[marker infos]'))
         isMarkerSection = 1;
     elseif ~isMarkerSection || ismember(newLine(1), {'[', ';', char(10), char(13)}) || ~any(newLine == '=')
         continue;
