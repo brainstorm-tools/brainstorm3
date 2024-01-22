@@ -1,4 +1,4 @@
-function events = in_events_brainamp(sFile, EventFile)
+function events = in_events_brainamp(sFile, ChannelMat, EventFile)
 % IN_EVENTS_BRAINAMP: Open a BrainVision BrainAmp .vmrk file.
 %
 % OUTPUT:
@@ -27,6 +27,7 @@ function events = in_events_brainamp(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012
+%          Raymundo Cassani, 2024
 
 
 % Open and read file
@@ -65,8 +66,14 @@ while 1
     else
         mlabel = 'Mk';
     end
+    % Marker channels
+    if str2num(argLine{5}) == 0
+        channels = {[]};
+    else
+        channels = {{ChannelMat.Channel(str2num(argLine{5})).Name}};
+    end
     % Add markers entry: {name, type, start, length}
-    Markers(end+1,:) = {mlabel, argLine{1}, str2num(argLine{3}), str2num(argLine{4})};
+    Markers(end+1,:) = {mlabel, argLine{1}, str2num(argLine{3}), str2num(argLine{4}), channels};
 end
 % Close file
 fclose(fid);
@@ -93,8 +100,13 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).times      = samples ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).channels   = [];
     events(iEvt).notes      = [];
+    if all(cellfun(@isempty, [Markers{iMrk,5}]))
+        events(iEvt).channels = [];
+    else
+        % Handle channel-wise events
+        events(iEvt).channels = [Markers{iMrk,5}];
+    end
 end
 
 
