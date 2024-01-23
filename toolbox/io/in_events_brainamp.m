@@ -109,5 +109,31 @@ for iEvt = 1:length(uniqueEvt)
     end
 end
 
+% Merge channel-wise events with same times
+for iEvt = 1:length(events)
+    if ~isempty(events(iEvt).channels)
+        % Find occurrences with channel
+        iwChannel = find(~cellfun(@isempty, [events(iEvt).channels]));
+        iwDelete = [];
+        for iw = 1 : length(iwChannel)
+            if ~ismember(iw, iwDelete)
+                % Find others channel-wise events with the same time, and not to be deleted yet
+                iwOthers = find(all(bsxfun(@eq, events(iEvt).times(:,iw), events(iEvt).times), 1));
+                % Exclude own
+                iwOthers = setdiff(iwOthers, iw);
+                % Only consider ones with channel
+                iwOthers = intersect(iwOthers, iwChannel);
+                for ix = 1 : length(iwOthers)
+                    % Append the channel names
+                    events(iEvt).channels{iw} = [events(iEvt).channels{iw}, events(iEvt).channels{iwOthers(ix)}];
+                    iwDelete = [iwDelete, iwOthers(ix)];
+                end
+            end
+        end
+        events(iEvt).epochs(iwDelete) = [];
+        events(iEvt).times(:,iwDelete) = [];
+        events(iEvt).channels(:,iwDelete) = [];
+    end
+end
 
 
