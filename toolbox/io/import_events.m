@@ -107,7 +107,7 @@ if isempty(newEvents)
         case 'BIDS'
             newEvents = in_events_bids(sFile, EventFile);
         case 'BRAINAMP'
-            newEvents = in_events_brainamp(sFile, EventFile);
+            newEvents = in_events_brainamp(sFile, ChannelMat, EventFile);
         case 'BST'
             FileMat = load(EventFile);
             % Add missing fields if required

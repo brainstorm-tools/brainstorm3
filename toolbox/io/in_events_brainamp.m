@@ -1,4 +1,4 @@
-function events = in_events_brainamp(sFile, EventFile)
+function events = in_events_brainamp(sFile, ChannelMat, EventFile)
 % IN_EVENTS_BRAINAMP: Open a BrainVision BrainAmp .vmrk file.
 %
 % OUTPUT:
@@ -27,6 +27,7 @@ function events = in_events_brainamp(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012
+%          Raymundo Cassani, 2024
 
 
 % Open and read file
@@ -44,7 +45,7 @@ while 1
     % Lines to skip
     if isempty(newLine)
         continue;
-    elseif ~isempty(strfind(newLine, '[Marker Infos]'))
+    elseif ~isempty(strfind(lower(newLine), '[marker infos]'))
         isMarkerSection = 1;
     elseif ~isMarkerSection || ismember(newLine(1), {'[', ';', char(10), char(13)}) || ~any(newLine == '=')
         continue;
@@ -65,8 +66,14 @@ while 1
     else
         mlabel = 'Mk';
     end
+    % Marker channels
+    if str2num(argLine{5}) == 0
+        channels = {[]};
+    else
+        channels = {{ChannelMat.Channel(str2num(argLine{5})).Name}};
+    end
     % Add markers entry: {name, type, start, length}
-    Markers(end+1,:) = {mlabel, argLine{1}, str2num(argLine{3}), str2num(argLine{4})};
+    Markers(end+1,:) = {mlabel, argLine{1}, str2num(argLine{3}), str2num(argLine{4}), channels};
 end
 % Close file
 fclose(fid);
@@ -93,9 +100,40 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).times      = samples ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
-    events(iEvt).channels   = [];
     events(iEvt).notes      = [];
+    if all(cellfun(@isempty, [Markers{iMrk,5}]))
+        events(iEvt).channels = [];
+    else
+        % Handle channel-wise events
+        events(iEvt).channels = [Markers{iMrk,5}];
+    end
 end
 
+% Merge channel-wise events with same times
+for iEvt = 1:length(events)
+    if ~isempty(events(iEvt).channels)
+        % Find occurrences with channel
+        iwChannel = find(~cellfun(@isempty, [events(iEvt).channels]));
+        iwDelete = [];
+        for iw = 1 : length(iwChannel)
+            if ~ismember(iw, iwDelete)
+                % Find others channel-wise events with the same time, and not to be deleted yet
+                iwOthers = find(all(bsxfun(@eq, events(iEvt).times(:,iw), events(iEvt).times), 1));
+                % Exclude own
+                iwOthers = setdiff(iwOthers, iw);
+                % Only consider ones with channel
+                iwOthers = intersect(iwOthers, iwChannel);
+                for ix = 1 : length(iwOthers)
+                    % Append the channel names
+                    events(iEvt).channels{iw} = [events(iEvt).channels{iw}, events(iEvt).channels{iwOthers(ix)}];
+                    iwDelete = [iwDelete, iwOthers(ix)];
+                end
+            end
+        end
+        events(iEvt).epochs(iwDelete) = [];
+        events(iEvt).times(:,iwDelete) = [];
+        events(iEvt).channels(:,iwDelete) = [];
+    end
+end
 
 
