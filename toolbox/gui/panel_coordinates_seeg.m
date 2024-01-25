@@ -135,7 +135,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % jPanelCoordinates.add('tab', jLabelCoordMriX);
             % jPanelCoordinates.add('tab', jLabelCoordMriY);
             % jPanelCoordinates.add('tab', jLabelCoordMriZ);
-
         jPanelMain.add('hfill', jPanelCoordinates);
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
        
@@ -240,17 +239,28 @@ function KeyPress_Callback(hFig, keyEvent)
     global zzz;
 
     switch (keyEvent.Key)
-        case {'w'}
+        case {'l'}
+            % label contacts
             res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
                                 [], ...
                                 {num2str(10), 'A'});
             ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+            SetSelectionState(1);
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
             xxx = [];
             yyy = [];
             zzz = [];
+        
+        case {'escape'}
+            % exit the selection state to stop plotting contacts
+            SetSelectionState(0);
+        
+        case {'r'}
+            % resume the selection state to continue plotting contacts
+            % from where it was last stopped
+            SetSelectionState(1);
 
         otherwise
             KeyPressFcn_bak(hFig, keyEvent); 
