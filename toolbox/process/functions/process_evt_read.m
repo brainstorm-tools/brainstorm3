@@ -59,6 +59,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.min_duration.Comment = 'Reject events shorter than: ';
     sProcess.options.min_duration.Type    = 'value';
     sProcess.options.min_duration.Value   = {0, 'samples', 0};
+    
+    % Option: Mask Responses
+    sProcess.options.maskresponses.Comment = 'Apply mask to responses: ';
+    sProcess.options.maskresponses.Type    = 'checkbox';
+    sProcess.options.maskresponses.Value   = 0;  % Default value: false (no mask)
+
 end
 
 
@@ -136,7 +142,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         sFile = import_events(sFile, [], events);
         % Report changes in .mat structure
         if isRaw
-            DataMat.F = sFile;
+            DataMat.F = sFile;        fprintf('BST> %d events shorter than %d sample(s) removed.\n', nTooShort, MinDuration);
+
         else
             DataMat.Events = sFile.events;
         end
@@ -177,7 +184,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         switch (sFile.format)
             case 'FIF'
                 % Channel name must contains 'STI'
-                iStiChan = find(~cellfun(@isempty, strfind(ch_names, 'STI')));
+                iStiChan = find(contains(ch_names, 'STI'));
             case '4D'
                 % TRIGGER Channels
                 iStiChan = channel_find(ChannelMat.Channel, 'Stim');
@@ -199,16 +206,29 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         % If only one choice: select it by default
         if (length(iStiChan) == 1)
             StimChan = ch_names(iStiChan);
-        % Else: offer multiple choices to the user
+            % Else: offer multiple choices to the user
         else
             StimChan = java_dialog('checkbox', ...
                 ['You can try to rebuild the events list using one or more technical tracks, or ' 10 ...
-                 'ignore this step and process the file as continuous recordings without events.' 10 10 ...
-                 'Available technical tracks: '], ...
-                 'Read events', [], ch_names(iStiChan));
+                'ignore this step and process the file as continuous recordings without events.' 10 10 ...
+                'Available technical tracks: '], ...
+                'Read events', [], ch_names(iStiChan));
             if isempty(StimChan)
                 events = [];
                 return
+            end
+            
+            % Dialog for mask option
+            maskOptions = {
+                'Apply Mask - Recommended for overlapping data', ...
+                'Do Not Apply Mask - Use for original stim triggers'
+                };
+            maskSelection = java_dialog('radio', 'Select Mask Option', 'Mask Responses', [], maskOptions);
+             
+            % Check if user made a mask selection
+            if isempty(maskSelection)
+                events = [];
+                return;
             end
         end
     end
@@ -288,6 +308,14 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             samplesBlock(2) = min(samplesBlock(2), samplesBounds(2));
             % Read block of data
             [track, ~] = in_fread(sFile, ChannelMat, 1, samplesBlock, iChannels(iChannel));
+            
+            % === APPLY MASK IF OPTION IS SELECTED ===
+            if maskSelection == 1
+                maskedTracks = (track - min(track)); % Normalize
+                maskedTracks = bitand(maskedTracks, 255); % Apply mask
+                track = maskedTracks; % Use masked track for further processing
+            end
+            
             % Round values
             track = fix(track);
             % Keep only track changes
@@ -432,7 +460,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     end
     % Display warning with removed events
     if (nTooShort > 0)
-        disp(sprintf('BST> %d events shorter than %d sample(s) removed.', nTooShort, MinDuration));
+        fprintf('BST> %d events shorter than %d sample(s) removed.\n', nTooShort, MinDuration);
     end
     % Close progress bar
     if ~isProgressBar
