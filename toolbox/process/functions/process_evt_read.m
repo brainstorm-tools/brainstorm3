@@ -114,7 +114,10 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, sInput, ['Channel name(s) "' StimChan '" does not exist.']);
         return
     end
-        
+    
+    % Additional step to get the maskresponses option
+    isMaskResponses = sProcess.options.maskresponses.Value;
+    
     % ===== DETECTION =====
     % CTF: Read separately upper and lower bytes
     if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
@@ -132,7 +135,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         end
         events = [eventsL, eventsU];
     else
-        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
+        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration,isMaskResponses);
     end
     
     % ===== SAVE RESULT =====
@@ -158,7 +161,7 @@ end
 
 
 %% ===== COMPUTE =====
-function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration, maskSelection)
     % Parse inputs
     if (nargin < 6)
         MinDuration = 0;
