@@ -142,8 +142,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         sFile = import_events(sFile, [], events);
         % Report changes in .mat structure
         if isRaw
-            DataMat.F = sFile;        fprintf('BST> %d events shorter than %d sample(s) removed.\n', nTooShort, MinDuration);
-
+            DataMat.F = sFile;
         else
             DataMat.Events = sFile.events;
         end
@@ -184,7 +183,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         switch (sFile.format)
             case 'FIF'
                 % Channel name must contains 'STI'
-                iStiChan = find(contains(ch_names, 'STI'));
+                iStiChan = find(~cellfun(@isempty, strfind(ch_names, 'STI')));
             case '4D'
                 % TRIGGER Channels
                 iStiChan = channel_find(ChannelMat.Channel, 'Stim');
@@ -206,13 +205,13 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         % If only one choice: select it by default
         if (length(iStiChan) == 1)
             StimChan = ch_names(iStiChan);
-            % Else: offer multiple choices to the user
+        % Else: offer multiple choices to the user
         else
             StimChan = java_dialog('checkbox', ...
                 ['You can try to rebuild the events list using one or more technical tracks, or ' 10 ...
-                'ignore this step and process the file as continuous recordings without events.' 10 10 ...
-                'Available technical tracks: '], ...
-                'Read events', [], ch_names(iStiChan));
+                 'ignore this step and process the file as continuous recordings without events.' 10 10 ...
+                 'Available technical tracks: '], ...
+                 'Read events', [], ch_names(iStiChan));
             if isempty(StimChan)
                 events = [];
                 return
@@ -460,7 +459,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     end
     % Display warning with removed events
     if (nTooShort > 0)
-        fprintf('BST> %d events shorter than %d sample(s) removed.\n', nTooShort, MinDuration);
+        disp(sprintf('BST> %d events shorter than %d sample(s) removed.', nTooShort, MinDuration));
     end
     % Close progress bar
     if ~isProgressBar
