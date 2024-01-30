@@ -5529,4 +5529,20 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
             GridAtlas = HeadModelMat.GridAtlas;
         end
     end
+    % Get timefreq file displayed in the figure
+    Timefreq = getappdata(hFig, 'Timefreq');
+    if ~isempty(Timefreq)
+        % Get loaded time-freq structure
+        [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', Timefreq.FileName);
+        % Get results file
+        if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'results') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile)
+            iResult = bst_memory('GetResultInDataSet', iDS, GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile);
+            HeadModelType = GlobalData.DataSet(iDS).Results(iResult).HeadModelType;
+            % Get volume grids
+            if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc) && ~strcmpi(HeadModelType, 'surface')
+                GridLoc   = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
+                GridAtlas = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridAtlas;
+            end
+        end
+    end
 end
