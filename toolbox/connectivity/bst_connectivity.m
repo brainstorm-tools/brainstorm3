@@ -405,7 +405,7 @@ Time = [];
 nWinLenSamples = [];
 
 % Loop over input files
-for iFile = 1:nFiles
+for iFile = 1 : length(FilesA)
     % Increments here, and in LoadAll above. 100 points are assigned per process (in bst_process('run'))
     bst_progress('set',  round(startValue + (iFile-1) / nFiles * 100));
     %% ===== LOAD SIGNALS =====
@@ -1101,7 +1101,7 @@ for iFile = 1:nFiles
         end
         OutputFiles{iFile} = Finalize(OrigFilesB{iFile});
         R = [];
-    else 
+    elseif strcmpi(OPTIONS.OutputMode, 'avg')
         % Sum terms and continue file loop.
         if isnumeric(R)
             if isempty(Ravg)
@@ -1114,7 +1114,8 @@ for iFile = 1:nFiles
             end
         % Else R is a struct and terms are already being summed into its fields directly.
         end
-        
+    else % case 'concat'
+        Ravg = R;
     end
 end
 
