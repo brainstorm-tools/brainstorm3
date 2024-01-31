@@ -309,7 +309,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             
             % === APPLY MASK IF OPTION IS SELECTED ===
             if maskSelection == 1
-                maskedTracks = (track - min(track)); % Normalize
+                maskedTracks = track - min(track); % Normalize
                 maskedTracks = bitand(maskedTracks, 255); % Apply mask
                 track = maskedTracks; % Use masked track for further processing
             end
