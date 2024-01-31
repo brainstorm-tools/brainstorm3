@@ -226,14 +226,10 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
                 'Do Not Apply Mask - Use for original stim triggers'
                 };
             maskSelection = java_dialog('radio', 'Select Mask Option', 'Mask Responses', [], maskOptions);
-             
-            % Check if user made a mask selection
-            if isempty(maskSelection)
-                events = [];
-                return;
-            end
+
         end
     end
+    
     % CTF: Select only upper or lower bytes
     isCtfUp = 0;
     isCtfLow = 0;
