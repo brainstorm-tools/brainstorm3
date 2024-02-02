@@ -29,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Synchronyse files';
+    sProcess.Comment     = 'Synchronyze files';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Synchronize';
     sProcess.Index       = 681;
@@ -37,7 +37,7 @@ function sProcess = GetDescription()
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
-    sProcess.nMinFiles   = 1;
+    sProcess.nMinFiles   = 2;
     
     %Description of options
     sProcess.options.inputs.Comment = ['For synchronization, please choose an<BR>event type ' ...
@@ -47,7 +47,7 @@ function sProcess = GetDescription()
     % Source Event name for synchronization 
     sProcess.options.src.Comment  = 'Sync event name: ';
     sProcess.options.src.Type     = 'text';
-    sProcess.options.src.Value    = 'sync';
+    sProcess.options.src.Value    = '';
  
 end
 
@@ -79,6 +79,7 @@ function OutputFiles = Run(sProcess, sInputs)
     
     bst_progress('start', 'Synchronizing files', 'Loading data...', 0, 3*nInputs);
 
+    % Get Time vector, events and sampling frequency for each file
     for iInput = 1:nInputs
         if strcmp(sInputs(iInput).FileType, 'data')     % Imported data structure
             sData = in_bst_data(sInputs(iInput).FileName, 'Time', 'Events');
@@ -102,7 +103,7 @@ function OutputFiles = Run(sProcess, sInputs)
         return;
     end
 
-    % Check: Sync event must be present in all files
+    % Check: Sync event must be simple event
     if any(cellfun(@(x) size(x,1), {sEvtSync.times}) ~= 1)
         bst_error(['Sync event ("' syncEventName '") must be simple event in all the files'], 'Synchronize signal', 0);
         return;
