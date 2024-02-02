@@ -57,14 +57,14 @@ end
 function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {};
     
+    nInputs = length(sInputs);
     
     % === Sync event management === %
     SyncEventName  = sProcess.options.src.Value;
     
-    sData           = cell(1,length(sInputs)); 
-    sDataRaw        = cell(1,length(sInputs)); 
-    sSync           = cell(1,length(sInputs)); 
-    fs              = zeros(1, length(sInputs)); 
+    sOldTiming     = cell(1,nInputs);
+    sSync           = cell(1,nInputs);
+    fs              = zeros(1, nInputs);
     
     is_raw = strcmp({sInputs.FileType},'raw');
     if ~all(is_raw) && ~all(~is_raw)
@@ -73,52 +73,50 @@ function OutputFiles = Run(sProcess, sInputs)
     else
         is_raw = is_raw(1);
     end
-
-
     
-    bst_progress('start', 'Synchronizing files', 'Loading data...', 0, 3*length(sInputs));
+    bst_progress('start', 'Synchronizing files', 'Loading data...', 0, 3*nInputs);
 
-    for i = 1:length(sInputs)
-        if strcmp(sInputs(i).FileType, 'data')     % Imported data structure
-            sData{i}    = in_bst_data(sInputs(i).FileName);
-            sSync{i}    = sData{i}.Events(strcmp({sData{i}.Events.label}, SyncEventName));
-            fs(i)       = 1/(sData{i}.Time(2) -  sData{i}.Time(1)) ; % in Hz
-        elseif strcmp(sInputs(i).FileType, 'raw')  % Continuous data file 
-            sData{i}     = in_bst(sInputs(i).FileName, [], 1, 1, 'no');
-            sDataRaw{i}  = in_bst_data(sInputs(i).FileName, 'F');
-
-            events      = sDataRaw{i}.F.events;
-            sSync{i}    = events(strcmp({events.label}, SyncEventName));
-            fs(i)       = sDataRaw{i}.F.prop.sfreq; % in Hz
+    for iInput = 1:nInputs
+        if strcmp(sInputs(iInput).FileType, 'data')     % Imported data structure
+            sData = in_bst_data(sInputs(iInput).FileName, 'Time', 'Events');
+            sOldTiming{iInput}.Time = sData.Time;
+            sOldTiming{iInput}.Events = sData.Events;
+            fs(iInput)       = 1/(sOldTiming{iInput}.Time(2) -  sOldTiming{iInput}.Time(1)) ; % in Hz
+        elseif strcmp(sInputs(iInput).FileType, 'raw')  % Continuous data file
+            sDataRaw = in_bst_data(sInputs(iInput).FileName, 'Time', 'F');
+            sOldTiming{iInput}.Time = sDataRaw.Time;
+            sOldTiming{iInput}.Events = sDataRaw.F.events;
+            fs(iInput)       = sDataRaw.F.prop.sfreq; % in Hz
         end
+        sSync{iInput} = sOldTiming{iInput}.Events(strcmp({sOldTiming{iInput}.Events.label}, SyncEventName));
     end
-    bst_progress('inc', length(sInputs));
+
+    bst_progress('inc', nInputs);
     bst_progress('text', 'Synchronizing...');
 
-    new_times       = cell(1,length(sInputs)); 
-    new_times{1}    = sData{1}.Time;
-    mean_shifting   = zeros(1, length(sInputs));
+    new_times       = cell(1,nInputs);
+    new_times{1}    = sOldTiming{1}.Time;
+    mean_shifting   = zeros(1, nInputs);
     
-    % Compute shifiting between file i and first file  
-    for iFile = 2:length(sInputs)
-        if length(sSync{iFile}.times) == length(sSync{1}.times)
-            shifting = sSync{iFile}.times -  sSync{1}.times;
+    % Compute shifiting between file i and first file, and align Time vectores
+    for iInput = 2:nInputs
+        if length(sSync{iInput}.times) == length(sSync{1}.times)
+            shifting = sSync{iInput}.times -  sSync{1}.times;
             
-            mean_shifting(iFile) = mean(shifting);
+            mean_shifting(iInput) = mean(shifting);
             offsetStd = std(shifting);
-        
         else
             bst_report('Warning', sProcess, sInputs, 'Files doesnt have the same number of trigger. Using approximation');
             % Correlate the trigger signals; need to be at the same
             % frequency. Choose the frequency of the larger signal 
             
-            tmp_fs      = max(fs(iFile), fs(1));
-            tmp_time_a  = sData{iFile}.Time(1):1/tmp_fs:sData{iFile}.Time(end);
-            tmp_time_b  = sData{1}.Time(1):1/tmp_fs:sData{1}.Time(end);
+            tmp_fs      = max(fs(iInput), fs(1));
+            tmp_time_a  = sOldTiming{iInput}.Time(1) : 1/tmp_fs : sOldTiming{iInput}.Time(end);
+            tmp_time_b  = sOldTiming{1}.Time(1):1/tmp_fs:sOldTiming{1}.Time(end);
 
             blocA = zeros(1 , length(tmp_time_a)); 
-            for i_event = 1:size(sSync{iFile}.times,2)
-                i_intra_event = panel_time('GetTimeIndices', tmp_time_a,  sSync{iFile}.times(i_event) + [0 1]');
+            for i_event = 1:size(sSync{iInput}.times,2)
+                i_intra_event = panel_time('GetTimeIndices', tmp_time_a,  sSync{iInput}.times(i_event) + [0 1]');
                 blocA(1,i_intra_event) = 1;
             end
             
@@ -132,40 +130,30 @@ function OutputFiles = Run(sProcess, sInputs)
             [c_max,colum]   = max(c);
             
             
-            mean_shifting(iFile) = lags(colum) / tmp_fs;
+            mean_shifting(iInput) = lags(colum) / tmp_fs;
             offsetStd = 0;
         end    
-        disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)',sInputs(1).Condition, sInputs(iFile).Condition,mean_shifting(iFile),offsetStd*1000 ));
-        new_times{iFile} = sData{iFile}.Time - mean_shifting(iFile);
+        disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)',sInputs(1).Condition, sInputs(iInput).Condition,mean_shifting(iInput)*1000,offsetStd*1000 ));
+        new_times{iInput} = sOldTiming{iInput}.Time - mean_shifting(iInput);
     end    
     
     % detect new start and end
     new_start   = max(cellfun(@(x)min(x), new_times));
     new_end     = min(cellfun(@(x)max(x), new_times));
 
-    
-    new_data        =  sData; 
-    new_data_raw    = sDataRaw;
-
+    sNewTiming = sOldTiming;
     pool_events = [];
     
-    for iFile = 1:length(sInputs)
+    % New time vectors, and new events
+    for iInput = 1:nInputs
         
-        index = panel_time('GetTimeIndices', new_times{iFile}, [new_start, new_end]);
+        index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
 
-        sDataTmp = sData{iFile};
-
-        new_data{iFile}.Time    = new_times{iFile}(index) - new_times{iFile}(index(1)) ;
-        new_data{iFile}.F       = sDataTmp.F(:,index);
-        
-        if ~is_raw
-            tmp_event = new_data{iFile}.Events;
-        else
-            tmp_event = sDataRaw{iFile}.F.events;
-        end
+        sNewTiming{iInput}.Time    = new_times{iInput}(index) - new_times{iInput}(index(1)) ;
+        tmp_event = sNewTiming{iInput}.Events;
 
         for i_event = 1:length(tmp_event)
-            tmp_event(i_event).times = tmp_event(i_event).times - mean_shifting(iFile) - new_times{iFile}(index(1)) ;
+            tmp_event(i_event).times = tmp_event(i_event).times - mean_shifting(iInput) - new_times{iInput}(index(1)) ;
             if isempty(pool_events)
                 pool_events = tmp_event(i_event);
             elseif ~strcmp(tmp_event(i_event).label,SyncEventName)  || (strcmp(tmp_event(i_event).label,SyncEventName) && ~any(strcmp({pool_events.label},SyncEventName)))
@@ -175,74 +163,82 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Add event to file
-    for iFile = 1:length(sInputs)
-        if ~is_raw
-            new_data{iFile}.Events = pool_events;
-        else
-            new_data_raw{iFile}.F.events = pool_events;
-        end
+    for iInput = 1:nInputs
+        sNewTiming{iInput}.Events = pool_events;
     end
 
-    bst_progress('inc', length(sInputs));
+    bst_progress('inc', nInputs);
     bst_progress('text', 'Saving files...');
 
     % Save data to file
     ProtocolInfo = bst_get('ProtocolInfo');
-    for iFile = 1:length(sInputs)
+    for iInput = 1:nInputs
         if ~is_raw
-            new_data{iFile}.Comment = [sDataTmp.Comment ' | Synchronized '];
+            sDataSync = in_bst_data(sInputs(iInput).FileName);
+            % Update times and events
+            sDataSync.Time = sNewTiming{iInput}.Time;
+            sDataSync.Events = sNewTiming{iInput}.Events;
+            % Update data
+            index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
+            sDataSync.F       = sDataSync.F(:,index);
+            sDataSync.Comment = [sDataSync.Comment ' | Synchronized '];
             
-            sStudy      = bst_get('Study', sInputs(iFile).iStudy);
+            sStudy      = bst_get('Study', sInputs(iInput).iStudy);
             OutputFile  = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'data_sync');
-            new_data{iFile}.FileName = file_short(OutputFile);
-            bst_save(OutputFile, new_data{iFile}, 'v7');
+            sDataSync.FileName = file_short(OutputFile);
+            bst_save(OutputFile, sDataSync, 'v7');
 
             % Register in database
-            db_add_data(sInputs(iFile).iStudy, OutputFile, new_data{iFile});
+            db_add_data(sInputs(iInput).iStudy, OutputFile, sDataSync);
         else
 
-            newCondition = [sInputs(iFile).Condition '_synced'];
-            iStudy = db_add_condition(sInputs(iFile).SubjectName, newCondition);
+            newCondition = [sInputs(iInput).Condition '_synced'];
+            iStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition);
             sStudy = bst_get('Study', iStudy);
     
             % Save channel definition
-            ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
+            ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
             [tmp, iChannelStudy] = bst_get('ChannelForStudy', iStudy);
             db_set_channel(iChannelStudy, ChannelMat, 0, 0);
 
 
             OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), 'data_raw_sync');
-            newStudyPath = bst_fullfile(ProtocolInfo.STUDIES, sInputs(iFile).SubjectName,newCondition);
+            newStudyPath = bst_fullfile(ProtocolInfo.STUDIES, sInputs(iInput).SubjectName,newCondition);
 
             [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
             rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
             % Full output filename
             RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
 
-            sFileIn = new_data_raw{iFile}.F;
-            sFileIn.header.nsamples = length( new_data{iFile}.Time );
-            sFileIn.prop.times      = [ new_data{iFile}.Time(1),  new_data{iFile}.Time(end)];
+            sDataRawSync = in_bst_data(sInputs(iInput).FileName, 'F');
+            sFileIn = sDataRawSync.F;
+            sFileIn.events = sNewTiming{iInput}.Events;
+            sFileIn.header.nsamples = length( sNewTiming{iInput}.Time );
+            sFileIn.prop.times      = [ sNewTiming{iInput}.Time(1),  sNewTiming{iInput}.Time(end)];
             [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
             
             % Set Output sFile structure
-            sOutMat                 = new_data{iFile};
+            sDataSync     = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no');
+            sOutMat                 = rmfield(sDataSync, 'F');
             sOutMat.format          = 'BST-BIN';
             sOutMat.DataType        = 'raw'; 
             sOutMat.F               = sFileOut;
-            sOutMat.Comment         = [new_data{iFile}.Comment ' | Synchronized'];
+            sOutMat.Comment         = [sDataSync.Comment ' | Synchronized'];
             sOutMat                 = bst_history('add', sOutMat, 'process', 'Synchronisation');
+            % Update data
+            index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
+            sDataSync.F       = sDataSync.F(:,index);
 
             % Save new link to raw .mat file
             bst_save(OutputFile, sOutMat, 'v6');
             % Write block
-            out_fwrite(sFileOut, ChannelMat, 1, [], [], new_data{iFile}.F);
+            out_fwrite(sFileOut, ChannelMat, 1, [], [], sDataSync.F);
             % Register in BST database
             db_add_data(iStudy, OutputFile, sOutMat);
         end
-        OutputFiles{iFile} = OutputFile;
+        OutputFiles{iInput} = OutputFile;
         bst_progress('inc', 1);
     end
 
     bst_progress('stop');
-
 end    
