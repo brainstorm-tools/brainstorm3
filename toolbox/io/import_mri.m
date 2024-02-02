@@ -324,6 +324,82 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
                     [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
+                
+                % Ask to mask out wires outside skull in CT
+                isMask = java_dialog('confirm', [...
+                    '<HTML><B>Mask the volume?</B><BR><BR>' ...
+                    ['This operation cleans the ', volType, ' to exclude any thing outside the skull.'] ...
+                    strSizeWarn ...
+                    '<BR><BR></HTML>'], ['Import ', volType]);
+                if isMask
+                    % Get temporary folder
+                    TmpDir = bst_get('BrainstormTmpDir', 0, 'ignore');
+                    % Save source CT in .nii format
+                    NiiSrcFile = bst_fullfile(TmpDir, 'ignore_src.nii');
+                    out_mri_nii(sMri, NiiSrcFile);
+                    % Save reference MRI in .nii format
+                    NiiRefFile = bst_fullfile(TmpDir, 'ignore_ref.nii');
+                    out_mri_nii(sMriRef, NiiRefFile);
+
+                    % Check for Brainsuite Installation
+                    if ~ispc
+                        bdp_exe = 'bdp.sh';
+                    else
+                        bdp_exe = 'bdp';
+                    end
+            
+                    bst_progress('text', 'Testing BrainSuite installation...');
+                    % Check BrainSuite installation
+                    status = system([bdp_exe ' --version']);
+                    if (status ~= 0)
+                        % Get BrainSuite path from Brainstorm preferences
+                        BsDir = bst_get('BrainSuiteDir');
+                        BsBinDir = bst_fullfile(BsDir, 'bin');
+                        BsBdpDir = bst_fullfile(BsDir, 'bdp');
+                        % Add BrainSuite path to system path
+                        if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
+                            disp(['BST> Adding to system path: ' BsBinDir]);
+                            disp(['BST> Adding to system path: ' BsBdpDir]);
+                            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
+                            % Check again
+                            status = system([bdp_exe  ' --version']);
+                        end
+                        % Brainsuite is not installed
+                        if (status ~= 0)
+                            errMsg = ['BrainSuite is not installed on your computer.' 10 ...
+                                      'Download it from http://brainsuite.org and install it.' 10 ...
+                                      'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
+                            return
+                        end
+                    end
+            
+                    % Perform BRAIN SURFACE EXTRACTOR (BSE)
+                    bst_progress('text', 'Brain surface extractor...');
+                    strCall = [...
+                        'bse -i "' NiiRefFile '" --auto' ...
+                        ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
+                        ' --trim --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
+                        ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
+                        ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
+                    disp(['BST> System call: ' strCall]);
+                    status = system(strCall);
+                    % Error handling
+                    if (status ~= 0)
+                        errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
+                        return    
+                    end
+            
+                    % Get mask image
+                    NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
+                    sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
+                    sMriMask.Cube = sMriMask.Cube/255;
+                    sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3); % erode
+                    
+                    [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
+                    sMri.Cube = sMri.Cube.*(sMriMask.Cube);
+                    fileTag = [fileTag, '_masked'];
+                end
+
                 else
                     % Just copy the fiducials from the reference MRI
                     [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice, isAtlas);

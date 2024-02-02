@@ -53,6 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jFontText = bst_get('Font', 11);
     % Create tools panel
     jPanelNew = gui_component('Panel');
+    listModel = javax.swing.DefaultListModel();
     
     res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
@@ -77,67 +78,40 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
                   
     % ===== Main panel =====
-    jPanelMain = gui_river('');   
+    jPanelMain = gui_component('Panel');
+    jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));   
+
+        jPanelFirstPart = gui_component('Panel');
+            % ===== ELECTRODES LIST =====
+            jPanelElecList = gui_component('Panel');
+                jBorder = java_scaled('titledborder', 'sEEG contact localization');
+                jPanelElecList.setBorder(jBorder);
+                % Electrodes list
+                jListElec = java_create('org.brainstorm.list.BstClusterList');
+                jListElec.setBackground(Color(.9,.9,.9));
+                % java_setcb(jListElec, ...
+                %     'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
+                %     'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
+                %     'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
+                jPanelScrollList = JScrollPane();
+                jPanelScrollList.getLayout.getViewport.setView(jListElec);
+                jPanelScrollList.setHorizontalScrollBarPolicy(jPanelScrollList.HORIZONTAL_SCROLLBAR_ALWAYS);
+                jPanelScrollList.setVerticalScrollBarPolicy(jPanelScrollList.VERTICAL_SCROLLBAR_ALWAYS);
+                jPanelScrollList.setBorder([]);
+                jPanelElecList.add(jPanelScrollList);
+            jPanelFirstPart.add(jPanelElecList, BorderLayout.CENTER);
+        jPanelMain.add(jPanelFirstPart);
+
         % ===== Coordinates =====
-        jPanelCoordinates = gui_river('sEEG contact localization');
-            % % Dropdown box for Model of electrodes
-            % gui_component('label', jPanelCoordinates, '', 'Model: ');
-            % % Combo box
-            % jComboModel = gui_component('combobox', jPanelCoordinates, 'hfill', [], [], [], []);
-            % jComboModel.setFocusable(0);
-            % jComboModel.setMaximumRowCount(15);
-            % jComboModel.setPreferredSize(java_scaled('dimension',30,20));
-            
-            % Number of contacts and label name
-            % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'br', 'Number of contacts: '));
+        jPanelCoordinates = gui_river('');            
             jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', res{1}, [], [], [], 0);
-            % jTextNcontacts.setHorizontalAlignment(jTextNcontacts.LEFT);
-            % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'br', 'Label Name: '));
             jTextLabel = gui_component('label', jPanelCoordinates, 'tab', res{2}, [], [], [], 0);
-            % jTextLabel.setHorizontalAlignment(jTextLabel.LEFT);
-
-            % Uncomment for text type box
-            % jTextNcontacts = gui_component('text', jPanelCoordinates, 'tab', res{1});
-            % jTextNcontacts.setHorizontalAlignment(jTextNcontacts.LEFT);
-            
-            % jModel = jComboModel.getModel();
-            % java_setcb(jModel, 'ContentsChangedCallback', @(h,ev)bst_call(@ComboModelChanged_Callback,h,ev));
-
-            % Coordinates
-            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'Contact_Label'));
-            jLabelX = gui_component('label', jPanelCoordinates, 'tab', '   X');
-            jLabelY = gui_component('label', jPanelCoordinates, 'tab', '   Y');
-            jLabelZ = gui_component('label', jPanelCoordinates, 'tab', '   Z');
-            jLabelX.setHorizontalAlignment(javax.swing.JLabel.CENTER);
-            jLabelY.setHorizontalAlignment(javax.swing.JLabel.CENTER);
-            jLabelZ.setHorizontalAlignment(javax.swing.JLabel.CENTER);
-            jLabelX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            jLabelY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            jLabelZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            jLabelX.setFont(jFontText);
-            jLabelY.setFont(jFontText);
-            jLabelZ.setFont(jFontText);
-
-            % === MRI ===
-            % jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
-            % jLabelCoordMriX = JLabel('-');
-            % jLabelCoordMriY = JLabel('-');
-            % jLabelCoordMriZ = JLabel('-');
-            % jLabelCoordMriX.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-            % jLabelCoordMriY.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-            % jLabelCoordMriZ.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-            % jLabelCoordMriX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            % jLabelCoordMriY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            % jLabelCoordMriZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-            % jLabelCoordMriX.setFont(jFontText);
-            % jLabelCoordMriY.setFont(jFontText);
-            % jLabelCoordMriZ.setFont(jFontText);
-            % jPanelCoordinates.add('tab', jLabelCoordMriX);
-            % jPanelCoordinates.add('tab', jLabelCoordMriY);
-            % jPanelCoordinates.add('tab', jLabelCoordMriZ);
-        jPanelMain.add('hfill', jPanelCoordinates);
+        jPanelMain.add(jPanelCoordinates, BorderLayout.SOUTH);
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
-       
+    
+    % Store electrode selection
+    jLabelSelectElec = JLabel('');
+
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
@@ -145,11 +119,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            struct('jButtonSelect',     jButtonSelect, ...
                                   'jTextNcontacts',    jTextNcontacts, ...
                                   'jTextLabel',        jTextLabel, ...
-                                  'jPanelCoordinates', jPanelCoordinates));
-                                  % 'jComboModel',       jComboModel, ...
-                                  % 'jLabelCoordMriX',   jLabelCoordMriX, ...
-                                  % 'jLabelCoordMriY',   jLabelCoordMriY, ...
-                                  % 'jLabelCoordMriZ',   jLabelCoordMriZ));
+                                  'jPanelCoordinates', jPanelCoordinates, ...
+                                  'jListElec',         jListElec, ...
+                                  'jPanelElecList',    jPanelElecList, ...
+                                  'listModel',         listModel, ...
+                                  'jLabelSelectElec',  jLabelSelectElec));
                                                             
 end
                    
@@ -186,35 +160,18 @@ function UpdatePanel()
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         label_name = string(ctrl.jTextLabel.getText());
-        ctrl.jPanelCoordinates.add('br', gui_component('label', ctrl.jPanelCoordinates, 'tab', label_name + num2str(num_contacts) + ': '));
-    end
+        ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(num_contacts), CoordinatesSelector.World .* 1000));
+        % Set this list
+        ctrl.jListElec.setModel(ctrl.listModel);
+        ctrl.jListElec.repaint();
+        drawnow;
 
-    jLabelCoordMriX = JLabel('-');
-    jLabelCoordMriY = JLabel('-');
-    jLabelCoordMriZ = JLabel('-');
-    jLabelCoordMriX.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-    jLabelCoordMriY.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-    jLabelCoordMriZ.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
-    jLabelCoordMriX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-    jLabelCoordMriY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-    jLabelCoordMriZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
-    jLabelCoordMriX.setFont(jFontText);
-    jLabelCoordMriY.setFont(jFontText);
-    jLabelCoordMriZ.setFont(jFontText);
-    ctrl.jPanelCoordinates.add('tab', jLabelCoordMriX);
-    ctrl.jPanelCoordinates.add('tab', jLabelCoordMriY);
-    ctrl.jPanelCoordinates.add('tab', jLabelCoordMriZ);
-
-    % Update coordinates (text fields)
-    % MRI
-    if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        jLabelCoordMriX.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(1)));
-        jLabelCoordMriY.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(2)));
-        jLabelCoordMriZ.setText(sprintf('%3.2f', 1000 * CoordinatesSelector.World(3)));
-    else
-        jLabelCoordMriX.setText('-');
-        jLabelCoordMriY.setText('-');
-        jLabelCoordMriZ.setText('-');
+        % % Scroll down
+        % lastIndex = min(listModel.getSize(), 12);
+        % selRect = ctrl.jListElec.getCellBounds(lastIndex-1, lastIndex-1);
+        % ctrl.jListElec.scrollRectToVisible(selRect);
+        % ctrl.jListElec.repaint();
+        % ctrl.jListElec.getParent().getParent().repaint();
     end
 end
 
@@ -422,7 +379,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'FontSize', 10, ...
         'Color',  [1 1 0], ...
         'Parent', hAxes, ...
-        'Tag', 'ptCoordinates');
+        'Tag', 'txtCoordinates');
 
     xxx = [xxx, plotLoc(1)];
     yyy = [yyy, plotLoc(2)];
@@ -525,6 +482,7 @@ end
 function RemoveSelection(varargin)
     % Unselect selection button 
     SetSelectionState(0);
+    
     % Find all selected points
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
     % Remove coordinates from the figures
@@ -535,7 +493,27 @@ function RemoveSelection(varargin)
         end
     end
     % Delete selected points
-    delete(hCoord);
+    if ~isempty(hCoord)
+        delete(hCoord(1));
+    end
+
+    % Find all selected points text
+    hCoord1 = findobj(0, 'Tag', 'txtCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hCoord1)
+        hFig = get(get(hCoord1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text
+    if ~isempty(hCoord1)
+        delete(hCoord1(1));
+    end
+    
+    % delete text from panel
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+    
     % Update displayed coordinates
     UpdatePanel();
 end
