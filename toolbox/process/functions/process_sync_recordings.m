@@ -112,6 +112,13 @@ function OutputFiles = Run(sProcess, sInputs)
     bst_progress('inc', nInputs);
     bst_progress('text', 'Synchronizing...');
 
+    % First Input is the one wiht highest sampling frequency
+    [~, im] = max(fs);
+    sInputs([1, im])    = sInputs([im, 1]);
+    sEvtSync([1, im])   = sEvtSync([im, 1]);
+    sOldTiming([1, im]) = sOldTiming([im, 1]);
+    fs([1, im])         = fs([im, 1]);
+
     % Compute shifiting between file i and first file
     new_times     = cell(1,nInputs);
     new_times{1}  = sOldTiming{1}.Time;
