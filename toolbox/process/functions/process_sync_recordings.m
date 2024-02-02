@@ -1,5 +1,5 @@
-function varargout = process_synchronise_multiples_signals(varargin)
-% process_synchronise_multiples_signals: Synchronise multiple signals based on common event
+function varargout = process_sync_recordings(varargin)
+% process_sync_recordings: Synchronize multiple signals based on common event
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
