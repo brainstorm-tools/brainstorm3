@@ -159,7 +159,26 @@ function OutputFiles = Run(sProcess, sInputs)
         sNewTiming{iInput}.Time = new_times{iInput}(index) - new_times{iInput}(index(1));
         tmp_events = sNewTiming{iInput}.Events;
         for i_event = 1:length(tmp_events)
-            tmp_events(i_event).times = tmp_events(i_event).times - mean_shifting(iInput) - new_times{iInput}(index(1)) ;
+            % Update event times
+            tmp_events(i_event).times = tmp_events(i_event).times - mean_shifting(iInput) - new_times{iInput}(index(1));
+            % Remove events outside new time range
+            timeRange = [sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
+            iEventTimesDel = all(or(tmp_events(i_event).times < timeRange(1), tmp_events(i_event).times > timeRange(2)), 1);
+            tmp_events(i_event).times(:,iEventTimesDel)  = [];
+            tmp_events(i_event).epochs(iEventTimesDel)   = [];
+            if ~isempty(tmp_events(i_event).channels)
+                tmp_events(i_event).channels(iEventTimesDel) = [];
+            end
+            if ~isempty(tmp_events(i_event).notes)
+                tmp_events(i_event).notes(iEventTimesDel) = [];
+            end
+            if ~isempty(tmp_events(i_event).reactTimes)
+                tmp_events(i_event).reactTimes(iEventTimesDel) = [];
+            end
+            % Clip values to time range
+            tmp_events(i_event).times(tmp_events(i_event).times < timeRange(1)) = timeRange(1);
+            tmp_events(i_event).times(tmp_events(i_event).times > timeRange(2)) = timeRange(2);
+            % Aggregate eventes across files
             if isempty(pool_events)
                 pool_events = tmp_events(i_event);
             elseif ~strcmp(tmp_events(i_event).label,syncEventName)  || (strcmp(tmp_events(i_event).label,syncEventName) && ~any(strcmp({pool_events.label},syncEventName)))
