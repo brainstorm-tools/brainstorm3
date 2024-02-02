@@ -95,13 +95,13 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % Check: Sync event must be present in all files
     if any(~(strcmp({sEvtSync.label}, syncEventName)))
-        bst_error('Sync event must be present in all files', 'Synchronize signal', 0);
+        bst_error(['Sync event ("' syncEventName '") must be present in all files'], 'Synchronize signal', 0);
         return;
     end
 
     % Check: Sync event must be present in all files
     if any(cellfun(@(x) size(x,1), {sEvtSync.times}) ~= 1)
-        bst_error('Sync event must be simple event in all the files', 'Synchronize signal', 0);
+        bst_error(['Sync event ("' syncEventName '") must be simple event in all the files'], 'Synchronize signal', 0);
         return;
     end
 
