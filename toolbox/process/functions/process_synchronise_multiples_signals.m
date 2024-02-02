@@ -206,6 +206,11 @@ function OutputFiles = Run(sProcess, sInputs)
             % Update data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
             sDataSync.F = sDataSync.F(:,index);
+            % History: List of sync files
+            sDataSync = bst_history('add', sDataSync, 'sync', ['List of synchronized files (event = "', syncEventName , '"):']);
+            for ix = 1:nInputs
+                sDataSync = bst_history('add', sDataSync, 'sync', [' - ' sInputs(ix).FileName]);
+            end
             % Save data
             OutputFile = bst_process('GetNewFilename', bst_fileparts(sInputs(iInput).FileName), 'data_sync');
             sDataSync.FileName = file_short(OutputFile);
@@ -243,7 +248,11 @@ function OutputFiles = Run(sProcess, sInputs)
             sOutMat.DataType = 'raw';
             sOutMat.F        = sFileOut;
             sOutMat.Comment  = [sDataSync.Comment ' | Synchronized'];
-            sOutMat          = bst_history('add', sOutMat, 'process', 'Synchronisation');
+            % History: List of sync files
+            sOutMat = bst_history('add', sOutMat, 'sync', ['List of synchronized files (event = "', syncEventName , '"):']);
+            for ix = 1:nInputs
+                sOutMat = bst_history('add', sOutMat, 'sync', [' - ' sInputs(ix).FileName]);
+            end
             % Update raw data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
             sDataSync.F      = sDataSync.F(:,index);
