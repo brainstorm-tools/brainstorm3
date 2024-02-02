@@ -90,7 +90,10 @@ function OutputFiles = Run(sProcess, sInputs)
             sOldTiming{iInput}.Events = sDataRaw.F.events;
         end
         fs(iInput) = 1/(sOldTiming{iInput}.Time(2) -  sOldTiming{iInput}.Time(1)); % in Hz
-        sEvtSync(iInput) = sOldTiming{iInput}.Events(strcmp({sOldTiming{iInput}.Events.label}, syncEventName));
+        iSyncEvt = strcmp({sOldTiming{iInput}.Events.label}, syncEventName);
+        if any(iSyncEvt)
+            sEvtSync(iInput) = sOldTiming{iInput}.Events(iSyncEvt);
+        end
     end
 
     % Check: Sync event must be present in all files
