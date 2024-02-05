@@ -1,7 +1,7 @@
 function varargout = panel_coordinates_seeg(varargin)
-% PANEL_COORDINATES: Create a panel to add/remove/edit scouts attached to a given 3DViz figure.
+% PANEL_COORDINATES_SEEG: Create a panel to add/remove/edit scouts attached to a given 3DViz figure.
 % 
-% USAGE:  bstPanelNew = panel_coordinates('CreatePanel')
+% USAGE:  bstPanelNew = panel_coordinates_seeg('CreatePanel')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -128,7 +128,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== LIST CLICK CALLBACK =====
     function ElecListClick_Callback(h, ev)
-        % If SINGLE CLICK
+        % If DOUBLE CLICK
         if (ev.getClickCount() == 2)
             % Rename selection
             ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 

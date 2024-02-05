@@ -1971,7 +1971,7 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        gui_component('MenuItem', jPopup, [], 'Get coordinates SEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
+        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
     end
     
     % ==== MENU: SNAPSHOT ====
