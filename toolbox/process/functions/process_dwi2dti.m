@@ -147,16 +147,46 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {'import'};
 end
 
-
-%% ===== COMPUTE DTI =====
-function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
-    DtiFile = [];
-    errMsg = '';
+%% ===== CHECK FOR BRAINSUITE INSTALLATION =====
+function [bdp_exe, errMsg] = CheckBrainSuiteInstall()
     if ~ispc
         bdp_exe = 'bdp.sh';
     else
         bdp_exe = 'bdp';
     end
+
+    % ===== INSTALL BRAINSUITE =====
+    bst_progress('text', 'Testing BrainSuite installation...');
+    % Check BrainSuite installation
+    status = system([bdp_exe ' --version']);
+    if (status ~= 0)
+        % Get BrainSuite path from Brainstorm preferences
+        BsDir = bst_get('BrainSuiteDir');
+        BsBinDir = bst_fullfile(BsDir, 'bin');
+        BsBdpDir = bst_fullfile(BsDir, 'bdp');
+        % Add BrainSuite path to system path
+        if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
+            disp(['BST> Adding to system path: ' BsBinDir]);
+            disp(['BST> Adding to system path: ' BsBdpDir]);
+            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
+            % Check again
+            status = system([bdp_exe  ' --version']);
+        end
+        % Brainsuite is not installed
+        if (status ~= 0)
+            errMsg = ['BrainSuite is not installed on your computer.' 10 ...
+                      'Download it from http://brainsuite.org and install it.' 10 ...
+                      'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
+            return
+        end
+    end
+end
+
+%% ===== COMPUTE DTI =====
+function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, BvecFile)
+    DtiFile = [];
+    errMsg = '';
+    
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
@@ -195,31 +225,8 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         T1BstFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
     
-    % ===== INSTALL BRAINSUITE =====
-    bst_progress('text', 'Testing BrainSuite installation...');
-    % Check BrainSuite installation
-    status = system([bdp_exe ' --version']);
-    if (status ~= 0)
-        % Get BrainSuite path from Brainstorm preferences
-        BsDir = bst_get('BrainSuiteDir');
-        BsBinDir = bst_fullfile(BsDir, 'bin');
-        BsBdpDir = bst_fullfile(BsDir, 'bdp');
-        % Add BrainSuite path to system path
-        if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
-            disp(['BST> Adding to system path: ' BsBinDir]);
-            disp(['BST> Adding to system path: ' BsBdpDir]);
-            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
-            % Check again
-            status = system([bdp_exe  ' --version']);
-        end
-        % Brainsuite is not installed
-        if (status ~= 0)
-            errMsg = ['BrainSuite is not installed on your computer.' 10 ...
-                      'Download it from http://brainsuite.org and install it.' 10 ...
-                      'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
-            return
-        end
-    end
+    % ===== CHECK FOR BRAINSUITE INSTALLATION =====
+    [bdp_exe, errMsg] = CheckBrainSuiteInstall();
 
     % ===== TEMPORARY FOLDER =====
     bst_progress('text', 'Preparing temporary folder...');

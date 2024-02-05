@@ -318,8 +318,13 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
             case 'CT2MRI'
+                % Ask if the user wants to mask out region outside skull in CT
+                isMask = java_dialog('confirm', [...
+                    '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
+                    'This operation cleans the CT to exclude any thing outside the skull.' ...
+                    '<BR><BR></HTML>'], 'Import CT');
                 % Register the CT to excisting MRI using USC's ct2mrireg plugin
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas, isMask);
             case 'Ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
