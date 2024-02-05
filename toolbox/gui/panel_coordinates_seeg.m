@@ -71,7 +71,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "Select vertex"
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
         % Button "View in MRI Viewer"
-        gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
+        % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'Del', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
         % Button "Remove selection"
@@ -126,7 +126,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jPanelElecList',    jPanelElecList, ...
                                   'listModel',         listModel, ...
                                   'jLabelSelectElec',  jLabelSelectElec));
-                                                            
+                         
 end
                    
             
@@ -167,15 +167,6 @@ function UpdatePanel()
         ctrl.jListElec.setModel(ctrl.listModel);
         ctrl.jListElec.repaint();
         drawnow;
-
-        % disp(ctrl.listModel.getElementAt(0));
-
-        % % Scroll down
-        % lastIndex = min(listModel.getSize(), 12);
-        % selRect = ctrl.jListElec.getCellBounds(lastIndex-1, lastIndex-1);
-        % ctrl.jListElec.scrollRectToVisible(selRect);
-        % ctrl.jListElec.repaint();
-        % ctrl.jListElec.getParent().getParent().repaint();
     end
 end
 
@@ -528,6 +519,7 @@ function RemoveSelection(varargin)
         delete(hCoord(1));
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
+        ctrl.listModel.remove(length(hCoord)-1);
     end
 
     % Find all selected points text
@@ -639,6 +631,7 @@ function RemoveSelectionAll(varargin)
     % Unselect selection button 
     SetSelectionState(0);
     
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     % Find all selected points
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
     % Remove coordinates from the figures
@@ -653,6 +646,7 @@ function RemoveSelectionAll(varargin)
         delete(hCoord);
         % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
+        ctrl.listModel.removeAllElements();
     end
 
     % Find all selected points text
@@ -681,7 +675,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriCoord1(1));
+            delete(mriCoord1(i));
         end
     end
 
@@ -697,7 +691,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points text in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriText1(1));
+            delete(mriText1(i));
         end
     end
     
@@ -713,7 +707,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriCoord2(1));
+            delete(mriCoord2(i));
         end
     end
 
@@ -729,7 +723,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points text in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriText2(1));
+            delete(mriText2(i));
         end
     end
 
@@ -745,7 +739,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriCoord3(1));
+            delete(mriCoord3(i));
         end
     end
 
@@ -761,7 +755,7 @@ function RemoveSelectionAll(varargin)
     % Delete selected points text in MRI space
     if ~isempty(hCoord)
         for i=1:length(hCoord)
-            delete(mriText3(1));
+            delete(mriText3(i));
         end
     end
 
