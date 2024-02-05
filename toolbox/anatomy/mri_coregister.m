@@ -351,7 +351,7 @@ switch lower(Method)
                     sMriMask.NCS = sMriRef.NCS;
                 end
             end
-            
+
             % Reslice the volume
             bst_progress('text', 'Performing Reslicing...');
             [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
@@ -496,3 +496,4 @@ end
 if ~isProgress
     bst_progress('stop');
 end
+
