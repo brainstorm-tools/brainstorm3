@@ -89,7 +89,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Electrodes list
                 jListElec = java_create('org.brainstorm.list.BstClusterList');
                 jListElec.setBackground(Color(.9,.9,.9));
-                % java_setcb(jListElec, ...
+                java_setcb(jListElec, ...
+                    'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
                 %     'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
                 %     'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
                 %     'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
@@ -124,7 +125,22 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jPanelElecList',    jPanelElecList, ...
                                   'listModel',         listModel, ...
                                   'jLabelSelectElec',  jLabelSelectElec));
-                         
+
+    %% ===== LIST CLICK CALLBACK =====
+    function ElecListClick_Callback(h, ev)
+        % If SINGLE CLICK
+        if (ev.getClickCount() == 2)
+            % Rename selection
+            ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
+            iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+            isDelete = java_dialog('confirm', ...
+            '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
+            'Delete label');  
+            if isDelete
+                RemoveAtLocation(iPoint);
+            end
+        end
+    end                     
 end
                    
             
@@ -229,7 +245,7 @@ function KeyPress_Callback(hFig, keyEvent)
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
-                'Selecting "Yes" will resume from label ' + label_name + num2str(num_contacts) + '<BR><BR></HTML>'], ...
+                'Selecting "Yes" will resume from label ' + label_name + num2str(num_contacts)], ...
                 'Resume labelling'); 
                 if isResumePlot
                     SetSelectionState(1);
@@ -496,6 +512,132 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
 end
 
+%% ===== REMOVE AT A LOCATION (DELETE SPECIFIC POINT) =====
+function RemoveAtLocation(Loc)
+    % Unselect selection button 
+    % SetSelectionState(0);
+    
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+    % Find all selected points
+    hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hCoord)
+        hFig = get(get(hCoord(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points
+    if ~isempty(hCoord)
+        delete(hCoord(length(hCoord)-Loc+1));
+        % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        % ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
+        ctrl.listModel.remove(Loc-1);
+    end
+
+    % Find all selected points text
+    hText = findobj(0, 'Tag', 'txtCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hText)
+        hFig = get(get(hText(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text
+    if ~isempty(hText)
+        delete(hText(length(hText)-Loc+1));
+    end
+    
+    % Find all selected points Coordinates1 in MRI space
+    mriCoord1 = findobj(0, 'Tag', 'PointMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord1)
+        hFig = get(get(mriCoord1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord1(length(hCoord)-Loc+1));
+    end
+
+    % Find all selected points Text1 in MRI space
+    mriText1 = findobj(0, 'Tag', 'TextMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText1)
+        hFig = get(get(mriText1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText1(length(hCoord)-Loc+1));
+    end
+    
+    % Find all selected points Coordinates2 in MRI space
+    mriCoord2 = findobj(0, 'Tag', 'PointMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord2)
+        hFig = get(get(mriCoord2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord2(length(hCoord)-Loc+1));
+    end
+
+    % Find all selected points Text2 in MRI space
+    mriText2 = findobj(0, 'Tag', 'TextMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText2)
+        hFig = get(get(mriText2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText2(length(hCoord)-Loc+1));
+    end
+
+    % Find all selected points Coordinates3 in MRI space
+    mriCoord3 = findobj(0, 'Tag', 'PointMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord3)
+        hFig = get(get(mriCoord3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord3(length(hCoord)-Loc+1));
+    end
+
+    % Find all selected points Text3 in MRI space
+    mriText3 = findobj(0, 'Tag', 'TextMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText3)
+        hFig = get(get(mriText3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText3(length(hCoord)-Loc+1));
+    end
+
+    % delete text from panel
+    
+    % Update displayed coordinates
+    UpdatePanel();
+end
 
 %% ===== REMOVE SELECTION (LAST POINT) =====
 function RemoveSelection(varargin)

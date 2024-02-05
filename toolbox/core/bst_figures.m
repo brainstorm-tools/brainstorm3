@@ -1096,9 +1096,9 @@ function SetCurrentFigure(hFig, Type)
                 if gui_brainstorm('isTabVisible', 'Coordinates')
                     panel_coordinates('CurrentFigureChanged_Callback');
                 end
-                % if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-                %     panel_coordinates_seeg('CurrentFigureChanged_Callback');
-                % end
+                if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+                    panel_coordinates_seeg('CurrentFigureChanged_Callback');
+                end
                 if gui_brainstorm('isTabVisible', 'Dipinfo')
                     panel_dipinfo('CurrentFigureChanged_Callback');
                 end
