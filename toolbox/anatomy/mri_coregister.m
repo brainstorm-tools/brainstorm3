@@ -1,4 +1,4 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas, isMask)
 % MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
@@ -12,6 +12,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
 %    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
+%    - isMask     : if 1, perform masking out region outside the skull using BrainSuite skull stripping (CT2MRI registration only) 
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -256,13 +257,6 @@ switch lower(Method)
         % Save reference MRI in .nii format
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
-        
-        % Ask if the user wants to mask out wires outside skull in CT
-        % returns 'True'if user selects 'Yes'
-        isMask = java_dialog('confirm', [...
-            '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
-            'This operation cleans the CT to exclude any thing outside the skull.' ...
-            '<BR><BR></HTML>'], 'Import CT');
 
         if isMask
             % Check for BrainSuite Installation
