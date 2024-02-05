@@ -312,7 +312,6 @@ switch lower(Method)
                 errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
                 return    
             end
-    
             % Get the mask
             NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
             sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
@@ -338,7 +337,6 @@ switch lower(Method)
             % Use the reference SCS coordinates
             if isfield(sMriRef, 'SCS')
                 sMriReg.SCS = sMriRef.SCS;
-                
                 if isMask
                     sMriMask.SCS = sMriRef.SCS;
                 end
@@ -346,7 +344,6 @@ switch lower(Method)
             % Use the reference NCS coordinates
             if isfield(sMriRef, 'NCS')
                 sMriReg.NCS = sMriRef.NCS;
-                
                 if isMask
                     sMriMask.NCS = sMriRef.NCS;
                 end
@@ -356,11 +353,9 @@ switch lower(Method)
             bst_progress('text', 'Performing Reslicing...');
             [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
             
-            % Apply the mask to the co-registered CT to get a clean skull
-            % stripped CT
+            % Apply the mask to the co-registered CT to get a clean skull stripped CT
             if isMask
                 [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'scs', 'scs', isAtlas);
-
                 bst_progress('text', 'Applying Mask...');
                 sMriReg.Cube = sMriReg.Cube.*(sMriMask.Cube);
                 fileTag = [fileTag, '_masked'];
