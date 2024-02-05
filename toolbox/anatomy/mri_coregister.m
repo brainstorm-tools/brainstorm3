@@ -265,37 +265,8 @@ switch lower(Method)
             '<BR><BR></HTML>'], 'Import CT');
 
         if isMask
-            % Check for Brainsuite Installation
-            if ~ispc
-                bdp_exe = 'bdp.sh';
-            else
-                bdp_exe = 'bdp';
-            end
-    
-            bst_progress('text', 'Testing BrainSuite installation...');
-            % Check BrainSuite installation
-            status = system([bdp_exe ' --version']);
-            if (status ~= 0)
-                % Get BrainSuite path from Brainstorm preferences
-                BsDir = bst_get('BrainSuiteDir');
-                BsBinDir = bst_fullfile(BsDir, 'bin');
-                BsBdpDir = bst_fullfile(BsDir, 'bdp');
-                % Add BrainSuite path to system path
-                if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
-                    disp(['BST> Adding to system path: ' BsBinDir]);
-                    disp(['BST> Adding to system path: ' BsBdpDir]);
-                    setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
-                    % Check again
-                    status = system([bdp_exe  ' --version']);
-                end
-                % Brainsuite is not installed
-                if (status ~= 0)
-                    errMsg = ['BrainSuite is not installed on your computer.' 10 ...
-                              'Download it from http://brainsuite.org and install it.' 10 ...
-                              'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
-                    return
-                end
-            end
+            % Check for BrainSuite Installation
+            [bdp_exe, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
     
             % Perform BRAIN SURFACE EXTRACTOR (BSE)
             bst_progress('text', 'Brain surface extractor...');
@@ -312,6 +283,7 @@ switch lower(Method)
                 errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
                 return    
             end
+
             % Get the mask
             NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
             sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
