@@ -54,7 +54,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     listModel = javax.swing.DefaultListModel();
-    
+
     res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
                                 [], ...
@@ -75,7 +75,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'Del', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
+        gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the point selection', @RemoveSelectionAll);
+        % Button "Remove selection"
+        % gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
                   
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
@@ -166,6 +168,8 @@ function UpdatePanel()
         ctrl.jListElec.repaint();
         drawnow;
 
+        % disp(ctrl.listModel.getElementAt(0));
+
         % % Scroll down
         % lastIndex = min(listModel.getSize(), 12);
         % selRect = ctrl.jListElec.getCellBounds(lastIndex-1, lastIndex-1);
@@ -194,6 +198,8 @@ function KeyPress_Callback(hFig, keyEvent)
     global xxx;
     global yyy;
     global zzz;
+    
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
 
     switch (keyEvent.Key)
         case {'l'}
@@ -202,7 +208,6 @@ function KeyPress_Callback(hFig, keyEvent)
                                 'Enter Number of contacts', ...
                                 [], ...
                                 {num2str(10), 'A'});
-            ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
             SetSelectionState(1);
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
@@ -217,8 +222,33 @@ function KeyPress_Callback(hFig, keyEvent)
         case {'r'}
             % resume the selection state to continue plotting contacts
             % from where it was last stopped
-            SetSelectionState(1);
 
+            num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+            label_name = string(ctrl.jTextLabel.getText());
+            if num_contacts==0
+                % relabel contacts
+                res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+                                    'Enter Number of contacts', ...
+                                    [], ...
+                                    {num2str(10), 'A'});
+                SetSelectionState(1);
+                ctrl.jTextNcontacts.setText(res{1});
+                ctrl.jTextLabel.setText(res{2});
+                xxx = [];
+                yyy = [];
+                zzz = [];
+            else
+                isResumePlot = java_dialog('confirm', [...
+                '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
+                'Selecting "Yes" will resume from label ' + label_name + num2str(num_contacts) + '<BR><BR></HTML>'], ...
+                'Resume labelling'); 
+                if isResumePlot
+                    SetSelectionState(1);
+                else
+                    SetSelectionState(0);
+                end
+            end
+            
         otherwise
             KeyPressFcn_bak(hFig, keyEvent); 
             return;
@@ -478,8 +508,134 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
 end
 
 
-%% ===== REMOVE SELECTION =====
+%% ===== REMOVE SELECTION (LAST POINT) =====
 function RemoveSelection(varargin)
+    % Unselect selection button 
+    % SetSelectionState(0);
+    
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+    % Find all selected points
+    hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hCoord)
+        hFig = get(get(hCoord(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points
+    if ~isempty(hCoord)
+        delete(hCoord(1));
+        num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
+    end
+
+    % Find all selected points text
+    hText = findobj(0, 'Tag', 'txtCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hText)
+        hFig = get(get(hText(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text
+    if ~isempty(hText)
+        delete(hText(1));
+    end
+    
+    % Find all selected points Coordinates1 in MRI space
+    mriCoord1 = findobj(0, 'Tag', 'PointMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord1)
+        hFig = get(get(mriCoord1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord1(1));
+    end
+
+    % Find all selected points Text1 in MRI space
+    mriText1 = findobj(0, 'Tag', 'TextMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText1)
+        hFig = get(get(mriText1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText1(1));
+    end
+    
+    % Find all selected points Coordinates2 in MRI space
+    mriCoord2 = findobj(0, 'Tag', 'PointMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord2)
+        hFig = get(get(mriCoord2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord2(1));
+    end
+
+    % Find all selected points Text2 in MRI space
+    mriText2 = findobj(0, 'Tag', 'TextMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText2)
+        hFig = get(get(mriText2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText2(1));
+    end
+
+    % Find all selected points Coordinates3 in MRI space
+    mriCoord3 = findobj(0, 'Tag', 'PointMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord3)
+        hFig = get(get(mriCoord3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        delete(mriCoord3(1));
+    end
+
+    % Find all selected points Text3 in MRI space
+    mriText3 = findobj(0, 'Tag', 'TextMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText3)
+        hFig = get(get(mriText3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        delete(mriText3(1));
+    end
+
+    % delete text from panel
+    
+    % Update displayed coordinates
+    UpdatePanel();
+end
+
+%% ===== REMOVE SELECTION (ALL) =====
+function RemoveSelectionAll(varargin)
     % Unselect selection button 
     SetSelectionState(0);
     
@@ -494,35 +650,131 @@ function RemoveSelection(varargin)
     end
     % Delete selected points
     if ~isempty(hCoord)
-        delete(hCoord(1));
+        delete(hCoord);
+        % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
     end
 
     % Find all selected points text
-    hCoord1 = findobj(0, 'Tag', 'txtCoordinates'); 
+    hText = findobj(0, 'Tag', 'txtCoordinates'); 
     % Remove coordinates from the figures
-    for i = 1:length(hCoord1)
-        hFig = get(get(hCoord1(i), 'Parent'), 'Parent');
+    for i = 1:length(hText)
+        hFig = get(get(hText(i), 'Parent'), 'Parent');
         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
             rmappdata(hFig, 'CoordinatesSelector');
         end
     end
     % Delete selected points text
-    if ~isempty(hCoord1)
-        delete(hCoord1(1));
+    if ~isempty(hText)
+        delete(hText);
     end
     
+    % Find all selected points Coordinates1 in MRI space
+    mriCoord1 = findobj(0, 'Tag', 'PointMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord1)
+        hFig = get(get(mriCoord1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriCoord1(1));
+        end
+    end
+
+    % Find all selected points Text1 in MRI space
+    mriText1 = findobj(0, 'Tag', 'TextMarker1'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText1)
+        hFig = get(get(mriText1(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriText1(1));
+        end
+    end
+    
+    % Find all selected points Coordinates2 in MRI space
+    mriCoord2 = findobj(0, 'Tag', 'PointMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord2)
+        hFig = get(get(mriCoord2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriCoord2(1));
+        end
+    end
+
+    % Find all selected points Text2 in MRI space
+    mriText2 = findobj(0, 'Tag', 'TextMarker2'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText2)
+        hFig = get(get(mriText2(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriText2(1));
+        end
+    end
+
+    % Find all selected points Coordinates3 in MRI space
+    mriCoord3 = findobj(0, 'Tag', 'PointMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriCoord3)
+        hFig = get(get(mriCoord3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriCoord3(1));
+        end
+    end
+
+    % Find all selected points Text3 in MRI space
+    mriText3 = findobj(0, 'Tag', 'TextMarker3'); 
+    % Remove coordinates from the figures
+    for i = 1:length(mriText3)
+        hFig = get(get(mriText3(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoord)
+        for i=1:length(hCoord)
+            delete(mriText3(1));
+        end
+    end
+
     % delete text from panel
-    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     
     % Update displayed coordinates
     UpdatePanel();
 end
 
-
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
-    global HandlesIdx;
+    % global HandlesIdx;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
@@ -565,12 +817,19 @@ function ViewInMriViewer(varargin)
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+
+        if num_contacts==1
+            % Unselect selection button 
+            SetSelectionState(0);
+        end
     end
 
     % disp(sMri);
     % disp(Handles);
     % disp(Handles.axs);
+    % disp(Handles.hPointEEG);
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
+    
     % HandlesIdx = HandlesIdx+1;
 end
 

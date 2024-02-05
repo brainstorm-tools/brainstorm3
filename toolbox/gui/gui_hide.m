@@ -76,7 +76,7 @@ switch (panelName)
         end
     case 'CoordinatesSeeg'
         if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-            panel_coordinates_seeg('RemoveSelection');
+            panel_coordinates_seeg('RemoveSelectionAll');
         end
     case 'Digitize'
         isAccepted = panel_digitize('PanelHidingCallback');
