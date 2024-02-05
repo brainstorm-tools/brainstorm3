@@ -36,8 +36,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     global xxx;
     global yyy;
     global zzz;
-    global HandlesIdx;
-    HandlesIdx = 1;
 
     xxx = [];
     yyy = [];
@@ -768,7 +766,6 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
-    % global HandlesIdx;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
@@ -793,11 +790,9 @@ function ViewInMriViewer(varargin)
     hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
-    % disp(Handles);
     
 
     % Select the required point
-    % Handles.isEeg = 1;
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
     Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
     Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
@@ -818,13 +813,8 @@ function ViewInMriViewer(varargin)
         end
     end
 
-    % disp(sMri);
-    % disp(Handles);
-    % disp(Handles.axs);
-    % disp(Handles.hPointEEG);
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
     
-    % HandlesIdx = HandlesIdx+1;
 end
 
 %% ===== MODEL SELECTION =====
