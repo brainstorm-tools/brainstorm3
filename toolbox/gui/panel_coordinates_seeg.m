@@ -1,8 +1,8 @@
 function varargout = panel_coordinates_seeg(varargin)
-% PANEL_COORDINATES_SEEG: Create a panel to add/remove/edit scouts attached to a given 3DViz figure.
+% PANEL_COORDINATES_SEEG: Create a panel to manually add/remove/edit seeg contacts in a given isosureface (3DViz) figure.
 % 
 % USAGE:  bstPanelNew = panel_coordinates_seeg('CreatePanel')
-
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -21,37 +21,39 @@ function varargout = panel_coordinates_seeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
-%          Chinmay Chinara, 2023-2024
+% Authors: Chinmay Chinara, 2023-2024
 
 eval(macro_method);
 end
-
 
 %% ===== CREATE PANEL =====
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
     panelName = 'CoordinatesSeeg';
 
-    % global
-    global xxx;
-    global yyy;
-    global zzz;
-
-    xxx = [];
-    yyy = [];
-    zzz = [];
+    % global variables initialization
+    % to be used for plotting line
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
+    linePlotLocX = [];
+    linePlotLocY = [];
+    linePlotLocZ = [];
 
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
     import org.brainstorm.icon.*;
+
     % CONSTANTS 
-    TEXT_HEIGHT = java_scaled('value', 20);
-    TEXT_WIDTH  = java_scaled('value', 40);
-    jFontText = bst_get('Font', 11);
+    % TEXT_HEIGHT = java_scaled('value', 20);
+    % TEXT_WIDTH  = java_scaled('value', 40);
+    % jFontText = bst_get('Font', 11);
+
     % Create tools panel
     jPanelNew = gui_component('Panel');
-    listModel = javax.swing.DefaultListModel();
+
+    % Create list for keeping track of the selected contact points
+    listModel = javax.swing.DefaultListModel(); % can use java_create('javax.swing.DefaultListModel');
 
     res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
@@ -74,8 +76,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar, [], 'Del', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the point selection', @RemoveSelectionAll);
-        % Button "Remove selection"
+        % Button "Draw Line"
         % gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
+        % Button "Save all to database"
+        gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
                   
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
@@ -126,9 +130,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'listModel',         listModel, ...
                                   'jLabelSelectElec',  jLabelSelectElec));
 
+    %% ============================================================================
+    %  === INTERNAL PANEL CALLBACKS  ==============================================
+    %  ============================================================================
+
     %% ===== LIST CLICK CALLBACK =====
     function ElecListClick_Callback(h, ev)
         % If DOUBLE CLICK
+        if (ev.getClickCount() == 1)
+            % Rename selection
+            % disp(1);
+        end
+
         if (ev.getClickCount() == 2)
             % Rename selection
             ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
@@ -147,17 +160,9 @@ end
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
-    % Java initializations
-    import java.awt.*;
-    import javax.swing.*;
-    import org.brainstorm.icon.*;
-    % CONSTANTS 
-    TEXT_HEIGHT = java_scaled('value', 20);
-    TEXT_WIDTH  = java_scaled('value', 40);
-    jFontText = bst_get('Font', 11);
-
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     if isempty(ctrl)
@@ -184,14 +189,12 @@ function UpdatePanel()
     end
 end
 
-
 %% ===== FOCUS CHANGED ======
 function FocusChangedCallback(isFocused) %#ok<DEFNU>
     if ~isFocused
         RemoveSelection();
     end
 end
-
 
 %% ===== CURRENT FIGURE CHANGED =====
 function CurrentFigureChanged_Callback() %#ok<DEFNU>
@@ -200,9 +203,9 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function KeyPress_Callback(hFig, keyEvent)
-    global xxx;
-    global yyy;
-    global zzz;
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
     
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
 
@@ -216,9 +219,9 @@ function KeyPress_Callback(hFig, keyEvent)
             SetSelectionState(1);
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
-            xxx = [];
-            yyy = [];
-            zzz = [];
+            linePlotLocX = [];
+            linePlotLocY = [];
+            linePlotLocZ = [];
         
         case {'escape'}
             % exit the selection state to stop plotting contacts
@@ -239,9 +242,9 @@ function KeyPress_Callback(hFig, keyEvent)
                 SetSelectionState(1);
                 ctrl.jTextNcontacts.setText(res{1});
                 ctrl.jTextLabel.setText(res{2});
-                xxx = [];
-                yyy = [];
-                zzz = [];
+                linePlotLocX = [];
+                linePlotLocY = [];
+                linePlotLocZ = [];
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
@@ -314,9 +317,9 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
 
     % create global to save values
-    global xxx;
-    global yyy;
-    global zzz;
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
 
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -416,9 +419,9 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Parent', hAxes, ...
         'Tag', 'txtCoordinates');
 
-    xxx = [xxx, plotLoc(1)];
-    yyy = [yyy, plotLoc(2)];
-    zzz = [zzz, plotLoc(3) * 0.995];
+    linePlotLocX = [linePlotLocX, plotLoc(1)];
+    linePlotLocY = [linePlotLocY, plotLoc(2)];
+    linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
     
     % Update "Coordinates" panel
     UpdatePanel();
@@ -427,19 +430,19 @@ end
 
 %% ===== DRAW LINE =====
 function DrawLine(varargin)
-    global xxx;
-    global yyy;
-    global zzz;
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
     
     % Get axes handle
     hFig = bst_figures('GetCurrentFigure', '3D');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
-    line(xxx, yyy, zzz , ...
+    line(linePlotLocX, linePlotLocY, linePlotLocZ , ...
          'Color', [1 1 0], ...
          'LineWidth',       2, ...
          'Parent', hAxes, ...
-         'Tag', 'ptCoordinates');
+         'Tag', 'lineCoordinates');
 end
 
 %% ===== POINT SELECTION: Surface detection =====
@@ -957,6 +960,11 @@ function ViewInMriViewer(varargin)
 
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
     
+end
+
+%% ===== SAVE ALL TO DATABASE =====
+function SaveAll(varargin)
+    disp('Save all to database');
 end
 
 %% ===== MODEL SELECTION =====
