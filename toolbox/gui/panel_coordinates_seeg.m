@@ -94,7 +94,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jListElec = java_create('org.brainstorm.list.BstClusterList');
                 jListElec.setBackground(Color(.9,.9,.9));
                 java_setcb(jListElec, ...
-                    'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
+                    'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev), ...
+                    'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev));
                 %     'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
                 %     'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
                 %     'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
@@ -138,22 +139,32 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ElecListClick_Callback(h, ev)
         % If DOUBLE CLICK
         if (ev.getClickCount() == 1)
-            % Rename selection
-            % disp(1);
+            
         end
 
         if (ev.getClickCount() == 2)
-            % Rename selection
-            ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
-            iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
-            isDelete = java_dialog('confirm', ...
-            '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
-            'Delete label');  
-            if isDelete
-                RemoveAtLocation(iPoint);
-            end
+            
         end
-    end                     
+    end   
+    
+    %% ===== LIST KEYTYPED CALLBACK =====
+    function ElecListKeyTyped_Callback(h, ev)
+        switch(uint8(ev.getKeyChar()))
+            case {ev.VK_DELETE}
+                % Delete selection
+                ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
+                iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+                isDelete = java_dialog('confirm', ...
+                '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
+                'Delete label');  
+                if isDelete
+                    RemoveAtLocation(iPoint);
+                end
+            case {ev.VK_ESCAPE}
+                % exit the selection state to stop plotting contacts
+                SetSelectionState(0);
+        end
+    end
 end
                    
             
@@ -790,6 +801,7 @@ function RemoveSelectionAll(varargin)
         % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
         ctrl.listModel.removeAllElements();
+        ctrl.jTextNcontacts.setText(sprintf("%d", 0));
     end
 
     % Find all selected points text
@@ -964,7 +976,7 @@ end
 
 %% ===== SAVE ALL TO DATABASE =====
 function SaveAll(varargin)
-    disp('Save all to database');
+    disp('Save all to database (not implemented)');
 end
 
 %% ===== MODEL SELECTION =====
