@@ -1,5 +1,5 @@
 function [MeshFile, iSurface] = tess_isomesh(iSubject, isoValue, Comment)
-% TESS_GENERATE: Reconstruct a surface mesh based on the MRI/CT, based on an isosurface
+% TESS_ISOMESH: Reconstruct a surface mesh based on the MRI/CT, based on an isosurface
 %
 % USAGE:  [MeshFile, iSurface] = tess_isomesh(iSubject, isoValue=1900, Comment)
 %         [MeshFile, iSurface] = tess_isomesh(MriFile,  isoValue=1900, Comment)

@@ -55,6 +55,24 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create list for keeping track of the selected contact points
     listModel = javax.swing.DefaultListModel(); % can use java_create('javax.swing.DefaultListModel');
 
+    % Coordinate saving
+    global CoordFileMat;
+    
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    ProtocolInfo = bst_get('ProtocolInfo');
+    CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    if isfile(CoordFile)
+        CoordFileMat = load(CoordFile);
+    else
+        CoordFileMat = db_template('channelmat'); 
+    end
+
     res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
                                 [], ...
@@ -174,6 +192,7 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
+    global CoordFileMat;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     if isempty(ctrl)
@@ -193,6 +212,22 @@ function UpdatePanel()
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         label_name = string(ctrl.jTextLabel.getText());
         ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(num_contacts), CoordinatesSelector.World .* 1000));
+        
+        %             'Name',        '', ...
+        %             'Comment',     '', ...
+        %             'Type',        '', ...
+        %             'Group',       [], ...
+        %             'Loc',         [], ...
+        %             'Orient',      [], ...
+        %             'Weight',      []);
+        CoordData = db_template('channeldesc');
+        CoordData.Name = label_name + num2str(num_contacts);
+        CoordData.Type = 'SEEG';
+        CoordData.Loc = CoordinatesSelector.World .* 1000;
+        CoordData.Weight = 1;
+        
+        CoordFileMat.Channel = [CoordFileMat.Channel, CoordData];
+        
         % Set this list
         ctrl.jListElec.setModel(ctrl.listModel);
         ctrl.jListElec.repaint();
@@ -316,7 +351,6 @@ function SetSelectionState(isSelected)
     end
 end
 
-
 %% ===== SELECT POINT =====
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFIg
 function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
@@ -439,23 +473,6 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     ViewInMriViewer();
 end
 
-%% ===== DRAW LINE =====
-function DrawLine(varargin)
-    global linePlotLocX;
-    global linePlotLocY;
-    global linePlotLocZ;
-    
-    % Get axes handle
-    hFig = bst_figures('GetCurrentFigure', '3D');
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-
-    line(linePlotLocX, linePlotLocY, linePlotLocZ , ...
-         'Color', [1 1 0], ...
-         'LineWidth',       2, ...
-         'Parent', hAxes, ...
-         'Tag', 'lineCoordinates');
-end
-
 %% ===== POINT SELECTION: Surface detection =====
 function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
     % Parse inputs
@@ -524,6 +541,25 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             break;
         end
     end
+end
+
+%% ===== DRAW LINE =====
+% this function renders a line between all the 3D contacts on the surface
+% indicating electrodes
+function DrawLine(varargin)
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
+    
+    % Get axes handle
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    line(linePlotLocX, linePlotLocY, linePlotLocZ , ...
+         'Color', [1 1 0], ...
+         'LineWidth',       2, ...
+         'Parent', hAxes, ...
+         'Tag', 'lineCoordinates');
 end
 
 %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC POINT) =====
@@ -914,8 +950,6 @@ function RemoveSelectionAll(varargin)
         end
     end
 
-    % delete text from panel
-    
     % Update displayed coordinates
     UpdatePanel();
 end
@@ -976,134 +1010,33 @@ end
 
 %% ===== SAVE ALL TO DATABASE =====
 function SaveAll(varargin)
-    disp('Save all to database (not implemented)');
-end
+    global CoordFileMat;
 
-%% ===== MODEL SELECTION =====
-function ComboModelChanged_Callback(varargin)
-    % Get selected model
-    GetSelectedModel();
-end
-
-%% ===== GET SELECTED MODEL =====
-function [iModel, sModels] = GetSelectedModel()
-    % Get figure controls
+    % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
-    if isempty(ctrl) %|| isempty(ctrl.jListElec)
+    if isempty(ctrl)
         return
     end
-    % Get the available electrode models
-    sModels = GetElectrodeModels();
-    % Get selected model
-    ModelName = char(ctrl.jComboModel.getSelectedItem());
-    if isempty(ModelName)
-        iModel = [];
-    else
-        iModel = find(strcmpi({sModels.Model}, ModelName));
-    end
-end
 
-%% ===== GET ELECTRODE MODELS =====
-function sModels = GetElectrodeModels()
-    global GlobalData;
-    % Get existing preferences
-    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels) ...
-            && (length(GlobalData.Preferences.IntraElectrodeModels) > 18)
-        sModels = GlobalData.Preferences.IntraElectrodeModels;
-    % Get default list of known electrodes
-    else
-        sModels = repmat(db_template('intraelectrode'), 1, 0);
-        
-        % === DIXI D08 ===
-        % Common values
-        sTemplate = db_template('intraelectrode');
-        sTemplate.Type = 'SEEG';
-        sTemplate.ContactSpacing  = 0.0035;
-        sTemplate.ContactDiameter = 0.0008;
-        sTemplate.ContactLength   = 0.002;
-        sTemplate.ElecDiameter    = 0.0007;
-        sTemplate.ElecLength      = 0.070;
-        % All models
-        sMod = repmat(sTemplate, 1, 6);
-        sMod(1).Model         = 'DIXI D08-05AM Microdeep';
-        sMod(1).ContactNumber = 5;
-        sMod(2).Model         = 'DIXI D08-08AM Microdeep';
-        sMod(2).ContactNumber = 8;
-        sMod(3).Model         = 'DIXI D08-10AM Microdeep';
-        sMod(3).ContactNumber = 10;
-        sMod(4).Model         = 'DIXI D08-12AM Microdeep';
-        sMod(4).ContactNumber = 12;
-        sMod(5).Model         = 'DIXI D08-15AM Microdeep';
-        sMod(5).ContactNumber = 15;
-        sMod(6).Model         = 'DIXI D08-18AM Microdeep';
-        sMod(6).ContactNumber = 18;
-        sModels = [sModels, sMod];
-        
-        % === AD TECH RD10R ===
-        % Common values
-        sTemplate = db_template('intraelectrode');
-        sTemplate.Type = 'SEEG';
-        sTemplate.ContactNumber   = 10;
-        sTemplate.ContactDiameter = 0.0009;
-        sTemplate.ContactLength   = 0.0023;
-        sTemplate.ElecDiameter    = 0.0008;
-        sTemplate.ElecLength      = 0.080;
-        % All models
-        sMod = repmat(sTemplate, 1, 5);
-        sMod(1).Model          = 'AdTech RD10R-SP04X';
-        sMod(1).ContactSpacing = 0.004;
-        sMod(2).Model          = 'AdTech RD10R-SP05X';
-        sMod(2).ContactSpacing = 0.005;
-        sMod(3).Model          = 'AdTech RD10R-SP06X';
-        sMod(3).ContactSpacing = 0.006;
-        sMod(4).Model          = 'AdTech RD10R-SP07X';
-        sMod(4).ContactSpacing = 0.007;
-        sMod(5).Model          = 'AdTech RD10R-SP08X';
-        sMod(5).ContactSpacing = 0.008;
-        sModels = [sModels, sMod];
-        
-        % === AD TECH RD10R ===
-        % Common values
-        sTemplate = db_template('intraelectrode');
-        sTemplate.Type = 'SEEG';
-        sTemplate.ContactSpacing  = 0.005;
-        sTemplate.ContactDiameter = 0.0014;
-        sTemplate.ContactLength   = 0.0020;
-        sTemplate.ElecDiameter    = 0.0013;
-        sTemplate.ElecLength      = 0.080;
-        % All models
-        sMod = repmat(sTemplate, 1, 2);
-        sMod(1).Model          = 'AdTech MM16C-SP05X';
-        sMod(1).ContactNumber   = 6;
-        sMod(2).Model          = 'AdTech MM16D-SP05X';
-        sMod(2).ContactNumber   = 8;
-        sModels = [sModels, sMod];
-        
-        % === Huake-Hengsheng ===
-        % Common values
-        sTemplate = db_template('intraelectrode');
-        sTemplate.Type = 'SEEG';
-        sTemplate.ContactSpacing  = 0.0035;
-        sTemplate.ContactDiameter = 0.0008;
-        sTemplate.ContactLength   = 0.002;
-        sTemplate.ElecDiameter    = 0.00079;
-        % All models
-        sMod = repmat(sTemplate, 1, 5);
-        sMod(1).Model          = 'Huake-Hengsheng SDE-08-S08';
-        sMod(1).ContactNumber  = 8;
-        sMod(1).ElecLength     = 0.0265;
-        sMod(2).Model          = 'Huake-Hengsheng SDE-08-S10';
-        sMod(2).ContactNumber  = 8;
-        sMod(2).ElecLength     = 0.0335;
-        sMod(3).Model          = 'Huake-Hengsheng SDE-08-S12';
-        sMod(3).ContactNumber  = 8;
-        sMod(3).ElecLength     = 0.0405;
-        sMod(4).Model          = 'Huake-Hengsheng SDE-08-S14';
-        sMod(4).ContactNumber  = 8;
-        sMod(4).ElecLength     = 0.0475;
-        sMod(5).Model          = 'Huake-Hengsheng SDE-08-S16';
-        sMod(5).ContactNumber  = 8;
-        sMod(5).ElecLength     = 0.0545;
-        sModels = [sModels, sMod];
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
+
+    % bst_progress('text', 'Saving new file...');
+    % Create output filenames
+    ProtocolInfo = bst_get('ProtocolInfo');
+    CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    % disp(CoordDir);
+    % CoordFile  = file_unique(bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat'));
+    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    % Save coordinates to file
+    CoordFileMat.Comment = sprintf('saved coordinates');
+    CoordFileMat = bst_history('add', CoordFileMat, 'test', 'saved coordinates');
+    bst_save(CoordFile, CoordFileMat, 'v7');
+    % ProtocolInfo = bst_get('ProtocolInfo');
+    % disp(ProtocolInfo);
+    disp('Save all to database (not fully implemented)');
 end
