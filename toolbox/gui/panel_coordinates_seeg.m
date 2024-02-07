@@ -203,12 +203,14 @@ function LoadOnStart()
     ProtocolInfo = bst_get('ProtocolInfo');
     CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
     CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
-    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-    hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+    
     
     % if file exists for the subject
     if isfile(CoordFile)
         CoordFileMat = load(CoordFile);
+        
+        SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+        hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
         
         % reset the list from fresh data
         ctrl.listModel.removeAllElements();
@@ -254,9 +256,6 @@ function LoadOnStart()
             linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
 
             % update the MriViewer with points from the loaded data
-            % Display subject's anatomy in MRI Viewer
-            
-            % sMri = panel_surface('GetSurfaceMri', hFig);
             Handles = bst_figures('GetFigureHandles', hFig1);
                     
             % Select the required point
