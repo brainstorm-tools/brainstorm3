@@ -888,7 +888,7 @@ function DeleteFigure(hFigure, varargin)
         end
         % Reset "CoordinatesSeeg" panel
         if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-            panel_coordinates_seeg('RemoveSelectionAll');
+            panel_coordinates_seeg('RemoveAllContacts');
         end
         % Reset "Coordinates" panel
         if gui_brainstorm('isTabVisible', 'Dipinfo')

@@ -91,9 +91,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'Del', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
+        gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the point selection', @RemoveSelectionAll);
+        gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
         % Button "Draw Line"
         % gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
         % Button "Save all to database"
@@ -176,7 +176,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
                 'Delete label');  
                 if isDelete
-                    RemoveAtLocation(iPoint);
+                    RemoveContactAtLocation(iPoint);
                 end
             case {ev.VK_ESCAPE}
                 % exit the selection state to stop plotting contacts
@@ -562,11 +562,13 @@ function DrawLine(varargin)
          'Tag', 'lineCoordinates');
 end
 
-%% ===== REMOVE AT A LOCATION (DELETE SPECIFIC POINT) =====
-function RemoveAtLocation(Loc)
+%% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
+function RemoveContactAtLocation(Loc)
     % Unselect selection button 
     % SetSelectionState(0);
     
+    global CoordFileMat;
+
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     % Find all selected points
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
@@ -583,6 +585,7 @@ function RemoveAtLocation(Loc)
         % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         % ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
         ctrl.listModel.remove(Loc-1);
+        CoordFileMat.Channel(Loc) = [];
     end
 
     % Find all selected points text
@@ -689,8 +692,8 @@ function RemoveAtLocation(Loc)
     UpdatePanel();
 end
 
-%% ===== REMOVE SELECTION (LAST POINT) =====
-function RemoveSelection(varargin)
+%% ===== REMOVE LAST CONTACT =====
+function RemoveLastContact(varargin)
     % Unselect selection button 
     % SetSelectionState(0);
     
@@ -816,10 +819,12 @@ function RemoveSelection(varargin)
     UpdatePanel();
 end
 
-%% ===== REMOVE SELECTION (ALL) =====
-function RemoveSelectionAll(varargin)
+%% ===== REMOVE ALL CONTACTS =====
+function RemoveAllContacts(varargin)
     % Unselect selection button 
     SetSelectionState(0);
+
+    global CoordFileMat;
     
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     % Find all selected points
@@ -838,6 +843,7 @@ function RemoveSelectionAll(varargin)
         % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
         ctrl.listModel.removeAllElements();
         ctrl.jTextNcontacts.setText(sprintf("%d", 0));
+        CoordFileMat.Channel = [];
     end
 
     % Find all selected points text
