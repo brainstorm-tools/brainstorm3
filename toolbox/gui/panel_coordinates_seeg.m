@@ -57,11 +57,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % Coordinate saving
     global CoordFileMat;
+    CoordFileMat = [];
 
-    res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
-                                'Enter Number of contacts', ...
-                                [], ...
-                                {num2str(10), 'A'});
+    % res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+    %                             'Enter Number of contacts', ...
+    %                             [], ...
+    %                             {num2str(10), 'A'});
 
     % Hack keyboard callback
     hFig = bst_figures('GetCurrentFigure', '3D');
@@ -72,7 +73,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.NORTH);
     jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
         % Button "Select vertex"
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
+        % jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Remove selection"
@@ -113,8 +114,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('');            
-            jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', res{1}, [], [], [], 0);
-            jTextLabel = gui_component('label', jPanelCoordinates, 'tab', res{2}, [], [], [], 0);
+            jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
+            jTextLabel = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
         jPanelMain.add(jPanelCoordinates, BorderLayout.SOUTH);
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
     
@@ -125,14 +126,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
-                           struct('jButtonSelect',     jButtonSelect, ...
-                                  'jTextNcontacts',    jTextNcontacts, ...
+                           struct('jTextNcontacts',    jTextNcontacts, ...
                                   'jTextLabel',        jTextLabel, ...
                                   'jPanelCoordinates', jPanelCoordinates, ...
                                   'jListElec',         jListElec, ...
                                   'jPanelElecList',    jPanelElecList, ...
                                   'listModel',         listModel, ...
                                   'jLabelSelectElec',  jLabelSelectElec));
+                                  % 'jButtonSelect',     jButtonSelect, ...
 
     %% ============================================================================
     %  === INTERNAL PANEL CALLBACKS  ==============================================
@@ -279,7 +280,14 @@ function LoadOnStart()
         SetSelectionState(0);
     else
         CoordFileMat = db_template('channelmat'); 
+
+        res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+                                'Enter Number of contacts', ...
+                                [], ...
+                                {num2str(10), 'A'});
         SetSelectionState(1);
+        ctrl.jTextNcontacts.setText(res{1});
+        ctrl.jTextLabel.setText(res{2});
     end
 
     UpdatePanel();
@@ -414,13 +422,13 @@ function SetSelectionState(isSelected)
     % Get list of all figures
     hFigures = bst_figures('GetAllFigures');
     if isempty(hFigures)
-        ctrl.jButtonSelect.setSelected(0);
+        % ctrl.jButtonSelect.setSelected(0);
         return
     end
     % Start selection
     if isSelected
         % Push toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(1);        
+        % ctrl.jButtonSelect.setSelected(1);        
         % Set 3DViz figures in 'SelectingCorticalSpot' mode
         for hFig = hFigures
             % Keep only figures with surfaces
@@ -433,7 +441,7 @@ function SetSelectionState(isSelected)
     % Stop selection
     else
         % Release toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(0);
+        % ctrl.jButtonSelect.setSelected(0);
         % Exit 3DViz figures from SelectingCorticalSpot mode
         for hFig = hFigures
             set(hFig, 'Pointer', 'arrow');
@@ -1144,7 +1152,7 @@ function SaveAll(varargin)
     CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
     
     % Save coordinates to file
-    CoordFileMat.Comment = sprintf('saved coordinates');
+    CoordFileMat.Comment = sprintf('World Coordinate System');
     CoordFileMat = bst_history('add', CoordFileMat, 'test', 'saved coordinates');
     bst_save(CoordFile, CoordFileMat, 'v7');
     
