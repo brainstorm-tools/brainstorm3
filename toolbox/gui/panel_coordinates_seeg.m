@@ -57,21 +57,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % Coordinate saving
     global CoordFileMat;
-    
-    hFig = bst_figures('GetCurrentFigure', '3D');
-    SubjectFile = getappdata(hFig, 'SubjectFile');
-    if ~isempty(SubjectFile)
-        sSubject = bst_get('Subject', SubjectFile);
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    end
-    ProtocolInfo = bst_get('ProtocolInfo');
-    CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
-    if isfile(CoordFile)
-        CoordFileMat = load(CoordFile);
-    else
-        CoordFileMat = db_template('channelmat'); 
-    end
 
     res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
                                 'Enter Number of contacts', ...
@@ -183,21 +168,131 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 SetSelectionState(0);
         end
     end
+    
 end
-                   
+
             
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
 
-%% ===== UPDATE CALLBACK =====
-function UpdatePanel()
+%% ===== LOAD DATA =====
+function LoadOnStart()
     global CoordFileMat;
+    global linePlotLocX;
+    global linePlotLocY;
+    global linePlotLocZ;
+
+    linePlotLocX = [];
+    linePlotLocY = [];
+    linePlotLocZ = [];
+
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     if isempty(ctrl)
         return
     end
+
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    ProtocolInfo = bst_get('ProtocolInfo');
+    CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+    hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+    
+    % if file exists for the subject
+    if isfile(CoordFile)
+        CoordFileMat = load(CoordFile);
+        
+        % reset the list from fresh data
+        ctrl.listModel.removeAllElements();
+
+        for i=1:length(CoordFileMat.Channel)
+            % update the Panel with laoded data
+            sMri = bst_memory('LoadMri', MriFile);
+            str = CoordFileMat.Channel(i).Name;
+            out_num= regexp(str, '\d*', 'match');
+            out_str= regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
+            
+            ctrl.jTextNcontacts.setText(out_num);
+            ctrl.jTextLabel.setText(strjoin(out_str, ''));
+            ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(out_str, '') + out_num, CoordFileMat.Channel(i).Loc));
+            plotWorldLoc = CoordFileMat.Channel(i).Loc ./ 1000;
+            plotLoc = cs_convert(sMri, 'world', 'scs', plotWorldLoc); 
+
+            % update the 3D points on the surface with loaded data
+            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+            % ===== PLOT MARKER =====
+            % Remove previous mark
+            % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
+            % Mark new point
+            line(plotLoc(1), plotLoc(2), plotLoc(3) * 0.995, ...
+                 'MarkerFaceColor', [1 1 0], ...
+                 'MarkerEdgeColor', [1 1 0], ...
+                 'Marker',          'o',  ...
+                 'MarkerSize',      10, ...
+                 'LineWidth',       2, ...
+                 'Parent',          hAxes, ...
+                 'Tag',             'ptCoordinates');
+        
+            text(plotLoc(1), plotLoc(2), plotLoc(3), ...
+                '         ' + string(strjoin(out_str, '') + out_num), ...
+                'HorizontalAlignment','center', ...
+                'FontSize', 10, ...
+                'Color',  [1 1 0], ...
+                'Parent', hAxes, ...
+                'Tag', 'txtCoordinates');
+        
+            linePlotLocX = [linePlotLocX, plotLoc(1)];
+            linePlotLocY = [linePlotLocY, plotLoc(2)];
+            linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
+
+            % update the MriViewer with points from the loaded data
+            % Display subject's anatomy in MRI Viewer
+            
+            % sMri = panel_surface('GetSurfaceMri', hFig);
+            Handles = bst_figures('GetFigureHandles', hFig1);
+                    
+            % Select the required point
+            plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLoc);
+            figure_mri('SetLocation', 'mri', hFig1, [], plotLocMri);
+            Handles.LocEEG(1,:) = plotLocMri .* 1000;
+            Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
+            Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
+            Handles.hTextEEG(1,:)  = figure_mri('PlotText', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], Channels(1).Name, Channels(1).Name);
+        
+            num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+            ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+    
+            if num_contacts==1
+                % Unselect selection button 
+                SetSelectionState(0);
+            end
+        
+            figure_mri('UpdateVisibleLandmarks', sMri, Handles);
+        end
+    else
+        CoordFileMat = db_template('channelmat'); 
+    end
+
+    UpdatePanel();
+end
+
+%% ===== UPDATE CALLBACK =====
+function UpdatePanel()
+    global CoordFileMat;
+    
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+    if isempty(ctrl)
+        return
+    end
+
     % Get current figure
     hFig = bst_figures('GetCurrentFigure', '3D');
 
@@ -213,13 +308,7 @@ function UpdatePanel()
         label_name = string(ctrl.jTextLabel.getText());
         ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(num_contacts), CoordinatesSelector.World .* 1000));
         
-        %             'Name',        '', ...
-        %             'Comment',     '', ...
-        %             'Type',        '', ...
-        %             'Group',       [], ...
-        %             'Loc',         [], ...
-        %             'Orient',      [], ...
-        %             'Weight',      []);
+        % add new contact to the list
         CoordData = db_template('channeldesc');
         CoordData.Name = label_name + num2str(num_contacts);
         CoordData.Type = 'SEEG';
@@ -227,12 +316,12 @@ function UpdatePanel()
         CoordData.Weight = 1;
         
         CoordFileMat.Channel = [CoordFileMat.Channel, CoordData];
-        
-        % Set this list
-        ctrl.jListElec.setModel(ctrl.listModel);
-        ctrl.jListElec.repaint();
-        drawnow;
     end
+
+    % Set this list
+    ctrl.jListElec.setModel(ctrl.listModel);
+    ctrl.jListElec.repaint();
+    drawnow;
 end
 
 %% ===== FOCUS CHANGED ======
@@ -544,8 +633,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
 end
 
 %% ===== DRAW LINE =====
-% this function renders a line between all the 3D contacts on the surface
-% indicating electrodes
+% this function renders a line between all the 3D contacts on the surface indicating electrodes actual path and trajectory
 function DrawLine(varargin)
     global linePlotLocX;
     global linePlotLocY;
@@ -586,6 +674,12 @@ function RemoveContactAtLocation(Loc)
         % ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
         ctrl.listModel.remove(Loc-1);
         CoordFileMat.Channel(Loc) = [];
+        
+        % make sure the Channel sturture field is cleared when no contacts
+        % are marked
+        if length(hCoord) == 1
+            CoordFileMat.Channel = [];
+        end
     end
 
     % Find all selected points text
@@ -697,6 +791,8 @@ function RemoveLastContact(varargin)
     % Unselect selection button 
     % SetSelectionState(0);
     
+    global CoordFileMat;
+
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     % Find all selected points
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
@@ -713,6 +809,13 @@ function RemoveLastContact(varargin)
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
         ctrl.listModel.remove(length(hCoord)-1);
+        CoordFileMat.Channel(length(hCoord)) = [];
+
+        % make sure the Channel sturture field is cleared when no contacts
+        % are marked
+        if length(hCoord) == 1
+            CoordFileMat.Channel = [];
+        end
     end
 
     % Find all selected points text
@@ -821,10 +924,10 @@ end
 
 %% ===== REMOVE ALL CONTACTS =====
 function RemoveAllContacts(varargin)
+    global CoordFileMat;
+
     % Unselect selection button 
     SetSelectionState(0);
-
-    global CoordFileMat;
     
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     % Find all selected points
@@ -1011,7 +1114,6 @@ function ViewInMriViewer(varargin)
     end
 
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
-    
 end
 
 %% ===== SAVE ALL TO DATABASE =====
@@ -1031,18 +1133,18 @@ function SaveAll(varargin)
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
 
-    % bst_progress('text', 'Saving new file...');
+    bst_progress('start', 'Saving new file...', 'Saving sEEG contacts');
+
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
     CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-    % disp(CoordDir);
     % CoordFile  = file_unique(bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat'));
     CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    
     % Save coordinates to file
     CoordFileMat.Comment = sprintf('saved coordinates');
     CoordFileMat = bst_history('add', CoordFileMat, 'test', 'saved coordinates');
     bst_save(CoordFile, CoordFileMat, 'v7');
-    % ProtocolInfo = bst_get('ProtocolInfo');
-    % disp(ProtocolInfo);
-    disp('Save all to database (not fully implemented)');
+    
+    bst_progress('stop');
 end
