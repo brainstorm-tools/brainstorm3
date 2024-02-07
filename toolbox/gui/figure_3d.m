@@ -1450,7 +1450,7 @@ function GetCoordinatesSeeg(varargin)
     % Load data on start if present from database
     panel_coordinates_seeg('LoadOnStart');
     % Start point selection
-    panel_coordinates_seeg('SetSelectionState', 1);
+    % panel_coordinates_seeg('SetSelectionState', 1);
 end
 
 

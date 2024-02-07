@@ -276,8 +276,10 @@ function LoadOnStart()
         
             figure_mri('UpdateVisibleLandmarks', sMri, Handles);
         end
+        SetSelectionState(0);
     else
         CoordFileMat = db_template('channelmat'); 
+        SetSelectionState(1);
     end
 
     UpdatePanel();
