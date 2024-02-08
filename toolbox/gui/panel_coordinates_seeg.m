@@ -39,6 +39,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     linePlotLocY = [];
     linePlotLocZ = [];
 
+    global deleteLoc;
+    deleteLoc = 0;
+
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -76,6 +79,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
+        % Button "Remove selection"
+        gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove selection"
@@ -155,21 +160,29 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ElecListKeyTyped_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
             case {ev.VK_DELETE}
-                % Delete selection
-                ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
-                iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
-                isDelete = java_dialog('confirm', ...
-                '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
-                'Delete label');  
-                if isDelete
-                    RemoveContactAtLocation(iPoint);
-                end
+                % Delete contact a location
+                RemoveContactAtLocation_Callback(h, ev);
             case {ev.VK_ESCAPE}
                 % exit the selection state to stop plotting contacts
                 SetSelectionState(0);
         end
     end
     
+    %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
+    function RemoveContactAtLocation_Callback(h, ev)
+        % Delete selection
+        ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
+        iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+        if isempty(iPoint)
+            return;
+        end
+        isDelete = java_dialog('confirm', ...
+        '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
+        'Delete label');  
+        if isDelete
+            RemoveContactAtLocation(iPoint);
+        end
+    end
 end
 
             
@@ -294,7 +307,7 @@ end
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
     global CoordFileMat;
-    
+
     % Get panel controls
     ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
     if isempty(ctrl)
@@ -560,7 +573,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Color',  [1 1 0], ...
         'Parent', hAxes, ...
         'Tag', 'txtCoordinates');
-
+    
     linePlotLocX = [linePlotLocX, plotLoc(1)];
     linePlotLocY = [linePlotLocY, plotLoc(2)];
     linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
@@ -678,9 +691,9 @@ function RemoveContactAtLocation(Loc)
     % Delete selected points
     if ~isempty(hCoord)
         delete(hCoord(length(hCoord)-Loc+1));
-        % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
-        % ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
         ctrl.listModel.remove(Loc-1);
+
+        % delete from mat
         CoordFileMat.Channel(Loc) = [];
         
         % make sure the Channel sturture field is cleared when no contacts
