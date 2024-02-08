@@ -86,7 +86,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
         % Button "Draw Line"
-        % gui_component('ToolbarButton', jToolbar, [], 'L', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
+        % gui_component('ToolbarButton', jToolbar, [], 'LFit', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
         % Button "Save all to database"
         gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
                   
@@ -141,7 +141,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   % 'jButtonSelect',     jButtonSelect, ...
 
     %% ============================================================================
-    %  === INTERNAL PANEL CALLBACKS  ==============================================
+    %  === INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL)================
     %  ============================================================================
 
     %% ===== LIST CLICK CALLBACK =====
