@@ -211,30 +211,29 @@ function LoadOnStart()
         
         SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
-        
+
         % reset the list from fresh data
         ctrl.listModel.removeAllElements();
 
         for i=1:length(CoordFileMat.Channel)
-            % update the Panel with laoded data
+            % STEP-1: update the Panel with laoded data
             sMri = bst_memory('LoadMri', MriFile);
             str = CoordFileMat.Channel(i).Name;
-            out_num= regexp(str, '\d*', 'match');
-            out_str= regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
+            label_name = regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
+            num_contacts = regexp(str, '\d*', 'match');
             
-            ctrl.jTextNcontacts.setText(out_num);
-            ctrl.jTextLabel.setText(strjoin(out_str, ''));
-            ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(out_str, '') + out_num, CoordFileMat.Channel(i).Loc));
-            plotWorldLoc = CoordFileMat.Channel(i).Loc ./ 1000;
-            plotLoc = cs_convert(sMri, 'world', 'scs', plotWorldLoc); 
+            ctrl.jTextLabel.setText(strjoin(label_name, ''));
+            ctrl.jTextNcontacts.setText(num_contacts);
 
-            % update the 3D points on the surface with loaded data
+            ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + num_contacts, CoordFileMat.Channel(i).Loc));
+            plotLocWorld = CoordFileMat.Channel(i).Loc ./ 1000;
+            plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
+
+            % STEP-2: update the 3D points on the surface with loaded data
             hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
             % ===== PLOT MARKER =====
-            % Remove previous mark
-            % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
             % Mark new point
-            line(plotLoc(1), plotLoc(2), plotLoc(3) * 0.995, ...
+            line(plotLocScs(1), plotLocScs(2), plotLocScs(3) * 0.995, ...
                  'MarkerFaceColor', [1 1 0], ...
                  'MarkerEdgeColor', [1 1 0], ...
                  'Marker',          'o',  ...
@@ -243,23 +242,23 @@ function LoadOnStart()
                  'Parent',          hAxes, ...
                  'Tag',             'ptCoordinates');
         
-            text(plotLoc(1), plotLoc(2), plotLoc(3), ...
-                '         ' + string(strjoin(out_str, '') + out_num), ...
+            text(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
+                '         ' + string(strjoin(label_name, '') + num_contacts), ...
                 'HorizontalAlignment','center', ...
                 'FontSize', 10, ...
                 'Color',  [1 1 0], ...
                 'Parent', hAxes, ...
                 'Tag', 'txtCoordinates');
         
-            linePlotLocX = [linePlotLocX, plotLoc(1)];
-            linePlotLocY = [linePlotLocY, plotLoc(2)];
-            linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
+            linePlotLocX = [linePlotLocX, plotLocScs(1)];
+            linePlotLocY = [linePlotLocY, plotLocScs(2)];
+            linePlotLocZ = [linePlotLocZ, plotLocScs(3) * 0.995];
 
-            % update the MriViewer with points from the loaded data
+            % STEP-3: update the MriViewer with points from the loaded data
             Handles = bst_figures('GetFigureHandles', hFig1);
                     
             % Select the required point
-            plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLoc);
+            plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
             figure_mri('SetLocation', 'mri', hFig1, [], plotLocMri);
             Handles.LocEEG(1,:) = plotLocMri .* 1000;
             Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
