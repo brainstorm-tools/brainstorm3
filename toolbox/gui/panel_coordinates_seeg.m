@@ -813,9 +813,13 @@ function RemoveLastContact(varargin)
     end
     % Delete selected points
     if ~isempty(hCoord)
-        delete(hCoord(1));
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        label_name = string(ctrl.jTextLabel.getText());
+
+        delete(hCoord(1));
+      
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
+        ctrl.jTextLabel.setText(label_name);
         ctrl.listModel.remove(length(hCoord)-1);
         CoordFileMat.Channel(length(hCoord)) = [];
 
