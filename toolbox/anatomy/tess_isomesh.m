@@ -151,9 +151,9 @@ end
 
 % %% Manipulate mesh
 % % Show Coordinates panel
-% gui_show('panel_coordinates_seeg', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
+% gui_show('panel_ieeg_anat', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
 % % Start point selection
-% panel_coordinates_seeg('SetSelectionState', 1);
+% panel_ieeg_anat('SetSelectionState', 1);
 
 % Show ieeg panel
 % gui_show('panel_ieeg', 'JavaWindow', 'sEEG', [], 0, 1, 0);

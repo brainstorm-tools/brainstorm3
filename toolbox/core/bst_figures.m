@@ -888,7 +888,7 @@ function DeleteFigure(hFigure, varargin)
         end
         % Reset "CoordinatesSeeg" panel
         if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-            panel_coordinates_seeg('RemoveAllContacts');
+            panel_ieeg_anat('RemoveAllContacts');
         end
         % Reset "Coordinates" panel
         if gui_brainstorm('isTabVisible', 'Dipinfo')
@@ -1097,7 +1097,7 @@ function SetCurrentFigure(hFig, Type)
                     panel_coordinates('CurrentFigureChanged_Callback');
                 end
                 % if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-                %     panel_coordinates_seeg('CurrentFigureChanged_Callback');
+                %     panel_ieeg_anat('CurrentFigureChanged_Callback');
                 % end
                 if gui_brainstorm('isTabVisible', 'Dipinfo')
                     panel_dipinfo('CurrentFigureChanged_Callback');

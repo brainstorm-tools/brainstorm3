@@ -634,13 +634,13 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinatesSeeg
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-                panel_coordinates_seeg('SelectPoint', hFig);
+                panel_ieeg_anat('SelectPoint', hFig);
             % Selecting fiducials linked with MRI viewer
             else
                 hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
                 if ~isempty(hView3DHeadFig)
                     % Find the closest surface point that was selected
-                    [TessInfo, iTess, pout] = panel_coordinates_seeg('ClickPointInSurface', hView3DHeadFig);
+                    [TessInfo, iTess, pout] = panel_ieeg_anat('ClickPointInSurface', hView3DHeadFig);
                     if isempty(TessInfo)
                         return
                     end
@@ -1446,11 +1446,11 @@ end
 %% ===== GET COORDINATES SEEG =====
 function GetCoordinatesSeeg(varargin)
     % Show Coordinates panel
-    gui_show('panel_coordinates_seeg', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
+    gui_show('panel_ieeg_anat', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
     % Load data on start if present from database
-    panel_coordinates_seeg('LoadOnStart');
+    panel_ieeg_anat('LoadOnStart');
     % Start point selection
-    % panel_coordinates_seeg('SetSelectionState', 1);
+    % panel_ieeg_anat('SetSelectionState', 1);
 end
 
 

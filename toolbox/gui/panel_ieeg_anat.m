@@ -1,7 +1,7 @@
-function varargout = panel_coordinates_seeg(varargin)
-% PANEL_COORDINATES_SEEG: Create a panel to manually add/remove/edit seeg contacts in a given isosureface (3DViz) figure.
+function varargout = panel_ieeg_anat(varargin)
+% PANEL_IEEG_ANAT: Create a panel to manually add/remove/edit seeg contacts in a given isosureface (3DViz) figure.
 % 
-% USAGE:  bstPanelNew = panel_coordinates_seeg('CreatePanel')
+% USAGE:  bstPanelNew = panel_ieeg_anat('CreatePanel')
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -49,6 +49,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     % Create tools panel
     jPanelNew = gui_component('Panel');
+    jPanelNew.setPreferredSize(java_scaled('dimension', 270,500));
 
     % Create list for keeping track of the selected contact points
     listModel = javax.swing.DefaultListModel(); % can use java_create('javax.swing.DefaultListModel');
@@ -69,6 +70,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
+        % Button "Prompt user for setting initial guess"
+        gui_component('ToolbarButton', jToolbar, [], 'Init', IconLoader.ICON_SCOUT_NEW, 'Initial guess', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove selection"
