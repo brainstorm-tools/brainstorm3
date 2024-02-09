@@ -205,7 +205,7 @@ function LoadOnStart()
     end
     ProtocolInfo = bst_get('ProtocolInfo');
     CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    CoordFile  = bst_fullfile(CoordDir, 'channel_seeg.mat');
     
     
     % if file exists for the subject
@@ -223,7 +223,7 @@ function LoadOnStart()
         for i=1:length(CoordFileMat.Channel)
             % STEP-1: update the Panel with laoded data
             sMri = bst_memory('LoadMri', MriFile);
-            str = CoordFileMat.Channel(i).Name;
+            str = string(CoordFileMat.Channel(i).Name);
             label_name = regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
             num_contacts = regexp(str, '\d*', 'match');
             
@@ -327,13 +327,16 @@ function UpdatePanel()
         
         % add new contact to the list
         CoordData = db_template('channeldesc');
-        CoordData.Name = label_name + num2str(num_contacts);
+        CoordData.Name = char(label_name + num2str(num_contacts));
         CoordData.Comment = 'World Coordinate System';
         CoordData.Type = 'EEG';
-        CoordData.Loc = CoordinatesSelector.World .* 1000;
+        CoordData.Loc = CoordinatesSelector.World' .* 1000;
         CoordData.Weight = 1;
         
         CoordFileMat.Channel = [CoordFileMat.Channel, CoordData];
+        CoordFileMat.HeadPoints.Loc(:,end+1) = CoordData.Loc;
+        CoordFileMat.HeadPoints.Label = [CoordFileMat.HeadPoints.Label, {CoordData.Name}];
+        CoordFileMat.HeadPoints.Type = [CoordFileMat.HeadPoints.Type, {'EXTRA'}];
     end
 
     % Set this list
@@ -704,6 +707,10 @@ function RemoveContactAtLocation(Loc)
         if length(hCoord) == 1
             CoordFileMat.Channel = [];
         end
+
+        CoordFileMat.HeadPoints.Loc(:, Loc) = [];
+        CoordFileMat.HeadPoints.Label(Loc) = [];
+        CoordFileMat.HeadPoints.Type(Loc) = [];
     end
 
     % Find all selected points text
@@ -838,6 +845,9 @@ function RemoveLastContact(varargin)
         ctrl.jTextLabel.setText(label_name);
         ctrl.listModel.remove(length(hCoord)-1);
         CoordFileMat.Channel(length(hCoord)) = [];
+        CoordFileMat.HeadPoints.Loc(:, length(hCoord)) = [];
+        CoordFileMat.HeadPoints.Label(length(hCoord)) = [];
+        CoordFileMat.HeadPoints.Type(length(hCoord)) = [];
 
         % make sure the Channel sturture field is cleared when no contacts
         % are marked
@@ -975,6 +985,9 @@ function RemoveAllContacts(varargin)
         ctrl.listModel.removeAllElements();
         ctrl.jTextNcontacts.setText(sprintf("%d", 0));
         CoordFileMat.Channel = [];
+        CoordFileMat.HeadPoints.Loc = [];
+        CoordFileMat.HeadPoints.Label = [];
+        CoordFileMat.HeadPoints.Type = [];
     end
 
     % Find all selected points text
@@ -1167,7 +1180,7 @@ function SaveAll(varargin)
     ProtocolInfo = bst_get('ProtocolInfo');
     CoordDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
     % CoordFile  = file_unique(bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat'));
-    CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
+    CoordFile  = bst_fullfile(CoordDir, 'channel_seeg.mat');
     
     % Save coordinates to file
     CoordFileMat.Comment = sprintf('EEG coordinates');
