@@ -335,7 +335,8 @@ function UpdatePanel()
         % add new contact to the list
         CoordData = db_template('channeldesc');
         CoordData.Name = label_name + num2str(num_contacts);
-        CoordData.Type = 'SEEG';
+        CoordData.Comment = 'World Coordinate System';
+        CoordData.Type = 'EEG';
         CoordData.Loc = CoordinatesSelector.World .* 1000;
         CoordData.Weight = 1;
         
@@ -1170,7 +1171,7 @@ function SaveAll(varargin)
     CoordFile  = bst_fullfile(CoordDir, 'isomesh_ct_coordinates_seeg.mat');
     
     % Save coordinates to file
-    CoordFileMat.Comment = sprintf('World Coordinate System');
+    CoordFileMat.Comment = sprintf('EEG coordinates');
     CoordFileMat = bst_history('add', CoordFileMat, 'test', 'saved coordinates');
     bst_save(CoordFile, CoordFileMat, 'v7');
     
