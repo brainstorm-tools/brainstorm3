@@ -225,6 +225,8 @@ function LoadOnStart()
         SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
 
+        bst_progress('start', 'Loading from file...', 'Loading sEEG contacts');
+
         % reset the list from fresh data
         ctrl.listModel.removeAllElements();
 
@@ -302,6 +304,7 @@ function LoadOnStart()
     end
 
     UpdatePanel();
+    bst_progress('stop');
 end
 
 %% ===== UPDATE CALLBACK =====
