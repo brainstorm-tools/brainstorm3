@@ -47,11 +47,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import javax.swing.*;
     import org.brainstorm.icon.*;
 
-    % CONSTANTS 
-    % TEXT_HEIGHT = java_scaled('value', 20);
-    % TEXT_WIDTH  = java_scaled('value', 40);
-    % jFontText = bst_get('Font', 11);
-
     % Create tools panel
     jPanelNew = gui_component('Panel');
 
