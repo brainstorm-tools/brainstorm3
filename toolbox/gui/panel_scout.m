@@ -468,9 +468,10 @@ function UpdateMenus(sAtlas, sSurf)
     gui_component('MenuItem', jMenu, [], 'Rename',       IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@EditScoutLabel));
     gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
-        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
-        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,  [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,     [], @(h,ev)bst_call(@RemoveScouts));
+        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,     [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,      [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
@@ -3706,6 +3707,51 @@ function JoinScouts(varargin)
     SetSelectedScouts(iNewScout);
 end
 
+
+%% ===== INTERSECT SCOUTS =====
+% Intersection between scouts selected in the JList
+function IntersectScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    [sScouts, iScouts] = GetSelectedScouts();
+    % Need at least TWO scouts
+    if (length(sScouts) < 2)
+        java_dialog('warning', 'You need to select at least two scouts.', 'Join selected scouts');
+        return;
+    end
+    % === Intersect scouts ===
+    % Create new scout
+    sNewScout = db_template('Scout');
+    % Initialize vertices
+    sNewScout.Vertices = sScouts(1).Vertices;
+    for i = 2:length(sScouts)
+        sNewScout.Vertices =  intersect(sNewScout.Vertices, sScouts(i).Vertices);
+    end
+    if isempty(sNewScout.Vertices)
+        java_dialog('msgbox', 'Intersection is empty.', 'Intersect selected scouts');
+        return;
+    end
+    % Copy unmodified fields
+    sNewScout.Seed = sNewScout.Vertices(1);
+    % Label : "Label1 ^ Label2 ^ ..."
+    sNewScout.Label = sScouts(1).Label;
+    for i = 2:length(sScouts)
+        sNewScout.Label = [sNewScout.Label ' n ' sScouts(i).Label];
+    end
+    % Save new scout
+    iNewScout = SetScouts([], 'Add', sNewScout);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
 
 %% ===============================================================================
 %  ====== OTHER SCOUTS OPERATIONS ================================================
