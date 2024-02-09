@@ -815,8 +815,6 @@ function RemoveContactAtLocation(Loc)
         delete(mriText3(length(hCoord)-Loc+1));
     end
 
-    % delete text from panel
-    
     % Update displayed coordinates
     UpdatePanel();
 end
@@ -957,8 +955,6 @@ function RemoveLastContact(varargin)
     if ~isempty(hCoord)
         delete(mriText3(1));
     end
-
-    % delete text from panel
     
     % Update displayed coordinates
     UpdatePanel();
