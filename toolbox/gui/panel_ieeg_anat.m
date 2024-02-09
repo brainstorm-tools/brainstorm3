@@ -71,7 +71,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Prompt user for setting initial guess"
-        gui_component('ToolbarButton', jToolbar, [], 'Init', IconLoader.ICON_SCOUT_NEW, 'Initial guess', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
+        gui_component('ToolbarButton', jToolbar, [], 'Init', IconLoader.ICON_SCOUT_NEW, 'Initial guess', @(h,ev)bst_call(@InitialGuess_Callback,h,ev));
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove selection"
@@ -355,7 +355,7 @@ end
 %% ===== FOCUS CHANGED ======
 function FocusChangedCallback(isFocused) %#ok<DEFNU>
     if ~isFocused
-        RemoveSelection();
+        RemoveAllContacts();
     end
 end
 
