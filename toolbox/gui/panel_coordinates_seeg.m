@@ -214,15 +214,22 @@ function LoadOnStart()
         
         SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
-
-        bst_progress('start', 'Loading from file...', 'Loading sEEG contacts');
+        hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+        
+        isProgress = bst_progress('isVisible');
+        if ~isProgress
+            bst_progress('start', 'Loading sEEG contacts', 'Loading sEEG contact');
+        end
 
         % reset the list from fresh data
         ctrl.listModel.removeAllElements();
-
+        
+        sMri = bst_memory('LoadMri', MriFile);
+        
         for i=1:length(CoordFileMat.Channel)
+            bst_progress('text', sprintf('Loading sEEG contact [%d/%d]', i, length(CoordFileMat.Channel)));
+            
             % STEP-1: update the Panel with laoded data
-            sMri = bst_memory('LoadMri', MriFile);
             str = string(CoordFileMat.Channel(i).Name);
             label_name = regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
             num_contacts = regexp(str, '\d*', 'match');
@@ -235,7 +242,6 @@ function LoadOnStart()
             plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
 
             % STEP-2: update the 3D points on the surface with loaded data
-            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
             % ===== PLOT MARKER =====
             % Mark new point
             line(plotLocScs(1), plotLocScs(2), plotLocScs(3) * 0.995, ...
@@ -246,7 +252,7 @@ function LoadOnStart()
                  'LineWidth',       2, ...
                  'Parent',          hAxes, ...
                  'Tag',             'ptCoordinates');
-        
+
             text(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
                 '         ' + string(strjoin(label_name, '') + num_contacts), ...
                 'HorizontalAlignment','center', ...
@@ -254,17 +260,16 @@ function LoadOnStart()
                 'Color',  [1 1 0], ...
                 'Parent', hAxes, ...
                 'Tag', 'txtCoordinates');
-        
+
             linePlotLocX = [linePlotLocX, plotLocScs(1)];
             linePlotLocY = [linePlotLocY, plotLocScs(2)];
             linePlotLocZ = [linePlotLocZ, plotLocScs(3) * 0.995];
 
-            % STEP-3: update the MriViewer with points from the loaded data
+            % % STEP-3: update the MriViewer with points from the loaded data
             Handles = bst_figures('GetFigureHandles', hFig1);
-                    
+
             % Select the required point
             plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
-            figure_mri('SetLocation', 'mri', hFig1, [], plotLocMri);
             Handles.LocEEG(1,:) = plotLocMri .* 1000;
             Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
             Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
@@ -1174,7 +1179,7 @@ function SaveAll(varargin)
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
 
-    bst_progress('start', 'Saving new file...', 'Saving sEEG contacts');
+    bst_progress('start', 'Saving sEEG contacts', 'Saving new file...');
 
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
