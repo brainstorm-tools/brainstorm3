@@ -62,11 +62,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     global CoordFileMat;
     CoordFileMat = [];
 
-    % res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
-    %                             'Enter Number of contacts', ...
-    %                             [], ...
-    %                             {num2str(10), 'A'});
-
     % Hack keyboard callback
     hFig = bst_figures('GetCurrentFigure', '3D');
     KeyPressFcn_bak = get(hFig, 'KeyPressFcn');
@@ -298,6 +293,9 @@ function LoadOnStart()
                                 'Enter Number of contacts', ...
                                 [], ...
                                 {num2str(10), 'A'});
+        if isempty(res)
+            return;
+        end
         SetSelectionState(1);
         ctrl.jTextNcontacts.setText(res{1});
         ctrl.jTextLabel.setText(res{2});
@@ -376,6 +374,9 @@ function KeyPress_Callback(hFig, keyEvent)
                                 'Enter Number of contacts', ...
                                 [], ...
                                 {num2str(10), 'A'});
+            if isempty(res)
+                return;
+            end
             SetSelectionState(1);
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
@@ -399,6 +400,9 @@ function KeyPress_Callback(hFig, keyEvent)
                                     'Enter Number of contacts', ...
                                     [], ...
                                     {num2str(10), 'A'});
+                if isempty(res)
+                    return;
+                end
                 SetSelectionState(1);
                 ctrl.jTextNcontacts.setText(res{1});
                 ctrl.jTextLabel.setText(res{2});
