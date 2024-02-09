@@ -418,7 +418,7 @@ function KeyPress_Callback(hFig, keyEvent)
             end
             
         otherwise
-            KeyPressFcn_bak(hFig, keyEvent); 
+            % KeyPressFcn_bak(hFig, keyEvent); 
             return;
     end
 end
