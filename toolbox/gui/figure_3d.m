@@ -1621,7 +1621,7 @@ function DisplayFigurePopup(hFig)
     end
     % Only for MEG and EEG time series
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;  
-    FigureType = GlobalData.DataSet(iDS).Figure(iFig).Id.Type;  
+    FigureType = GlobalData.DataSet(iDS).Figure(iFig).Id.Type;
     if ~isempty(DataFile) && ~ismember(Modality, {'MEG GRADNORM', 'MEG GRAD2', 'MEG GRAD3'})
         % Get study
         sStudy = bst_get('AnyFile', DataFile);
@@ -1973,7 +1973,10 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
+        
+        if contains([GlobalData.Surface(:).Comment], "isoSurface")
+            gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
+        end
     end
     
     % ==== MENU: SNAPSHOT ====

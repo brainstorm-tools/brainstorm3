@@ -134,7 +134,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   % 'jButtonSelect',     jButtonSelect, ...
 
     %% ============================================================================
-    %  === INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL)================
+    %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL) =========
     %  ============================================================================
 
     %% ===== LIST CLICK CALLBACK =====
@@ -432,9 +432,6 @@ function KeyPress_Callback(hFig, keyEvent)
     end
 end
 
-%% ===============================================================================
-%  ====== POINTS SELECTION =======================================================
-%  ===============================================================================
 %% ===== POINT SELECTION : start/stop =====
 % Manual selection of a surface point : start(1), or stop(0)
 function SetSelectionState(isSelected)
