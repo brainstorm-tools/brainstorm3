@@ -139,11 +139,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== LIST CLICK CALLBACK =====
     function ElecListClick_Callback(h, ev)
-        % If DOUBLE CLICK
+        % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            
+            % Set cursor location on MRI
+            ctrl = bst_get('PanelControls', 'CoordinatesSeeg'); 
+            iIndex = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+            if isempty(iIndex)
+                return;
+            end
+            SetLocationMri(iIndex);
         end
-
+        
+        % IF DOUBLE CLICK
         if (ev.getClickCount() == 2)
             
         end
@@ -305,6 +312,30 @@ function LoadOnStart()
 
     UpdatePanel();
     bst_progress('stop');
+end
+
+%% ===== SET CURSOR ON MRI =====
+function SetLocationMri(iIndex)
+    global CoordFileMat;
+
+    % Get current 3D figure
+    hFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    if isempty(hFig)
+        return
+    end    
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    sMri = bst_memory('LoadMri', MriFile);
+    
+    % Select the required point
+    plotLocWorld = CoordFileMat.Channel(iIndex).Loc ./ 1000;
+    plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
+    plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
+
+    figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
 end
 
 %% ===== UPDATE CALLBACK =====
