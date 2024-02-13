@@ -40,6 +40,14 @@ end
 
 %% ===== START =====
 function Start() %#ok<DEFNU>
+    % Get Digitize options
+    DigitizeOptions = bst_get('DigitizeOptions');
+    % Check if using new version
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        bst_call(@panel_digitize_2024, 'Start');
+        return;
+    end
+
     global Digitize;
     % ===== PREPARE DATABASE =====
     % If no protocol: exit
@@ -61,8 +69,6 @@ function Start() %#ok<DEFNU>
     end
     
     % ===== PATIENT ID =====
-    % Get Digitize options
-    DigitizeOptions = bst_get('DigitizeOptions');
     % Ask for subject id
     PatientId = java_dialog('input', 'Please, enter subject name or id:', 'Digitize', [], DigitizeOptions.PatientId);
     if isempty(PatientId)
@@ -179,16 +185,20 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     gui_component('MenuItem', jMenu, [], 'Save as...', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@Save_Callback), []);
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Edit settings...',    IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
+    gui_component('MenuItem', jMenu, [], 'Switch to new Digitize version', [], [], @(h,ev)bst_call(@SwitchVersion), []);
     gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     jMenu.addSeparator();
-    if exist('bst_headtracking')
-        gui_component('MenuItem', jMenu, [], 'Start head tracking',     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
+    if exist('bst_headtracking', 'file')
+        gui_component('MenuItem', jMenu, [], 'Start head tracking', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Save and exit', IconLoader.ICON_RESET, [], @(h,ev)bst_call(@Close_Callback), []);
     % EEG Montage menu
     jMenuEeg = gui_component('Menu', jMenuBar, [], 'EEG montage', [], [], [], []);    
     CreateMontageMenu(jMenuEeg);
+    % Help menu
+    jMenuHelp = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], []);
+    gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitize', '-browser'), []);
     
     % ===== Control Panel =====
     jPanelControl = java_create('javax.swing.JPanel');
@@ -318,6 +328,24 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 end
 
 
+%% ===== SWITCH to 2024 version =====
+function SwitchVersion()
+    % Always confirm this switch.
+    if ~java_dialog('confirm', ['<HTML>Switch to new (2024) version of the Digitize panel?<BR>', ...
+            'See Digitize tutorial (Digitize panel > Help menu).<BR>', ...
+            '<B>This will close the window. Any unsaved points will be lost.</B>'], 'Digitize version')
+        return;
+    end
+    % Close this panel
+    Close_Callback();
+    % Save the preferred version. Must be after closing
+    DigitizeOptions = bst_get('DigitizeOptions');
+    DigitizeOptions.Version = '2024';
+    bst_set('DigitizeOptions', DigitizeOptions);
+    % Start the other one
+    %bst_call(@panel_digitize_2024, 'Start');
+end
+
 %% ===== CLOSE =====
 function Close_Callback()
     gui_hide('Digitize');
@@ -345,6 +373,17 @@ function isAccepted = PanelHidingCallback() %#ok<DEFNU>
     % Else: reload to get access to the EEG type of sensors
     else
         db_reload_studies(iStudy);
+    end
+    % Close serial connection, to allow switching Digitize version, and to avoid further callbacks if stylus is pressed.
+    if ~isempty(Digitize.SerialConnection)
+        fclose(Digitize.SerialConnection);
+        delete(Digitize.SerialConnection);
+    end
+    % Check for any remaining open connection
+    s = instrfind('status','open');
+    if ~isempty(s)
+        fclose(s);
+        delete(s);
     end
     % Unload everything
     bst_memory('UnloadAll', 'Forced');
