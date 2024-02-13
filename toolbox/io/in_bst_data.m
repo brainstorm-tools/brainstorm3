@@ -128,6 +128,55 @@ if isfield(DataMat, 'F') && isstruct(DataMat.F) && ~isempty(DataMat.F.filename) 
     studyPath = bst_fileparts(DataFile);
     [rawPath, rawBase, rawExt] = bst_fileparts(DataMat.F.filename);
     newRaw = bst_fullfile(studyPath, [rawBase, rawExt]);
+    % If not found, try to look for the file in the same file system
+    if ~file_exist(newRaw)
+        % Identify the OS for the raw link path
+        waspc = isempty(regexp(DataMat.F.filename, '/', 'once')); % '/' is forbidden char in Windows paths
+        % Linux/MacOS -> Linux/MacOS
+        if ~ispc()
+            % Get mountpoint
+            [status, dfResult] = system(['df ' DataFile]);
+            if ~status
+                dfLines = str_split(dfResult, 10);
+                iChar = regexp(dfLines{1}, 'Mounted on');
+                mountpoint = dfLines{2}(iChar:end);
+            end
+            % Update raw link path
+            if ~waspc
+                % Replace mountpoint
+                [mountDir, mountLabel] = bst_fileparts(mountpoint);
+                iCharRelMount = regexp(DataMat.F.filename, mountLabel);
+                newRaw = bst_fullfile(mountDir, DataMat.F.filename(iCharRelMount:end));
+            else
+                % Replace drive letter with mountpoint
+                pathTmp = file_win2unix(DataMat.F.filename);
+                pathTmp = regexprep(pathTmp, '^[A-Z]:/', '');
+                newRaw = bst_fullfile(mountpoint, pathTmp);
+            end
+        else
+            % Get drive letter
+            tmp = DataFile;
+            driverLetter = '';
+            while ~strcmp(tmp, driverLetter)
+                driverLetter = tmp;
+                tmp = bst_fileparts(tmp);
+            end
+            % Update raw link path
+            if ~waspc
+                tmp = DataMat.F.filename;
+                % Remove common mountpoints
+                tmp2 = regexprep(tmp, '^/Volumes/.*?/', '');
+                if strcmp(tmp2, tmp)
+                    tmp2 = regexprep(tmp, '^.*/media/.*?/.*?/', '');
+                end
+                % Add driverletter
+                newRaw = bst_fullfile(driverLetter, tmp2);
+            else
+                % Replace old drive letter
+                newRaw = regexprep(DataMat.F.filename, '^[A-Z]:/', driverLetter);
+            end
+        end
+    end
     % If the corrected file exists
     if file_exist(newRaw)
         % Update the file in the returned structure
