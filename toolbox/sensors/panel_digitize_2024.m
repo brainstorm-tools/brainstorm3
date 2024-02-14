@@ -496,6 +496,7 @@ function UpdateList()
     listModel = javax.swing.DefaultListModel();
     % Add points to list
     iHeadPoints = 0;
+    lastIndex = 0;
     for iP = 1:numel(Digitize.Points)
         if ~isempty(Digitize.Points(iP).Label)
             listModel.addElement(sprintf('%s     %3.3f   %3.3f   %3.3f', Digitize.Points(iP).Label, Digitize.Points(iP).Loc .* 100));
@@ -503,11 +504,18 @@ function UpdateList()
             iHeadPoints = iHeadPoints + 1;
             listModel.addElement(sprintf('%03d     %3.3f   %3.3f   %3.3f', iHeadPoints, Digitize.Points(iP).Loc .* 100));
         end
+        if ~isempty(Digitize.Points(iP).Loc)
+            lastIndex = iP;
+        end
     end
     % Set this list
     ctrl.jListCoord.setModel(listModel);
-    lastIndex = listModel.getSize();
-    ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed
+    % Scroll to last collected point (non-empty Loc), +1 if more points listed.
+    if listModel.getSize() > lastIndex
+        ctrl.jListCoord.ensureIndexIsVisible(lastIndex); % 0-indexed
+    else
+        ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed, -1 works even if 0
+    end
     %ctrl.jListCoord.repaint();
 
     % Also update label of next point to digitize.
