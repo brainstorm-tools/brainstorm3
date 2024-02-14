@@ -645,6 +645,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
+
+    if exist(fullfile(bst_get('BrainstormUserDir'), 'plugins.json'), 'file')
+        plugin_text = fileread('plugins.json');
+        plugin_struct = jsondecode(plugin_text);
+        for iPlug = 1:length(plugin_struct)
+            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{iPlug}, 1); % same as existing struct
+            PlugDescDecode.Category = 'Custom Plugin';
+            PlugDesc(end+1) = PlugDescDecode;
+        end
+    end
+
     % ================================================================================================================
     
     % Select only one plugin
