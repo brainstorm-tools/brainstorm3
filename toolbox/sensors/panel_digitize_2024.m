@@ -38,7 +38,6 @@ end
 %% ===== START =====
 function Start() 
     global Digitize;
-    % ===== PREPARE DATABASE =====
     % If no protocol: exit
     if (bst_get('iProtocol') <= 0)
         bst_error('Please create a protocol first.', 'Digitize', 0);
@@ -47,7 +46,7 @@ function Start()
     % Get subject
     SubjectName = 'Digitize';
     [sSubject, iSubject] = bst_get('Subject', SubjectName);
-    % Create if subject doesnt exist
+    % Create if subject doesn't exist
     if isempty(iSubject)
         % Default anat / one channel file per subject
         UseDefaultAnat = 1;
@@ -56,15 +55,7 @@ function Start()
         % Update tree
         panel_protocols('UpdateTree');
     end
-    
-    % ===== PATIENT ID =====
-    % Ask for subject id
-    SubjectId = java_dialog('input', 'Please, enter subject id:', 'Digitize', []);
-    if isempty(SubjectId)
-        return;
-    end
-    
-    % ===== INITIALIZE CONNECTION =====
+
     % Intialize global variable
     Digitize = struct(...
         'Options',          bst_get('DigitizeOptions'), ...
@@ -75,15 +66,23 @@ function Start()
         'SubjectName',      SubjectName, ...
         'ConditionName',    [], ...
         'iStudy',           [], ...
-        'SubjectId',        SubjectId, ...
         'BeepWav',          [], ...
         'Points',           struct(...
-            'Label',     [], ...
-            'Type',      [], ...
-            'Loc',       []), ...
+            'Label',        [], ...
+            'Type',         [], ...
+            'Loc',          []), ...
         'iPoint',           0, ...
-        'Transf',        []);
+        'Transf',           []);
 
+    % Ask for subject id
+    Digitize.Options.PatientId = java_dialog('input', 'Please, enter subject ID:', 'Digitize', [], Digitize.Options.PatientId);
+    if isempty(Digitize.Options.PatientId)
+        return;
+    end
+    % Save new ID
+    bst_set('DigitizeOptions', Digitize.Options);
+
+    % ===== INITIALIZE CONNECTION =====
     % Start Serial Connection
     if ~CreateSerialConnection()
         return;
@@ -96,7 +95,7 @@ function Start()
     % Condition name: PatientId_Date_Run
     for i = 1:99
         % Generate new condition name
-        Digitize.ConditionName = sprintf('%s_%s_%02d', Digitize.SubjectId, CurrentDate, i);
+        Digitize.ConditionName = sprintf('%s_%s_%02d', Digitize.Options.PatientId, CurrentDate, i);
         % Get condition
         sStudy = bst_get('StudyWithCondition', [SubjectName '/' Digitize.ConditionName]);
         % If condition doesn't exist: ok, keep this one
@@ -185,47 +184,37 @@ function [bstPanelNew, panelName] = CreatePanel()
     gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitize', '-browser'), []);
     
     % ===== Control Panel =====
-    jPanelControl = java_create('javax.swing.JPanel');
-    jPanelControl.setLayout(BoxLayout(jPanelControl, BoxLayout.Y_AXIS));
-    jPanelControl.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));
-    %modeButtonGroup = javax.swing.ButtonGroup();
-
-    % ===== Warning Panel =====
-    jPanelWarning = gui_river([5,4], [10,10,10,10], '');
-        % Message label
-        jLabelFidMessage = gui_component('label', jPanelWarning, [], '', [], [], [], largeFontSize);
-        %jLabelFidMessage.setForeground(Color.red);
-    jPanelControl.add(jPanelWarning);
-    jPanelControl.add(Box.createVerticalStrut(20));
+    jPanelControl = gui_component('panel');
+    jPanelControl.setBorder(BorderFactory.createEmptyBorder(0,0,7,0));
 
     % ===== Next point Panel =====
-    jPanelFeedback = gui_river([5,4], [10,10,10,10], 'Next point');
+    jPanelNext = gui_river([5,4], [4,4,4,4], 'Next point');
         % Next point label
-        jLabelNextPoint = gui_component('label', jPanelFeedback, [], '', [], [], [], veryLargeFontSize);
-        jButtonFids = gui_component('button', jPanelFeedback, 'br', 'Add fiducials', [], 'Add set of fiducials to digitize', @(h,ev)bst_call(@Fiducials_Callback));
+        jLabelNextPoint = gui_component('label', jPanelNext, [], '', [], [], [], veryLargeFontSize);
+        jButtonFids = gui_component('button', jPanelNext, 'br', 'Add fiducials', [], 'Add set of fiducials to digitize', @(h,ev)bst_call(@Fiducials_Callback));
         jButtonFids.setEnabled(0);
-    jPanelControl.add(jPanelFeedback);
-    jPanelControl.add(Box.createVerticalStrut(20));
+    jPanelControl.add(jPanelNext, BorderLayout.NORTH);
 
-    % ===== Extra points panel =====
-    jPanelExtra = gui_river([5,4], [10,10,10,10], '');
-        gui_component('label', jPanelExtra, '', 'Head shape points');
-        % Number
-        jTextFieldExtra = gui_component('text', jPanelExtra, [], '0', [], 'Head shape points digitized', @(h,ev)bst_call(@ExtraChangePoint_Callback), largeFontSize);
+    % ===== Info Panel =====
+    jPanelInfo = gui_river([5,4], [10,10,10,10], '');
+        % Message label
+        jLabelWarning = gui_component('label', jPanelInfo, 'br', ' ', [], [], [], largeFontSize);
+        gui_component('label', jPanelInfo, 'br', ''); % spacing
+        % Number of head points collected
+        gui_component('label', jPanelInfo, 'br', 'Head shape points');
+        jTextFieldExtra = gui_component('text', jPanelInfo, [], '0', [], 'Head shape points digitized', @(h,ev)bst_call(@ExtraChangePoint_Callback), largeFontSize);
         initSize = jTextFieldExtra.getPreferredSize();
         jTextFieldExtra.setPreferredSize(Dimension(initSize.getWidth()*1.5, initSize.getHeight()*1.5))
-    jPanelControl.add(jPanelExtra);
-    jPanelControl.add(Box.createVerticalStrut(20));
+    jPanelControl.add(jPanelInfo, BorderLayout.CENTER);
     
     % ===== Other buttons =====
-    jPanelMisc = gui_river([5,4], [2,4,4,0]);
+    jPanelMisc = gui_river([5,4], [10,4,4,4]);
         gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
         % Until initial fids are collected and figure displayed, "delete" button is used to "restart".
         jButtonDeletePoint = gui_component('button', jPanelMisc, [], 'Start over', [], [], @(h,ev)bst_call(@ResetDataCollection, 1));
         gui_component('label', jPanelMisc, 'hfill', ''); % spacing 
         gui_component('button', jPanelMisc, [], 'Save as...', [], [], @(h,ev)bst_call(@Save_Callback));
-    jPanelControl.add(jPanelMisc);
-    jPanelControl.add(Box.createVerticalStrut(20));
+    jPanelControl.add(jPanelMisc, BorderLayout.SOUTH);
     jPanelNew.add(jPanelControl, BorderLayout.WEST);
                                
     % ===== Coordinate Display Panel =====
@@ -234,7 +223,6 @@ function [bstPanelNew, panelName] = CreatePanel()
         % List of coordinates
         jListCoord = JList(fontSize);
         jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
-        % Size
         jPanelScrollList = JScrollPane();
         jPanelScrollList.getLayout.getViewport.setView(jListCoord);
         jPanelScrollList.setHorizontalScrollBarPolicy(jPanelScrollList.HORIZONTAL_SCROLLBAR_NEVER);
@@ -247,8 +235,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     ctrl = struct('jMenuEeg',              jMenuEeg, ...
                   'jButtonFids',           jButtonFids, ...
                   'jLabelNextPoint',       jLabelNextPoint, ...
-                  'jLabelFidMessage',      jLabelFidMessage, ...
-                  'jPanelWarning',         jPanelWarning, ...
+                  'jLabelWarning',         jLabelWarning, ...
                   'jListCoord',            jListCoord, ...
                   'jTextFieldExtra',       jTextFieldExtra, ...
                   'jButtonDeletePoint',    jButtonDeletePoint);
@@ -413,6 +400,11 @@ function isOk = EditSettings()
     % Save values
     bst_set('DigitizeOptions', Digitize.Options);
     isOk = 1;
+
+    % If no points collected, reset.
+    if isempty(Digitize.Points) || ~isfield(Digitize.Points, 'Loc') || isempty(Digitize.Points(1).Loc)
+        ResetDataCollection(1);
+    end
 end
 
 
@@ -460,8 +452,8 @@ function ResetDataCollection(isResetSerial)
     ctrl.jTextFieldExtra.setEnabled(0);
     java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@ResetDataCollection, 1));
     ctrl.jButtonDeletePoint.setText('Start over');
-    ctrl.jLabelFidMessage.setText('');
-    ctrl.jPanelWarning.setBackground([]);
+    ctrl.jLabelWarning.setText('');
+    ctrl.jLabelWarning.setBackground([]);
 
     % Generate list of labeled points
     % Initial fiducials
@@ -524,11 +516,11 @@ end
 
 
 %% ===== MANUAL COLLECT CALLBACK ======
-function ManualCollect_Callback(h, ev)
+function ManualCollect_Callback()
     global Digitize
     % Simulation: call the callback directly
     if Digitize.Options.isSimulate
-        BytesAvailable_Callback(h, ev);
+        BytesAvailable_Callback();
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -538,7 +530,7 @@ function ManualCollect_Callback(h, ev)
 end
 
 %% ===== DELETE POINT CALLBACK =====
-function DeletePoint_Callback(h, ev) %#ok<INUSD>
+function DeletePoint_Callback()
     global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
@@ -578,7 +570,7 @@ function DeletePoint_Callback(h, ev) %#ok<INUSD>
 end
 
 %% ===== Check fiducials: add set to digitize now =====
-function Fiducials_Callback(h, ev)
+function Fiducials_Callback()
     global Digitize
     nRemaining = numel(Digitize.Points) - Digitize.iPoint;
     nFids = numel(Digitize.Options.Fids);
@@ -681,13 +673,18 @@ end
 
 %% ===== SAVE CALLBACK =====
 % This saves a .pos file, which requires first saving the channel file.
-function Save_Callback(h, ev, OutFile) %#ok<INUSD>
+function Save_Callback(OutFile)
     global Digitize
+    % Do nothing if no points to save
+    if isempty(Digitize.Points) || ~isfield(Digitize.Points, 'Loc') || isempty(Digitize.Points(1).Loc)
+        java_dialog('msgbox', 'No points yet collected. Nothing to save.', 'Save as...', []);
+        return;
+    end
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);
     SaveDigitizeChannelFile();
     % Export
-    if nargin > 2 && ~isempty(OutFile)
+    if nargin > 0 && ~isempty(OutFile)
         export_channel(ChannelFile, OutFile, 'POLHEMUS', 0);
     else
         export_channel(ChannelFile);
@@ -892,7 +889,7 @@ end
 %  ========================================================================
 
 %% ===== CREATE SERIAL COLLECTION =====
-function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
+function isOk = CreateSerialConnection()
     global Digitize 
     isOk = 0;
     while ~isOk
@@ -999,7 +996,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback(h, ev) %#ok<INUSD>
+function BytesAvailable_Callback(h, ev)
     global Digitize % rawpoints
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
@@ -1097,16 +1094,17 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         InitLoc = mean(cat(1, Digitize.Points(iSameFid(1:min(numel(iSameFid),max(1,Digitize.Options.nFidSets)))).Loc), 1);
         Distance = norm((InitLoc - Digitize.Points(Digitize.iPoint).Loc));
         if Distance > Digitize.Options.DistThresh
-            ctrl.jLabelFidMessage.setText([Digitize.Points(Digitize.iPoint).Label ' distance exceeds 5 mm']);
+            ctrl.jLabelWarning.setText([Digitize.Points(Digitize.iPoint).Label ' distance exceeds 5 mm']);
             fprintf('%s distance %1.1f mm\n', Digitize.Points(Digitize.iPoint).Label, Distance * 1000);
-            ctrl.jPanelWarning.setBackground(java.awt.Color.red);
+            ctrl.jLabelWarning.setOpaque(true);
+            ctrl.jLabelWarning.setBackground(java.awt.Color.red);
             % Extra beep for large distances
             % Beep not working in compiled version, replacing with this:
             if bst_iscompiled()
                 sound(Digitize.BeepWav(6000:2:16000,1), 22000);
             else
                 beep on;
-                WaitSecs(0.25); % maybe to help, sometimes it didn't do this 2nd beep
+                pause(0.25); % maybe to help, sometimes it didn't do this 2nd beep
                 beep();
             end
         end
@@ -1117,7 +1115,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         % Save temp pos file
         TmpDir = bst_get('BrainstormTmpDir');
         TmpPosFile = bst_fullfile(TmpDir, [Digitize.SubjectName '_' matlab.lang.makeValidName(Digitize.ConditionName) '.pos']);
-        Save_Callback([], [], TmpPosFile);
+        Save_Callback(TmpPosFile);
 
         % Empty points from channel file (used to create the temp .pos file) to then re-import that
         % .pos file. This is the simplest way to set up the coordinates, reusing usual Brainstorm

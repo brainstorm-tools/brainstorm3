@@ -70,7 +70,7 @@ function Start() %#ok<DEFNU>
     
     % ===== PATIENT ID =====
     % Ask for subject id
-    PatientId = java_dialog('input', 'Please, enter subject name or id:', 'Digitize', [], DigitizeOptions.PatientId);
+    PatientId = java_dialog('input', 'Please, enter subject ID:', 'Digitize', [], DigitizeOptions.PatientId);
     if isempty(PatientId)
         return;
     end
