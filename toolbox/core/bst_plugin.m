@@ -646,13 +646,22 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
 
-    if exist(fullfile(bst_get('BrainstormUserDir'), 'plugins.json'), 'file')
-        plugin_text = fileread('plugins.json');
+    plug_list = dir(fullfile(bst_get('BrainstormUserDir'), 'plugin_*.json'));
+    for iPlug = 1:length(plug_list)
+
+        plugin_text = fileread( fullfile(plug_list(iPlug).folder,plug_list(iPlug).name ));
         plugin_struct = jsondecode(plugin_text);
-        for iPlug = 1:length(plugin_struct)
-            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{iPlug}, 1); % same as existing struct
+        
+        if isstruct(plugin_struct) % One plugin inside the file 
+            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct, 1); % same as existing struct
             PlugDescDecode.Category = 'Custom Plugin';
             PlugDesc(end+1) = PlugDescDecode;
+        elseif iscell(plugin_struct) % multiple plugin inside the file 
+            for jPlug = 1:length(plugin_struct)
+                PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{jPlug}, 1); % same as existing struct
+                PlugDescDecode.Category = 'Custom Plugin';
+                PlugDesc(end+1) = PlugDescDecode;
+            end
         end
     end
 
