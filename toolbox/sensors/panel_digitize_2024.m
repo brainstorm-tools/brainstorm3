@@ -1094,7 +1094,7 @@ function BytesAvailable_Callback(h, ev)
         InitLoc = mean(cat(1, Digitize.Points(iSameFid(1:min(numel(iSameFid),max(1,Digitize.Options.nFidSets)))).Loc), 1);
         Distance = norm((InitLoc - Digitize.Points(Digitize.iPoint).Loc));
         if Distance > Digitize.Options.DistThresh
-            ctrl.jLabelWarning.setText([Digitize.Points(Digitize.iPoint).Label ' distance exceeds 5 mm']);
+            ctrl.jLabelWarning.setText(sprintf('%s distance exceeds %1.0f mm', Digitize.Points(Digitize.iPoint).Label, Digitize.Options.DistThresh * 1000));
             fprintf('%s distance %1.1f mm\n', Digitize.Points(Digitize.iPoint).Label, Distance * 1000);
             ctrl.jLabelWarning.setOpaque(true);
             ctrl.jLabelWarning.setBackground(java.awt.Color.red);
