@@ -161,8 +161,14 @@ function [bstPanelNew, panelName] = CreatePanel()
     fontSize      = round(11 * bst_get('InterfaceScaling') / 100);
 
     % ===== MENU BAR =====
+    jPanelMenu = gui_component('panel');
     jMenuBar = java_create('javax.swing.JMenuBar');
-    jPanelNew.add(jMenuBar, BorderLayout.NORTH);
+    jPanelMenu.add(jMenuBar, BorderLayout.NORTH);
+    jLabelNews = gui_component('label', jPanelMenu, BorderLayout.CENTER, 'Digitize version 2024.  To go back to original version: File > Switch to old...  See Help.', [], [], [], fontSize);
+    jLabelNews.setHorizontalAlignment(SwingConstants.CENTER);
+    jLabelNews.setOpaque(true);
+    jLabelNews.setBackground(java.awt.Color.yellow);
+
     % File menu
     jMenu = gui_component('Menu', jMenuBar, [], 'File', [], [], [], []);
     gui_component('MenuItem', jMenu, [], 'Start over', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@ResetDataCollection, 1), []);
@@ -183,6 +189,8 @@ function [bstPanelNew, panelName] = CreatePanel()
     jMenuHelp = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], []);
     gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitize', '-browser'), []);
     
+    jPanelNew.add(jPanelMenu, BorderLayout.NORTH);
+
     % ===== Control Panel =====
     jPanelControl = gui_component('panel');
     jPanelControl.setBorder(BorderFactory.createEmptyBorder(0,0,7,0));
