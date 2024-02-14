@@ -232,7 +232,8 @@ function [bstPanelNew, panelName] = CreatePanel()
         jListCoord = JList(fontSize);
         jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
         jPanelScrollList = JScrollPane();
-        jPanelScrollList.getLayout.getViewport.setView(jListCoord);
+        jPanelScrollList.setViewportView(jListCoord);
+        %jPanelScrollList.getLayout.getViewport.setView(jListCoord);
         jPanelScrollList.setHorizontalScrollBarPolicy(jPanelScrollList.HORIZONTAL_SCROLLBAR_NEVER);
         jPanelScrollList.setVerticalScrollBarPolicy(jPanelScrollList.VERTICAL_SCROLLBAR_ALWAYS);
         jPanelScrollList.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -505,14 +506,9 @@ function UpdateList()
     end
     % Set this list
     ctrl.jListCoord.setModel(listModel);
-    ctrl.jListCoord.repaint();
-    drawnow;
-    % Scroll down
-    %lastIndex = min(listModel.getSize(), 12 + nRecEEG + nHeadShape);
-    %selRect = ctrl.jListCoord.getCellBounds(lastIndex-1, lastIndex-1);
-    %ctrl.jListCoord.scrollRectToVisible(selRect);
+    lastIndex = listModel.getSize();
+    ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed
     %ctrl.jListCoord.repaint();
-    ctrl.jListCoord.getParent().getParent().repaint();
 
     % Also update label of next point to digitize.
     if numel(Digitize.Points) >= Digitize.iPoint + 1 && ~isempty(Digitize.Points(Digitize.iPoint + 1).Label)
