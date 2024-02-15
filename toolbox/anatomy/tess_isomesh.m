@@ -25,7 +25,7 @@ function [MeshFile, iSurface] = tess_isomesh(iSubject, isoValue, Comment)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Chinmay Chinara, 2023
+% Authors: Chinmay Chinara, 2023-2024
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -131,7 +131,7 @@ if isSave
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-    MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
+    MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'bem', 'MRI/CT mesh isosurface generated with Brainstorm');
@@ -148,12 +148,3 @@ end
 if isProgress
     bst_progress('stop');
 end
-
-% %% Manipulate mesh
-% % Show Coordinates panel
-% gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
-% % Start point selection
-% panel_ieeg_anatomical('SetSelectionState', 1);
-
-% Show ieeg panel
-% gui_show('panel_ieeg', 'JavaWindow', 'sEEG', [], 0, 1, 0);

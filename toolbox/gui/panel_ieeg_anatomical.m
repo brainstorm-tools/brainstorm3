@@ -180,8 +180,8 @@ end
 %  =================================================================================
 
 %% ===== REFERENCE CONTACTS FOR AN ELECTRODE =====
-function ReferenceContacts(varargin)
-    global CoordFileMat;
+function ReferenceContacts(varargin) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -202,8 +202,8 @@ function ReferenceContacts(varargin)
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
     % Get electrode orientation
-    elecTipMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(end-1).Loc./1000);
-    entryMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(end).Loc./1000);
+    elecTipMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end-1).Loc./1000);
+    entryMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end).Loc./1000);
     orient = entryMri - elecTipMri;
     orient = orient ./ sqrt(sum(orient .^ 2));
 
@@ -228,13 +228,18 @@ function ReferenceContacts(varargin)
 end
 
 %% ===== LOAD DATA =====
-function LoadOnStart()
-    global CoordFileMat;
-    global linePlotLoc;
-    global isRefVisible;
+function LoadOnStart() %#ok<DEFNU>
+    % ----- GLOBAL VARIABLES -----
+    % for storing/loading channel details
+    global ChannelAnatomicalMat;
+    ChannelAnatomicalMat = [];
     
-    CoordFileMat = [];
-    linePlotLoc = [];
+    % for keeping track of points used for plotting reference line
+    global refLinePlotLoc;
+    refLinePlotLoc = [];
+    
+    % for showing/hiding reference lines and points rendering
+    global isRefVisible;
     isRefVisible = 1;
 
     % Get panel controls
@@ -256,7 +261,7 @@ function LoadOnStart()
     
     % if file exists for the subject
     if isfile(CoordFile)
-        CoordFileMat = load(CoordFile);
+        ChannelAnatomicalMat = load(CoordFile);
         
         % SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         % hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
@@ -270,24 +275,23 @@ function LoadOnStart()
         % reset the list for fresh data
         ctrl.listModel.removeAllElements();
 
-        for i=1:length(CoordFileMat.Channel)
-            bst_progress('text', sprintf('Loading sEEG contact [%d/%d]', i, length(CoordFileMat.Channel)));
+        for i=1:length(ChannelAnatomicalMat.Channel)
+            bst_progress('text', sprintf('Loading sEEG contact [%d/%d]', i, length(ChannelAnatomicalMat.Channel)));
             
-            % STEP-1: update the Panel with laoded data
+            % ----- STEP-1: update the Panel with laoded data -----
             sMri = bst_memory('LoadMri', MriFile);
-            str = string(CoordFileMat.Channel(i).Name);
+            str = string(ChannelAnatomicalMat.Channel(i).Name);
             label_name = regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
             num_contacts = regexp(str, '\d*', 'match');
             
             ctrl.jTextLabel.setText(strjoin(label_name, ''));
             ctrl.jTextNcontacts.setText(num_contacts);
 
-            ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + num_contacts, CoordFileMat.Channel(i).Loc));
-            plotLocWorld = CoordFileMat.Channel(i).Loc ./ 1000;
+            ctrl.listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + num_contacts, ChannelAnatomicalMat.Channel(i).Loc));
+            plotLocWorld = ChannelAnatomicalMat.Channel(i).Loc ./ 1000;
             plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
 
-            % STEP-2: update the 3D points on the surface with loaded data
-            % ===== PLOT MARKER =====
+            % ----- STEP-2: update the 3D points on the surface with loaded data -----
             % Mark new point
             hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
             line(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
@@ -307,9 +311,12 @@ function LoadOnStart()
                 'Parent', hAxes, ...
                 'Tag', 'txtCoordinates');
             
-            linePlotLoc = [linePlotLoc, plotLocScs'];
+            % this currently saves all the points on loading
+            % need to define a new fiedl int he channelmat structure
+            % to pull just the tip and entry points for line rendering
+            refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
 
-            % STEP-3: update the MriViewer with points from the loaded data
+            % ----- STEP-3: update the MriViewer with points from the loaded data -----
             Handles = bst_figures('GetFigureHandles', hFig1);
             
             % Select the required point
@@ -333,7 +340,7 @@ function LoadOnStart()
     
     % if file does not exist for the subject
     else
-        CoordFileMat = db_template('channelmat'); 
+        ChannelAnatomicalMat = db_template('channelmat'); 
         
         res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter electrode details', ...
@@ -355,8 +362,8 @@ function LoadOnStart()
 end
 
 %% ===== SET CROSS-HAIR POSITION ON MRI =====
-function SetLocationMri(iIndex)
-    global CoordFileMat;
+function SetLocationMri(iIndex) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
 
     % Get current 3D figure
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
@@ -371,7 +378,7 @@ function SetLocationMri(iIndex)
     sMri = bst_memory('LoadMri', MriFile);
 
     % Select the required point
-    plotLocWorld = CoordFileMat.Channel(iIndex).Loc ./ 1000;
+    plotLocWorld = ChannelAnatomicalMat.Channel(iIndex).Loc ./ 1000;
     plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
     plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
 
@@ -379,8 +386,8 @@ function SetLocationMri(iIndex)
 end
 
 %% ===== UPDATE CALLBACK =====
-function UpdatePanel()
-    global CoordFileMat;
+function UpdatePanel() %#ok<DEFNU>
+    global ChannelAnatomicalMat;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -411,12 +418,12 @@ function UpdatePanel()
         CoordData.Loc = CoordinatesSelector.World' .* 1000;
         CoordData.Weight = 1;
         
-        CoordFileMat.Channel = [CoordFileMat.Channel, CoordData];
-        CoordFileMat.HeadPoints.Loc(:,end+1) = CoordData.Loc;
-        CoordFileMat.HeadPoints.Label = [CoordFileMat.HeadPoints.Label, {CoordData.Name}];
-        CoordFileMat.HeadPoints.Type = [CoordFileMat.HeadPoints.Type, {'EXTRA'}];
+        ChannelAnatomicalMat.Channel = [ChannelAnatomicalMat.Channel, CoordData];
+        ChannelAnatomicalMat.HeadPoints.Loc(:,end+1) = CoordData.Loc;
+        ChannelAnatomicalMat.HeadPoints.Label = [ChannelAnatomicalMat.HeadPoints.Label, {CoordData.Name}];
+        ChannelAnatomicalMat.HeadPoints.Type = [ChannelAnatomicalMat.HeadPoints.Type, {'EXTRA'}];
 
-        if isempty(CoordFileMat.IntraElectrodes)
+        if isempty(ChannelAnatomicalMat.IntraElectrodes)
             IntraElecData = db_template('intraelectrode');
             IntraElecData.Name = char(ctrl.jTextLabel.getText());
             IntraElecData.Type = 'SEEG';
@@ -424,12 +431,12 @@ function UpdatePanel()
             IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
             IntraElecData.Visible = 1;
 
-            CoordFileMat.IntraElectrodes = [CoordFileMat.IntraElectrodes, IntraElecData];
+            ChannelAnatomicalMat.IntraElectrodes = [ChannelAnatomicalMat.IntraElectrodes, IntraElecData];
         
         else
             isPresent = 0;
-            for i=1:length(CoordFileMat.IntraElectrodes)
-                if strcmpi(CoordFileMat.IntraElectrodes(i).Name, char(ctrl.jTextLabel.getText()))
+            for i=1:length(ChannelAnatomicalMat.IntraElectrodes)
+                if strcmpi(ChannelAnatomicalMat.IntraElectrodes(i).Name, char(ctrl.jTextLabel.getText()))
                     isPresent = 1;
                 end
             end
@@ -442,7 +449,7 @@ function UpdatePanel()
                 IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
                 IntraElecData.Visible = 1;
     
-                CoordFileMat.IntraElectrodes = [CoordFileMat.IntraElectrodes, IntraElecData];
+                ChannelAnatomicalMat.IntraElectrodes = [ChannelAnatomicalMat.IntraElectrodes, IntraElecData];
             end
         end
     end
@@ -466,8 +473,8 @@ function CurrentFigureChanged_Callback() %#ok<DEFNU>
 end
 
 %% ===== KEYBOARD CALLBACK =====
-function KeyPress_Callback(hFig, keyEvent)
-    global linePlotLoc;
+function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
+    global refLinePlotLoc;
     
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
 
@@ -486,7 +493,7 @@ function KeyPress_Callback(hFig, keyEvent)
             ctrl.jTextLabel.setText(res{2});
             ctrl.jTextContactSpacing.setText(res{3});
             ctrl.jButtonRefContacts.setEnabled(1);
-            linePlotLoc = [];
+            refLinePlotLoc = [];
         
         case {'escape'}
             % exit the selection state to stop plotting contacts
@@ -512,7 +519,7 @@ function KeyPress_Callback(hFig, keyEvent)
                 ctrl.jTextLabel.setText(res{2});
                 ctrl.jTextContactSpacing.setText(res{3});
                 ctrl.jButtonRefContacts.setEnabled(1);
-                linePlotLoc = [];
+                refLinePlotLoc = [];
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
@@ -533,7 +540,7 @@ end
 
 %% ===== POINT SELECTION : start/stop =====
 % Manual selection of a surface point : start(1), or stop(0)
-function SetSelectionState(isSelected)
+function SetSelectionState(isSelected) %#ok<DEFNU>
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     if isempty(ctrl)
@@ -571,9 +578,9 @@ function SetSelectionState(isSelected)
 end
 
 %% ===== SELECT POINT =====
-% Usage : SelectPoint(hFig) : Point location = user click in figure hFIg
+% Usage : SelectPoint(hFig) : Point location = user click in figure hFig
 function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
-    global linePlotLoc;
+    global refLinePlotLoc;
 
     % parse arguments
     if (nargin < 2) || isempty(AcceptMri)
@@ -681,7 +688,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Parent', hAxes, ...
         'Tag', 'txtCoordinates');
     
-    linePlotLoc = [linePlotLoc, plotLoc'];
+    refLinePlotLoc = [refLinePlotLoc, plotLoc'];
     
     % Update "Coordinates" panel
     UpdatePanel();
@@ -689,7 +696,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
 end
 
 %% ===== POINT SELECTION: Surface detection =====
-function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
+function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType) %#ok<DEFNU>
     % set global variable to track the vetices in around a selected point on surface
     global VertexList;
     VertexList = [];
@@ -771,7 +778,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
 end
 
 %% ===== FIND CENTROID OF A CONTACT =====
-function FindCentroid(sSurf, listCoord, cnt, cntThresh)
+function FindCentroid(sSurf, listCoord, cnt, cntThresh) %#ok<DEFNU>
     global VertexList;
 
     if cnt == cntThresh
@@ -792,21 +799,23 @@ end
 % this function renders a line between the 1st two initial points of the electrode
 % - the tip point and the entry point - that gives the orientation of the electrode
 % which serves as a reference for the user  
-function DrawLine(varargin)
-    global linePlotLoc;
+function DrawLine(varargin) %#ok<DEFNU>
+    global refLinePlotLoc;
     
     % Get axes handle
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-    line(linePlotLoc(1,:), linePlotLoc(2,:), linePlotLoc(3,:), ...
+    line(refLinePlotLoc(1,:), refLinePlotLoc(2,:), refLinePlotLoc(3,:), ...
          'Color', [1 1 0], ...
          'LineWidth',       2, ...
          'Parent', hAxes, ...
          'Tag', 'lineCoordinates');
+    
+    refLinePlotLoc = [];
 end
 
 %% ===== SHOW/HIDE REFERENCE POINTS AND LINES =====
-function ShowHideReference(varargin)
+function ShowHideReference(varargin) %#ok<DEFNU>
     global isRefVisible;
 
     refCoord = findobj(0, 'Tag', 'ptCoordinates1');
@@ -824,11 +833,11 @@ function ShowHideReference(varargin)
 end
 
 %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
-function RemoveContactAtLocation(Loc)
+function RemoveContactAtLocation(Loc) %#ok<DEFNU>
     % Unselect selection button 
     % SetSelectionState(0);
     
-    global CoordFileMat;
+    global ChannelAnatomicalMat;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     % Find all selected points
@@ -846,17 +855,17 @@ function RemoveContactAtLocation(Loc)
         ctrl.listModel.remove(Loc-1);
 
         % delete from mat
-        CoordFileMat.Channel(Loc) = [];
+        ChannelAnatomicalMat.Channel(Loc) = [];
         
         % make sure the Channel sturture field is cleared when no contacts
         % are marked
         if length(hCoord) == 1
-            CoordFileMat.Channel = [];
+            ChannelAnatomicalMat.Channel = [];
         end
 
-        CoordFileMat.HeadPoints.Loc(:, Loc) = [];
-        CoordFileMat.HeadPoints.Label(Loc) = [];
-        CoordFileMat.HeadPoints.Type(Loc) = [];
+        ChannelAnatomicalMat.HeadPoints.Loc(:, Loc) = [];
+        ChannelAnatomicalMat.HeadPoints.Label(Loc) = [];
+        ChannelAnatomicalMat.HeadPoints.Type(Loc) = [];
     end
 
     % Find all selected points text
@@ -962,11 +971,11 @@ function RemoveContactAtLocation(Loc)
 end
 
 %% ===== REMOVE LAST CONTACT =====
-function RemoveLastContact(varargin)
+function RemoveLastContact(varargin) %#ok<DEFNU>
     % Unselect selection button 
     % SetSelectionState(0);
     
-    global CoordFileMat;
+    global ChannelAnatomicalMat;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     % Find all selected points
@@ -988,15 +997,15 @@ function RemoveLastContact(varargin)
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
         ctrl.jTextLabel.setText(label_name);
         ctrl.listModel.remove(length(hCoord)-1);
-        CoordFileMat.Channel(length(hCoord)) = [];
-        CoordFileMat.HeadPoints.Loc(:, length(hCoord)) = [];
-        CoordFileMat.HeadPoints.Label(length(hCoord)) = [];
-        CoordFileMat.HeadPoints.Type(length(hCoord)) = [];
+        ChannelAnatomicalMat.Channel(length(hCoord)) = [];
+        ChannelAnatomicalMat.HeadPoints.Loc(:, length(hCoord)) = [];
+        ChannelAnatomicalMat.HeadPoints.Label(length(hCoord)) = [];
+        ChannelAnatomicalMat.HeadPoints.Type(length(hCoord)) = [];
 
         % make sure the Channel sturture field is cleared when no contacts
         % are marked
         if length(hCoord) == 1
-            CoordFileMat.Channel = [];
+            ChannelAnatomicalMat.Channel = [];
         end
     end
 
@@ -1103,8 +1112,8 @@ function RemoveLastContact(varargin)
 end
 
 %% ===== REMOVE ALL CONTACTS =====
-function RemoveAllContacts(varargin)
-    global CoordFileMat;
+function RemoveAllContacts(varargin) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
 
     % Unselect selection button 
     SetSelectionState(0);
@@ -1126,10 +1135,10 @@ function RemoveAllContacts(varargin)
         % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
         ctrl.listModel.removeAllElements();
         ctrl.jTextNcontacts.setText(sprintf("%d", 0));
-        CoordFileMat.Channel = [];
-        CoordFileMat.HeadPoints.Loc = [];
-        CoordFileMat.HeadPoints.Label = [];
-        CoordFileMat.HeadPoints.Type = [];
+        ChannelAnatomicalMat.Channel = [];
+        ChannelAnatomicalMat.HeadPoints.Loc = [];
+        ChannelAnatomicalMat.HeadPoints.Label = [];
+        ChannelAnatomicalMat.HeadPoints.Type = [];
     end
 
     % Find all selected points text
@@ -1247,7 +1256,7 @@ function RemoveAllContacts(varargin)
 end
 
 %% ===== VIEW IN MRI VIEWER =====
-function ViewInMriViewer(varargin)
+function ViewInMriViewer(varargin) %#ok<DEFNU>
     global GlobalData;
 
     % Get panel controls
@@ -1301,8 +1310,8 @@ function ViewInMriViewer(varargin)
 end
 
 %% ===== SAVE ALL TO DATABASE =====
-function SaveAll(varargin)
-    global CoordFileMat;
+function SaveAll(varargin) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1326,9 +1335,9 @@ function SaveAll(varargin)
     CoordFile  = bst_fullfile(CoordDir, 'channel_seeg.mat');
     
     % Save coordinates to file
-    CoordFileMat.Comment = sprintf('EEG coordinates');
-    CoordFileMat = bst_history('add', CoordFileMat, 'test', 'saved coordinates');
-    bst_save(CoordFile, CoordFileMat, 'v7');
+    ChannelAnatomicalMat.Comment = sprintf('EEG coordinates');
+    ChannelAnatomicalMat = bst_history('add', ChannelAnatomicalMat, 'test', 'saved coordinates');
+    bst_save(CoordFile, ChannelAnatomicalMat, 'v7');
     
     bst_progress('stop');
 end
