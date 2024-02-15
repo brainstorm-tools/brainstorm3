@@ -516,7 +516,10 @@ function UpdateList()
     else
         ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed, -1 works even if 0
     end
-    %ctrl.jListCoord.repaint();
+    % On Windows, randomly scrolls to top of list instead of at the end, try these to fix it
+    ctrl.jListCoord.repaint();
+    ctrl.jListCoord.getParent().repaint();
+    ctrl.jListCoord.getParent().getParent().repaint();
 
     % Also update label of next point to digitize.
     if numel(Digitize.Points) >= Digitize.iPoint + 1 && ~isempty(Digitize.Points(Digitize.iPoint + 1).Label)
@@ -630,13 +633,16 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
 
     % Add EEG sensor locations to channel stucture
     if strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EEG')
-        if isempty(GlobalData.DataSet(Digitize.iDS).Channel)
-            % First point in the list. 
+        if ~isstruct(GlobalData.DataSet(Digitize.iDS).Channel) || ~isfield(GlobalData.DataSet(Digitize.iDS).Channel, 'Name')
+            % First point in the list. This creates one channel, with empty fields.
             GlobalData.DataSet(Digitize.iDS).Channel = db_template('channeldesc');
-            %This created an element in the Channel array, so remove it for consistency.
-            GlobalData.DataSet(Digitize.iDS).Channel(1) = []; % keeps struct
         end
-        iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
+        if numel(GlobalData.DataSet(Digitize.iDS).Channel) == 1 && isempty(GlobalData.DataSet(Digitize.iDS).Channel(1).Name)
+            % Overwrite empty channel created by template.
+            iP = 1;
+        else
+            iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
+        end
         if isAdd
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Name = Digitize.Points(Digitize.iPoint).Label;
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Type = Digitize.Points(Digitize.iPoint).Type; % 'EEG'
@@ -669,7 +675,8 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
     hHeadPointsLabels  = findobj(hAxes, 'Tag', 'HeadPointsLabels');
     delete(hHeadPointsMarkers);
     delete(hHeadPointsLabels);
-    % If all EEG were removed, ViewSensors won't remove the last remaining (first) EEG, so do it manually.
+    % If all EEG were removed, ViewSensors won't remove the last remaining (first) EEG from the
+    % figure, so do it manually.
     if isempty(GlobalData.DataSet(Digitize.iDS).Channel)
         hSensorMarkers = findobj(hAxes, 'Tag', 'SensorsMarkers');
         hSensorLabels  = findobj(hAxes, 'Tag', 'SensorsLabels');
@@ -678,7 +685,11 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
     end
     % View all points in the channel file
     figure_3d('ViewHeadPoints', Digitize.hFig, 1);
-    figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
+    % This would give error if the channel structure is not truely empty: db_template creates
+    % effectively 1 channel with empty fields.
+    if ~isempty(GlobalData.DataSet(Digitize.iDS).Channel) && ~isempty(GlobalData.DataSet(Digitize.iDS).Channel(1).Name)
+        figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
+    end
     % Hide template head surface
     panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
 end
@@ -1128,36 +1139,22 @@ function BytesAvailable_Callback(h, ev)
         TmpDir = bst_get('BrainstormTmpDir');
         TmpPosFile = bst_fullfile(TmpDir, [Digitize.SubjectName '_' matlab.lang.makeValidName(Digitize.ConditionName) '.pos']);
         Save_Callback(TmpPosFile);
-
-        % Empty points from channel file (used to create the temp .pos file) to then re-import that
-        % .pos file. This is the simplest way to set up the coordinates, reusing usual Brainstorm
-        % functions.
-        sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
-        ChannelFile = file_fullpath(sStudy.Channel.FileName);
-        ChannelMat = load(ChannelFile);
-        ChannelMat.Channel = db_template('channeldesc');
-        ChannelMat.HeadPoints.Loc = [];
-        ChannelMat.HeadPoints.Label = [];
-        ChannelMat.HeadPoints.Type = [];
-        bst_save(ChannelFile, ChannelMat, 'v7');
-
-        % import_channel -> in_channel_pos, channel_detect_type
-        FileMat = import_channel(Digitize.iStudy, TmpPosFile, 'POLHEMUS', 0, 0, 0, 1, 0); % don't save, fix units
+        % Re-import that .pos file. This converts to "Native" CTF coil-based coordinates.  
+        HeadPointsMat = in_channel_pos(TmpPosFile);
         % Delete temp file
         file_delete(TmpPosFile, 1);
-        Digitize.Transf = FileMat.TransfMeg{end}(1:3,:); % 3x4 transform matrix
-        if isempty(Digitize.Transf)
+        % Check for coordinate system transformation. There should be only 1, either to Native CTF or to SCS.
+        if ~isfield(HeadPointsMat, 'TransfMegLabels') || ~iscell(HeadPointsMat.TransfMegLabels) || numel(HeadPointsMat.TransfMegLabels) ~= 1
             error('Missing coordinate transformation');
         end
-        % Copy imported points (with coordinates transformed)
-        % Updating the channel file to save these essential points, and possibly needed for creating figure.
-        ChannelMat.Channel = FileMat.Channel; % There shouldn't be any EEG yet, so this should be empty
-        ChannelMat.HeadPoints = FileMat.HeadPoints;
-        bst_save(ChannelFile, ChannelMat, 'v7');
-        % Update coordinates
+        Digitize.Transf = HeadPointsMat.TransfMeg{1}(1:3,:); % 3x4 transform matrix
+        % Update coordinates in our list
         for iP = 1:Digitize.iPoint % there could be EEG after, with empty Loc
             Digitize.Points(iP).Loc = [Digitize.Points(iP).Loc, 1] * Digitize.Transf';
         end
+        UpdateList();
+        % Update the channel file to save these essential points, and possibly needed for creating figure.
+        SaveDigitizeChannelFile();
         
         % Create figure, store hFig & iDS
         CreateHeadpointsFigure();
