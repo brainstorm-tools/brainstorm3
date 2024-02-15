@@ -125,7 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
-    setappdata(hFig, 'isSelectingCoordinatesSeeg',  0);
+    setappdata(hFig, 'isSelectingContactLabelIeeg',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -544,7 +544,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
-    isSelectingCoordinatesSeeg  = getappdata(hFig, 'isSelectingCoordinatesSeeg');
+    isSelectingContactLabelIeeg  = getappdata(hFig, 'isSelectingContactLabelIeeg');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -631,9 +631,9 @@ function FigureMouseUpCallback(hFig, varargin)
             end
         
         % === SELECTING POINT SEEG ===
-        elseif isSelectingCoordinatesSeeg
+        elseif isSelectingContactLabelIeeg
             % Selecting from Coordinates panel
-            if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
+            if gui_brainstorm('isTabVisible', 'ContactLabelIeeg')
                 panel_ieeg_anatomical('SelectPoint', hFig);
             % Selecting fiducials linked with MRI viewer
             else
@@ -1444,7 +1444,7 @@ function GetCoordinates(varargin)
 end
 
 %% ===== GET COORDINATES SEEG =====
-function GetCoordinatesSeeg(varargin)
+function GetContactLabelIeeg(varargin)
     % Show Coordinates panel
     gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
     % Load data on start if present from database
@@ -1973,7 +1973,7 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
+        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
     end
     
     % ==== MENU: SNAPSHOT ====
