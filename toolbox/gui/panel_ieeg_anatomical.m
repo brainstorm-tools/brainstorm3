@@ -1,7 +1,7 @@
-function varargout = panel_ieeg_anat(varargin)
-% PANEL_IEEG_ANAT: Create a panel to manually add/remove/edit seeg contacts in a given isosureface (3DViz) figure.
+function varargout = panel_ieeg_anatomical(varargin)
+% PANEL_IEEG_ANATOMICAL: Create a panel to manually add/remove/edit seeg contacts in a given isosurface (3DViz) figure.
 % 
-% USAGE:  bstPanelNew = panel_ieeg_anat('CreatePanel')
+% USAGE:  bstPanelNew = panel_ieeg_anatomical('CreatePanel')
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -38,6 +38,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     linePlotLocX = [];
     linePlotLocY = [];
     linePlotLocZ = [];
+    global VertexList;
+    VertexList = [];
 
     global deleteLoc;
     deleteLoc = 0;
@@ -71,17 +73,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "View in MRI Viewer"
         % gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
         % Button "Prompt user for setting initial guess"
-        gui_component('ToolbarButton', jToolbar, [], 'Init', IconLoader.ICON_SCOUT_NEW, 'Initial guess', @(h,ev)bst_call(@InitialGuess_Callback,h,ev));
+        jButtonInitGuess = gui_component('ToolbarButton', jToolbar, [], 'Init', IconLoader.ICON_SCOUT_NEW, 'Initial guess of Contacts for an electrode', @InitialGuessContacts);
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
+        jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
+        jButtonRemoveLast = gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove selection"
-        gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
+        jButtonRemoveAll = gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
         % Button "Draw Line"
-        % gui_component('ToolbarButton', jToolbar, [], 'LFit', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
+        jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'LFit', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
         % Button "Save all to database"
-        gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
+        jButtonSaveAll = gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
                   
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
@@ -114,6 +116,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelCoordinates = gui_river('');            
             jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
             jTextLabel = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
+            jTextContactSpacing = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
         jPanelMain.add(jPanelCoordinates, BorderLayout.SOUTH);
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
     
@@ -124,14 +127,21 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
-                           struct('jTextNcontacts',    jTextNcontacts, ...
-                                  'jTextLabel',        jTextLabel, ...
-                                  'jPanelCoordinates', jPanelCoordinates, ...
-                                  'jListElec',         jListElec, ...
-                                  'jPanelElecList',    jPanelElecList, ...
-                                  'listModel',         listModel, ...
-                                  'jLabelSelectElec',  jLabelSelectElec));
-                                  % 'jButtonSelect',     jButtonSelect, ...
+                           struct('jTextNcontacts',         jTextNcontacts, ...
+                                  'jTextLabel',             jTextLabel, ...
+                                  'jTextContactSpacing',    jTextContactSpacing, ...
+                                  'jPanelCoordinates',      jPanelCoordinates, ...
+                                  'jListElec',              jListElec, ...
+                                  'jPanelElecList',         jPanelElecList, ...
+                                  'listModel',              listModel, ...
+                                  'jLabelSelectElec',       jLabelSelectElec, ...
+                                  'jButtonInitGuess',       jButtonInitGuess, ...
+                                  'jButtonRemoveSelected',  jButtonRemoveSelected, ...
+                                  'jButtonRemoveLast',      jButtonRemoveLast, ...
+                                  'jButtonRemoveAll',       jButtonRemoveAll, ...
+                                  'jButtonSaveAll',         jButtonSaveAll));
+                                  % 'jButtonSelect',          jButtonSelect, ...
+                                  % 'jButtonDrawLine',        jButtonDrawLine, ...
 
     %% ============================================================================
     %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL) =========
@@ -184,11 +194,65 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
     end
 end
-
-            
+           
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+
+%% ===== INITIAL GUESS OF CONTACTS FOR AN ELECTRODE =====
+function InitialGuessContacts(varargin)
+    global CoordFileMat;
+
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'CoordinatesSeeg');
+    if isempty(ctrl)
+        return
+    end
+    
+    contact_spacing = str2double(ctrl.jTextContactSpacing.getText());
+    num_contacts = 12;
+    % disp(contact_spacing);
+    
+
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    sMri = bst_memory('LoadMri', MriFile);
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    % Get electrode orientation
+    elecTipMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(1).Loc./1000);
+    entryMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(2).Loc./1000);
+    orient = entryMri - elecTipMri; % (sElectrodes(iElec).Loc(:,2) - elecTip);
+    orient = orient ./ sqrt(sum(orient .^ 2));
+    % disp(orient);
+
+    % Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+    % Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+    for i = 1:num_contacts
+        % Compute the default position of the contact
+        posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
+        pos = cs_convert(sMri, 'mri', 'scs', posMri);
+
+        % disp(['Coord ', num2str(i), ':', num2str(pos)])
+
+        line(pos(1), pos(2), pos(3), ...
+             'MarkerFaceColor', [1 0 1], ...
+             'MarkerEdgeColor', [1 0 1], ...
+             'Marker',          'o',  ...
+             'MarkerSize',      10, ...
+             'LineWidth',       2, ...
+             'Parent',          hAxes, ...
+             'Tag',             'ptCoordinates1');
+    end
+    
+    % ctrl.jButtonInitGuess.setEnabled(0);
+    
+    UpdatePanel();
+end
 
 %% ===== LOAD DATA =====
 function LoadOnStart()
@@ -222,8 +286,9 @@ function LoadOnStart()
     if isfile(CoordFile)
         CoordFileMat = load(CoordFile);
         
-        SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-        hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+        % SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+        % hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+        hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
         
         isProgress = bst_progress('isVisible');
         if ~isProgress
@@ -232,7 +297,14 @@ function LoadOnStart()
 
         % reset the list from fresh data
         ctrl.listModel.removeAllElements();
-                
+        
+        % TESTING
+        % clc;
+        % for i = 167:183
+        %     orient = CoordFileMat.Channel(i-1).Loc - CoordFileMat.Channel(i).Loc; % already in mm
+        %     disp([CoordFileMat.Channel(i-1).Name, '-', CoordFileMat.Channel(i).Name, '= ', num2str(sqrt(sum(orient .^ 2))), ' mm']);
+        % end
+
         for i=1:length(CoordFileMat.Channel)
             bst_progress('text', sprintf('Loading sEEG contact [%d/%d]', i, length(CoordFileMat.Channel)));
             
@@ -295,26 +367,31 @@ function LoadOnStart()
             figure_mri('UpdateVisibleLandmarks', sMri, Handles);
         end
         SetSelectionState(0);
+    
+    % if file does not exist for the subject
     else
         CoordFileMat = db_template('channelmat'); 
-
-        res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+        
+        res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter Number of contacts', ...
                                 [], ...
-                                {num2str(10), 'A'});
+                                {num2str(10), 'A', num2str(2)});
         if isempty(res)
             return;
         end
         SetSelectionState(1);
         ctrl.jTextNcontacts.setText(res{1});
         ctrl.jTextLabel.setText(res{2});
+        ctrl.jTextContactSpacing.setText(res{3});
     end
+    
+    % panel_scout('CreateAtlasCluster', 1);
 
     UpdatePanel();
     bst_progress('stop');
 end
 
-%% ===== SET CURSOR ON MRI =====
+%% ===== SET CROSS-HAIR POSITION ON MRI =====
 function SetLocationMri(iIndex)
     global CoordFileMat;
 
@@ -329,7 +406,7 @@ function SetLocationMri(iIndex)
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
     sMri = bst_memory('LoadMri', MriFile);
-    
+
     % Select the required point
     plotLocWorld = CoordFileMat.Channel(iIndex).Loc ./ 1000;
     plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
@@ -375,6 +452,36 @@ function UpdatePanel()
         CoordFileMat.HeadPoints.Loc(:,end+1) = CoordData.Loc;
         CoordFileMat.HeadPoints.Label = [CoordFileMat.HeadPoints.Label, {CoordData.Name}];
         CoordFileMat.HeadPoints.Type = [CoordFileMat.HeadPoints.Type, {'EXTRA'}];
+
+        if isempty(CoordFileMat.IntraElectrodes)
+            IntraElecData = db_template('intraelectrode');
+            IntraElecData.Name = char(ctrl.jTextLabel.getText());
+            IntraElecData.Type = 'SEEG';
+            IntraElecData.Color = [0 0.8 0];
+            IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
+            IntraElecData.Visible = 1;
+
+            CoordFileMat.IntraElectrodes = [CoordFileMat.IntraElectrodes, IntraElecData];
+        
+        else
+            isPresent = 0;
+            for i=1:length(CoordFileMat.IntraElectrodes)
+                if strcmpi(CoordFileMat.IntraElectrodes(i).Name, char(ctrl.jTextLabel.getText()))
+                    isPresent = 1;
+                end
+            end
+
+            if ~isPresent
+                IntraElecData = db_template('intraelectrode');
+                IntraElecData.Name = char(ctrl.jTextLabel.getText());
+                IntraElecData.Type = 'SEEG';
+                IntraElecData.Color = [0 0.8 0];
+                IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
+                IntraElecData.Visible = 1;
+    
+                CoordFileMat.IntraElectrodes = [CoordFileMat.IntraElectrodes, IntraElecData];
+            end
+        end
     end
 
     % Set this list
@@ -406,16 +513,17 @@ function KeyPress_Callback(hFig, keyEvent)
     switch (keyEvent.Key)
         case {'l'}
             % label contacts
-            res = java_dialog('input', {'Number of contacts', 'Label Name'}, ...
+            res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter Number of contacts', ...
                                 [], ...
-                                {num2str(10), 'A'});
+                                {num2str(10), 'A', num2str(2)});
             if isempty(res)
                 return;
             end
             SetSelectionState(1);
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
+            ctrl.jTextContactSpacing.setText(res{3});
             linePlotLocX = [];
             linePlotLocY = [];
             linePlotLocZ = [];
@@ -520,7 +628,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     % Find the closest surface point that was selected
-    [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig);
+    [TessInfo, iTess, pout, vout, vi, hPatch, facevout, fi] = ClickPointInSurface(hFig);
     if isempty(TessInfo)
         return
     end
@@ -585,10 +693,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     
     % ===== CONVERT TO ALL COORDINATES SYSTEMS =====
     % Save selected point
-    CoordinatesSelector.SCS     = scsLoc;
-    CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', scsLoc);
-    CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', scsLoc);
-    CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', scsLoc);
+    CoordinatesSelector.SCS     = plotLoc;
+    CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', plotLoc);
+    CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', plotLoc);
+    CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', plotLoc);
     CoordinatesSelector.iVertex = iVertex;
     CoordinatesSelector.Value   = Value;
     CoordinatesSelector.hPatch  = hPatch;
@@ -598,7 +706,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Remove previous mark
     % delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1), plotLoc(2), plotLoc(3) * 0.995, ...
+    line(plotLoc(1), plotLoc(2), plotLoc(3), ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          'o',  ...
@@ -617,7 +725,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     
     linePlotLocX = [linePlotLocX, plotLoc(1)];
     linePlotLocY = [linePlotLocY, plotLoc(2)];
-    linePlotLocZ = [linePlotLocZ, plotLoc(3) * 0.995];
+    linePlotLocZ = [linePlotLocZ, plotLoc(3)];
     
     % Update "Coordinates" panel
     UpdatePanel();
@@ -625,8 +733,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
 end
 
 %% ===== POINT SELECTION: Surface detection =====
-function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
+function [TessInfo, iTess, pout, vout, vi, hPatch, facevout, fi] = ClickPointInSurface(hFig, SurfacesType)
     % Parse inputs
+    global VertexList;
+
     if (nargin < 2)
         SurfacesType = [];
     end
@@ -634,6 +744,8 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     pout = {};
     vout = {};
     vi = {};
+    facevout = {};
+    fi = {};
     hPatch = [];
     
     % === GET SURFACES INFORMATION ===
@@ -643,6 +755,10 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
     TessInfo = getappdata(hFig, 'Surface');
+    
+    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+    % Labels = tess_cluster(sSurf.VertConn, 30, 1);
+
     if isempty(TessInfo)
         return
     end
@@ -658,21 +774,40 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % ===== GET SELECTION ON THE CLOSEST SURFACE =====
     % Get the closest point for all the surfaces and patches
     hPatch = [TessInfo(iAcceptableTess).hPatch];
+
     hPatch = hPatch(ishandle(hPatch));
     patchDist = zeros(1,length(hPatch));
     for i = 1:length(hPatch)
-        [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
+        [pout{i}, vout{i}, vi{i}, facevout{i}, fi{i}] = select3d(hPatch(i));
+        % disp(['Coord ', num2str(i)]);
+        % disp(pout{i});
+        % disp(vout{i});
+        % disp(vi{i});
+        % disp(facevout{i});
+        % disp(fi{i});
+        
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
         else
             patchDist(i) = Inf;
         end
+
+        % PatchConn = sSurf.VertConn(vi{i}, vi{i});
+        % disp(length(PatchConn));
+        % disp(tess_vertconn(vi{i}, fi{i}));
+        % disp(find(sSurf.VertConn(vi{i},:)));
+        LoopTillCnt(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
+        vout = mean(sSurf.Vertices(VertexList(:), :));
+        % disp(vout);
+        VertexList = [];
     end
     if all(isinf(patchDist))
         TessInfo = [];
         pout = [];
         vout = [];
         vi = [];
+        facevout = [];
+        fi = [];
         return
     end
     % Find closest surface from the camera
@@ -680,16 +815,32 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Keep only the point from the closest surface
     hPatch = hPatch(iClosestPatch);
     pout   = pout{iClosestPatch};
-    % disp(pout);
-    vout   = vout{iClosestPatch};
-    % disp(vout);
+    % vout   = vout{iClosestPatch};
     vi     = vi{iClosestPatch};
-
+    facevout   = facevout{iClosestPatch};
+    fi     = fi{iClosestPatch};
+    
     % Find to which surface this tesselation belongs
     for i = 1:length(TessInfo)
         if any(TessInfo(i).hPatch == hPatch);
             iTess = i;
             break;
+        end
+    end
+end
+
+%% ===== test function =====
+function LoopTillCnt(sSurf, listCoord, cnt, cntThresh)
+    global VertexList;
+
+    if cnt == cntThresh
+        return;
+    else
+        cnt = cnt + 1;
+        for i=1:length(listCoord)
+            VertexList = [VertexList, listCoord(i)];
+            listCoord1 = find(sSurf.VertConn(listCoord(i),:));
+            LoopTillCnt(sSurf, listCoord1, cnt, cntThresh);
         end
     end
 end
@@ -702,7 +853,7 @@ function DrawLine(varargin)
     global linePlotLocZ;
     
     % Get axes handle
-    hFig = bst_figures('GetCurrentFigure', '3D');
+    hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
     line(linePlotLocX, linePlotLocY, linePlotLocZ , ...
@@ -1158,8 +1309,9 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+    % SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
+    % hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
     

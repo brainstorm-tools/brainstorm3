@@ -634,13 +634,13 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinatesSeeg
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-                panel_ieeg_anat('SelectPoint', hFig);
+                panel_ieeg_anatomical('SelectPoint', hFig);
             % Selecting fiducials linked with MRI viewer
             else
                 hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
                 if ~isempty(hView3DHeadFig)
                     % Find the closest surface point that was selected
-                    [TessInfo, iTess, pout] = panel_ieeg_anat('ClickPointInSurface', hView3DHeadFig);
+                    [TessInfo, iTess, pout] = panel_ieeg_anatomical('ClickPointInSurface', hView3DHeadFig);
                     if isempty(TessInfo)
                         return
                     end
@@ -1446,11 +1446,11 @@ end
 %% ===== GET COORDINATES SEEG =====
 function GetCoordinatesSeeg(varargin)
     % Show Coordinates panel
-    gui_show('panel_ieeg_anat', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
+    gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
     % Load data on start if present from database
-    panel_ieeg_anat('LoadOnStart');
+    panel_ieeg_anatomical('LoadOnStart');
     % Start point selection
-    % panel_ieeg_anat('SetSelectionState', 1);
+    % panel_ieeg_anatomical('SetSelectionState', 1);
 end
 
 
@@ -1973,10 +1973,7 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        
-        if contains([GlobalData.Surface(:).Comment], "isoSurface")
-            gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
-        end
+        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinatesSeeg);
     end
     
     % ==== MENU: SNAPSHOT ====

@@ -76,7 +76,7 @@ switch (panelName)
         end
     case 'CoordinatesSeeg'
         if gui_brainstorm('isTabVisible', 'CoordinatesSeeg')
-            panel_ieeg_anat('RemoveAllContacts');
+            panel_ieeg_anatomical('RemoveAllContacts');
         end
     case 'Digitize'
         isAccepted = panel_digitize('PanelHidingCallback');
