@@ -48,23 +48,30 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     set(hFig, 'KeyPressFcn', @KeyPress_Callback);
 
     % ===== CREATE TOOLBAR =====
-    jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.NORTH);
-    jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
+    jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.WEST);
+    jToolbar.setOrientation(jToolbar.VERTICAL);
+    jToolbar.setPreferredSize(java_scaled('dimension', 70,25));
         % Button "Draw Line"
         jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'RefLine', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
         % Button "Setting reference contacts based on tip and entry"
-        jButtonInitGuess = gui_component('ToolbarButton', jToolbar, [], 'RefCont', IconLoader.ICON_SCOUT_NEW, 'Reference contacts for an electrode', @ReferenceContacts);
+        jButtonRefContacts = gui_component('ToolbarButton', jToolbar, [], 'RefCont', IconLoader.ICON_SCOUT_NEW, 'Reference contacts for an electrode', @ReferenceContacts);
         % Button "Show/Hide reference"
         gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCOUT_NEW, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
+        % add separator
+        jToolbar.addSeparator();
+
         % Button "Remove selection"
         jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
-        % Button "Remove selection"
+        % Button "Remove last"
         jButtonRemoveLast = gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
-        % Button "Remove selection"
+        % Button "Remove all"
         jButtonRemoveAll = gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
+        % add separator
+        jToolbar.addSeparator();
+
         % Button "Save all to database"
         jButtonSaveAll = gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
-                  
+    
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
     jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));   
@@ -108,7 +115,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jListElec',              jListElec, ...
                                   'jPanelElecList',         jPanelElecList, ...
                                   'listModel',              listModel, ...
-                                  'jButtonInitGuess',       jButtonInitGuess, ...
+                                  'jButtonRefContacts',       jButtonRefContacts, ...
                                   'jButtonRemoveSelected',  jButtonRemoveSelected, ...
                                   'jButtonRemoveLast',      jButtonRemoveLast, ...
                                   'jButtonRemoveAll',       jButtonRemoveAll, ...
@@ -183,7 +190,7 @@ function ReferenceContacts(varargin)
     end
     
     contact_spacing = str2double(ctrl.jTextContactSpacing.getText());
-    num_contacts = str2double(ctrl.jTextNContacts.getText()) + 2;    
+    num_contacts = str2double(ctrl.jTextNcontacts.getText()) + 2;    
 
     hFig = bst_figures('GetFiguresByType', '3DViz');
     SubjectFile = getappdata(hFig, 'SubjectFile');
@@ -195,8 +202,8 @@ function ReferenceContacts(varargin)
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
     % Get electrode orientation
-    elecTipMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(1).Loc./1000);
-    entryMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(2).Loc./1000);
+    elecTipMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(end-1).Loc./1000);
+    entryMri = cs_convert(sMri, 'world', 'mri', CoordFileMat.Channel(end).Loc./1000);
     orient = entryMri - elecTipMri;
     orient = orient ./ sqrt(sum(orient .^ 2));
 
@@ -215,7 +222,7 @@ function ReferenceContacts(varargin)
              'Tag',             'ptCoordinates1');
     end
     
-    ctrl.jButtonInitGuess.setEnabled(0);
+    ctrl.jButtonRefContacts.setEnabled(0);
     
     UpdatePanel();
 end
@@ -478,7 +485,7 @@ function KeyPress_Callback(hFig, keyEvent)
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
             ctrl.jTextContactSpacing.setText(res{3});
-            ctrl.jButtonInitGuess.setEnabled(1);
+            ctrl.jButtonRefContacts.setEnabled(1);
             linePlotLoc = [];
         
         case {'escape'}
@@ -504,7 +511,7 @@ function KeyPress_Callback(hFig, keyEvent)
                 ctrl.jTextNcontacts.setText(res{1});
                 ctrl.jTextLabel.setText(res{2});
                 ctrl.jTextContactSpacing.setText(res{3});
-                ctrl.jButtonInitGuess.setEnabled(1);
+                ctrl.jButtonRefContacts.setEnabled(1);
                 linePlotLoc = [];
             else
                 isResumePlot = java_dialog('confirm', [...
