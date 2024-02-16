@@ -653,8 +653,8 @@ function PlugDesc = GetSupported(SelPlug)
         if ~isempty(Err)
             disp(['BST> Invalid plugin file ' plug_list(iPlug).name ' :' Err]);
         end
-        
-        PlugDesc  = [PlugDesc ; PlugDesc_tmp];
+
+        PlugDesc  = [PlugDesc , PlugDesc_tmp];
     end
 
     % ================================================================================================================
@@ -724,9 +724,47 @@ function [PlugDesc, Err] = ParseJson(PlugJson)
         end
 end
 
+%% ===== Validate JSON =====
+% Return true if the structure is valid. Check that all the mandatory
+% information are presents. TODO
 
 function  isValid= Validate(PlugJson)
     isValid = true;
+end
+
+%% ===== Add Custom =====
+function [isOk, Err] = AddCustom(plugin_file)
+    isOk    = 1; 
+    Err     = '';
+
+    if strcmp(plugin_file(1:4),'http') &&  strcmp(plugin_file(end-4:end),'.json')  
+        % if from github, we convert the link to load the raw content 
+        if contains(plugin_file,'https://github.com')
+            plugin_file = strrep(plugin_file,'https://github.com','https://raw.githubusercontent.com' );
+            plugin_file = strrep(plugin_file,'blob/','' );
+        end
+        
+        plugin_text = bst_webread(plugin_file);
+    elseif exist(plugin_file,'file')
+        plugin_text = fileread(plugin_file);
+    else
+        isOk = 0;
+        Err  = 'Plugin format not recognized';
+        return;
+    end
+
+    [PlugDesc, Err] = ParseJson(plugin_text);
+    if ~isempty(Err)
+        isOk = 0;
+        return;
+    end
+    
+    [~, plugName, ~] = fileparts(plugin_file);
+
+    fileID = fopen(fullfile(bst_get('BrainstormUserDir'), sprintf('plugin_%s.json', plugName)),'w');
+    fprintf(fileID,'%s', plugin_text );
+    fclose(fileID);
+
 end
 
 %% ===== CONFIGURE PLUGIN =====
