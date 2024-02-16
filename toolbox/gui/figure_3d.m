@@ -1446,7 +1446,7 @@ end
 %% ===== GET COORDINATES SEEG =====
 function GetContactLabelIeeg(varargin)
     % Show Coordinates panel
-    gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates SEEG', [], 0, 1, 0);
+    gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates iEEG', [], 0, 1, 0);
     % Load data on start if present from database
     panel_ieeg_anatomical('LoadOnStart');
     % Start point selection
@@ -1973,7 +1973,12 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        gui_component('MenuItem', jPopup, [], 'Get coordinates sEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
+        % gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
+    end
+    
+    isIsosurfaceOpen = find(~cellfun(@(c)isempty(strfind(lower(c),'isosurface')), {GlobalData.Surface.Comment}));
+    if ~isempty(isIsosurfaceOpen)
+        gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
     end
     
     % ==== MENU: SNAPSHOT ====
