@@ -77,7 +77,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));   
 
         jPanelFirstPart = gui_component('Panel');
-            % ===== ELECTRODES LIST =====
+            % ===== LIST FOR CONTACTS =====
             jPanelElecList = gui_component('Panel');
                 jBorder = java_scaled('titledborder', 'sEEG contact localization');
                 jPanelElecList.setBorder(jBorder);
@@ -179,55 +179,6 @@ end
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
 
-%% ===== REFERENCE CONTACTS FOR AN ELECTRODE =====
-% plot the reference contacts on the reference line to act as a guideline
-function ReferenceContacts(varargin) %#ok<DEFNU>
-    global ChannelAnatomicalMat;
-
-    % Get panel controls
-    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
-    if isempty(ctrl)
-        return
-    end
-    
-    contact_spacing = str2double(ctrl.jTextContactSpacing.getText());
-    num_contacts = str2double(ctrl.jTextNcontacts.getText()) + 2;    
-
-    hFig = bst_figures('GetFiguresByType', '3DViz');
-    SubjectFile = getappdata(hFig, 'SubjectFile');
-    if ~isempty(SubjectFile)
-        sSubject = bst_get('Subject', SubjectFile);
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    end
-    sMri = bst_memory('LoadMri', MriFile);
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-
-    % Get electrode orientation
-    elecTipMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end-1).Loc./1000);
-    entryMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end).Loc./1000);
-    orient = entryMri - elecTipMri;
-    orient = orient ./ sqrt(sum(orient .^ 2));
-
-    for i = 1:num_contacts
-        % Compute the default position of the contact
-        posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
-        pos = cs_convert(sMri, 'mri', 'scs', posMri);
-
-        line(pos(1), pos(2), pos(3), ...
-             'MarkerFaceColor', [1 0 1], ...
-             'MarkerEdgeColor', [1 0 1], ...
-             'Marker',          'o',  ...
-             'MarkerSize',      10, ...
-             'LineWidth',       2, ...
-             'Parent',          hAxes, ...
-             'Tag',             'ptCoordinates1');
-    end
-    
-    ctrl.jButtonRefContacts.setEnabled(0);
-    
-    UpdatePanel();
-end
-
 %% ===== LOAD DATA =====
 function LoadOnStart() %#ok<DEFNU>
     % ----- GLOBAL VARIABLES -----
@@ -242,6 +193,10 @@ function LoadOnStart() %#ok<DEFNU>
     % for showing/hiding reference lines and points rendering
     global isRefVisible;
     isRefVisible = 1;
+
+    % for keeping track of the number of contacts
+    global numContacts;
+    numContacts = 0;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -264,9 +219,7 @@ function LoadOnStart() %#ok<DEFNU>
     if isfile(CoordFile)
         ChannelAnatomicalMat = load(CoordFile);
         
-        % SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
-        % hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SurfaceFile);
-        hFig1 = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+        hFigMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
         
         isProgress = bst_progress('isVisible');
         if ~isProgress
@@ -318,7 +271,7 @@ function LoadOnStart() %#ok<DEFNU>
             refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
 
             % ----- STEP-3: update the MriViewer with points from the loaded data -----
-            Handles = bst_figures('GetFigureHandles', hFig1);
+            Handles = bst_figures('GetFigureHandles', hFigMri);
             
             % Select the required point
             plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
@@ -354,38 +307,17 @@ function LoadOnStart() %#ok<DEFNU>
         ctrl.jTextNcontacts.setText(res{1});
         ctrl.jTextLabel.setText(res{2});
         ctrl.jTextContactSpacing.setText(res{3});
+        ctrl.jButtonDrawLine.setEnabled(0);
+        ctrl.jButtonRefContacts.setEnabled(0);
+        numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        
+        java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
+            '1. Tip ' ...
+            '2. Skull entry'], 'Set electrode tip and skull entry');
     end
     
-    % panel_scout('CreateAtlasCluster', 1);
-
     UpdatePanel();
     bst_progress('stop');
-end
-
-%% ===== SET CROSS-HAIR POSITION ON MRI =====
-% on clicking on the coordinates on the panel, the crosshair on the MRI
-% viewer gets updated to show the corresponding location
-function SetLocationMri(iIndex) %#ok<DEFNU>
-    global ChannelAnatomicalMat;
-
-    % Get current 3D figure
-    hFig = bst_figures('GetFiguresByType', {'MriViewer'});
-    if isempty(hFig)
-        return
-    end    
-    SubjectFile = getappdata(hFig, 'SubjectFile');
-    if ~isempty(SubjectFile)
-        sSubject = bst_get('Subject', SubjectFile);
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    end
-    sMri = bst_memory('LoadMri', MriFile);
-
-    % Select the required point
-    plotLocWorld = ChannelAnatomicalMat.Channel(iIndex).Loc ./ 1000;
-    plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
-    plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
-
-    figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
 end
 
 %% ===== UPDATE CALLBACK =====
@@ -463,6 +395,82 @@ function UpdatePanel() %#ok<DEFNU>
     drawnow;
 end
 
+%% ===== REFERENCE CONTACTS FOR AN ELECTRODE =====
+% plot the reference contacts on the reference line to act as a guideline
+function ReferenceContacts(varargin) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
+
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
+    if isempty(ctrl)
+        return
+    end
+    
+    contact_spacing = str2double(ctrl.jTextContactSpacing.getText());
+    num_contacts = str2double(ctrl.jTextNcontacts.getText()) + 2;    
+
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    sMri = bst_memory('LoadMri', MriFile);
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    % Get electrode orientation
+    elecTipMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end-1).Loc./1000);
+    entryMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end).Loc./1000);
+    orient = entryMri - elecTipMri;
+    orient = orient ./ sqrt(sum(orient .^ 2));
+
+    for i = 1:num_contacts
+        % Compute the default position of the contact
+        posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
+        pos = cs_convert(sMri, 'mri', 'scs', posMri);
+
+        line(pos(1), pos(2), pos(3), ...
+             'MarkerFaceColor', [1 0 1], ...
+             'MarkerEdgeColor', [1 0 1], ...
+             'Marker',          'o',  ...
+             'MarkerSize',      10, ...
+             'LineWidth',       2, ...
+             'Parent',          hAxes, ...
+             'Tag',             'ptCoordinates1');
+    end
+    
+    ctrl.jButtonDrawLine.setEnabled(0);
+    ctrl.jButtonRefContacts.setEnabled(0);
+    
+    UpdatePanel();
+end
+
+%% ===== SET CROSSHAIR POSITION ON MRI =====
+% on clicking on the coordinates on the panel, the crosshair on the MRI
+% viewer gets updated to show the corresponding location
+function SetLocationMri(iIndex) %#ok<DEFNU>
+    global ChannelAnatomicalMat;
+
+    % Get current 3D figure
+    hFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    if isempty(hFig)
+        return
+    end    
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    sMri = bst_memory('LoadMri', MriFile);
+
+    % Select the required point
+    plotLocWorld = ChannelAnatomicalMat.Channel(iIndex).Loc ./ 1000;
+    plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
+    plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
+
+    figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
+end
+
 %% ===== FOCUS CHANGED ======
 function FocusChangedCallback(isFocused) %#ok<DEFNU>
     if ~isFocused
@@ -479,6 +487,7 @@ end
 % handle the keyboard callbacks for the 3D figure
 function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
     global refLinePlotLoc;
+    global numContacts;
     
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
 
@@ -496,7 +505,15 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             ctrl.jTextNcontacts.setText(res{1});
             ctrl.jTextLabel.setText(res{2});
             ctrl.jTextContactSpacing.setText(res{3});
-            ctrl.jButtonRefContacts.setEnabled(1);
+            ctrl.jButtonDrawLine.setEnabled(0);
+            ctrl.jButtonRefContacts.setEnabled(0);
+
+            numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        
+            java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
+                '1. Tip ' ...
+                '2. Skull entry'], 'Set electrode tip and skull entry');
+            
             refLinePlotLoc = [];
         
         case {'escape'}
@@ -522,7 +539,15 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                 ctrl.jTextNcontacts.setText(res{1});
                 ctrl.jTextLabel.setText(res{2});
                 ctrl.jTextContactSpacing.setText(res{3});
-                ctrl.jButtonRefContacts.setEnabled(1);
+                ctrl.jButtonDrawLine.setEnabled(0);
+                ctrl.jButtonRefContacts.setEnabled(0);
+
+                numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        
+                java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
+                    '1. Tip ' ...
+                    '2. Skull entry'], 'Set electrode tip and skull entry');
+
                 refLinePlotLoc = [];
             else
                 isResumePlot = java_dialog('confirm', [...
@@ -809,6 +834,9 @@ end
 function DrawLine(varargin) %#ok<DEFNU>
     global refLinePlotLoc;
     
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
+    
     % Get axes handle
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -819,6 +847,9 @@ function DrawLine(varargin) %#ok<DEFNU>
          'Tag', 'lineCoordinates');
     
     refLinePlotLoc = [];
+
+    ctrl.jButtonDrawLine.setEnabled(0);
+    ctrl.jButtonRefContacts.setEnabled(1);
 end
 
 %% ===== SHOW/HIDE REFERENCE POINTS AND LINES =====
@@ -1259,6 +1290,7 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin) %#ok<DEFNU>
     global GlobalData;
+    global numContacts;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1295,13 +1327,28 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
 
+        % if last contact then disable clicking on surface so that user cannot plot any more points
         if num_contacts==1
             % Unselect selection button 
             SetSelectionState(0);
+            numContacts = 0;
         end
     end
 
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
+    
+    % ask user if the tip and entry points were marked correctly
+    if numContacts - round(str2double(ctrl.jTextNcontacts.getText())) == 2
+        isConfirm = java_dialog('confirm', 'Did you select the points in the right order: 1. Tip 2. Skull entry', 'Set electrode tip and skull entry');
+        if ~isConfirm
+            RemoveLastContact();
+            RemoveLastContact();
+            java_dialog('msgbox', 'Re-enter the tip and skull entry for electrode ''' + string(ctrl.jTextLabel.getText()) + '''', 'Set electrode tip and skull entry');
+        else
+            ctrl.jButtonDrawLine.setEnabled(1);
+            ctrl.jButtonRefContacts.setEnabled(0);
+        end
+    end
 end
 
 %% ===== SAVE ALL TO DATABASE =====
