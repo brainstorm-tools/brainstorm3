@@ -768,6 +768,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if isempty(Y)
             Y = W * F;
         end
+        % Compute mixing matrix
+        if diff(size(W)) == 0
+            M = inv(W);
+        else
+            M = pinv(W);
+        end
+        % Variance in recovered data explained by each component
+        varIcs = sum(M.^2, 1) .* sum(Y.^2, 2)';
+        varIcs = varIcs ./ sum(varIcs);
         % Sort ICA components
         if ~isempty(icaSort)
             % By correlation with reference channel
@@ -775,16 +784,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
             proj.Components = proj.Components(:,iSort);
         elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
-            % By explained variance
-            if diff(size(W)) == 0
-                M = inv(W);
-            else
-                M = pinv(W);
-            end
-            var = sum(M.^2, 1) .* sum(Y.^2, 2)';
-            [var, iSort] = sort(var, 'descend');
+            [varIcs, iSort] = sort(varIcs, 'descend');
             proj.Components = proj.Components(:,iSort);
         end
+        % Explained variance ratio
+        Fdiff = (F - M * Y);
+        rVarExp = 1 - (sum(sum(Fdiff.^2, 2)) ./ sum(sum(F.^2, 2)));
+        % Variance in original data by each component
+        varIcs = rVarExp * varIcs;
+        %TODO Store the ICs explained variance
     end
     
     % Modality used in the end
