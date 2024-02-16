@@ -61,7 +61,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbar.addSeparator();
 
         % Button "Remove selection"
-        jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
+        % jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove last"
         jButtonRemoveLast = gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove all"
@@ -116,11 +116,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jPanelElecList',         jPanelElecList, ...
                                   'jListModel',             jListModel, ...
                                   'jButtonRefContacts',     jButtonRefContacts, ...
-                                  'jButtonRemoveSelected',  jButtonRemoveSelected, ...
                                   'jButtonRemoveLast',      jButtonRemoveLast, ...
                                   'jButtonRemoveAll',       jButtonRemoveAll, ...
                                   'jButtonDrawLine',        jButtonDrawLine, ...
                                   'jButtonSaveAll',         jButtonSaveAll));
+                                   % 'jButtonRemoveSelected',  jButtonRemoveSelected, ...
                                   
 
     %% ============================================================================
@@ -194,9 +194,14 @@ function LoadOnStart() %#ok<DEFNU>
     global isRefVisible;
     isRefVisible = 1;
 
-    % for keeping track of the number of contacts
+    % for keeping track of the total number of contacts for the current
+    % electrode
     global numContacts;
     numContacts = 0;
+
+    % for keeping track of click counts on surface
+    global clickOnSurfaceCount;
+    clickOnSurfaceCount = 0;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -309,7 +314,9 @@ function LoadOnStart() %#ok<DEFNU>
         ctrl.jTextContactSpacing.setText(res{3});
         ctrl.jButtonDrawLine.setEnabled(0);
         ctrl.jButtonRefContacts.setEnabled(0);
+        
         numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        ctrl.jTextNcontacts.setText('1');
         
         java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
             '1. Tip ' ...
@@ -323,6 +330,7 @@ end
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel() %#ok<DEFNU>
     global ChannelAnatomicalMat;
+    global numContacts;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -363,6 +371,7 @@ function UpdatePanel() %#ok<DEFNU>
             IntraElecData.Name = char(ctrl.jTextLabel.getText());
             IntraElecData.Type = 'SEEG';
             IntraElecData.Color = [0 0.8 0];
+            IntraElecData.ContactNumber = numContacts;
             IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
             IntraElecData.Visible = 1;
 
@@ -381,6 +390,7 @@ function UpdatePanel() %#ok<DEFNU>
                 IntraElecData.Name = char(ctrl.jTextLabel.getText());
                 IntraElecData.Type = 'SEEG';
                 IntraElecData.Color = [0 0.8 0];
+                IntraElecData.ContactNumber = numContacts;
                 IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
                 IntraElecData.Visible = 1;
     
@@ -399,6 +409,7 @@ end
 % plot the reference contacts on the reference line to act as a guideline
 function ReferenceContacts(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
+    global numContacts;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -407,7 +418,6 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
     end
     
     contact_spacing = str2double(ctrl.jTextContactSpacing.getText());
-    num_contacts = str2double(ctrl.jTextNcontacts.getText()) + 2;    
 
     hFig = bst_figures('GetFiguresByType', '3DViz');
     SubjectFile = getappdata(hFig, 'SubjectFile');
@@ -424,7 +434,7 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
     orient = entryMri - elecTipMri;
     orient = orient ./ sqrt(sum(orient .^ 2));
 
-    for i = 1:num_contacts
+    for i = 1:numContacts
         % Compute the default position of the contact
         posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
         pos = cs_convert(sMri, 'mri', 'scs', posMri);
@@ -436,7 +446,7 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
              'MarkerSize',      10, ...
              'LineWidth',       2, ...
              'Parent',          hAxes, ...
-             'Tag',             'ptCoordinates1');
+             'Tag',             'ptCoordinatesRef');
     end
     
     ctrl.jButtonDrawLine.setEnabled(0);
@@ -488,11 +498,14 @@ end
 function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
     global refLinePlotLoc;
     global numContacts;
+    global clickOnSurfaceCount;
     
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
 
     switch (keyEvent.Key)
         case {'l'}
+            clickOnSurfaceCount = 0;
+
             % label contacts
             res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter electrode details', ...
@@ -509,6 +522,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             ctrl.jButtonRefContacts.setEnabled(0);
 
             numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+            ctrl.jTextNcontacts.setText('1');
         
             java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
                 '1. Tip ' ...
@@ -527,6 +541,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
             label_name = string(ctrl.jTextLabel.getText());
             if num_contacts==0
+                clickOnSurfaceCount = 0;
                 % label contacts
                 res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter electrode details', ...
@@ -543,6 +558,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                 ctrl.jButtonRefContacts.setEnabled(0);
 
                 numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+                ctrl.jTextNcontacts.setText('1');
         
                 java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
                     '1. Tip ' ...
@@ -729,6 +745,10 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % set global variable to track the vetices in around a selected point on surface
     global VertexList;
     VertexList = [];
+    global numContacts;
+    global clickOnSurfaceCount;
+
+    ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
     
     % Parse inputs
     if (nargin < 2)
@@ -749,7 +769,6 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     TessInfo = getappdata(hFig, 'Surface');
     
     [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
-    % Labels = tess_cluster(sSurf.VertConn, 30, 1);
 
     if isempty(TessInfo)
         return
@@ -774,14 +793,19 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
         
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
+            clickOnSurfaceCount = clickOnSurfaceCount + 1;
+            
+            % avoid centroid calculation for tip and skull entry
+            if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+                FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :));
+                VertexList = [];
+            end
         else
             patchDist(i) = Inf;
         end
-
-        FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
-        vout{i} = mean(sSurf.Vertices(VertexList(:), :));
-        VertexList = [];
     end
+
     if all(isinf(patchDist))
         TessInfo = [];
         pout = [];
@@ -794,7 +818,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Keep only the point from the closest surface
     hPatch = hPatch(iClosestPatch);
     pout   = pout{iClosestPatch};
-    vout   = vout{iClosestPatch};
+    if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+        vout   = vout{iClosestPatch};
+    else
+        vout   = vout{iClosestPatch}';
+    end
     vi     = vi{iClosestPatch};
     
     % Find to which surface this tesselation belongs
@@ -856,7 +884,7 @@ end
 function ShowHideReference(varargin) %#ok<DEFNU>
     global isRefVisible;
 
-    refCoord = findobj(0, 'Tag', 'ptCoordinates1');
+    refCoord = findobj(0, 'Tag', 'ptCoordinatesRef');
     lineCoord = findobj(0, 'Tag', 'lineCoordinates');
     
     if isRefVisible
@@ -871,143 +899,146 @@ function ShowHideReference(varargin) %#ok<DEFNU>
 end
 
 %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
-function RemoveContactAtLocation(Loc) %#ok<DEFNU> 
-    global ChannelAnatomicalMat;
-
-    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
-    % Find all selected points
-    hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
-    % Remove coordinates from the figures
-    for i = 1:length(hCoord)
-        hFig = get(get(hCoord(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points
-    if ~isempty(hCoord)
-        delete(hCoord(length(hCoord)-Loc+1));
-        ctrl.jListModel.remove(Loc-1);
-
-        % delete from mat
-        ChannelAnatomicalMat.Channel(Loc) = [];
-        
-        % make sure the Channel sturture field is cleared when no contacts
-        % are marked
-        if length(hCoord) == 1
-            ChannelAnatomicalMat.Channel = [];
-        end
-
-        ChannelAnatomicalMat.HeadPoints.Loc(:, Loc) = [];
-        ChannelAnatomicalMat.HeadPoints.Label(Loc) = [];
-        ChannelAnatomicalMat.HeadPoints.Type(Loc) = [];
-    end
-
-    % Find all selected points text
-    hText = findobj(0, 'Tag', 'txtCoordinates'); 
-    % Remove coordinates from the figures
-    for i = 1:length(hText)
-        hFig = get(get(hText(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points text
-    if ~isempty(hText)
-        delete(hText(length(hText)-Loc+1));
-    end
-    
-    % Find all selected points Coordinates1 in MRI space
-    mriCoord1 = findobj(0, 'Tag', 'PointMarker1'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriCoord1)
-        hFig = get(get(mriCoord1(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points in MRI space
-    if ~isempty(hCoord)
-        delete(mriCoord1(length(hCoord)-Loc+1));
-    end
-
-    % Find all selected points Text1 in MRI space
-    mriText1 = findobj(0, 'Tag', 'TextMarker1'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriText1)
-        hFig = get(get(mriText1(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points text in MRI space
-    if ~isempty(hCoord)
-        delete(mriText1(length(hCoord)-Loc+1));
-    end
-    
-    % Find all selected points Coordinates2 in MRI space
-    mriCoord2 = findobj(0, 'Tag', 'PointMarker2'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriCoord2)
-        hFig = get(get(mriCoord2(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points in MRI space
-    if ~isempty(hCoord)
-        delete(mriCoord2(length(hCoord)-Loc+1));
-    end
-
-    % Find all selected points Text2 in MRI space
-    mriText2 = findobj(0, 'Tag', 'TextMarker2'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriText2)
-        hFig = get(get(mriText2(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points text in MRI space
-    if ~isempty(hCoord)
-        delete(mriText2(length(hCoord)-Loc+1));
-    end
-
-    % Find all selected points Coordinates3 in MRI space
-    mriCoord3 = findobj(0, 'Tag', 'PointMarker3'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriCoord3)
-        hFig = get(get(mriCoord3(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points in MRI space
-    if ~isempty(hCoord)
-        delete(mriCoord3(length(hCoord)-Loc+1));
-    end
-
-    % Find all selected points Text3 in MRI space
-    mriText3 = findobj(0, 'Tag', 'TextMarker3'); 
-    % Remove coordinates from the figures
-    for i = 1:length(mriText3)
-        hFig = get(get(mriText3(i), 'Parent'), 'Parent');
-        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
-            rmappdata(hFig, 'CoordinatesSelector');
-        end
-    end
-    % Delete selected points text in MRI space
-    if ~isempty(hCoord)
-        delete(mriText3(length(hCoord)-Loc+1));
-    end
-
-    % Update displayed coordinates
-    UpdatePanel();
-end
+% this function is under construction
+% function RemoveContactAtLocation(Loc) %#ok<DEFNU> 
+%     global ChannelAnatomicalMat;
+% 
+%     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
+%     % Find all selected points
+%     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(hCoord)
+%         hFig = get(get(hCoord(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points
+%     if ~isempty(hCoord)
+%         delete(hCoord(length(hCoord)-Loc+1));
+%         ctrl.jListModel.remove(Loc-1);
+% 
+%         % delete from mat
+%         ChannelAnatomicalMat.Channel(Loc) = [];
+% 
+%         % make sure the Channel sturture field is cleared when no contacts
+%         % are marked
+%         if length(hCoord) == 1
+%             ChannelAnatomicalMat.Channel = [];
+%         end
+% 
+%         ChannelAnatomicalMat.HeadPoints.Loc(:, Loc) = [];
+%         ChannelAnatomicalMat.HeadPoints.Label(Loc) = [];
+%         ChannelAnatomicalMat.HeadPoints.Type(Loc) = [];
+%     end
+% 
+%     % Find all selected points text
+%     hText = findobj(0, 'Tag', 'txtCoordinates'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(hText)
+%         hFig = get(get(hText(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points text
+%     if ~isempty(hText)
+%         delete(hText(length(hText)-Loc+1));
+%     end
+% 
+%     % Find all selected points Coordinates1 in MRI space
+%     mriCoord1 = findobj(0, 'Tag', 'PointMarker1'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriCoord1)
+%         hFig = get(get(mriCoord1(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriCoord1(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Find all selected points Text1 in MRI space
+%     mriText1 = findobj(0, 'Tag', 'TextMarker1'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriText1)
+%         hFig = get(get(mriText1(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points text in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriText1(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Find all selected points Coordinates2 in MRI space
+%     mriCoord2 = findobj(0, 'Tag', 'PointMarker2'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriCoord2)
+%         hFig = get(get(mriCoord2(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriCoord2(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Find all selected points Text2 in MRI space
+%     mriText2 = findobj(0, 'Tag', 'TextMarker2'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriText2)
+%         hFig = get(get(mriText2(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points text in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriText2(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Find all selected points Coordinates3 in MRI space
+%     mriCoord3 = findobj(0, 'Tag', 'PointMarker3'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriCoord3)
+%         hFig = get(get(mriCoord3(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriCoord3(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Find all selected points Text3 in MRI space
+%     mriText3 = findobj(0, 'Tag', 'TextMarker3'); 
+%     % Remove coordinates from the figures
+%     for i = 1:length(mriText3)
+%         hFig = get(get(mriText3(i), 'Parent'), 'Parent');
+%         if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+%             rmappdata(hFig, 'CoordinatesSelector');
+%         end
+%     end
+%     % Delete selected points text in MRI space
+%     if ~isempty(hCoord)
+%         delete(mriText3(length(hCoord)-Loc+1));
+%     end
+% 
+%     % Update displayed coordinates
+%     UpdatePanel();
+% end
 
 %% ===== REMOVE LAST CONTACT =====
 function RemoveLastContact(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
+    global clickOnSurfaceCount;
+    global numContacts;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     % Find all selected points
@@ -1019,15 +1050,20 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
             rmappdata(hFig, 'CoordinatesSelector');
         end
     end
-    % Delete selected points
-    if ~isempty(hCoord)
-        num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
-        label_name = string(ctrl.jTextLabel.getText());
 
+    % Delete selected points
+    if ~ctrl.jListModel.isEmpty()
+        lastElement = ctrl.jListModel.lastElement();
+        label_name = regexp(lastElement, '[A-Za-z'']', 'match');
+        num_contacts_str = regexp(lastElement, '\d*', 'match');
+        num_contacts = round(str2double(num_contacts_str(1)));
+    else
+        return;
+    end
+
+    if ~isempty(hCoord)
         delete(hCoord(1));
-      
-        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts+1));
-        ctrl.jTextLabel.setText(label_name);
+        
         ctrl.jListModel.remove(length(hCoord)-1);
         ChannelAnatomicalMat.Channel(length(hCoord)) = [];
         ChannelAnatomicalMat.HeadPoints.Loc(:, length(hCoord)) = [];
@@ -1139,6 +1175,43 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
         delete(mriText3(1));
     end
     
+    idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
+
+    if num_contacts == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber 
+        % Find all reference lines
+        lineCoord = findobj(0, 'Tag', 'lineCoordinates'); 
+        % Remove coordinates from the figures
+        for i = 1:length(lineCoord)
+            hFig = get(get(lineCoord(i), 'Parent'), 'Parent');
+            if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+                rmappdata(hFig, 'CoordinatesSelector');
+            end
+        end
+        % Delete selected points text in MRI space
+        if ~isempty(lineCoord)
+            delete(lineCoord(1));
+        end
+        
+        % Find all reference lines
+        hCoordRef = findobj(0, 'Tag', 'ptCoordinatesRef'); 
+        % Remove coordinates from the figures
+        for i = 1:length(hCoordRef)
+            hFig = get(get(hCoordRef(i), 'Parent'), 'Parent');
+            if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+                rmappdata(hFig, 'CoordinatesSelector');
+            end
+        end
+        % Delete selected points text in MRI space
+        if ~isempty(hCoordRef)
+            delete(hCoordRef(1:ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber));
+        end
+    end
+
+    ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts));
+    ctrl.jTextLabel.setText(label_name);
+
+    clickOnSurfaceCount = clickOnSurfaceCount - 1;
+    
     % Update displayed coordinates
     UpdatePanel();
 end
@@ -1146,6 +1219,7 @@ end
 %% ===== REMOVE ALL CONTACTS =====
 function RemoveAllContacts(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
+    global clickPointInSurface;
 
     % Unselect selection button 
     SetSelectionState(0);
@@ -1282,6 +1356,36 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
             delete(mriText3(i));
         end
     end
+    
+    % Find all reference lines
+    lineCoord = findobj(0, 'Tag', 'lineCoordinates'); 
+    % Remove coordinates from the figures
+    for i = 1:length(lineCoord)
+        hFig = get(get(lineCoord(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(lineCoord)
+        delete(lineCoord);
+    end
+    
+    % Find all reference points
+    hCoordRef = findobj(0, 'Tag', 'ptCoordinatesRef'); 
+    % Remove coordinates from the figures
+    for i = 1:length(hCoordRef)
+        hFig = get(get(hCoordRef(i), 'Parent'), 'Parent');
+        if ~isempty(hFig) && isappdata(hFig, 'CoordinatesSelector')
+            rmappdata(hFig, 'CoordinatesSelector');
+        end
+    end
+    % Delete selected points text in MRI space
+    if ~isempty(hCoordRef)
+        delete(hCoordRef);
+    end
+
+    clickPointInSurface = 0;
 
     % Update displayed coordinates
     UpdatePanel();
@@ -1291,6 +1395,8 @@ end
 function ViewInMriViewer(varargin) %#ok<DEFNU>
     global GlobalData;
     global numContacts;
+    global clickOnSurfaceCount;
+    global refLinePlotLoc;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1325,10 +1431,15 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
 
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
         num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
-        ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+
+        if clickOnSurfaceCount == 1
+            ctrl.jTextNcontacts.setText(sprintf("%d", numContacts));
+        else
+            ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+        end
 
         % if last contact then disable clicking on surface so that user cannot plot any more points
-        if num_contacts==1
+        if num_contacts==2
             % Unselect selection button 
             SetSelectionState(0);
             numContacts = 0;
@@ -1338,12 +1449,13 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
     
     % ask user if the tip and entry points were marked correctly
-    if numContacts - round(str2double(ctrl.jTextNcontacts.getText())) == 2
+    if clickOnSurfaceCount == 2
         isConfirm = java_dialog('confirm', 'Did you select the points in the right order: 1. Tip 2. Skull entry', 'Set electrode tip and skull entry');
         if ~isConfirm
             RemoveLastContact();
             RemoveLastContact();
             java_dialog('msgbox', 'Re-enter the tip and skull entry for electrode ''' + string(ctrl.jTextLabel.getText()) + '''', 'Set electrode tip and skull entry');
+            refLinePlotLoc = [];
         else
             ctrl.jButtonDrawLine.setEnabled(1);
             ctrl.jButtonRefContacts.setEnabled(0);
