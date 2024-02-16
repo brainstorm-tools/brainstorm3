@@ -648,21 +648,13 @@ function PlugDesc = GetSupported(SelPlug)
 
     plug_list = dir(fullfile(bst_get('BrainstormUserDir'), 'plugin_*.json'));
     for iPlug = 1:length(plug_list)
-
-        plugin_text = fileread( fullfile(plug_list(iPlug).folder,plug_list(iPlug).name ));
-        plugin_struct = jsondecode(plugin_text);
-        
-        if isstruct(plugin_struct) % One plugin inside the file 
-            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct, 1); % same as existing struct
-            PlugDescDecode.Category = 'Custom Plugin';
-            PlugDesc(end+1) = PlugDescDecode;
-        elseif iscell(plugin_struct) % multiple plugin inside the file 
-            for jPlug = 1:length(plugin_struct)
-                PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{jPlug}, 1); % same as existing struct
-                PlugDescDecode.Category = 'Custom Plugin';
-                PlugDesc(end+1) = PlugDescDecode;
-            end
+        plugin_text = fileread( fullfile(plug_list(iPlug).folder,plug_list(iPlug).name ) );
+        [PlugDesc_tmp, Err] = ParseJson(plugin_text);
+        if ~isempty(Err)
+            disp(['BST> Invalid plugin file ' plug_list(iPlug).name ' :' Err]);
         end
+        
+        PlugDesc  = [PlugDesc ; PlugDesc_tmp];
     end
 
     % ================================================================================================================
@@ -692,6 +684,50 @@ function s = GetStruct(PlugName)
     s.Name = PlugName;
 end
 
+%% ===== PLUGIN JSON =====
+
+function [PlugDesc, Err] = ParseJson(PlugJson)
+    PlugDesc = repmat(db_template('PlugDesc'), 0);
+    Err = '';
+
+    try
+        plugin_struct = jsondecode(PlugJson);
+        
+        if isstruct(plugin_struct) % One plugin inside the file 
+            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct, 1); % same as existing struct
+            PlugDescDecode.Category = 'Custom Plugin';
+            if ~Validate(PlugDescDecode)
+                throw(MException('Plugin:InvalidPlugin','The structure of the plugin is invalid')); 
+            end
+
+            PlugDesc(end+1) = PlugDescDecode;
+        elseif iscell(plugin_struct) % multiple plugin inside the file 
+            for jPlug = 1:length(plugin_struct)
+                PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{jPlug}, 1); % same as existing struct
+                PlugDescDecode.Category = 'Custom Plugin';
+                if ~Validate(PlugDescDecode)
+                    throw(MException('Plugin:InvalidPlugin','The structure of the plugin is invalid')); 
+                end
+
+                PlugDesc(end+1) = PlugDescDecode;
+            end
+        end
+    catch ME
+        switch ME.identifier
+            case 'MATLAB:json:ExpectedValue'
+                    Err = sprintf('Invalid JSON file (%s)', ME.message);
+            case 'Plugin:InvalidPlugin'
+                    Err = ME.message;
+            otherwise
+                rethrow(ME)
+            end
+        end
+end
+
+
+function  isValid= Validate(PlugJson)
+    isValid = true;
+end
 
 %% ===== CONFIGURE PLUGIN =====
 function Configure(PlugDesc)
