@@ -51,10 +51,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.WEST);
     jToolbar.setOrientation(jToolbar.VERTICAL);
     jToolbar.setPreferredSize(java_scaled('dimension', 70,25));
-        % Button "Draw Line"
-        jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'RefLine', IconLoader.ICON_SCOUT_NEW, 'Draw line', @DrawLine);
-        % Button "Setting reference contacts based on tip and entry"
-        jButtonRefContacts = gui_component('ToolbarButton', jToolbar, [], 'RefCont', IconLoader.ICON_SCOUT_NEW, 'Reference contacts for an electrode', @ReferenceContacts);
+        % Button "Setting reference electrode based on tip and entry"
+        jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SCOUT_NEW, 'Draw reference electrode', @DrawLine);
         % Button "Show/Hide reference"
         gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCOUT_NEW, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
         % add separator
@@ -115,13 +113,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jListElec',              jListElec, ...
                                   'jPanelElecList',         jPanelElecList, ...
                                   'jListModel',             jListModel, ...
-                                  'jButtonRefContacts',     jButtonRefContacts, ...
                                   'jButtonRemoveLast',      jButtonRemoveLast, ...
                                   'jButtonRemoveAll',       jButtonRemoveAll, ...
                                   'jButtonDrawLine',        jButtonDrawLine, ...
                                   'jButtonSaveAll',         jButtonSaveAll));
                                    % 'jButtonRemoveSelected',  jButtonRemoveSelected, ...
-                                  
 
     %% ============================================================================
     %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL) =========
@@ -313,7 +309,6 @@ function LoadOnStart() %#ok<DEFNU>
         ctrl.jTextLabel.setText(res{2});
         ctrl.jTextContactSpacing.setText(res{3});
         ctrl.jButtonDrawLine.setEnabled(0);
-        ctrl.jButtonRefContacts.setEnabled(0);
         
         numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText('1');
@@ -450,7 +445,6 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
     end
     
     ctrl.jButtonDrawLine.setEnabled(0);
-    ctrl.jButtonRefContacts.setEnabled(0);
     
     UpdatePanel();
 end
@@ -519,7 +513,6 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             ctrl.jTextLabel.setText(res{2});
             ctrl.jTextContactSpacing.setText(res{3});
             ctrl.jButtonDrawLine.setEnabled(0);
-            ctrl.jButtonRefContacts.setEnabled(0);
 
             numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
             ctrl.jTextNcontacts.setText('1');
@@ -528,7 +521,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                 '1. Tip ' ...
                 '2. Skull entry'], 'Set electrode tip and skull entry');
             
-            refLinePlotLoc = [];
+            % refLinePlotLoc = [];
         
         case {'escape'}
             % exit the selection state to stop plotting contacts
@@ -555,7 +548,6 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                 ctrl.jTextLabel.setText(res{2});
                 ctrl.jTextContactSpacing.setText(res{3});
                 ctrl.jButtonDrawLine.setEnabled(0);
-                ctrl.jButtonRefContacts.setEnabled(0);
 
                 numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
                 ctrl.jTextNcontacts.setText('1');
@@ -564,7 +556,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                     '1. Tip ' ...
                     '2. Skull entry'], 'Set electrode tip and skull entry');
 
-                refLinePlotLoc = [];
+                % refLinePlotLoc = [];
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
@@ -626,6 +618,7 @@ end
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFig
 function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     global refLinePlotLoc;
+    global numContacts;
 
     % parse arguments
     if (nargin < 2) || isempty(AcceptMri)
@@ -733,7 +726,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Parent', hAxes, ...
         'Tag', 'txtCoordinates');
     
-    refLinePlotLoc = [refLinePlotLoc, plotLoc'];
+    if round(str2double(ctrl.jTextNcontacts.getText())) == 1 ...
+       || round(str2double(ctrl.jTextNcontacts.getText())) == numContacts
+        refLinePlotLoc = [refLinePlotLoc, plotLoc'];
+    end
     
     % Update "Coordinates" panel
     UpdatePanel();
@@ -868,16 +864,16 @@ function DrawLine(varargin) %#ok<DEFNU>
     % Get axes handle
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-    line(refLinePlotLoc(1,:), refLinePlotLoc(2,:), refLinePlotLoc(3,:), ...
+    line(refLinePlotLoc(1,end-1:end), refLinePlotLoc(2,end-1:end), refLinePlotLoc(3,end-1:end), ...
          'Color', [1 1 0], ...
          'LineWidth',       2, ...
          'Parent', hAxes, ...
          'Tag', 'lineCoordinates');
     
-    refLinePlotLoc = [];
-
     ctrl.jButtonDrawLine.setEnabled(0);
-    ctrl.jButtonRefContacts.setEnabled(1);
+
+    ReferenceContacts();
+    SetSelectionState(1);
 end
 
 %% ===== SHOW/HIDE REFERENCE POINTS AND LINES =====
@@ -1039,6 +1035,7 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
     global clickOnSurfaceCount;
     global numContacts;
+    global refLinePlotLoc;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     % Find all selected points
@@ -1063,7 +1060,6 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
 
     if ~isempty(hCoord)
         delete(hCoord(1));
-        
         ctrl.jListModel.remove(length(hCoord)-1);
         ChannelAnatomicalMat.Channel(length(hCoord)) = [];
         ChannelAnatomicalMat.HeadPoints.Loc(:, length(hCoord)) = [];
@@ -1176,7 +1172,9 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     end
     
     idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
-
+    if num_contacts == 1
+        refLinePlotLoc(:, end) = [];
+    end
     if num_contacts == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber 
         % Find all reference lines
         lineCoord = findobj(0, 'Tag', 'lineCoordinates'); 
@@ -1205,6 +1203,9 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
         if ~isempty(hCoordRef)
             delete(hCoordRef(1:ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber));
         end
+
+        refLinePlotLoc(:, end) = [];
+        numContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
     end
 
     ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts));
@@ -1220,6 +1221,7 @@ end
 function RemoveAllContacts(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
     global clickPointInSurface;
+    global refLinePlotLoc;
 
     % Unselect selection button 
     SetSelectionState(0);
@@ -1386,6 +1388,7 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
     end
 
     clickPointInSurface = 0;
+    refLinePlotLoc = [];
 
     % Update displayed coordinates
     UpdatePanel();
@@ -1449,16 +1452,18 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
     
     % ask user if the tip and entry points were marked correctly
-    if clickOnSurfaceCount == 2
+    if num_contacts == numContacts
         isConfirm = java_dialog('confirm', 'Did you select the points in the right order: 1. Tip 2. Skull entry', 'Set electrode tip and skull entry');
         if ~isConfirm
             RemoveLastContact();
             RemoveLastContact();
+            SetSelectionState(1);
             java_dialog('msgbox', 'Re-enter the tip and skull entry for electrode ''' + string(ctrl.jTextLabel.getText()) + '''', 'Set electrode tip and skull entry');
             refLinePlotLoc = [];
         else
+            java_dialog('confirm', 'Click on the ''DrawRef'' button on the panel to generate a reference ideal electrode as a guideline', 'Set electrode tip and skull entry');
             ctrl.jButtonDrawLine.setEnabled(1);
-            ctrl.jButtonRefContacts.setEnabled(0);
+            SetSelectionState(0);
         end
     end
 end
