@@ -52,7 +52,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar.setOrientation(jToolbar.VERTICAL);
     jToolbar.setPreferredSize(java_scaled('dimension', 70,25));
         % Button "Setting reference electrode based on tip and entry"
-        jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SCOUT_NEW, 'Draw reference electrode', @DrawLine);
+        jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SCOUT_NEW, 'Draw reference electrode', @(h,ev)bst_call(@DrawLine, 0));
         % Button "Show/Hide reference"
         gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCOUT_NEW, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
         % add separator
@@ -198,7 +198,7 @@ function LoadOnStart() %#ok<DEFNU>
     % for keeping track of click counts on surface
     global clickOnSurfaceCount;
     clickOnSurfaceCount = 0;
-
+    
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     if isempty(ctrl)
@@ -266,14 +266,18 @@ function LoadOnStart() %#ok<DEFNU>
                 'Parent', hAxes, ...
                 'Tag', 'txtCoordinates');
             
-            % this currently saves all the points on loading
-            % need to define a new field in the channelmat structure
-            % to pull just the tip and entry points for line rendering
-            
-            % ----- STEP-3: update the reference electrode line and 3D points on the surface with loaded data -----
-            % refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
+            idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
+            ctrl.jTextContactSpacing.setText(string(ChannelAnatomicalMat.IntraElectrodes(idx).ContactSpacing * 1000));
+            numContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
+            if round(str2double(num_contacts)) == 1
+                refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
+            end
+            if round(str2double(num_contacts)) == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber
+                refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
+                DrawLine(1);
+            end
 
-            % ----- STEP-4: update the 3D points on the surface with loaded data -----
+            % ----- STEP-3: update the 3D points on the surface with loaded data -----
             Handles = bst_figures('GetFigureHandles', hFigMri);
             
             % Select the required point
@@ -285,7 +289,7 @@ function LoadOnStart() %#ok<DEFNU>
         
             num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
             ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
-    
+            
             if num_contacts==1
                 % Unselect selection button 
                 SetSelectionState(0);
@@ -293,11 +297,15 @@ function LoadOnStart() %#ok<DEFNU>
         
             figure_mri('UpdateVisibleLandmarks', sMri, Handles);
         end
+
         SetSelectionState(0);
     
     % if file does not exist for the subject
     else
         ChannelAnatomicalMat = db_template('channelmat'); 
+        
+        % testing for saving Reference electrode data
+        ChannelAnatomicalMat.RefElectrodeChannel = [];
         
         res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter electrode details', ...
@@ -402,11 +410,38 @@ function UpdatePanel() %#ok<DEFNU>
     drawnow;
 end
 
+%% ===== DRAW LINE =====
+% this function renders a line between the 1st two initial points of the electrode
+% - the tip point and the entry point - that gives the orientation of the electrode
+% which serves as a reference for the user in order to select the actual
+% contacts
+function DrawLine(isLoading) %#ok<DEFNU>
+    global refLinePlotLoc;
+    
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
+    
+    % Get axes handle
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    line(refLinePlotLoc(1,end-1:end), refLinePlotLoc(2,end-1:end), refLinePlotLoc(3,end-1:end), ...
+         'Color', [1 1 0], ...
+         'LineWidth',       2, ...
+         'Parent', hAxes, ...
+         'Tag', 'lineCoordinates');
+    
+    ctrl.jButtonDrawLine.setEnabled(0);
+
+    ReferenceContacts(isLoading);
+    SetSelectionState(1);
+end
+
 %% ===== REFERENCE CONTACTS FOR AN ELECTRODE =====
 % plot the reference contacts on the reference line to act as a guideline
-function ReferenceContacts(varargin) %#ok<DEFNU>
+function ReferenceContacts(isLoading) %#ok<DEFNU>
     global ChannelAnatomicalMat;
     global numContacts;
+    global refLinePlotLoc;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -426,11 +461,12 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
 
     % Get electrode orientation
-    elecTipMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end-1).Loc./1000);
-    entryMri = cs_convert(sMri, 'world', 'mri', ChannelAnatomicalMat.Channel(end).Loc./1000);
+    elecTipMri = cs_convert(sMri, 'scs', 'mri', refLinePlotLoc(:, end-1)); %ChannelAnatomicalMat.Channel(end-1).Loc./1000);
+    entryMri = cs_convert(sMri, 'scs', 'mri', refLinePlotLoc(:, end)); % ChannelAnatomicalMat.Channel(end).Loc./1000);
     orient = entryMri - elecTipMri;
     orient = orient ./ sqrt(sum(orient .^ 2));
-
+    
+    label_name = string(ctrl.jTextLabel.getText());
     for i = 1:numContacts
         % Compute the default position of the contact
         posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
@@ -444,6 +480,20 @@ function ReferenceContacts(varargin) %#ok<DEFNU>
              'LineWidth',       2, ...
              'Parent',          hAxes, ...
              'Tag',             'ptCoordinatesRef');
+        
+        if ~isLoading
+            % add reference data to the structure
+            refWorld = cs_convert(sMri, 'scs', 'world', pos);
+    
+            CoordData = db_template('channeldesc');
+            CoordData.Name = char(label_name + num2str(i));
+            CoordData.Comment = 'Reference values (world)';
+            CoordData.Type = 'EEG';
+            CoordData.Loc = refWorld' .* 1000;
+            CoordData.Weight = 1;
+    
+            ChannelAnatomicalMat.RefElectrodeChannel = [ChannelAnatomicalMat.RefElectrodeChannel, CoordData];
+        end
     end
     
     ctrl.jButtonDrawLine.setEnabled(0);
@@ -849,32 +899,6 @@ function FindCentroid(sSurf, listCoord, cnt, cntThresh) %#ok<DEFNU>
             end
         end
     end
-end
-
-%% ===== DRAW LINE =====
-% this function renders a line between the 1st two initial points of the electrode
-% - the tip point and the entry point - that gives the orientation of the electrode
-% which serves as a reference for the user in order to select the actual
-% contacts
-function DrawLine(varargin) %#ok<DEFNU>
-    global refLinePlotLoc;
-    
-    % Get panel controls
-    ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
-    
-    % Get axes handle
-    hFig = bst_figures('GetFiguresByType', '3DViz');
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-    line(refLinePlotLoc(1,end-1:end), refLinePlotLoc(2,end-1:end), refLinePlotLoc(3,end-1:end), ...
-         'Color', [1 1 0], ...
-         'LineWidth',       2, ...
-         'Parent', hAxes, ...
-         'Tag', 'lineCoordinates');
-    
-    ctrl.jButtonDrawLine.setEnabled(0);
-
-    ReferenceContacts();
-    SetSelectionState(1);
 end
 
 %% ===== SHOW/HIDE REFERENCE POINTS AND LINES =====
