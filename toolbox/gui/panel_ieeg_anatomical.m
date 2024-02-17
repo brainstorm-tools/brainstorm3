@@ -267,11 +267,13 @@ function LoadOnStart() %#ok<DEFNU>
                 'Tag', 'txtCoordinates');
             
             % this currently saves all the points on loading
-            % need to define a new fiedl int he channelmat structure
+            % need to define a new field in the channelmat structure
             % to pull just the tip and entry points for line rendering
-            refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
+            
+            % ----- STEP-3: update the reference electrode line and 3D points on the surface with loaded data -----
+            % refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
 
-            % ----- STEP-3: update the MriViewer with points from the loaded data -----
+            % ----- STEP-4: update the 3D points on the surface with loaded data -----
             Handles = bst_figures('GetFigureHandles', hFigMri);
             
             % Select the required point
@@ -520,9 +522,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
                 '1. Tip ' ...
                 '2. Skull entry'], 'Set electrode tip and skull entry');
-            
-            % refLinePlotLoc = [];
-        
+                    
         case {'escape'}
             % exit the selection state to stop plotting contacts
             SetSelectionState(0);
@@ -533,8 +533,10 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
 
             num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
             label_name = string(ctrl.jTextLabel.getText());
+            
             if num_contacts==0
                 clickOnSurfaceCount = 0;
+                
                 % label contacts
                 res = java_dialog('input', {'Number of contacts', 'Label Name', 'Contact Spacing (mm)'}, ...
                                 'Enter electrode details', ...
@@ -556,7 +558,6 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                     '1. Tip ' ...
                     '2. Skull entry'], 'Set electrode tip and skull entry');
 
-                % refLinePlotLoc = [];
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
@@ -1172,9 +1173,7 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     end
     
     idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
-    if num_contacts == 1
-        refLinePlotLoc(:, end) = [];
-    end
+    
     if num_contacts == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber 
         % Find all reference lines
         lineCoord = findobj(0, 'Tag', 'lineCoordinates'); 
@@ -1206,6 +1205,11 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
 
         refLinePlotLoc(:, end) = [];
         numContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
+    end
+
+    if num_contacts == 1
+        refLinePlotLoc(:, end) = [];
+        ChannelAnatomicalMat.IntraElectrodes(idx) = [];
     end
 
     ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts));
