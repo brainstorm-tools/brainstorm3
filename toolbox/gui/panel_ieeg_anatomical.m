@@ -40,11 +40,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew.setPreferredSize(java_scaled('dimension', 320,500));
 
     % Create list for keeping track of the selected contact points
-    jListModel = javax.swing.DefaultListModel(); % can use java_create('javax.swing.DefaultListModel');
+    jListModel = javax.swing.DefaultListModel();
 
     % Hack keyboard callback
     hFig = bst_figures('GetCurrentFigure', '3D');
-    KeyPressFcn_bak = get(hFig, 'KeyPressFcn');
+    get(hFig, 'KeyPressFcn');
     set(hFig, 'KeyPressFcn', @KeyPress_Callback);
 
     % ===== CREATE TOOLBAR =====
@@ -55,15 +55,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonDrawLine = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SCOUT_NEW, 'Draw reference electrode', @(h,ev)bst_call(@DrawLine, 0));
         % Button "Show/Hide reference"
         gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCOUT_NEW, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
+        
         % add separator
         jToolbar.addSeparator();
 
-        % Button "Remove selection"
+        % Button "Remove selection" (THIS IS UNDER CONTRUCTION)
         % jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove last"
         jButtonRemoveLast = gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove all"
         jButtonRemoveAll = gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
+        
         % add separator
         jToolbar.addSeparator();
 
@@ -94,7 +96,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelFirstPart.add(jPanelElecList, BorderLayout.CENTER);
         jPanelMain.add(jPanelFirstPart);
 
-        % ===== Coordinates =====
+        % ===== Variables for getting details of the electrodes =====
         jPanelCoordinates = gui_river('');            
             jTextNcontacts = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
             jTextLabel = gui_component('label', jPanelCoordinates, 'tab', '', [], [], [], 0);
@@ -117,28 +119,30 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonRemoveAll',       jButtonRemoveAll, ...
                                   'jButtonDrawLine',        jButtonDrawLine, ...
                                   'jButtonSaveAll',         jButtonSaveAll));
-                                   % 'jButtonRemoveSelected',  jButtonRemoveSelected, ...
 
     %% ============================================================================
-    %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS USING THE PANEL) =========
+    %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS ACTIVE ON THE PANEL) =========
     %  ============================================================================
 
     %% ===== LIST CLICK CALLBACK =====
     function ElecListClick_Callback(h, ev)
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            % Set cursor location on MRI
+            % ===== Update crosshair location in MRI Viewer =====
+            
+            % Get the panel controls
             ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
+
+            % Get the index of the contact coordinates in the list
             iIndex = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+
+            % if user clicked elsewhere on the panel just return
             if isempty(iIndex)
                 return;
             end
+
+            % updates the crosshair location in MRI Viewer
             SetLocationMri(iIndex);
-        end
-        
-        % IF DOUBLE CLICK
-        if (ev.getClickCount() == 2)
-            
         end
     end   
     
@@ -146,7 +150,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ElecListKeyTyped_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
             case {ev.VK_DELETE}
-                % Delete contact a location
+                % delete contact a location
                 RemoveContactAtLocation_Callback(h, ev);
             case {ev.VK_ESCAPE}
                 % exit the selection state to stop plotting contacts
@@ -155,20 +159,21 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     end
     
     %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
-    function RemoveContactAtLocation_Callback(h, ev)
-        % Delete selection
-        ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
-        iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
-        if isempty(iPoint)
-            return;
-        end
-        isDelete = java_dialog('confirm', ...
-        '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
-        'Delete label');  
-        if isDelete
-            RemoveContactAtLocation(iPoint);
-        end
-    end
+    % THIS IS UNDER CONTRUCTION
+    % function RemoveContactAtLocation_Callback(h, ev)
+    %     % Delete selection
+    %     ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
+    %     iPoint = uint16(ctrl.jListElec.getSelectedIndices())' + 1;
+    %     if isempty(iPoint)
+    %         return;
+    %     end
+    %     isDelete = java_dialog('confirm', ...
+    %     '<HTML><BR>Do you want to delete the label?<BR><BR>', ...
+    %     'Delete label');  
+    %     if isDelete
+    %         RemoveContactAtLocation(iPoint);
+    %     end
+    % end
 end
            
 %% =================================================================================
@@ -192,8 +197,8 @@ function LoadOnStart() %#ok<DEFNU>
 
     % for keeping track of the total number of contacts for the current
     % electrode
-    global numContacts;
-    numContacts = 0;
+    global totalNumContacts;
+    totalNumContacts = 0;
 
     % for keeping track of click counts on surface
     global clickOnSurfaceCount;
@@ -237,12 +242,12 @@ function LoadOnStart() %#ok<DEFNU>
             sMri = bst_memory('LoadMri', MriFile);
             str = string(ChannelAnatomicalMat.Channel(i).Name);
             label_name = regexp(str, '[A-Za-z'']', 'match'); % A-Z, a-z, '
-            num_contacts = regexp(str, '\d*', 'match');
+            curContactNum = regexp(str, '\d*', 'match');
             
             ctrl.jTextLabel.setText(strjoin(label_name, ''));
-            ctrl.jTextNcontacts.setText(num_contacts);
+            ctrl.jTextNcontacts.setText(curContactNum);
 
-            ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + num_contacts, ChannelAnatomicalMat.Channel(i).Loc));
+            ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + curContactNum, ChannelAnatomicalMat.Channel(i).Loc));
             plotLocWorld = ChannelAnatomicalMat.Channel(i).Loc ./ 1000;
             plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
 
@@ -259,7 +264,7 @@ function LoadOnStart() %#ok<DEFNU>
                  'Tag',             'ptCoordinates');
 
             text(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
-                '         ' + string(strjoin(label_name, '') + num_contacts), ...
+                '         ' + string(strjoin(label_name, '') + curContactNum), ...
                 'HorizontalAlignment','center', ...
                 'FontSize', 10, ...
                 'Color',  [1 1 0], ...
@@ -268,11 +273,11 @@ function LoadOnStart() %#ok<DEFNU>
             
             idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
             ctrl.jTextContactSpacing.setText(string(ChannelAnatomicalMat.IntraElectrodes(idx).ContactSpacing * 1000));
-            numContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
-            if round(str2double(num_contacts)) == 1
+            totalNumContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
+            if round(str2double(curContactNum)) == 1
                 refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
             end
-            if round(str2double(num_contacts)) == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber
+            if round(str2double(curContactNum)) == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber
                 refLinePlotLoc = [refLinePlotLoc, plotLocScs'];
                 DrawLine(1);
             end
@@ -287,10 +292,10 @@ function LoadOnStart() %#ok<DEFNU>
             Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
             Handles.hTextEEG(1,:)  = figure_mri('PlotText', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], Channels(1).Name, Channels(1).Name);
         
-            num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
-            ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+            curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
+            ctrl.jTextNcontacts.setText(sprintf("%d", curContactNum-1));
             
-            if num_contacts==1
+            if curContactNum==1
                 % Unselect selection button 
                 SetSelectionState(0);
             end
@@ -320,7 +325,7 @@ function LoadOnStart() %#ok<DEFNU>
         ctrl.jTextContactSpacing.setText(res{3});
         ctrl.jButtonDrawLine.setEnabled(0);
         
-        numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        totalNumContacts = round(str2double(ctrl.jTextNcontacts.getText()));
         ctrl.jTextNcontacts.setText('1');
         
         java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
@@ -334,8 +339,9 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel() %#ok<DEFNU>
+    % Global variables
     global ChannelAnatomicalMat;
-    global numContacts;
+    global totalNumContacts;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -343,10 +349,10 @@ function UpdatePanel() %#ok<DEFNU>
         return
     end
 
-    % Get current figure
+    % Get current 3D figure
     hFig = bst_figures('GetCurrentFigure', '3D');
 
-    % If a figure is available: get if a point select 
+    % If a figure is available: get if a point is selected 
     if ~isempty(hFig) && ishandle(hFig)
         CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
     else
@@ -354,13 +360,13 @@ function UpdatePanel() %#ok<DEFNU>
     end
     
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
         label_name = string(ctrl.jTextLabel.getText());
-        ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(num_contacts), CoordinatesSelector.World .* 1000));
+        ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(curContactNum), CoordinatesSelector.World .* 1000));
         
         % add new contact to the list
         CoordData = db_template('channeldesc');
-        CoordData.Name = char(label_name + num2str(num_contacts));
+        CoordData.Name = char(label_name + num2str(curContactNum));
         CoordData.Comment = 'World Coordinate System';
         CoordData.Type = 'EEG';
         CoordData.Loc = CoordinatesSelector.World' .* 1000;
@@ -376,7 +382,7 @@ function UpdatePanel() %#ok<DEFNU>
             IntraElecData.Name = char(ctrl.jTextLabel.getText());
             IntraElecData.Type = 'SEEG';
             IntraElecData.Color = [0 0.8 0];
-            IntraElecData.ContactNumber = numContacts;
+            IntraElecData.ContactNumber = totalNumContacts;
             IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
             IntraElecData.Visible = 1;
 
@@ -395,7 +401,7 @@ function UpdatePanel() %#ok<DEFNU>
                 IntraElecData.Name = char(ctrl.jTextLabel.getText());
                 IntraElecData.Type = 'SEEG';
                 IntraElecData.Color = [0 0.8 0];
-                IntraElecData.ContactNumber = numContacts;
+                IntraElecData.ContactNumber = totalNumContacts;
                 IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
                 IntraElecData.Visible = 1;
     
@@ -440,7 +446,7 @@ end
 % plot the reference contacts on the reference line to act as a guideline
 function ReferenceContacts(isLoading) %#ok<DEFNU>
     global ChannelAnatomicalMat;
-    global numContacts;
+    global totalNumContacts;
     global refLinePlotLoc;
 
     % Get panel controls
@@ -467,7 +473,7 @@ function ReferenceContacts(isLoading) %#ok<DEFNU>
     orient = orient ./ sqrt(sum(orient .^ 2));
     
     label_name = string(ctrl.jTextLabel.getText());
-    for i = 1:numContacts
+    for i = 1:totalNumContacts
         % Compute the default position of the contact
         posMri = elecTipMri + (i - 1) * (contact_spacing/1000) * orient;
         pos = cs_convert(sMri, 'mri', 'scs', posMri);
@@ -543,9 +549,10 @@ end
 % handle the keyboard callbacks for the 3D figure
 function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
     global refLinePlotLoc;
-    global numContacts;
+    global totalNumContacts;
     global clickOnSurfaceCount;
     
+    % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
 
     switch (keyEvent.Key)
@@ -566,7 +573,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             ctrl.jTextContactSpacing.setText(res{3});
             ctrl.jButtonDrawLine.setEnabled(0);
 
-            numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+            totalNumContacts = round(str2double(ctrl.jTextNcontacts.getText()));
             ctrl.jTextNcontacts.setText('1');
         
             java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
@@ -581,10 +588,10 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             % resume the selection state to continue plotting contacts
             % from where it was last stopped
 
-            num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+            curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
             label_name = string(ctrl.jTextLabel.getText());
             
-            if num_contacts==0
+            if curContactNum==0
                 clickOnSurfaceCount = 0;
                 
                 % label contacts
@@ -601,7 +608,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
                 ctrl.jTextContactSpacing.setText(res{3});
                 ctrl.jButtonDrawLine.setEnabled(0);
 
-                numContacts = round(str2double(ctrl.jTextNcontacts.getText()));
+                totalNumContacts = round(str2double(ctrl.jTextNcontacts.getText()));
                 ctrl.jTextNcontacts.setText('1');
         
                 java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
@@ -611,7 +618,7 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             else
                 isResumePlot = java_dialog('confirm', [...
                 '<HTML><B>Do you want to resume labelling?</B><BR><BR>' ...
-                'Selecting "Yes" will resume from label ' + label_name + num2str(num_contacts)], ...
+                'Selecting "Yes" will resume from label ' + label_name + num2str(curContactNum)], ...
                 'Resume labelling'); 
                 if isResumePlot
                     SetSelectionState(1);
@@ -621,7 +628,6 @@ function KeyPress_Callback(hFig, keyEvent) %#ok<DEFNU>
             end
             
         otherwise
-            % KeyPressFcn_bak(hFig, keyEvent); 
             return;
     end
 end
@@ -669,7 +675,7 @@ end
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFig
 function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     global refLinePlotLoc;
-    global numContacts;
+    global totalNumContacts;
 
     % parse arguments
     if (nargin < 2) || isempty(AcceptMri)
@@ -778,7 +784,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
         'Tag', 'txtCoordinates');
     
     if round(str2double(ctrl.jTextNcontacts.getText())) == 1 ...
-       || round(str2double(ctrl.jTextNcontacts.getText())) == numContacts
+       || round(str2double(ctrl.jTextNcontacts.getText())) == totalNumContacts
         refLinePlotLoc = [refLinePlotLoc, plotLoc'];
     end
     
@@ -792,7 +798,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % set global variable to track the vetices in around a selected point on surface
     global VertexList;
     VertexList = [];
-    global numContacts;
+    global totalNumContacts;
     global clickOnSurfaceCount;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
@@ -1059,7 +1065,7 @@ end
 function RemoveLastContact(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
     global clickOnSurfaceCount;
-    global numContacts;
+    global totalNumContacts;
     global refLinePlotLoc;
 
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1077,8 +1083,8 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     if ~ctrl.jListModel.isEmpty()
         lastElement = ctrl.jListModel.lastElement();
         label_name = regexp(lastElement, '[A-Za-z'']', 'match');
-        num_contacts_str = regexp(lastElement, '\d*', 'match');
-        num_contacts = round(str2double(num_contacts_str(1)));
+        curContactNumStr = regexp(lastElement, '\d*', 'match');
+        curContactNum = round(str2double(curContactNumStr(1)));
     else
         return;
     end
@@ -1198,7 +1204,7 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     
     idx = find(ismember({ChannelAnatomicalMat.IntraElectrodes.Name}, label_name));
     
-    if num_contacts == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber 
+    if curContactNum == ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber 
         % Find all reference lines
         lineCoord = findobj(0, 'Tag', 'lineCoordinates'); 
         % Remove coordinates from the figures
@@ -1228,15 +1234,15 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
         end
 
         refLinePlotLoc(:, end) = [];
-        numContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
+        totalNumContacts = ChannelAnatomicalMat.IntraElectrodes(idx).ContactNumber;
     end
 
-    if num_contacts == 1
+    if curContactNum == 1
         refLinePlotLoc(:, end) = [];
         ChannelAnatomicalMat.IntraElectrodes(idx) = [];
     end
 
-    ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts));
+    ctrl.jTextNcontacts.setText(sprintf("%d", curContactNum));
     ctrl.jTextLabel.setText(label_name);
 
     clickOnSurfaceCount = clickOnSurfaceCount - 1;
@@ -1267,7 +1273,7 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
     % Delete selected points
     if ~isempty(hCoord)
         delete(hCoord);
-        % num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        % curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
         % ctrl.jTextNcontacts.setText(sprintf("%d", 10));
         ctrl.jListModel.removeAllElements();
         ctrl.jTextNcontacts.setText(sprintf("%d", 0));
@@ -1425,7 +1431,7 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin) %#ok<DEFNU>
     global GlobalData;
-    global numContacts;
+    global totalNumContacts;
     global clickOnSurfaceCount;
     global refLinePlotLoc;
 
@@ -1461,26 +1467,26 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
     Handles.hTextEEG(1,:)  = figure_mri('PlotText', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], Channels(1).Name, Channels(1).Name);
 
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MRI)
-        num_contacts = round(str2double(ctrl.jTextNcontacts.getText()));
+        curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
 
         if clickOnSurfaceCount == 1
-            ctrl.jTextNcontacts.setText(sprintf("%d", numContacts));
+            ctrl.jTextNcontacts.setText(sprintf("%d", totalNumContacts));
         else
-            ctrl.jTextNcontacts.setText(sprintf("%d", num_contacts-1));
+            ctrl.jTextNcontacts.setText(sprintf("%d", curContactNum-1));
         end
 
         % if last contact then disable clicking on surface so that user cannot plot any more points
-        if num_contacts==2
+        if curContactNum==2
             % Unselect selection button 
             SetSelectionState(0);
-            numContacts = 0;
+            totalNumContacts = 0;
         end
     end
 
     figure_mri('UpdateVisibleLandmarks', sMri, Handles);
     
     % ask user if the tip and entry points were marked correctly
-    if num_contacts == numContacts
+    if curContactNum == totalNumContacts
         isConfirm = java_dialog('confirm', 'Did you select the points in the right order: 1. Tip 2. Skull entry', 'Set electrode tip and skull entry');
         if ~isConfirm
             RemoveLastContact();
