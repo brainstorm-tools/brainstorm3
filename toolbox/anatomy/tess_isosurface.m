@@ -1,0 +1,156 @@
+function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
+% TESS_ISOSURFACE: Reconstruct a thresholded surface mesh from a CT
+%
+% USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue=1900, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(MriFile,  isoValue=1900, Comment)
+%         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue=1900)
+%
+% If input is loaded CT structure, no surface file is created and the surface vertices and faces are returned instead.
+%
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% inspired from tess_isohead.m
+%
+% Authors: Chinmay Chinara, 2023-2024
+
+%% ===== PARSE INPUTS =====
+% Initialize returned variables
+MeshFile = [];
+iSurface = [];
+isSave = true;
+
+% Parse inputs
+if (nargin < 3) || isempty(Comment)
+    Comment = [];
+end
+% MriFile instead of subject index
+sMri = [];
+if ischar(iSubject)
+    MriFile = iSubject;
+    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+elseif isnumeric(iSubject)
+    % Get subject
+    sSubject = bst_get('Subject', iSubject);
+    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+elseif isstruct(iSubject)
+    sMri = iSubject;
+    MriFile = sMri.FileName;
+    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    % Don't save a surface file, instead return surface directly.
+    isSave = false;  
+else
+    error('Wrong input type.');
+end
+
+%% ===== LOAD MRI =====
+isProgress = ~bst_progress('isVisible');
+if isempty(sMri)
+    % Load MRI
+    bst_progress('start', 'Generate thresholded isosurface from CT', 'Loading CT...');
+    sMri = bst_memory('LoadMri', MriFile);
+    % if isProgress
+    %     bst_progress('stop');
+    % end
+end
+% Save current scouts modifications
+panel_scout('SaveModifications');
+% If subject is using the default anatomy: use the default subject instead
+if sSubject.UseDefaultAnat
+    iSubject = 0;
+end
+% Check layers
+if isempty(sSubject.iAnatomy) || isempty(sSubject.Anatomy)
+    bst_error('The surface generation requires at least the CT of the subject.', 'Generate isosurface', 0);
+    return
+end
+% Check that everything is there
+if ~isfield(sMri, 'Histogram') || isempty(sMri.Histogram) || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA)
+    bst_error('You need to set the fiducial points in the MRI first.', 'Generate isosurface', 0);
+    return
+end
+
+%% ===== ASK PARAMETERS =====
+% Ask user to set the parameters if they are not set
+if (nargin < 2) || isempty(isoValue)
+    res = java_dialog('input', {'<HTML>Background level (HU):<BR>(guessed from MRI histogram)', ...
+                                '<HTML>White level (HU):<BR>(guessed from MRI histogram)', ...
+                                '<HTML>Set isoValue (HU):'}, ...
+                                'Generate isosurface', ...
+                                [], ...
+                                {num2str(sMri.Histogram.bgLevel), num2str(sMri.Histogram.whiteLevel), num2str(1900)});
+    % If user cancelled: return
+    if isempty(res) || strcmpi(res{3},'0')
+        return
+    end
+    % Get new values
+    isoValue   = round(str2double(res{3}));
+else
+    isoValue = sMri.Histogram.whiteLevel;
+end
+
+% Check parameters values
+if isempty(isoValue) || isoValue < 0 
+    bst_error('Invalid parameters. Enter proper values.', 'Mesh surface', 0);
+    return
+end
+
+
+%% ===== CREATE SURFACE =====
+% Compute isosurface
+bst_progress('text', 'Creating isosurface...');
+[sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
+bst_progress('inc', 10);
+% Downsample to a maximum number of vertices
+maxIsoVert = 60000;
+if (length(sMesh.Vertices) > maxIsoVert)
+    bst_progress('text', 'Downsampling isosurface...');
+    [sMesh.Faces, sMesh.Vertices] = reducepatch(sMesh.Faces, sMesh.Vertices, maxIsoVert./length(sMesh.Vertices));
+    bst_progress('inc', 10);
+end
+
+% Convert to millimeters
+sMesh.Vertices = sMesh.Vertices(:,[2,1,3]);
+sMesh.Faces    = sMesh.Faces(:,[2,1,3]);
+sMesh.Vertices = bst_bsxfun(@times, sMesh.Vertices, sMri.Voxsize);
+% Convert to SCS
+sMesh.Vertices = cs_convert(sMri, 'mri', 'scs', sMesh.Vertices ./ 1000);
+
+%% ===== SAVE FILES =====
+if isSave
+    bst_progress('text', 'Saving new file...');
+    % Create output filenames
+    ProtocolInfo = bst_get('ProtocolInfo');
+    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+    % Save isosurface
+    sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
+    sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
+    bst_save(MeshFile, sMesh, 'v7');
+    iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
+    view_surface(MeshFile);
+else
+    % Return surface
+    MeshFile = sMesh.Vertices;
+    iSurface = sMesh.Faces;
+end
+
+% Close, success
+if isProgress
+    bst_progress('stop');
+end
