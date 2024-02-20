@@ -149,17 +149,29 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % surface
             HighlightLocation(iIndex);
         end
+
+        % IF DOUBLE CLICK
+        if (ev.getClickCount() == 2)
+            % delete the highlight
+            delete(findobj(0, 'Tag', 'ptHighlight'));
+        end
     end   
     
     %% ===== LIST KEYTYPED CALLBACK =====
     function ElecListKeyTyped_Callback(h, ev)
-        switch(uint8(ev.getKeyChar()))
-            case {ev.VK_DELETE}
+        switch(ev.getKeyChar())
+            case {char(ev.VK_DELETE)}
                 % delete contact at a location
                 % RemoveContactAtLocation_Callback(h, ev); % THIS IS UNDER CONSTRUCTION
-            case {ev.VK_ESCAPE}
+            case {char(ev.VK_ESCAPE)}
                 % exit the selection state to stop plotting contacts
                 SetSelectionState(0);
+            case {'l', 'L'}
+                % Set new electrode
+                SetNewElectrode();
+            case {'r', 'R'}
+                % resume labelling
+                ResumeLabeling();            
         end
     end
     
@@ -315,12 +327,6 @@ function LoadOnStart() %#ok<DEFNU>
             if curContactNum==2
                 ctrl.jTextNcontacts.setText('0');
             end
-            % ctrl.jTextNcontacts.setText(sprintf("%d", curContactNum-1));
-            % 
-            % if curContactNum==1
-            %     % disable user interactivity to plot points 
-            %     SetSelectionState(0);
-            % end
         
             figure_mri('UpdateVisibleLandmarks', sMri, Handles);
         end
@@ -332,11 +338,12 @@ function LoadOnStart() %#ok<DEFNU>
     else
         ChannelAnatomicalMat = db_template('channelmat'); 
         
-        % saving the reference electrode data (FOR FUTURE USE - UNDER
-        % CONSTRUCTION)
-        ChannelAnatomicalMat.RefElectrodeChannel = [];
-        
-        SetNewElectrode();
+        % saving the reference electrode data (FOR FUTURE USE - UNDER CONSTRUCTION)
+        ChannelAnatomicalMat.RefElectrodeChannel = [];   
+
+        % keep the DrawRef button disabled as condition is still not met fopr
+        % setting it active
+        ctrl.jButtonDrawRefElectrode.setEnabled(0);
     end
     
     % update the panel
@@ -564,7 +571,7 @@ function HighlightLocation(iIndex) %#ok<DEFNU>
     % Get axes handle
     hAxes = findobj(hFig1, '-depth', 1, 'Tag', 'Axes3D');
     % Remove previous mark
-    delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptHightlight'));
+    delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptHighlight'));
     % Plot new mark
     line(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
          'MarkerFaceColor', [1 0 0], ...
@@ -573,7 +580,7 @@ function HighlightLocation(iIndex) %#ok<DEFNU>
          'MarkerSize',      10, ...
          'LineWidth',       2, ...
          'Parent',          hAxes, ...
-         'Tag',             'ptHightlight');
+         'Tag',             'ptHighlight');
 
     % ===== FOR MRI =====
     % update the cross-hair position on the MRI
@@ -687,6 +694,12 @@ function ResumeLabeling(varargin) %#ok<DEFNU>
     % get the panel variables
     curContactNum = round(str2double(ctrl.jTextNcontacts.getText()));
     label_name = string(ctrl.jTextLabel.getText());
+
+    if isnan(curContactNum)
+        java_dialog('msgbox', 'Press ''L'' to start labeling a new electrode', 'Resume labeling');
+        SetSelectionState(0);
+        return;
+    end
     
     % if the last electrode labelling was completed then ask user if they 
     % want to start from a new electrode
@@ -1162,6 +1175,7 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
         return
     end
 
+    delete(findobj(0, 'Tag', 'ptHighlight'));
     % Find all selected contacts
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
     % Remove coordinates from the figures
@@ -1377,7 +1391,8 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
     if isempty(ctrl)
         return;
     end
-
+    
+    delete(findobj(0, 'Tag', 'ptHighlight'));
     % Find all the user plotted contacts
     hCoord = findobj(0, 'Tag', 'ptCoordinates'); 
     % Remove coordinates from the figures
@@ -1694,7 +1709,14 @@ end
 %% ===== HELP =====
 % How to use the tool
 function Help(varargin) %#ok<DEFNU>
-    
+    java_dialog('msgbox', ...
+                ['<HTML>' ...
+                 '1. ' ...
+                 '2. Press <B>''L''</B> for starting new electrode labeling<BR>' ...
+                 '2. Press <B>''R''</B> for resuming electrode labeling<BR>' ...
+                 '3. Press <B>''R''</B> for resuming electrode labeling<BR>' ...
+                 '</HTML>'], ...
+                'How to use the tool');
 end
 
 %% ===== CLOSE FIGURE =====
