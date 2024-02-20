@@ -42,10 +42,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create list for keeping track of the selected contact points
     jListModel = javax.swing.DefaultListModel();
 
-    % Hack keyboard callback
+    % Keyboard callback
     hFig = bst_figures('GetCurrentFigure', '3D');
     get(hFig, 'KeyPressFcn');
     set(hFig, 'KeyPressFcn', @KeyPress_Callback);
+    get(hFig, 'CloseRequestFcn');
+    set(hFig, 'CloseRequestFcn', @CloseRequest_Callback);
 
     % ===== CREATE TOOLBAR =====
     jToolbar = gui_component('Toolbar', jPanelNew, BorderLayout.WEST);
@@ -195,6 +197,10 @@ function LoadOnStart() %#ok<DEFNU>
     % for showing/hiding reference lines and points rendering
     global isRefVisible;
     isRefVisible = 1;
+    
+    % for keeping track of modifications between sessions
+    global isModified;
+    isModified = 0;
 
     % for keeping track of the total number of contacts for the current
     % electrode
@@ -318,7 +324,7 @@ function LoadOnStart() %#ok<DEFNU>
         
         % disable user interactivity to plot points
         SetSelectionState(0);
-    
+            
     % if file does not exist for the subject just start fresh 
     else
         ChannelAnatomicalMat = db_template('channelmat'); 
@@ -558,6 +564,7 @@ function FocusChangedCallback(isFocused) %#ok<DEFNU>
     if ~isFocused
         % remove all the contacts
         RemoveAllContacts();
+        disp('here');
     end
 end
 
@@ -597,6 +604,7 @@ function SetNewElectrode(varargin) %#ok<DEFNU>
     % global variables
     global clickOnSurfaceCount;
     global totalNumContacts;
+    global isModified;
     
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -638,11 +646,17 @@ function SetNewElectrode(varargin) %#ok<DEFNU>
     java_dialog('msgbox', '1st two points for electrode ''' + string(ctrl.jTextLabel.getText()) + [''' should be marked as: ' ...
         '1. Tip ' ...
         '2. Skull entry'], 'Set electrode tip and skull entry');
+    
+    % set the modification
+    isModified = 1;
 end
 
 %% ===== RESUME ELECTRODE LABELING =====
 % resume from the last left session/contact
 function ResumeLabeling(varargin) %#ok<DEFNU>
+    % global variables
+    global isModified;
+    
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     if isempty(ctrl)
@@ -672,8 +686,11 @@ function ResumeLabeling(varargin) %#ok<DEFNU>
         'Resume labeling'); 
         if isResumeLabeling
             SetSelectionState(1);
+
+            % set the modification
+            isModified = 1;
         else
-            java_dialog('msgbox', 'Press ''L'' to start labelling a new electrode', 'Resume labeling');
+            java_dialog('msgbox', 'Press ''L'' to start labeling a new electrode', 'Resume labeling');
             SetSelectionState(0);
         end
     end
@@ -1116,6 +1133,7 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
     global clickOnSurfaceCount;
     global totalNumContacts;
     global refLinePlotLoc;
+    global isModified;
     
     % get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1314,6 +1332,9 @@ function RemoveLastContact(varargin) %#ok<DEFNU>
 
     clickOnSurfaceCount = clickOnSurfaceCount - 1;
     
+    % set the modification
+    isModified = 1;
+
     % update the panel
     UpdatePanel();
 end
@@ -1325,6 +1346,7 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
     global ChannelAnatomicalMat;
     global clickPointInSurface;
     global refLinePlotLoc;
+    global isModified;
 
     % Unselect selection button 
     SetSelectionState(0);
@@ -1510,6 +1532,9 @@ function RemoveAllContacts(varargin) %#ok<DEFNU>
     % reset global variables
     clickPointInSurface = 0;
     refLinePlotLoc = [];
+    
+    % set the modification
+    isModified = 1;
 
     % Update panel
     UpdatePanel();
@@ -1630,7 +1655,7 @@ function SaveAll(varargin) %#ok<DEFNU>
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     end
     
-    bst_progress('start', 'Saving sEEG contact labeling', 'Saving new file...');
+    bst_progress('start', 'Saving sEEG contact labeling', 'Saving data');
 
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
@@ -1643,4 +1668,26 @@ function SaveAll(varargin) %#ok<DEFNU>
     bst_save(CoordFile, ChannelAnatomicalMat, 'v7');
     
     bst_progress('stop');
+end
+
+%% ===== CLOSE FIGURE =====
+function CloseRequest_Callback(varargin)
+    % global variables
+    global isModified;
+
+    panelName = 'ContactLabelIeeg';
+    
+    if isModified
+        isSave = java_dialog('confirm', 'Save changes to the data ?', 'Saving data');
+        if isSave
+            SaveAll();
+        end
+    end
+
+    % Hide panel
+    gui_hide(panelName);
+    % Release mutex
+    bst_mutex('release', panelName);
+    % Unload everything
+    bst_memory('UnloadAll', 'Forced');
 end
