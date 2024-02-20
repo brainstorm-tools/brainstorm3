@@ -1677,6 +1677,11 @@ function SaveAll(varargin) %#ok<DEFNU>
     % global variables
     global ChannelAnatomicalMat;
 
+    isSave = java_dialog('confirm', 'Save changes to the data ?', 'Saving data');
+    if ~isSave
+        return;
+    end
+
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
     if isempty(ctrl)
@@ -1727,10 +1732,7 @@ function CloseRequest_Callback(varargin)
     panelName = 'ContactLabelIeeg';
     
     if isModified
-        isSave = java_dialog('confirm', 'Save changes to the data ?', 'Saving data');
-        if isSave
-            SaveAll();
-        end
+        SaveAll();
     end
 
     % Hide panel
