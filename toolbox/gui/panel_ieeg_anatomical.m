@@ -58,26 +58,20 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonDrawRefElectrode = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SEEG_DEPTH, 'Draw reference electrode', @(h,ev)bst_call(@DrawRefElectrode, 0));
         % Button "Show/Hide reference"
         gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCREEN1, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
-        
         % add separator
         jToolbar.addSeparator();
-
         % Button "Remove selection" (THIS IS UNDER CONTRUCTION)
         % jButtonRemoveSelected = gui_component('ToolbarButton', jToolbar, [], 'DelSel', IconLoader.ICON_DELETE, 'Remove selected contact', @(h,ev)bst_call(@RemoveContactAtLocation_Callback,h,ev));
         % Button "Remove last"
         jButtonRemoveLast = gui_component('ToolbarButton', jToolbar, [], 'DelLast', IconLoader.ICON_DELETE, 'Remove last contact', @RemoveLastContact);
         % Button "Remove all"
         jButtonRemoveAll = gui_component('ToolbarButton', jToolbar, [], 'DelAll', IconLoader.ICON_DELETE, 'Remove all the contacts', @RemoveAllContacts);
-        
         % add separator
         jToolbar.addSeparator();
-
         % Button "Save all to database"
         jButtonSaveAll = gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
-
         % add separator
         jToolbar.addSeparator();
-
         % Button "How to use the tool"
         jButtonHelp = gui_component('ToolbarButton', jToolbar, [], 'Help', IconLoader.ICON_SEEG, 'How to use the tool', @Help);
     
@@ -161,8 +155,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ElecListKeyTyped_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
             case {ev.VK_DELETE}
-                % delete contact a location
-                RemoveContactAtLocation_Callback(h, ev);
+                % delete contact at a location
+                % RemoveContactAtLocation_Callback(h, ev); % THIS IS UNDER CONSTRUCTION
             case {ev.VK_ESCAPE}
                 % exit the selection state to stop plotting contacts
                 SetSelectionState(0);
@@ -1700,7 +1694,7 @@ end
 %% ===== HELP =====
 % How to use the tool
 function Help(varargin) %#ok<DEFNU>
-    disp('here');
+    
 end
 
 %% ===== CLOSE FIGURE =====
