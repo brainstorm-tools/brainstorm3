@@ -1,5 +1,5 @@
 function varargout = panel_ieeg_anatomical(varargin)
-% PANEL_IEEG_ANATOMICAL: Create a panel to manually add/remove/edit seeg contacts on an isosurface generated from thresholding CT.
+% PANEL_IEEG_ANATOMICAL: Create a panel to manually add/remove/edit ieeg contacts on an isosurface generated from thresholding CT.
 % 
 % USAGE:  bstPanelNew = panel_ieeg_anatomical('CreatePanel')
 %
@@ -39,7 +39,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelNew.setPreferredSize(java_scaled('dimension', 320,500));
 
-    % Create list for keeping track of the selected contact points
+    % Create list for keeping track of the contact coordinates that will be
+    % displayed on the panel
     jListModel = javax.swing.DefaultListModel();
 
     % Keyboard callback
@@ -54,9 +55,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar.setOrientation(jToolbar.VERTICAL);
     jToolbar.setPreferredSize(java_scaled('dimension', 70,25));
         % Button "Setting reference electrode based on tip and entry"
-        jButtonDrawRefElectrode = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SCOUT_NEW, 'Draw reference electrode', @(h,ev)bst_call(@DrawRefElectrode, 0));
+        jButtonDrawRefElectrode = gui_component('ToolbarButton', jToolbar, [], 'DrawRef', IconLoader.ICON_SEEG_DEPTH, 'Draw reference electrode', @(h,ev)bst_call(@DrawRefElectrode, 0));
         % Button "Show/Hide reference"
-        gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCOUT_NEW, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
+        gui_component('ToolbarButton', jToolbar, [], 'DispRef', IconLoader.ICON_SCREEN1, 'Show/Hide reference contacts for an electrode', @ShowHideReference);
         
         % add separator
         jToolbar.addSeparator();
@@ -73,6 +74,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         % Button "Save all to database"
         jButtonSaveAll = gui_component('ToolbarButton', jToolbar, [], 'Save', IconLoader.ICON_SAVE, 'Save all to database', @SaveAll);
+
+        % add separator
+        jToolbar.addSeparator();
+
+        % Button "How to use the tool"
+        jButtonHelp = gui_component('ToolbarButton', jToolbar, [], 'Help', IconLoader.ICON_SEEG, 'How to use the tool', @Help);
     
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
@@ -120,7 +127,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonRemoveLast',       jButtonRemoveLast, ...
                                   'jButtonRemoveAll',        jButtonRemoveAll, ...
                                   'jButtonDrawRefElectrode', jButtonDrawRefElectrode, ...
-                                  'jButtonSaveAll',          jButtonSaveAll));
+                                  'jButtonSaveAll',          jButtonSaveAll, ...
+                                  'jButtonHelp',             jButtonHelp));
 
     %% ============================================================================
     %  ========= INTERNAL PANEL CALLBACKS  (WHEN USER IS ACTIVE ON THE PANEL) =========
@@ -130,7 +138,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ElecListClick_Callback(h, ev)
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            % ===== Update crosshair location in MRI Viewer =====
+            % ===== Highlight in MRI viewer and Surface =====
             
             % Get the panel controls
             ctrl = bst_get('PanelControls', 'ContactLabelIeeg'); 
@@ -143,8 +151,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 return;
             end
 
-            % updates the crosshair location in MRI Viewer
-            SetLocationMri(iIndex);
+            % updates the crosshair location in MRI Viewer and contact on
+            % surface
+            HighlightLocation(iIndex);
         end
     end   
     
@@ -533,13 +542,15 @@ end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
 % on clicking on the coordinates on the panel, the crosshair on the MRI
-% viewer gets updated to show the corresponding location
-function SetLocationMri(iIndex) %#ok<DEFNU>
+% viewer gets updated to show the corresponding location and also the 3D
+% contact on surface shows up highlighted
+function HighlightLocation(iIndex) %#ok<DEFNU>
     % global variables
     global ChannelAnatomicalMat;
 
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    hFig1 = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return
     end    
@@ -555,6 +566,22 @@ function SetLocationMri(iIndex) %#ok<DEFNU>
     plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
     plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
     
+    % ===== FOR SURFACE =====
+    % Get axes handle
+    hAxes = findobj(hFig1, '-depth', 1, 'Tag', 'Axes3D');
+    % Remove previous mark
+    delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptHightlight'));
+    % Plot new mark
+    line(plotLocScs(1), plotLocScs(2), plotLocScs(3), ...
+         'MarkerFaceColor', [1 0 0], ...
+         'MarkerEdgeColor', [0 0 0], ...
+         'Marker',          'o',  ...
+         'MarkerSize',      10, ...
+         'LineWidth',       2, ...
+         'Parent',          hAxes, ...
+         'Tag',             'ptHightlight');
+
+    % ===== FOR MRI =====
     % update the cross-hair position on the MRI
     figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
 end
@@ -990,7 +1017,7 @@ function ShowHideReference(varargin) %#ok<DEFNU>
 end
 
 %% ===== REMOVE AT A LOCATION (DELETE SPECIFIC CONTACT) =====
-% THIS FUNCTION IS UNDER CONSTRUCTION
+% THIS FUNCTIONALITY IS UNDER CONSTRUCTION
 % function RemoveContactAtLocation(Loc) %#ok<DEFNU> 
 %     global ChannelAnatomicalMat;
 % 
@@ -1668,6 +1695,12 @@ function SaveAll(varargin) %#ok<DEFNU>
     bst_save(CoordFile, ChannelAnatomicalMat, 'v7');
     
     bst_progress('stop');
+end
+
+%% ===== HELP =====
+% How to use the tool
+function Help(varargin) %#ok<DEFNU>
+    disp('here');
 end
 
 %% ===== CLOSE FIGURE =====
