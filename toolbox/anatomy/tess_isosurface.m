@@ -88,21 +88,23 @@ end
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 2) || isempty(isoValue)
-    res = java_dialog('input', ['<HTML>Background level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(sMri.Histogram.bgLevel), ...
-                                '</B><BR>White level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(sMri.Histogram.whiteLevel), ...
-                                '</B><BR><BR>Set isoValue for thresholding (<B>HU</B>):'], ...
-                                'Generate isosurface', [], num2str(1900));
+    res = java_dialog('input', ['<HTML>Background level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.bgLevel)), ...
+                                '</B><BR>White level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.whiteLevel)), ...
+                                '</B><BR>Max intensity level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.intensityMax)), ...
+                                '</B><BR><BR>Set isoValue for thresholding (<B>HU</B>):' ...
+                                '<BR>(estimate below is mean of whitelevel and max intensity)'], ...
+                                'Generate isosurface', [], num2str(round((sMri.Histogram.whiteLevel+sMri.Histogram.intensityMax)/2)));
 
     % If user cancelled: return
     if isempty(res)
         return
     end
     % Get new value isoValue
-    isoValue = round(str2double(res{3}));
+    isoValue = round(str2double(res));
 end
 
 % Check parameters values
-if isempty(isoValue) || isoValue <= 0
+if isempty(isoValue) || isoValue <= 0 || isoValue > round(sMri.Histogram.intensityMax)
     bst_error('Invalid ''isoValue''. Enter proper values.', 'Mesh surface', 0);
     return
 end
