@@ -95,18 +95,18 @@ if (nargin < 2) || isempty(isoValue)
                                 [], ...
                                 {num2str(sMri.Histogram.bgLevel), num2str(sMri.Histogram.whiteLevel), num2str(1900)});
     % If user cancelled: return
-    if isempty(res) || strcmpi(res{3},'0')
+    if isempty(res)
         return
     end
-    % Get new values
-    isoValue   = round(str2double(res{3}));
+    % Get new value isoValue
+    isoValue = round(str2double(res{3}));
 else
     isoValue = sMri.Histogram.whiteLevel;
 end
 
 % Check parameters values
-if isempty(isoValue) || isoValue < 0 
-    bst_error('Invalid parameters. Enter proper values.', 'Mesh surface', 0);
+if isempty(isoValue) || isoValue <= 0
+    bst_error('Invalid ''isoValue''. Enter proper values.', 'Mesh surface', 0);
     return
 end
 
