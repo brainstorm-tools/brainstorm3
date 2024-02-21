@@ -47,6 +47,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     hFig = bst_figures('GetCurrentFigure', '3D');
     get(hFig, 'KeyPressFcn');
     set(hFig, 'KeyPressFcn', @KeyPress_Callback);
+    % Close figure window callback
     get(hFig, 'CloseRequestFcn');
     set(hFig, 'CloseRequestFcn', @CloseRequest_Callback);
 
@@ -74,6 +75,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbar.addSeparator();
         % Button "How to use the tool"
         jButtonHelp = gui_component('ToolbarButton', jToolbar, [], 'Help', IconLoader.ICON_SEEG, 'How to use the tool', @Help);
+        % Button "Tutorial"
+        gui_component('ToolbarButton', jToolbar, [], 'Tutorial', IconLoader.ICON_EXPLORER, 'Tutorial page', @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/ContactLocalization/', '-browser'));
     
     % ===== Main panel =====
     jPanelMain = gui_component('Panel');
@@ -401,7 +404,7 @@ function UpdatePanel() %#ok<DEFNU>
         if isempty(ChannelAnatomicalMat.IntraElectrodes)
             IntraElecData = db_template('intraelectrode');
             IntraElecData.Name = char(ctrl.jTextLabel.getText());
-            IntraElecData.Type = 'SEEG';
+            IntraElecData.Type = 'EEG';
             IntraElecData.Color = [0 0.8 0];
             IntraElecData.ContactNumber = totalNumContacts;
             IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
@@ -421,7 +424,7 @@ function UpdatePanel() %#ok<DEFNU>
             if ~isPresent
                 IntraElecData = db_template('intraelectrode');
                 IntraElecData.Name = char(ctrl.jTextLabel.getText());
-                IntraElecData.Type = 'SEEG';
+                IntraElecData.Type = 'EEG';
                 IntraElecData.Color = [0 0.8 0];
                 IntraElecData.ContactNumber = totalNumContacts;
                 IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
@@ -541,7 +544,7 @@ function ReferenceContacts(isLoading) %#ok<DEFNU>
     UpdatePanel();
 end
 
-%% ===== SET CROSSHAIR POSITION ON MRI =====
+%% ===== SET CROSSHAIR POSITION ON MRI AND POINT ON SURFACE VIEW =====
 % on clicking on the coordinates on the panel, the crosshair on the MRI
 % viewer gets updated to show the corresponding location and also the 3D
 % contact on surface shows up highlighted
@@ -551,10 +554,14 @@ function HighlightLocation(iIndex) %#ok<DEFNU>
 
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
-    hFig1 = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return
-    end    
+    end 
+    hFig3d = bst_figures('GetFiguresByType', {'3DViz'});
+    if isempty(hFig3d)
+        return
+    end 
+
     SubjectFile = getappdata(hFig, 'SubjectFile');
     if ~isempty(SubjectFile)
         sSubject = bst_get('Subject', SubjectFile);
@@ -569,7 +576,7 @@ function HighlightLocation(iIndex) %#ok<DEFNU>
     
     % ===== FOR SURFACE =====
     % Get axes handle
-    hAxes = findobj(hFig1, '-depth', 1, 'Tag', 'Axes3D');
+    hAxes = findobj(hFig3d, '-depth', 1, 'Tag', 'Axes3D');
     % Remove previous mark
     delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptHighlight'));
     % Plot new mark
