@@ -100,8 +100,6 @@ if (nargin < 2) || isempty(isoValue)
     end
     % Get new value isoValue
     isoValue = round(str2double(res{3}));
-else
-    isoValue = sMri.Histogram.whiteLevel;
 end
 
 % Check parameters values
