@@ -652,6 +652,7 @@ function PlugDesc = GetSupported(SelPlug)
         [PlugDesc_tmp, Err] = ParseJson(plugin_text);
         if ~isempty(Err)
             disp(['BST> Invalid plugin file ' plug_list(iPlug).name ' :' Err]);
+            continue;
         end
 
         PlugDesc  = [PlugDesc , PlugDesc_tmp];
@@ -720,8 +721,8 @@ function [PlugDesc, Err] = ParseJson(PlugJson)
                     Err = ME.message;
             otherwise
                 rethrow(ME)
-            end
         end
+    end
 end
 
 %% ===== Validate JSON =====
