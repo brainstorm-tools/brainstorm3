@@ -237,6 +237,9 @@ function LoadOnStart() %#ok<DEFNU>
     
     % get figure handles
     hFig = bst_figures('GetCurrentFigure', '3D');
+    % Set the amplitude threshold to 50%
+    panel_surface('SetDataThreshold', hFig, 1, 0.3);
+
     SubjectFile = getappdata(hFig, 'SubjectFile');
     if ~isempty(SubjectFile)
         sSubject = bst_get('Subject', SubjectFile);
@@ -389,7 +392,7 @@ function UpdatePanel() %#ok<DEFNU>
         CoordData = db_template('channeldesc');
         CoordData.Name = char(label_name + num2str(curContactNum));
         CoordData.Comment = 'World Coordinate System';
-        CoordData.Type = 'EEG';
+        CoordData.Type = 'SEEG';
         CoordData.Loc = CoordinatesSelector.World' .* 1000;
         CoordData.Weight = 1;
         
@@ -404,7 +407,7 @@ function UpdatePanel() %#ok<DEFNU>
         if isempty(ChannelAnatomicalMat.IntraElectrodes)
             IntraElecData = db_template('intraelectrode');
             IntraElecData.Name = char(ctrl.jTextLabel.getText());
-            IntraElecData.Type = 'EEG';
+            IntraElecData.Type = 'SEEG';
             IntraElecData.Color = [0 0.8 0];
             IntraElecData.ContactNumber = totalNumContacts;
             IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
@@ -424,7 +427,7 @@ function UpdatePanel() %#ok<DEFNU>
             if ~isPresent
                 IntraElecData = db_template('intraelectrode');
                 IntraElecData.Name = char(ctrl.jTextLabel.getText());
-                IntraElecData.Type = 'EEG';
+                IntraElecData.Type = 'SEEG';
                 IntraElecData.Color = [0 0.8 0];
                 IntraElecData.ContactNumber = totalNumContacts;
                 IntraElecData.ContactSpacing = str2double(ctrl.jTextContactSpacing.getText()) / 1000;
@@ -954,11 +957,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             clickOnSurfaceCount = clickOnSurfaceCount + 1;
             
             % avoid centroid calculation for tip and skull entry
-            if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
-                FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
-                vout{i} = mean(sSurf.Vertices(VertexList(:), :));
-                VertexList = [];
-            end
+            % if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+            FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
+            vout{i} = mean(sSurf.Vertices(VertexList(:), :));
+            VertexList = [];
+            % end
         else
             patchDist(i) = Inf;
         end
@@ -976,11 +979,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Keep only the point from the closest surface
     hPatch = hPatch(iClosestPatch);
     pout   = pout{iClosestPatch};
-    if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
-        vout   = vout{iClosestPatch};
-    else
-        vout   = vout{iClosestPatch}';
-    end
+    % if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+    %     vout   = vout{iClosestPatch};
+    % else
+    vout   = vout{iClosestPatch};
+    % end
     vi     = vi{iClosestPatch};
     
     % Find to which surface this tesselation belongs
