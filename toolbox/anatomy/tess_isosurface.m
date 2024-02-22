@@ -64,9 +64,9 @@ if isempty(sMri)
     % Load MRI
     bst_progress('start', 'Generate thresholded isosurface from CT', 'Loading CT...');
     sMri = bst_memory('LoadMri', MriFile);
-    % if isProgress
-    %     bst_progress('stop');
-    % end
+    if isProgress
+        bst_progress('stop');
+    end
 end
 % Save current scouts modifications
 panel_scout('SaveModifications');
