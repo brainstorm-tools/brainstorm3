@@ -25,7 +25,7 @@ function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% inspired from tess_isohead.m
+% Inspired by tess_isohead.m
 %
 % Authors: Chinmay Chinara, 2023-2024
 
@@ -112,7 +112,7 @@ end
 
 %% ===== CREATE SURFACE =====
 % Compute isosurface
-bst_progress('text', 'Creating isosurface...');
+bst_progress('start', 'Generate thresholded isosurface from CT', 'Creating isosurface...');
 [sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
