@@ -2319,7 +2319,7 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
             end
         end
     else
-        set(Handles.hPointEEG, 'Visible', 'off');
+        set(Handles.hPointEEG, 'Visible', 'on');
     end
     
     % Show electrodes labels
@@ -2337,7 +2337,7 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
             end
         end
     else
-        set(Handles.hTextEEG, 'Visible', 'off');
+        set(Handles.hTextEEG, 'Visible', 'on');
     end
 end
 

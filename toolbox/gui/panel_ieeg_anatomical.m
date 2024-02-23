@@ -237,8 +237,6 @@ function LoadOnStart() %#ok<DEFNU>
     
     % get figure handles
     hFig = bst_figures('GetCurrentFigure', '3D');
-    % Set the amplitude threshold to 50%
-    panel_surface('SetDataThreshold', hFig, 1, 0.3);
 
     SubjectFile = getappdata(hFig, 'SubjectFile');
     if ~isempty(SubjectFile)
@@ -281,8 +279,8 @@ function LoadOnStart() %#ok<DEFNU>
             ctrl.jTextLabel.setText(strjoin(label_name, ''));
             ctrl.jTextNcontacts.setText(curContactNum);
 
-            ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', strjoin(label_name, '') + curContactNum, ChannelAnatomicalMat.Channel(i).Loc));
-            plotLocWorld = ChannelAnatomicalMat.Channel(i).Loc ./ 1000;
+            ctrl.jListModel.addElement(sprintf('%s   %3.4f   %3.4f   %3.4f', strjoin(label_name, '') + curContactNum, ChannelAnatomicalMat.Channel(i).Loc .* 1000));
+            plotLocWorld = ChannelAnatomicalMat.Channel(i).Loc;
             plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
 
             % ----- STEP-2: update the 3D points on the surface with loaded data -----
@@ -386,14 +384,14 @@ function UpdatePanel() %#ok<DEFNU>
         label_name = string(ctrl.jTextLabel.getText());
 
         % update the list in panel
-        ctrl.jListModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', label_name + num2str(curContactNum), CoordinatesSelector.World .* 1000));
+        ctrl.jListModel.addElement(sprintf('%s   %3.4f   %3.4f   %3.4f', label_name + num2str(curContactNum), CoordinatesSelector.World .* 1000));
         
         % add new contact data as a channel
         CoordData = db_template('channeldesc');
         CoordData.Name = char(label_name + num2str(curContactNum));
         CoordData.Comment = 'World Coordinate System';
         CoordData.Type = 'SEEG';
-        CoordData.Loc = CoordinatesSelector.World' .* 1000;
+        CoordData.Loc = CoordinatesSelector.World';
         CoordData.Weight = 1;
         
         % add the contact to the main channel structure
@@ -414,6 +412,7 @@ function UpdatePanel() %#ok<DEFNU>
             IntraElecData.Visible = 1;
 
             ChannelAnatomicalMat.IntraElectrodes = [ChannelAnatomicalMat.IntraElectrodes, IntraElecData];
+
         % if electrode already present then skip updating IntraElectrode
         % field else append the new electrode data to it
         else
@@ -532,7 +531,7 @@ function ReferenceContacts(isLoading) %#ok<DEFNU>
             CoordData.Name = char(label_name + num2str(i));
             CoordData.Comment = 'Reference values (world)';
             CoordData.Type = 'SEEG';
-            CoordData.Loc = refWorld' .* 1000;
+            CoordData.Loc = refWorld';
             CoordData.Weight = 1;
     
             ChannelAnatomicalMat.RefElectrodeChannel = [ChannelAnatomicalMat.RefElectrodeChannel, CoordData];
@@ -573,7 +572,7 @@ function HighlightLocation(iIndex) %#ok<DEFNU>
     sMri = bst_memory('LoadMri', MriFile);
 
     % Select the required point and adjust the coordinate space
-    plotLocWorld = ChannelAnatomicalMat.Channel(iIndex).Loc ./ 1000;
+    plotLocWorld = ChannelAnatomicalMat.Channel(iIndex).Loc;
     plotLocScs = cs_convert(sMri, 'world', 'scs', plotLocWorld); 
     plotLocMri = cs_convert(sMri, 'scs', 'mri', plotLocScs);
     
@@ -1594,6 +1593,7 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
     global totalNumContacts;
     global clickOnSurfaceCount;
     global refLinePlotLoc;
+    global ChannelAnatomicalMat;
 
     % Get panel controls
     ctrl = bst_get('PanelControls', 'ContactLabelIeeg');
@@ -1626,6 +1626,7 @@ function ViewInMriViewer(varargin) %#ok<DEFNU>
     % update and plot points in the MRI Viewer
     % (THIS IS WHERE HIDDEN CHANNELS WILL BE HANDLED - UNDER CONSTRUCTION)
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
+    % Handles.isEeg = 1;
     Handles.LocEEG(1,:) = CoordinatesSelector.MRI .* 1000;
     Channels(1).Name = string(ctrl.jTextLabel.getText()) + string(ctrl.jTextNcontacts.getText());
     Handles.hPointEEG(1,:) = figure_mri('PlotPoint', sMri, Handles, Handles.LocEEG(1,:), [1 1 0], 5, Channels(1).Name);
