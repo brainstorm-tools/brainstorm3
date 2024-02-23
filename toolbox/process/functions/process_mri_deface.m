@@ -312,11 +312,11 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
             tmp = db_add(iSubject, sMri, 0);
             % Add file tag for CT volume
             if isCt
-                [fPath, fBase, fExt] = bst_fileparts(tmp);
+                [fPath, fBase, fExt] = bst_fileparts(file_fullpath(tmp));
                 fBase = [fBase, tagFileCt, fExt];
                 tmpNew = bst_fullfile(fPath, fBase);
                 file_move(tmp, tmpNew);
-                tmp = tmpNew;
+                tmp = file_short(tmpNew);
             end
             DefacedFiles{end+1} = tmp;
             iAnatomy = length(sSubject.Anatomy) + 1;
