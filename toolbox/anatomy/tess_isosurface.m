@@ -1,11 +1,15 @@
 function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 % TESS_ISOSURFACE: Reconstruct a thresholded surface mesh from a CT
 %
-% USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue=1900, Comment)
-%         [MeshFile, iSurface] = tess_isosurface(MriFile,  isoValue=1900, Comment)
-%         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue=1900)
-%
+% USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(iSubject)
+%         [MeshFile, iSurface] = tess_isosurface(MriFile,  isoValue, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(MriFile)
+%         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue)
+%         [Vertices, Faces]    = tess_isosurface(sMri)
+%         
 % If input is loaded CT structure, no surface file is created and the surface vertices and faces are returned instead.
+% If 'isoValue' parameter is empty, then a GUI pops up asking the user for the desired value
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
