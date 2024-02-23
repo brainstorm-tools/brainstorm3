@@ -315,7 +315,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 [fPath, fBase, fExt] = bst_fileparts(file_fullpath(tmp));
                 fBase = [fBase, tagFileCt, fExt];
                 tmpNew = bst_fullfile(fPath, fBase);
-                file_move(tmp, tmpNew);
+                file_move(file_fullpath(tmp), tmpNew);
                 tmp = file_short(tmpNew);
             end
             DefacedFiles{end+1} = tmp;
