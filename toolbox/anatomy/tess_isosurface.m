@@ -7,9 +7,18 @@ function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 %         [MeshFile, iSurface] = tess_isosurface(MriFile)
 %         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue)
 %         [Vertices, Faces]    = tess_isosurface(sMri)
+%
+% INPUT:
+%    - iSubject    : Indice of the subject where to add the surface
+%    - isoValue    : The value in Housefield Unit to set for thresholding the CT. If this parameter is empty, then a GUI pops up asking the user for the desired value
+%    - Comment     : Surface description
+% OUTPUT:
+%    - MeshFile : indice of the surface that was created in the sSubject structure
+%    - iSurface : indice of the surface that was created in the sSubject structure
+%    - Vertices : The vertices of the mesh
+%    - Faces    : The faces of the mesh
 %         
 % If input is loaded CT structure, no surface file is created and the surface vertices and faces are returned instead.
-% If 'isoValue' parameter is empty, then a GUI pops up asking the user for the desired value
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
