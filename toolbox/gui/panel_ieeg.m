@@ -26,6 +26,7 @@ function varargout = panel_ieeg(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017-2022
+%          Chinmay Chinara, 2024
 
 eval(macro_method);
 end
@@ -1259,7 +1260,7 @@ function sModels = GetElectrodeModels()
         sMod(5).ContactSpacing = 0.008;
         sModels = [sModels, sMod];
         
-        % === AD TECH RD10R ===
+        % === AD TECH MM16 SERIES ===
         % Common values
         sTemplate = db_template('intraelectrode');
         sTemplate.Type = 'SEEG';
@@ -1301,6 +1302,45 @@ function sModels = GetElectrodeModels()
         sMod(5).Model          = 'Huake-Hengsheng SDE-08-S16';
         sMod(5).ContactNumber  = 8;
         sMod(5).ElecLength     = 0.0545;
+        sModels = [sModels, sMod];
+
+        % === PMT SEEG DEPTHALON ELECTRODES ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactDiameter = 0.0008;
+        sTemplate.ContactLength   = 0.002;
+        sTemplate.ElecDiameter    = 0.0007;
+        % All models
+        sMod = repmat(sTemplate, 1, 7);
+        sMod(1).Model         = 'PMT 2102-08-091/2102-08-101';
+        sMod(1).ContactNumber = 8;
+        sMod(1).ContactSpacing  = 0.0035;
+        sMod(1).ElecLength      = 0.0265;
+        sMod(2).Model         = 'PMT 2102-10-091/2102-10-101';
+        sMod(2).ContactNumber = 10;
+        sMod(2).ContactSpacing  = 0.0035;
+        sMod(2).ElecLength      = 0.0335;
+        sMod(3).Model         = 'PMT 2102-12-091/2102-12-101';
+        sMod(3).ContactNumber = 12;
+        sMod(3).ContactSpacing  = 0.0035;
+        sMod(3).ElecLength      = 0.0405;
+        sMod(4).Model         = 'PMT 2102-14-091/2102-14-101';
+        sMod(4).ContactNumber = 14;
+        sMod(4).ContactSpacing  = 0.0035;
+        sMod(4).ElecLength      = 0.0475;
+        sMod(5).Model         = 'PMT 2102-16-091/2102-16-101';
+        sMod(5).ContactNumber = 16;
+        sMod(5).ContactSpacing  = 0.0035;
+        sMod(5).ElecLength      = 0.0545;
+        sMod(6).Model         = 'PMT 2102-16-092/2102-16-102';
+        sMod(6).ContactNumber = 16;
+        sMod(6).ContactSpacing  = 0.00397;
+        sMod(6).ElecLength      = 0.0615;
+        sMod(7).Model         = 'PMT 2102-16-093/2102-16-103';
+        sMod(7).ContactNumber = 16;
+        sMod(7).ContactSpacing  = 0.00443;
+        sMod(7).ElecLength      = 0.0685;
         sModels = [sModels, sMod];
     end
 end
