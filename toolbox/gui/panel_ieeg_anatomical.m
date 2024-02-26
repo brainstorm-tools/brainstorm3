@@ -956,11 +956,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             clickOnSurfaceCount = clickOnSurfaceCount + 1;
             
             % avoid centroid calculation for tip and skull entry
-            % if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
-            FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
-            vout{i} = mean(sSurf.Vertices(VertexList(:), :));
-            VertexList = [];
-            % end
+            if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+                FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), 1, 6);
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :));
+                VertexList = [];
+            end
         else
             patchDist(i) = Inf;
         end
@@ -978,11 +978,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Keep only the point from the closest surface
     hPatch = hPatch(iClosestPatch);
     pout   = pout{iClosestPatch};
-    % if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
-    %     vout   = vout{iClosestPatch};
-    % else
-    vout   = vout{iClosestPatch};
-    % end
+    if clickOnSurfaceCount ~= 1 && clickOnSurfaceCount ~= 2
+        vout   = vout{iClosestPatch};
+    else
+        vout   = vout{iClosestPatch}';
+    end
     vi     = vi{iClosestPatch};
     
     % Find to which surface this tesselation belongs
