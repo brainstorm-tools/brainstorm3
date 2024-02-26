@@ -1219,7 +1219,6 @@ function sModels = GetElectrodeModels()
         sTemplate.ContactDiameter = 0.0008;
         sTemplate.ContactLength   = 0.002;
         sTemplate.ElecDiameter    = 0.0007;
-        % sTemplate.ElecLength      = 0.070;
         % All models
         sMod = repmat(sTemplate, 1, 6);
         sMod(1).Model         = 'DIXI D08-05AM Microdeep';
