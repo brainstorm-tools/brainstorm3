@@ -1,10 +1,23 @@
 function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
-% TESS_ISOSURFACE: Reconstruct a thresholded surface mesh of CT
+% TESS_ISOSURFACE: Reconstruct a thresholded surface mesh from a CT
 %
-% USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue=1900, Comment)
-%         [MeshFile, iSurface] = tess_isosurface(MriFile,  isoValue=1900, Comment)
-%         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue=1900)
+% USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(iSubject)
+%         [MeshFile, iSurface] = tess_isosurface(CtFile,  isoValue, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(CtFile)
+%         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue)
+%         [Vertices, Faces]    = tess_isosurface(sMri)
 %
+% INPUT:
+%    - iSubject    : Indice of the subject where to add the surface
+%    - isoValue    : The value in Housefield Unit to set for thresholding the CT. If this parameter is empty, then a GUI pops up asking the user for the desired value
+%    - Comment     : Surface description
+% OUTPUT:
+%    - MeshFile : indice of the surface that was created in the sSubject structure
+%    - iSurface : indice of the surface that was created in the sSubject structure
+%    - Vertices : The vertices of the mesh
+%    - Faces    : The faces of the mesh
+%         
 % If input is loaded CT structure, no surface file is created and the surface vertices and faces are returned instead.
 %
 % @=============================================================================
@@ -25,7 +38,7 @@ function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% inspired from tess_isohead.m
+% Inspired by tess_isohead.m
 %
 % Authors: Chinmay Chinara, 2023-2024
 
@@ -39,31 +52,31 @@ isSave = true;
 if (nargin < 3) || isempty(Comment)
     Comment = [];
 end
-% MriFile instead of subject index
+% CtFile instead of subject index
 sMri = [];
 if ischar(iSubject)
-    MriFile = iSubject;
-    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    CtFile = iSubject;
+    [sSubject, iSubject] = bst_get('MriFile', CtFile);
 elseif isnumeric(iSubject)
     % Get subject
     sSubject = bst_get('Subject', iSubject);
-    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    CtFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 elseif isstruct(iSubject)
     sMri = iSubject;
-    MriFile = sMri.FileName;
-    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    CtFile = sMri.FileName;
+    [sSubject, iSubject] = bst_get('MriFile', CtFile);
     % Don't save a surface file, instead return surface directly.
     isSave = false;  
 else
     error('Wrong input type.');
 end
 
-%% ===== LOAD MRI =====
+%% ===== LOAD CT =====
 isProgress = ~bst_progress('isVisible');
 if isempty(sMri)
-    % Load MRI
+    % Load CT
     bst_progress('start', 'Generate thresholded isosurface from CT', 'Loading CT...');
-    sMri = bst_memory('LoadMri', MriFile);
+    sMri = bst_memory('LoadMri', CtFile);
     if isProgress
         bst_progress('stop');
     end
@@ -88,32 +101,31 @@ end
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 2) || isempty(isoValue)
-    res = java_dialog('input', {'<HTML>Background level (HU):<BR>(guessed from MRI histogram)', ...
-                                '<HTML>White level (HU):<BR>(guessed from MRI histogram)', ...
-                                '<HTML>Set isoValue (HU):'}, ...
-                                'Generate isosurface', ...
-                                [], ...
-                                {num2str(sMri.Histogram.bgLevel), num2str(sMri.Histogram.whiteLevel), num2str(1900)});
+    res = java_dialog('input', ['<HTML>Background level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.bgLevel)), ...
+                                '</B><BR>White level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.whiteLevel)), ...
+                                '</B><BR>Max intensity level guessed from MRI histogram (<B>HU</B>):<BR><B>', num2str(round(sMri.Histogram.intensityMax)), ...
+                                '</B><BR><BR>Set isoValue for thresholding (<B>HU</B>):' ...
+                                '<BR>(estimate below is mean of whitelevel and max intensity)'], ...
+                                'Generate isosurface', [], num2str(round((sMri.Histogram.whiteLevel+sMri.Histogram.intensityMax)/2)));
+
     % If user cancelled: return
-    if isempty(res) || strcmpi(res{3},'0')
+    if isempty(res)
         return
     end
-    % Get new values
-    isoValue   = round(str2double(res{3}));
-else
-    isoValue = sMri.Histogram.whiteLevel;
+    % Get new value isoValue
+    isoValue = round(str2double(res));
 end
 
 % Check parameters values
-if isempty(isoValue) || isoValue < 0 
-    bst_error('Invalid parameters. Enter proper values.', 'Mesh surface', 0);
+if isempty(isoValue) || isoValue <= 0 || isoValue > round(sMri.Histogram.intensityMax)
+    bst_error('Invalid ''isoValue''. Enter proper values.', 'Mesh surface', 0);
     return
 end
 
 
 %% ===== CREATE SURFACE =====
 % Compute isosurface
-bst_progress('text', 'Creating isosurface...');
+bst_progress('start', 'Generate thresholded isosurface from CT', 'Creating isosurface...');
 [sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
@@ -136,14 +148,17 @@ if isSave
     bst_progress('text', 'Saving new file...');
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
-    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
     MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
     bst_save(MeshFile, sMesh, 'v7');
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
-    view_surface(MeshFile);
+    % Display mesh with 3D orthogonal slices of the default MRI
+    MriFile = sSubject.Anatomy(1).FileName;
+    hFig = view_mri_3d(MriFile, [], 0.3, []);
+    view_surface(MeshFile, [], [], hFig, []);    
 else
     % Return surface
     MeshFile = sMesh.Vertices;

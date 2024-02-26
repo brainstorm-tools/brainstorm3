@@ -1,4 +1,4 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas, isMask)
 % MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
@@ -9,9 +9,10 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - MriFileRef : Relative path to the Brainstorm MRI file used as a reference
 %    - sMriSrc    : Brainstorm MRI structure to register (fields Cube, Voxsize, SCS, NCS...)
 %    - sMriRef    : Brainstorm MRI structure used as a reference
-%    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
+%    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras', 'ct2mri'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
 %    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
+%    - isMask     : If 1, mask out regions outside the skull using BrainSuite skull stripping (CT2MRI registration only)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -256,47 +257,17 @@ switch lower(Method)
         % Save reference MRI in .nii format
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
-        
-        % Ask if the user wants to mask out wires outside skull in CT
-        % returns 'True'if user selects 'Yes'
-        isMask = java_dialog('confirm', [...
-            '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
-            'This operation cleans the CT to exclude any thing outside the skull.' ...
-            '<BR><BR></HTML>'], 'Import CT');
 
         if isMask
-            % Check for Brainsuite Installation
-            if ~ispc
-                bdp_exe = 'bdp.sh';
-            else
-                bdp_exe = 'bdp';
-            end
-    
-            bst_progress('text', 'Testing BrainSuite installation...');
-            % Check BrainSuite installation
-            status = system([bdp_exe ' --version']);
-            if (status ~= 0)
-                % Get BrainSuite path from Brainstorm preferences
-                BsDir = bst_get('BrainSuiteDir');
-                BsBinDir = bst_fullfile(BsDir, 'bin');
-                BsBdpDir = bst_fullfile(BsDir, 'bdp');
-                % Add BrainSuite path to system path
-                if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
-                    disp(['BST> Adding to system path: ' BsBinDir]);
-                    disp(['BST> Adding to system path: ' BsBdpDir]);
-                    setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
-                    % Check again
-                    status = system([bdp_exe  ' --version']);
+            % Check for BrainSuite Installation
+            [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
+            % Error handling
+            if ~isempty(errMsg)
+                if ~isProgress
+                    bst_progress('stop');
                 end
-                % Brainsuite is not installed
-                if (status ~= 0)
-                    errMsg = ['BrainSuite is not installed on your computer.' 10 ...
-                              'Download it from http://brainsuite.org and install it.' 10 ...
-                              'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
-                    return
-                end
+                return
             end
-    
             % Perform BRAIN SURFACE EXTRACTOR (BSE)
             bst_progress('text', 'Brain surface extractor...');
             strCall = [...
@@ -312,7 +283,7 @@ switch lower(Method)
                 errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
                 return    
             end
-    
+
             % Get the mask
             NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
             sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
@@ -338,7 +309,6 @@ switch lower(Method)
             % Use the reference SCS coordinates
             if isfield(sMriRef, 'SCS')
                 sMriReg.SCS = sMriRef.SCS;
-                
                 if isMask
                     sMriMask.SCS = sMriRef.SCS;
                 end
@@ -346,21 +316,24 @@ switch lower(Method)
             % Use the reference NCS coordinates
             if isfield(sMriRef, 'NCS')
                 sMriReg.NCS = sMriRef.NCS;
-                
                 if isMask
                     sMriMask.NCS = sMriRef.NCS;
                 end
             end
-            
+
             % Reslice the volume
             bst_progress('text', 'Performing Reslicing...');
             [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
-            
-            % Apply the mask to the co-registered CT to get a clean skull
-            % stripped CT
+            % Error handling
+            if isempty(sMriReg) || ~isempty(errMsg)
+                if ~isProgress
+                    bst_progress('stop');
+                end
+                return
+            end
+            % Apply the mask to the co-registered CT to get a clean skull stripped CT
             if isMask
                 [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'scs', 'scs', isAtlas);
-
                 bst_progress('text', 'Applying Mask...');
                 sMriReg.Cube = sMriReg.Cube.*(sMriMask.Cube);
                 fileTag = [fileTag, '_masked'];

@@ -68,6 +68,7 @@ else
     % Create list of anat files (put the default at the top)
     iAnatList = 1:length(sSubject.Anatomy);
     iAtlas = find(~cellfun(@(c)(isempty(strfind(char(c), '_volatlas')) && isempty(strfind(char(c), '_tissues'))), {sSubject.Anatomy.FileName}));
+    iCt    = find(cellfun(@(c)(~isempty(strfind(char(c), '_volct'))), {sSubject.Anatomy.FileName}));
     if (length(sSubject.Anatomy) > 1)
         iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,[iAtlas,sSubject.iAnatomy]), setdiff(iAtlas,sSubject.iAnatomy)];
     end
@@ -75,6 +76,8 @@ else
     for iAnatomy = iAnatList
         if ismember(iAnatomy, iAtlas)
             nodeType = 'volatlas';
+        elseif ismember(iAnatomy, iCt)
+            nodeType = 'volct';
         else
             nodeType = 'anatomy';
         end

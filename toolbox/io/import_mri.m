@@ -153,9 +153,18 @@ isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
 end
-% MNI / Atlas?
-isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
+% MNI / Atlas / CT ?
+isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
+isCt    = strcmpi(volType, 'CT');
+% Tag for CT volume
+if isCt
+    tagVolType = '_volct';
+    isAtlas = 0;
+else
+    tagVolType = '';
+end
+
 % Load MRI
 isNormalize = 0;
 sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
@@ -179,18 +188,16 @@ end
 
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-if isempty(Labels) && ~iscell(MriFile)
+if isempty(Labels) && ~iscell(MriFile) && ~isCt
     Labels = mri_getlabels(MriFile, sMri, isAtlas);
 end
 % Save labels in the file structure
 if ~isempty(Labels)   % Labels were found in the input folder
     sMri.Labels = Labels;
-    tagAtlas = '_volatlas';
+    tagVolType = '_volatlas';
     isAtlas = 1;
 elseif isAtlas    % Volume was explicitly imported as an atlas
-    tagAtlas = '_volatlas';
-else
-    tagAtlas = '';
+    tagVolType = '_volatlas';
 end
 % Get atlas comment
 if isAtlas && isempty(Comment) && ~iscell(MriFile)
@@ -265,7 +272,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Register with the MNI transformation
             strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
             cellOptions{end+1} = 'MNI';
-            if strcmpi(volType, 'CT')
+            if isCt
                 % Register with the ct2mrireg plugin
                 strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC ct2mrireg plugin.'];
                 cellOptions{end+1} = 'CT2MRI';
@@ -318,88 +325,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
             case 'CT2MRI'
+                % Ask if the user wants to mask out region outside skull in CT
+                isMask = java_dialog('confirm', [...
+                    '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
+                    'This operation cleans the CT to exclude any thing outside the skull.' ...
+                    '<BR><BR></HTML>'], 'Import CT');
                 % Register the CT to excisting MRI using USC's ct2mrireg plugin
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, 0, isMask);
             case 'Ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
                     [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
-                
-                % Ask to mask out wires outside skull in CT
-                isMask = java_dialog('confirm', [...
-                    '<HTML><B>Mask the volume?</B><BR><BR>' ...
-                    ['This operation cleans the ', volType, ' to exclude any thing outside the skull.'] ...
-                    strSizeWarn ...
-                    '<BR><BR></HTML>'], ['Import ', volType]);
-                if isMask
-                    % Get temporary folder
-                    TmpDir = bst_get('BrainstormTmpDir', 0, 'ignore');
-                    % Save source CT in .nii format
-                    NiiSrcFile = bst_fullfile(TmpDir, 'ignore_src.nii');
-                    out_mri_nii(sMri, NiiSrcFile);
-                    % Save reference MRI in .nii format
-                    NiiRefFile = bst_fullfile(TmpDir, 'ignore_ref.nii');
-                    out_mri_nii(sMriRef, NiiRefFile);
-
-                    % Check for Brainsuite Installation
-                    if ~ispc
-                        bdp_exe = 'bdp.sh';
-                    else
-                        bdp_exe = 'bdp';
-                    end
-            
-                    bst_progress('text', 'Testing BrainSuite installation...');
-                    % Check BrainSuite installation
-                    status = system([bdp_exe ' --version']);
-                    if (status ~= 0)
-                        % Get BrainSuite path from Brainstorm preferences
-                        BsDir = bst_get('BrainSuiteDir');
-                        BsBinDir = bst_fullfile(BsDir, 'bin');
-                        BsBdpDir = bst_fullfile(BsDir, 'bdp');
-                        % Add BrainSuite path to system path
-                        if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
-                            disp(['BST> Adding to system path: ' BsBinDir]);
-                            disp(['BST> Adding to system path: ' BsBdpDir]);
-                            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
-                            % Check again
-                            status = system([bdp_exe  ' --version']);
-                        end
-                        % Brainsuite is not installed
-                        if (status ~= 0)
-                            errMsg = ['BrainSuite is not installed on your computer.' 10 ...
-                                      'Download it from http://brainsuite.org and install it.' 10 ...
-                                      'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
-                            return
-                        end
-                    end
-            
-                    % Perform BRAIN SURFACE EXTRACTOR (BSE)
-                    bst_progress('text', 'Brain surface extractor...');
-                    strCall = [...
-                        'bse -i "' NiiRefFile '" --auto' ...
-                        ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
-                        ' --trim --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
-                        ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
-                        ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
-                    disp(['BST> System call: ' strCall]);
-                    status = system(strCall);
-                    % Error handling
-                    if (status ~= 0)
-                        errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
-                        return    
-                    end
-            
-                    % Get mask image
-                    NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
-                    sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
-                    sMriMask.Cube = sMriMask.Cube/255;
-                    sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3); % erode
-                    
-                    [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
-                    sMri.Cube = sMri.Cube.*(sMriMask.Cube);
-                    fileTag = [fileTag, '_masked'];
-                end
-
                 else
                     % Just copy the fiducials from the reference MRI
                     [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice, isAtlas);
@@ -473,7 +409,7 @@ end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
-BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagAtlas '.mat']);
+BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format
@@ -541,4 +477,10 @@ else
     if ~isProgress
         bst_progress('stop');
     end
-end 
+end
+
+
+
+
+
+    
