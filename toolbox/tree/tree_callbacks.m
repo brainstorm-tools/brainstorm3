@@ -206,7 +206,16 @@ switch (lower(action))
                 end
             % Other surface: display it
             case 'other'
-                view_surface(filenameRelative);
+                % Display mesh with 3D orthogonal slices of the default MRI only if it is an isosurface
+                if ~isempty(regexp(filenameRelative, 'isosurface', 'match'))
+                    iSubject = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    MriFile = sSubject.Anatomy(1).FileName;
+                    hFig = view_mri_3d(MriFile, [], 0.3, []);
+                    view_surface(filenameRelative, [], [], hFig, []);
+                else
+                    view_surface(filenameRelative);
+                end
                 
             % ===== CHANNEL =====
             % If one and only one modality available : display sensors

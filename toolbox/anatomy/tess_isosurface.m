@@ -3,8 +3,8 @@ function [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 %
 % USAGE:  [MeshFile, iSurface] = tess_isosurface(iSubject, isoValue, Comment)
 %         [MeshFile, iSurface] = tess_isosurface(iSubject)
-%         [MeshFile, iSurface] = tess_isosurface(MriFile,  isoValue, Comment)
-%         [MeshFile, iSurface] = tess_isosurface(MriFile)
+%         [MeshFile, iSurface] = tess_isosurface(CtFile,  isoValue, Comment)
+%         [MeshFile, iSurface] = tess_isosurface(CtFile)
 %         [Vertices, Faces]    = tess_isosurface(sMri,     isoValue)
 %         [Vertices, Faces]    = tess_isosurface(sMri)
 %
@@ -52,19 +52,19 @@ isSave = true;
 if (nargin < 3) || isempty(Comment)
     Comment = [];
 end
-% MriFile instead of subject index
+% CtFile instead of subject index
 sMri = [];
 if ischar(iSubject)
-    MriFile = iSubject;
-    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    CtFile = iSubject;
+    [sSubject, iSubject] = bst_get('MriFile', CtFile);
 elseif isnumeric(iSubject)
     % Get subject
     sSubject = bst_get('Subject', iSubject);
-    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    CtFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 elseif isstruct(iSubject)
     sMri = iSubject;
-    MriFile = sMri.FileName;
-    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    CtFile = sMri.FileName;
+    [sSubject, iSubject] = bst_get('MriFile', CtFile);
     % Don't save a surface file, instead return surface directly.
     isSave = false;  
 else
@@ -76,7 +76,7 @@ isProgress = ~bst_progress('isVisible');
 if isempty(sMri)
     % Load CT
     bst_progress('start', 'Generate thresholded isosurface from CT', 'Loading CT...');
-    sMri = bst_memory('LoadMri', MriFile);
+    sMri = bst_memory('LoadMri', CtFile);
     if isProgress
         bst_progress('stop');
     end
@@ -148,14 +148,17 @@ if isSave
     bst_progress('text', 'Saving new file...');
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
-    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
     MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
     bst_save(MeshFile, sMesh, 'v7');
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
-    view_surface(MeshFile);
+    % Display mesh with 3D orthogonal slices of the default MRI
+    MriFile = sSubject.Anatomy(1).FileName;
+    hFig = view_mri_3d(MriFile, [], 0.3, []);
+    view_surface(MeshFile, [], [], hFig, []);    
 else
     % Return surface
     MeshFile = sMesh.Vertices;
