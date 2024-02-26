@@ -159,10 +159,8 @@ switch (DataType)
         end
         OverlayType = 'Source';
     case {'timefreq', 'ptimefreq'}
-        % Force loading associated sources if displaying on the MRI
-        isLoadResults = strcmpi(SurfaceType, 'Anatomy') || ~isempty(strfind(OverlayFile, '_KERNEL_'));
-        % Load timefreq file
-        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', OverlayFile, 1, isLoadResults);
+        % Load timefreq file with associated sources
+        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', OverlayFile, 1, 1);
         OverlayType = 'Timefreq';
     case 'headmodel'
         OverlayType = 'HeadModel';
