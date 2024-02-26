@@ -221,8 +221,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonEcogSet1',     jButtonEcogSet1, ...
                                   'jButtonEcogSet2',     jButtonEcogSet2, ...
                                   'jButtonEcogSet3',     jButtonEcogSet3, ...
-                                  'jButtonEcogSet4',     jButtonEcogSet4));
-                              
+                                  'jButtonEcogSet4',     jButtonEcogSet4));                             
     
                               
 %% =================================================================================
@@ -1220,21 +1219,27 @@ function sModels = GetElectrodeModels()
         sTemplate.ContactDiameter = 0.0008;
         sTemplate.ContactLength   = 0.002;
         sTemplate.ElecDiameter    = 0.0007;
-        sTemplate.ElecLength      = 0.070;
+        % sTemplate.ElecLength      = 0.070;
         % All models
         sMod = repmat(sTemplate, 1, 6);
         sMod(1).Model         = 'DIXI D08-05AM Microdeep';
         sMod(1).ContactNumber = 5;
+        sMod(1).ElecLength    = 0.016;
         sMod(2).Model         = 'DIXI D08-08AM Microdeep';
         sMod(2).ContactNumber = 8;
+        sMod(2).ElecLength    = 0.0265;
         sMod(3).Model         = 'DIXI D08-10AM Microdeep';
         sMod(3).ContactNumber = 10;
+        sMod(3).ElecLength    = 0.0335;
         sMod(4).Model         = 'DIXI D08-12AM Microdeep';
         sMod(4).ContactNumber = 12;
+        sMod(4).ElecLength    = 0.0405;
         sMod(5).Model         = 'DIXI D08-15AM Microdeep';
         sMod(5).ContactNumber = 15;
+        sMod(5).ElecLength    = 0.051;
         sMod(6).Model         = 'DIXI D08-18AM Microdeep';
         sMod(6).ContactNumber = 18;
+        sMod(6).ElecLength    = 0.0615;
         sModels = [sModels, sMod];
         
         % === AD TECH RD10R ===
