@@ -164,8 +164,8 @@ switch (lower(action))
                 % MRI: Display in MRI viewer
                 view_mri(filenameRelative);
                 
-            % ===== VOLUME ATLAS =====
-            case 'volatlas'
+            % ===== VOLUME ATLAS AND VOLUME CT=====
+            case {'volatlas', 'volct'}
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
                 iAnatomy = bstNodes(1).getItemIndex();
@@ -177,19 +177,6 @@ switch (lower(action))
                     view_mri(filenameRelative);
                 end
 
-            % ===== VOLUME CT =====
-            case 'volct'
-                % Get subject
-                iSubject = bstNodes(1).getStudyIndex();
-                iAnatomy = bstNodes(1).getItemIndex();
-                sSubject = bst_get('Subject', iSubject);
-                % CT: display as overlay on the default MRI
-                if (iAnatomy ~= sSubject.iAnatomy)
-                    view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
-                else
-                    view_mri(filenameRelative);
-                end
-                
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
             case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem'}
