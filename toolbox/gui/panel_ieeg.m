@@ -98,16 +98,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelScrollList.setBorder([]);
 
                 % Contacts list
-                jListContacts = java_create('org.brainstorm.list.BstClusterList');
-                jListContacts.setBackground(Color(.9,.9,.9));
-                jListContacts.setLayoutOrientation(jListContacts.VERTICAL_WRAP);
-                jListContacts.setVisibleRowCount(-1);
-                java_setcb(jListContacts, ...
-                    'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
-                    'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
-                    'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
+                jListCont = java_create('org.brainstorm.list.BstClusterList');
+                jListCont.setBackground(Color(.9,.9,.9));
+                jListCont.setLayoutOrientation(jListCont.VERTICAL_WRAP);
+                jListCont.setVisibleRowCount(-1);
+                java_setcb(jListCont, ...
+                    'ValueChangedCallback', @(h,ev)bst_call(@ContListValueChanged_Callback,h,ev), ...
+                    'KeyTypedCallback',     @(h,ev)bst_call(@ContListKeyTyped_Callback,h,ev), ...
+                    'MouseClickedCallback', @(h,ev)bst_call(@ContListClick_Callback,h,ev));
                 jPanelScrollList1 = JScrollPane();
-                jPanelScrollList1.getLayout.getViewport.setView(jListContacts);
+                jPanelScrollList1.getLayout.getViewport.setView(jListCont);
                 jPanelScrollList1.setBorder([]);
 
                 jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollList, jPanelScrollList1);
@@ -115,7 +115,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jSplitEvt.setDividerSize(4);
                 jSplitEvt.setBorder([]);
                 jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
-                % jPanelElecList.add(jPanelScrollList);
             jPanelFirstPart.add(jPanelElecList, BorderLayout.CENTER);
         jPanelMain.add(jPanelFirstPart);
         
@@ -202,7 +201,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
     jPanelNew.add(jPanelMain, BorderLayout.CENTER);
     
-    % Store electrode selection
+    % Store electrode and contacts selection
     jLabelSelectElec = JLabel('');
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, ...
@@ -216,7 +215,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioDispSphere',    jRadioDispSphere, ...
                                   'jMenuContacts',       jMenuContacts, ...
                                   'jListElec',           jListElec, ...
-                                  'jListContacts',       jListContacts, ...
+                                  'jListCont',           jListCont, ...
                                   'jComboModel',         jComboModel, ...
                                   'jRadioSeeg',          jRadioSeeg, ...
                                   'jRadioEcog',          jRadioEcog, ...
@@ -290,7 +289,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         UpdateFigures();
     end
 
-    %% ===== LIST SELECTION CHANGED CALLBACK =====
+    %% ===== ELECTRODE LIST SELECTION CHANGED CALLBACK =====
     function ElecListValueChanged_Callback(h, ev)
         if ~ev.getValueIsAdjusting()
             UpdateElecProperties();
@@ -303,7 +302,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
     end
 
-    %% ===== LIST KEY TYPED CALLBACK =====
+    %% ===== ELECTRODE LIST KEY TYPED CALLBACK =====
     function ElecListKeyTyped_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
             % DELETE
@@ -314,12 +313,58 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
     end
 
-    %% ===== LIST CLICK CALLBACK =====
+    %% ===== ELECTRODE LIST CLICK CALLBACK =====
     function ElecListClick_Callback(h, ev)
         % If DOUBLE CLICK
         if (ev.getClickCount() == 2)
             % Rename selection
             EditElectrodeLabel();
+        end
+    end
+
+    %% ===== CONTACT LIST SELECTION CHANGED CALLBACK =====
+    function ContListValueChanged_Callback(h, ev)
+        if ~ev.getValueIsAdjusting()
+            UpdateElecProperties();
+            % Get the selected electrode
+            [sSelElec, iSelElec] = GetSelectedElectrodes();
+            % Center MRI view on electrode tip
+            if (length(sSelElec) == 1)
+                CenterMriOnElectrode(sSelElec);
+            end
+        end
+    end
+
+    %% ===== CONTACT LIST KEY TYPED CALLBACK =====
+    function ContListKeyTyped_Callback(h, ev)
+        switch(uint8(ev.getKeyChar()))
+            % DELETE
+            case {ev.VK_DELETE, ev.VK_BACK_SPACE}
+                RemoveElectrode();
+            case ev.VK_ESCAPE
+                SetSelectedElectrodes(0);
+        end
+    end
+
+    %% ===== CONTACT LIST CLICK CALLBACK =====
+    function ContListClick_Callback(h, ev)
+        % IF SINGLE CLICK
+        if (ev.getClickCount() == 1)
+            % ===== Highlight in MRI viewer and Surface =====
+            
+            % Get the panel controls
+            ctrl = bst_get('PanelControls', 'iEEG'); 
+
+            % Get the index of the contact coordinates in the list
+            iIndex = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
+
+            % if user clicked elsewhere on the panel just return
+            if isempty(iIndex)
+                return;
+            end
+
+            % updates the crosshair location in MRI Viewer and contact on the surface
+            % HighlightLocation(iIndex);
         end
     end
 end
@@ -347,7 +392,7 @@ function UpdatePanel()
     if ~isempty(hFig)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
-        ctrl.jListContacts.setBackground(java.awt.Color(1,1,1));
+        ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
@@ -1029,6 +1074,7 @@ function iElec = SetElectrodes(iElec, sElect)
     [sElecOld, iDSall] = GetElectrodes();
     % If there is no selected dataset
     if isempty(iDSall)
+        bst_error('Make sure the MRI Viewer is open with the desired scan', 'Add Electrodes', 0);
         return;
     end
     % Perform operations only once per dataset
@@ -1749,7 +1795,7 @@ function SetDisplayMode(DisplayMode)
 end
 
 
-%% ===== DETECT ELETRODES =====
+%% ===== DETECT ELECTRODES =====
 function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd, isUpdate) %#ok<DEFNU>
     % Parse inputs
     if (nargin < 4) || isempty(isUpdate)
