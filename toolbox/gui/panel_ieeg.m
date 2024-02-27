@@ -81,8 +81,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jPanelFirstPart = gui_component('Panel');
             % ===== ELECTRODES LIST =====
             jPanelElecList = gui_component('Panel');
-                jBorder = java_scaled('titledborder', 'Electrodes');
+                jBorder = java_scaled('titledborder', 'Electrodes & Contacts');
                 jPanelElecList.setBorder(jBorder);
+                
                 % Electrodes list
                 jListElec = java_create('org.brainstorm.list.BstClusterList');
                 jListElec.setBackground(Color(.9,.9,.9));
@@ -95,10 +96,29 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelScrollList = JScrollPane();
                 jPanelScrollList.getLayout.getViewport.setView(jListElec);
                 jPanelScrollList.setBorder([]);
-                jPanelElecList.add(jPanelScrollList);
+
+                % Contacts list
+                jListContacts = java_create('org.brainstorm.list.BstClusterList');
+                jListContacts.setBackground(Color(.9,.9,.9));
+                jListContacts.setLayoutOrientation(jListContacts.VERTICAL_WRAP);
+                jListContacts.setVisibleRowCount(-1);
+                java_setcb(jListContacts, ...
+                    'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
+                    'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
+                    'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
+                jPanelScrollList1 = JScrollPane();
+                jPanelScrollList1.getLayout.getViewport.setView(jListContacts);
+                jPanelScrollList1.setBorder([]);
+
+                jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollList, jPanelScrollList1);
+                jSplitEvt.setResizeWeight(0.2);
+                jSplitEvt.setDividerSize(4);
+                jSplitEvt.setBorder([]);
+                jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
+                % jPanelElecList.add(jPanelScrollList);
             jPanelFirstPart.add(jPanelElecList, BorderLayout.CENTER);
         jPanelMain.add(jPanelFirstPart);
-
+        
         jPanelBottom = gui_river([0,0], [0,0,0,0]);
             % ===== ELECTRODE OPTIONS =====
             jPanelElecOptions = gui_river([0,3], [0,5,10,3], 'Electrode configuration');
@@ -196,6 +216,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioDispSphere',    jRadioDispSphere, ...
                                   'jMenuContacts',       jMenuContacts, ...
                                   'jListElec',           jListElec, ...
+                                  'jListContacts',       jListContacts, ...
                                   'jComboModel',         jComboModel, ...
                                   'jRadioSeeg',          jRadioSeeg, ...
                                   'jRadioEcog',          jRadioEcog, ...
@@ -326,6 +347,7 @@ function UpdatePanel()
     if ~isempty(hFig)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
+        ctrl.jListContacts.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
