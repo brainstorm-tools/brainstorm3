@@ -1074,7 +1074,7 @@ function iElec = SetElectrodes(iElec, sElect)
     [sElecOld, iDSall] = GetElectrodes();
     % If there is no selected dataset
     if isempty(iDSall)
-        bst_error('Make sure the MRI Viewer is open with the desired scan', 'Add Electrode', 0);
+        bst_error('Make sure the MRI Viewer is open with the CT loaded', 'Add Electrode', 0);
         return;
     end
     % Perform operations only once per dataset
@@ -2858,22 +2858,60 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if (nargin < 4) || isempty(isEdit)
         isEdit = 0;
     end
-    % Get MRI to display
-    if ischar(iAnatomy)
-        MriFile = iAnatomy;
-    else
-        % Get study
-        sStudy = bst_get('ChannelFile', ChannelFile);
-        % Get subject
-        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-        if isempty(sSubject) || isempty(sSubject.Anatomy)
-            bst_error('No MRI available for this subject.', 'Display electrodes', 0);
-        end
-        % Get MRI file
-        MriFile = sSubject.Anatomy(iAnatomy).FileName;
+    
+    % ==== check if the subject has just MRI or both MRI+CT =====
+    % Get study
+    sStudy = bst_get('ChannelFile', ChannelFile);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    if isempty(sSubject) || isempty(sSubject.Anatomy)
+        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
     end
-    % View MRI
-    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 2);
+    for i = 1:length(sSubject.Anatomy)
+        if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match'))
+            isCtExist = 1;
+        else
+            isCtExist = 0;
+        end
+    end
+    
+    % Set the MRI Viewer to display
+    if ischar(iAnatomy)
+        % if implantation starts from CT then definitely MRI exists
+        if ~isempty(regexp(iAnatomy, 'CT', 'match'))
+            MriFile = sSubject.Anatomy(1).FileName;
+            CtFile = iAnatomy;
+        % if implantation starts from MRI then CT may or maynot exist
+        else
+            % if CT exists
+            if isCtExist
+                MriFile = iAnatomy;
+                CtFile = sSubject.Anatomy(2).FileName;
+            else
+                MriFile = iAnatomy;
+                CtFile = [];
+            end
+        end
+    else
+        % if implantation starts from CT then definitely MRI exists
+        if ~isempty(regexp(sSubject.Anatomy(iAnatomy).FileName, 'CT', 'match'))
+            MriFile = sSubject.Anatomy(1).FileName;
+            CtFile = iAnatomy;
+        % if implantation starts from MRI then CT may or maynot exist
+        else
+            % if CT exists
+            if isCtExist
+                MriFile = sSubject.Anatomy(iAnatomy).FileName;
+                CtFile = sSubject.Anatomy(2).FileName;
+            else
+                MriFile = sSubject.Anatomy(iAnatomy).FileName;
+                CtFile = [];
+            end
+        end
+    end
+
+    % Display the MRI Viewer
+    [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
     if isempty(hFig)
         return;
     end
