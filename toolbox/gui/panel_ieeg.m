@@ -1074,7 +1074,7 @@ function iElec = SetElectrodes(iElec, sElect)
     [sElecOld, iDSall] = GetElectrodes();
     % If there is no selected dataset
     if isempty(iDSall)
-        bst_error('Make sure the MRI Viewer is open with the desired scan', 'Add Electrodes', 0);
+        bst_error('Make sure the MRI Viewer is open with the desired scan', 'Add Electrode', 0);
         return;
     end
     % Perform operations only once per dataset
