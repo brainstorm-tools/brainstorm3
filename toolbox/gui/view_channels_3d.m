@@ -115,8 +115,12 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
                 
+                % Get current 3D figure
+                hFig = bst_figures('GetCurrentFigure', '3D');
+                if isempty(hFig)
+                    hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
+                end
                 % display isosurface
                 panel_ieeg('DisplayIsosurface', sSubject, hFig);
             end
