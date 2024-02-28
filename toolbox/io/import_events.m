@@ -227,10 +227,10 @@ for iNew = 1:length(newEvents)
         % Expand 'channels' field for event occurrences if needed
         if ~isempty(sFile.events(iEvt).channels) || ~isempty(newEvents(iNew).channels)
             if isempty(sFile.events(iEvt).channels)
-                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times), 2);
+                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
             end
             if isempty(newEvents(iNew).channels)
-                newEvents(iNew).channels = cell(1, size(newEvents(iNew).times), 2);
+                newEvents(iNew).channels = cell(1, size(newEvents(iNew).times, 2));
             end
         end
         % Expand 'notes' field for event occurrences if needed
