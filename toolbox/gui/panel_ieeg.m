@@ -2896,7 +2896,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         % if implantation starts from CT then definitely MRI exists
         if ~isempty(regexp(sSubject.Anatomy(iAnatomy).FileName, 'CT', 'match'))
             MriFile = sSubject.Anatomy(1).FileName;
-            CtFile = iAnatomy;
+            CtFile = sSubject.Anatomy(iAnatomy).FileName;
         % if implantation starts from MRI then CT may or maynot exist
         else
             % if CT exists
