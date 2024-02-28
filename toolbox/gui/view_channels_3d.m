@@ -118,7 +118,6 @@ if ~isempty(sSubject)
                 
                 % Get current 3D figure
                 hFig = bst_figures('GetFiguresByType', {'3DViz'});
-                disp(hFig);
                 if isempty(hFig)
                     hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
                 end
