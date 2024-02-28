@@ -320,6 +320,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Rename selection
             EditElectrodeLabel();
         end
+
+        if (ev.getClickCount() == 1)
+            % Update contact list
+            UpdateContactList();
+        end
     end
 
     %% ===== CONTACT LIST SELECTION CHANGED CALLBACK =====
@@ -411,6 +416,7 @@ function UpdatePanel()
 %     gui_enable(ctrl.jPanelElecOptions, 0);
     % Update JList
     UpdateElecList();
+    UpdateContactList();
 end
 
 
@@ -478,6 +484,38 @@ function UpdateElecList()
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
 end
 
+%% ===== UPDATE CONTACT LIST =====
+function UpdateContactList()
+    import org.brainstorm.list.*;
+    % Get current electrodes
+    sElectrodes = GetElectrodes();
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl)
+        return;
+    end
+    % Remove temporarily the list callback
+    % callbackBak = java_getcb(ctrl.jListElec, 'ValueChangedCallback');
+    % java_setcb(ctrl.jListElec, 'ValueChangedCallback', []);
+    % Get selected electrodes
+    iSelElec = ctrl.jListElec.getSelectedIndex() + 1;
+    SelName = char(ctrl.jListElec.getSelectedValue());
+    if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
+        SelName = [];
+    end
+    % Create a new empty list
+    listModel = java_create('javax.swing.DefaultListModel');
+    % Get the contacts and its respective name
+    [sContacts, sContactsName] = GetContacts(SelName);
+    % assign and update the list for display
+    for i = 1:length(sContacts)
+        listModel.addElement(sprintf('%s   %3.4f   %3.4f   %3.4f', string(sContactsName(i)), sContacts(:,i).*1000));
+    end
+    ctrl.jListCont.setModel(listModel);
+    ctrl.jListCont.repaint();
+    drawnow;
+    % java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
+end
 
 %% ===== UPDATE MODEL LIST =====
 function UpdateModelList(elecType)
@@ -1058,6 +1096,41 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
                 iFigall(end+1) = iFig;
                 hFigall(end+1) = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
             end
+        end
+    end
+end
+
+%% ===== GET CONTACTS FOR AN ELECTRODE ===== %%
+function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(selectedElecName)
+    global GlobalData;
+    % Get current figure
+    [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
+    % Get the channel file
+    ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
+    % Get all the figures that share this channel file
+    for iDS = 1:length(GlobalData.DataSet)
+        % Skip if not the correct channel file
+        if ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
+            continue;
+        end
+        % Get all the figures
+        for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
+            if ((iDS ~= iDSall(1)) || (iFig ~= iFigall(1))) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
+                iDSall(end+1) = iDS;
+                iFigall(end+1) = iFig;
+                hFigall(end+1) = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+            end
+        end
+    end
+
+    % Get the contacts for the electrode
+    sContacts = [];
+    sContactsName = [];
+    ChannelData = GlobalData.DataSet(iDSall).Channel;
+    for i=1:length(ChannelData)
+        if ChannelData(i).Group == selectedElecName
+            sContacts = [sContacts, ChannelData(i).Loc];
+            sContactsName = [sContactsName, {ChannelData(i).Name}];
         end
     end
 end
