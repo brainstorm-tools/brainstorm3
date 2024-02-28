@@ -2871,7 +2871,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     end
     for i = 1:length(sSubject.Anatomy)
         if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match'))
-            isCtExist = 1;
+            isCtExist = i;
         else
             isCtExist = 0;
         end
@@ -2888,7 +2888,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
             % if CT exists
             if isCtExist
                 MriFile = iAnatomy;
-                CtFile = sSubject.Anatomy(2).FileName;
+                CtFile = sSubject.Anatomy(isCtExist).FileName;
             else
                 MriFile = iAnatomy;
                 CtFile = [];
@@ -2904,7 +2904,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
             % if CT exists
             if isCtExist
                 MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = sSubject.Anatomy(2).FileName;
+                CtFile = sSubject.Anatomy(isCtExist).FileName;
             else
                 MriFile = sSubject.Anatomy(iAnatomy).FileName;
                 CtFile = [];
