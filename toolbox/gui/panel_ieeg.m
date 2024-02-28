@@ -2930,11 +2930,17 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(Subject)
+function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
+    % Parse inputs
+    if (nargin < 2) || isempty(hFig)
+        hFig = [];
+    end 
+
     % making sure subject and its surface exist
     if  isempty(Subject) || isempty(Subject.Surface)
         return;
     end
+
     
     % making sure isosurface exists
     for i=1:length(Subject.Surface)
@@ -2947,8 +2953,10 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject)
 
     % Display mesh with 3D orthogonal slices of the default MRI only if it is an isosurface
     if isIsosurfaceExist
-        MriFile = Subject.Anatomy(1).FileName;
-        hFig = view_mri_3d(MriFile, [], 0.3, []);
+        if isempty(hFig)
+            MriFile = Subject.Anatomy(1).FileName;
+            hFig = view_mri_3d(MriFile, [], 0.3, []);
+        end
         [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, [], [], hFig, []);
     else
         return;
