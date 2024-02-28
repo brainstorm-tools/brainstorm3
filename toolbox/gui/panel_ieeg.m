@@ -324,48 +324,48 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST SELECTION CHANGED CALLBACK =====
     function ContListValueChanged_Callback(h, ev)
-        if ~ev.getValueIsAdjusting()
-            UpdateElecProperties();
-            % Get the selected electrode
-            [sSelElec, iSelElec] = GetSelectedElectrodes();
-            % Center MRI view on electrode tip
-            if (length(sSelElec) == 1)
-                CenterMriOnElectrode(sSelElec);
-            end
-        end
+        % if ~ev.getValueIsAdjusting()
+        %     UpdateElecProperties();
+        %     % Get the selected electrode
+        %     [sSelElec, iSelElec] = GetSelectedElectrodes();
+        %     % Center MRI view on electrode tip
+        %     if (length(sSelElec) == 1)
+        %         CenterMriOnElectrode(sSelElec);
+        %     end
+        % end
     end
 
     %% ===== CONTACT LIST KEY TYPED CALLBACK =====
     function ContListKeyTyped_Callback(h, ev)
-        switch(uint8(ev.getKeyChar()))
-            % DELETE
-            case {ev.VK_DELETE, ev.VK_BACK_SPACE}
-                RemoveElectrode();
-            case ev.VK_ESCAPE
-                SetSelectedElectrodes(0);
-        end
+        % switch(uint8(ev.getKeyChar()))
+        %     % DELETE
+        %     case {ev.VK_DELETE, ev.VK_BACK_SPACE}
+        %         RemoveElectrode();
+        %     case ev.VK_ESCAPE
+        %         SetSelectedElectrodes(0);
+        % end
     end
 
     %% ===== CONTACT LIST CLICK CALLBACK =====
     function ContListClick_Callback(h, ev)
-        % IF SINGLE CLICK
-        if (ev.getClickCount() == 1)
-            % ===== Highlight in MRI viewer and Surface =====
-            
-            % Get the panel controls
-            ctrl = bst_get('PanelControls', 'iEEG'); 
-
-            % Get the index of the contact coordinates in the list
-            iIndex = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
-
-            % if user clicked elsewhere on the panel just return
-            if isempty(iIndex)
-                return;
-            end
-
-            % updates the crosshair location in MRI Viewer and contact on the surface
-            % HighlightLocation(iIndex);
-        end
+        % % IF SINGLE CLICK
+        % if (ev.getClickCount() == 1)
+        %     % ===== Highlight in MRI viewer and Surface =====
+        % 
+        %     % Get the panel controls
+        %     ctrl = bst_get('PanelControls', 'iEEG'); 
+        % 
+        %     % Get the index of the contact coordinates in the list
+        %     iIndex = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
+        % 
+        %     % if user clicked elsewhere on the panel just return
+        %     if isempty(iIndex)
+        %         return;
+        %     end
+        % 
+        %     % updates the crosshair location in MRI Viewer and contact on the surface
+        %     % HighlightLocation(iIndex);
+        % end
     end
 end
                    
