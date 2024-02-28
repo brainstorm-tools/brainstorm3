@@ -353,24 +353,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST CLICK CALLBACK =====
     function ContListClick_Callback(h, ev)
-        % % IF SINGLE CLICK
-        % if (ev.getClickCount() == 1)
-        %     % ===== Highlight in MRI viewer and Surface =====
-        % 
-        %     % Get the panel controls
-        %     ctrl = bst_get('PanelControls', 'iEEG'); 
-        % 
-        %     % Get the index of the contact coordinates in the list
-        %     iIndex = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
-        % 
-        %     % if user clicked elsewhere on the panel just return
-        %     if isempty(iIndex)
-        %         return;
-        %     end
-        % 
-        %     % updates the crosshair location in MRI Viewer and contact on the surface
-        %     % HighlightLocation(iIndex);
-        % end
+        % IF SINGLE CLICK
+        if (ev.getClickCount() == 1)
+            % updates the crosshair location in MRI Viewer
+            HighlightLocOnMri();
+        end
     end
 end
                    
@@ -721,6 +708,44 @@ function UpdateElecProperties(isUpdateModelList)
     ctrl.jLabelSelectElec.setText(num2str(iSelElec));
 end
 
+%% ===== SET CROSSHAIR POSITION ON MRI =====
+% on clicking on the coordinates on the panel, the crosshair on the MRI Viewer gets updated to show the corresponding location 
+function HighlightLocOnMri() %#ok<DEFNU>
+    % Get the handles
+    hFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    if isempty(hFig)
+        return
+    end 
+    
+    % Get the subject
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
+    sMri = bst_memory('LoadMri', MriFile);
+
+    % Get the panel controls
+    ctrl = bst_get('PanelControls', 'iEEG'); 
+    % Get the index of the contact coordinates in the list
+    iIndex = uint16(ctrl.jListCont.getSelectedIndices())';
+    % if user clicked elsewhere on the panel just return
+    if isempty(iIndex)
+        return;
+    end
+    
+    % Get the coordinates from the panel
+    selData = ctrl.jListCont.getModel().getElementAt(iIndex);
+    selData = regexp(selData, '   ', 'split');
+    selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))]./1000;
+
+    % coordinate space 
+    plotLocMri = cs_convert(sMri, 'scs', 'mri', selCoordScs);
+
+    % ===== FOR MRI =====
+    % update the cross-hair position on the MRI
+    figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
+end
 
 %% ===== GET SELECTED ELECTRODES =====
 function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
