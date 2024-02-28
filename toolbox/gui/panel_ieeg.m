@@ -2845,6 +2845,8 @@ function CreateNewImplantation(MriFile) %#ok<DEFNU>
     panel_protocols('SelectNode', [], ChannelFile);
     % Display channels
     DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
+    % Display isosurface
+    DisplayIsosurface(sSubject);
     % Close progress bar
     bst_progress('stop');
 end
@@ -2927,6 +2929,31 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     end
 end
 
+%% ===== DISPLAY ISOSURFACE =====
+function [hFig, iDS, iFig] = DisplayIsosurface(Subject)
+    % making sure subject and its surface exist
+    if  isempty(Subject) || isempty(Subject.Surface)
+        return;
+    end
+    
+    % making sure isosurface exists
+    for i=1:length(Subject.Surface)
+        if ~isempty(regexp(Subject.Surface(i).FileName, 'isosurface', 'match'))
+            isIsosurfaceExist = i;
+        else
+            isIsosurfaceExist = 0;
+        end
+    end
+
+    % Display mesh with 3D orthogonal slices of the default MRI only if it is an isosurface
+    if isIsosurfaceExist
+        MriFile = Subject.Anatomy(1).FileName;
+        hFig = view_mri_3d(MriFile, [], 0.3, []);
+        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, [], [], hFig, []);
+    else
+        return;
+    end
+end
 
 %% ===== EXPORT CONTACT POSITIONS =====
 function ExportChannelFile(isAtlas)
