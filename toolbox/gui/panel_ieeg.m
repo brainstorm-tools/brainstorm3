@@ -501,7 +501,6 @@ function UpdateContactList()
     ctrl.jListCont.setModel(listModel);
     ctrl.jListCont.repaint();
     drawnow;
-    % java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
 end
 
 %% ===== UPDATE MODEL LIST =====
