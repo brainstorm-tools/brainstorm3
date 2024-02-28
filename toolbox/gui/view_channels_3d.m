@@ -116,6 +116,9 @@ if ~isempty(sSubject)
                 end
                 SurfAlpha = .1;
                 hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
+                
+                % display isosurface
+                panel_ieeg('DisplayIsosurface', sSubject, hFig);
             end
     end
 end
