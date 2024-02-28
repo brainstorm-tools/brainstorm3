@@ -355,8 +355,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ContListClick_Callback(h, ev)
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            % updates the crosshair location in MRI Viewer
-            HighlightLocOnMri();
+            % highlight the location on MRI Viewer (TODO: and Surface)
+            HighlightLocCont();
         end
     end
 end
@@ -709,7 +709,7 @@ end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
 % on clicking on the coordinates on the panel, the crosshair on the MRI Viewer gets updated to show the corresponding location 
-function HighlightLocOnMri() %#ok<DEFNU>
+function HighlightLocCont() %#ok<DEFNU>
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
     if isempty(hFig)
@@ -733,9 +733,10 @@ function HighlightLocOnMri() %#ok<DEFNU>
         return;
     end
     
-    % Get the coordinates from the panel
+    % From the panel, get the selected contact's data and extract the coordinates from it
     selData = ctrl.jListCont.getModel().getElementAt(iIndex);
     selData = regexp(selData, '   ', 'split');
+    % coordinates are in SCS
     selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))]./1000;
 
     % coordinate space 
