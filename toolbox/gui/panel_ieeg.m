@@ -2763,7 +2763,7 @@ function SetElectrodeLoc(iLoc, jButton)
         bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
         return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
-        bst_error('Set the previous reference point first.', 'Set electrode position', 0);
+        bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
     % Get selected coordinates
