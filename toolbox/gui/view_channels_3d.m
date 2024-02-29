@@ -1,4 +1,4 @@
-function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails)
+function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails,hFig)
 % VIEW_CHANNELS_3D: Display channel files on top of subject anatomy.
 
 % @=============================================================================
@@ -23,6 +23,22 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 
 global GlobalData;
 % Parse inputs
+% Get options
+NewFigure = 0;
+if (nargin < 6) || isempty(hFig)
+    hFig = [];
+elseif ischar(hFig) && strcmpi(hFig, 'NewFigure')
+    hFig = [];
+    NewFigure = 1;
+elseif ishandle(hFig)
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+elseif (round(hFig) == hFig) && (hFig <= length(GlobalData.DataSet))
+    iDS = hFig;
+    hFig = [];
+else
+    error('Invalid figure handle.');
+end
+
 if (nargin < 5) || isempty(isDetails)
     isDetails = 0;
 end
@@ -35,7 +51,6 @@ end
 if ischar(FileNames)
     FileNames = {FileNames};
 end
-hFig = [];
 iDS = [];
 iFig = [];
 % Coils or channel markers?
@@ -76,7 +91,9 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                if isempty(hFig) || NewFigure
+                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                end
             end
         case 'innerskull'
             if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
@@ -88,7 +105,9 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                if isempty(hFig) || NewFigure
+                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                end
             end
         case 'scalp'
             if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
@@ -107,7 +126,9 @@ if ~isempty(sSubject)
                     otherwise
                         SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                if isempty(hFig) || NewFigure
+                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                end
             end
         case {'anatomy', 'subjectimage'}
             if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
@@ -115,9 +136,12 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
+                if isempty(hFig) || NewFigure
+                    hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
+                end
             end
     end
+
 end
 % Warning if no surface was found
 if isempty(hFig)
