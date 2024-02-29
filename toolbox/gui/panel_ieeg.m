@@ -93,9 +93,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     'ValueChangedCallback', @(h,ev)bst_call(@ElecListValueChanged_Callback,h,ev), ...
                     'KeyTypedCallback',     @(h,ev)bst_call(@ElecListKeyTyped_Callback,h,ev), ...
                     'MouseClickedCallback', @(h,ev)bst_call(@ElecListClick_Callback,h,ev));
-                jPanelScrollList = JScrollPane();
-                jPanelScrollList.getLayout.getViewport.setView(jListElec);
-                jPanelScrollList.setBorder([]);
+                jPanelScrollElecList = JScrollPane();
+                jPanelScrollElecList.getLayout.getViewport.setView(jListElec);
+                jPanelScrollElecList.setBorder([]);
 
                 % Contacts list
                 jListCont = java_create('org.brainstorm.list.BstClusterList');
@@ -106,12 +106,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     'ValueChangedCallback', @(h,ev)bst_call(@ContListValueChanged_Callback,h,ev), ...
                     'KeyTypedCallback',     @(h,ev)bst_call(@ContListKeyTyped_Callback,h,ev), ...
                     'MouseClickedCallback', @(h,ev)bst_call(@ContListClick_Callback,h,ev));
-                jPanelScrollList1 = JScrollPane();
-                jPanelScrollList1.getLayout.getViewport.setView(jListCont);
-                jPanelScrollList1.setBorder([]);
+                jPanelScrollContList = JScrollPane();
+                jPanelScrollContList.getLayout.getViewport.setView(jListCont);
+                jPanelScrollContList.setBorder([]);
 
-                jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollList, jPanelScrollList1);
-                jSplitEvt.setResizeWeight(0.2);
+                jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollElecList, jPanelScrollContList);
+                jSplitEvt.setResizeWeight(0.05);
                 jSplitEvt.setDividerSize(4);
                 jSplitEvt.setBorder([]);
                 jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
@@ -2782,8 +2782,17 @@ end
 %% ===== SET ELECTRODE LOCATION =====
 function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
+
+    % ask user if they want to set the tip from 3D Viz or MRI Viewer
+    SelWindow = java_dialog('question', 'Please select the Viewer over which you want to set the point', ...
+                              'Choose Viewer', [], {'MriViewer', '3DViz'});
+    if isempty(SelWindow)
+        SelWindow = 'MriViewer';
+    end
+
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+
     if isempty(sSelElec)
     	bst_error('No electrode seleced.', 'Set electrode position', 0);
         return;
@@ -2797,28 +2806,36 @@ function SetElectrodeLoc(iLoc, jButton)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-    % Get selected coordinates
-    sMri = panel_surface('GetSurfaceMri', hFig(1));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
-    % If SCS coordinates are not available
-    if isempty(XYZ)
-        % Ask to compute MNI transformation
-        isComputeMni = java_dialog('confirm', [...
-            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-            'Compute the MNI normalization now?'], 'Set electrode position');
-        % Run computation
-        if isComputeMni
-            figure_mri('ComputeMniCoordinates', hFig);
+    
+    if strcmpi(SelWindow, 'MriViewer')
+        % Get selected coordinates
+        sMri = panel_surface('GetSurfaceMri', hFig(1));
+        XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
+        % If SCS coordinates are not available
+        if isempty(XYZ)
+            % Ask to compute MNI transformation
+            isComputeMni = java_dialog('confirm', [...
+                'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
+                'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+                'Compute the MNI normalization now?'], 'Set electrode position');
+            % Run computation
+            if isComputeMni
+                figure_mri('ComputeMniCoordinates', hFig);
+            end
+            return;
         end
+        % Make sure the points of the electrode are more than 1cm apart
+        iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
+        if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
+            bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
+            return;
+        end
+    else
+        % define what to do for 3DViz
+
         return;
     end
-    % Make sure the points of the electrode are more than 1cm apart
-    iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
-        bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
-        return;
-    end
+
     % Set electrode position
     sSelElec.Loc(:,iLoc) = XYZ(:);
     % Save electrode modification
