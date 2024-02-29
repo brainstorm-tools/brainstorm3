@@ -122,7 +122,6 @@ else
         case '.txt',   FileFormat = 'ARRAY-TIMES';
         case '.csv',   FileFormat = 'CSV-TIME';
         case '.tsv',   FileFormat = 'BIDS';
-
     end
 end
 
