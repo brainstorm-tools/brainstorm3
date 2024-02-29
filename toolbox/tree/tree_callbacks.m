@@ -231,7 +231,8 @@ switch (lower(action))
                     if strcmpi(DisplayMod{1}, 'ECOG+SEEG') || (length(DisplayMod) >= 2) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                         DisplayChannels(bstNodes, 'ECOG+SEEG', 'cortex', 1);
                     elseif strcmpi(DisplayMod{1}, 'SEEG')
-                        hFig = DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1);
+                        hFig = bst_figures('GetFiguresByType', {'3DViz'});
+                        hFig = DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1, 0, hFig);
                         % only for SEEG display the isosurface
                         [sStudy, iStudy] = bst_get('ChannelFile', filenameRelative);
                         sSubject = bst_get('Subject', sStudy.BrainStormSubject);
