@@ -43,7 +43,7 @@ global GlobalData;
 iDS = [];
 iFig = [];
 if (nargin < 6) || isempty(hFig)
-    hFig = [];
+    hFig = 'NewFigure';
 elseif ishandle(hFig)
     hFig = bst_figures('GetFigure', hFig);
 else
@@ -101,9 +101,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig)
-                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
-                end
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case 'innerskull'
             if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
@@ -115,9 +113,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig)
-                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
-                end
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case 'scalp'
             if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
@@ -136,9 +132,7 @@ if ~isempty(sSubject)
                     otherwise
                         SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig)
-                    hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
-                end
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case {'anatomy', 'subjectimage'}
             if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
@@ -146,10 +140,9 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                if isempty(hFig)
-                    hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
-                end
+                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
             end
+        otherwise
     end
 end
 % Warning if no surface was found
