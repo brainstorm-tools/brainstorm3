@@ -22,6 +22,7 @@ function varargout = panel_coordinates(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2020
+%          Chinmay Chinara, 2024
 
 eval(macro_method);
 end
@@ -300,14 +301,18 @@ end
 
 %% ===== SELECT POINT =====
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFIg
-function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
+function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
+    if (nargin < 3) || isempty(AcceptMri)
+        isCentroid = 0;
+    end
     if (nargin < 2) || isempty(AcceptMri)
         AcceptMri = 1;
+        isCentroid = 0;
     end
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     % Find the closest surface point that was selected
-    [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig);
+    [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, [], isCentroid);
     if isempty(TessInfo)
         return
     end
@@ -398,10 +403,14 @@ end
 
 
 %% ===== POINT SELECTION: Surface detection =====
-function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
+function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)
     % Parse inputs
+    if (nargin < 3)
+        isCentroid = 0;
+    end
     if (nargin < 2)
         SurfacesType = [];
+        isCentroid = 0;
     end
     iTess = [];
     pout = {};
@@ -415,7 +424,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Get camera position
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
-    TessInfo = getappdata(hFig, 'Surface');
+    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
     if isempty(TessInfo)
         return
     end
@@ -437,6 +446,12 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
+            % find center of a blob
+            if isCentroid
+                VertexList = [];
+                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), VertexList, 1, 6);
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :));
+            end
         else
             patchDist(i) = Inf;
         end
@@ -465,6 +480,23 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
 end
 
+%% ===== FIND CENTROID OF A MESH BLOB =====
+% finds the centroid of the selected contact blob from the isosurface using flood-fill alogrithm
+% NOTE: currently used mainly for SEEG contact localization from thresholded isosurface
+function VertexList = FindCentroid(Surface, VertConnList, VertexList, cnt, cntThresh)
+    if cnt == cntThresh
+        return;
+    else
+        for i=1:length(VertConnList)
+            if ~any(VertexList(:) == VertConnList(i))
+                VertexList = [VertexList, VertConnList(i)];
+                VertConnListTemp = find(Surface.VertConn(VertConnList(i),:));
+                VertexList = FindCentroid(Surface, VertConnListTemp, VertexList, cnt, cntThresh);
+                cnt = cnt + 1;
+            end
+        end
+    end
+end
 
 %% ===== REMOVE SELECTION =====
 function RemoveSelection(varargin)
