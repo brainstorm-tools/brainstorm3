@@ -150,7 +150,7 @@ switch FileFormat
     case 'CSV-TIME'
         out_events_csv(sFile, OutputFile);
    case 'BIDS'
-        out_events_bids(sFile, OutputFile );
+        out_events_bids(sFile, OutputFile);
     case 'ARRAY-TIMES'
         if (length(sFile.events) > 1)
             error('Cannot export more than one event at a time with this format.');
