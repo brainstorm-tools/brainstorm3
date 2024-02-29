@@ -146,7 +146,7 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                if isempty(hFig) || NewFigure
+                if isempty(hFig)
                     hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
                 end
             end
