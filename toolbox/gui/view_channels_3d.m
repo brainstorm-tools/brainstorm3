@@ -1,5 +1,21 @@
-function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails,hFig)
+function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails, hFig)
 % VIEW_CHANNELS_3D: Display channel files on top of subject anatomy.
+%
+% INPUT:
+%     - FileNames   : path to the channel file to display
+%     - Modality    : modality of sensors
+%     - SurfaceType : surface to display sensors on (scalp)
+%     - is3DElectrodes
+%     - isDetails
+%     - hFig : TargetFigure:
+%        |- []      : New figure (default)
+%        |- hFig    : Specify the figure in which to display the channels
+%
+% OUTPUT :
+%     - hFig : Matlab handle to the 3DViz figure that was created or updated
+%     - iDS  : DataSet index in the GlobalData variable
+%     - iFig : Indice of returned figure in the GlobalData(iDS).Figure array
+% If an error occurs : all the returned variables are set to an empty matrix []
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,19 +38,14 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % Authors: Francois Tadel, 2010-2019
 
 global GlobalData;
-% Parse inputs
-% Get options
-NewFigure = 0;
+
+%% ===== PARSE INPUTS =====
+iDS = [];
+iFig = [];
 if (nargin < 6) || isempty(hFig)
     hFig = [];
-elseif ischar(hFig) && strcmpi(hFig, 'NewFigure')
-    hFig = [];
-    NewFigure = 1;
 elseif ishandle(hFig)
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
-elseif (round(hFig) == hFig) && (hFig <= length(GlobalData.DataSet))
-    iDS = hFig;
-    hFig = [];
+    hFig = bst_figures('GetFigure', hFig);
 else
     error('Invalid figure handle.');
 end
@@ -51,8 +62,7 @@ end
 if ischar(FileNames)
     FileNames = {FileNames};
 end
-iDS = [];
-iFig = [];
+
 % Coils or channel markers?
 isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS', 'RICOH'});
 
@@ -91,7 +101,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig) || NewFigure
+                if isempty(hFig)
                     hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
                 end
             end
@@ -105,7 +115,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig) || NewFigure
+                if isempty(hFig)
                     hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
                 end
             end
@@ -126,7 +136,7 @@ if ~isempty(sSubject)
                     otherwise
                         SurfAlpha = opaqueAlpha;
                 end
-                if isempty(hFig) || NewFigure
+                if isempty(hFig)
                     hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
                 end
             end
@@ -141,7 +151,6 @@ if ~isempty(sSubject)
                 end
             end
     end
-
 end
 % Warning if no surface was found
 if isempty(hFig)
