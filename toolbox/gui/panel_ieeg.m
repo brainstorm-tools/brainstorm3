@@ -1130,6 +1130,12 @@ function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(sele
     global GlobalData;
     % Get current figure
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
+    % Check if there are electrodes defined for this file
+    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
+        sContacts = [];
+        sContactsName = [];
+        return;
+    end
     % Get the channel file
     ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
     % Get all the figures that share this channel file
