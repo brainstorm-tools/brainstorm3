@@ -2104,7 +2104,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
                 if strcmpi(sElec.Type, 'SEEG')
-                    ctSize = [1 1 1] .* sElec.ContactLength;
+                    ctSize = [1 1 1] .* sElec.ContactLength ./ 4;
                 else
                     ctSize = [1 1 1] .* sElec.ContactDiameter ./ 2;
                 end
