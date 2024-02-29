@@ -49,9 +49,8 @@ if (fout < 0)
     return
 end
 
-% write header
-fprintf(fout,'onset\tduration\ttrial_type\n');
-
+% Write header
+fprintf(fout,'%s\t%s\t%s\n', 'onset', 'duration', 'trial_type');
 % Write all the events, one by line
 for i = 1:length(allInd)
     % Get event structure
