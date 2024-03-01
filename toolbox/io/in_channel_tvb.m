@@ -23,6 +23,14 @@ function ChannelMat = in_channel_tvb(ChannelFile)
 %
 % Authors: Francois Tadel, 2020
 
+% Install/load EasyH5 Toolbox (https://github.com/NeuroJSON/easyh5) as plugin
+if ~exist('loadh5', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'easyh5');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % Read data from .h5
 h5 = loadh5(ChannelFile);
 % Check data format

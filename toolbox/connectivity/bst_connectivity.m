@@ -405,7 +405,7 @@ Time = [];
 nWinLenSamples = [];
 
 % Loop over input files
-for iFile = 1:nFiles
+for iFile = 1 : length(FilesA)
     % Increments here, and in LoadAll above. 100 points are assigned per process (in bst_process('run'))
     bst_progress('set',  round(startValue + (iFile-1) / nFiles * 100));
     %% ===== LOAD SIGNALS =====
@@ -959,6 +959,14 @@ for iFile = 1:nFiles
                         end
                         % Add the number of averaged windows & files to the report
                         nWinLenSamples = nWinLenAvg;
+                    elseif strcmp(OPTIONS.TimeRes, 'none')
+                        % Add time dimension
+                       for f = 1:numel(Terms)
+                            % Insert a singleton second-to-last dimension
+                            order = 1 : (length(size(S.(Terms{f}))) + 1);
+                            newOrder = [order(1:end-2), order(end:-1:end-1)];
+                            S.(Terms{f}) = permute(S.(Terms{f}), newOrder);
+                       end
                     end
                     % Initial R or Accumulate R
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
@@ -1093,7 +1101,7 @@ for iFile = 1:nFiles
         end
         OutputFiles{iFile} = Finalize(OrigFilesB{iFile});
         R = [];
-    else 
+    elseif strcmpi(OPTIONS.OutputMode, 'avg')
         % Sum terms and continue file loop.
         if isnumeric(R)
             if isempty(Ravg)
@@ -1106,7 +1114,8 @@ for iFile = 1:nFiles
             end
         % Else R is a struct and terms are already being summed into its fields directly.
         end
-        
+    else % case 'concat'
+        Ravg = R;
     end
 end
 
@@ -1190,11 +1199,6 @@ function NewFile = Finalize(DataFile)
                         R = imag(R.Sab).^2 ./ (1-real(R.Sab).^2);
                         R(isnan(R(:))) = 0;
                 end
-        end
-        % Static measures may need to be reshaped to add singleton time dimension.
-        if ndims(R) == 3
-            % Push freq to 4th dim.
-            R = permute(R, [1,2,4,3]);
         end
     end
 

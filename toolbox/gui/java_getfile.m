@@ -185,7 +185,7 @@ if FileSelectorStatus
             end
             
             % If file already exist
-            if file_exist(fileList) && ~isequal(suffix, '.folder')
+            if file_exist(fileList) && ~isequal(suffix, '.folder') && ~isdir(fileList)
                 if ~java_dialog('confirm', sprintf('File already exist.\nDo you want to overwrite it?'), 'Save file')
                     fileList = [];
                     fileFormat = [];

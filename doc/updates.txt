@@ -1,3 +1,43 @@
+January 2024
+- IO: Import channel-wise events from BrainVision BrainAmp
+--------------------------------------------------------------
+December 2023
+- Bugfix: Keep BadTrial flags when merging Studies
+- Plugin: Improve handling of processes from installed plugins
+- Distrib: Basic support Apple silicon (OsType `mac64arm`)
+- IO: Add process Export to file
+--------------------------------------------------------------
+November 2023
+- Plugin:  CT2MRIREG to perform CT to MRI co-registration
+- IO: Import Brainstorm sources
+- Plugins: Remove EASYH5 and JSNIRF code from Brainstorm, add them as plugins
+- Bugfix: Export EDF+ with UTF-8 encoding
+- IO: Export to .xlsx files for Matlab >= R2019a
+- IO: Export EEG as Brainsight format
+--------------------------------------------------------------
+October 2023
+- Distrib: Compilation with Matlab 2023a/2023b
+- Bugfix: Merging events with, and events without 'channels' and 'notes'
+- Connectivity: Reorganize different correlation options
+- iEEG: Save, Load, Export and Import electrode models
+--------------------------------------------------------------
+September 2023
+- Anatomy: Import resection mask from BrainSuite SVReg
+- IO: Export raw data as FieldTrip structure
+--------------------------------------------------------------
+August 2023
+- Scouts: Add 'power' as scout function
+- Reports: Send compact report by email if requested
+- Anatomy: Display anatomical atlases on 3D orthogonal slices view
+- Connectivity: Reorganize connectivity metrics
+- Connectivity: Fix across-trials average of phase metrics
+- Distrib: Add workflow to run tutorials GitHub runners
+--------------------------------------------------------------
+July 2023
+- Anatomy : Export scouts as FreeSurfer annotations
+- New process: Remove evoke response
+- Bugfix: (e-phys) Error computing tuning curves
+--------------------------------------------------------------
 June 2023
 - PCA: Major fixes and improvements for Scouts and Flattening unconstrained sources
 |  New tutorial page. Fix 1st PC sign inconsistency across epochs and conditions

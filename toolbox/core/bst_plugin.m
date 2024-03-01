@@ -27,6 +27,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
 %                            bst_plugin('LinkCatSpm',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('UpdateDescription',    PlugDesc, doDelete=0) % Update plugin description after load
 %
 %
 % PLUGIN DEFINITION
@@ -168,7 +169,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
                                     'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
                                     'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', 'bin/cgalpoly.mexa64', 'bin/cgalpoly.mexmaci64', 'bin/cgalpoly_x86-64.exe', ...   % Removing cgalpoly completely (not used)
-                                    'bin/cgalsimp2.exe', 'bin/cgalsimp2.mexglx', 'bin/cgalsimp2.mexmaci', 'bin/cgalsimp2.mexmac', ...
                                     'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
                                     'bin/cork.exe', ...
                                     'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
@@ -304,6 +304,18 @@ function PlugDesc = GetSupported(SelPlug)
                                     'NPMK/Dependent Functions/.svn', 'NPMK/Dependent Functions/.DS_Store', 'NPMK/Dependent Functions/bnsx.dat', 'NPMK/Dependent Functions/syncPatternDetectNEV.m', ...
                                     'NPMK/Dependent Functions/syncPatternDetectNSx.m', 'NPMK/Dependent Functions/syncPatternFinderNSx.m'};
 
+    % === I/O: EASYH5 ===
+    PlugDesc(end+1)              = GetStruct('easyh5');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/easyh5/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/easyh5';
+    PlugDesc(end).TestFile       = 'loadh5.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -332,6 +344,19 @@ function PlugDesc = GetSupported(SelPlug)
                                     'f=fopen(''private' filesep 'eeg_emptyset.m'',''wt''); fprintf(f,''function EEG=eeg_emptyset()\nEEG=struct();''); fclose(f);' ...
                                     'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
                                     'cd(d);'];
+
+    % === I/O: JSNIRF ===
+    PlugDesc(end+1)              = GetStruct('jsnirfy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsnirfy/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsnirfy';
+    PlugDesc(end).TestFile       = 'loadsnirf.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).RequiredPlugs  = {'easyh5'};
 
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');
@@ -603,7 +628,14 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('spm12');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    switch(OsType)
+        case  'mac64arm'
+            PlugDesc(end).URLzip         = 'https://github.com/spm/spm12/archive/refs/heads/maint.zip';
+            PlugDesc(end).Version        = 'github-maint';
+        otherwise
+            PlugDesc(end).Version        = 'latest';
+            PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    end
     PlugDesc(end).URLinfo        = 'https://www.fil.ion.ucl.ac.uk/spm/';
     PlugDesc(end).TestFile       = 'spm.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
@@ -1233,9 +1265,16 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugName, PluginsNotSupportAppleSilicon())
+        errMsg = ['Plugin ', PlugName ' is not supported on Apple silicon yet.'];
+        PlugDesc = [];
+        return;
+    end
     % Check if there is a URL to download
     if isempty(PlugDesc.URLzip)
-        errMsg = ['No download URL for ', bst_get('OsType', 0), ': ', PlugName ''];
+        errMsg = ['No download URL for ', OsType, ': ', PlugName ''];
         return;
     end
     % Compiled version
@@ -1477,73 +1516,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         bst_progress('removeimage');
         return;
     end
-    
-    % === DELETE UNWANTED FILES ===
-    if ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
-        warning('off', 'MATLAB:RMDIR:RemovedFromPath');
-        for iDel = 1:length(PlugDesc.DeleteFiles)
-            if ~isempty(PlugDesc.SubFolder)
-                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
-            else
-                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.DeleteFiles{iDel});
-            end
-            if file_exist(fileDel)
-                try
-                    file_delete(fileDel, 1, 3);
-                catch
-                    disp(['BST> Plugin ' PlugName ': Could not delete file: ' PlugDesc.DeleteFiles{iDel}]);
-                end
-            else
-                disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
-            end
-        end
-        warning('on', 'MATLAB:RMDIR:RemovedFromPath');
-    end
-
-    % === SEARCH PROCESSES ===
-    % Look for process_* functions in the process folder
-    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
-    if ~isempty(PlugProc)
-        % Remove absolute path: use only path relative to the plugin Path
-        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
-    end
-    
-    % === SAVE PLUGIN.MAT ===
-    % Save installation date
-    c = clock();
-    PlugDesc.InstallDate = datestr(datenum(c(1), c(2), c(3), c(4), c(5), c(6)), 'dd-mmm-yyyy HH:MM:SS');
-    % Get readme and logo
-    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
-    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Update plugin.mat after loading
-    PlugDescSave = rmfield(PlugDesc, excludedFields);
-    bst_save(PlugMatFile, PlugDescSave, 'v6');
-    
-    % === CALLBACK: POST-INSTALL ===
-    [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
+    % Update plugin description after first load, and delete unwanted files
+    [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, 1);
     if ~isOk
         return;
-    end
-    
-    % === GET INSTALLED VERSION ===
-    % Get installed version
-    if ~isempty(PlugDesc.GetVersionFcn)
-        testVer = [];
-        try
-            if ischar(PlugDesc.GetVersionFcn)
-                testVer = eval(PlugDesc.GetVersionFcn);
-            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
-                testVer = feval(PlugDesc.GetVersionFcn);
-            end
-        catch
-            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
-        end
-        if ~isempty(testVer)
-            PlugDesc.Version = testVer;
-            % Update plugin.mat
-            PlugDescSave.Version = testVer;
-            bst_save(PlugMatFile, PlugDescSave, 'v6');
-        end
     end
     
     % === SHOW PLUGIN INFO ===
@@ -1581,6 +1557,96 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     isOk = 1;
 end
 
+
+%% ===== UPDATE DESCRIPTION =====
+% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('UpdateDescription', PlugDesc, doDelete=0)
+function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
+    isOk        = 1;
+    errMsg      = '';
+    PlugPath    = PlugDesc.Path;
+    PlugName    = PlugDesc.Name;
+
+    if nargin < 2
+        doDelete = 0;
+    end
+
+    % Plug in needs to be installed
+    if isempty(bst_plugin('GetInstalled', PlugDesc.Name))
+        isOk = 0;
+        errMsg = ['Cannot update description, plugin ''' PlugDesc.Name ''' needs to be installed'];
+        return
+    end
+
+    % === DELETE UNWANTED FILES ===
+    if doDelete && ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
+        warning('off', 'MATLAB:RMDIR:RemovedFromPath');
+        for iDel = 1:length(PlugDesc.DeleteFiles)
+            if ~isempty(PlugDesc.SubFolder)
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
+            else
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.DeleteFiles{iDel});
+            end
+            if file_exist(fileDel)
+                try
+                    file_delete(fileDel, 1, 3);
+                catch
+                    disp(['BST> Plugin ' PlugName ': Could not delete file: ' PlugDesc.DeleteFiles{iDel}]);
+                end
+            else
+                disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
+            end
+        end
+        warning('on', 'MATLAB:RMDIR:RemovedFromPath');
+    end
+
+    % === SEARCH PROCESSES ===
+    % Look for process_* functions in the process folder
+    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
+    if ~isempty(PlugProc)
+        % Remove absolute path: use only path relative to the plugin Path
+        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
+    end
+    
+    % === SAVE PLUGIN.MAT ===
+    % Save installation date
+    c = clock();
+    PlugDesc.InstallDate = datestr(datenum(c(1), c(2), c(3), c(4), c(5), c(6)), 'dd-mmm-yyyy HH:MM:SS');
+    % Get readme and logo
+    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
+    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
+    % Update plugin.mat
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
+    PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
+    bst_save(PlugMatFile, PlugDescSave, 'v6');
+    
+    % === CALLBACK: POST-INSTALL ===
+    [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
+    if ~isOk
+        return;
+    end
+    
+    % === GET INSTALLED VERSION ===
+    % Get installed version
+    if ~isempty(PlugDesc.GetVersionFcn)
+        testVer = [];
+        try
+            if ischar(PlugDesc.GetVersionFcn)
+                testVer = eval(PlugDesc.GetVersionFcn);
+            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
+                testVer = feval(PlugDesc.GetVersionFcn);
+            end
+        catch
+            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
+        end
+        if ~isempty(testVer)
+            PlugDesc.Version = testVer;
+            % Update plugin.mat
+            PlugDescSave.Version = testVer;
+            bst_save(PlugMatFile, PlugDescSave, 'v6');
+        end
+    end
+end
 
 %% ===== INSTALL INTERACTIVE =====
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive', PlugName)
@@ -1830,6 +1896,12 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugDesc);
     if ~isempty(errMsg)
+        return;
+    end
+    % Check if plugin is supported on Apple silicon
+    OsType = bst_get('OsType', 0);
+    if strcmpi(OsType, 'mac64arm') && ismember(PlugDesc.Name, PluginsNotSupportAppleSilicon())
+        errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
         return;
     end
     % Minimum Matlab version
@@ -2804,4 +2876,12 @@ function SetProgressLogo(PlugDesc)
             bst_progress('setlink', PlugDesc.URLinfo);
         end
     end
+end
+
+
+%% ===== NOT SUPPORTED APPLE SILICON =====
+% Return list of plugins not supported on Apple silicon
+function pluginNames = PluginsNotSupportAppleSilicon()
+    pluginNames = {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+                   'openmeeg', 'xdf'};
 end

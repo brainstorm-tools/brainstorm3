@@ -1384,13 +1384,35 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create controls
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
+                    jLabel = gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     jText = gui_component('text', jPanelOpt, [], strFiles);
                     jText.setEditable(0);
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
-                    gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
-                    
+                    if strcmp(strFunction, 'process_export_file')
+                        if length(sFiles) > 1
+                            % Export multiple files, suggest dir name to export files (filenames from Brainstorm DB)
+                            jLabel.setText('Output dir');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'dirs';
+                            LastUsedDirs = bst_get('LastUsedDirs');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = LastUsedDirs.ExportData;
+                            jText.setText(LastUsedDirs.ExportData);
+                        else
+                            % Export one file, suggest filename for new file from Input file
+                            jLabel.setText('Output file');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'files';
+                            if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1}) || strcmp(option.Value{7}, 'dirs')
+                                % Used in SaveFile_Callback() to suggeste name of export file
+                                GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                            end
+                            jText.setText(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1});
+                        end
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText));
+                    else
+                        % Pick file or dir (Open File or Select Dir to Save)
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
+                    end
+
                 case 'editpref'
                     gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;']);
                     gui_component('button', jPanelOpt, [], 'Edit...', [],[], @(h,ev)EditProperties_Callback(iProcess, optNames{iOpt}));
@@ -1793,6 +1815,139 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         % Close progress bar
         bst_progress('stop');
+    end
+
+
+    %% ===== OPTIONS: SAVE FILE CALLBACK =====
+    function SaveFile_Callback(iProcess, optName, jText)
+        % Get default import directory and formats
+        LastUsedDirs = bst_get('LastUsedDirs');
+        DefaultFormats = bst_get('DefaultFormats');
+        % Get file selection options
+        selectOptions = GlobalData.Processes.Current(iProcess).options.(optName).Value;
+        if (length(selectOptions) == 9)
+            DialogType      = selectOptions{3};
+            WindowTitle     = selectOptions{4};
+            DefaultOutFile  = selectOptions{5};
+            SelectionMode   = selectOptions{6};
+            FilesOrDir      = selectOptions{7};
+            Filters         = selectOptions{8};
+            DefaultFormat   = selectOptions{9};
+            if isfield(DefaultFormats, DefaultFormat) && isempty(selectOptions{2})
+                defaultFilter = DefaultFormats.(DefaultFormat);
+            else
+                defaultFilter = selectOptions{2};
+            end
+        else
+            DialogType       = 'save';
+            WindowTitle      = 'Export file';
+            DefaultOutFile   = '';
+            SelectionMode    = 'single';
+            FilesOrDir       = 'files';
+            Filters          = {{'*'}, 'All files (*.*)', 'ALL'};
+            defaultFilter    = [];
+        end
+
+        % First input file
+        inBstFile = selectOptions{1};
+        % Filters and extension according to file type
+        fileType = file_gettype(inBstFile);
+        if strcmp(fileType, 'data') && ~isempty(strfind(inBstFile, '_0raw'))
+            fileType = 'raw';
+        end
+        if isempty(Filters)
+            Filters = bst_get('FileFilters', [fileType, 'out']);
+        end
+        % Select only Filter if not provided
+        if isempty(defaultFilter)
+            switch fileType
+                case 'raw'
+                    defaultFilter = 'BST-BIN';
+                case {'data', 'results', 'timefreq', 'matrix'}
+                    defaultFilter = 'BST';
+            end
+        end
+        % Get extension for filter
+        iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
+        if isempty(iFilter)
+            iFilter = 1;
+        end
+        fExt = Filters{iFilter, 1}{1};
+        % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
+        if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+            fExt = [fExt, '.mat'];
+        end
+
+        % Suggest filename or dir
+        switch FilesOrDir
+            % Suggest filename
+            case 'files'
+                switch(fileType)
+                    case 'data'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_data', '');
+                        fBase = strrep(fBase, 'data_', '');
+                        fBase = strrep(fBase, '0raw_', '');
+    
+                    case {'results', 'link'}
+                        if strcmp(fileType, 'link')
+                            [kernelFile, dataFile] = file_resolve_link(inBstFile);
+                            [~, kBase] = bst_fileparts(kernelFile);
+                            [~, fBase] = bst_fileparts(dataFile);
+                            fBase = [kBase, '_' ,fBase];
+                        else
+                            [~, fBase] = bst_fileparts(inBstFile);
+                        end
+                        fBase = strrep(fBase, '_results', '');
+                        fBase = strrep(fBase, 'results_', '');
+    
+                    case 'timefreq'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_timefreq', '');
+                        fBase = strrep(fBase, 'timefreq_', '');
+    
+                    case 'matrix'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_matrix', '');
+                        fBase = strrep(fBase, 'matrix_', '');
+    
+                    otherwise
+                        % e.g., user set outfile more than once
+                        [~, fBase] = bst_fileparts(inBstFile);
+    
+                end                
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [fBase, fExt]);
+
+            % Suggest directory
+            case 'dirs'
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData);
+        end
+
+        % Pick a file
+        [OutputFile, FileFormat] = java_getfile(DialogType, WindowTitle, DefaultOutFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
+        % If nothing selected
+        if isempty(OutputFile)
+            return
+        end
+        % Update ExportData path
+        if strcmp(FilesOrDir, 'dirs')
+            % Remove extension (introduced by the Filters)
+            [fPath, fBase] = bst_fileparts(OutputFile);
+            OutputFile = bst_fullfile(fPath, fBase);
+            LastUsedDirs.ExportData = OutputFile;
+        elseif strcmp(FilesOrDir, 'files')
+            fPath = bst_fileparts(OutputFile);
+            LastUsedDirs.ExportData = fPath;
+        end
+        bst_set('LastUsedDirs', LastUsedDirs);
+
+        % Update the values
+        selectOptions{1} = OutputFile;
+        selectOptions{2} = FileFormat;
+        % Save the new values
+        SetOptionValue(iProcess, optName, selectOptions);
+        % Update the text field
+        jText.setText(OutputFile);
     end
 
 
@@ -2634,9 +2789,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         bstFunc = union(usrFunc, bstFunc);
     end
     
-    % Get processes from installed plugins ($HOME/.brainstorm/plugins/*)
+    % Get processes from installed (a supported) plugins ($HOME/.brainstorm/plugins/*)
     plugFunc = {};
-    PlugAll = bst_plugin('GetInstalled');
+    plugList = [];
+    PlugSupported = bst_plugin('GetSupported');
+    PlugInstalled = bst_plugin('GetInstalled');
+    [~, iPlug] = intersect({PlugInstalled.Name}, {PlugSupported.Name});
+    PlugAll = PlugInstalled(iPlug);
     for iPlug = 1:length(PlugAll)
         if ~isempty(PlugAll(iPlug).Processes)
             % Keep only the processes with function names that are not already defined in Brainstorm
@@ -2656,7 +2815,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        bstFunc = union(plugFunc, bstFunc);
+        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        plugList = cellfun(@dir, plugFunc(iFunc));
+        bstFunc  = union(plugFunc, bstFunc);
     end
 
     % ===== CHECK FOR MODIFICATIONS =====
@@ -2668,8 +2829,8 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     for i = 1:length(usrList)
         sig = [sig, usrList(i).name, usrList(i).date, num2str(usrList(i).bytes)];
     end
-    for i = 1:length(plugFunc)
-        sig = [sig, plugFunc{i}];
+    for i = 1:length(plugList)
+        sig = [sig, plugList(i).name, plugList(i).date, num2str(plugList(i).bytes)];
     end
     % If signature is same as previously: do not reload all the files
     if ~isForced
@@ -2720,7 +2881,16 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         try
             desc = Function('GetDescription');
         catch
-            disp(['BST> Invalid plug-in function: "' bstFunc{iFile} '"']);
+            if ismember(bstFunc{iFile}, usrFunc)
+                processType = 'User';
+            elseif ismember(bstFunc{iFile}, {bstList.name})
+                processType = 'Brainstorm';
+            elseif ismember(bstFunc{iFile}, plugFunc)
+                processType = 'Plug-in';
+            else
+                processType = char(8); % backspace
+            end
+            disp(['BST> Invalid ' processType ' function: "' bstFunc{iFile} '"']);
             continue;
         end
         % Copy fields to returned structure

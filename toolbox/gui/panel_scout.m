@@ -201,6 +201,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jRadioAbsolute = gui_component('Radio', jPanelDisplay, 'tab', 'Absolute', {Insets(0,0,0,0), jButtonGroup});
                 jRadioRelative = gui_component('Radio', jPanelDisplay, 'tab', 'Relative', {Insets(0,0,0,0), jButtonGroup});
                 jRadioAbsolute.setSelected(1);
+                % Uniform amplitude scales
+                gui_component('Label', jPanelDisplay, 'br', ['Uniform amplitude scale:' strSpace]);
+                jCheckUniformAmplitude  = gui_component('CheckBox', jPanelDisplay, '', '',  Insets(0,0,0,0), [], @UniformTimeSeries_Callback);
+
             jPanelBottom.add('br hfill', jPanelDisplay);
             
         jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
@@ -235,6 +239,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckRegionColor',        jCheckRegionColor, ...
                                   'jCheckOverlayScouts',      jCheckOverlayScouts, ...
                                   'jCheckOverlayConditions',  jCheckOverlayConditions, ...
+                                  'jCheckUniformAmplitude',   jCheckUniformAmplitude, ...
                                   'jListScouts',                jListScouts));
                      
                                   
@@ -336,6 +341,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     end
 end
                    
+
+%% ===== OPTIONS: UNIFORMIZE SCALES =====
+function UniformTimeSeries_Callback(hObj, ev)
+    % Get button
+    jCheck = ev.getSource();
+    isSel = jCheck.isSelected();
+    figure_timeseries('UniformizeTimeSeriesScales', isSel);
+    jCheck.setSelected(isSel);
+end
+
 
 
 %% =================================================================================
@@ -467,9 +482,10 @@ function UpdateMenus(sAtlas, sSurf)
     gui_component('MenuItem', jMenu, [], 'Rename',       IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@EditScoutLabel));
     gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
-        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
-        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,  [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,     [], @(h,ev)bst_call(@RemoveScouts));
+        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,     [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,      [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
@@ -1332,6 +1348,7 @@ function ScoutsOptions = GetScoutsOptions()
             'overlayScouts',      0, ...
             'overlayConditions',  0, ...
             'displayAbsolute',    1, ...
+            'uniformAmplitude',   0, ...
             'showSelection',      'all', ...
             'patchAlpha',         .7, ...
             'displayContour',     1, ...
@@ -1344,6 +1361,8 @@ function ScoutsOptions = GetScoutsOptions()
     ScoutsOptions.overlayConditions = ctrl.jCheckOverlayConditions.isSelected();
     % Absolute values
     ScoutsOptions.displayAbsolute = ctrl.jRadioAbsolute.isSelected();
+    % Uniform amplitude scale
+    ScoutsOptions.uniformAmplitude = ctrl.jCheckUniformAmplitude.isSelected();
     % Show selection
     if ~ctrl.jRadioShowSel.isSelected() && ~ctrl.jRadioShowAll.isSelected()
         ScoutsOptions.showSelection = 'none';
@@ -3707,6 +3726,51 @@ function JoinScouts(varargin)
 end
 
 
+%% ===== INTERSECT SCOUTS =====
+% Intersection between scouts selected in the JList
+function IntersectScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    [sScouts, iScouts] = GetSelectedScouts();
+    % Need at least TWO scouts
+    if (length(sScouts) < 2)
+        java_dialog('warning', 'You need to select at least two scouts.', 'Join selected scouts');
+        return;
+    end
+    % === Intersect scouts ===
+    % Create new scout
+    sNewScout = db_template('Scout');
+    % Initialize vertices
+    sNewScout.Vertices = sScouts(1).Vertices;
+    for i = 2:length(sScouts)
+        sNewScout.Vertices =  intersect(sNewScout.Vertices, sScouts(i).Vertices);
+    end
+    if isempty(sNewScout.Vertices)
+        java_dialog('msgbox', 'Intersection is empty.', 'Intersect selected scouts');
+        return;
+    end
+    % Copy unmodified fields
+    sNewScout.Seed = sNewScout.Vertices(1);
+    % Label : "Label1 ^ Label2 ^ ..."
+    sNewScout.Label = sScouts(1).Label;
+    for i = 2:length(sScouts)
+        sNewScout.Label = [sNewScout.Label ' n ' sScouts(i).Label];
+    end
+    % Save new scout
+    iNewScout = SetScouts([], 'Add', sNewScout);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
+
 %% ===============================================================================
 %  ====== OTHER SCOUTS OPERATIONS ================================================
 %  ===============================================================================
@@ -5527,6 +5591,22 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
         if ~isempty(HeadModelMat.GridLoc) && ~strcmpi(HeadModelType, 'surface')
             GridLoc = HeadModelMat.GridLoc;
             GridAtlas = HeadModelMat.GridAtlas;
+        end
+    end
+    % Get timefreq file displayed in the figure
+    Timefreq = getappdata(hFig, 'Timefreq');
+    if ~isempty(Timefreq)
+        % Get loaded time-freq structure
+        [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', Timefreq.FileName);
+        % Get results file
+        if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'results') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile)
+            iResult = bst_memory('GetResultInDataSet', iDS, GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile);
+            HeadModelType = GlobalData.DataSet(iDS).Results(iResult).HeadModelType;
+            % Get volume grids
+            if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc) && ~strcmpi(HeadModelType, 'surface')
+                GridLoc   = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
+                GridAtlas = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridAtlas;
+            end
         end
     end
 end

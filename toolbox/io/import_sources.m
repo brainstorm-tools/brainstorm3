@@ -92,6 +92,7 @@ if isempty(SourceFiles)
              {'*.w'}, 'FreeSurfer weight files (*.w)',    'FS-WFILE'; ...
              {'*'}, 'CIVET maps (*.*)',         'CIVET'; ...
              {'.gii'}, 'GIfTI texture (*.gii)', 'GII'; ...
+             {'_sources.mat'}, 'Brainstorm sources (*sources*.mat)', 'BST'; ...
              {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume grids (subject space)', 'ALLMRI'; ...
              {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume grids (MNI space)',     'ALLMRI-MNI'; ...
             }, DefaultFormats.ResultsIn);
@@ -230,6 +231,10 @@ for iFile = 1:length(SourceFiles)
         end
         Comment = strrep(Comment, 'results_', '');
         Comment = strrep(Comment, '_results', '');
+        if strcmp(FileFormat, 'BST')
+            Comment = strrep(Comment, 'surface_', '');
+            Comment = strrep(Comment, 'volume_', '');
+        end
         % If the two files are imported: remove .lh and .rh
         if ~isempty(SourceFiles2)
             Comment = strrep(Comment, 'rh.', '');
@@ -317,7 +322,11 @@ if isStat
 else
     % New results structure
     ResultsMat = db_template('resultsmat');
-    ResultsMat.ImageGridAmp  = [map, map];
+    if size(map, 2) > 1
+        ResultsMat.ImageGridAmp  = map;
+    else
+        ResultsMat.ImageGridAmp  = [map, map];
+    end
     ResultsMat.ImagingKernel = [];
     FileType = 'results';
     % Time vector
@@ -434,6 +443,9 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue, nVer
             end
         case 'ALLMRI-MNI'
             error('Not supported yet.');
+        case 'BST'
+            sResultsMat = load(SourceFile);
+            map = sResultsMat.ImageGridAmp;
         otherwise
             error('Unsupported file format.');
     end
