@@ -886,10 +886,6 @@ function DeleteFigure(hFigure, varargin)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
-        % Reset "ContactLabelIeeg" panel
-        if gui_brainstorm('isTabVisible', 'ContactLabelIeeg')
-            panel_ieeg_anatomical('RemoveAllContacts');
-        end
         % Reset "Coordinates" panel
         if gui_brainstorm('isTabVisible', 'Dipinfo')
             panel_dipinfo('RemoveSelection');

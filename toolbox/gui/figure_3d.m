@@ -629,27 +629,6 @@ function FigureMouseUpCallback(hFig, varargin)
                     figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
                 end
             end
-        
-        % === SELECTING POINT SEEG ===
-        elseif isSelectingContactLabelIeeg
-            % Selecting from Coordinates panel
-            if gui_brainstorm('isTabVisible', 'ContactLabelIeeg')
-                panel_ieeg_anatomical('SelectPoint', hFig);
-            % Selecting fiducials linked with MRI viewer
-            else
-                hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
-                if ~isempty(hView3DHeadFig)
-                    % Find the closest surface point that was selected
-                    [TessInfo, iTess, pout] = panel_ieeg_anatomical('ClickPointInSurface', hView3DHeadFig);
-                    if isempty(TessInfo)
-                        return
-                    end
-                    % Get linked MRI viewer
-                    hMriViewer = get(hView3DHeadFig, 'UserData');
-                    % Set coordinates in linked MRI viewer
-                    figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
-                end
-            end
             
         % === TIME-FREQ CORTICAL POINT ===
         % SHIFT + CLICK: Display time-frequency map for the selected dipole
@@ -1442,17 +1421,6 @@ function GetCoordinates(varargin)
     % Start point selection
     panel_coordinates('SetSelectionState', 1);
 end
-
-%% ===== GET COORDINATES SEEG =====
-function GetContactLabelIeeg(varargin)
-    % Show Coordinates panel
-    gui_show('panel_ieeg_anatomical', 'JavaWindow', 'Get coordinates iEEG', [], 0, 1, 0);
-    % Load data on start if present from database
-    panel_ieeg_anatomical('LoadOnStart');
-    % Start point selection
-    % panel_ieeg_anatomical('SetSelectionState', 1);
-end
-
 
 %% ===== APPLY VIEW TO ALL FIGURES =====
 function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)

@@ -74,10 +74,6 @@ switch (panelName)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
-    case 'ContactLabelIeeg'
-        if gui_brainstorm('isTabVisible', 'ContactLabelIeeg')
-            panel_ieeg_anatomical('RemoveAllContacts');
-        end
     case 'Digitize'
         isAccepted = panel_digitize('PanelHidingCallback');
     case 'Dipinfo'
