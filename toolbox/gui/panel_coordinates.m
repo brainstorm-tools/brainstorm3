@@ -522,11 +522,13 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
+    
     % Get current 3D figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return
     end
+    
     % Get current selected point
     CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
     if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
@@ -538,7 +540,10 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    if isempty(hFig)
+        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    end
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
 end
