@@ -1973,13 +1973,12 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
-        % gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
     end
     
-    isIsosurfaceOpen = find(~cellfun(@(c)isempty(strfind(lower(c),'isosurface')), {GlobalData.Surface.Comment}));
-    if ~isempty(isIsosurfaceOpen)
-        gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
-    end
+    % isIsosurfaceOpen = find(~cellfun(@(c)isempty(strfind(lower(c),'isosurface')), {GlobalData.Surface.Comment}));
+    % if ~isempty(isIsosurfaceOpen)
+    %     gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
+    % end
     
     % ==== MENU: SNAPSHOT ====
     jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
