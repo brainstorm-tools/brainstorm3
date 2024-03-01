@@ -613,7 +613,7 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinates
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
-                panel_coordinates('SelectPoint', hFig);
+                panel_coordinates('SelectPoint', hFig, 0, 1);
             % Selecting fiducials linked with MRI viewer
             else
                 hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
