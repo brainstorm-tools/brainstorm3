@@ -2814,7 +2814,6 @@ function SetElectrodeLoc(iLoc, jButton)
         
     else
         % define what to do for 3DViz
-        figure_3d('GetCoordinates');
         hFig = bst_figures('GetFiguresByType', '3DViz');
         CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
         XYZ = CoordinatesSelector.SCS;
