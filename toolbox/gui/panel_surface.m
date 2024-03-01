@@ -106,6 +106,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Quick preview
             java_setcb(jSliderSurfSmoothValue, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfSmoothValue, jLabelSurfSmoothValue, 1));
 
+            % Threshold title
+            jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
+            % Min size slider
+            jSliderSurfIsoValue = JSlider(1, GetMaxIntensityCt(), 1);
+            jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+            java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
+                                            'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
+            jPanelSurfaceOptions.add('tab hfill', jSliderSurfIsoValue);
+            % IsoValue label
+            jLabelSurfIsoValue = gui_component('label', jPanelSurfaceOptions, [], '   1', {JLabel.RIGHT, Dimension(LABEL_WIDTH, DEFAULT_HEIGHT)});
+            % Quick preview
+            java_setcb(jSliderSurfIsoValue, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfIsoValue, jLabelSurfIsoValue, 0));
+
             % Buttons
             jButtonSurfColor = gui_component('button', jPanelSurfaceOptions, 'br center', 'Color', {Dimension(BUTTON_WIDTH, DEFAULT_HEIGHT), Insets(0,0,0,0)}, 'Set surface color', @ButtonSurfColorCallback);
             jButtonSurfSulci = gui_component('toggle', jPanelSurfaceOptions, '',          'Sulci', {Dimension(BUTTON_WIDTH, DEFAULT_HEIGHT), Insets(0,0,0,0)}, 'Show/hide sulci map', @ButtonShowSulciCallback);
@@ -213,6 +226,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonSurfColor',       jButtonSurfColor, ...
                                   'jLabelSurfSmoothValue',  jLabelSurfSmoothValue, ...
                                   'jSliderSurfSmoothValue', jSliderSurfSmoothValue, ...
+                                  'jLabelSurfIsoValueTitle',jLabelSurfIsoValueTitle, ...
+                                  'jLabelSurfIsoValue',     jLabelSurfIsoValue, ...
+                                  'jSliderSurfIsoValue',    jSliderSurfIsoValue, ...
                                   'jButtonSurfSulci',       jButtonSurfSulci, ...
                                   'jButtonSurfEdge',        jButtonSurfEdge, ...
                                   'jSliderResectX',         jSliderResectX, ...
@@ -240,6 +256,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             nVertices = str2num(char(jLabelNbVertices.getText()));
             sliderSizeVector = GetSliderSizeVector(nVertices);
             jText.setText(sprintf('%d', sliderSizeVector(double(jSlider.getValue()))));
+        elseif (jSlider == jSliderSurfIsoValue)
+            jText.setText(sprintf('%d', double(jSlider.getValue())));
         elseif isPercent
             jText.setText(sprintf('%d%%', double(jSlider.getValue())));
         else
@@ -469,6 +487,29 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
     end
 end
 
+%% ===== GET SLIDER ISOVALUE =====
+function maxIsoValue = GetMaxIntensityCt()
+    % get the handles
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    if ~isempty(SubjectFile)
+        sSubject = bst_get('Subject', SubjectFile);
+        CtFile = [];
+        for i=1:length(sSubject.Anatomy)
+            if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                CtFile = sSubject.Anatomy(i).FileName;
+            end
+        end
+    end
+    
+    if ~isempty(CtFile)
+        sMri = bst_memory('LoadMri', CtFile);
+        disp(sMri.Histogram.intensityMax);
+        maxIsoValue = double(sMri.Histogram.intensityMax);
+    else
+        maxIsoValue = 4500.0;
+    end
+end
 
 %% ===== SCROLL MRI CUTS =====
 function ScrollMriCuts(hFig, direction, value) %#ok<DEFNU>
