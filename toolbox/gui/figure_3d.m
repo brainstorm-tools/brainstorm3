@@ -613,7 +613,12 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinates
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
-                panel_coordinates('SelectPoint', hFig, 0, 1);
+                % for SEEG, making sure centroid calculation for plotting contacts is active
+                if gui_brainstorm('isTabVisible', 'iEEG')
+                    panel_coordinates('SelectPoint', hFig, 0, 1);
+                else
+                    panel_coordinates('SelectPoint', hFig);
+                end
             % Selecting fiducials linked with MRI viewer
             else
                 hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
