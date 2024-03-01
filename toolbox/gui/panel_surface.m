@@ -106,13 +106,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Quick preview
             java_setcb(jSliderSurfSmoothValue, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfSmoothValue, jLabelSurfSmoothValue, 1));
 
-            % Threshold title
-            jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
+            % IsoValue title
+            jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'IsoVal.:');
             % Min size slider
             jSliderSurfIsoValue = JSlider(1, GetMaxIntensityCt(), 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
-            java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
-                                            'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
+            % java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
+            %                                 'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
             jPanelSurfaceOptions.add('tab hfill', jSliderSurfIsoValue);
             % IsoValue label
             jLabelSurfIsoValue = gui_component('label', jPanelSurfaceOptions, [], '   1', {JLabel.RIGHT, Dimension(LABEL_WIDTH, DEFAULT_HEIGHT)});
