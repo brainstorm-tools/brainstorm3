@@ -140,9 +140,7 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                if strcmpi(hFig,'NewFigure')
-                    hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
-                end
+                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
             end
         otherwise
     end
