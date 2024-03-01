@@ -132,7 +132,7 @@ else
 end
 % If there is already a volume displayed in this figure, create a new one
 TessInfo = getappdata(hFig, 'Surface');
-if ~isempty(TessInfo) && ismember('Anatomy', {TessInfo.Name}) && ~ismember(MriFile, {TessInfo.SurfaceFile}) 
+if ~isempty(TessInfo) && ismember('Anatomy', {TessInfo.Name}) && ~ismember(MriFile, {TessInfo.SurfaceFile})
     [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
 end
 % Set application data
@@ -182,6 +182,5 @@ bst_progress('stop');
 if isNewFig
     gui_brainstorm('SetSelectedTab', 'Surface');
 end
-
 
 
