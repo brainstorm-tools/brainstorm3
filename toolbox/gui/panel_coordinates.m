@@ -399,6 +399,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
+    ViewInMriViewer();
 end
 
 

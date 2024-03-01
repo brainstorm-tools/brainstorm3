@@ -2799,9 +2799,9 @@ function SetElectrodeLoc(iLoc, jButton)
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Type, 'MriViewer')
-        bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
-        return;
+    % elseif ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Type, 'MriViewer')
+    %     bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
+    %     return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
@@ -2811,31 +2811,34 @@ function SetElectrodeLoc(iLoc, jButton)
         % Get selected coordinates
         sMri = panel_surface('GetSurfaceMri', hFig(1));
         XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
-        % If SCS coordinates are not available
-        if isempty(XYZ)
-            % Ask to compute MNI transformation
-            isComputeMni = java_dialog('confirm', [...
-                'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-                'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-                'Compute the MNI normalization now?'], 'Set electrode position');
-            % Run computation
-            if isComputeMni
-                figure_mri('ComputeMniCoordinates', hFig);
-            end
-            return;
-        end
-        % Make sure the points of the electrode are more than 1cm apart
-        iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-        if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
-            bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
-            return;
-        end
+        
     else
         % define what to do for 3DViz
-
+        figure_3d('GetCoordinates');
+        hFig = bst_figures('GetFiguresByType', '3DViz');
+        CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
+        XYZ = CoordinatesSelector.SCS;
+    end
+    
+    % If SCS coordinates are not available
+    if isempty(XYZ)
+        % Ask to compute MNI transformation
+        isComputeMni = java_dialog('confirm', [...
+            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
+            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+            'Compute the MNI normalization now?'], 'Set electrode position');
+        % Run computation
+        if isComputeMni
+            figure_mri('ComputeMniCoordinates', hFig);
+        end
         return;
     end
-
+    % Make sure the points of the electrode are more than 1cm apart
+    iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
+    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
+        bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
+        return;
+    end
     % Set electrode position
     sSelElec.Loc(:,iLoc) = XYZ(:);
     % Save electrode modification
