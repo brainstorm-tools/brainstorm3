@@ -481,15 +481,14 @@ function UpdateContactList()
     if isempty(ctrl)
         return;
     end
-    % Remove temporarily the list callback
-    % callbackBak = java_getcb(ctrl.jListElec, 'ValueChangedCallback');
-    % java_setcb(ctrl.jListElec, 'ValueChangedCallback', []);
+
     % Get selected electrodes
     iSelElec = ctrl.jListElec.getSelectedIndex() + 1;
     SelName = char(ctrl.jListElec.getSelectedValue());
     if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
         SelName = [];
     end
+    
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
     % Get the contacts and its respective name
