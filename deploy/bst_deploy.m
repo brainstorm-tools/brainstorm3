@@ -31,19 +31,21 @@ function bst_deploy(GitDir, GitExe)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2011-2021
+%          Raymundo Cassani, 2024
 
 
 %% ===== CONFIGURATION =====
-% Default GIT directory (windows only)
+% Default GIT directory
 if ~ispc
-    GitDir = [];
-    GitExe = [];
-else
     if (nargin < 1)
         GitDir = 'C:\Work\Dev\brainstorm_git\brainstorm3';
     end
     if (nargin < 2)
         GitExe = 'C:\Program Files\Git\cmd\git-gui.exe';
+    end
+else
+    if (nargin < 1)
+        GitDir = '/home/work/GitHub/brainstorm3';
     end
 end
 
@@ -109,8 +111,8 @@ end
 % Get all the Brainstorm subdirectories
 splitPath = cat(2, ...
     {bstDir}, ...
-    str_split(genpath(fullfile(bstDir, 'toolbox')), ';'), ...
-    str_split(genpath(fullfile(bstDir, 'deploy')), ';'));
+    str_split(genpath(fullfile(bstDir, 'toolbox')), pathsep), ...
+    str_split(genpath(fullfile(bstDir, 'deploy')), pathsep));
 % Initialize line counts
 nFiles   = 0;
 nCode    = 0;
@@ -145,16 +147,29 @@ disp(['DEPLOY>  - Lines of comment : ' num2str(nComment)]);
 % Copy all the subfolders
 if ~isempty(GitDir)
     disp('DEPLOY> Copying to GIT folder...');
-    system(['xcopy ' fullfile(bstDir, 'brainstorm.m') ' ' fullfile(GitDir, 'brainstorm.m') '/y /q']);
-    system(['xcopy ' fullfile(bstDir, 'defaults', 'eeg')     ' ' fullfile(GitDir, 'defaults', 'eeg')   ' /s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'defaults', 'meg')     ' ' fullfile(GitDir, 'defaults', 'meg')   ' /s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'deploy')              ' ' fullfile(GitDir, 'deploy')            ' /s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'doc')                 ' ' fullfile(GitDir, 'doc')               ' /s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'external')            ' ' fullfile(GitDir, 'external')          ' /s /e /y /q']);
-    % system(['xcopy ' fullfile(bstDir, 'java')              ' ' fullfile(GitDir, 'java')              ' /s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'toolbox')             ' ' fullfile(GitDir, 'toolbox')           ' /s /e /y /q']);
-    % Start GIT GUI in the deployment folder
-    system(['start /b cmd /c ""' GitExe '" --working-dir "' GitDir '""']);
+    if ispc
+        system(['xcopy ' fullfile(bstDir, 'brainstorm.m')        ' ' fullfile(GitDir, 'brainstorm.m')            ' /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'defaults', 'eeg')     ' ' fullfile(GitDir, 'defaults', 'eeg')   ' /s /e /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'defaults', 'meg')     ' ' fullfile(GitDir, 'defaults', 'meg')   ' /s /e /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'deploy')              ' ' fullfile(GitDir, 'deploy')            ' /s /e /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'doc')                 ' ' fullfile(GitDir, 'doc')               ' /s /e /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'external')            ' ' fullfile(GitDir, 'external')          ' /s /e /y /q']);
+        % system(['xcopy ' fullfile(bstDir, 'java')              ' ' fullfile(GitDir, 'java')              ' /s /e /y /q']);
+        system(['xcopy ' fullfile(bstDir, 'toolbox')             ' ' fullfile(GitDir, 'toolbox')           ' /s /e /y /q']);
+        % Start GIT GUI in the deployment folder
+        system(['start /b cmd /c ""' GitExe '" --working-dir "' GitDir '""']);
+    else
+        system(['rsync ' fullfile(bstDir, 'brainstorm.m')        ' ' fullfile(GitDir)              ' -q']);
+        system(['rsync ' fullfile(bstDir, 'defaults', 'eeg')     ' ' fullfile(GitDir, 'defaults') ' -rq']);
+        system(['rsync ' fullfile(bstDir, 'defaults', 'meg')     ' ' fullfile(GitDir, 'defaults') ' -rq']);
+        system(['rsync ' fullfile(bstDir, 'deploy')              ' ' fullfile(GitDir)             ' -rq']);
+        system(['rsync ' fullfile(bstDir, 'doc')                 ' ' fullfile(GitDir)             ' -rq']);
+        system(['rsync ' fullfile(bstDir, 'external')            ' ' fullfile(GitDir)             ' -rq']);
+        % system(['rsync ' fullfile(bstDir, 'java')              ' ' fullfile(GitDir)             ' -rq']);
+        system(['rsync ' fullfile(bstDir, 'toolbox')             ' ' fullfile(GitDir)             ' -rq']);
+        % Start GIT GUI in the deployment folder
+        system(['bash -c ''cd ' GitDir '; git gui &''']);
+    end
 end
 
 % Close Brainstorm (if it was started in this script)
