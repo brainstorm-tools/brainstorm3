@@ -109,7 +109,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Threshold title
             jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
             % Min size slider
-            jSliderSurfIsoValue = JSlider(1, GetMaxIntensityCt(), 1);
+            jSliderSurfIsoValue = JSlider(1, GetIsoValue(), 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
             java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
                                             'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
@@ -405,7 +405,43 @@ function SliderCallback(hObject, event, target)
         case 'SurfSmoothValue'
             SurfSmoothValue = jSlider.getValue() / 100;
             SetSurfaceSmooth(hFig, iSurface, SurfSmoothValue, 1);
-
+        
+        case 'SurfIsoValue'
+            % get the handles
+            hFig = bst_figures('GetFiguresByType', '3DViz');
+            SubjectFile = getappdata(hFig, 'SubjectFile');
+            if ~isempty(SubjectFile)
+                sSubject = bst_get('Subject', SubjectFile);
+                CtFile = [];
+                MeshFile = [];
+                for i=1:length(sSubject.Anatomy)
+                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                        CtFile = sSubject.Anatomy(i).FileName;
+                    end
+                end
+                for i=1:length(sSubject.Surface)
+                    if ~isempty(regexp(sSubject.Surface(i).FileName, 'tess_isosurface', 'match')) 
+                        MeshFile = sSubject.Surface(i).FileName;
+                    end
+                end
+            end
+            
+            % ask user if they want to proceed
+            isProceed = java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold');
+            if ~isProceed
+                bstNode = panel_protocols('GetNode', [], MeshFile);
+                isoValue = regexp(string(bstNode), '\d*', 'match');
+                SetIsoValue(double(isoValue));
+                return;
+            end
+            
+            % get the iso value from slider
+            isoValue = jSlider.getValue();
+            
+            % remove the old isosurface and generate and load the new one
+            ButtonRemoveSurfaceCallback();
+            tess_isosurface(CtFile, isoValue);
+            
         case 'DataAlpha'
             % Update value in Surface array
             TessInfo(iSurface).DataAlpha = jSlider.getValue() / 100;
@@ -488,7 +524,7 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
 end
 
 %% ===== GET SLIDER ISOVALUE =====
-function maxIsoValue = GetMaxIntensityCt()
+function isoValue = GetIsoValue()
     % get the handles
     hFig = bst_figures('GetFiguresByType', '3DViz');
     SubjectFile = getappdata(hFig, 'SubjectFile');
@@ -504,11 +540,21 @@ function maxIsoValue = GetMaxIntensityCt()
     
     if ~isempty(CtFile)
         sMri = bst_memory('LoadMri', CtFile);
-        disp(sMri.Histogram.intensityMax);
-        maxIsoValue = double(sMri.Histogram.intensityMax);
+        isoValue = double(sMri.Histogram.intensityMax);
     else
-        maxIsoValue = 4500.0;
+        isoValue = 4500.0;
     end
+end
+
+%% ===== SET SLIDER ISOVALUE =====
+function SetIsoValue(isoValue)
+    % get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    if isempty(ctrl)
+        return;
+    end 
+    ctrl.jLabelSurfIsoValue.setText(sprintf('%d', isoValue));
+    ctrl.jSliderSurfIsoValue.setValue(isoValue);
 end
 
 %% ===== SCROLL MRI CUTS =====

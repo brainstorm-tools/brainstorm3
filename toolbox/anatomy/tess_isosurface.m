@@ -149,7 +149,12 @@ if isSave
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
-    MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+    
+    MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
+    bstNode = panel_protocols('GetNode', [], MeshFile);
+    if ~isempty(bstNode)
+        node_delete(bstNode, 0);
+    end
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
@@ -157,8 +162,12 @@ if isSave
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
     MriFile = sSubject.Anatomy(1).FileName;
-    hFig = view_mri_3d(MriFile, [], 0.3, []);
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    if isempty(hFig)
+        hFig = view_mri_3d(MriFile, [], 0.3, []);
+    end
     view_surface(MeshFile, [], [], hFig, []);    
+    panel_surface('SetIsoValue', isoValue);
 else
     % Return surface
     MeshFile = sMesh.Vertices;
