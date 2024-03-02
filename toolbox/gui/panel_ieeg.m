@@ -71,11 +71,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
     jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));
-%         % ===== VERTICAL TOOLBAR =====
-%         jToolbar2 = gui_component('Toolbar', jPanelMain, BorderLayout.EAST);
-%         jToolbar2.setOrientation(jToolbar.VERTICAL);
-%         jToolbar2.setPreferredSize(java_scaled('dimension',26,20));
-%         jToolbar2.setBorder([]);
 
         % ===== FIRST PART =====
         jPanelFirstPart = gui_component('Panel');
@@ -83,7 +78,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelElecList = gui_component('Panel');
                 jBorder = java_scaled('titledborder', 'Electrodes & Contacts');
                 jPanelElecList.setBorder(jBorder);
-                
+                jCoordSys = gui_component('label', jPanelElecList, '', 'Screen Coordinate System (SCS)');
+                jPanelElecList.add(jCoordSys, BorderLayout.NORTH);
+
                 % Electrodes list
                 jListElec = java_create('org.brainstorm.list.BstClusterList');
                 jListElec.setBackground(Color(.9,.9,.9));
@@ -488,7 +485,7 @@ function UpdateContactList()
     if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
         SelName = [];
     end
-    
+
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
     % Get the contacts and its respective name
