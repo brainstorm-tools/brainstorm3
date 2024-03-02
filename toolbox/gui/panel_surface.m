@@ -527,20 +527,22 @@ end
 function isoValue = GetIsoValue()
     % get the handles
     hFig = bst_figures('GetFiguresByType', '3DViz');
-    SubjectFile = getappdata(hFig, 'SubjectFile');
-    if ~isempty(SubjectFile)
-        sSubject = bst_get('Subject', SubjectFile);
-        CtFile = [];
-        for i=1:length(sSubject.Anatomy)
-            if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
-                CtFile = sSubject.Anatomy(i).FileName;
+    if ~isempty(hFig)
+        SubjectFile = getappdata(hFig, 'SubjectFile');
+        if ~isempty(SubjectFile)
+            sSubject = bst_get('Subject', SubjectFile);
+            CtFile = [];
+            for i=1:length(sSubject.Anatomy)
+                if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                    CtFile = sSubject.Anatomy(i).FileName;
+                end
             end
         end
-    end
-    
-    if ~isempty(CtFile)
-        sMri = bst_memory('LoadMri', CtFile);
-        isoValue = double(sMri.Histogram.intensityMax);
+        
+        if ~isempty(CtFile)
+            sMri = bst_memory('LoadMri', CtFile);
+            isoValue = double(sMri.Histogram.intensityMax);
+        end
     else
         isoValue = 4500.0;
     end
