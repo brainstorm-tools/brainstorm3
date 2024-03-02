@@ -117,6 +117,9 @@ if (nargin < 2) || isempty(isoValue)
 end
 
 % Check parameters values
+% isoValue cannot be < 0 as there cannot be negative intensity in the CT
+% isoValue=0 does not makes sense as it means we do not want to do any thresholding
+% isoValue cannot be > the maximum intensity of the CT as it means there is nothing to generate or threshold on
 if isempty(isoValue) || isoValue <= 0 || isoValue > round(sMri.Histogram.intensityMax)
     bst_error('Invalid ''isoValue''. Enter proper values.', 'Mesh surface', 0);
     return
