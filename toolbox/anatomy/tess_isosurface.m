@@ -150,11 +150,23 @@ if isSave
     ProtocolInfo = bst_get('ProtocolInfo');
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
     
+    % Get the mesh file
     MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
-    bstNode = panel_protocols('GetNode', [], MeshFile);
-    if ~isempty(bstNode)
-        node_delete(bstNode, 0);
+
+    % ===== if the mesh file is already present, delete the file, update database, and update node (this only happens if it is not server mode) ======
+    % ===== discussion: https://neuroimage.usc.edu/forums/t/access-a-surface-from-an-anatomy-node-while-on-functional-tab/45004 =====
+    % Get info for surface file
+    [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
+    if ~isempty(iSurfaceTmp)
+        % Delete surface
+        file_delete(file_fullpath(MeshFile), 1);
+        % Update database structure
+        sSubjectTmp.Surface(iSurfaceTmp) = [];
+        bst_set('Subject', iSubjectTmp, sSubjectTmp);
+        % Update display
+        panel_protocols('UpdateNode', 'Subject', iSubjectTmp);
     end
+    
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
