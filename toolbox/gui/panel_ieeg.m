@@ -78,7 +78,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelElecList = gui_component('Panel');
                 jBorder = java_scaled('titledborder', 'Electrodes & Contacts');
                 jPanelElecList.setBorder(jBorder);
-                jCoordSys = gui_component('label', jPanelElecList, '', 'Screen Coordinate System (SCS)');
+                jCoordSys = gui_component('label', jPanelElecList, '', ' Coordinate System: SCS');
                 jPanelElecList.add(jCoordSys, BorderLayout.NORTH);
 
                 % Electrodes list
@@ -733,7 +733,7 @@ function HighlightLocCont() %#ok<DEFNU>
     selData = ctrl.jListCont.getModel().getElementAt(iIndex);
     selData = regexp(selData, '   ', 'split');
     % coordinates are in SCS
-    selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))]./1000;
+    selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))] ./ 1000;
 
     % coordinate space 
     plotLocMri = cs_convert(sMri, 'scs', 'mri', selCoordScs);
