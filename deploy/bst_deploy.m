@@ -138,9 +138,9 @@ for p = splitPath
     end
 end
 disp('DEPLOY> Statistics:');
-disp(['DEPLOY>  - Number of files  : ' num2str(nFiles)]);
-disp(['DEPLOY>  - Lines of code    : ' num2str(nCode)]);
-disp(['DEPLOY>  - Lines of comment : ' num2str(nComment)]);
+disp(['DEPLOY>  - Number of files  : ' regexprep(num2str(nFiles,   '%07d'), '(?<=^0*)0', ' ')]);
+disp(['DEPLOY>  - Lines of code    : ' regexprep(num2str(nCode,    '%07d'), '(?<=^0*)0', ' ')]);
+disp(['DEPLOY>  - Lines of comment : ' regexprep(num2str(nComment, '%07d'), '(?<=^0*)0', ' ')]);
 
 
 %% ===== COPY TO GIT FOLDER =====
