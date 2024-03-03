@@ -451,7 +451,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             % find center of a blob
             if isCentroid
                 VertexList = [];
-                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), VertexList, 1, 9);
+                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), VertexList, 1, 6);
                 vout{i} = mean(sSurf.Vertices(VertexList(:), :));
             end
         else
