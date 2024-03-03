@@ -3059,7 +3059,7 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
             MriFile = Subject.Anatomy(1).FileName;
             hFig = view_mri_3d(MriFile, [], 0.3, []);
         end
-        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, [], [], hFig, []);
+        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, 0.3, [], hFig, []);
     else
         return;
     end
