@@ -2917,10 +2917,6 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
         ChannelName = [];
     end
 
-    % ask user if they want to set the tip from 3D Viz or MRI Viewer
-    SelWindow = java_dialog('question', 'Please select the Viewer over which you want to set the point', ...
-                              'Choose Viewer', [], {'MriViewer', '3DViz'});
-
     % Get MRI and figure handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
@@ -2951,15 +2947,7 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     end
     % Get current position (MRI)
     if isempty(scsXYZ)
-        if strcmpi(SelWindow, 'MriViewer')
-            scsXYZ = GetLocation('scs', sMri, Handles);
-        else
-            % ===== This is just a hack for now. Will have a SET ELECTRODE POSITION functionality in figure_3d.m later)
-            % define what to do for 3DViz
-            hFig1 = bst_figures('GetFiguresByType', '3DViz');
-            CoordinatesSelector = getappdata(hFig1, 'CoordinatesSelector');
-            scsXYZ = CoordinatesSelector.SCS;
-        end
+        scsXYZ = GetLocation('scs', sMri, Handles);
     end
     % Update electrode position
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
