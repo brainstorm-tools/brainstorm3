@@ -2106,7 +2106,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
                 if strcmpi(sElec.Type, 'SEEG')
-                    ctSize = [1 1 1] .* sElec.ContactLength ./ 2;
+                    ctSize = [1 1 1] .* sElec.ContactLength ./ 4;
                 else
                     ctSize = [1 1 1] .* sElec.ContactDiameter ./ 2;
                 end
@@ -2278,7 +2278,6 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             % Force Gouraud lighting
             FaceLighting = 'gouraud';
         end
-        % Create contacts geometry
         [ctVertex, ctFaces] = Plot3DContacts(tmpVertex, tmpFaces, ctSize, ChanLoc(iChanOther,:), ctOrient);
         % Display properties
         ctColor   = [.9,.9,0];  % YELLOW
@@ -2779,13 +2778,6 @@ end
 function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
 
-    % ask user if they want to set the tip from 3D Viz or MRI Viewer
-    SelWindow = java_dialog('question', 'Please select the Viewer over which you want to set the point', ...
-                              'Choose Viewer', [], {'MriViewer', '3DViz'});
-    if isempty(SelWindow)
-        SelWindow = 'MriViewer';
-    end
-
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
 
@@ -2795,25 +2787,16 @@ function SetElectrodeLoc(iLoc, jButton)
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    % elseif ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Type, 'MriViewer')
-    %     bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
-    %     return;
+    elseif ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Type, 'MriViewer')
+        bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
+        return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-    
-    if strcmpi(SelWindow, 'MriViewer')
-        % Get selected coordinates
-        sMri = panel_surface('GetSurfaceMri', hFig(1));
-        XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
-        
-    else
-        % define what to do for 3DViz
-        hFig = bst_figures('GetFiguresByType', '3DViz');
-        CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
-        XYZ = CoordinatesSelector.SCS;
-    end
+
+    sMri = panel_surface('GetSurfaceMri', hFig(1));
+    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
     
     % If SCS coordinates are not available
     if isempty(XYZ)
