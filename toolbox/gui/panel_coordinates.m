@@ -376,10 +376,11 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     
     % ===== CONVERT TO ALL COORDINATES SYSTEMS =====
     % Save selected point
-    CoordinatesSelector.SCS     = scsLoc;
+    CoordinatesSelector.SCS     = plotLoc;
     CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', scsLoc);
     CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', scsLoc);
     CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', scsLoc);
+    CoordinatesSelector.Voxel   = cs_convert(sMri, 'scs', 'voxel', scsLoc);
     CoordinatesSelector.iVertex = iVertex;
     CoordinatesSelector.Value   = Value;
     CoordinatesSelector.hPatch  = hPatch;
@@ -389,7 +390,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     % Remove previous mark
     delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1), plotLoc(2), plotLoc(3), ...
+    line(CoordinatesSelector.SCS(1), CoordinatesSelector.SCS(2), CoordinatesSelector.SCS(3), ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          'o',  ...
@@ -545,7 +546,7 @@ function ViewInMriViewer(varargin)
         hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
     % Select the required point
-    figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
+    figure_mri('SetLocation', 'scs', hFig, [], CoordinatesSelector.SCS);
 end
 
 
