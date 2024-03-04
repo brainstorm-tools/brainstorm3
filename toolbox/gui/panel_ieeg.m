@@ -847,6 +847,7 @@ function ShowContactsMenu(jButton)
         gui_component('MenuItem', jMenu, [], 'Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
     elseif strcmpi(sSelElec(1).Type, 'SEEG')
         gui_component('MenuItem', jMenu, [], 'Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
+        gui_component('MenuItem', jMenu, [], 'Line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
     end
     % Menu: Save modifications
     jMenu.addSeparator();
@@ -2539,6 +2540,10 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             elecTip = sElectrodes(iElec).Loc(:,1);
             orient = (sElectrodes(iElec).Loc(:,2) - elecTip);
             orient = orient ./ sqrt(sum(orient .^ 2));
+            % for line fitting
+            linePlot.X = [];
+            linePlot.Y = [];
+            linePlot.Z = [];
             % Process each contact
             for i = 1:length(iChan)
                 switch (Method)
@@ -2548,7 +2553,15 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+                    case 'lineFit'
+                        linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
+                        linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
+                        linePlot.Z = [linePlot.Z, Channels(iChan(i)).Loc(3)];
                 end
+            end
+
+            if strcmpi(Method, 'lineFit')
+                LineFit(linePlot);
             end
          
         % === ECOG STRIPS ===
@@ -2773,6 +2786,20 @@ function ProjectContacts(iDS, iFig, SurfaceType)
     UpdateFigures();
 end
 
+%% ===== DRAW REFERENCE ELECTRODE =====
+% perform line fitting between contacts
+function LineFit(plotLoc)
+    % Get axes handle
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    % plot the reference line between tip and entry
+    line(plotLoc.X, plotLoc.Y, plotLoc.Z, ...
+         'Color', [1 1 0], ...
+         'LineWidth',       2, ...
+         'Parent', hAxes, ...
+         'Tag', 'lineCoordinates');
+end
 
 %% ===== SET ELECTRODE LOCATION =====
 function SetElectrodeLoc(iLoc, jButton)
@@ -3059,7 +3086,7 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
             MriFile = Subject.Anatomy(1).FileName;
             hFig = view_mri_3d(MriFile, [], 0.3, []);
         end
-        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, 0.3, [], hFig, []);
+        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, 0.6, [], hFig, []);
     else
         return;
     end
