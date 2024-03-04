@@ -1063,9 +1063,20 @@ function UpdateFigurePlot(hFig, isForced)
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
-    % Displaying LOG values: always use the "RealMin" display
-    if strcmpi(TfInfo.Function, 'log')
-        sColormap.isRealMin = 1;
+    % Displaying LOG values   : always use the "RealMin" display and not absolutes values
+    % Displaying Power values : always use absolutes values
+    if ~isempty(TfInfo) && strcmpi(ColormapInfo.Type, 'timefreq')
+        isAbsoluteValues = sColormap.isAbsoluteValues;
+        if strcmpi(TfInfo.Function, 'log')
+            sColormap.isRealMin = 1;
+            isAbsoluteValues = 0;
+        elseif strcmpi(TfInfo.Function, 'power')
+            isAbsoluteValues = 1;
+        end
+        if isAbsoluteValues ~= sColormap.isAbsoluteValues
+            sColormap.isAbsoluteValues = isAbsoluteValues;
+            bst_colormaps('SetColormap', ColormapInfo.Type, sColormap);
+        end
     end
     % Get figure maximum
     MinMaxVal = bst_colormaps('GetMinMax', sColormap, TF, TopoHandles.DataMinMax);

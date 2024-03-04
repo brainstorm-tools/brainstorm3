@@ -201,6 +201,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jRadioAbsolute = gui_component('Radio', jPanelDisplay, 'tab', 'Absolute', {Insets(0,0,0,0), jButtonGroup});
                 jRadioRelative = gui_component('Radio', jPanelDisplay, 'tab', 'Relative', {Insets(0,0,0,0), jButtonGroup});
                 jRadioAbsolute.setSelected(1);
+                % Uniform amplitude scales
+                gui_component('Label', jPanelDisplay, 'br', ['Uniform amplitude scale:' strSpace]);
+                jCheckUniformAmplitude  = gui_component('CheckBox', jPanelDisplay, '', '',  Insets(0,0,0,0), [], @UniformTimeSeries_Callback);
+
             jPanelBottom.add('br hfill', jPanelDisplay);
             
         jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
@@ -235,6 +239,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckRegionColor',        jCheckRegionColor, ...
                                   'jCheckOverlayScouts',      jCheckOverlayScouts, ...
                                   'jCheckOverlayConditions',  jCheckOverlayConditions, ...
+                                  'jCheckUniformAmplitude',   jCheckUniformAmplitude, ...
                                   'jListScouts',                jListScouts));
                               
     
@@ -337,6 +342,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     end
 end
                    
+
+%% ===== OPTIONS: UNIFORMIZE SCALES =====
+function UniformTimeSeries_Callback(hObj, ev)
+    % Get button
+    jCheck = ev.getSource();
+    isSel = jCheck.isSelected();
+    figure_timeseries('UniformizeTimeSeriesScales', isSel);
+    jCheck.setSelected(isSel);
+end
+
 
 
 %% =================================================================================
@@ -1334,6 +1349,7 @@ function ScoutsOptions = GetScoutsOptions()
             'overlayScouts',      0, ...
             'overlayConditions',  0, ...
             'displayAbsolute',    1, ...
+            'uniformAmplitude',   0, ...
             'showSelection',      'all', ...
             'patchAlpha',         .7, ...
             'displayContour',     1, ...
@@ -1346,6 +1362,8 @@ function ScoutsOptions = GetScoutsOptions()
     ScoutsOptions.overlayConditions = ctrl.jCheckOverlayConditions.isSelected();
     % Absolute values
     ScoutsOptions.displayAbsolute = ctrl.jRadioAbsolute.isSelected();
+    % Uniform amplitude scale
+    ScoutsOptions.uniformAmplitude = ctrl.jCheckUniformAmplitude.isSelected();
     % Show selection
     if ~ctrl.jRadioShowSel.isSelected() && ~ctrl.jRadioShowAll.isSelected()
         ScoutsOptions.showSelection = 'none';

@@ -35,8 +35,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 353;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ExploreRecordings?highlight=%28Extract+time%29#Time_selection';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};
+    sProcess.InputTypes  = {'raw', 'data', 'results', 'timefreq', 'matrix'};
+    sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 1;

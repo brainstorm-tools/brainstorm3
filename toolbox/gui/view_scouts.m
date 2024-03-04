@@ -668,6 +668,8 @@ if (length(ResultsFiles) == 1)
 else
     setappdata(hFig, 'ResultsFile', []);
 end
+% === UNIFORM AMPLITUDE SCALE ===
+figure_timeseries('UniformizeTimeSeriesScales', ScoutsOptions.uniformAmplitude);
 % Update figure name
 bst_figures('UpdateFigureName', hFig);
 % Set the time label visible

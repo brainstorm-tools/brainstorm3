@@ -149,17 +149,17 @@ function UpdateTopoPlot(iDS, iFig)
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
     % Displaying LOG values   : always use the "RealMin" display and not absolutes values
     % Displaying Power values : always use absolutes values
-    if ~isempty(TfInfo)
-        toggleAbsoluteValues = 0;
+    if ~isempty(TfInfo) && strcmpi(ColormapInfo.Type, 'timefreq')
+        isAbsoluteValues = sColormap.isAbsoluteValues;
         if strcmpi(TfInfo.Function, 'log')
             sColormap.isRealMin = 1;
-            toggleAbsoluteValues =  sColormap.isAbsoluteValues;
+            isAbsoluteValues = 0;
         elseif strcmpi(TfInfo.Function, 'power')
-            toggleAbsoluteValues = ~sColormap.isAbsoluteValues;
+            isAbsoluteValues = 1;
         end
-        if ~isempty(toggleAbsoluteValues) && toggleAbsoluteValues
-            sColormap.isAbsoluteValues = ~sColormap.isAbsoluteValues;
-            bst_colormaps('SetColormapAbsolute', ColormapInfo.Type, sColormap.isAbsoluteValues);
+        if isAbsoluteValues ~= sColormap.isAbsoluteValues
+            sColormap.isAbsoluteValues = isAbsoluteValues;
+            bst_colormaps('SetColormap', ColormapInfo.Type, sColormap);
         end
     end
     % Get figure maximum

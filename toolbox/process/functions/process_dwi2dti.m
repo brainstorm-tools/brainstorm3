@@ -149,6 +149,7 @@ end
 
 %% ===== CHECK FOR BRAINSUITE INSTALLATION =====
 function [bdp_exe, errMsg] = CheckBrainSuiteInstall()
+    errMsg = [];
     if ~ispc
         bdp_exe = 'bdp.sh';
     else
