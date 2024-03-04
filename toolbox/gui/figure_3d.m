@@ -828,6 +828,7 @@ function FigureMouseUpCallback(hFig, varargin)
                     if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
                         selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
                         panel_ieeg('SetSelectedElectrodes', selGroup);
+                        panel_ieeg('SetSelectedContacts', SelChan);
                     end
                 end
             end

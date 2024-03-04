@@ -329,10 +329,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % if ~ev.getValueIsAdjusting()
         %     UpdateElecProperties();
         %     % Get the selected electrode
-        %     [sSelElec, iSelElec] = GetSelectedElectrodes();
+        %     [sSelCont, iSelCont] = GetSelectedElectrodes();
         %     % Center MRI view on electrode tip
-        %     if (length(sSelElec) == 1)
-        %         CenterMriOnElectrode(sSelElec);
+        %     if (length(sSelCont) == 1)
+        %         % CenterMriOnElectrode(sSelElec);
         %     end
         % end
     end
@@ -765,6 +765,28 @@ function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
     sSelElec = sElectrodes(iSelElec);
 end
 
+%% ===== GET SELECTED CONTACTS =====
+function [sSelCont, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
+    sSelCont = [];
+    iSelCont = [];
+    iDS = [];
+    iFig = [];
+    hFig = [];
+    % Get panel handles
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl)
+        return;
+    end
+    % Get all contacts
+    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts();
+    if isempty(sContacts)
+        return
+    end
+    % Get JList selected indices
+    iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
+    sSelCont = sContacts(iSelCont);
+end
+
 
 %% ===== SET SELECTED ELECTRODES =====
 % USAGE:  SetSelectedElectrodes(iSelElec)      % array of indices
@@ -821,12 +843,69 @@ function SetSelectedElectrodes(iSelElec)
         ctrl.jListElec.scrollRectToVisible(selRect);
         ctrl.jListElec.repaint();
     end
+    
     % Restore JList callback
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields
     UpdateElecProperties();
+    UpdateContactList();
 end
 
+%% ===== SET SELECTED CONTACTS =====
+function SetSelectedContacts(iSelCont)
+    % === GET CONTACT INDICES ===
+    % Get figure controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl) || isempty(ctrl.jListCont)
+        return
+    end
+    % No selection
+    if isempty(iSelCont) || (isnumeric(iSelCont) && any(iSelCont == 0))
+        iSelItem = -1;
+    % Select by name
+    elseif iscell(iSelCont) || ischar(iSelCont)
+        % Get list of electrode names
+        if iscell(iSelCont)
+            SelContNames = iSelCont;
+        else
+            SelContNames = {iSelCont};
+        end
+        % Find the requested channels in the JList
+        listModel = ctrl.jListCont.getModel();
+        iSelItem = [];
+        for i = 1:listModel.getSize()
+            contName = regexp(char(listModel.getElementAt(i-1)), SelContNames, 'match');
+            if strcmpi(contName{1},SelContNames)
+                iSelItem(end+1) = i - 1;
+                break;
+            end
+        end
+        if isempty(iSelItem)
+            iSelItem = -1;
+        end
+    % Find the selected electrode in the JList
+    else
+        iSelItem = iSelCont - 1;
+    end
+    % === CHECK FOR MODIFICATIONS ===
+    % Get previous selection
+    iPrevItems = ctrl.jListCont.getSelectedIndices();
+    % If selection did not change: exit
+    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+        return
+    end
+
+    % === UPDATE SELECTION ===
+    % Select items in JList
+    ctrl.jListCont.setSelectedIndices(iSelItem);
+    % Scroll to see the last selected electrode in the list
+    if (length(iSelItem) >= 1) && ~isequal(iSelItem, -1)
+        selRect = ctrl.jListCont.getCellBounds(iSelItem(end), iSelItem(end));
+        ctrl.jListCont.scrollRectToVisible(selRect);
+        ctrl.jListCont.repaint();
+    end
+    HighlightLocCont();
+end
 
 %% ===== SHOW CONTACTS MENU =====
 function ShowContactsMenu(jButton)
@@ -2793,7 +2872,7 @@ function LineFit(plotLoc, Tag)
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     delete(findobj(hAxes, '-depth', 1, 'Tag', Tag));
-    
+
     % plot the reference line between tip and entry
     line(plotLoc.X, plotLoc.Y, plotLoc.Z, ...
          'Color', [1 1 0], ...
