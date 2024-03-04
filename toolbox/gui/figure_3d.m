@@ -827,6 +827,7 @@ function FigureMouseUpCallback(hFig, varargin)
                     % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
                     if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
                         selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+                        % highlight the electrode and contacts
                         panel_ieeg('SetSelectedElectrodes', selGroup);
                         panel_ieeg('SetSelectedContacts', SelChan);
                     end
