@@ -326,6 +326,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST SELECTION CHANGED CALLBACK =====
     function ContListValueChanged_Callback(h, ev)
+        % ===== TODO: ADD FUNCTIONALITIES ====
         % if ~ev.getValueIsAdjusting()
         %     UpdateElecProperties();
         %     % Get the selected electrode
@@ -339,6 +340,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST KEY TYPED CALLBACK =====
     function ContListKeyTyped_Callback(h, ev)
+        % ===== TODO: ADD FUNCTIONALITIES ====
         % switch(uint8(ev.getKeyChar()))
         %     % DELETE
         %     case {ev.VK_DELETE, ev.VK_BACK_SPACE}
