@@ -1443,6 +1443,11 @@ function RemoveElectrode()
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
+    % remove any line fits
+    hCoord = findobj(0, 'Tag', sSelElec.Name); 
+    if ~isempty(hCoord)
+        delete(hCoord);
+    end
     % Update list of electrodes
     UpdateElecList();
     % Update figure
@@ -2906,7 +2911,7 @@ function SetElectrodeLoc(iLoc, jButton)
 
     sMri = panel_surface('GetSurfaceMri', hFig(1));
     XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
-    
+
     % If SCS coordinates are not available
     if isempty(XYZ)
         % Ask to compute MNI transformation
