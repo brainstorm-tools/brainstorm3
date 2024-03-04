@@ -159,7 +159,7 @@ function UpdateTopoPlot(iDS, iFig)
         end
         if isAbsoluteValues ~= sColormap.isAbsoluteValues
             sColormap.isAbsoluteValues = isAbsoluteValues;
-            bst_colormaps('SetColormapAbsolute', ColormapInfo.Type, sColormap.isAbsoluteValues);
+            bst_colormaps('SetColormap', ColormapInfo.Type, sColormap);
         end
     end
     % Get figure maximum
