@@ -2561,7 +2561,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             end
 
             if strcmpi(Method, 'lineFit')
-                LineFit(linePlot);
+                LineFit(linePlot, Channels(iChan(1)).Group);
             end
          
         % === ECOG STRIPS ===
@@ -2788,17 +2788,18 @@ end
 
 %% ===== DRAW REFERENCE ELECTRODE =====
 % perform line fitting between contacts
-function LineFit(plotLoc)
+function LineFit(plotLoc, Tag)
     % Get axes handle
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-
+    delete(findobj(hAxes, '-depth', 1, 'Tag', Tag));
+    
     % plot the reference line between tip and entry
     line(plotLoc.X, plotLoc.Y, plotLoc.Z, ...
          'Color', [1 1 0], ...
          'LineWidth',       2, ...
          'Parent', hAxes, ...
-         'Tag', 'lineCoordinates');
+         'Tag', Tag);
 end
 
 %% ===== SET ELECTRODE LOCATION =====
