@@ -853,7 +853,10 @@ function SetSelectedElectrodes(iSelElec)
     UpdateContactList();
 end
 
-%% ===== SET SELECTED CONTACTS =====
+%% ===== SET SELECTED CONTACT =====
+% USAGE:  SetSelectedContacts(iSelElec)      % array index
+%         SetSelectedContacts(SelElecNames)  % cell array of name
+% Limitation: perform operation on one contact not multiple
 function SetSelectedContacts(iSelCont)
     % === GET CONTACT INDICES ===
     % Get figure controls
