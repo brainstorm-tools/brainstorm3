@@ -110,7 +110,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Threshold title
             jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
             % Min size slider
-            jSliderSurfIsoValue = JSlider(1, GetIsoValue(), 1);
+            jSliderSurfIsoValue = JSlider(1, GetIsoValueMaxRange(), 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
             jSliderSurfIsoValue.setToolTipText('isoSurface Threshold');
             java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
@@ -526,7 +526,7 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
 end
 
 %% ===== GET SLIDER ISOVALUE =====
-function isoValue = GetIsoValue()
+function isoValue = GetIsoValueMaxRange()
     % get the handles
     hFig = bst_figures('GetFiguresByType', '3DViz');
     if ~isempty(hFig)
@@ -1164,7 +1164,12 @@ function UpdateSurfaceProperties()
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
     % isoSurface thresholding
-    gui_enable([ctrl.jSliderSurfIsoValue], isIsoSurface, 1);
+    gui_enable([ctrl.jSliderSurfIsoValue], isIsoSurface, 0);
+    if isIsoSurface
+        [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', TessInfo(iSurface).SurfaceFile);
+        isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
+        SetIsoValue(str2double(isoValue{1}));
+    end
     % Show sulci button
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
     % Show surface edges button
