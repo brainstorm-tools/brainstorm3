@@ -152,7 +152,6 @@ if isSave
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
-    
     % Get the mesh file
     MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
 

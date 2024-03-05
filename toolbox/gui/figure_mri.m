@@ -2257,7 +2257,6 @@ end
 %        UpdateVisibleLandmarks(hFig)
 function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     global GlobalData;
-
     % CALL: UpdateVisibleLandmarks(hFig)
     if (nargin == 1)
         hFig = sMri;
@@ -2908,7 +2907,6 @@ end
 % USAGE:  SetElectrodePosition(hFig, ChannelName=[ask], scsXYZ=[get from MRI viewer])
 function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     global GlobalData;
-    
     % Parse inputs
     if (nargin < 3) || isempty(scsXYZ)
         scsXYZ = [];
@@ -2916,7 +2914,6 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     if (nargin < 2) || isempty(ChannelName)
         ChannelName = [];
     end
-
     % Get MRI and figure handles
     sMri = panel_surface('GetSurfaceMri', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);

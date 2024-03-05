@@ -114,7 +114,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
             jPanelFirstPart.add(jPanelElecList, BorderLayout.CENTER);
         jPanelMain.add(jPanelFirstPart);
-        
+
         jPanelBottom = gui_river([0,0], [0,0,0,0]);
             % ===== ELECTRODE OPTIONS =====
             jPanelElecOptions = gui_river([0,3], [0,5,10,3], 'Electrode configuration');
@@ -238,7 +238,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonEcogSet1',     jButtonEcogSet1, ...
                                   'jButtonEcogSet2',     jButtonEcogSet2, ...
                                   'jButtonEcogSet3',     jButtonEcogSet3, ...
-                                  'jButtonEcogSet4',     jButtonEcogSet4));                             
+                                  'jButtonEcogSet4',     jButtonEcogSet4));
+                              
     
                               
 %% =================================================================================
@@ -845,7 +846,6 @@ function SetSelectedElectrodes(iSelElec)
         ctrl.jListElec.scrollRectToVisible(selRect);
         ctrl.jListElec.repaint();
     end
-    
     % Restore JList callback
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields

@@ -241,8 +241,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckOverlayConditions',  jCheckOverlayConditions, ...
                                   'jCheckUniformAmplitude',   jCheckUniformAmplitude, ...
                                   'jListScouts',                jListScouts));
-                     
-                                  
+                              
+    
+                              
 %% =================================================================================
 %  === INTERNAL CALLBACKS  =========================================================
 %  =================================================================================

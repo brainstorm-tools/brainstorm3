@@ -2075,3 +2075,4 @@ function ResetSearchNodes(iSearches)
         GlobalData.DataBase.Searches.Active(iSearch).FuncCondSelNode  = [];
     end
 end
+

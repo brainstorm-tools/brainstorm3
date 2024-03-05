@@ -516,3 +516,4 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
         errMsg = ['mri_convert could not be installed in: ' mriDefaceDir];
     end
 end
+

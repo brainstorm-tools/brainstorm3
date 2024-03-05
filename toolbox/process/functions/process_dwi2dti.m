@@ -355,3 +355,4 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     % Close progress bar
     bst_progress('stop');
 end
+

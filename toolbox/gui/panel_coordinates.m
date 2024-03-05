@@ -523,13 +523,11 @@ end
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
     global GlobalData;
-    
     % Get current 3D figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return
     end
-    
     % Get current selected point
     CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
     if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)

@@ -407,7 +407,7 @@ function SliderCallback(hObject, event, target)
         case 'SurfSmoothValue'
             SurfSmoothValue = jSlider.getValue() / 100;
             SetSurfaceSmooth(hFig, iSurface, SurfSmoothValue, 1);
-        
+
         case 'SurfIsoValue'
             % get the handles
             hFig = bst_figures('GetFiguresByType', '3DViz');

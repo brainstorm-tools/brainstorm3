@@ -1429,6 +1429,7 @@ function GetCoordinates(varargin)
     panel_coordinates('SetSelectionState', 1);
 end
 
+
 %% ===== APPLY VIEW TO ALL FIGURES =====
 function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
     % Get Axes handle

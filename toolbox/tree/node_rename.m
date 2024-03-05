@@ -442,3 +442,4 @@ function newComment = GetNewComment(bstNode, fieldName)
     end
 end
 
+

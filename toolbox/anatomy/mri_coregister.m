@@ -469,3 +469,4 @@ end
 if ~isProgress
     bst_progress('stop');
 end
+
