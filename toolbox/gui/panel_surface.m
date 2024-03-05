@@ -431,9 +431,9 @@ function SliderCallback(hObject, event, target)
             % ask user if they want to proceed
             isProceed = java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold');
             if ~isProceed
-                bstNode = panel_protocols('GetNode', [], MeshFile);
-                isoValue = regexp(string(bstNode), '\d*', 'match');
-                SetIsoValue(double(isoValue));
+                [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
+                isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
+                SetIsoValue(str2double(isoValue{1}));
                 return;
             end
             
