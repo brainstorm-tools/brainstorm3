@@ -43,8 +43,12 @@ function CurrentFreqChangedCallback(iDS, iFig) %#ok<DEFNU>
     % Get figure appdata
     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     TfInfo = getappdata(hFig, 'Timefreq');
-    % If no frequencies in this figure
+    % If no frequencies (time series) in this figure
     if getappdata(hFig, 'isStaticFreq')
+        return;
+    end
+    % If no time (spectrum) in this figure
+    if getappdata(hFig, 'isStatic')
         return;
     end
     % Update frequency to display
