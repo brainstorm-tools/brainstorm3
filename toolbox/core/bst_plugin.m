@@ -33,8 +33,8 @@ function [varargout] = bst_plugin(varargin)
 % PLUGIN DEFINITION
 % =================
 %
-%     The plugins registered in Brainstorm are listed in function GetSupported(). 
-%     Each one is an entry in the PlugDesc array, following the structure defined in db_template('plugdesc'). 
+%     The plugins registered in Brainstorm are listed in function GetSupported().
+%     Each one is an entry in the PlugDesc array, following the structure defined in db_template('plugdesc').
 %     The fields allowed are described below.
 %
 %     Mandatory fields
@@ -51,21 +51,21 @@ function [varargout] = bst_plugin(varargin)
 %     - Category       : String: Sub-menu in which the plugin is listed
 %     - ExtraMenus     : Cell matrix {Nx2}: List of entries to add to the plugins menu
 %                        | ExtraMenus{i,1}: String: Label of the menu
-%                        | ExtraMenus{i,2}: String: Matlab code to eval when the menu is clicked 
-%     - TestFile       : String: Name of a file that should be located in one of the loaded folders of the plugin (eg. 'spm.m' for SPM12). 
+%                        | ExtraMenus{i,2}: String: Matlab code to eval when the menu is clicked
+%     - TestFile       : String: Name of a file that should be located in one of the loaded folders of the plugin (eg. 'spm.m' for SPM12).
 %                        | This is used to test whether the plugin was correctly installed, or whether it is available somewhere else in the Matlab path.
-%     - ReadmeFile     : String: Name of the text file to display after installing the plugin (must be in the plugin folder). 
+%     - ReadmeFile     : String: Name of the text file to display after installing the plugin (must be in the plugin folder).
 %                        | If empty, it tries using brainstorm3/doc/plugin/plugname_readme.txt
-%     - LogoFile       : String: Name of the image file to display during the plugin download, installation, and associated computations (must be in the plugin folder). 
+%     - LogoFile       : String: Name of the image file to display during the plugin download, installation, and associated computations (must be in the plugin folder).
 %                        | Supported extensions: gif, png. If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
 %     - MinMatlabVer   : Integer: Minimum Matlab version required for using this plugin, as returned by bst_get('MatlabVersion')
 %     - CompiledStatus : Integer: Behavior of this plugin in the compiled version of Brainstorm:
 %                        | 0: Plugin is not available in the compiled distribution of Brainstorm
 %                        | 1: Plugin is available for download (only for plugins based on native compiled code)
-%                        | 2: Plugin is included in the compiled distribution of Brainstorm 
+%                        | 2: Plugin is included in the compiled distribution of Brainstorm
 %     - RequiredPlugs  : Cell-array: Additional plugins required by this plugin, that must be installed/loaded beforehand.
 %                        | {Nx2} => {'plugname','version'; ...} or
-%                        | {Nx1} => {'plugname'; ...} 
+%                        | {Nx1} => {'plugname'; ...}
 %     - UnloadPlugs    : Cell-array of names of incompatible plugin, to unload before loaing this one
 %     - LoadFolders    : Cell-array of subfolders to add to the Matlab path when setting up the plugin. Use {'*'} to add all the plugin subfolders.
 %     - GetVersionFcn  : String to eval or function handle to call to get the version after installation
@@ -77,26 +77,26 @@ function [varargout] = bst_plugin(varargin)
 %
 %     Fields set when installing the plugin
 %     =====================================
-%     - Processes  : List of process functions to be added to the pipeline manager 
+%     - Processes  : List of process functions to be added to the pipeline manager
 %
 %     Fields set when loading the plugin
 %     ==================================
 %     - Path       : Installation path (eg. /home/username/.brainstorm/plugins/fieldtrip)
-%     - SubFolder  : If all the code is in a single subfolder (eg. /plugins/fieldtrip/fieldtrip-20210304), 
+%     - SubFolder  : If all the code is in a single subfolder (eg. /plugins/fieldtrip/fieldtrip-20210304),
 %                    this is detected and the full path to the TestFile would be typically fullfile(Path, SubFolder).
 %     - isLoaded   : 0=Not loaded, 1=Loaded
-%     - isManaged  : 0=Installed manually by the user, 1=Installed automatically by Brainstorm 
+%     - isManaged  : 0=Installed manually by the user, 1=Installed automatically by Brainstorm
 %
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-% 
+%
 % Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-% 
+%
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -124,7 +124,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc = repmat(db_template('PlugDesc'), 0);
     % Get OS
     OsType = bst_get('OsType', 0);
-    
+
     % ================================================================================================================
     % === ANATOMY: BRAIN2MESH ===
     PlugDesc(end+1)              = GetStruct('brain2mesh');
@@ -137,7 +137,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).RequiredPlugs  = {'spm12'; 'iso2mesh'};
     PlugDesc(end).DeleteFiles    = {'examples', 'brain1020.m', 'closestnode.m', 'label2tpm.m', 'slicesurf.m', 'slicesurf3.m', 'tpm2label.m', 'polylineinterp.m', 'polylinelen.m', 'polylinesimplify.m'};
-        
+
     % === ANATOMY: CAT12 ===
     PlugDesc(end+1)              = GetStruct('cat12');
     PlugDesc(end).Version        = 'latest';
@@ -154,7 +154,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
     PlugDesc(end).LoadedFcn      = 'LinkCatSpm(2);';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
-    
+
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
     PlugDesc(end).Version        = '1.9.6';
@@ -178,7 +178,7 @@ function PlugDesc = GetSupported(SelPlug)
                                     'bin/tetgen1.5.mexglx'};
     PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
                                     'bin/tetgen1.5.exe'};
-    
+
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
@@ -231,7 +231,7 @@ function PlugDesc = GetSupported(SelPlug)
                                     'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin', 'lib'};
-    
+
     % === FORWARD: DUNEURO ===
     PlugDesc(end+1)              = GetStruct('duneuro');
     PlugDesc(end).Version        = 'latest';
@@ -242,7 +242,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin'};
-    
+
     % === INVERSE: BRAINENTROPY ===
     PlugDesc(end+1)              = GetStruct('brainentropy');
     PlugDesc(end).Version        = 'github-master';
@@ -256,7 +256,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).GetVersionFcn  = @be_versions;
     PlugDesc(end).DeleteFiles    = {'docs', '.github'};
-    
+
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -329,7 +329,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadedFcn      = @Configure;
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
-    
+
     % === I/O: NEUROELECTRICS ===
     PlugDesc(end+1)              = GetStruct('neuroelectrics');
     PlugDesc(end).Version        = '1.8';
@@ -398,7 +398,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/Plotly'', ''-browser'')'};
-                               
+
     % === I/O: TDT-SDK ===      Tucker-Davis Technologies Matlab SDK
     PlugDesc(end+1)              = GetStruct('tdt-sdk');
     PlugDesc(end).Version        = 'latest';
@@ -408,7 +408,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'TDT_Matlab_Tools.pdf';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
-    
+
     % === I/O: XDF ===
     PlugDesc(end+1)              = GetStruct('xdf');
     PlugDesc(end).Version        = 'github-master';
@@ -431,7 +431,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
-    
+
     % === STATISTICS: LIBSVM ===
     PlugDesc(end+1)              = GetStruct('libsvm');
     PlugDesc(end).Version        = 'github-master';
@@ -479,7 +479,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'toolbox'};
     PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m', ...
                                     'toolbox/delineSignal.m', 'toolbox/despikeLFPbyChunks.asv', 'toolbox/despikeLFPbyChunks.m'};
-                                
+
     % === ELECTROPHYSIOLOGY: Kilosort ===
     PlugDesc(end+1)              = GetStruct('kilosort');
     PlugDesc(end).Version        = 'github-master';
@@ -493,7 +493,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).RequiredPlugs  = {'kilosort-wrapper'; 'phy'; 'npy-matlab'};
     PlugDesc(end).InstalledFcn   = 'process_spikesorting_kilosort(''copyKilosortConfig'', bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''KiloSort-master'', ''configFiles'', ''StandardConfig_MOVEME.m''), bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''KiloSort-master'', ''KilosortStandardConfig.m''));';
 
-    
+
     % === ELECTROPHYSIOLOGY: Kilosort Wrapper ===
     PlugDesc(end+1)              = GetStruct('kilosort-wrapper');
     PlugDesc(end).Version        = 'github-master';
@@ -503,7 +503,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'Kilosort2Neurosuite.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
-    
+
     % === ELECTROPHYSIOLOGY: phy ===
     PlugDesc(end+1)              = GetStruct('phy');
     PlugDesc(end).Version        = 'github-master';
@@ -515,7 +515,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'npy-matlab'};
-    
+
     % === ELECTROPHYSIOLOGY: npy-matlab ===
     PlugDesc(end+1)              = GetStruct('npy-matlab');
     PlugDesc(end).Version        = 'github-master';
@@ -526,7 +526,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
-    
+
     % === ELECTROPHYSIOLOGY: ultramegasort2000 ===
     PlugDesc(end+1)              = GetStruct('ultramegasort2000');
     PlugDesc(end).Version        = 'github-master';
@@ -537,7 +537,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
-    
+
     % === ELECTROPHYSIOLOGY: waveclus ===
     PlugDesc(end+1)              = GetStruct('waveclus');
     PlugDesc(end).Version        = 'github-master';
@@ -565,7 +565,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).DeleteFiles    = {'scripts', 'test', 'run_tests.m', 'test_suite_bak.m', '.gitignore'};
-    
+
     % === MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
     PlugDesc(end).Version        = '2021.12.04';
@@ -599,12 +599,12 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-    
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
@@ -623,7 +623,7 @@ function PlugDesc = GetSupported(SelPlug)
                                     'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
                                     'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
                                     'ft_defaults;'];
-    
+
     % === SPM12 ===
     PlugDesc(end+1)              = GetStruct('spm12');
     PlugDesc(end).Version        = 'latest';
@@ -645,7 +645,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
     % ================================================================================================================
-    
+
     % Select only one plugin
     if ~isempty(SelPlug)
         % Get plugin name
@@ -704,7 +704,7 @@ function Configure(PlugDesc)
             % Generate the NWB Schema (must be executed from the NWB folder)
             generateCore();
             % Restore current directory
-            cd(curDir);           
+            cd(curDir);
     end
 end
 
@@ -844,7 +844,7 @@ end
 %          -1: v1<v2
 %           1: v1>v2
 function res = CompareVersions(v1, v2)
-    % Get numbers 
+    % Get numbers
     iNum1 = find(ismember(v1, '0123456789'));
     iNum2 = find(ismember(v2, '0123456789'));
     iDot1 = find(v1 == '.');
@@ -916,7 +916,7 @@ function res = CompareVersions(v1, v2)
             res = -1;
         else
             res = 1;
-        end  
+        end
     end
 end
 
@@ -951,7 +951,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     if (nargin < 1) || isempty(SelPlug)
         SelPlug = [];
     end
-    
+
     % === DEFINE SEARCH LIST ===
     % Looking for a single plugin
     if ~isempty(SelPlug)
@@ -968,7 +968,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     matlabPath = str_split(path, pathsep);
     % Compiled distribution
     isCompiled = bst_iscompiled();
-    
+
     % === LOOK FOR SUPPORTED PLUGINS ===
     % Empty plugin structure
     PlugDesc = repmat(db_template('PlugDesc'), 0);
@@ -1027,7 +1027,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug).isManaged = 0;
         end
     end
-    
+
     % === LOOK FOR UNREFERENCED PLUGINS ===
     % Compiled: do not look for unreferenced plugins
     if isCompiled
@@ -1079,7 +1079,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
         PlugDesc(iPlug).isManaged = 1;
         PlugDesc(iPlug).isLoaded  = ismember(PlugDir, matlabPath);
     end
-    
+
     % === READ PLUGIN.MAT ===
     for iPlug = 1:length(PlugDesc)
         % Try to load the plugin.mat file in the plugin folder
@@ -1099,7 +1099,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                 end
             end
         else
-            PlugDesc(iPlug).URLzip = []; 
+            PlugDesc(iPlug).URLzip = [];
         end
     end
 end
@@ -1297,7 +1297,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(newURLzip)
         PlugDesc.URLzip = newURLzip;
     end
-      
+
     % === PROCESS DEPENDENCIES ===
     % Check required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
@@ -1315,7 +1315,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
                 installVer{end+1} = [];
                 strInstall = [strInstall, '<B>' installPlugs{end} '</B> '];
             % Plugin installed: check version
-            elseif (size(PlugDesc.RequiredPlugs,2) == 2) 
+            elseif (size(PlugDesc.RequiredPlugs,2) == 2)
                 minVerDep = PlugDesc.RequiredPlugs{iPlug,2};
                 if ~isempty(minVerDep) && (CompareVersions(minVerDep, PlugCheck.Version) > 0)
                     installPlugs{end+1} = PlugDesc.RequiredPlugs{iPlug,1};
@@ -1339,7 +1339,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             end
         end
     end
-    
+
     % === UPDATE: CHECK PREVIOUS INSTALL ===
     % Check if installed
     OldPlugDesc = GetInstalled(PlugName);
@@ -1424,11 +1424,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             end
         end
     end
-    
+
     % === INSTALL PLUGIN ===
     bst_progress('text', ['Installing plugin ' PlugName '...']);
     % Managed plugin folder
-    PlugPath = bst_fullfile(bst_get('UserPluginsDir'), PlugName);    
+    PlugPath = bst_fullfile(bst_get('UserPluginsDir'), PlugName);
     % Delete existing folder
     if isdir(PlugPath)
         file_delete(PlugPath, 1, 3);
@@ -1508,7 +1508,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isOk
         return;
     end
-    
+
     % === LOAD PLUGIN ===
     % Load plugin
     [isOk, errMsg, PlugDesc] = Load(PlugDesc);
@@ -1521,7 +1521,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isOk
         return;
     end
-    
+
     % === SHOW PLUGIN INFO ===
     % Log install
     bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
@@ -1606,7 +1606,7 @@ function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
         % Remove absolute path: use only path relative to the plugin Path
         PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
     end
-    
+
     % === SAVE PLUGIN.MAT ===
     % Save installation date
     c = clock();
@@ -1619,13 +1619,13 @@ function [isOk, errMsg, PlugDesc] = UpdateDescription(PlugDesc, doDelete)
     PlugDescSave = rmfield(PlugDesc, excludedFields);
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
     bst_save(PlugMatFile, PlugDescSave, 'v6');
-    
+
     % === CALLBACK: POST-INSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
     if ~isOk
         return;
     end
-    
+
     % === GET INSTALLED VERSION ===
     % Get installed version
     if ~isempty(PlugDesc.GetVersionFcn)
@@ -1707,7 +1707,7 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         errMsg = 'Invalid call to Uninstall()';
         return;
     end
-    
+
     % === CHECK INSTALLATION ===
     % Get installation
     PlugDesc = GetInstalled(PlugName);
@@ -1732,7 +1732,7 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         errMsg = ['Plugin ' PlugName ' is not installed.'];
         return;
     end
-    
+
     % === USER CONFIRMATION ===
     if isInteractive
         isConfirm = java_dialog('confirm', ['<HTML>Delete permanently plugin <B>' PlugName '</B>?' 10 10 PlugPath 10 10], 'Plugin manager');
@@ -1753,7 +1753,7 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
             end
         end
     end
-    
+
     % === UNLOAD ===
     if isequal(PlugDesc.isLoaded, 1)
         [isUnloaded, errMsgUnload] = Unload(PlugDesc);
@@ -1761,16 +1761,16 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
             disp(['BST> Error unloading plugin ' PlugName ': ' errMsgUnload]);
         end
     end
-    
+
     % === UNINSTALL ===
     disp(['BST> Deleting plugin ' PlugName ': ' PlugPath]);
     % Delete plugin folder
     isDeleted = file_delete(PlugPath, 1, 3);
     if (isDeleted ~= 1)
-        errMsg = ['Could not delete plugin folder: ' 10 PlugPath 10 10 ... 
+        errMsg = ['Could not delete plugin folder: ' 10 PlugPath 10 10 ...
                   'There is probably a file in that folder that is currently ' 10 ...
                   'loaded in Matlab, but that cannot be unloaded dynamically.' 10 10 ...
-                  'Brainstorm will now close Matlab.' 10 ... 
+                  'Brainstorm will now close Matlab.' 10 ...
                   'Restart Matlab and install again the plugin.' 10 10];
         if isInteractive
             java_dialog('error', errMsg, 'Restart Matlab');
@@ -1779,7 +1779,7 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
-    
+
     % === CALLBACK: POST-UNINSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UninstalledFcn');
     if ~isOk
@@ -1891,7 +1891,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     if (nargin < 2) || isempty(isVerbose)
         isVerbose = 1;
     end
-    % Initialize returned variables 
+    % Initialize returned variables
     isOk = 0;
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugDesc);
@@ -1910,7 +1910,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         errMsg = ['Plugin ', PlugDesc.Name ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
-    
+
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
@@ -1970,7 +1970,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         isOk = 1;
         return;
     end
-    
+
     % === CHECK LOADABILITY ===
     PlugDesc.Path = PlugPath;
     if ~file_exist(PlugDesc.Path)
@@ -1982,7 +1982,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     if ~isempty(LogoFile)
         bst_progress('setimage', LogoFile);
     end
-    
+
     % === PROCESS DEPENDENCIES ===
     % Unload incompatible plugins
     if ~isempty(PlugDesc.UnloadPlugs)
@@ -2003,7 +2003,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
             end
         end
     end
-    
+
     % === LOAD PLUGIN ===
     % Add plugin folder to path
     if ~isempty(PlugDesc.SubFolder)
@@ -2043,7 +2043,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
             end
         end
     end
-    
+
     % === TEST FUNCTION ===
     % Check if test function is available on path
     if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
@@ -2053,10 +2053,10 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('removeimage')
         return;
     end
-    
+
     % === CALLBACK: POST-LOAD ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'LoadedFcn');
-    
+
     % Remove logo
     bst_progress('removeimage');
     % Return success
@@ -2094,7 +2094,7 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     if (nargin < 2) || isempty(isVerbose)
         isVerbose = 1;
     end
-    % Initialize returned variables 
+    % Initialize returned variables
     isOk = 0;
     errMsg = '';
     % Get installation
@@ -2122,7 +2122,7 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     if ~isempty(errMsg)
         return;
     end
-    
+
     % === PROCESS DEPENDENCIES ===
     % Unload dependent plugins
     AllPlugs = GetSupported();
@@ -2131,7 +2131,7 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
             Unload(AllPlugs(iPlug));
         end
     end
-    
+
     % === UNLOAD PLUGIN ===
     % Do not modify path in compiled mode
     if ~bst_iscompiled()
@@ -2147,7 +2147,7 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
             end
         end
     end
-    
+
     % === TEST FUNCTION ===
     % Check if test function is still available on path
     if ~isempty(PlugDesc.TestFile) && ~isempty(which(PlugDesc.TestFile))
@@ -2156,13 +2156,13 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
             'Please remove this folder from the Matlab path.'];
         return;
     end
-    
+
     % === CALLBACK: POST-UNLOAD ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UnloadedFcn');
     if ~isOk
         return;
     end
-    
+
     % Return success
     PlugDesc.isLoaded = 0;
     isOk = 1;
@@ -2324,7 +2324,7 @@ function strList = List(Target, isGui)
                 elseif isa(PlugDesc(iPlug).GetVersionFcn, 'function_handle')
                     plugVer = feval(PlugDesc(iPlug).GetVersionFcn);
                 end
-            catch 
+            catch
                 disp(['BST> Could not get installed version with callback: ' PlugDesc(iPlug).GetVersionFcn]);
             end
             % Unload plugin
@@ -2375,7 +2375,7 @@ function j = MenuCreate(jMenu, fontSize)
         if ~isempty(Plug.Category)
             if isempty(jSub) || ~ismember(Plug.Category, jSub(:,1))
                 jParent = gui_component('Menu', jMenu, [], Plug.Category, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
-                jSub(end+1,1:2) = {Plug.Category, jParent}; 
+                jSub(end+1,1:2) = {Plug.Category, jParent};
             else
                 iSub = find(strcmpi(jSub(:,1), Plug.Category));
                 jParent = jSub{iSub,2};
@@ -2594,7 +2594,7 @@ function SetCustomPath(PlugName, PlugPath)
     % If the directory did not change: nothing to do
     if (isInstalled && isequal(PlugInst.Path, PlugPath)) || (~isInstalled && isempty(PlugPath))
         return;
-    end   
+    end
     % Unload previous version
     if isInstalled && ~isempty(PlugInst.Path) && PlugInst.isLoaded
         Unload(PlugName);
@@ -2710,7 +2710,7 @@ function Archive(OutputFile)
     isOk = file_copy(userDef, envDef);
     if ~isOk
         error(['Cannot merge folder: "' userDef '" into "' envDef '"']);
-    end   
+    end
 
     % ===== COPY USER PROCESSES =====
     bst_progress('text', 'Copying: user processes...');
@@ -2721,7 +2721,7 @@ function Archive(OutputFile)
     if ~isOk
         error(['Cannot merge folder: "' userProc '" into "' envProc '"']);
     end
-    
+
     % ===== COPY PLUGINS ======
     % Get list of plugins to package
     PlugDesc = GetInstalled();
@@ -2769,7 +2769,7 @@ end
 %  ============================================================================
 
 %% ===== LINK CAT-SPM =====
-% USAGE: bst_plugin('LinkCatSpm', Action)               
+% USAGE: bst_plugin('LinkCatSpm', Action)
 %        0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
 function LinkCatSpm(Action)
     % Get SPM12 plugin
