@@ -1143,6 +1143,11 @@ function UpdateSurfaceProperties()
     end
     % If surface is sliced MRI
     isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
+    if ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'isosurface', 'match'))
+        isIsoSurface = 1;
+    else
+        isIsoSurface = 0;
+    end
 
     % ==== Surface properties ====
     % Number of vertices
@@ -1158,6 +1163,8 @@ function UpdateSurfaceProperties()
     % Surface smoothing ALPHA
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    % isoSurface thresholding
+    gui_enable([ctrl.jSliderSurfIsoValue], isIsoSurface, 1);
     % Show sulci button
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
     % Show surface edges button
