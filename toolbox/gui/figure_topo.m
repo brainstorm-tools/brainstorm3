@@ -241,12 +241,12 @@ end
 
 
 %% ===== GET FIGURE DATA =====
-% Warning: Time output is only defined for the time-frequency plots
-function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThreshOver] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
+% Warning: xAxis output is only defined for the timefreq plots (spectrum or TF maps) plots
+function [F, xAxis, selChan, overlayLabels, dispNames, StatThreshUnder, StatThreshOver] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
     global GlobalData;
     % Initialize returned values
     F = [];
-    Time = [];
+    xAxis = [];
     selChan = [];
     overlayLabels = {};
     dispNames = {};
@@ -338,8 +338,14 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
                 case 'timefreq'
                     % Get timefreq values
                     [Time, Freqs, TfInfo, TF, RowNames] = figure_timefreq('GetFigureData', hFig, TimeDef);
+                    xAxis = Time;      % TF map
+                    isStatic = getappdata(hFig, 'isStatic');
+                    if isStatic
+                        xAxis = Freqs; % Spectrum
+                    end
                     % Initialize returned matrix
-                    F{iFile} = zeros(length(selChan), size(TF, 2));
+                    F{iFile} = zeros(length(selChan), length(xAxis));
+
                     % Re-order channels
                     for i = 1:length(selChan)
                         selrow = GlobalData.DataSet(iDS).Channel(selChan(i)).Name;
@@ -357,7 +363,11 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
                             iRow = find(strcmpi(selrow, RowNames));
                             % If channel was found (if there is time-freq decomposition available for it)
                             if ~isempty(iRow)
-                                F{iFile}(i,:) = TF(iRow(1),:);
+                                if isStatic
+                                    F{iFile}(i,:) = TF(iRow(1),1,:); % Spectrum
+                                else
+                                    F{iFile}(i,:) = TF(iRow(1),:,1); % Freq slice in TF
+                                end
                             end
                         end
                     end
@@ -365,8 +375,8 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
         end
     end
     % Get time if required and not defined yet
-    if (nargout >= 2) && isempty(Time)
-        Time = bst_memory('GetTimeVector', iDS, [], TimeDef);
+    if (nargout >= 2) && isempty(xAxis) &&  ismember(lower(TopoInfo.FileType), {'data', 'pdata'})
+        xAxis = bst_memory('GetTimeVector', iDS, [], TimeDef);
     end
     
     % ===== APPLY MONTAGE =====
