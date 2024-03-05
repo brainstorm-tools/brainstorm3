@@ -1164,6 +1164,15 @@ function SetElectrodeVisible(isVisible)
     % Update electrode color
     for i = 1:length(sSelElec)
         sSelElec(i).Visible = isVisible;
+        % show/hide any line fitting
+        hCoord = findobj(0, 'Tag', sSelElec(i).Name); 
+        if ~isempty(hCoord)
+            if isVisible
+                set(hCoord, 'Visible', 'on');
+            else
+                set(hCoord, 'Visible', 'off');
+            end
+        end
     end
     % Save electrodes
     SetElectrodes(iSelElec, sSelElec);
@@ -1446,7 +1455,7 @@ function RemoveElectrode()
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
-    % remove any line fits
+    % remove any line fitting
     hCoord = findobj(0, 'Tag', sSelElec.Name); 
     if ~isempty(hCoord)
         delete(hCoord);
