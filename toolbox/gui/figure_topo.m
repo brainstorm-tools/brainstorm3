@@ -42,13 +42,16 @@ function CurrentFreqChangedCallback(iDS, iFig) %#ok<DEFNU>
     global GlobalData;
     % Get figure appdata
     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    % Get topography type requested (3DSensorCap, 2DDisc, 2DSensorCap, 2DLayout)
+    TopoType = GlobalData.DataSet(iDS).Figure(iFig).Id.SubType;
+    % Get TimeFreq info
     TfInfo = getappdata(hFig, 'Timefreq');
     % If no frequencies (time series) in this figure
     if getappdata(hFig, 'isStaticFreq')
         return;
     end
     % If no time (spectrum) in this figure
-    if getappdata(hFig, 'isStatic')
+    if getappdata(hFig, 'isStatic') && strcmpi(TopoType, '2DLayout')
         return;
     end
     % Update frequency to display

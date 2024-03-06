@@ -360,7 +360,7 @@ if strcmpi(FileType, 'Timefreq')
     TfInfo.RowName    = [];
     TfInfo.RefRowName = RefRowName;
     TfInfo.Function   = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
-    if isStaticFreq || isStatic
+    if isStaticFreq || (isStatic && strcmpi(TopoType, '2DLayout'))
         TfInfo.iFreqs = [];
     elseif ~isempty(GlobalData.UserFrequencies.iCurrentFreq)
         TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
