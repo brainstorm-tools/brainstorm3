@@ -244,7 +244,9 @@ end
 
 
 %% ===== GET FIGURE DATA =====
-% Warning: xAxis output is only defined for the timefreq plots (spectrum or TF maps) plots
+% Warning: xAxis output is only defined for the timefreq plots
+%          xAxis = 'Time'  for TF maps
+%          xAxis = 'Freqs' for Spectra
 function [F, xAxis, selChan, overlayLabels, dispNames, StatThreshUnder, StatThreshOver] = GetFigureData(iDS, iFig, isAllTime, isMultiOutput)
     global GlobalData;
     % Initialize returned values
@@ -775,66 +777,82 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     
     % ===== GET ALL DATA ===== 
     % Get data
-    [F, Time, selChanGlobal, overlayLabels, dispNames] = GetFigureData(iDS, iFig, 1, 1);
+    [F, xAxis, selChanGlobal, overlayLabels, dispNames] = GetFigureData(iDS, iFig, 1, 1);
     selChan = bst_closest(selChanGlobal, modChan);
     if isempty(selChan)
         disp('2DLAYOUT> No good sensor to display...');
         return;
     end
-    % Convert time bands in time vector
-    if iscell(Time)
-        nBands = size(Time,1);
-        TimeVector = zeros(1,nBands);
+    % Convert x axis (time or frequency) bands in time vector
+    if iscell(xAxis)
+        nBands = size(xAxis,1);
+        xAxisVector = zeros(1,nBands);
         for i = 1:nBands
             % Take the middle of each time band
-            TimeVector(i) = (Time{i,2} + Time{i,3}) / 2;
+            xAxisVector(i) = (xAxis{i,2} + xAxis{i,3}) / 2;
         end
     else
-        TimeVector = Time;
+        xAxisVector = xAxis;
     end
+
     % Get 2DLayout display options
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
+
+    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    isStatic     = getappdata(hFig, 'isStatic');     % Time static
+    isStaticFreq = getappdata(hFig, 'isStaticFreq'); % Freq static
+
     % Flip Y axis if needed
-    if TopoLayoutOptions.FlipYAxis
+    if TopoLayoutOptions.FlipYAxis && isStaticFreq
         F = cellfun(@(c)times(c,-1), F, 'UniformOutput', 0);
     end
-    % Default time window: all the window
-    if isempty(TopoLayoutOptions.TimeWindow)
-        TopoLayoutOptions.TimeWindow = GlobalData.UserTimeWindow.Time;
-    % Otherwise, center the time window around the current time
-    else
-        winLen = (TopoLayoutOptions.TimeWindow(2) - TopoLayoutOptions.TimeWindow(1));
-        TopoLayoutOptions.TimeWindow = bst_saturate(GlobalData.UserTimeWindow.CurrentTime + winLen ./ 2 .* [-1, 1] , GlobalData.UserTimeWindow.Time, 1);
-    end
-    % Get only the 2DLayout time window
-    iTime = find((TimeVector >= TopoLayoutOptions.TimeWindow(1)) & (TimeVector <= TopoLayoutOptions.TimeWindow(2)));
-    % Check for errors
-    if isempty(iTime)
-        error('Invalid time window.');
-    elseif (length(iTime) < 2)
-        if (iTime + 1 <= length(TimeVector))
-            iTime = [iTime, iTime + 1];
-        elseif (iTime >= 2)
-            iTime = [iTime - 1, iTime];
+
+    % Handle xAxis as Time
+    if ~isStatic
+        % Default time window: all the window
+        if isempty(TopoLayoutOptions.TimeWindow)
+            TopoLayoutOptions.TimeWindow = GlobalData.UserTimeWindow.Time;
+        % Otherwise, center the time window around the current time
         else
-            error('Invalid time window.');
+            winLen = (TopoLayoutOptions.TimeWindow(2) - TopoLayoutOptions.TimeWindow(1));
+            TopoLayoutOptions.TimeWindow = bst_saturate(GlobalData.UserTimeWindow.CurrentTime + winLen ./ 2 .* [-1, 1] , GlobalData.UserTimeWindow.Time, 1);
         end
+        % Get only the 2DLayout time window
+        iTime = find((xAxisVector >= TopoLayoutOptions.TimeWindow(1)) & (xAxisVector <= TopoLayoutOptions.TimeWindow(2)));
+        % Check for errors
+        if isempty(iTime)
+            error('Invalid time window.');
+        elseif (length(iTime) < 2)
+            if (iTime + 1 <= length(xAxisVector))
+                iTime = [iTime, iTime + 1];
+            elseif (iTime >= 2)
+                iTime = [iTime - 1, iTime];
+            else
+                error('Invalid time window.');
+            end
+        end
+        ixAxis = iTime;
+        % Look for current time in TimeVector
+        iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
+        if isempty(iCurrentX)
+            iCurrentX = 1;
+        end
+    % Handle xAxis as Frequencuy
+    else
+        ixAxis = 1 : length(xAxisVector);
+        iCurrentX = 200;
     end
+
     % Keep only the selected time indices
-    TimeVector = TimeVector(iTime);
-    % Flip Time vector (it's the way the data will be represented too)
-    TimeVector = fliplr(TimeVector);
-    % Look for current time in TimeVector
-    %iCurrentTime = bst_closest(0, TimeVector);
-    iCurrentTime = bst_closest(GlobalData.UserTimeWindow.CurrentTime, TimeVector);
-    if isempty(iCurrentTime)
-        iCurrentTime = 1;
-    end
-    % Normalize time between 0 and 1
-    TimeVector = (TimeVector - TimeVector(1)) ./ (TimeVector(end) - TimeVector(1));
+    xAxisVector = xAxisVector(ixAxis);
+    % Flip x axis vector (it's the way the data will be represented too)
+    xAxisVector = fliplr(xAxisVector);
+    % Flip current position on x axis vector
+    iCurrentX = length(xAxisVector) + 1 - iCurrentX;
+    % Normalize xAxis between 0 and 1
+    xAxisVector = (xAxisVector - xAxisVector(1)) ./ (xAxisVector(end) - xAxisVector(1));
     % Get graphic objects handles
     PlotHandles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
-    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
     isDrawZeroLines   = isempty(PlotHandles.hZeroLines)    || any(~ishandle(PlotHandles.hZeroLines));
     isDrawLines       = isempty(PlotHandles.hLines)        || any(~ishandle(PlotHandles.hLines{1}));
     isDrawLegend      = isempty(PlotHandles.hLabelLegend);
@@ -913,7 +931,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     % Loop on multiple files
     for iFile = 1:length(F)
         % Keep only selected time points
-        F{iFile} = F{iFile}(:, iTime);
+        F{iFile} = F{iFile}(:, ixAxis);
         % Normalize data
         M = double(max(abs(F{iFile}(:))));
         F{iFile} = F{iFile} ./ M;
@@ -935,7 +953,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             % Define lines to trace
             XData  = plotSize(1) * dat(end:-1:1) * DispFactor + Xi;
             Xrange = plotSize(1) * [min(0,datMin), max(0,datMax)] * DispFactor + Xi;
-            YData  = plotSize(2) * (TimeVector - 0.5) + Yi;
+            YData  = plotSize(2) * (xAxisVector - 0.5) + Yi;
             ZData  = 0;
             
             % === DATA LINE ===
@@ -972,13 +990,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 PlotHandles.hZeroLines(i) = line([Xi, Xi], [YData(1), YData(end)], [ZData, ZData], ...
                         'Tag',    '2DLayoutZeroLines', ...
                         'Parent', hAxes);
-                % Time cursor
-                PlotHandles.hCursors(i) = line([Xrange(1), Xrange(2)], [YData(iCurrentTime), YData(iCurrentTime)], [ZData, ZData], ...
+                % X axis cursor
+                PlotHandles.hCursors(i) = line([Xrange(1), Xrange(2)], [YData(iCurrentX), YData(iCurrentX)], [ZData, ZData], ...
                         'Tag',    '2DLayoutTimeCursor', ...
                         'Parent', hAxes);
             else
                 set(PlotHandles.hZeroLines(i),   'XData', [Xi, Xi], 'YData', [YData(1), YData(end)]);
-                set(PlotHandles.hCursors(i), 'XData', [Xrange(1), Xrange(2)], 'YData', [YData(iCurrentTime), YData(iCurrentTime)]);
+                set(PlotHandles.hCursors(i), 'XData', [Xrange(1), Xrange(2)], 'YData', [YData(iCurrentX), YData(iCurrentX)]);
             end
         else
             if ~isempty(PlotHandles.hZeroLines)
@@ -1124,7 +1142,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         end
         % Get data units and time window
         [fScaled, fFactor, fUnits] = bst_getunits( M, DataType );
-        msTime = round(TopoLayoutOptions.TimeWindow * 1000);
         fUnits = strrep(fUnits, 'x10^{', 'e');
         fUnits = strrep(fUnits, '10^{', 'e');
         fUnits = strrep(fUnits, '}', '');
@@ -1139,9 +1156,15 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             strAmp = sprintf('%g', fScaled);
         end
         % Create legend text
-        strLegend = sprintf(['Max amplitude: %s %s\n' ...
-                             'Time window: [%d, %d] ms'], ...
-                            strAmp, fUnits, msTime(1), msTime(2));
+        strLegend = sprintf('Max amplitude: %s %s', strAmp, fUnits);
+        % Time legend
+        if ~isStatic
+            msTime = round(TopoLayoutOptions.TimeWindow * 1000);
+            strLegend = [strLegend 10 sprintf('Time window: [%d, %d] ms', msTime(1), msTime(2))];
+        % Frequency legend
+        else
+            strLegend = [strLegend 10  sprintf('Frequency range: [%d, %d] Hz', 123, 456)];
+        end
         % Update legend
         set(PlotHandles.hLabelLegend, 'String', strLegend, 'Visible', 'on');
         set(PlotHandles.hOverlayLegend, 'Visible', 'on');
@@ -1281,6 +1304,15 @@ function CreateButtons2dLayout(iDS, iFig)
     global GlobalData;
     % Get figure
     hFig  = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    % Callbacks to adjsut x axis
+    if ~getappdata(hFig, 'isStatic')
+        xAxisName   = 'Time';
+        xAxisOption = 'TimeWindow';
+        UpdateTopoXWindow = @UpdateTopoTimeWindow;
+    else
+        xAxisName   = 'Frequency';
+        xAxisOption = 'FreqWindow';
+    end
     % Create scale buttons
     h1 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_UP, ...
         '<HTML><TABLE><TR><TD>Increase gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [+]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>', ...
@@ -1289,14 +1321,14 @@ function CreateButtons2dLayout(iDS, iFig)
         '<HTML><TABLE><TR><TD>Decrease gain</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [-]<BR> &nbsp; [SHIFT + Mouse wheel]</B></TD></TR></TABLE>', ...
         @(h,ev)UpdateTimeSeriesFactor(hFig, .9091), 'ButtonGainMinus');
     h3 = bst_javacomponent(hFig, 'button', [], '...', [], ...
-        'Set time window manually', ...
-        @(h,ev)SetTopoLayoutOptions('TimeWindow'), 'ButtonSetTimeWindow');
+        ['Set ' lower(xAxisName) ' window manually'], ...
+        @(h,ev)SetTopoLayoutOptions(xAxisOption), 'ButtonSetTimeWindow');
     h4 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_LEFT, ...
         '<HTML><TABLE><TR><TD>Horizontal zoom out</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>', ...
-        @(h,ev)UpdateTopoTimeWindow(hFig, .9091), 'ButtonZoomTimePlus');
+        @(h,ev)UpdateTopoXWindow(hFig, .9091), 'ButtonZoomTimePlus');
     h5  = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_RIGHT, ...
         '<HTML><TABLE><TR><TD>Horizontal zoom in</TD></TR><TR><TD>Shortcuts:<BR><B> &nbsp; [CTRL + Mouse wheel]</B></TD></TR></TABLE>', ...
-        @(h,ev)UpdateTopoTimeWindow(hFig, 1.1), 'ButtonZoomTimeMinus');
+        @(h,ev)UpdateTopoXWindow(hFig, 1.1), 'ButtonZoomTimeMinus');
     % Visible / not visible
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
     if ~TopoLayoutOptions.ShowLegend
@@ -1483,6 +1515,24 @@ function SetTopoLayoutOptions(option, value)
             panel_time('SetCurrentTime', (newTimeWindow(2) + newTimeWindow(1)) / 2);
             % Save new time window
             TopoLayoutOptions.TimeWindow = newTimeWindow;
+            isLayout = 1;
+        case 'FreqWindow'
+            % If frequency window is provided
+            if ~isempty(value)
+                newFreqWindow = value;
+            % Else: Ask user for new frequency window
+            else
+                newFreqWindow = panel_freq('InputSelectionWindow', [0, 100], 'Time window in the 2DLayout view:', 'Hz');
+                if isempty(newFreqWindow)
+                    return;
+                end
+            end
+            % Check frequency window consistency
+            %newTimeWindow = bst_saturate(newFreqWindow, GlobalData.UserTimeWindow.Time, 1);
+            % Set the current time to the center of this new time window
+            %panel_time('SetCurrentTime', (newTimeWindow(2) + newTimeWindow(1)) / 2);
+            % Save new time window
+            TopoLayoutOptions.FreqWindow = newFreqWindow;
             isLayout = 1;
         case 'WhiteBackground'
             TopoLayoutOptions.WhiteBackground = value;
