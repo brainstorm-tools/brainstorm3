@@ -50,12 +50,8 @@ function CurrentFreqChangedCallback(iDS, iFig) %#ok<DEFNU>
     if getappdata(hFig, 'isStaticFreq')
         return;
     end
-    % If no time (spectrum) in this figure
-    if getappdata(hFig, 'isStatic') && strcmpi(TopoType, '2DLayout')
-        return;
-    end
     % Update frequency to display
-    if ~isempty(TfInfo)
+    if ~isempty(TfInfo) && strcmpi(TopoType, '2DLayout') && ~getappdata(hFig, 'isStatic')
         TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
         setappdata(hFig, 'Timefreq', TfInfo);
     end
@@ -848,7 +844,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         % Look for current time in TimeVector
         iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
     else
-        iCurrentX = bst_closest(GlobalData.UserFrequencies.iCurrentFreq, [1:length(xAxisVector)]);
+        iCurrentX = bst_closest(GlobalData.UserFrequencies.iCurrentFreq, fliplr(1:length(xAxisVector)));
     end
     % Current position
     if isempty(iCurrentX)
@@ -1557,8 +1553,8 @@ function SetTopoLayoutOptions(option, value)
             end
             % Check frequency window consistency
             newFreqWindow = bst_saturate(newFreqWindow, tmp, 1);
-            % Set the current frequency to the center of this new frequency window
-            panel_freq('SetCurrentFreq', (newFreqWindow(2) + newFreqWindow(1)) / 2, 0);
+            newFreqPosition = bst_saturate(GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq), newFreqWindow);
+            panel_freq('SetCurrentFreq', newFreqPosition, 0);
             % Save new frequency window
             TopoLayoutOptions.FreqWindow = newFreqWindow;
             isLayout = 1;
