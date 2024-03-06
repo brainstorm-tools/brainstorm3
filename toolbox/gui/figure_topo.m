@@ -817,38 +817,43 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             winLen = (TopoLayoutOptions.TimeWindow(2) - TopoLayoutOptions.TimeWindow(1));
             TopoLayoutOptions.TimeWindow = bst_saturate(GlobalData.UserTimeWindow.CurrentTime + winLen ./ 2 .* [-1, 1] , GlobalData.UserTimeWindow.Time, 1);
         end
-        % Get only the 2DLayout time window
-        iTime = find((xAxisVector >= TopoLayoutOptions.TimeWindow(1)) & (xAxisVector <= TopoLayoutOptions.TimeWindow(2)));
-        % Check for errors
-        if isempty(iTime)
-            error('Invalid time window.');
-        elseif (length(iTime) < 2)
-            if (iTime + 1 <= length(xAxisVector))
-                iTime = [iTime, iTime + 1];
-            elseif (iTime >= 2)
-                iTime = [iTime - 1, iTime];
-            else
-                error('Invalid time window.');
-            end
-        end
-        ixAxis = iTime;
-        % Look for current time in TimeVector
-        iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
-        if isempty(iCurrentX)
-            iCurrentX = 1;
-        end
-    % Handle xAxis as Frequencuy
+        xWindow = TopoLayoutOptions.TimeWindow;
     else
-        ixAxis = 1 : length(xAxisVector);
-        iCurrentX = 200;
+        % Default freq window: all spectrum
+        if isempty(TopoLayoutOptions.FreqWindow)
+            TopoLayoutOptions.FreqWindow = [xAxisVector(1), xAxisVector(end)];
+        end
+        xWindow = TopoLayoutOptions.FreqWindow;
     end
 
+    % Get only requested x axis window
+    ixAxis = find((xAxisVector >= xWindow(1)) & (xAxisVector <= xWindow(2)));
+    % Check for errors
+    if isempty(ixAxis)
+        error('Invalid x-axis window.');
+    elseif (length(ixAxis) < 2)
+        if (ixAxis + 1 <= length(xAxisVector))
+            ixAxis = [ixAxis, ixAxis + 1];
+        elseif (ixAxis >= 2)
+            ixAxis = [ixAxis - 1, ixAxis];
+        else
+            error('Invalid x-axis window.');
+        end
+    end
     % Keep only the selected time indices
     xAxisVector = xAxisVector(ixAxis);
     % Flip x axis vector (it's the way the data will be represented too)
     xAxisVector = fliplr(xAxisVector);
-    % Flip current position on x axis vector
-    iCurrentX = length(xAxisVector) + 1 - iCurrentX;
+    if ~isStatic
+        % Look for current time in TimeVector
+        iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
+    else
+        iCurrentX = bst_closest(GlobalData.UserFrequencies.iCurrentFreq, [1:length(xAxisVector)]);
+    end
+    % Current position
+    if isempty(iCurrentX)
+        iCurrentX = 1;
+    end
     % Normalize xAxis between 0 and 1
     xAxisVector = (xAxisVector - xAxisVector(1)) ./ (xAxisVector(end) - xAxisVector(1));
     % Get graphic objects handles
@@ -1163,7 +1168,8 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             strLegend = [strLegend 10 sprintf('Time window: [%d, %d] ms', msTime(1), msTime(2))];
         % Frequency legend
         else
-            strLegend = [strLegend 10  sprintf('Frequency range: [%d, %d] Hz', 123, 456)];
+            hzFreq = round(TopoLayoutOptions.FreqWindow * 100) / 100;
+            strLegend = [strLegend 10  sprintf('Frequency range: [%s, %s] Hz', num2str(hzFreq(1)), num2str(hzFreq(2)))];
         end
         % Update legend
         set(PlotHandles.hLabelLegend, 'String', strLegend, 'Visible', 'on');
@@ -1312,6 +1318,7 @@ function CreateButtons2dLayout(iDS, iFig)
     else
         xAxisName   = 'Frequency';
         xAxisOption = 'FreqWindow';
+        UpdateTopoXWindow = @UpdateTopoFreqWindow;
     end
     % Create scale buttons
     h1 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_UP, ...
@@ -1487,6 +1494,26 @@ function UpdateTopoTimeWindow(hFig, changeFactor)
 end
 
 
+%% ===== UPDATE FREQUENCY AXIS FACTOR =====
+function UpdateTopoFreqWindow(hFig, changeFactor)
+    global GlobalData;
+    % Get current time window
+    TopoLayoutOptions = bst_get('TopoLayoutOptions');
+    tmp = [GlobalData.UserFrequencies.Freqs(1), GlobalData.UserFrequencies.Freqs(end)];
+    % If the window hasn't been changed yet: ignore
+    if isempty(TopoLayoutOptions.FreqWindow)
+        TopoLayoutOptions.FreqWindow = tmp;
+    end
+    % Apply zoom factor
+    Xlength = TopoLayoutOptions.FreqWindow(2) - TopoLayoutOptions.FreqWindow(1);
+    newTimeWindow = GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq) + Xlength/changeFactor/2 * [-1, 1];
+    % New time window cannot exceed initial time window
+    newTimeWindow = bst_saturate(newTimeWindow, tmp, 1);
+    % Set new time window
+    SetTopoLayoutOptions('FreqWindow', newTimeWindow);
+end
+
+
 %% ===== SET 2DLAYOUT OPTIONS =====
 function SetTopoLayoutOptions(option, value)
     global GlobalData;
@@ -1517,21 +1544,22 @@ function SetTopoLayoutOptions(option, value)
             TopoLayoutOptions.TimeWindow = newTimeWindow;
             isLayout = 1;
         case 'FreqWindow'
+            tmp = [GlobalData.UserFrequencies.Freqs(1), GlobalData.UserFrequencies.Freqs(end)];
             % If frequency window is provided
             if ~isempty(value)
                 newFreqWindow = value;
             % Else: Ask user for new frequency window
             else
-                newFreqWindow = panel_freq('InputSelectionWindow', [0, 100], 'Time window in the 2DLayout view:', 'Hz');
+                newFreqWindow = panel_freq('InputSelectionWindow', tmp, 'Time window in the 2DLayout view:', 'Hz');
                 if isempty(newFreqWindow)
                     return;
                 end
             end
             % Check frequency window consistency
-            %newTimeWindow = bst_saturate(newFreqWindow, GlobalData.UserTimeWindow.Time, 1);
-            % Set the current time to the center of this new time window
-            %panel_time('SetCurrentTime', (newTimeWindow(2) + newTimeWindow(1)) / 2);
-            % Save new time window
+            newFreqWindow = bst_saturate(newFreqWindow, tmp, 1);
+            % Set the current frequency to the center of this new frequency window
+            panel_freq('SetCurrentFreq', (newFreqWindow(2) + newFreqWindow(1)) / 2, 0);
+            % Save new frequency window
             TopoLayoutOptions.FreqWindow = newFreqWindow;
             isLayout = 1;
         case 'WhiteBackground'
