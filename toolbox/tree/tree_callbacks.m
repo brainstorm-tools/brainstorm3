@@ -2340,6 +2340,20 @@ switch (lower(action))
                     else
                         gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                     end
+                else
+                    % Display of multiple files
+                    if ~isempty(DisplayMod)
+                        % === 2DLAYOUT ===
+                        mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
+                        if (length(mod2D) == 1)
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' mod2D{1}], IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes), mod2D{1}, '2DLayout'));
+                        elseif (length(mod2D) > 1)
+                            jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
+                            for iMod = 1:length(mod2D)
+                                gui_component('MenuItem', jMenu2d, [], mod2D{iMod}, IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes), mod2D{iMod}, '2DLayout'));
+                            end
+                        end
+                    end
                 end
                 % Project sources
                 if strcmpi(DataType, 'results') && ~strcmpi(nodeType, 'ptimefreq') && isempty(strfind(filenameRelative, '_KERNEL_'))

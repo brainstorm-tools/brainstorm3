@@ -337,7 +337,14 @@ function [F, xAxis, selChan, overlayLabels, dispNames, StatThreshUnder, StatThre
                         StatThreshUnder = GlobalData.DataSet(iDS).Measures.StatThreshUnder;
                     end
                 case 'timefreq'
-                    % Get timefreq values
+                    [sStudy, iStudy, iTimefreq] = bst_get('TimefreqFile', ReadFiles{iFile});
+                    if ~isempty(sStudy)
+                        overlayLabels{iFile} = sStudy.Timefreq(iTimefreq).Comment;
+                    end
+                    % Get loaded timefreq values (only first file DS is the same as Fig)
+                    TfInfo = getappdata(hFig, 'Timefreq');
+                    TfInfo.FileName = file_short(ReadFiles{iFile});
+                    setappdata(hFig, 'Timefreq', TfInfo);
                     [Time, Freqs, TfInfo, TF, RowNames] = figure_timefreq('GetFigureData', hFig, TimeDef);
                     xAxis = Time;      % TF map
                     isStatic = getappdata(hFig, 'isStatic');
@@ -374,6 +381,9 @@ function [F, xAxis, selChan, overlayLabels, dispNames, StatThreshUnder, StatThre
                     end
             end
         end
+        % Reset TfInof with first TF file
+        TfInfo.FileName = file_short(ReadFiles{1});
+        setappdata(hFig, 'Timefreq', TfInfo);
     end
     % Get time if required and not defined yet
     if (nargout >= 2) && isempty(xAxis) &&  ismember(lower(TopoInfo.FileType), {'data', 'pdata'})
