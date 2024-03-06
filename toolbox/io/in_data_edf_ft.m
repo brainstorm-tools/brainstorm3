@@ -26,6 +26,11 @@ function [sFile, ChannelMat, DataMat]= in_data_edf_ft(DataFile)
     sFile = '';
     [~, filename, ~] = fileparts(DataFile);
 
+    [isInstalled, ~] = bst_plugin('Install', 'fieldtrip', 1);
+    if ~isInstalled
+        error('Plugin "Fieldtrip" not available.');
+    end
+
     % Load using fieldtrip 
     data = edf2fieldtrip(DataFile);
     
