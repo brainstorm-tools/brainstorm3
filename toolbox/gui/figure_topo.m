@@ -942,13 +942,17 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
     % Loop on multiple files
+    Ms = zeros(1, length(F));
     for iFile = 1:length(F)
         % Keep only selected time points
         F{iFile} = F{iFile}(:, ixAxis);
-        % Normalize data
+        % Find maximum
         M = double(max(abs(F{iFile}(:))));
-        F{iFile} = F{iFile} ./ M;
+        Ms(iFile) = M;
     end
+    % Normalize data
+    M = max(Ms);
+    F = cellfun(@(c)rdivide(c, M), F, 'UniformOutput', 0);
 
     % Draw each sensor
     displayedLabels = {};
