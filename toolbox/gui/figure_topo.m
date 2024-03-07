@@ -1514,11 +1514,11 @@ function UpdateTopoFreqWindow(hFig, changeFactor)
     end
     % Apply zoom factor
     Xlength = TopoLayoutOptions.FreqWindow(2) - TopoLayoutOptions.FreqWindow(1);
-    newTimeWindow = GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq) + Xlength/changeFactor/2 * [-1, 1];
+    newFreqWindow = GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq) + Xlength/changeFactor/2 * [-1, 1];
     % New time window cannot exceed initial time window
-    newTimeWindow = bst_saturate(newTimeWindow, tmp, 1);
+    newFreqWindow = bst_saturate(newFreqWindow, tmp, 1);
     % Set new time window
-    SetTopoLayoutOptions('FreqWindow', newTimeWindow);
+    SetTopoLayoutOptions('FreqWindow', newFreqWindow);
 end
 
 
