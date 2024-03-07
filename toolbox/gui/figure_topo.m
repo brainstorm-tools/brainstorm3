@@ -856,7 +856,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         % Look for current time in TimeVector
         iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
     else
-        iCurrentX = bst_closest(GlobalData.UserFrequencies.iCurrentFreq, fliplr(1:length(xAxisVector)));
+        iCurrentX = bst_closest(GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq), xAxisVector);
     end
     % Current position
     if isempty(iCurrentX)
