@@ -2828,6 +2828,10 @@ function LinkCatSpm(Action)
         if isempty(PlugCat) || ~PlugCat.isLoaded
             error('Plugin CAT12 is not loaded.');
         end
+        % Return if installation is not complete yet (first load before installation ends)
+        if isempty(PlugCat.InstallDate)
+            return
+        end
         % Define source and target for the link
         if ~isempty(PlugCat.SubFolder)
             linkTarget = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
