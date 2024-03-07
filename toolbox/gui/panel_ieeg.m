@@ -1189,7 +1189,10 @@ end
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
     % Get current figure
-    [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
+    [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType', 'MriViewer');
+    if isempty(hFigall)
+        [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
+    end
     % Check if there are electrodes defined for this file
     if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
         sElectrodes = [];
@@ -2904,13 +2907,6 @@ end
 function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
 
-    % ask user if they want to set the tip from 3D Viz or MRI Viewer
-    SelWindow = java_dialog('question', 'Please select the Viewer over which you want to set the point', ...
-                              'Choose Viewer', [], {'MriViewer', '3DViz'});
-    if isempty(SelWindow)
-        SelWindow = 'MriViewer';
-    end
-
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
 
@@ -2928,14 +2924,8 @@ function SetElectrodeLoc(iLoc, jButton)
         return;
     end
 
-    if strcmpi(SelWindow, 'MriViewer')
-        sMri = panel_surface('GetSurfaceMri', hFig(1));
-        XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
-    else
-        hFig1 = bst_figures('GetFiguresByType', '3DViz');
-        CoordinatesSelector = getappdata(hFig1, 'CoordinatesSelector');
-        XYZ = CoordinatesSelector.SCS;
-    end
+    sMri = panel_surface('GetSurfaceMri', hFig(1));
+    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
 
     % If SCS coordinates are not available
     if isempty(XYZ)
