@@ -1152,8 +1152,8 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             end
         end
         % Get data type
-        if isappdata(hFig, 'Timefreq')
-            DataType = 'timefreq';
+        if isappdata(hFig, 'Timefreq') && ~isStatic
+            DataType = 'Timefreq';
         else
             DataType = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
         end
@@ -1164,6 +1164,17 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         fUnits = strrep(fUnits, '}', '');
         fUnits = strrep(fUnits, '\mu', 'u');
         fUnits = strrep(fUnits, '\Delta', 'd');
+        % Handle units for PSD
+        if isappdata(hFig, 'Timefreq') && isStatic
+            TfInfo = getappdata(hFig, 'Timefreq');
+            if isempty(TfInfo.Normalized) && (~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits))
+                switch lower(TfInfo.Function)
+                    case 'power',      fUnits = [fUnits '^2/Hz']; fScaled = fScaled * fFactor;
+                    case 'magnitude',  fUnits = [fUnits '/sqrt(Hz)'];
+                    case 'log',        fUnits = 'dB';
+                end
+            end
+        end
         % Round values if large values
         if (fScaled > 5)
             strAmp = sprintf('%d', round(fScaled));
