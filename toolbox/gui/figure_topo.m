@@ -381,9 +381,11 @@ function [F, xAxis, selChan, overlayLabels, dispNames, StatThreshUnder, StatThre
                     end
             end
         end
-        % Reset TfInof with first TF file
-        TfInfo.FileName = file_short(ReadFiles{1});
-        setappdata(hFig, 'Timefreq', TfInfo);
+        % Reset TfInfo with first TF file
+        if strcmpi(TopoInfo.FileType, 'timefreq')
+            TfInfo.FileName = file_short(ReadFiles{1});
+            setappdata(hFig, 'Timefreq', TfInfo);
+        end
     end
     % Get time if required and not defined yet
     if (nargout >= 2) && isempty(xAxis) &&  ismember(lower(TopoInfo.FileType), {'data', 'pdata'})
