@@ -1249,7 +1249,7 @@ function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(sele
     sContactsName = [];
     ChannelData = GlobalData.DataSet(iDSall).Channel;
     for i=1:length(ChannelData)
-        if ChannelData(i).Group == selectedElecName
+        if strcmpi(ChannelData(i).Group, selectedElecName)
             sContacts = [sContacts, ChannelData(i).Loc];
             sContactsName = [sContactsName, {ChannelData(i).Name}];
         end
