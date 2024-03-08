@@ -2906,6 +2906,7 @@ function SetElectrodeLoc(iLoc, jButton)
 
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+    MriIdx = 1;
 
     if isempty(sSelElec)
     	bst_error('No electrode seleced.', 'Set electrode position', 0);
@@ -2913,16 +2914,20 @@ function SetElectrodeLoc(iLoc, jButton)
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    % elseif ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Type, 'MriViewer')
-    %     bst_error('Position must be set from the MRI viewer.', 'Set electrode position', 0);
-    %     return;
+    elseif ~strcmpi(GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Id.Type, 'MriViewer')
+        if length(hFig) == 1
+            bst_error('MRI viewer must be open', 'Set electrode position', 0);
+            return;
+        end
+        MriIdx = 2;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-
-    sMri = panel_surface('GetSurfaceMri', hFig(1));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Handles);
+    
+    
+    sMri = panel_surface('GetSurfaceMri', hFig(MriIdx));
+    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Handles);
 
     % If SCS coordinates are not available
     if isempty(XYZ)
