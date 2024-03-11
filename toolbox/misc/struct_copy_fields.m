@@ -35,6 +35,12 @@ elseif isempty(sDest)
 else
     namesSrc = fieldnames(sSrc);
     for i = 1:length(namesSrc)
+        % if subfield are both structure, we do a "deep copy"
+        if isfield(sDest, namesSrc{i}) && isstruct(sDest.(namesSrc{i})) && isfield(sSrc, namesSrc{i}) && isstruct(sSrc.(namesSrc{i}))
+             sDest.(namesSrc{i})  = struct_copy_fields(sDest.(namesSrc{i}), sSrc.(namesSrc{i}), override);
+             continue;
+        end
+
         if override || ~isfield(sDest, namesSrc{i})
             sDest.(namesSrc{i}) = sSrc.(namesSrc{i});
         end
