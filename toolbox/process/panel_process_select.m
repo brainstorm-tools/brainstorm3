@@ -3020,7 +3020,7 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                     % Radio button: check the index of the selection
                     if ismember(option.Type, {'radio','radio_line'}) && (savedOpt > length(option.Comment))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(savedOpt, option.Comment(2,:))
+                    elseif strcmpi(option.Type, 'radio_label') && ~isnumeric(savedOpt) && ~ismember(savedOpt, option.Comment(2,:))
                         % Error: ignoring previous option
                     elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(savedOpt, option.Comment(2,1:end-1))
                         % Error: ignoring previous option
