@@ -262,7 +262,7 @@ switch (FileFormat)
         FileUnits = 'cm';
         
     case 'LOCALITE'
-        ChannelMat = in_channel_ascii(ChannelFile, {'%d','name','X','Y','Z'}, 1, .001);
+        ChannelMat = in_channel_ascii(ChannelFile, {'%d','nameWithSpace','X','Y','Z'}, 1, .001);
         ChannelMat.Comment = 'Localite channels';
         FileUnits = 'mm';
 
