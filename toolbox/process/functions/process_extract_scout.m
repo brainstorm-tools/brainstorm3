@@ -55,11 +55,11 @@ function sProcess = GetDescription()
     sProcess.options.flatten.Value      = 1;
     sProcess.options.flatten.InputTypes = {'results'};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Power', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
-                                             'mean', 'power', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Power', 'Max', 'PCA', 'Std', 'RMS', 'All', 'Scout function:'; ...
+                                             'mean', 'power', 'max', 'pca', 'std', 'rms', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'pca';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'power', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca');
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'power', 'notpca', 'max', 'notpca', 'std', 'notpca', 'rms', 'notpca', 'all', 'notpca');
     % === PCA Options
     sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
     sProcess.options.pcaedit.Type    = 'editpref';
@@ -151,6 +151,7 @@ function OutputFiles = Run(sProcess, sInputs)
             case {4, 'std'},    ScoutFunc = 'std';
             case {5, 'all'},    ScoutFunc = 'all';
             case {6, 'power'},  ScoutFunc = 'power';
+            case {7, 'rms'},    ScoutFunc = 'rms';
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
