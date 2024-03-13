@@ -251,10 +251,10 @@ for iEvt = 1:length(jnirs.nirs.stim)
     end    
     % Get timing
     
-    if size(jnirs.nirs.stim(iEvt).data,2) >  size(jnirs.nirs.stim(iEvt).data,1)
+    if size(jnirs.nirs.stim(iEvt).data,1) > 1 && size(jnirs.nirs.stim(iEvt).data,2) >  size(jnirs.nirs.stim(iEvt).data,1)
         jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
     end    
-    
+
     isExtended = ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
     if isExtended
         evtTime = [jnirs.nirs.stim(iEvt).data(:,1) ,  ...
