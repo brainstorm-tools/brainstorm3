@@ -586,6 +586,7 @@ function CreateMenuFunction(jMenu)
     jMenuNorm = gui_component('RadioMenuItem', jMenu, [], 'Mean(norm)', [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean_norm'));
     jMenuMax  = gui_component('RadioMenuItem', jMenu, [], 'Max',        [], [], @(h,ev)bst_call(@SetScoutFunction,'Max'));
     jMenuPow  = gui_component('RadioMenuItem', jMenu, [], 'Power',      [], [], @(h,ev)bst_call(@SetScoutFunction,'Power'));
+    jMenuRms  = gui_component('RadioMenuItem', jMenu, [], 'RMS',        [], [], @(h,ev)bst_call(@SetScoutFunction,'RMS'));
     jMenuAll  = gui_component('RadioMenuItem', jMenu, [], 'All',        [], [], @(h,ev)bst_call(@SetScoutFunction,'All'));
     % Get the selected functions
     allFun = unique({sScouts.Function});
@@ -600,6 +601,7 @@ function CreateMenuFunction(jMenu)
         case 'Mean_norm', jMenuNorm.setSelected(1);
         case 'Max',       jMenuMax.setSelected(1);
         case 'Power',     jMenuPow.setSelected(1);
+        case 'RMS',       jMenuRms.setSelected(1);
         case 'All',       jMenuAll.setSelected(1);
     end
 end
