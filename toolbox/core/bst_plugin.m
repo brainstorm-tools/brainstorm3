@@ -696,6 +696,8 @@ function [PlugDesc, Err] = ParseJson(PlugJson)
         if isstruct(plugin_struct) % One plugin inside the file 
             PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct, 1); % same as existing struct
             PlugDescDecode.Category = 'Custom Plugin';
+            PlugDescDecode.Name = lower(PlugDescDecode.Name);
+
             if ~Validate(PlugDescDecode)
                 throw(MException('Plugin:InvalidPlugin','The structure of the plugin is invalid')); 
             end
@@ -736,6 +738,22 @@ end
 function [isOk, Err] = AddCustom(plugin_file)
     isOk    = 1; 
     Err     = '';
+
+    if nargin < 1 
+        plugin_file = java_dialog('input', 'Enter the adress or path to the plugin description file (.json)', 'Custom Plugin File', [], '');
+        if isempty(plugin_file) 
+            return
+        end
+        res = java_dialog('question', ['Warning: This plugin has not been verified.' 10 ...
+                                       'Malicious Plugins can alter your databse, proceed with caution and only install plugins from trusted sources.' 10 ...
+                                       'If any unusual behavior occurs after installation, start by uninstalling the plugins.' 10 ...
+                                       'Are you sure you want to proceed?'], ...
+                          'Warning', [], {'yes', 'no'});
+
+       if strcmp(res, 'no')
+           return
+       end
+    end
 
     if strcmp(plugin_file(1:4),'http') &&  strcmp(plugin_file(end-4:end),'.json')  
         % if from github, we convert the link to load the raw content 
@@ -2527,6 +2545,7 @@ function j = MenuCreate(jMenu, fontSize)
     if ~isCompiled
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
+        gui_component('MenuItem', jMenu, [], 'Add custom Plugin', IconLoader.ICON_EDIT, [], @(h,ev)AddCustom, fontSize);
     end
 end
 
