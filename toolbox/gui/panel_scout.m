@@ -485,6 +485,7 @@ function UpdateMenus(sAtlas, sSurf)
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,     [], @(h,ev)bst_call(@RemoveScouts));
         gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,     [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Duplicate',    IconLoader.ICON_COPY,       [], @(h,ev)bst_call(@DuplicateScouts));
         gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,      [], @(h,ev)bst_call(@DifferenceScouts));
         gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
@@ -3769,6 +3770,37 @@ function IntersectScouts(varargin)
     UpdateScoutsList();
     % Select last scout in list (new scout)
     SetSelectedScouts(iNewScout);
+end
+
+%% ===== DUPLICATE SCOUTS =====
+% Duplicate scouts selected in the JList
+function DuplicateScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    % New scout template
+    sNewScout = db_template('scout');
+
+    % === Copy scouts ===
+    sNewScouts = sScouts;
+    % Update new scouts name and reset handles
+    for i = 1:length(sNewScouts)
+        sNewScouts(i).Label = [sScouts(i).Label '_copy'];
+        sNewScouts(i).Handles = sNewScout.Handles;
+    end
+    % Save new scouts
+    iNewScouts = SetScouts([], 'Add', sNewScouts);
+    % Display new scouts
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select new scouts in list
+    SetSelectedScouts(iNewScouts);
 end
 
 %% ===============================================================================
