@@ -188,8 +188,19 @@ if ~isempty(pos_file)
     HeadMat = in_channel_pos(pos_file);
     % Copy head points
     ChannelMat.HeadPoints = HeadMat.HeadPoints;
+    isAlign = true;
+    % Warn if unsure about coordinate system. Should now be converted to "Native" CTF coil-based
+    % when HPI points are present when loading the pos file.
+    if ~isfield(HeadMat, 'TransfMegLabels') || ~iscell(HeadMat.TransfMegLabels) || isempty(HeadMat.TransfMegLabels)
+        disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');
+    elseif ismember('Native=>Brainstorm/CTF', HeadMat.TransfMegLabels)
+        disp('BST> Warning: head point coordinates appear to already be in SCS, presumably because of missing digitized head coils.');
+        isAlign = false;
+    elseif ~ismember('RawPoints=>Native', HeadMat.TransfMegLabels)
+        disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');
+    end
     % Force re-alignment on the new set of NAS/LPA/RPA (switch from CTF coil-based to SCS anatomical-based coordinate system)
-    ChannelMat = channel_detect_type(ChannelMat, 1, 0);
+    ChannelMat = channel_detect_type(ChannelMat, isAlign, 0);
 end
 
 %% ===== READ HC FILE =====
