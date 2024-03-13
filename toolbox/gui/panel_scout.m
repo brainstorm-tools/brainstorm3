@@ -1023,9 +1023,18 @@ function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     end
     % If it is an "official" atlas: read-only
     if ismember(lower(sAtlas.Name), {...
-            'brainvisa_tzourio-mazoyer', ... % Old default anatomy
-            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ... % Old default anatomy
-            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'structures'})  % New freesurf
+            ... % Old default anatomy
+            'brainvisa_tzourio-mazoyer', ...
+            ... % Old default anatomy
+            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ...
+            ... % New default anatomy (2023b)
+            ... % https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy#FreeSurfer_templates
+            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'vcatlas', 'structures', ... % FreeSurfer
+            'brainnetome', 'hcp_mmp1', 'oasis cortical hubs', ...                                         % Brainnetome, HCP-MMP1.0, OASIS
+            'pals-b12 brodmann', 'pals-b12 lobes', 'pals-b12 orbito-frontal', 'pals-b12 visuotopic', ...  % PALS-B12
+            'schaefer_100_17net', 'schaefer_200_17net', 'schaefer_400_17net', 'schaefer_600_17net',...    % Schaefer2018 17 networks
+            'schaefer_100_7net', ' schaefer_200_7net',  'schaefer_400_7net',  'schaefer_600_7net',...     % Schaefer2018  7 networks
+            })
         if isInteractive
             java_dialog('warning', [...
                 'This atlas is a reference and cannot be modified or deleted.' 10 10 ...
