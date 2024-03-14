@@ -738,12 +738,9 @@ function HighlightLocCont() %#ok<DEFNU>
     % coordinates are in SCS
     selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))] ./ 1000;
 
-    % coordinate space 
-    plotLocMri = cs_convert(sMri, 'scs', 'mri', selCoordScs);
-
     % ===== FOR MRI =====
     % update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'mri', hFig, [], plotLocMri);    
+    figure_mri('SetLocation', 'scs', hFig, [], selCoordScs);    
 end
 
 %% ===== GET SELECTED ELECTRODES =====
