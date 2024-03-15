@@ -202,8 +202,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, [], 'No channel file selected.');
             return
         end
-        % Load channel file
-        ChannelMat = in_bst_channel(ChannelFile);
+        % Channel file to be loaded in channel_add_loc()
+        ChannelMat = ChannelFile;
     else
         isMni = 0;
     end
