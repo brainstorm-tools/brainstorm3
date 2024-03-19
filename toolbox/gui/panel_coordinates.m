@@ -302,7 +302,7 @@ end
 %% ===== SELECT POINT =====
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFIg
 function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
-    if (nargin < 3) || isempty(AcceptMri)
+    if (nargin < 3) || isempty(isCentroid)
         isCentroid = 0;
     end
     if (nargin < 2) || isempty(AcceptMri)
@@ -335,7 +335,11 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
             
         case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
-            scsLoc = sSurf.Vertices(vi,:);
+            if ~isCentroid
+                scsLoc = sSurf.Vertices(vi,:);
+            else
+                scsLoc = vout';
+            end
             plotLoc = vout;
             iVertex = vi;
             % Get value
@@ -376,7 +380,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     
     % ===== CONVERT TO ALL COORDINATES SYSTEMS =====
     % Save selected point
-    CoordinatesSelector.SCS     = plotLoc;
+    CoordinatesSelector.SCS     = scsLoc;
     CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', scsLoc);
     CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', scsLoc);
     CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', scsLoc);
@@ -390,7 +394,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     % Remove previous mark
     delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(CoordinatesSelector.SCS(1), CoordinatesSelector.SCS(2), CoordinatesSelector.SCS(3), ...
+    line(plotLoc(1)*1.005, plotLoc(2)*1.005, plotLoc(3)*1.005, ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          '+',  ...
@@ -400,12 +404,15 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
-    ViewInMriViewer();
+    % Open MRI viewer for SEEG
+    if isCentroid
+        ViewInMriViewer();
+    end
 end
 
 
 %% ===== POINT SELECTION: Surface detection =====
-function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)
+function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)     
     % Parse inputs
     if (nargin < 3)
         isCentroid = 0;
@@ -448,11 +455,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
-            % find center of a blob
+            % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
-                VertexList = [];
-                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), VertexList, 1, 6);
-                vout{i} = mean(sSurf.Vertices(VertexList(:), :));
+                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :)); % SCS of the centroid
+                vi{i} = []; % No surface vertex associated to centroid
             end
         else
             patchDist(i) = Inf;
@@ -483,19 +490,18 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
 end
 
 %% ===== FIND CENTROID OF A MESH BLOB =====
-% finds the centroid of the selected contact blob from the isosurface using flood-fill alogrithm
+% Find the centroid of the selected contact blob from the isosurface using flood-fill alogrithm
 % NOTE: currently used mainly for SEEG contact localization from thresholded isosurface
 function VertexList = FindCentroid(Surface, VertConnList, VertexList, cnt, cntThresh)
     if cnt == cntThresh
         return;
-    else
-        for i=1:length(VertConnList)
-            if ~any(VertexList(:) == VertConnList(i))
-                VertexList = [VertexList, VertConnList(i)];
-                VertConnListTemp = find(Surface.VertConn(VertConnList(i),:));
-                VertexList = FindCentroid(Surface, VertConnListTemp, VertexList, cnt, cntThresh);
-                cnt = cnt + 1;
-            end
+    end
+    for i=1:length(VertConnList)
+        if ~any(VertexList(:) == VertConnList(i))
+            VertexList = [VertexList, VertConnList(i)];
+            VertConnListTemp = find(Surface.VertConn(VertConnList(i),:));
+            VertexList = FindCentroid(Surface, VertConnListTemp, VertexList, cnt, cntThresh);
+            cnt = cnt + 1;
         end
     end
 end
@@ -544,7 +550,7 @@ function ViewInMriViewer(varargin)
         hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
     % Select the required point
-    figure_mri('SetLocation', 'scs', hFig, [], CoordinatesSelector.SCS);
+    figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
 end
 
 
