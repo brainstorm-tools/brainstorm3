@@ -3170,32 +3170,20 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
     if (nargin < 2) || isempty(hFig)
         hFig = [];
     end 
-
-    % making sure subject and its surface exist
+    % Check that Subject exists and has surfaces
     if  isempty(Subject) || isempty(Subject.Surface)
         return;
     end
-
-    
-    % making sure isosurface exists
-    for i=1:length(Subject.Surface)
-        if ~isempty(regexp(Subject.Surface(i).FileName, 'isosurface', 'match'))
-            isIsosurfaceExist = i;
-        else
-            isIsosurfaceExist = 0;
-        end
+    % Find isosurface
+    ixIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {Subject.Surface.FileName}));
+    % Return if not isosurfaces
+    if isempty(ixIsoSurf)
+        return
     end
-
-    % Display mesh with 3D orthogonal slices of the default MRI only if it is an isosurface
-    if isIsosurfaceExist
-        if isempty(hFig)
-            MriFile = Subject.Anatomy(1).FileName;
-            hFig = view_mri_3d(MriFile, [], 0.3, []);
-        end
-        [hFig, iDS, iFig] = view_surface(Subject.Surface(isIsosurfaceExist).FileName, 0.6, [], hFig, []);
-    else
-        return;
+    if isempty(hFig)
+        hFig = view_mri_3d(Subject.Anatomy(1).FileName, [], 0.3, []);
     end
+    [hFig, iDS, iFig] = view_surface(Subject.Surface(ixIsoSurf(1)).FileName, 0.6, [], hFig, []);
 end
 
 %% ===== EXPORT CONTACT POSITIONS =====
