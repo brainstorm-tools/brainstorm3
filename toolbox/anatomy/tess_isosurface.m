@@ -155,18 +155,12 @@ if isSave
     % Get the mesh file
     MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
 
-    % ===== if the mesh file is already present, delete the file, update database, and update node (this only happens if it is not server mode) ======
-    % ===== discussion: https://neuroimage.usc.edu/forums/t/access-a-surface-from-an-anatomy-node-while-on-functional-tab/45004 =====
-    % Get info for surface file
+    % Replace existing isoSurface surface (tess_isosurface.mat)
     [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
     if ~isempty(iSurfaceTmp)
-        % Delete surface
         file_delete(file_fullpath(MeshFile), 1);
-        % Update database structure
         sSubjectTmp.Surface(iSurfaceTmp) = [];
         bst_set('Subject', iSubjectTmp, sSubjectTmp);
-        % Update display
-        panel_protocols('UpdateNode', 'Subject', iSubjectTmp);
     end
     
     % Save isosurface
