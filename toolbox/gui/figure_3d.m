@@ -613,7 +613,7 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinates
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
-                % for SEEG, making sure centroid calculation for plotting contacts is active
+                % For SEEG, making sure centroid calculation for plotting contacts is active
                 if gui_brainstorm('isTabVisible', 'iEEG')
                     panel_coordinates('SelectPoint', hFig, 0, 1);
                 else
@@ -827,7 +827,7 @@ function FigureMouseUpCallback(hFig, varargin)
                     % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
                     if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
                         selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
-                        % highlight the electrode and contacts
+                        % Highlight the electrode and contacts
                         panel_ieeg('SetSelectedElectrodes', selGroup);
                         panel_ieeg('SetSelectedContacts', SelChan);
                     end
@@ -1597,7 +1597,7 @@ function DisplayFigurePopup(hFig)
     end
     % Only for MEG and EEG time series
     Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;  
-    FigureType = GlobalData.DataSet(iDS).Figure(iFig).Id.Type;
+    FigureType = GlobalData.DataSet(iDS).Figure(iFig).Id.Type;  
     if ~isempty(DataFile) && ~ismember(Modality, {'MEG GRADNORM', 'MEG GRAD2', 'MEG GRAD3'})
         % Get study
         sStudy = bst_get('AnyFile', DataFile);
@@ -1950,11 +1950,6 @@ function DisplayFigurePopup(hFig)
     if ~strcmpi(FigureType, 'Topography')
         gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
     end
-    
-    % isIsosurfaceOpen = find(~cellfun(@(c)isempty(strfind(lower(c),'isosurface')), {GlobalData.Surface.Comment}));
-    % if ~isempty(isIsosurfaceOpen)
-    %     gui_component('MenuItem', jPopup, [], 'Get coordinates iEEG...', IconLoader.ICON_SCOUT_NEW, [], @GetContactLabelIeeg);
-    % end
     
     % ==== MENU: SNAPSHOT ====
     jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
@@ -4172,7 +4167,7 @@ function PlotCoils(hFig, Modality, isDetails)
                     if (nPoints >= 4)
                         % REF Magnetometers:   WHITE
                         if (nPoints == 4)
-                            Color = [1 1 1];PlotCoils
+                            Color = [1 1 1];
                             oriLength = 0.015;
                         % REF Gradiometers (offdiag):   GREEN
                         elseif (nPoints == 8) && ~isempty(Channels(i).Comment) && ~isempty(strfind(Channels(i).Comment, 'offdiag'))
