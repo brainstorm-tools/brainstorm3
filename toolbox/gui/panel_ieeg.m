@@ -495,7 +495,7 @@ function UpdateContactList()
     [sContacts, sContactsName] = GetContacts(SelName);
     % assign and update the list for display
     for i = 1:length(sContacts)
-        listModel.addElement(sprintf('%s   %3.1f   %3.1f   %3.1f', string(sContactsName(i)), sContacts(:,i).*1000));
+        listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000));
     end
     ctrl.jListCont.setModel(listModel);
     ctrl.jListCont.repaint();
