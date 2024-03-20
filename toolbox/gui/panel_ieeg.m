@@ -715,28 +715,8 @@ function HighlightLocCont() %#ok<DEFNU>
         return
     end 
     
-    % Get the subject
-    SubjectFile = getappdata(hFig, 'SubjectFile');
-    if ~isempty(SubjectFile)
-        sSubject = bst_get('Subject', SubjectFile);
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    end
-    sMri = bst_memory('LoadMri', MriFile);
-
-    % Get the panel controls
-    ctrl = bst_get('PanelControls', 'iEEG'); 
-    % Get the index of the contact coordinates in the list
-    iIndex = uint16(ctrl.jListCont.getSelectedIndices())';
-    % if user clicked elsewhere on the panel just return
-    if isempty(iIndex)
-        return;
-    end
-    
-    % From the panel, get the selected contact's data and extract the coordinates from it
-    selData = ctrl.jListCont.getModel().getElementAt(iIndex);
-    selData = regexp(selData, '   ', 'split');
-    % coordinates are in SCS
-    selCoordScs = [str2double(selData(2)) str2double(selData(3)) str2double(selData(4))] ./ 1000;
+    % coordinates in SCS
+    selCoordScs = GetSelectedContacts();
 
     % ===== FOR MRI =====
     % update the cross-hair position on the MRI
@@ -778,13 +758,14 @@ function [sSelCont, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
         return;
     end
     % Get all contacts
-    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts();
+    sSelElec = GetSelectedElectrodes();
+    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(sSelElec.Name);
     if isempty(sContacts)
         return
     end
     % Get JList selected indices
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
-    sSelCont = sContacts(iSelCont);
+    sSelCont = sContacts(:, iSelCont);
 end
 
 
