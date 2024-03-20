@@ -2202,8 +2202,9 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             % === SPHERE ===
             if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
+                % Define radius of the sphere; Using ctSize of half the length, makes the sphere to have the same diameters as the contact length, thus spacing between spheres is the same as the space between contacts
                 if strcmpi(sElec.Type, 'SEEG')
-                    ctSize = [1 1 1] .* sElec.ContactLength ./ 4;
+                    ctSize = [1 1 1] .* sElec.ContactLength ./ 2;
                 else
                     ctSize = [1 1 1] .* sElec.ContactDiameter ./ 2;
                 end
