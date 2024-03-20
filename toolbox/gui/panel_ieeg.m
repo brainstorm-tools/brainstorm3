@@ -97,7 +97,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Contacts list
                 jListCont = java_create('org.brainstorm.list.BstClusterList');
                 jListCont.setBackground(Color(.9,.9,.9));
-                jListCont.setLayoutOrientation(jListCont.VERTICAL_WRAP);
+                jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
                     'ValueChangedCallback', @(h,ev)bst_call(@ContListValueChanged_Callback,h,ev), ...
