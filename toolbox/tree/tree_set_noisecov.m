@@ -73,16 +73,20 @@ if ~isempty(iTargetStudies)
         % === IMPORT FROM MATLAB ===
         elseif strcmpi(NoiseCovFile, 'MatlabVar')
             % Get matlab variable
-            NoiseCovMat.Comment = 'Noise covariance (Matlab)';
             [NoiseCovMat.NoiseCov, varname] = in_matlab_var();
             % Check if import was cancelled
             if isempty(NoiseCovMat.NoiseCov)
                 return
             end
-            % Check if input was already a structure
+            % Check if input was already a Brainstorm structure
             if isstruct(NoiseCovMat.NoiseCov) && isfield(NoiseCovMat.NoiseCov, 'NoiseCov')
-                NoiseCovMat.NoiseCov = NoiseCovMat.NoiseCov.NoiseCov;
+                NoiseCovMat = struct_copy_fields(db_template('noisecovmat'), NoiseCovMat.NoiseCov);
+                if ~isempty(NoiseCovMat.History)
+                    NoiseCovMat.History = [];
+                end
             end
+            % Update comment
+            NoiseCovMat.Comment = 'Noise covariance (Matlab)';
             % History: Import from Matlab
             NoiseCovMat = bst_history('add', NoiseCovMat, 'import', ['Import from Matlab variable: ' varname]);
             % Save in database
