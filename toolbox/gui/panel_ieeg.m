@@ -928,7 +928,7 @@ function ShowContactsMenu(jButton)
         gui_component('MenuItem', jMenu, [], 'Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
     elseif strcmpi(sSelElec(1).Type, 'SEEG')
         gui_component('MenuItem', jMenu, [], 'Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
-        gui_component('MenuItem', jMenu, [], 'Line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
+        gui_component('MenuItem', jMenu, [], 'Show/Hide line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
     end
     % Menu: Save modifications
     jMenu.addSeparator();
@@ -2892,14 +2892,17 @@ function LineFit(plotLoc, Tag)
     % Get axes handle
     hFig = bst_figures('GetFiguresByType', '3DViz');
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-    delete(findobj(hAxes, '-depth', 1, 'Tag', Tag));
-
-    % plot the reference line between tip and entry
-    line(plotLoc.X, plotLoc.Y, plotLoc.Z, ...
-         'Color', [1 1 0], ...
-         'LineWidth',       2, ...
-         'Parent', hAxes, ...
-         'Tag', Tag);
+    hCoord = findobj(hAxes, '-depth', 1, 'Tag', Tag);
+    if ~isempty(hCoord)
+        delete(hCoord);
+    else
+        % plot the reference line between tip and entry
+        line(plotLoc.X, plotLoc.Y, plotLoc.Z, ...
+             'Color', [1 1 0], ...
+             'LineWidth',       2, ...
+             'Parent', hAxes, ...
+             'Tag', Tag);
+    end
 end
 
 %% ===== SET ELECTRODE LOCATION =====
