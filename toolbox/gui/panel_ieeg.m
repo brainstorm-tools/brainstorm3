@@ -3104,12 +3104,18 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if isempty(sSubject) || isempty(sSubject.Anatomy)
         bst_error('No MRI available for this subject.', 'Display electrodes', 0);
     end
-    for i = 1:length(sSubject.Anatomy)
-        if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match'))
-            isCtExist = i;
-        else
-            isCtExist = 0;
+    % Find CT volumes
+    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+    if ~isempty(iCtVol)
+        tmp = iCtVol(1);
+        % Prefer a masked CT volume if available
+        if length(iCtVol) > 1
+            iMask = find(cellfun(@(x) ~isempty(regexp(x, 'masked', 'match')), {sSubject.Anatomy(iCtVol).FileName}));
+            if ~isempty(iMask)
+                tmp = iCtVol(iMask(1));
+            end
         end
+        iCtVol = tmp;
     end
     
     % Set the MRI Viewer to display
@@ -3121,9 +3127,9 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         % if implantation starts from MRI then CT may or maynot exist
         else
             % if CT exists
-            if isCtExist
+            if iCtVol
                 MriFile = iAnatomy;
-                CtFile = sSubject.Anatomy(isCtExist).FileName;
+                CtFile = sSubject.Anatomy(iCtVol).FileName;
             else
                 MriFile = iAnatomy;
                 CtFile = [];
@@ -3137,9 +3143,9 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         % if implantation starts from MRI then CT may or maynot exist
         else
             % if CT exists
-            if isCtExist
+            if iCtVol
                 MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = sSubject.Anatomy(isCtExist).FileName;
+                CtFile = sSubject.Anatomy(iCtVol).FileName;
             else
                 MriFile = sSubject.Anatomy(iAnatomy).FileName;
                 CtFile = [];
