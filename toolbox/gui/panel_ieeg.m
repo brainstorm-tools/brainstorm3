@@ -97,7 +97,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Contacts list
                 jListCont = java_create('org.brainstorm.list.BstClusterList');
                 jListCont.setBackground(Color(.9,.9,.9));
-                jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
+                jListCont.setLayoutOrientation(jListCont.VERTICAL_WRAP);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
                     'ValueChangedCallback', @(h,ev)bst_call(@ContListValueChanged_Callback,h,ev), ...
@@ -491,13 +491,28 @@ function UpdateContactList()
 
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
+    % Get font with which the list is rendered
+    fontSize = round(11 * bst_get('InterfaceScaling') / 100);
+    jFont = java.awt.Font('Dialog', java.awt.Font.PLAIN, fontSize);
+    tk = java.awt.Toolkit.getDefaultToolkit();
+    % Add an item in list for each electrode
+    Wmax = 0;
+
     % Get the contacts and its respective name
     [sContacts, sContactsName] = GetContacts(SelName);
     % assign and update the list for display
     for i = 1:length(sContacts)
-        listModel.addElement(sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000));
+        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000);
+        listModel.addElement(BstListItem('', [], itemText, i));
+        % Get longest string
+        W = tk.getFontMetrics(jFont).stringWidth(itemText);
+        if (W > Wmax)
+            Wmax = W;
+        end
     end
     ctrl.jListCont.setModel(listModel);
+    % Update cell rederer based on longest channel name
+    ctrl.jListCont.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
     ctrl.jListCont.repaint();
     drawnow;
 end
