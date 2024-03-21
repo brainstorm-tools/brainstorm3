@@ -185,8 +185,24 @@ switch(fileType)
             return;
         end
         % Additional files: not supported
-        if ~isempty(MultiDataFiles)
+        [~, fBase] = bst_fileparts(DataFile);
+        if ~isempty(MultiDataFiles) && isempty(strfind(fBase, '_psd')) && isempty(strfind(fBase, '_fft'))
             error('Multiple time-frequency files are not yet supported in 2DLayout.');
+        else
+            % Load additional files
+            for iFile = 2:length(MultiDataFiles)
+                iDSmulti = bst_memory('LoadTimefreqFile', MultiDataFiles{iFile});
+                if isempty(iDSmulti)
+                    error(['An error occurred loading file: ' MultiDataFiles{iFile}]);
+                end
+                % Channel names must be the same for all the files
+                if ~isequal({GlobalData.DataSet(iDS).Channel.Name}, {GlobalData.DataSet(iDSmulti).Channel.Name})
+                    bst_error(['All the files must have the same list of channels.', 10, 'Consider using the process "Standardize > Uniform list of channels".'], 'View topography', 0);
+                    return;
+                end
+                % Add bad channels to the common list of bad channels (first file)
+                GlobalData.DataSet(iDS).Measures.ChannelFlag(GlobalData.DataSet(iDSmulti).Measures.ChannelFlag == -1) = -1;
+            end
         end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType)
@@ -360,7 +376,7 @@ if strcmpi(FileType, 'Timefreq')
     TfInfo.RowName    = [];
     TfInfo.RefRowName = RefRowName;
     TfInfo.Function   = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
-    if isStaticFreq
+    if isStaticFreq || (isStatic && strcmpi(TopoType, '2DLayout'))
         TfInfo.iFreqs = [];
     elseif ~isempty(GlobalData.UserFrequencies.iCurrentFreq)
         TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;

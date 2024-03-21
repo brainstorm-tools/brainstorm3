@@ -3262,6 +3262,7 @@ function isCancel = UnloadAll(varargin)
         GlobalData.Program.ProcessMenuCache = struct();
         % Clear some display options
         GlobalData.Preferences.TopoLayoutOptions.TimeWindow = [];
+        GlobalData.Preferences.TopoLayoutOptions.FreqWindow = [];
     end
     % Close all unecessary tabs when forced, or when no data left
     if isForced || isempty(GlobalData.DataSet)
