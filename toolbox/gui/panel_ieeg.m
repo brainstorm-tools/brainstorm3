@@ -78,8 +78,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelElecList = gui_component('Panel');
                 jBorder = java_scaled('titledborder', 'Electrodes & Contacts');
                 jPanelElecList.setBorder(jBorder);
-                jCoordSys = gui_component('label', jPanelElecList, '', ' Coordinates SCS (millimeters)');
-                jPanelElecList.add(jCoordSys, BorderLayout.NORTH);
+
+                jPanelModelCoord = gui_river([0,0], [0,0,0,0]);
+                    gui_component('label', jPanelModelCoord, '', ' Coordinates: ');
+                    jButtonGroupCoord = ButtonGroup();
+                    jRadioScs = gui_component('radio', jPanelModelCoord, '', 'SCS', jButtonGroupCoord, '', @(h,ev)UpdateContactList('SCS'));
+                    jRadioMri = gui_component('radio', jPanelModelCoord, '', 'MRI', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
+                    jRadioWorld = gui_component('radio', jPanelModelCoord, '', 'World', jButtonGroupCoord, '', @(h,ev)UpdateContactList('World'));
+                    jRadioMni = gui_component('radio', jPanelModelCoord, '', 'MNI', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MNI'));
+                    jRadioScs.setMargin(java.awt.Insets(0,0,0,0));
+                    jRadioMri.setMargin(java.awt.Insets(0,0,0,0));
+                    jRadioWorld.setMargin(java.awt.Insets(0,0,0,0));
+                    jRadioMni.setMargin(java.awt.Insets(0,0,0,0));
+                jPanelElecList.add(jPanelModelCoord, BorderLayout.NORTH);
 
                 % Electrodes list
                 jListElec = java_create('org.brainstorm.list.BstClusterList');
@@ -213,6 +224,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jMenuContacts',       jMenuContacts, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
+                                  'jRadioMri',           jRadioMri, ...
+                                  'jRadioScs',           jRadioScs, ...
+                                  'jRadioWorld',         jRadioWorld, ...
+                                  'jRadioMni',           jRadioMni, ...
                                   'jComboModel',         jComboModel, ...
                                   'jRadioSeeg',          jRadioSeeg, ...
                                   'jRadioEcog',          jRadioEcog, ...
@@ -321,7 +336,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         if (ev.getClickCount() == 1)
             % Update contact list
-            UpdateContactList();
+            UpdateContactList('SCS');
         end
     end
 
@@ -407,7 +422,7 @@ function UpdatePanel()
 %     gui_enable(ctrl.jPanelElecOptions, 0);
     % Update JList
     UpdateElecList();
-    UpdateContactList();
+    UpdateContactList('SCS');
 end
 
 
@@ -476,7 +491,7 @@ function UpdateElecList()
 end
 
 %% ===== UPDATE CONTACT LIST =====
-function UpdateContactList()
+function UpdateContactList(CoordSpace)
     import org.brainstorm.list.*;
     % Get current electrodes
     sElectrodes = GetElectrodes();
@@ -503,10 +518,23 @@ function UpdateContactList()
     Wmax = 0;
 
     % Get the contacts and its respective name
-    [sContacts, sContactsName] = GetContacts(SelName);
+    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(SelName);
+    SubjectFile = getappdata(hFig(1), 'SubjectFile');
+    sSubject = bst_get('Subject', SubjectFile);
+    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    sMri = bst_memory('LoadMri', MriFile);
+
     % assign and update the list for display
     for i = 1:length(sContacts)
-        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000);
+        if strcmpi(CoordSpace, 'MRI')
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'mri', sContacts(:,i)).*1000);
+        elseif strcmpi(CoordSpace, 'World')
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'world', sContacts(:,i)).*1000);
+        elseif strcmpi(CoordSpace, 'MNI')
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'mni', sContacts(:,i)).*1000);
+        else % SCS
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000);
+        end
         listModel.addElement(BstListItem('', [], itemText, i));
         % Get longest string
         W = tk.getFontMetrics(jFont).stringWidth(itemText);
@@ -848,7 +876,7 @@ function SetSelectedElectrodes(iSelElec)
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields
     UpdateElecProperties();
-    UpdateContactList();
+    UpdateContactList('SCS');
 end
 
 %% ===== SET SELECTED CONTACT =====
