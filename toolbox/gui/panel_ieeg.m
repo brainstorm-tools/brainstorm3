@@ -353,10 +353,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST CLICK CALLBACK =====
     function ContListClick_Callback(h, ev)
+        global GlobalData;
+
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            % highlight the location on MRI Viewer (TODO: and Surface)
+            % highlight the location on MRI Viewer and Surface
             HighlightLocCont();
+            [sSelCont, sContactName] = GetSelectedContacts();
+            bst_figures('SetSelectedRows', sContactName);
         end
     end
 end
@@ -761,7 +765,7 @@ function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
 end
 
 %% ===== GET SELECTED CONTACTS =====
-function [sSelCont, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
+function [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
     sSelCont = [];
     iSelCont = [];
     iDS = [];
@@ -780,6 +784,7 @@ function [sSelCont, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
     end
     % Get JList selected indices
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
+    sContactName = sContactsName(iSelCont);
     sSelCont = sContacts(:, iSelCont);
 end
 
