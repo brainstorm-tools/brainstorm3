@@ -528,12 +528,16 @@ function UpdateContactList(CoordSpace)
     for i = 1:length(sContacts)
         if strcmpi(CoordSpace, 'MRI')
             itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'mri', sContacts(:,i)).*1000);
+            ctrl.jRadioMri.setSelected(1);
         elseif strcmpi(CoordSpace, 'World')
             itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'world', sContacts(:,i)).*1000);
+            ctrl.jRadioWorld.setSelected(1);
         elseif strcmpi(CoordSpace, 'MNI')
             itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), cs_convert(sMri, 'scs', 'mni', sContacts(:,i)).*1000);
+            ctrl.jRadioMni.setSelected(1);
         else % SCS
             itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContacts(:,i).*1000);
+            ctrl.jRadioScs.setSelected(1);
         end
         listModel.addElement(BstListItem('', [], itemText, i));
         % Get longest string
