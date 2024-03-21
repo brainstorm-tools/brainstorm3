@@ -180,7 +180,7 @@ function UpdatePanel()
         return
     end
     % Get current figure
-    hFig = bst_figures('GetCurrentFigure', '3D');
+    hFig = bst_figures('GetFiguresByType', '3DViz');
     % If a figure is available: get if a point select 
     if ~isempty(hFig) && ishandle(hFig)
         CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
