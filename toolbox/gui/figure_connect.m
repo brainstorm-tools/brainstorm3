@@ -2705,6 +2705,13 @@ function MoveCamera(hFig, Translation)
     hFig.CurrentAxes.CameraPosition = hFig.CurrentAxes.CameraPosition + Translation; 
     hFig.CurrentAxes.CameraTarget = hFig.CurrentAxes.CameraTarget + Translation;
 end
+
+%% ====== MOVE CAMERA TO POSITION ===============
+% Move camera to a defined position 
+function MoveCameraToPos(hFig, Position)
+    hFig.CurrentAxes.CameraPosition = Position;
+    hFig.CurrentAxes.CameraViewAngle = 30;
+end
  
 %% ===========================================================================
 %  ===== NODE DISPLAY AND SELECTION ==========================================

@@ -374,8 +374,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         if (ev.getClickCount() == 1)
             % highlight the location on MRI Viewer and Surface
             HighlightLocCont();
-            [sSelCont, sContactName] = GetSelectedContacts();
+            [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContacts();
             bst_figures('SetSelectedRows', sContactName);
+            figure_connect('MoveCameraToPos', hFig(1), sSelCont');
         end
     end
 end
