@@ -1163,8 +1163,10 @@ function UpdateSurfaceProperties()
     % Surface smoothing ALPHA
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
-    % isoSurface thresholding
-    gui_enable([ctrl.jSliderSurfIsoValue], isIsoSurface, 0);
+    % Show/hide isoSurface thresholding
+    ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
+    ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
+    ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
     if isIsoSurface
         [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', TessInfo(iSurface).SurfaceFile);
         isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
