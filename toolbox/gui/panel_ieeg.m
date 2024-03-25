@@ -1190,11 +1190,7 @@ end
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
     % Get current figure
-    [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
-    if isempty(hFigall)
-        % Try MRI viewer figure
-        [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType','MriViewer');
-    end
+    [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType','MriViewer');
 
     % Check if there are electrodes defined for this file
     if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
