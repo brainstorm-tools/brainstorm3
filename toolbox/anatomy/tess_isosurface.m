@@ -117,6 +117,9 @@ if (nargin < 2) || isempty(isoValue)
 end
 
 % Check parameters values
+% isoValue cannot be < 0 as there cannot be negative intensity in the CT
+% isoValue=0 does not makes sense as it means we do not want to do any thresholding
+% isoValue cannot be > the maximum intensity of the CT as it means there is nothing to generate or threshold on
 if isempty(isoValue) || isoValue <= 0 || isoValue > round(sMri.Histogram.intensityMax)
     bst_error('Invalid ''isoValue''. Enter proper values.', 'Mesh surface', 0);
     return
@@ -149,7 +152,17 @@ if isSave
     % Create output filenames
     ProtocolInfo = bst_get('ProtocolInfo');
     SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
-    MeshFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+    % Get the mesh file
+    MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
+
+    % Replace existing isoSurface surface (tess_isosurface.mat)
+    [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
+    if ~isempty(iSurfaceTmp)
+        file_delete(file_fullpath(MeshFile), 1);
+        sSubjectTmp.Surface(iSurfaceTmp) = [];
+        bst_set('Subject', iSubjectTmp, sSubjectTmp);
+    end
+    
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
     sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
@@ -158,7 +171,8 @@ if isSave
     % Display mesh with 3D orthogonal slices of the default MRI
     MriFile = sSubject.Anatomy(1).FileName;
     hFig = view_mri_3d(MriFile, [], 0.3, []);
-    view_surface(MeshFile, [], [], hFig, []);    
+    view_surface(MeshFile, 0.6, [], hFig, []);    
+    panel_surface('SetIsoValue', isoValue);
 else
     % Return surface
     MeshFile = sMesh.Vertices;

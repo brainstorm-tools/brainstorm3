@@ -22,6 +22,7 @@ function varargout = panel_coordinates(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2020
+%          Chinmay Chinara, 2024
 
 eval(macro_method);
 end
@@ -179,7 +180,7 @@ function UpdatePanel()
         return
     end
     % Get current figure
-    hFig = bst_figures('GetCurrentFigure', '3D');
+    hFig = bst_figures('GetFiguresByType', '3DViz');
     % If a figure is available: get if a point select 
     if ~isempty(hFig) && ishandle(hFig)
         CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
@@ -300,14 +301,18 @@ end
 
 %% ===== SELECT POINT =====
 % Usage : SelectPoint(hFig) : Point location = user click in figure hFIg
-function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
+function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
+    if (nargin < 3) || isempty(isCentroid)
+        isCentroid = 0;
+    end
     if (nargin < 2) || isempty(AcceptMri)
         AcceptMri = 1;
+        isCentroid = 0;
     end
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     % Find the closest surface point that was selected
-    [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig);
+    [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, [], isCentroid);
     if isempty(TessInfo)
         return
     end
@@ -330,7 +335,11 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
             
         case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
-            scsLoc = sSurf.Vertices(vi,:);
+            if ~isCentroid
+                scsLoc = sSurf.Vertices(vi,:);
+            else
+                scsLoc = vout';
+            end
             plotLoc = vout;
             iVertex = vi;
             % Get value
@@ -375,6 +384,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', scsLoc);
     CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', scsLoc);
     CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', scsLoc);
+    CoordinatesSelector.Voxel   = cs_convert(sMri, 'scs', 'voxel', scsLoc);
     CoordinatesSelector.iVertex = iVertex;
     CoordinatesSelector.Value   = Value;
     CoordinatesSelector.hPatch  = hPatch;
@@ -384,7 +394,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     % Remove previous mark
     delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptCoordinates'));
     % Mark new point
-    line(plotLoc(1)*1.005, plotLoc(2)*1.005, plotLoc(3)*1.005, ...
+    if ~isCentroid
+        plotLoc = plotLoc.*1.005;
+    end
+    line(plotLoc(1), plotLoc(2), plotLoc(3), ...
          'MarkerFaceColor', [1 1 0], ...
          'MarkerEdgeColor', [1 1 0], ...
          'Marker',          '+',  ...
@@ -394,14 +407,22 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
+    % Open MRI viewer for SEEG
+    if isCentroid
+        ViewInMriViewer();
+    end
 end
 
 
 %% ===== POINT SELECTION: Surface detection =====
-function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType)
+function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)     
     % Parse inputs
+    if (nargin < 3)
+        isCentroid = 0;
+    end
     if (nargin < 2)
         SurfacesType = [];
+        isCentroid = 0;
     end
     iTess = [];
     pout = {};
@@ -415,7 +436,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Get camera position
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
-    TessInfo = getappdata(hFig, 'Surface');
+    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
     if isempty(TessInfo)
         return
     end
@@ -437,6 +458,12 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
+            % Find centroid the blob mesh that contains the vertex 'vi'
+            if isCentroid
+                VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :)); % SCS of the centroid
+                vi{i} = []; % No surface vertex associated to centroid
+            end
         else
             patchDist(i) = Inf;
         end
@@ -465,6 +492,22 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
 end
 
+%% ===== FIND CENTROID OF A MESH BLOB =====
+% Find the centroid of the selected contact blob from the isosurface using flood-fill alogrithm
+% NOTE: currently used mainly for SEEG contact localization from thresholded isosurface
+function VertexList = FindCentroid(Surface, VertConnList, VertexList, cnt, cntThresh)
+    if cnt == cntThresh
+        return;
+    end
+    for i=1:length(VertConnList)
+        if ~any(VertexList(:) == VertConnList(i))
+            VertexList = [VertexList, VertConnList(i)];
+            VertConnListTemp = find(Surface.VertConn(VertConnList(i),:));
+            VertexList = FindCentroid(Surface, VertConnListTemp, VertexList, cnt, cntThresh);
+            cnt = cnt + 1;
+        end
+    end
+end
 
 %% ===== REMOVE SELECTION =====
 function RemoveSelection(varargin)
@@ -505,7 +548,10 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    if isempty(hFig)
+        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    end
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
 end

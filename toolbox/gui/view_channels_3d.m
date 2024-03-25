@@ -141,6 +141,11 @@ if ~isempty(sSubject)
                 end
                 SurfAlpha = .1;
                 hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
+                if strcmpi(Modality, 'SEEG')
+                    % For SEEG, display 3D slices (MRI) + isosurface, and MRI viewer
+                    panel_ieeg('DisplayIsosurface', sSubject, hFig);
+                    panel_ieeg('DisplayChannelsMri', FileNames{1}, Modality, 1, 0);
+                end
             end
         otherwise
     end

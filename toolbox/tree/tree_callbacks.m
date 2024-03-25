@@ -31,6 +31,8 @@ function jPopup = tree_callbacks( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2023
+%          Raymundo Cassani, 2023-2024
+%          Chinmay Chinara, 2023-2024
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -229,7 +231,7 @@ switch (lower(action))
                     if strcmpi(DisplayMod{1}, 'ECOG+SEEG') || (length(DisplayMod) >= 2) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                         DisplayChannels(bstNodes, 'ECOG+SEEG', 'cortex', 1);
                     elseif strcmpi(DisplayMod{1}, 'SEEG')
-                        DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1);
+                        DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1, 0);
                     elseif strcmpi(DisplayMod{1}, 'ECOG')
                         DisplayChannels(bstNodes, DisplayMod{1}, 'cortex', 1);
                     elseif ismember(DisplayMod{1}, {'MEG','MEG GRAD','MEG MAG'})

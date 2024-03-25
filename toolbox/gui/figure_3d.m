@@ -125,6 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
+    setappdata(hFig, 'isSelectingContactLabelIeeg',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -543,6 +544,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
+    isSelectingContactLabelIeeg  = getappdata(hFig, 'isSelectingContactLabelIeeg');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -611,7 +613,12 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCoordinates
             % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
-                panel_coordinates('SelectPoint', hFig);
+                % For SEEG, making sure centroid calculation for plotting contacts is active
+                if gui_brainstorm('isTabVisible', 'iEEG')
+                    panel_coordinates('SelectPoint', hFig, 0, 1);
+                else
+                    panel_coordinates('SelectPoint', hFig);
+                end
             % Selecting fiducials linked with MRI viewer
             else
                 hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
@@ -820,7 +827,9 @@ function FigureMouseUpCallback(hFig, varargin)
                     % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
                     if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
                         selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+                        % Highlight the electrode and contacts
                         panel_ieeg('SetSelectedElectrodes', selGroup);
+                        panel_ieeg('SetSelectedContacts', SelChan);
                     end
                 end
             end
