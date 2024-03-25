@@ -106,8 +106,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
-                    'ValueChangedCallback', @(h,ev)bst_call(@ContListValueChanged_Callback,h,ev), ...
-                    'KeyTypedCallback',     @(h,ev)bst_call(@ContListKeyTyped_Callback,h,ev), ...
                     'MouseClickedCallback', @(h,ev)bst_call(@ContListClick_Callback,h,ev));
                 jPanelScrollContList = JScrollPane();
                 jPanelScrollContList.getLayout.getViewport.setView(jListCont);
@@ -335,36 +333,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
     end
 
-    %% ===== CONTACT LIST SELECTION CHANGED CALLBACK =====
-    function ContListValueChanged_Callback(h, ev)
-        % ===== TODO: ADD FUNCTIONALITIES ====
-        % if ~ev.getValueIsAdjusting()
-        %     UpdateElecProperties();
-        %     % Get the selected electrode
-        %     [sSelCont, iSelCont] = GetSelectedElectrodes();
-        %     % Center MRI view on electrode tip
-        %     if (length(sSelCont) == 1)
-        %         % CenterMriOnElectrode(sSelElec);
-        %     end
-        % end
-    end
-
-    %% ===== CONTACT LIST KEY TYPED CALLBACK =====
-    function ContListKeyTyped_Callback(h, ev)
-        % ===== TODO: ADD FUNCTIONALITIES ====
-        % switch(uint8(ev.getKeyChar()))
-        %     % DELETE
-        %     case {ev.VK_DELETE, ev.VK_BACK_SPACE}
-        %         RemoveElectrode();
-        %     case ev.VK_ESCAPE
-        %         SetSelectedElectrodes(0);
-        % end
-    end
-
     %% ===== CONTACT LIST CLICK CALLBACK =====
     function ContListClick_Callback(h, ev)
-        global GlobalData;
-
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
             % highlight the location on MRI Viewer and Surface
