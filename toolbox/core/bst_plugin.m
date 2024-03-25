@@ -644,6 +644,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
+
+    plug_list = dir(fullfile(bst_get('BrainstormUserDir'), 'plugin_*.json'));
+    for iPlug = 1:length(plug_list)
+        plugin_text = fileread( fullfile(plug_list(iPlug).folder,plug_list(iPlug).name ) );
+        [PlugDesc_tmp, Err] = ParseJson(plugin_text);
+        if ~isempty(Err)
+            disp(['BST> Invalid plugin file ' plug_list(iPlug).name ' :' Err]);
+            continue;
+        end
+
+        PlugDesc  = [PlugDesc , PlugDesc_tmp];
+    end
+
     % ================================================================================================================
     
     % Select only one plugin
@@ -671,6 +684,106 @@ function s = GetStruct(PlugName)
     s.Name = PlugName;
 end
 
+%% ===== PLUGIN JSON =====
+
+function [PlugDesc, Err] = ParseJson(PlugJson)
+    PlugDesc = repmat(db_template('PlugDesc'), 0);
+    Err = '';
+
+    try
+        plugin_struct = jsondecode(PlugJson);
+        
+        if isstruct(plugin_struct) % One plugin inside the file 
+            PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct, 1); % same as existing struct
+            PlugDescDecode.Category = 'Custom Plugin';
+            PlugDescDecode.Name = lower(PlugDescDecode.Name);
+
+            if ~Validate(PlugDescDecode)
+                throw(MException('Plugin:InvalidPlugin','The structure of the plugin is invalid')); 
+            end
+
+            PlugDesc(end+1) = PlugDescDecode;
+        elseif iscell(plugin_struct) % multiple plugin inside the file 
+            for jPlug = 1:length(plugin_struct)
+                PlugDescDecode = struct_copy_fields(bst_plugin('GetStruct',''), plugin_struct{jPlug}, 1); % same as existing struct
+                PlugDescDecode.Category = 'Custom Plugin';
+                if ~Validate(PlugDescDecode)
+                    throw(MException('Plugin:InvalidPlugin','The structure of the plugin is invalid')); 
+                end
+
+                PlugDesc(end+1) = PlugDescDecode;
+            end
+        end
+    catch ME
+        switch ME.identifier
+            case 'MATLAB:json:ExpectedValue'
+                    Err = sprintf('Invalid JSON file (%s)', ME.message);
+            case 'Plugin:InvalidPlugin'
+                    Err = ME.message;
+            otherwise
+                rethrow(ME)
+        end
+    end
+end
+
+%% ===== Validate JSON =====
+% Return true if the structure is valid. Check that all the mandatory
+% information are presents. TODO
+
+function  isValid= Validate(PlugJson)
+    isValid = true;
+end
+
+%% ===== Add Custom =====
+function [isOk, Err] = AddCustom(plugin_file)
+    isOk    = 1; 
+    Err     = '';
+
+    if nargin < 1 
+        plugin_file = java_dialog('input', 'Enter the adress or path to the plugin description file (.json)', 'Custom Plugin File', [], '');
+        if isempty(plugin_file) 
+            return
+        end
+        res = java_dialog('question', ['Warning: This plugin has not been verified.' 10 ...
+                                       'Malicious Plugins can alter your database, proceed with caution and only install plugins from trusted sources.' 10 ...
+                                       'If any unusual behavior occurs after installation, start by uninstalling the plugins.' 10 ...
+                                       'Are you sure you want to proceed?'], ...
+                          'Warning', [], {'yes', 'no'});
+
+       if strcmp(res, 'no')
+           return
+       end
+    end
+
+    if strcmp(plugin_file(1:4),'http') &&  strcmp(plugin_file(end-4:end),'.json')  
+        % if from github, we convert the link to load the raw content 
+        if contains(plugin_file,'https://github.com')
+            plugin_file = strrep(plugin_file,'https://github.com','https://raw.githubusercontent.com' );
+            plugin_file = strrep(plugin_file,'blob/','' );
+        end
+        
+        plugin_text = bst_webread(plugin_file);
+    elseif exist(plugin_file,'file')
+        plugin_text = fileread(plugin_file);
+    else
+        isOk = 0;
+        Err  = 'Plugin format not recognized';
+        return;
+    end
+
+    [PlugDesc, Err] = ParseJson(plugin_text);
+    if ~isempty(Err)
+        isOk = 0;
+        return;
+    end
+    
+    [~, plugName, ~] = fileparts(plugin_file);
+
+    fileID = fopen(fullfile(bst_get('BrainstormUserDir'), sprintf('plugin_%s.json', plugName)),'w');
+    fprintf(fileID,'%s', plugin_text );
+    fclose(fileID);
+
+end
 
 %% ===== CONFIGURE PLUGIN =====
 function Configure(PlugDesc)
@@ -2432,6 +2545,7 @@ function j = MenuCreate(jMenu, fontSize)
     if ~isCompiled
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
+        gui_component('MenuItem', jMenu, [], 'Add custom Plugin', IconLoader.ICON_EDIT, [], @(h,ev)AddCustom, fontSize);
     end
 end
 
