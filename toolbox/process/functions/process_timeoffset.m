@@ -20,6 +20,7 @@ function varargout = process_timeoffset( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2010-2016
+%          Raymundo Cassani, 2024
 
 eval(macro_method);
 end
@@ -30,13 +31,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Add time offset';
     sProcess.FileTag     = 'timeoffset';
-    sProcess.Category    = 'Filter';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Pre-process';
     sProcess.Index       = 76;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'matrix', 'timefreq'};
-    sProcess.OutputTypes = {'data', 'results', 'matrix', 'timefreq'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
@@ -52,6 +53,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.offset.Comment = 'Time offset:';
     sProcess.options.offset.Type    = 'value';
     sProcess.options.offset.Value   = {0, 'ms', []};
+    % === Overwrite
+    sProcess.options.overwrite.Comment = 'Overwrite input files';
+    sProcess.options.overwrite.Type    = 'checkbox';
+    sProcess.options.overwrite.Value   = 0;
+    sProcess.options.overwrite.Group   = 'output';
 end
 
 
@@ -62,11 +68,76 @@ end
 
 
 %% ===== RUN =====
-function sInput = Run(sProcess, sInput) %#ok<DEFNU>
+function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
+    OutputFile = {};
+
     % Get inputs
-    TimeOffset = sProcess.options.offset.Value{1};
-    % Apply offset
-    sInput.TimeVector = sInput.TimeVector + TimeOffset;
+    OffsetTime = sProcess.options.offset.Value{1};
+    isOverwrite = sProcess.options.overwrite.Value;
+
+    % ===== LOAD FILE =====
+    % Get file descriptor
+    isRaw = strcmpi(sInput.FileType, 'raw');
+    % Load file
+    DataMat = in_bst_data(sInput.FileName);
+    if isRaw
+        sEvents = DataMat.F.events;
+        sFreq = DataMat.F.prop.sfreq;
+        DataMat.Time = [DataMat.Time(1), DataMat.Time(end)];
+    else
+        sEvents = DataMat.Events;
+        sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+    end
+
+    % ===== PROCESS =====
+    % Apply offset to time
+    DataMat.Time = DataMat.Time + OffsetTime;
+    if isRaw
+        DataMat.F.prop.times = DataMat.Time;
+    end
+
+    % Add offset to all events
+    for iEvt = 1:length(sEvents)
+        sEvents(iEvt).times = round((sEvents(iEvt).times + OffsetTime) .* sFreq) ./ sFreq;
+    end
+    if isRaw
+        DataMat.F.events = sEvents;
+    else
+        DataMat.Events = sEvents;
+    end
+
+    % ===== SAVE FILE =====
+    % Add history entry
+    DataMat = bst_history('add', DataMat, 'timeoffset', sprintf('Added time offset %1.4fs', OffsetTime));
+    DataMat.Comment = [DataMat.Comment ' | ' sProcess.FileTag];
+
+    % Overwrite the input file
+    if isOverwrite
+        OutputFile = file_fullpath(sInput.FileName);
+        bst_save(OutputFile, DataMat, 'v6');
+        % Reload study
+        db_reload_studies(sInput.iStudy);
+    % Save new file
+    else
+        % Create new raw condition
+        if isRaw
+            newCondition = [sInput.Condition '_' sProcess.FileTag];
+            iStudy = db_add_condition(sInput.SubjectName, newCondition);
+            sNewStudy = bst_get('Study', iStudy);
+            newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
+            [~, base, ext] = bst_fileparts(sInput.FileName);
+            OutputFile = bst_fullfile(newStudyPath, [base '.' ext]);
+        else
+            OutputFile = file_fullpath(sInput.FileName);
+            iStudy = sInput.iStudy;
+        end
+        % Unique output filename
+        OutputFile = file_unique(strrep(OutputFile, '.mat', ['_' sProcess.FileTag '.mat']));
+        % Save file
+        bst_save(OutputFile, DataMat, 'v6');
+        % Add file to database structure
+        db_add_data(iStudy, OutputFile, DataMat);
+    end
 end
 
 

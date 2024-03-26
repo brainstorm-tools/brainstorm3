@@ -91,6 +91,9 @@ for i = 1:length(Format)
         case 'name'
             iName = i;
             strScanFormat = [strScanFormat, '%[^,; \t\b\n\r] '];
+        case 'namewithspace'
+            iName = i;
+            strScanFormat = [strScanFormat, '%[^,;\t\b\n\r] '];
         case 'indice'
             iIndice = i;
             strScanFormat = [strScanFormat, '%d '];

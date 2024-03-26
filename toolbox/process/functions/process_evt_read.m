@@ -48,9 +48,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.trackmode.Comment = {'Value: detect the changes of channel value', ...
                                           'Bit: detect the changes for each bit independently', ...
                                           'TTL: detect peaks of 5V/12V on an analog channel (baseline=0V)', ...
-                                          'RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'};
-    sProcess.options.trackmode.Type    = 'radio';
-    sProcess.options.trackmode.Value   = 1;
+                                          'RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'; ...
+                                          'value', 'bit', 'ttl', 'rttl'};
+    sProcess.options.trackmode.Type    = 'radio_label';
+    sProcess.options.trackmode.Value   = 'value';
+    sProcess.options.trackmode.Controller = struct('value', 'mask_check');
+    % Option: Mask boolean
+    sProcess.options.maskcheck.Comment = 'Apply digital mask to events (only for "Value" option)';
+    sProcess.options.maskcheck.Type    = 'checkbox';
+    sProcess.options.maskcheck.Value   = 0;
+    sProcess.options.maskcheck.Class   = 'mask_check';
+    sProcess.options.maskcheck.Controller = 'mask_value';
+    % Option: Mask
+    sProcess.options.mask.Comment = 'Mask value (integer or 0xHEX): ';
+    sProcess.options.mask.Type    = 'text';
+    sProcess.options.mask.Value   = '0';
+    sProcess.options.mask.Class   = 'mask_value';
     % Option: Accept zeros
     sProcess.options.zero.Comment = 'Accept zeros as trigger values';
     sProcess.options.zero.Type    = 'checkbox';
@@ -82,15 +95,31 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
     % Event type
     switch (sProcess.options.trackmode.Value)
-        case 1,  EventsTrackMode = 'value';
-        case 2,  EventsTrackMode = 'bit';
-        case 3,  EventsTrackMode = 'ttl';
-        case 4,  EventsTrackMode = 'rttl';
+        case {1, 'value'}, EventsTrackMode = 'value';
+        case {2, 'bit'},   EventsTrackMode = 'bit';
+        case {3, 'ttl'},   EventsTrackMode = 'ttl';
+        case {4, 'rttl'},  EventsTrackMode = 'rttl';
     end
+    sProcess.options.trackmode.Value = EventsTrackMode;
     % Other options
     isAcceptZero = sProcess.options.zero.Value;
     MinDuration = sProcess.options.min_duration.Value{1};
-    
+    % Get mask
+    MaskValue = 0;
+    if strcmpi(EventsTrackMode, 'value') && sProcess.options.maskcheck.Value
+        strMask = regexprep(sProcess.options.mask.Value, '^0[x|X]', '');
+        % Hex value was provided
+        if ~strcmpi(strMask, sProcess.options.mask.Value)
+            MaskValue = hex2dec(strMask);
+        % Integer string (only 0-9 characters)
+        elseif isempty(regexp(strMask, '[^0-9]', 'once'))
+            MaskValue = str2double(strMask);
+        % Invalid string
+        else
+            bst_report('Error', sProcess, sInput, ['String "' strMask '" is not a valid mask.']);
+            return
+        end
+    end
     % ===== GET FILE DESCRIPTOR =====
     % Load the raw file descriptor
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -113,8 +142,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % CTF: Read separately upper and lower bytes
     if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
         % Detect separately events on the upper and lower bytes of the STIM channel
-        eventsU = Compute(sFile, ChannelMat, [StimChan '__U'], EventsTrackMode, isAcceptZero, MinDuration);
-        eventsL = Compute(sFile, ChannelMat, [StimChan '__L'], EventsTrackMode, isAcceptZero, MinDuration);
+        eventsU = Compute(sFile, ChannelMat, [StimChan '__U'], EventsTrackMode, isAcceptZero, MinDuration, MaskValue);
+        eventsL = Compute(sFile, ChannelMat, [StimChan '__L'], EventsTrackMode, isAcceptZero, MinDuration, MaskValue);
         % If there are events on both: add marker U/L
         if ~isempty(eventsU) && ~isempty(eventsL)
             for iEvt = 1:length(eventsU)
@@ -126,7 +155,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         end
         events = [eventsL, eventsU];
     else
-        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
+        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration, MaskValue);
     end
     
     % ===== SAVE RESULT =====
@@ -152,8 +181,11 @@ end
 
 
 %% ===== COMPUTE =====
-function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration, MaskValue)
     % Parse inputs
+    if (nargin < 7)
+        MaskValue = 0;
+    end
     if (nargin < 6)
         MinDuration = 0;
     end
@@ -366,6 +398,10 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     % === PROCESS EACH TRACK SEPARATELY ===
     nTooShort = 0;
     for iTrack = 1:length(tracks_name)
+        % Apply mask
+        if strcmpi(EventsTrackMode, 'value') && MaskValue > 0
+            tracks_vals{iTrack} = bitand(tracks_vals{iTrack}, MaskValue, 'uint32');
+        end
         % Get the indices where something happens
         if strcmpi(EventsTrackMode, 'rttl')
             ixs = find(tracks_vals{iTrack} == 0);

@@ -485,6 +485,7 @@ function UpdateMenus(sAtlas, sSurf)
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,     [], @(h,ev)bst_call(@RemoveScouts));
         gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,     [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Duplicate',    IconLoader.ICON_COPY,       [], @(h,ev)bst_call(@DuplicateScouts));
         gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,      [], @(h,ev)bst_call(@DifferenceScouts));
         gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
@@ -585,6 +586,7 @@ function CreateMenuFunction(jMenu)
     jMenuNorm = gui_component('RadioMenuItem', jMenu, [], 'Mean(norm)', [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean_norm'));
     jMenuMax  = gui_component('RadioMenuItem', jMenu, [], 'Max',        [], [], @(h,ev)bst_call(@SetScoutFunction,'Max'));
     jMenuPow  = gui_component('RadioMenuItem', jMenu, [], 'Power',      [], [], @(h,ev)bst_call(@SetScoutFunction,'Power'));
+    jMenuRms  = gui_component('RadioMenuItem', jMenu, [], 'RMS',        [], [], @(h,ev)bst_call(@SetScoutFunction,'RMS'));
     jMenuAll  = gui_component('RadioMenuItem', jMenu, [], 'All',        [], [], @(h,ev)bst_call(@SetScoutFunction,'All'));
     % Get the selected functions
     allFun = unique({sScouts.Function});
@@ -599,6 +601,7 @@ function CreateMenuFunction(jMenu)
         case 'Mean_norm', jMenuNorm.setSelected(1);
         case 'Max',       jMenuMax.setSelected(1);
         case 'Power',     jMenuPow.setSelected(1);
+        case 'RMS',       jMenuRms.setSelected(1);
         case 'All',       jMenuAll.setSelected(1);
     end
 end
@@ -1020,9 +1023,18 @@ function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     end
     % If it is an "official" atlas: read-only
     if ismember(lower(sAtlas.Name), {...
-            'brainvisa_tzourio-mazoyer', ... % Old default anatomy
-            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ... % Old default anatomy
-            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'structures'})  % New freesurf
+            ... % Old default anatomy
+            'brainvisa_tzourio-mazoyer', ...
+            ... % Old default anatomy
+            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ...
+            ... % New default anatomy (2023b)
+            ... % https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy#FreeSurfer_templates
+            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'vcatlas', 'structures', ... % FreeSurfer
+            'brainnetome', 'hcp_mmp1', 'oasis cortical hubs', ...                                         % Brainnetome, HCP-MMP1.0, OASIS
+            'pals-b12 brodmann', 'pals-b12 lobes', 'pals-b12 orbito-frontal', 'pals-b12 visuotopic', ...  % PALS-B12
+            'schaefer_100_17net', 'schaefer_200_17net', 'schaefer_400_17net', 'schaefer_600_17net',...    % Schaefer2018 17 networks
+            'schaefer_100_7net', ' schaefer_200_7net',  'schaefer_400_7net',  'schaefer_600_7net',...     % Schaefer2018  7 networks
+            })
         if isInteractive
             java_dialog('warning', [...
                 'This atlas is a reference and cannot be modified or deleted.' 10 10 ...
@@ -3769,6 +3781,37 @@ function IntersectScouts(varargin)
     UpdateScoutsList();
     % Select last scout in list (new scout)
     SetSelectedScouts(iNewScout);
+end
+
+%% ===== DUPLICATE SCOUTS =====
+% Duplicate scouts selected in the JList
+function DuplicateScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    % New scout template
+    sNewScout = db_template('scout');
+
+    % === Copy scouts ===
+    sNewScouts = sScouts;
+    % Update new scouts name and reset handles
+    for i = 1:length(sNewScouts)
+        sNewScouts(i).Label = [sScouts(i).Label '_copy'];
+        sNewScouts(i).Handles = sNewScout.Handles;
+    end
+    % Save new scouts
+    iNewScouts = SetScouts([], 'Add', sNewScouts);
+    % Display new scouts
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select new scouts in list
+    SetSelectedScouts(iNewScouts);
 end
 
 %% ===============================================================================

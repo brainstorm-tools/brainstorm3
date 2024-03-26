@@ -64,7 +64,7 @@ for i = 1:length(iCheck)
                 HeadPoints.Type  = [HeadPoints.Type,  'CARDINAL'];
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear', 'l'} % LEFT EAR
+        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear', 'l', 'left tragus'} % LEFT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.LPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
@@ -75,7 +75,7 @@ for i = 1:length(iCheck)
                 HeadPoints.Type  = [HeadPoints.Type,  'CARDINAL'];
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear', 'r'} % RIGHT EAR
+        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear', 'r', 'right tragus'} % RIGHT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.RPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
