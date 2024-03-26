@@ -644,6 +644,16 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
+
+    % === SpikeNet ===
+    PlugDesc(end+1)              = GetStruct('spikenet');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).URLzip         = 'https://github.com/Snaptraks/spikenet_bst_plugin/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/Snaptraks/spikenet_bst_plugin';
+    PlugDesc(end).TestFile       = 'spikenet_plugin.m';
+    PlugDesc(end).LoadedFcn      = 'spikenet';
+    PlugDesc(end).ExtraMenus     = {'SpikeNet Description', 'web(''https://jamanetwork.com/journals/jamaneurology/fullarticle/2752666'', ''-browser'')'};
+    PlugDesc(end).CompiledStatus = 0;
     % ================================================================================================================
 
     % Select only one plugin
