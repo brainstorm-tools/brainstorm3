@@ -499,6 +499,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 iSort = [iSort, iOther(~isnan(iOther))];
                 OPTIONS.BemFiles = OPTIONS.BemFiles(iSort);
                 TissueLabels = TissueLabels(iSort);
+                % If there is a CSF layer but nothing inside: rename into BRAIN
+                if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
+                    TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
+                end
             end
             % Load surfaces
             bst_progress('text', 'Loading surfaces...');
