@@ -1979,7 +1979,7 @@ end
 %% ===== SET DISPLAY MODE =====
 function SetDisplayMode(DisplayMode)
     % Get current figure
-    [sElectrodes, iDS, iFig, hFig] = GetElectrodes();
+    hFig = bst_figures('GetCurrentFigure');
     if isempty(hFig)
         return;
     end
