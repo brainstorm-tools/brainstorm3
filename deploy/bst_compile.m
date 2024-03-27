@@ -75,6 +75,30 @@ outputDir = fullfile(compilerDir, 'for_testing');
 packageDir = fullfile(TmpDir, ReleaseName, 'package');
 binDir = fullfile(bstDir, 'bin', ReleaseName);
 jarDir = fullfile(packageDir, 'jar');
+% Brainstorm application .jar file
+appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
+% Delete existing brainstorm.jar
+if exist(appJar, 'file')
+    delete(appJar);
+    % The brainstorm.jar file could not be deleted because it was still in use: delete it at next startup
+    if exist(appJar, 'file')
+        % Create file to indicate that brainstorm.jar should be deleted
+        UpdateFile = fullfile(bstDir, 'java', 'outdated_jar.txt');
+        fid = fopen(UpdateFile, 'w');
+        fwrite(fid, ['delete(''' jarFile ''');']);
+        fclose(fid);
+        disp(['COMPILE> Error: Could not delete outdated file : ' jarFile]);
+        % Ask to restart Matlab and Brainstorm
+        h = msgbox(['Compilation of Brainstorm was interrupted.' 10 10 ...
+                    'Matlab will now close.' 10 ...
+                    'Restart Matlab and compile Brainstorm again.' 10 10], 'Compile');
+        waitfor(h);
+        exit;
+    else
+        disp('COMPILE> Downloading brainstorm.jar...');
+        bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', appJar);
+    end
+end
 % Delete existing folders
 if exist(compilerDir, 'dir')
     try
@@ -103,8 +127,6 @@ end
 
 
 %% ===== COPY CLASS: SELECTMCR =====
-% Located in the Brainstorm application .jar file
-appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
 % Unjar in "javabuilder" folder, just to get the SelectMcr class
 unzip(appJar, compilerDir);
 classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
