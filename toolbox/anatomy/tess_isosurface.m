@@ -170,7 +170,10 @@ if isSave
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
     MriFile = sSubject.Anatomy(1).FileName;
-    hFig = view_mri_3d(MriFile, [], 0.3, []);
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    if isempty(hFig)
+        hFig = view_mri_3d(MriFile, [], 0.3, []);
+    end
     view_surface(MeshFile, 0.6, [], hFig, []);    
     panel_surface('SetIsoValue', isoValue);
 else

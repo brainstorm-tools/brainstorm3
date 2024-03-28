@@ -363,8 +363,8 @@ function UpdatePanel()
     if isempty(ctrl)
         return;
     end
-    % Get current electrodes
-    [sElectrodes, iDS, iFig, hFig] = GetElectrodes();
+    % Get current figure
+    hFig = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
@@ -1979,7 +1979,7 @@ end
 %% ===== SET DISPLAY MODE =====
 function SetDisplayMode(DisplayMode)
     % Get current figure
-    [sElectrodes, iDS, iFig, hFig] = GetElectrodes();
+    hFig = bst_figures('GetCurrentFigure');
     if isempty(hFig)
         return;
     end
