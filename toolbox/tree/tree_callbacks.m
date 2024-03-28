@@ -3154,7 +3154,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
             gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
         end
         % === SEEG/ECOG ===
-        if (length(iAnatomy) <= 1)
+        if (length(iAnatomy) <= 1) && iSubject ~=0
             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', MriFile));
         end
           
