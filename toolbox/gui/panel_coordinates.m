@@ -179,8 +179,9 @@ function UpdatePanel()
     if isempty(ctrl)
         return
     end
+
     % Get current figure
-    hFig = bst_figures('GetFiguresByType', '3DViz');
+    hFig = bst_figures('GetCurrentFigure', '3D');
     % If a figure is available: get if a point select 
     if ~isempty(hFig) && ishandle(hFig)
         CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
