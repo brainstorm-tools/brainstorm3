@@ -1516,6 +1516,29 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     eventList.add('br', jScroll);
                     optionPanel.add(eventList);
                     jPanelOpt.add(optionPanel);
+
+                case 'list'
+                    listModel = javax.swing.DefaultListModel();
+                    for iItem = 1 : length(option.Comment)-1
+                        listModel.addElement(option.Comment{iItem});
+                    end
+                    % Create list
+                    jList = java_create('javax.swing.JList');
+                    jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
+                    jList.setModel(listModel);
+                    jList.setVisibleRowCount(-1);
+                    jList.setCellRenderer(BstStringListRenderer(fontSize));
+                    jList.setEnabled(1);
+                    gui_component('label', jPanelOpt, [], option.Comment{end});
+                    % Horizontal glue
+                    gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
+                    java_setcb(jList, 'ValueChangedCallback', @(h,ev)ItemSelection_Callback(iProcess, optNames{iOpt}, jList));
+                    % Create scroll panel
+                    jScroll = javax.swing.JScrollPane(jList);
+                    jPanelOpt.add('br hfill vfill', jScroll);
+                    % Set preferred size for the container
+                    prefPanelSize = java_scaled('dimension', 250,180);
+
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
         end
@@ -2080,6 +2103,20 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
 
+    %% ===== OPTIONS: SELECT ITEM CALLBACK =====
+    function ItemSelection_Callback(iProcess, optName, jList)
+        listModel = jList.getModel();
+        iSels = jList.getSelectedIndices();
+        elems = {};
+
+        % Update saved selected list
+        for iSel = 1:length(iSels)
+            elems{end + 1} = listModel.elementAt(iSels(iSel));
+        end
+        SetOptionValue(iProcess, optName, elems);
+    end
+
+
     %% ===== OPTIONS: GET EVENT LIST =====
     function EventList = GetEventList(varargin)
         excludeSpikes = 0;
@@ -2119,7 +2156,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         UpdateProcessesList();
         % Save option value for future uses
         optType = GlobalData.Processes.Current(iProcess).options.(optName).Type;
-        if ismember(optType, {'value', 'range', 'freqrange', 'freqrange_static', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm'}) ...
+        if ismember(optType, {'value', 'range', 'freqrange', 'freqrange_static', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm', 'list'}) ...
                 || (strcmpi(optType, 'filename') && (length(value)>=7) && strcmpi(value{7},'dirs') && strcmpi(value{3},'save'))
             % Get processing options
             ProcessOptions = bst_get('ProcessOptions');
