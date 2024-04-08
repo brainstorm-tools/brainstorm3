@@ -24,6 +24,8 @@ This is a brief list of resources to get started with MATLAB if you are new or c
 - [Introduction to MATLAB for Python Users](https://blogs.mathworks.com/student-lounge/2021/02/19/introduction-to-matlab-for-python-users/)
 - [MATLAB for Brain and Cognitive Scientists](https://mitpress.mit.edu/9780262035828/)
 - [Brainstorm scripting](https://neuroimage.usc.edu/brainstorm/Tutorials/Scripting)
+- [Debug MATLAB Code Files](https://www.mathworks.com/help/matlab/matlab_prog/debugging-process-and-features.html)
+- [MATLAB Debugging Tutorial (video)](https://www.youtube.com/watch?v=PdNY9n8lV1Y)
 
 ## Git and GitHub resources
 Before starting a new contribution, you need to be familiar with [Git](https://git-scm.com/) and [GitHub](https://github.com/) concepts like: ***commit, branch, push, pull, remote, fork, repository***, etc. There are plenty resources online to learn Git and GitHub, for example:
@@ -101,7 +103,7 @@ See: [Git tools rewriting history](https://git-scm.com/book/en/v2/Git-Tools-Rewr
 6. ### **Create a new Pull Request**
 
     Once you're **happy** with all the changes that you have done, and you have pushed them to your remote repo, using the GitHub website, create a [Pull Request (PR)](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) from your **remote branch** to the **master** branch in the official Brainstorm repo.
-    
+
     > :warning: For greater collaboration, select the option [Allow edits by maintainers](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork) before creating your PR. This will allow Brainstorm maintainers to add commits to your PR branch before merging it. You can always change this setting later.
 
  ![image](https://user-images.githubusercontent.com/8238803/135626746-aaaac892-8c44-494e-a79d-b7195e3b2b5e.png)
