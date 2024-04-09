@@ -129,6 +129,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get extension for filter
         Filters = bst_get('FileFilters', [inputType, 'out']);
         iFilter = find(ismember(Filters(:,3), outFileOptions{2}), 1, 'first');
+        if isempty(iFilter)
+            bst_error(sprintf('Format "%s" is not valid for files of type "%s"', outFileOptions{2}, inputType), 'Export to file');
+            return
+        end
         fExt = Filters{iFilter, 1}{1};
     end
     % Export files
@@ -162,8 +166,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
             % Verify that extension for BST format ends in '.ext'
-            if strcmp(outFileOptions{2}, 'BST') && isempty(regexp('at', '\.\w*$', 'once'))
-                fExt = [fExt, '.mat'];
+            if strcmp(outFileOptions{2}, 'BST') && isempty(regexp(outFileOptions{1}, '\.\w+$', 'once'))
+                % Add prefix for Brainstorm files
+                prefix = '';
+                if strcmp(fExt(1), '_')
+                    prefix = [fExt(2:end), '_'];
+                end
+                outFileOptions{1} = bst_fullfile(fPath, [prefix, fBase, '.mat']);
             end
         end
         % Export files according their input type

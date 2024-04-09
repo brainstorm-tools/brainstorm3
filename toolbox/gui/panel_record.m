@@ -3012,12 +3012,16 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
             return;
         end
         vecDate = [str2num(res{1}), str2num(res{2}), str2num(res{3})];
-        if (length(vecDate) < 3) || (vecDate(1) <= 0) || (vecDate(1) >= 31) || (vecDate(2) <= 0) || (vecDate(2) >= 12) || (vecDate(3) < 1700)
+        try
+            if (length(vecDate) < 3) || (vecDate(3) < 1700)
+                error('Invalid year');
+            end
+            % Get a new date string
+            newDate = datetime(sprintf('%02d%02d%04d', vecDate), 'InputFormat', 'ddMMyyyy');
+        catch
             bst_error('Invalid date.', 'Set date', 0);
             return;
         end
-        % Get a new date string
-        newDate = datestr(datenum(vecDate(3), vecDate(2), vecDate(1)));
     else
         % Fix data format
         newDate = str_date(newDate);

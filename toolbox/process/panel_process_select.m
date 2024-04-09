@@ -1852,7 +1852,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         inBstFile = selectOptions{1};
         % Filters and extension according to file type
         fileType = file_gettype(inBstFile);
+        isRaw = 0;
         if strcmp(fileType, 'data') && ~isempty(strfind(inBstFile, '_0raw'))
+            isRaw = 1;
             fileType = 'raw';
         end
         if isempty(Filters)
@@ -1874,8 +1876,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         fExt = Filters{iFilter, 1}{1};
         % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
-        if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
-            fExt = [fExt, '.mat'];
+        if strcmp(defaultFilter, 'BST') && isempty(regexp(DefaultOutFile, '\.\w+$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+            fExt = '.mat';
         end
 
         % Suggest filename or dir
