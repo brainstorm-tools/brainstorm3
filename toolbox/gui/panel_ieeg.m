@@ -338,6 +338,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     function ContListClick_Callback(h, ev)
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
+            ctrl = bst_get('PanelControls', 'iEEG');
+            % if contact list is empty then dont't proceed
+            if ctrl.jListCont.isSelectionEmpty()
+                return;
+            end
             % highlight the location on MRI Viewer and Surface
             HighlightLocCont();
             [sSelCont, sContactName] = GetSelectedContacts();
