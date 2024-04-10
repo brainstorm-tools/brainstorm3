@@ -2397,6 +2397,11 @@ switch contextName
         end
         
         % Get defaults from internet
+        if ~ismember('aal1', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL1';
+            sTemplates(end).Name = 'AAL1';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
+        end
         if ~ismember('aal2', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL2';
             sTemplates(end).Name = 'AAL2';
