@@ -1535,12 +1535,21 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jList.setVisibleRowCount(-1);
                     jList.setCellRenderer(BstStringListRenderer(fontSize));
                     jList.setEnabled(1);
+                    % Last item in list is the list comment
                     gui_component('label', jPanelOpt, [], option.Comment{end});
-                    % Horizontal glue
+                    % Restore previous selected items
                     gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
+                    if ~isempty(sProcess(iProcess).options.(optNames{iOpt}).Value)
+                        [~, iSelItems] = ismember(sProcess(iProcess).options.(optNames{iOpt}).Value, option.Comment);
+                        iSelItems(iSelItems==0) = [];
+                        if length(iSelItems) == length(sProcess(iProcess).options.(optNames{iOpt}).Value)
+                            jList.setSelectedIndices(iSelItems-1);
+                        end
+                    end
                     java_setcb(jList, 'ValueChangedCallback', @(h,ev)ItemSelection_Callback(iProcess, optNames{iOpt}, jList));
                     % Create scroll panel
                     jScroll = javax.swing.JScrollPane(jList);
+                    % Horizontal glue
                     jPanelOpt.add('br hfill vfill', jScroll);
                     % Set preferred size for the container
                     prefPanelSize = java_scaled('dimension', 250,180);
