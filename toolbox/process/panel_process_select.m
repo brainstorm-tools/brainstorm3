@@ -1517,14 +1517,20 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     optionPanel.add(eventList);
                     jPanelOpt.add(optionPanel);
 
-                case 'list'
+                case {'list_vertical', 'list_horizontal'}
+                    % List items
                     listModel = javax.swing.DefaultListModel();
                     for iItem = 1 : length(option.Comment)-1
                         listModel.addElement(option.Comment{iItem});
                     end
                     % Create list
                     jList = java_create('javax.swing.JList');
-                    jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
+                    % Orientation
+                    if strcmpi(option.Type, 'list_vertical')
+                        jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
+                    else
+                        jList.setLayoutOrientation(jList.VERTICAL_WRAP);
+                    end
                     jList.setModel(listModel);
                     jList.setVisibleRowCount(-1);
                     jList.setCellRenderer(BstStringListRenderer(fontSize));
