@@ -1,3 +1,16 @@
+March 2024
+- SEEG/ECOG: Improved contact localization using 3D figures
+- SEEG/ECOG: Revamped iEEG panel
+- Anatomy: New scout operations (intersect and duplicate)
+- IO: Improved support for ITAB files
+- IO: Bugfix on importing Curry .pom channel files
+- Events: Allow digital mask for events from channel
+--------------------------------------------------------------
+February 2024
+- Database: Integration of CT volumes and their options in database explorer
+- Database: Links to raw files are updated if disk letter or mount point changes
+- IO: Syncronize raw data with common event
+--------------------------------------------------------------
 January 2024
 - IO: Import channel-wise events from BrainVision BrainAmp
 --------------------------------------------------------------
