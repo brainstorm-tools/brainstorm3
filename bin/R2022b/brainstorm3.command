@@ -4,17 +4,17 @@
 #         brainstorm3.command <MATLABROOT> <script.m> <arguments>
 #
 # If MATLABROOT argument is specified, the Matlab root path is saved
-# in the file ~/.brainstorm/MATLABROOTXX.txt.
+# in the file ~/.brainstorm/MATLABROOT_R20YYx.txt
 # Else, MATLABROOT is read from this file
 #
 # AUTHOR: Francois Tadel, 2011-2022
+#         Raymundo Cassani, 2024
 
 # Configuration
-VER_NAME="2022b"
-VER_NUMBER="9.13"
-VER_DIR="913"
+VER_YEAR_VERSION="2022b"
+VER_NAME="R$VER_YEAR_VERSION"
 MDIR="$HOME/.brainstorm"
-MFILE="$MDIR/MATLABROOT$VER_DIR.txt"
+MFILE="$MDIR/MATLABROOT_$VER_NAME.txt"
 
 #########################################################################
 # Detect system type
@@ -38,7 +38,7 @@ SH_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # JAR is in the same folder (Linux)
 if [ -f "$SH_DIR/brainstorm3.jar" ]; then
     JAR_FILE=$SH_DIR/brainstorm3.jar
-# JAR is 3 levels up (on MacOSX: brainstorm3.app/Contents/MacOS/brainstorm3.command)
+# JAR is 3 levels up (on macOS: brainstorm3.app/Contents/MacOS/brainstorm3.command)
 elif [ -f "$SH_DIR/../../../brainstorm3.jar" ]; then
     JAR_FILE=$SH_DIR/../../../brainstorm3.jar
 else
@@ -52,14 +52,19 @@ if [ "$1" ]; then
 # Read the folder from the file
 elif [ -f $MFILE ]; then
     MATLABROOT=$(<$MFILE)
-# MacOS: Try the default installation folders for Matlab or the MCR
-elif [ $SYST == "maci64" ] && [ -d "/Applications/MATLAB/MATLAB_Runtime/v$VER_DIR" ]; then
-    MATLABROOT="/Applications/MATLAB/MATLAB_Runtime/v$VER_DIR"
+# macOS: Try the default installation folder for Matlab Runtime
+elif [ $SYST == "maci64" ] && [ -d "/Applications/MATLAB/MATLAB_Runtime/$VER_NAME" ]; then
+    MATLABROOT="/Applications/MATLAB/MATLAB_Runtime/$VER_NAME"
+    echo "MATLAB Runtime library was found in folder:"
+    echo "$MATLABROOT"
+# Linux: Try the default installation folder for Matlab Runtime
+elif ([ $SYST == "glnx86" ] || [ $SYST == "glnxa64" ]) && [ -d "/usr/local/MATLAB/MATLAB_Runtime/$VER_NAME" ]; then
+    MATLABROOT="/usr/local/MATLAB/MATLAB_Runtime/$VER_NAME"
     echo "MATLAB Runtime library was found in folder:"
     echo "$MATLABROOT"
 # Run the java file selector
 else
-    java -classpath "$JAR_FILE" org.brainstorm.file.SelectMcr$VER_NAME
+    java -classpath "$JAR_FILE" org.brainstorm.file.SelectMcr$VER_YEAR_VERSION
     # Read again the folder from the file
     if [ -f $MFILE ]; then
         MATLABROOT=$(<$MFILE)
@@ -73,17 +78,16 @@ if [ -z "$MATLABROOT" ]; then
     echo "USAGE: brainstorm3.command <MATLABROOT>"
 	echo "       brainstorm3.command <MATLABROOT> <script.m> <arguments>"
     echo " "
-    echo "MATLABROOT is the installation folder of the Runtime $VER_NUMBER (R$VER_NAME)"
-    echo "The Matlab Runtime $VER_NUMBER is the library needed to"
+    echo "MATLABROOT is the installation folder of the Runtime ($VER_NAME)"
+    echo "The Matlab Runtime $VER_NAME is the library needed to"
     echo "run executables compiled with Matlab $VER_NAME."
     echo " "
-    echo "Examples:"
-    echo "    Linux:  /usr/local/MATLAB_Runtime/v$VER_DIR"
-    echo "    Linux:  $HOME/MATLAB_Runtime_$VER_NAME"
-    echo "    MacOSX: /Applications/MATLAB/MATLAB_Runtime/v$VER_DIR"
+    echo "Default Matlab Runtime installation folders:"
+    echo "    Linux:  /usr/local/MATLAB_Runtime/$VER_NAME"
+    echo "    macOS: /Applications/MATLAB/MATLAB_Runtime/v$VER_NAME"
     echo " "
     echo "MATLABROOT has to be specified only at the first call,"
-    echo "then it is saved in the file ~/.brainstorm/MATLABROOT$VER_DIR.txt"
+    echo "then it is saved in the file ~/.brainstorm/MATLABROOT_$VER_NAME.txt"
     echo " "
     exit 1
 # If folder not a valid Matlab root path
@@ -119,10 +123,10 @@ export JVM_DIR=$MATLABROOT/sys/java/jre/$SYST/jre
 export JAVA_EXE=$JVM_DIR/bin/java
 
 ##########################################################################
-# Setting library path for MACOSX
+# Setting library path for macOS
 if [ $SYST == "maci64" ]; then
     export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$MATLABROOT/runtime/maci64:$MATLABROOT/sys/os/maci64:$MATLABROOT/bin/maci64
-# Setting library path for LINUX
+# Setting library path for Linux
 else
     export PATH=$PATH:$MATLABROOT/runtime/$SYST
     JAVA_SUBDIR=$(find $MATLABROOT/sys/java/jre -type d | tr '\n' ':') 
@@ -144,7 +148,7 @@ echo " "
 # Run Brainstorm
 "$JAVA_EXE" -jar "$JAR_FILE" "${@:2}"
 
-# Force shell death on MacOSX
+# Force shell death on macOS
 if [ $SYST == "maci64" ]; then
     exit 0
 fi
