@@ -133,8 +133,8 @@ for p = splitPath
         % Count files and lines
         [tmpComment, tmpCode] = CountLines(strFile, autoComment);
         nFiles   = nFiles + 1;
-        nCode    = nCode + tmpComment;
-        nComment = nComment + tmpCode;
+        nCode    = nCode + tmpCode;
+        nComment = nComment + tmpComment;
     end
 end
 disp('DEPLOY> Statistics:');

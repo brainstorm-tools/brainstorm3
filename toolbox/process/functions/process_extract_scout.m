@@ -301,7 +301,10 @@ function OutputFiles = Run(sProcess, sInputs)
                 bst_progress('set', round(100*(iInput-1)/length(sInputs)));
             end
         end
-        isAbs = ~isempty(strfind(sInputs(iInput).FileName, '_abs'));
+        % Get meaningful tags in the results file name (without folders)
+        TestResFile = file_resolve_link(sInputs(iInput).FileName);
+        [~, TestTags] = bst_fileparts(TestResFile);
+        isAbs = ~isempty(strfind(TestTags, '_abs'));
 
         % === READ FILES ===
         [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs(iInput), TimeWindow);
