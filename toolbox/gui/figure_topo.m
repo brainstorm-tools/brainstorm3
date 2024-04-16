@@ -945,16 +945,27 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
     % Loop on multiple files
-    Ms = zeros(1, length(F));
+    MinMaxs = zeros(2, length(F));
     for iFile = 1:length(F)
         % Keep only selected time points
         F{iFile} = F{iFile}(:, ixAxis);
-        % Find maximum
-        M = double(max(abs(F{iFile}(:))));
-        Ms(iFile) = M;
+        % Find minimum and maximum
+        MinMaxs(1, iFile) = double(min(F{iFile}(:)));
+        MinMaxs(2, iFile) = double(max(F{iFile}(:)));
+    end
+    % Get scale and offset to normalize data
+    TfInfo = getappdata(hFig, 'Timefreq');
+    if isStatic && isfield(TfInfo, 'Function') && strcmpi(TfInfo.Function, 'log') && max(MinMaxs(:)) < 0
+        % Data is dB
+        offset = max(MinMaxs(2,:));
+        % Remove offset
+        M = max(abs(MinMaxs(1,:) - offset));
+        F = cellfun(@(c)minus(c, offset), F, 'UniformOutput', 0);
+    else
+        offset = 0;
+        M = max(abs(MinMaxs(2,:)));
     end
     % Normalize data
-    M = max(Ms);
     F = cellfun(@(c)rdivide(c, M), F, 'UniformOutput', 0);
 
     % Draw each sensor
@@ -1115,7 +1126,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 'BusyAction',    'queue');
             % Create label
             PlotHandles.hLabelLegend = text(...
-                10 / figPos(3), .5, '', ...
+                10 / figPos(3), .6, '', ...
                 'FontUnits',   'points', ...
                 'FontWeight',  'bold', ...
                 'FontSize',    8 .* Scaling, ...
@@ -1188,7 +1199,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             strAmp = sprintf('%g', fScaled);
         end
         % Create legend text
-        strLegend = sprintf('Max amplitude: %s %s', strAmp, fUnits);
+        strLegend = '';
+        if offset ~= 0
+            % Offset legend
+            strLegend = [sprintf('Offset level: %d %s', round(offset), fUnits)];
+        end
+        % Amplitude legend
+        strLegend = [strLegend 10 sprintf('Max amplitude: %s %s', strAmp, fUnits)];
         % Time legend
         if ~isStatic
             msTime = round(TopoLayoutOptions.TimeWindow * 1000);
