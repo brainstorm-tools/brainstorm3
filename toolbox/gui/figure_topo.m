@@ -793,12 +793,9 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     end
     % Convert x axis (time or frequency) bands in time vector
     if iscell(xAxis)
-        nBands = size(xAxis,1);
-        xAxisVector = zeros(1,nBands);
-        for i = 1:nBands
-            % Take the middle of each time band
-            xAxisVector(i) = (xAxis{i,2} + xAxis{i,3}) / 2;
-        end
+        % Take the middle of each time band
+        xAxisVector = zeros(1, size(xAxis,1));
+        xAxisVector(:) = mean(process_tf_bands('GetBounds', xAxis), 2);
     else
         xAxisVector = xAxis;
     end
@@ -856,7 +853,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         % Look for current time in TimeVector
         iCurrentX = bst_closest(GlobalData.UserTimeWindow.CurrentTime, xAxisVector);
     else
-        iCurrentX = bst_closest(GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq), xAxisVector);
+        if iscell(GlobalData.UserFrequencies.Freqs)
+            bands = mean(process_tf_bands('GetBounds', xAxis), 2);
+            currentX = bands(GlobalData.UserFrequencies.iCurrentFreq);
+        else
+            currentX = GlobalData.UserFrequencies.Freqs(GlobalData.UserFrequencies.iCurrentFreq);
+        end
+        iCurrentX = bst_closest(currentX, xAxisVector);
     end
     % Current position
     if isempty(iCurrentX)
