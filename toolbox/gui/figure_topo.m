@@ -970,6 +970,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             % Define lines to trace
             XData  = plotSize(1) * dat(end:-1:1) * DispFactor + Xi;
             Xrange = plotSize(1) * [min(0,datMin), max(0,datMax)] * DispFactor + Xi;
+            Xrange = Xrange + 0.2.*[-1, 1].*(abs(diff(Xrange)));
             YData  = plotSize(2) * (xAxisVector - 0.5) + Yi;
             ZData  = 0;
             
