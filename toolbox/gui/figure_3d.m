@@ -1282,7 +1282,11 @@ function ResetView(hFig)
     % 2D LAYOUT: separate function
     if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
         GlobalData.DataSet(iDS).Figure(iFig).Handles.DisplayFactor = 1;
-        GlobalData.Preferences.TopoLayoutOptions.TimeWindow = abs(GlobalData.UserTimeWindow.Time(2) - GlobalData.UserTimeWindow.Time(1)) .* [-1, 1];
+        if ~getappdata(hFig, 'isStaticFreq')
+            GlobalData.Preferences.TopoLayoutOptions.FreqWindow = [GlobalData.UserFrequencies.Freqs(1), GlobalData.UserFrequencies.Freqs(end)];
+        else
+            GlobalData.Preferences.TopoLayoutOptions.TimeWindow = abs(GlobalData.UserTimeWindow.Time(2) - GlobalData.UserTimeWindow.Time(1)) .* [-1, 1];
+        end
         figure_topo('UpdateTopo2dLayout', iDS, iFig);
         return
     % 3D figures
