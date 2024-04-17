@@ -535,6 +535,7 @@ function UpdateContactList(CoordSpace)
     % Get the contacts and their respective name
     [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(SelName);
     if isempty(sContacts)
+        ctrl.jListCont.setModel(listModel);
         return;
     end
     SubjectFile = getappdata(hFig(1), 'SubjectFile');
