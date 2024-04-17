@@ -883,6 +883,9 @@ function ButtonView3DHead_Callback(hFig)
         Handles.hView3DHeadFig = view_surface_matrix(Vertices, Faces, SurfAlpha);
         % Start coordinates selection
         setappdata(Handles.hView3DHeadFig, 'isSelectingCoordinates', 1);
+        if gui_brainstorm('isTabVisible', 'iEEG') 
+            setappdata(Handles.hView3DHeadFig, 'isSelectingIeegCoordinates', 1);
+        end
         set(Handles.hView3DHeadFig, ...
             'Pointer',  'cross', ...
             'UserData', hFig, ...

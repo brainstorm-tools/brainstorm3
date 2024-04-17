@@ -125,7 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
-    setappdata(hFig, 'isSelectingContactLabelIeeg',  0);
+    setappdata(hFig, 'isSelectingIeegCoordinates',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -544,7 +544,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
-    isSelectingContactLabelIeeg  = getappdata(hFig, 'isSelectingContactLabelIeeg');
+    isSelectingIeegCoordinates  = getappdata(hFig, 'isSelectingIeegCoordinates');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -633,6 +633,14 @@ function FigureMouseUpCallback(hFig, varargin)
                     % Set coordinates in linked MRI viewer
                     figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
                 end
+            end
+        
+        % === SELECTING POINT ===
+        elseif isSelectingIeegCoordinates
+            % Selecting from Coordinates panel
+            if gui_brainstorm('isTabVisible', 'iEEG')
+                % For SEEG, making sure centroid calculation for plotting contacts is active
+                panel_coordinates('SelectPoint', hFig, 0, 1);
             end
             
         % === TIME-FREQ CORTICAL POINT ===
