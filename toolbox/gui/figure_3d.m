@@ -1274,6 +1274,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             bst_figures('SetSelectedRows', []);
                         end
                     end
+                 % c: for enabling/disabling mode for selecting coordinates in 3DViz
+                case 'c'
+                    panel_ieeg('SetSelectionState', ~panel_ieeg('GetSelectionState'));
             end
     end
     % Restore events
