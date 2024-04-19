@@ -54,7 +54,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], 'Select', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
+        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -439,6 +439,18 @@ function SetSelectionState(isSelected)
             setappdata(hFig, 'isSelectingIeegCoordinates', 0);      
         end
     end
+end
+
+%% ===== GET SELECTION STATE =====
+function isSelected = GetSelectionState()
+    % Get "Scouts" panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl)
+        isSelected = 0;
+        return
+    end
+    % Return status
+    isSelected = ctrl.jButtonSelect.isSelected();
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
