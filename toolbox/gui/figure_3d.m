@@ -1437,8 +1437,8 @@ end
 function GetCoordinates(varargin)
     % Show Coordinates panel
     gui_show('panel_coordinates', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
-    % Start point selection
-    panel_coordinates('SetSelectionState', 1);
+    % Toggle point selection mode
+    panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
 end
 
 
@@ -1960,7 +1960,9 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
-        gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
+        jItem = gui_component('checkboxmenuitem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
+        jItem.setSelected(panel_coordinates('GetSelectionState'));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0));
     end
     
     % ==== MENU: SNAPSHOT ====
