@@ -607,8 +607,9 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCorticalSpot
             panel_scout('CreateScoutMouse', hFig);
             
-        % === SELECTING POINT FROM PANEL COORDINATES ===
+        % === SELECTING POINT ===
         elseif isSelectingCoordinates
+            % Selecting from Coordinates or iEEG panels
             if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
                     % For SEEG, making sure centroid calculation for plotting contacts is active
