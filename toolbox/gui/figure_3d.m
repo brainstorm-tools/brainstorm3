@@ -1093,11 +1093,6 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
                     end 
-                % C : Enable / disable Select coordinates mode
-                case 'c'
-                    gui_brainstorm('ShowToolTab', 'Coordinates');
-                    pause(0.01);
-                    panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
@@ -1190,6 +1185,19 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % M : Jump to maximum
                 case 'm'
                     JumpMaximum(hFig);
+                % CTRL+P : Toggle point selection mode
+                case 'p'
+                    if ismember('control', keyEvent.Modifier)
+                        tmp = bst_get('PanelControls', 'Coordinates');
+                        if isempty(tmp)
+                            gui_brainstorm('ShowToolTab', 'Coordinates');
+                        end
+                        tmp = bst_get('PanelControls', 'iEEG');
+                        if ~isempty(tmp)
+                            gui_brainstorm('ShowToolTab', 'iEEG');
+                        end
+                        panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
+                    end
                 % CTRL+R : Recordings time series
                 case 'r'
                     if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ~strcmpi(FigureId.Modality, 'MEG GRADNORM')
@@ -1963,7 +1971,7 @@ function DisplayFigurePopup(hFig)
     if ~strcmpi(FigureType, 'Topography')
         jItem = gui_component('checkboxmenuitem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
         jItem.setSelected(panel_coordinates('GetSelectionState'));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_MASK));
     end
     
     % ==== MENU: SNAPSHOT ====
