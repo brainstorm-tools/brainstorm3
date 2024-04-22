@@ -609,13 +609,22 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCorticalSpot
             panel_scout('CreateScoutMouse', hFig);
             
-        % === SELECTING POINT ===
+        % === SELECTING POINT FROM PANEL COORDINATES ===
         elseif isSelectingCoordinates
-            % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
-                % For SEEG, making sure centroid calculation for plotting contacts is active
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    panel_coordinates('SelectPoint', hFig, 0, 1);
+                    % For SEEG, making sure centroid calculation for plotting contacts is active
+                    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
+                    if ~isempty(sSurf)
+                        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
+                        if ~isempty(iIsoSurf)
+                            panel_coordinates('SelectPoint', hFig, 0, 1);
+                        else
+                            panel_coordinates('SelectPoint', hFig);
+                        end
+                    else
+                        panel_coordinates('SelectPoint', hFig);
+                    end
                 else
                     panel_coordinates('SelectPoint', hFig);
                 end
@@ -635,13 +644,23 @@ function FigureMouseUpCallback(hFig, varargin)
                 end
             end
         
-        % === SELECTING POINT ===
+        % === SELECTING POINT FROM PANEL IEEG ===
         elseif isSelectingIeegCoordinates
-            % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'iEEG')
                 % For SEEG, making sure centroid calculation for plotting contacts is active
-                panel_coordinates('SelectPoint', hFig, 0, 1);
+                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
+                if ~isempty(sSurf)
+                    iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
+                    if ~isempty(iIsoSurf)
+                        panel_coordinates('SelectPoint', hFig, 0, 1);
+                    else
+                        panel_coordinates('SelectPoint', hFig);
+                    end
+                else
+                    panel_coordinates('SelectPoint', hFig);
+                end
             end
+       
             
         % === TIME-FREQ CORTICAL POINT ===
         % SHIFT + CLICK: Display time-frequency map for the selected dipole
