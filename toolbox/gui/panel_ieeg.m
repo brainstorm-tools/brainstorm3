@@ -54,7 +54,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)SetSelectionState(ev.getSource.isSelected()));
+        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -399,59 +399,6 @@ function UpdatePanel()
     UpdateContactList('SCS');
 end
 
-%% ===============================================================================
-%  ====== HANDLE 3D FIGURE POINT SELECTION =======================================
-%  ===============================================================================
-%% ===== POINT SELECTION : start/stop =====
-% Manual selection of a surface point : start(1), or stop(0)
-function SetSelectionState(isSelected)
-    % Get panel controls
-    ctrl = bst_get('PanelControls', 'iEEG');
-    if isempty(ctrl)
-        return
-    end
-    % Get list of all figures
-    hFigures = bst_figures('GetAllFigures');
-    if isempty(hFigures)
-        ctrl.jButtonSelect.setSelected(0);
-        return
-    end
-    % Start selection
-    if isSelected
-        % Push toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(1);        
-        % Set 3DViz figures in 'SelectingCorticalSpot' mode
-        for hFig = hFigures
-            % Keep only figures with surfaces
-            TessInfo = getappdata(hFig, 'Surface');
-            if ~isempty(TessInfo)
-                setappdata(hFig, 'isSelectingIeegCoordinates', 1);
-                set(hFig, 'Pointer', 'cross');
-            end
-        end
-    % Stop selection
-    else
-        % Release toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(0);
-        % Exit 3DViz figures from SelectingCorticalSpot mode
-        for hFig = hFigures
-            set(hFig, 'Pointer', 'arrow');
-            setappdata(hFig, 'isSelectingIeegCoordinates', 0);      
-        end
-    end
-end
-
-%% ===== GET SELECTION STATE =====
-function isSelected = GetSelectionState()
-    % Get "Scouts" panel controls
-    ctrl = bst_get('PanelControls', 'iEEG');
-    if isempty(ctrl)
-        isSelected = 0;
-        return
-    end
-    % Return status
-    isSelected = ctrl.jButtonSelect.isSelected();
-end
 
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()

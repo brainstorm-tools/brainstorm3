@@ -125,7 +125,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
-    setappdata(hFig, 'isSelectingIeegCoordinates',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -544,7 +543,6 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
-    isSelectingIeegCoordinates  = getappdata(hFig, 'isSelectingIeegCoordinates');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -611,7 +609,7 @@ function FigureMouseUpCallback(hFig, varargin)
             
         % === SELECTING POINT FROM PANEL COORDINATES ===
         elseif isSelectingCoordinates
-            if gui_brainstorm('isTabVisible', 'Coordinates')
+            if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
                     % For SEEG, making sure centroid calculation for plotting contacts is active
                     [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
@@ -643,24 +641,6 @@ function FigureMouseUpCallback(hFig, varargin)
                     figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
                 end
             end
-        
-        % === SELECTING POINT FROM PANEL IEEG ===
-        elseif isSelectingIeegCoordinates
-            if gui_brainstorm('isTabVisible', 'iEEG')
-                % For SEEG, making sure centroid calculation for plotting contacts is active
-                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
-                if ~isempty(sSurf)
-                    iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
-                    if ~isempty(iIsoSurf)
-                        panel_coordinates('SelectPoint', hFig, 0, 1);
-                    else
-                        panel_coordinates('SelectPoint', hFig);
-                    end
-                else
-                    panel_coordinates('SelectPoint', hFig);
-                end
-            end
-       
             
         % === TIME-FREQ CORTICAL POINT ===
         % SHIFT + CLICK: Display time-frequency map for the selected dipole
@@ -1112,6 +1092,11 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
                     end 
+                % C : Enable / disable Select coordinates mode
+                case 'c'
+                    gui_brainstorm('ShowToolTab', 'Coordinates');
+                    pause(0.01);
+                    panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
@@ -1293,9 +1278,6 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             bst_figures('SetSelectedRows', []);
                         end
                     end
-                 % c: for enabling/disabling mode for selecting coordinates in 3DViz
-                case 'c'
-                    panel_ieeg('SetSelectionState', ~panel_ieeg('GetSelectionState'));
             end
     end
     % Restore events

@@ -264,20 +264,28 @@ end
 % Manual selection of a surface point : start(1), or stop(0)
 function SetSelectionState(isSelected)
     % Get panel controls
-    ctrl = bst_get('PanelControls', 'Coordinates');
-    if isempty(ctrl)
+    ctrl1 = bst_get('PanelControls', 'Coordinates');
+    ctrl2 = bst_get('PanelControls', 'iEEG');
+    ctrls = {ctrl1, ctrl2};
+    ctrls = ctrls(~cellfun(@isempty, ctrls));
+
+    if isempty(ctrls)
         return
     end
     % Get list of all figures
     hFigures = bst_figures('GetAllFigures');
     if isempty(hFigures)
-        ctrl.jButtonSelect.setSelected(0);
+        for ic = 1 : length(ctrls)
+            ctrls{ic}.jButtonSelect.setSelected(0);
+        end
         return
     end
     % Start selection
     if isSelected
         % Push toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(1);        
+        for ic = 1 : length(ctrls)
+            ctrls{ic}.jButtonSelect.setSelected(1);
+        end
         % Set 3DViz figures in 'SelectingCorticalSpot' mode
         for hFig = hFigures
             % Keep only figures with surfaces
@@ -289,14 +297,29 @@ function SetSelectionState(isSelected)
         end
     % Stop selection
     else
-        % Release toolbar "Select" button 
-        ctrl.jButtonSelect.setSelected(0);
+        % Release toolbar "Select" button
+        for ic = 1 : length(ctrls)
+            ctrls{ic}.jButtonSelect.setSelected(0);
+        end
         % Exit 3DViz figures from SelectingCorticalSpot mode
         for hFig = hFigures
             set(hFig, 'Pointer', 'arrow');
             setappdata(hFig, 'isSelectingCoordinates', 0);      
         end
     end
+end
+
+
+%% ===== GET SELECTION STATE =====
+function isSelected = GetSelectionState()
+    % Get "Coordinates" panel controls
+    ctrl = bst_get('PanelControls', 'Coordinates');
+    if isempty(ctrl)
+        isSelected = 0;
+        return
+    end
+    % Return status
+    isSelected = ctrl.jButtonSelect.isSelected();
 end
 
 

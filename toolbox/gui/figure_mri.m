@@ -884,7 +884,7 @@ function ButtonView3DHead_Callback(hFig)
         % Start coordinates selection
         setappdata(Handles.hView3DHeadFig, 'isSelectingCoordinates', 1);
         if gui_brainstorm('isTabVisible', 'iEEG') 
-            setappdata(Handles.hView3DHeadFig, 'isSelectingIeegCoordinates', 1);
+            setappdata(Handles.hView3DHeadFig, 'isSelectingCoordinates', 1);
         end
         set(Handles.hView3DHeadFig, ...
             'Pointer',  'cross', ...
