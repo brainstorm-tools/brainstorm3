@@ -20,6 +20,7 @@ function varargout = process_detectbad( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2010-2021
+%          Raymundo Cassani, 2024
 
 eval(macro_method);
 end
@@ -34,8 +35,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 115;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MedianNerveCtf#Review_the_individual_trials';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     
@@ -79,9 +80,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.comment1.Comment = ['<BR>  - <B>First column</B>: Signal detection threshold (peak-to-peak)<BR>' 10 ...
                                          '  - <B>Second column</B>: Signal rejection threshold (peak-to-peak)'];
     sProcess.options.comment1.Type    = 'label';
-    % Reject entire trial
+    % Separator
     sProcess.options.sep2.Type    = 'separator';
-    sProcess.options.rejectmode.Comment = {'Reject only the bad channels', 'Reject the entire trial'};
+    % Option: Window length
+    sProcess.options.win_length.Comment = 'Length of analysis window: ';
+    sProcess.options.win_length.Type    = 'value';
+    sProcess.options.win_length.Value   = {1, 's', []};
+    sProcess.options.win_length.InputTypes = {'raw'};
+    % Reject entire trial
+    sProcess.options.rejectmode.Comment = {'Reject only the bad channels', 'Reject the entire trial (all channels)'};
     sProcess.options.rejectmode.Type    = 'radio';
     sProcess.options.rejectmode.Value   = 2;
 end
@@ -142,17 +149,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         OutputFiles = [];
         return;
     end
+    % Check: Same FileType for all files
+    is_raw = strcmp({sInputs.FileType},'raw');
+    if ~all(is_raw) && ~all(~is_raw)
+        bst_error('Please do not mix continous (raw) and imported data', 'Detect bad segments', 0);
+        return;
+    end
     % Reject entire trial
     isRejectTrial = (sProcess.options.rejectmode.Value == 2);
-    
+    % If raw file, get window length
+    if is_raw(1) && isfield(sProcess.options, 'win_length') && ~isempty(sProcess.options.win_length) && ~isempty(sProcess.options.win_length.Value) && iscell(sProcess.options.win_length.Value)
+        winLength  = sProcess.options.win_length.Value{1};
+    end
+
     % Initializations
-    iBadTrials = [];
+    iBadTrials = []; % Bad trials for imported files
     progressPos = bst_progress('get');
     prevChannelFile = '';
     
     % ===== LOOP ON FILES =====
     for iFile = 1:length(sInputs)
-        % === LOAD ALL DATA ===
+        % === LOAD FILE ===
         % Progress bar
         bst_progress('set', progressPos + round(iFile / length(sInputs) * 100));
         % Get file in database
@@ -163,15 +180,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             prevChannelFile = ChannelFile;
             ChannelMat = in_bst_channel(ChannelFile);
         end
-        % Get modalities
-        Modalities = unique({ChannelMat.Channel.Type});
         % Load file
         DataMat = in_bst_data(sInputs(iFile).FileName, 'F', 'ChannelFlag', 'History', 'Time');
-        % Scale gradiometers / magnetometers:
-        %    - Neuromag: Apply axial factor to MEG GRAD sensors, to convert in fT/cm
-        %    - CTF: Apply factor to MEG REF gradiometers
-        DataMat.F = bst_scale_gradmag(DataMat.F, ChannelMat.Channel);
-        % Get time window
+        nChannels = length(DataMat.ChannelFlag);
+        % Get sample bounds for time window
         if ~isempty(TimeWindow)
             iTime = bst_closest(sProcess.options.timewindow.Value{1}, DataMat.Time);
             if (iTime(1) == iTime(2)) && any(iTime(1) == DataMat.Time)
@@ -183,74 +195,142 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             iTime = 1:length(DataMat.Time);
         end
-        % List of bad channels for this file
-        iBadChan = [];
         
-        % === LOOP ON MODALITIES ===
-        for iMod = 1:length(Modalities)
-            % === GET REJECTION CRITERIA ===
-            % Get threshold according to the modality
-            if ismember(Modalities{iMod}, {'MEG', 'MEG GRAD'})
-                Threshold = Criteria.meggrad;
-            elseif strcmpi(Modalities{iMod}, 'MEG MAG')
-                Threshold = Criteria.megmag;
-            elseif strcmpi(Modalities{iMod}, 'EEG')
-                Threshold = Criteria.eeg;
-            elseif ismember(Modalities{iMod}, {'SEEG', 'EOCG'})
-                Threshold = Criteria.ieeg;
-            elseif ~isempty(strfind(lower(Modalities{iMod}), 'eog'))
-                Threshold = Criteria.eog;
-            elseif ~isempty(strfind(lower(Modalities{iMod}), 'ecg')) || ~isempty(strfind(lower(Modalities{iMod}), 'ekg'))
-                Threshold = Criteria.ecg;
-            else
-                continue;
+        % ===== DETECT BAD SEGMENTS =====
+        % Process raw (continuous) data file in blocks
+        if strcmp(sInputs(iFile).FileType, 'raw')
+            % Get maximum size of a data block
+            ProcessOptions = bst_get('ProcessOptions');
+            blockLengthSamples = max(floor(ProcessOptions.MaxBlockSize / nChannels), 1);
+            % Sampling frequency
+            fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+            % Length of window of analysis in samples
+            winLengthSamples   = round(fs*winLength);
+            % List of bad events for this file
+            sBadEvents = repmat(db_template('event'), 0);
+            % Indices for each block
+            [~, iTimesBlocks, R] = bst_epoching(iTime, blockLengthSamples);
+            if ~isempty(R)
+                if ~isempty(iTimesBlocks)
+                    lastTime = iTimesBlocks(end, 2);
+                else
+                    lastTime = 0;
+                end
+                % Add the times for the remaining block
+                iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
             end
-            % If threshold is [0 0]: nothing to do
-            if isequal(Threshold, [0 0])
-                continue;
+            for iBlock = 1 : size(iTimesBlocks, 1)
+                blockTimeBounds = DataMat.Time(iTimesBlocks(iBlock, :));
+                % Load data from link to raw data
+                RawDataMat = in_bst(sInputs(iFile).FileName, blockTimeBounds, 1, 0, 'no');
+                % Scale gradiometers / magnetometers:
+                %    - Neuromag: Apply axial factor to MEG GRAD sensors, to convert in fT/cm
+                %    - CTF: Apply factor to MEG REF gradiometers
+                RawDataMat.F = bst_scale_gradmag(RawDataMat.F, ChannelMat.Channel);
+                [~, iTimesSegments, R] = bst_epoching(RawDataMat.F, winLengthSamples);
+                if ~isempty(R)
+                    if ~isempty(iTimesSegments)
+                        lastTime = iTimesSegments(end, 2);
+                    else
+                        lastTime = 0;
+                    end
+                    % Add the times for the remaining
+                    iTimesSegments = [iTimesSegments; lastTime+1, lastTime+size(R,2)];
+                end
+                % Detect bad segments
+                for iSegment = 1 : size(iTimesSegments, 1)
+                    iTimesSegment = iTimesSegments(iSegment, :);
+                    [iBadChannels, criteriaModalities] = Thresholding(RawDataMat.F(:,iTimesSegment(1):iTimesSegment(2)), RawDataMat.ChannelFlag, ChannelMat, Criteria);
+                    % Create one bad event for each channel-segment
+                    for ix = 1 : length(iBadChannels)
+                        % Create bad event
+                        sBadEvent = db_template('event');
+                        sBadEvent.label    = sprintf('BAD_detectbad_%s_block_%04d_segment_%04d_channel_%04d', criteriaModalities{ix}, iBlock, iSegment, iBadChannels(ix));    
+                        sBadEvent.times    = RawDataMat.Time(iTimesSegment)';
+                        sBadEvent.epochs   = 1;
+                        sBadEvent.channels = {{ChannelMat.Channel(iBadChannels(ix)).Name}};
+                        sBadEvent.notes    = [];
+                        % Add to events structure
+                        sBadEvents(end+1) = sBadEvent;
+                    end
+                end
             end
-            
-            % === DETECT BAD CHANNELS ===
-            % Get channels for this modality
-            iChan = good_channel(ChannelMat.Channel, DataMat.ChannelFlag, Modalities{iMod});
-            % Get data to test
-            DataToTest = DataMat.F(iChan, iTime);
-            % Compute peak-to-peak values for all the sensors
-            p2p = (max(DataToTest,[],2) - min(DataToTest,[],2));
-            % Get bad channels
-            iBadChanMod = find((p2p < Threshold(1)) | (p2p > Threshold(2)));
-            % If some bad channels were detected
-            if ~isempty(iBadChanMod)
-                % Convert indices back into the intial Channels structure
-                iBadChan = [iBadChan, iChan(iBadChanMod)];
-            end
-        end
-        
-        % === TAG FILE ===
-        if ~isempty(iBadChan)
-            % Reject entire trial
+            % If reject trial, ignore 'channels' field
             if isRejectTrial
-                % Mark trial as bad
-                iBadTrials(end+1) = iFile;
-                % Report
-                bst_report('Info', sProcess, sInputs(iFile), 'Marked as bad trial.');
-                % Update study
-                sStudy.Data(iData).BadTrial = 1;
-                bst_set('Study', iStudy, sStudy);
-            % Reject channels only
-            else
-                % Add detected channels to list of file bad channels
-                s.ChannelFlag = DataMat.ChannelFlag;
-                s.ChannelFlag(iBadChan) = -1;
-                % History
-                DataMat = bst_history('add', DataMat, 'detect', [FormatComment(sProcess) ' => Detected bad channels:' sprintf(' %d', iBadChan)]);
-                s.History = DataMat.History;
-                bst_report('Info', sProcess, sInputs(iFile), ['Bad channels: ' sprintf(' %d', iBadChan)]);
-                % Save file
-                bst_save(file_fullpath(sInputs(iFile).FileName), s, 'v6', 1);
+                % Remove channel information
+                [sBadEvents.channels] = deal([]);
+            end
+            % Merge all bad events by modality
+            badEventModNames = cellfun(@(x) regexp(x, '^BAD_detectbad_[^\W_]+', 'match'), {sBadEvents.label});
+            [badEventModNamesUnique, ~, ic] = unique(badEventModNames);
+            for iMod = 1 : length(badEventModNamesUnique)
+                % If only one event for modality
+                if sum(ic == iMod) == 1
+                    sBadEvents = [sBadEvents, sBadEvents(ic == iMod)];
+                    sBadEvents(end).label = badEventModNamesUnique{iMod};
+                else
+                    sBadEvents = process_evt_merge('Compute', '', sBadEvents, {sBadEvents(ic == iMod).label}, badEventModNamesUnique{iMod}, 0);
+                end
+            end
+            % Remove bad events that were merged
+            sBadEvents(1:length(ic)) = [];
+            % Combine bad channels for same bad segment
+            if ~isRejectTrial
+                for iBadEvent = 1 : length(sBadEvents)
+                    % Combine channels for each unique window
+                    [~, ics, ias] = unique(bst_round(sBadEvents(iBadEvent).times', 9), 'rows', 'stable');
+                    for iw = 1 : length(ics)
+                        % Combine channels
+                        sBadEvents(iBadEvent).channels{ics(iw)} = [sBadEvents(iBadEvent).channels{ias == iw}];
+                    end
+                    % Delete all but unique windows
+                    sBadEvents(iBadEvent).times    = sBadEvents(iBadEvent).times(:, ics);
+                    sBadEvents(iBadEvent).epochs    = sBadEvents(iBadEvent).epochs(:, ics);
+                    sBadEvents(iBadEvent).channels = sBadEvents(iBadEvent).channels(:, ics);
+                end
+            end
+            % Append bad events to original events in file
+            DataMat.F.events = [DataMat.F.events, sBadEvents];
+            % Save bad events
+            bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);
+
+        % Process imported data file
+        else
+            % File is already loaded
+            % Scale gradiometers / magnetometers:
+            %    - Neuromag: Apply axial factor to MEG GRAD sensors, to convert in fT/cm
+            %    - CTF: Apply factor to MEG REF gradiometers
+            DataMat.F = bst_scale_gradmag(DataMat.F, ChannelMat.Channel);
+            % List of bad channels for this file
+            iBadChan = Thresholding(DataMat.F(:,iTime), DataMat.ChannelFlag, ChannelMat, Criteria);
+
+            % === TAG FILE ===
+            if ~isempty(iBadChan)
+                % Reject entire trial
+                if isRejectTrial
+                    % Mark trial as bad
+                    iBadTrials(end+1) = iFile;
+                    % Report
+                    bst_report('Info', sProcess, sInputs(iFile), 'Marked as bad trial.');
+                    % Update study
+                    sStudy.Data(iData).BadTrial = 1;
+                    bst_set('Study', iStudy, sStudy);
+                % Reject channels only
+                else
+                    % Add detected channels to list of file bad channels
+                    s.ChannelFlag = DataMat.ChannelFlag;
+                    s.ChannelFlag(iBadChan) = -1;
+                    % History
+                    DataMat = bst_history('add', DataMat, 'detect', [FormatComment(sProcess) ' => Detected bad channels:' sprintf(' %d', iBadChan)]);
+                    s.History = DataMat.History;
+                    bst_report('Info', sProcess, sInputs(iFile), ['Bad channels: ' sprintf(' %d', iBadChan)]);
+                    % Save file
+                    bst_save(file_fullpath(sInputs(iFile).FileName), s, 'v6', 1);
+                end
             end
         end
     end
+
     % Record bad trials in study
     if ~isempty(iBadTrials)
         SetTrialStatus({sInputs(iBadTrials).FileName}, 1);
@@ -259,6 +339,69 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Return only good trials
     iGoodTrials = setdiff(1:length(sInputs), iBadTrials);
     OutputFiles = {sInputs(iGoodTrials).FileName};
+end
+
+
+%% ===== THRESHOLDING =====
+% USAGE: iBadChannel = Thresholding(Data, ChannelFile, Criteria)
+
+function [iBadChannel, criteriaModalities] = Thresholding(F, ChannelFlag, ChannelFile,  Criteria)
+    % CALL: Thresholding(FileName, ChannelFile, ...)
+    if ischar(ChannelFile)
+        ChannelMat = in_bst_channel(ChannelFile);
+    % CALL: Thresholding(FileName, ChannelMat, ...)
+    else
+        ChannelMat = ChannelFile;
+    end
+    % Get modalities
+    Modalities = unique({ChannelMat.Channel.Type});
+
+    % List of bad channels
+    iBadChannel = [];
+    % List of modality criteria used for each bad channel
+    criteriaModalities = {};
+
+    % === LOOP ON MODALITIES ===
+    for iMod = 1:length(Modalities)
+        % === GET REJECTION CRITERIA ===
+        % Get threshold according to the modality
+        if ismember(Modalities{iMod}, {'MEG', 'MEG GRAD'})
+            criteriaField = 'meggrad';
+        elseif strcmpi(Modalities{iMod}, 'MEG MAG')
+            criteriaField = 'megmag';
+        elseif strcmpi(Modalities{iMod}, 'EEG')
+            criteriaField = 'eeg';
+        elseif ismember(Modalities{iMod}, {'SEEG', 'EOCG'})
+            criteriaField = 'ieeg';
+        elseif ~isempty(strfind(lower(Modalities{iMod}), 'eog'))
+            criteriaField = 'eog';
+        elseif ~isempty(strfind(lower(Modalities{iMod}), 'ecg')) || ~isempty(strfind(lower(Modalities{iMod}), 'ekg'))
+            criteriaField = 'ecg';
+        else
+            return;
+        end
+        Threshold = Criteria.(criteriaField);
+        % If threshold is [0 0]: nothing to do
+        if isequal(Threshold, [0 0])
+            return;
+        end
+
+        % === DETECT BAD CHANNELS ===
+        % Get channels for this modality
+        iChan = good_channel(ChannelMat.Channel, ChannelFlag, Modalities{iMod});
+        % Get data to test
+        DataToTest = F(iChan, :);
+        % Compute peak-to-peak values for all the sensors
+        p2p = (max(DataToTest,[],2) - min(DataToTest,[],2));
+        % Get bad channels
+        iBadChanMod = find((p2p < Threshold(1)) | (p2p > Threshold(2)));
+        % If some bad channels were detected
+        if ~isempty(iBadChanMod)
+            % Convert indices back into the intial Channels structure
+            iBadChannel = [iBadChannel, iChan(iBadChanMod)];
+            criteriaModalities = [criteriaModalities, repmat({criteriaField}, 1, length(iBadChanMod))];
+        end
+    end
 end
 
 

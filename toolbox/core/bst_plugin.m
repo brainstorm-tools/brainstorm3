@@ -2886,6 +2886,6 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'ct2mrireg', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
+    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
                    'openmeeg', 'xdf'};
 end
