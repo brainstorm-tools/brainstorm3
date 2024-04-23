@@ -125,7 +125,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
-    setappdata(hFig, 'isSelectingContactLabelIeeg',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -544,7 +543,6 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
-    isSelectingContactLabelIeeg  = getappdata(hFig, 'isSelectingContactLabelIeeg');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -611,11 +609,21 @@ function FigureMouseUpCallback(hFig, varargin)
             
         % === SELECTING POINT ===
         elseif isSelectingCoordinates
-            % Selecting from Coordinates panel
-            if gui_brainstorm('isTabVisible', 'Coordinates')
-                % For SEEG, making sure centroid calculation for plotting contacts is active
+            % Selecting from Coordinates or iEEG panels
+            if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    panel_coordinates('SelectPoint', hFig, 0, 1);
+                    % For SEEG, making sure centroid calculation for plotting contacts is active
+                    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
+                    if ~isempty(sSurf)
+                        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
+                        if ~isempty(iIsoSurf)
+                            panel_coordinates('SelectPoint', hFig, 0, 1);
+                        else
+                            panel_coordinates('SelectPoint', hFig);
+                        end
+                    else
+                        panel_coordinates('SelectPoint', hFig);
+                    end
                 else
                     panel_coordinates('SelectPoint', hFig);
                 end
@@ -1177,6 +1185,20 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % M : Jump to maximum
                 case 'm'
                     JumpMaximum(hFig);
+                % CTRL+P : Toggle point selection mode
+                case 'p'
+                    if ismember('control', keyEvent.Modifier)
+                        tmp = bst_get('PanelControls', 'Coordinates');
+                        if isempty(tmp)
+                            gui_brainstorm('ShowToolTab', 'Coordinates');
+                        end
+                        tmp = bst_get('PanelControls', 'iEEG');
+                        if ~isempty(tmp)
+                            gui_brainstorm('ShowToolTab', 'iEEG');
+                        end
+                        pause(0.01);
+                        panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
+                    end
                 % CTRL+R : Recordings time series
                 case 'r'
                     if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).DataFile) && ~strcmpi(FigureId.Modality, 'MEG GRADNORM')
@@ -1429,8 +1451,8 @@ end
 function GetCoordinates(varargin)
     % Show Coordinates panel
     gui_show('panel_coordinates', 'JavaWindow', 'Get coordinates', [], 0, 1, 0);
-    % Start point selection
-    panel_coordinates('SetSelectionState', 1);
+    % Toggle point selection mode
+    panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
 end
 
 
@@ -1960,7 +1982,9 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: GET COORDINATES ====
     if ~strcmpi(FigureType, 'Topography')
-        gui_component('MenuItem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
+        jItem = gui_component('checkboxmenuitem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
+        jItem.setSelected(panel_coordinates('GetSelectionState'));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_MASK));
     end
     
     % ==== MENU: SNAPSHOT ====

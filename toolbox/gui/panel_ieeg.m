@@ -53,6 +53,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Add/remove
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        % Button "Select vertex"
+        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -212,6 +214,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
+                                  'jButtonSelect',       jButtonSelect, ...
                                   'jButtonShow',         jButtonShow, ...
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
@@ -491,7 +494,8 @@ function UpdateContactList(CoordSpace)
     % Get the contacts and their respective name
     [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(SelName);
     if isempty(sContacts)
-        return
+        ctrl.jListCont.setModel(listModel);
+        return;
     end
     SubjectFile = getappdata(hFig(1), 'SubjectFile');
     sSubject = bst_get('Subject', SubjectFile);
@@ -1199,7 +1203,7 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType','MriViewer');
 
     % Check if there are electrodes defined for this file
-    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
+    if isempty(hFigall(end)) || isempty(GlobalData.DataSet(iDSall(end)).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         sElectrodes = [];
         return
     end
@@ -3158,6 +3162,11 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         end
     end
 
+    % If MRI Viewer is open don't open another one
+    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    if ~isempty(hFig)
+        return
+    end
     % Display the MRI Viewer
     [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
     if isempty(hFig)
