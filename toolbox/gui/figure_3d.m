@@ -1196,6 +1196,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         if ~isempty(tmp)
                             gui_brainstorm('ShowToolTab', 'iEEG');
                         end
+                        pause(0.01);
                         panel_coordinates('SetSelectionState', ~panel_coordinates('GetSelectionState'));
                     end
                 % CTRL+R : Recordings time series
