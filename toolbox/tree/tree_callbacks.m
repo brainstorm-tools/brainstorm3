@@ -2267,22 +2267,22 @@ switch (lower(action))
                     DataType = sStudy.Timefreq(iTimefreq).DataType;
                     DataFile = sStudy.Timefreq(iTimefreq).DataFile;
                 end
+                % Get avaible modalities for this data file
+                DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
+                % Add SEEG+ECOG
+                if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
+                    DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                end
                 % One file selected
                 if (length(bstNodes) == 1)
                     % ===== RECORDINGS =====
                     if strcmpi(DataType, 'data')
-                        % Get avaible modalities for this data file
-                        DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
-                        % Add SEEG+ECOG 
-                        if all(ismember({'SEEG','ECOG'}, DisplayMod))
-                            DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
-                        end
                         % Power spectrum
                         gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                         AddSeparator(jPopup);
                         % Topography
                         isGradNorm = strcmpi(nodeType, 'spectrum');
-                        jSubMenus = fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, isGradNorm, 0);
+                        jSubMenus = fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 1, isGradNorm, 0);
                         % Interpolate SEEG/ECOG on the anatomy
                         for iMod = 1:length(DisplayMod)
                             % Create submenu if there are multiple modalities
@@ -2300,7 +2300,7 @@ switch (lower(action))
                             AddSeparator(jPopup);
                             % EEG: Display on scalp
                             if strcmpi(DisplayMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp)
-                                gui_component('MenuItem', jPopup, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'));
+                                gui_component('MenuItem', jMenuModality, [], 'Display on scalp', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iScalp).FileName, filenameRelative, 'EEG'));
                             % SEEG/ECOG: Display on cortex or MRI
                             elseif ismember(DisplayMod{iMod}, {'SEEG', 'ECOG', 'ECOG+SEEG'}) && ~isempty(sSubject)
                                 if ~isempty(sSubject.iCortex)
@@ -2355,6 +2355,20 @@ switch (lower(action))
                     % ===== CLUSTERS/SCOUTS =====
                     else
                         gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
+                    end
+                else
+                    % Display of multiple files
+                    if ~isempty(DisplayMod)
+                        % === 2DLAYOUT ===
+                        mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
+                        if (length(mod2D) == 1)
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' mod2D{1}], IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes), mod2D{1}, '2DLayout'));
+                        elseif (length(mod2D) > 1)
+                            jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
+                            for iMod = 1:length(mod2D)
+                                gui_component('MenuItem', jMenu2d, [], mod2D{iMod}, IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes), mod2D{iMod}, '2DLayout'));
+                            end
+                        end
                     end
                 end
                 % Project sources
