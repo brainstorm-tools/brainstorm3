@@ -1203,7 +1203,7 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType','MriViewer');
 
     % Check if there are electrodes defined for this file
-    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
+    if isempty(hFigall(end)) || isempty(GlobalData.DataSet(iDSall(end)).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         sElectrodes = [];
         return
     end
@@ -3162,6 +3162,11 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         end
     end
 
+    % If MRI Viewer is open don't open another one
+    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    if ~isempty(hFig)
+        return
+    end
     % Display the MRI Viewer
     [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
     if isempty(hFig)
