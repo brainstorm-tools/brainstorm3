@@ -2267,11 +2267,13 @@ switch (lower(action))
                     DataType = sStudy.Timefreq(iTimefreq).DataType;
                     DataFile = sStudy.Timefreq(iTimefreq).DataFile;
                 end
-                % Get avaible modalities for this data file
-                DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
-                % Add SEEG+ECOG
-                if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
-                    DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                if strcmpi(DataType, 'data')
+                    % Get avaible modalities for this data file
+                    DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
+                    % Add SEEG+ECOG
+                    if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
+                        DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                    end
                 end
                 % One file selected
                 if (length(bstNodes) == 1)
