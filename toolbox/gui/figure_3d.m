@@ -2905,38 +2905,6 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
     end
 end
 
-%% ===== LOAD ELECTRODES =====
-function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
-    global GlobalData;
-
-    % Get figure and dataset
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
-    if isempty(iDS)
-        return;
-    end
-    % Check that the channel is not already defined
-    if ~isempty(GlobalData.DataSet(iDS).ChannelFile) && ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
-        error('There is already another channel file loaded for this MRI. Close the existing figures.');
-    end
-    % Load channel file in the dataset
-    bst_memory('LoadChannelFile', iDS, ChannelFile);
-    % If iEEG channels: load both SEEG and ECOG
-    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
-        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'SEEG, ECOG');
-    else
-        iChannels = channel_find(GlobalData.DataSet(iDS).Channel, Modality);
-    end
-    % Set the list of selected sensors
-    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = iChannels;
-    GlobalData.DataSet(iDS).Figure(iFig).Id.Modality      = Modality;
-    % Plot electrodes
-    if ~isempty(iChannels)
-        PlotSensors3D(iDS, iFig);
-    end
-    % Update figure name
-    bst_figures('UpdateFigureName', hFig);
-end
-
 %% ===== PLOT 3D ELECTRODES =====
 function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
     global GlobalData;
