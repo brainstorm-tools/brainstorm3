@@ -1200,7 +1200,7 @@ end
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
     % Get current figure
-    [hFigall,iFigall,iDSall] = bst_figures('GetFiguresByType','MriViewer');
+    [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
 
     % Check if there are electrodes defined for this file
     if isempty(hFigall(end)) || isempty(GlobalData.DataSet(iDSall(end)).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
@@ -3090,7 +3090,7 @@ function CreateNewImplantation(MriFile) %#ok<DEFNU>
     % Display channels
     DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Display isosurface
-    DisplayIsosurface(sSubject);
+    DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
     % Close progress bar
     bst_progress('stop');
 end
@@ -3185,7 +3185,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
+function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig, ChannelFile, Modality)
     % Parse inputs
     if (nargin < 2) || isempty(hFig)
         hFig = [];
@@ -3204,6 +3204,8 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig)
         hFig = view_mri_3d(Subject.Anatomy(1).FileName, [], 0.3, []);
     end
     [hFig, iDS, iFig] = view_surface(Subject.Surface(ixIsoSurf(1)).FileName, 0.6, [], hFig, []);
+    % Add channels to the figure
+    figure_3d('LoadElectrodes', hFig, ChannelFile, Modality);
 end
 
 %% ===== EXPORT CONTACT POSITIONS =====
