@@ -1446,7 +1446,6 @@ function SetStandardView(hFig, viewNames)
     end
 end
 
-
 %% ===== GET COORDINATES =====
 function GetCoordinates(varargin)
     % Show Coordinates panel
@@ -2905,7 +2904,6 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
             'FaceVertexAlphaData', FaceAlpha);
     end
 end
-
 
 %% ===== PLOT 3D ELECTRODES =====
 function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
