@@ -36,7 +36,7 @@ function bst_deploy(GitDir, GitExe)
 
 %% ===== CONFIGURATION =====
 % Default GIT directory
-if ~ispc
+if ispc
     if (nargin < 1)
         GitDir = 'C:\Work\Dev\brainstorm_git\brainstorm3';
     end

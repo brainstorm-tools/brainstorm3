@@ -51,7 +51,7 @@ function CurrentFreqChangedCallback(iDS, iFig) %#ok<DEFNU>
         return;
     end
     % Update frequency to display
-    if ~isempty(TfInfo) && strcmpi(TopoType, '2DLayout') && ~getappdata(hFig, 'isStatic')
+    if ~isempty(TfInfo) && ~(strcmpi(TopoType, '2DLayout') && getappdata(hFig, 'isStatic'))
         TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
         setappdata(hFig, 'Timefreq', TfInfo);
     end
