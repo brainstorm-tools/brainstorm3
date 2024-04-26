@@ -1203,7 +1203,7 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
 
     % Check if there are electrodes defined for this file
-    if isempty(hFigall(end)) || isempty(GlobalData.DataSet(iDSall(end)).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
+    if isempty(hFigall) || isempty(hFigall(end)) || isempty(GlobalData.DataSet(iDSall(end)).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         sElectrodes = [];
         return
     end
