@@ -3054,9 +3054,21 @@ end
 
 %% ===== CREATE NEW IMPLANTATION =====
 function CreateNewImplantation(MriFile) %#ok<DEFNU>
-    % Unload all figures and datasets before starting a new implantation
-    bst_memory('UnloadAll', 'Forced');
+    % Get all open figures
+    hFig = bst_figures('GetAllFigures');
     
+    % If figures are open, inform the users that to continue all figures must be closed
+    if ~isempty(hFig)
+        isCloseAllFigures = java_dialog('confirm', ['All figures will be closed. Do you want to continue?' 10 ...
+                                        '<HTML>Choose <B>No</B> to revisit the figures before starting implantation</HTML>'], 'SEEG/ECOG implantation');
+        if ~isCloseAllFigures
+            return
+        end
+
+        % Unload all figures and datasets before starting a new implantation
+        bst_memory('UnloadAll', 'Forced');
+    end
+
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     % Get study for the new channel file
