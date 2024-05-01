@@ -3054,6 +3054,9 @@ end
 
 %% ===== CREATE NEW IMPLANTATION =====
 function CreateNewImplantation(MriFile) %#ok<DEFNU>
+    % Unload all figures and datasets before starting a new implantation
+    bst_memory('UnloadAll', 'Forced');
+    
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     % Get study for the new channel file
