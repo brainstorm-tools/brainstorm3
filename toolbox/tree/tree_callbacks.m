@@ -229,11 +229,11 @@ switch (lower(action))
                 % If only one modality
                 if ~isempty(DisplayMod)
                     if strcmpi(DisplayMod{1}, 'ECOG+SEEG') || (length(DisplayMod) >= 2) && all(ismember({'SEEG','ECOG'}, DisplayMod))
-                        DisplayChannels(bstNodes, 'ECOG+SEEG', 'cortex', 1);
+                        DisplayChannels(bstNodes, 'ECOG+SEEG', 'anatomy', 1);
                     elseif strcmpi(DisplayMod{1}, 'SEEG')
-                        DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1, 0);
+                        DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1);
                     elseif strcmpi(DisplayMod{1}, 'ECOG')
-                        DisplayChannels(bstNodes, DisplayMod{1}, 'cortex', 1);
+                        DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1);
                     elseif ismember(DisplayMod{1}, {'MEG','MEG GRAD','MEG MAG'})
                         channel_align_manual(filenameRelative, DisplayMod{1}, 0);
                     elseif strcmpi(DisplayMod{1}, 'NIRS')

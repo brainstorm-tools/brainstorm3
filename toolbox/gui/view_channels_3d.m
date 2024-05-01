@@ -141,15 +141,15 @@ if ~isempty(sSubject)
                 end
                 SurfAlpha = .1;
                 hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
-                if strcmpi(Modality, 'SEEG')
-                    % For SEEG, display 3D slices (MRI) + isosurface
+                if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+                    % For (SEEG, ECOG, ECOG+SEEG), display 3D slices (MRI) + isosurface
                     panel_ieeg('DisplayIsosurface', sSubject, hFig, FileNames{1}, Modality);
                 end
             end
         otherwise
     end
-    if strcmpi(Modality, 'SEEG')
-        % For SEEG, display MRI viewer for all Surface Types
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        % For (SEEG, ECOG, ECOG+SEEG), display MRI viewer for all Surface Types
         panel_ieeg('DisplayChannelsMri', FileNames{1}, Modality, 1, 0);
     end
 end
@@ -168,7 +168,7 @@ if (length(FileNames) == 1)
     end
     isMarkers = ~isShowCoils || isDetails;
     [hFig, iDS, iFig] = view_channels(FileNames{1}, Modality, isMarkers, isLabels, hFig, is3DElectrodes);
-    % SEEG and ECOG: Open tab "iEEG"
+    % (SEEG, ECOG, ECOG+SEEG): Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
     end
