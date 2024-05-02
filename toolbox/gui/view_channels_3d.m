@@ -142,15 +142,12 @@ if ~isempty(sSubject)
                 SurfAlpha = .1;
                 hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
                 if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
-                    % For (SEEG, ECOG, ECOG+SEEG), display 3D slices (MRI) + isosurface
+                    % For (SEEG, ECOG, ECOG+SEEG), display 3D slices (MRI), isosurface along with the MRI Viewer
                     panel_ieeg('DisplayIsosurface', sSubject, hFig, FileNames{1}, Modality);
+                    panel_ieeg('DisplayChannelsMri', FileNames{1}, Modality, 1, 0);
                 end
             end
         otherwise
-    end
-    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
-        % For (SEEG, ECOG, ECOG+SEEG), display MRI viewer for all Surface Types
-        panel_ieeg('DisplayChannelsMri', FileNames{1}, Modality, 1, 0);
     end
 end
 % Warning if no surface was found
