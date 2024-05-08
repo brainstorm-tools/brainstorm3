@@ -69,9 +69,9 @@ if isempty(typeMatlab)
         typeMatlab   = 'float32';
     elseif (MaxVal <= 255)
         typeMatlab   = 'uint8';
-    elseif all(MaxVal < 32767)
+    elseif all(MaxVal <= 32767)
         typeMatlab   = 'int16';
-    elseif all(MaxVal < 2147483647)
+    elseif all(MaxVal <= 2147483647)
         typeMatlab   = 'int32';
     else
         typeMatlab   = 'float32';
