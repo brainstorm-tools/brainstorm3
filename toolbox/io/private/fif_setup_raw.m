@@ -51,7 +51,10 @@ end
 FIFFT_SHORT=2;
 FIFFT_INT=3;
 FIFFT_FLOAT=4;
+FIFFT_DOUBLE=5;
 FIFFT_DAU_PACK16=16;
+FIFFT_COMPLEX_FLOAT=20;
+FIFFT_COMPLEX_DOUBLE=21;
 me = 'MNE-BST:fif_setup_raw';
 % Arguments
 if (nargin < 3)
@@ -137,6 +140,12 @@ for k = first:nent
                 nsamp = ent.size/(4*info.nchan);
             case FIFFT_INT
                 nsamp = ent.size/(4*info.nchan);
+            case FIFFT_DOUBLE
+                nsamp = ent.size/(8*info.nchan);
+            case FIFFT_COMPLEX_FLOAT
+                nsamp = ent.size/(8*info.nchan);
+            case FIFFT_COMPLEX_DOUBLE
+                nsamp = ent.size/(16*info.nchan);
             otherwise
                 fclose(fid);
                 error(me,'Cannot handle data buffers of type %d',ent.type);
