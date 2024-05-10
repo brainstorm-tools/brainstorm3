@@ -77,9 +77,9 @@ ContactSheetOptions = bst_get('ContactSheetOptions');
 % Get dimension
 switch lower(orientation)
     case 'fig',  dim = 0;
-    case 'x',    dim = 1;
-    case 'y',    dim = 2;
-    case 'z',    dim = 3;
+    case 'x',    dim = 1; % Sagittal
+    case 'y',    dim = 2; % Coronal
+    case 'z',    dim = 3; % Axial
 end
 % Time / volume / freq
 switch lower(inctype)
@@ -133,7 +133,7 @@ switch lower(inctype)
         Samples = TimeVector(bst_closest(linspace(TimeRange(1), TimeRange(2), nImages), TimeVector));
         % If reading MRI slices: need to get the surface definition
         if (dim ~= 0)
-            [img, TessInfo, iTess] = GetImage(hFig, dim);
+            [~, TessInfo, iTess] = GetImage(hFig);
         end
         % Do not use progress bar
         isProgress = 0;
@@ -157,7 +157,7 @@ switch lower(inctype)
         initPos = GlobalData.UserFrequencies.iCurrentFreq;
         % If reading MRI slices: need to get the surface definition
         if (dim ~= 0)
-            [img, TessInfo, iTess] = GetImage(hFig, dim);
+            [~, TessInfo, iTess] = GetImage(hFig);
         end
         % Do not use progress bar
         isProgress = 0;
@@ -177,7 +177,7 @@ switch lower(inctype)
         end
         % =================================
         % Surface information
-        [img, TessInfo, iTess] = GetImage(hFig, dim);
+        [~, TessInfo, iTess] = GetImage(hFig);
         initPos = TessInfo(iTess).CutsPosition;
         % Get slices positions
         sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
@@ -204,7 +204,7 @@ if isProgress
     bst_progress('start', 'Contact sheet: axial slice', 'Getting slices...', 0, nImages);
 end
 % Get test image, to build the output volume
-testImg = GetImage(hFig, dim);
+testImg = GetImage(hFig);
 % Get extracted image size
 H = size(testImg, 1);
 W = size(testImg, 2);
@@ -214,6 +214,47 @@ nbCols = ceil(nImages / nbRows);
 % Initialize final image
 ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
 AlphaSheet = zeros(nbRows * H, nbCols * W);
+% Backup current view
+if dim ~= 0
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    % Copy view angle
+    [az,el] = view(hAxes);
+    % Copy cam position
+    pos = campos(hAxes);
+    % Copy cam target
+    tar = camtarget(hAxes);
+    % Copy cam up vector
+    up = camup(hAxes);
+    % Copy zoom factor
+    camva = get(hAxes, 'CameraViewAngle');
+    % Set perpendicular view to requested 3D slices
+    switch dim
+        case 1 % Sagittal
+            viewPos = 'right';
+            if MriOptions.isRadioOrient
+                viewPos = 'left';
+            end
+        case 2 % Coronal
+            viewPos = 'back';
+            if MriOptions.isRadioOrient
+                viewPos = 'front';
+            end
+        case 3 % Axial
+            viewPos = 'top';
+            if MriOptions.isRadioOrient
+                viewPos = 'bottom';
+            end
+    end
+    figure_3d('SetStandardView', hFig, {viewPos});
+    % Hide colorbar if no data displayed
+    if strcmpi('volume', inctype) && isempty(TessInfo.Data)
+        ColormapInfo = getappdata(hFig, 'Colormap');
+        sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
+        isAnatomyColormap = sColormap.DisplayColorbar;
+        bst_colormaps('SetDisplayColorbar', ColormapInfo.Type, 0);
+    end
+end
+
 % For each time instant
 for iSample = 1:nImages
     % Progress bar
@@ -237,29 +278,13 @@ for iSample = 1:nImages
             panel_surface('PlotMri', hFig, slicesPos);
     end
     
-    % Get full figure
-    if (dim == 0)
-        % Screen capture
-        switch lower(inctype)
-            case 'time',    img = out_figure_image(hFig, [], 'time');
-            case 'freq',    img = out_figure_image(hFig, [], FreqLabels{iSample});
-            case 'volume',  img = out_figure_image(hFig);
-        end
-        alpha = ones(size(img,1), size(img,2), 1);
-    % Get one slice
-    else
-        TessInfo = getappdata(hFig, 'Surface');
-        % Get image
-        img   = get(TessInfo(iTess).hPatch(dim), 'CData');
-        img   = bst_flip(img, 1);
-        alpha = get(TessInfo(iTess).hPatch(dim), 'AlphaData');
-        alpha = bst_flip(alpha, 1);
-        % Apply radiological orientation
-        if MriOptions.isRadioOrient
-            img   = bst_flip(img, 2);
-            alpha = bst_flip(alpha, 2);
-        end
-    end        
+    % Get screen capture
+    switch lower(inctype)
+        case 'time',    img = out_figure_image(hFig, [], 'time');
+        case 'freq',    img = out_figure_image(hFig, [], FreqLabels{iSample});
+        case 'volume',  img = out_figure_image(hFig, [], '');
+    end
+    alpha = ones(size(img,1), size(img,2), 1);
     % Find extacted image position in final sheet
     i = floor((iSample-1) / nbCols);
     j = mod(iSample-1, nbCols);
@@ -278,11 +303,28 @@ switch lower(inctype)
         setappdata(hFig, 'Surface', TessInfo);
         figure_3d('UpdateMriDisplay', hFig, dim, TessInfo, iTess);
 end
+% Backup current view
+if dim ~= 0
+    % Copy view angle
+    view(hAxes, az, el);
+    % Copy cam position
+    campos(hAxes, pos);
+    % Copy cam target
+    camtarget(hAxes, tar);
+    % Copy cam up vector
+    camup(hAxes, up);
+    % Copy zoom factor
+    set(hAxes, 'CameraViewAngle', camva);
+    % Restore colorbar
+    if strcmpi('volume', inctype) && isempty(TessInfo.Data) && isAnatomyColormap
+        bst_colormaps('SetDisplayColorbar', ColormapInfo.Type, 1);
+    end
+end
 
 
 %% ===== REMOVE USELESS BACKGROUND =====
-% Only in the case of MRI slices
-if (dim ~= 0)
+% Only in the case of MRI slices without data
+if (dim ~= 0) && strcmpi('volume', inctype) && isempty(TessInfo.Data)
     % Get background points
     background = double(AlphaSheet == 0);
     % If there are no transparent points on the surface: detect "black" points
@@ -364,22 +406,16 @@ end
 %% ================================================================================
 %  ===== GET IMAGE ================================================================
 %  ================================================================================
-function [img, TessInfo, iTess] = GetImage(hFig, dim)
-    if (dim == 0)
-        drawnow;
-        figure(hFig);
-        img = out_figure_image(hFig);
-    else
-        % Get slice in the right orientation
-        TessInfo = getappdata(hFig, 'Surface');
-        iTess = strcmpi('Anatomy', {TessInfo.Name});
-        if isempty(iTess)
-            hContactFig = [];
-            return
-        end
-        hSlice = TessInfo(iTess).hPatch(dim);
-        % Get test image, to build the output volume
-        img = get(hSlice, 'CData');
+function [img, TessInfo, iTess] = GetImage(hFig)
+    drawnow;
+    figure(hFig);
+    img = out_figure_image(hFig);
+    % Get MRI information from 3D figure
+    TessInfo = getappdata(hFig, 'Surface');
+    iTess = strcmpi('Anatomy', {TessInfo.Name});
+    if isempty(iTess)
+        TessInfo = [];
+        return
     end
 end
 
