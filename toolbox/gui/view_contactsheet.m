@@ -70,6 +70,9 @@ else
     isAutoSave = 1;
 end
 
+% Is 3D figure?
+hFig = bst_figures('GetFigure', hFig);
+is3D = ~strcmpi(hFig.Tag , 'MriViewer');
 
 %% ===== GET TIME/VOLUME =====    
 % Get default values for the number of images
@@ -133,7 +136,7 @@ switch lower(inctype)
         Samples = TimeVector(bst_closest(linspace(TimeRange(1), TimeRange(2), nImages), TimeVector));
         % If reading MRI slices: need to get the surface definition
         if (dim ~= 0)
-            [~, TessInfo, iTess] = GetImage(hFig);
+            [~, TessInfo, iTess] = GetImage(hFig, is3D, dim);
         end
         % Do not use progress bar
         isProgress = 0;
@@ -157,7 +160,7 @@ switch lower(inctype)
         initPos = GlobalData.UserFrequencies.iCurrentFreq;
         % If reading MRI slices: need to get the surface definition
         if (dim ~= 0)
-            [~, TessInfo, iTess] = GetImage(hFig);
+            [~, TessInfo, iTess] = GetImage(hFig, is3D, dim);
         end
         % Do not use progress bar
         isProgress = 0;
@@ -177,7 +180,7 @@ switch lower(inctype)
         end
         % =================================
         % Surface information
-        [~, TessInfo, iTess] = GetImage(hFig);
+        [~, TessInfo, iTess] = GetImage(hFig, is3D, dim);
         initPos = TessInfo(iTess).CutsPosition;
         % Get slices positions
         sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
@@ -203,8 +206,26 @@ MriOptions = bst_get('MriOptions');
 if isProgress
     bst_progress('start', 'Contact sheet: axial slice', 'Getting slices...', 0, nImages);
 end
+% If Data is overlayed on MRI viewer, take snapshots from a 3D figure
+if ~is3D && (~getappdata(hFig, 'isStatic') || ~getappdata(hFig, 'isStaticFreq'))
+    overlayFile = '';
+    if ~getappdata(hFig, 'isStatic')
+        overlayFile = getappdata(hFig, 'ResultsFile');
+    elseif ~getappdata(hFig, 'isStaticFreq')
+        tmp = getappdata(hFig, 'Timefreq');
+        overlayFile = tmp.FileName;
+    end
+    if ~isempty(overlayFile)
+        sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
+        hFig2 = view_surface_data(sMri.FileName, overlayFile);
+        OutputFile = bst_fileparts(OutputFile);
+        view_contactsheet(hFig2, inctype, orientation, OutputFile, nImages, TimeRange, SkipVolume);
+        close(hFig2);
+    end
+    return
+end
 % Get test image, to build the output volume
-testImg = GetImage(hFig);
+testImg = GetImage(hFig, is3D, dim);
 % Get extracted image size
 H = size(testImg, 1);
 W = size(testImg, 2);
@@ -214,8 +235,8 @@ nbCols = ceil(nImages / nbRows);
 % Initialize final image
 ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
 AlphaSheet = zeros(nbRows * H, nbCols * W);
-% Backup current view
-if dim ~= 0
+% Backup current view for 3D figures
+if is3D && dim ~= 0
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     % Copy view angle
     [az,el] = view(hAxes);
@@ -277,14 +298,28 @@ for iSample = 1:nImages
             slicesPos(dim) = Samples(iSample);
             panel_surface('PlotMri', hFig, slicesPos);
     end
-    
-    % Get screen capture
-    switch lower(inctype)
-        case 'time',    img = out_figure_image(hFig, [], 'time');
-        case 'freq',    img = out_figure_image(hFig, [], FreqLabels{iSample});
-        case 'volume',  img = out_figure_image(hFig, [], '');
+    if is3D
+        % Get screen capture
+        switch lower(inctype)
+            case 'time',    img = out_figure_image(hFig, [], 'time');
+            case 'freq',    img = out_figure_image(hFig, [], FreqLabels{iSample});
+            case 'volume',  img = out_figure_image(hFig, [], '');
+        end
+        alpha = ones(size(img,1), size(img,2), 1);
+    % Get one slice
+    else
+        TessInfo = getappdata(hFig, 'Surface');
+        % Get image
+        img   = get(TessInfo(iTess).hPatch(dim), 'CData');
+        img   = bst_flip(img, 1);
+        alpha = get(TessInfo(iTess).hPatch(dim), 'AlphaData');
+        alpha = bst_flip(alpha, 1);
+        % Apply radiological orientation
+        if MriOptions.isRadioOrient
+            img   = bst_flip(img, 2);
+            alpha = bst_flip(alpha, 2);
+        end
     end
-    alpha = ones(size(img,1), size(img,2), 1);
     % Find extacted image position in final sheet
     i = floor((iSample-1) / nbCols);
     j = mod(iSample-1, nbCols);
@@ -304,7 +339,7 @@ switch lower(inctype)
         figure_3d('UpdateMriDisplay', hFig, dim, TessInfo, iTess);
 end
 % Backup current view
-if dim ~= 0
+if is3D && dim ~= 0
     % Copy view angle
     view(hAxes, az, el);
     % Copy cam position
@@ -406,16 +441,25 @@ end
 %% ================================================================================
 %  ===== GET IMAGE ================================================================
 %  ================================================================================
-function [img, TessInfo, iTess] = GetImage(hFig)
-    drawnow;
-    figure(hFig);
-    img = out_figure_image(hFig);
-    % Get MRI information from 3D figure
+function [img, TessInfo, iTess] = GetImage(hFig, is3D, dim)
+    % Get MRI information from figure
     TessInfo = getappdata(hFig, 'Surface');
     iTess = strcmpi('Anatomy', {TessInfo.Name});
     if isempty(iTess)
         TessInfo = [];
-        return
+    end
+    % Get image
+    if is3D
+        drawnow;
+        figure(hFig);
+        img = out_figure_image(hFig);
+    else
+        if isempty(iTess)
+            return
+        end
+        hSlice = TessInfo(iTess).hPatch(dim);
+        % Get test image, to build the output volume
+        img = get(hSlice, 'CData');
     end
 end
 
