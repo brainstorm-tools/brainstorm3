@@ -350,27 +350,21 @@ end
 
 
 %% ===== REMOVE USELESS BACKGROUND =====
-% Only in the case of MRI slices without data
-if (dim ~= 0) && strcmpi('volume', inctype) && isempty(TessInfo.Data)
-    % Get background points
-    background = double(AlphaSheet == 0);
-    % If there are no transparent points on the surface: detect "black" points
-    if (nnz(background) == 0)
-        background = double(sqrt(sum(double(ImgSheet).^2,3)) < .05);
-    end
-    % Grow background region, to remove all the small parasites
-    kernel = ones(5,5);
-    background = double(conv2(background, kernel, 'same') > 0);
-    % Grow foreground regions, to cut at least 10 pixels away from each meaningful block of data
-    kernel = ones(11);
-    background = conv2(double(background == 0), kernel, 'same') == 0;
-    % Detect the empty columns and arrows
-    iEmptyCol = find(all(background, 1));
-    iEmptyRow = find(all(background, 2));
-    % Remove empty lines and columns
-    ImgSheet(iEmptyRow, :, :) = [];
-    ImgSheet(:, iEmptyCol, :) = [];
+% Get background points
+background = double(AlphaSheet == 0);
+% If there are no transparent points on the surface: detect "black" points
+if (nnz(background) == 0)
+    background = double(sqrt(sum(double(ImgSheet).^2,3)) < .05);
 end
+% Grow foreground regions, to cut at least 10 pixels away from each meaningful block of data
+kernel = ones(11);
+background = conv2(double(background == 0), kernel, 'same') == 0;
+% Detect the empty columns and rows
+iEmptyCol = find(all(background, 1));
+iEmptyRow = find(all(background, 2));
+% Remove empty lines and columns
+ImgSheet(iEmptyRow, :, :) = [];
+ImgSheet(:, iEmptyCol, :) = [];
 
 
 %% ===== RE-INTERPOLATE IMAGE =====
