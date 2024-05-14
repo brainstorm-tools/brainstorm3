@@ -242,9 +242,6 @@ nbCols = ceil(nImages / nbRows);
 % Initialize buffer of images
 ImgBuffer   = zeros(H, W, 3, nImages, class(testImg));
 AlphaBuffer = zeros(H, W, 1, nImages);
-
-%ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
-%AlphaSheet = zeros(nbRows * H, nbCols * W);
 % Backup current view for 3D figures
 if is3D && dim ~= 0
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -317,11 +314,6 @@ for iSample = 1:nImages
     alpha = ones(size(img,1), size(img,2), 1);
     ImgBuffer(:,:,:,iSample) = img;
     AlphaBuffer(:,:,:,iSample) = alpha;
-%     % Find extacted image position in final sheet
-%     i = floor((iSample-1) / nbCols);
-%     j = mod(iSample-1, nbCols);
-%     ImgSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W, :) = img;
-%     AlphaSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W) = alpha;
 end
 
 %% ===== RESTORE INITIAL POSITION =====
