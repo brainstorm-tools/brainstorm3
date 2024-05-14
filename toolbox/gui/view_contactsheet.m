@@ -239,9 +239,12 @@ W = size(testImg, 2);
 % Get number of column and rows of the contact sheet
 nbRows = floor(sqrt(nImages));
 nbCols = ceil(nImages / nbRows);
-% Initialize final image
-ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
-AlphaSheet = zeros(nbRows * H, nbCols * W);
+% Initialize buffer of images
+ImgBuffer   = zeros(H, W, 3, nImages, class(testImg));
+AlphaBuffer = zeros(H, W, 1, nImages);
+
+%ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
+%AlphaSheet = zeros(nbRows * H, nbCols * W);
 % Backup current view for 3D figures
 if is3D && dim ~= 0
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -312,11 +315,13 @@ for iSample = 1:nImages
         case 'volume',  img = out_figure_image(hFig, [], '');
     end
     alpha = ones(size(img,1), size(img,2), 1);
-    % Find extacted image position in final sheet
-    i = floor((iSample-1) / nbCols);
-    j = mod(iSample-1, nbCols);
-    ImgSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W, :) = img;
-    AlphaSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W) = alpha;
+    ImgBuffer(:,:,:,iSample) = img;
+    AlphaBuffer(:,:,:,iSample) = alpha;
+%     % Find extacted image position in final sheet
+%     i = floor((iSample-1) / nbCols);
+%     j = mod(iSample-1, nbCols);
+%     ImgSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W, :) = img;
+%     AlphaSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W) = alpha;
 end
 
 %% ===== RESTORE INITIAL POSITION =====
@@ -350,21 +355,38 @@ end
 
 
 %% ===== REMOVE USELESS BACKGROUND =====
-% Get background points
-background = double(AlphaSheet == 0);
-% If there are no transparent points on the surface: detect "black" points
-if (nnz(background) == 0)
-    background = double(sqrt(sum(double(ImgSheet).^2,3)) < .05);
+% Only in the case of MRI slices
+if (dim ~= 0)
+    % Detect "black" points for all images as background
+    background = all(double(sqrt(sum(double(ImgBuffer).^2,3)) < .05), 4);
+    % Grow background region, to remove all the small parasites
+    kernel = ones(2,2);
+    background = double(conv2(background, kernel, 'same') > 0);
+    % Grow foreground regions, to cut at least 10 pixels away from each meaningful block of data
+    kernel = ones(11);
+    background = conv2(double(background == 0), kernel, 'same') == 0;
+    % Detect the empty columns and rows
+    iEmptyCol = find(all(background, 1));
+    iEmptyRow = find(all(background, 2));
+    % Remove empty lines and columns
+    ImgBuffer(iEmptyRow, :, :, :) = [];
+    ImgBuffer(:, iEmptyCol, :, :) = [];
+    % New image size
+    H = size(ImgBuffer, 1);
+    W = size(ImgBuffer, 2);
 end
-% Grow foreground regions, to cut at least 10 pixels away from each meaningful block of data
-kernel = ones(11);
-background = conv2(double(background == 0), kernel, 'same') == 0;
-% Detect the empty columns and rows
-iEmptyCol = find(all(background, 1));
-iEmptyRow = find(all(background, 2));
-% Remove empty lines and columns
-ImgSheet(iEmptyRow, :, :) = [];
-ImgSheet(:, iEmptyCol, :) = [];
+
+
+%% ===== CONCATENATE FINAL IMAGE =====
+ImgSheet   = zeros(nbRows * H, nbCols * W, 3, class(testImg));
+AlphaSheet = zeros(nbRows * H, nbCols * W);
+for iSample = 1:nImages
+    % Find extacted image position in final sheet
+    i = floor((iSample-1) / nbCols);
+    j = mod(iSample-1, nbCols);
+    ImgSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W, :) = ImgBuffer(:,:,:,iSample);
+    AlphaSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W)  = ones(size(ImgBuffer,1), size(ImgBuffer,2), 1);
+end
 
 
 %% ===== RE-INTERPOLATE IMAGE =====
