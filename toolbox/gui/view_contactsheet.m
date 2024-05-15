@@ -222,11 +222,15 @@ if ~is3D
     else
         hFig3d = view_surface_data(sMri.FileName, overlayFile);
     end
+    % Hide scouts during snapshots
+    scoutsOptions = panel_scout('GetScoutsOptions');
+    panel_scout('SetScoutsOptions', scoutsOptions.overlayScouts, scoutsOptions.overlayConditions, scoutsOptions.displayAbsolute, 'none');
     % If OutputFile orignal call was empty or a directory
     if ~isAutoSave
         OutputFile = bst_fileparts(OutputFile);
     end
     hContactFig = view_contactsheet(hFig3d, inctype, orientation, OutputFile, nImages, TimeRange, SkipVolume);
+    panel_scout('SetScoutsOptions', scoutsOptions.overlayScouts, scoutsOptions.overlayConditions, scoutsOptions.displayAbsolute, scoutsOptions.showSelection);
     close(hFig3d);
     figure(hContactFig);
     return
