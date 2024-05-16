@@ -1,5 +1,5 @@
 function events = in_events_oebin(sFile, EventFile)
-% IN_EVENTS_OEBIN: Import events from a Open Ephys flat binary event file (timestamps.npy)
+% IN_EVENTS_OEBIN: Import events from a Open Ephys flat binary event sample_numbers file
 %
 % USAGE:  events = in_events_oebin(sFile, EventFile)
 
@@ -22,10 +22,11 @@ function events = in_events_oebin(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
+%          Raymundo Cassani, 2024
 
-% Read time stamps
-evtTime = reshape(readNPY(EventFile), 1, []);
-if isempty(evtTime)
+% Read event sample number
+evtIndices = reshape(readNPY(EventFile), 1, []);
+if isempty(evtIndices)
     events = [];
     return
 end
@@ -40,7 +41,7 @@ ChanStateFile = bst_fullfile(evtDir, 'channel_states.npy');
 if file_exist(TextFile)
     disp('EOBIN> ERROR: Text events are not supported yet...');
     evtGroupLabel = {'TEXT'};
-    evtGroupInd = {1:length(evtTime)};
+    evtGroupInd = {1:length(evtIndices)};
     evtChan = [];
     
 %     evtLabels = readNPY(TextFile);
@@ -70,7 +71,7 @@ elseif file_exist(ChanStateFile)
     evtChan = [];
 else
     evtGroupLabel = {'Unknown'};
-    evtGroupInd = {1:length(evtTime)};
+    evtGroupInd = {1:length(evtIndices)};
     evtChan = [];
 end
 
@@ -79,7 +80,7 @@ events = repmat(db_template('event'), [1, length(evtGroupLabel)]);
 % Get occurrences for each event
 for iEvt = 1:length(evtGroupLabel)
     events(iEvt).label      = evtGroupLabel{iEvt};
-    events(iEvt).times      = double(evtTime(evtGroupInd{iEvt})) ./ sFile.prop.sfreq;
+    events(iEvt).times      = double(evtIndices(evtGroupInd{iEvt})) ./ sFile.prop.sfreq;
     events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
