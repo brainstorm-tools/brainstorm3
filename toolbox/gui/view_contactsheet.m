@@ -225,6 +225,9 @@ if ~is3D
     % Hide scouts during snapshots
     scoutsOptions = panel_scout('GetScoutsOptions');
     panel_scout('SetScoutsOptions', scoutsOptions.overlayScouts, scoutsOptions.overlayConditions, scoutsOptions.displayAbsolute, 'none');
+    % Set slides to initial position in MRI
+    initPos = TessInfo(iTess).CutsPosition;
+    panel_surface('PlotMri', hFig3d, initPos, 1);
     % If OutputFile orignal call was empty or a directory
     if ~isAutoSave
         OutputFile = bst_fileparts(OutputFile);
