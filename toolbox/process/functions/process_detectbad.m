@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 115;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MedianNerveCtf#Review_the_individual_trials';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsDetect#Other_detection_processes';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
