@@ -88,7 +88,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.win_length.Value   = {1, 's', []};
     sProcess.options.win_length.InputTypes = {'raw'};
     % Reject entire trial
-    sProcess.options.rejectmode.Comment = {'Reject only the bad channels', 'Reject the entire trial (all channels)'};
+    sProcess.options.rejectmode.Comment = {'Reject only the bad channels', 'Reject the entire segments/trials (all channels)'};
     sProcess.options.rejectmode.Type    = 'radio';
     sProcess.options.rejectmode.Value   = 2;
 end
@@ -109,7 +109,7 @@ function Comment = FormatComment(sProcess)
     if (sProcess.options.rejectmode.Value == 1)
         Comment = 'Detect bad channels: Peak-to-peak ';
     else
-        Comment = 'Detect bad trials: Peak-to-peak ';
+        Comment = 'Detect bad segments/trials: Peak-to-peak ';
     end
     % What are the criteria
     for critName = {'meggrad', 'megmag', 'eeg', 'eog', 'ecg'}
