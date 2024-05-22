@@ -683,15 +683,7 @@ function s = GetStruct(PlugName)
 end
 
 
-%% ===== Validate JSON =====
-% Return true if the structure is valid. Check that all the mandatory
-% information are presents. TODO
-
-function  isValid= Validate(PlugJson)
-    isValid = true;
-end
-
-%% ===== Add Custom =====
+%% ===== ADD USER DEFINED PLUGIN =====
 function [isOk, Err] = AddCustom(plugin_file)
     isOk    = 1; 
     Err     = '';
@@ -729,17 +721,27 @@ function [isOk, Err] = AddCustom(plugin_file)
     end
 
     PlugDesc = bst_jsondecode(plugin_text);
+
+    % Validate retrieved plugin description
+        % TODO Check that all the mandatory information
+        % TODO Name: sanitize and uniqueness
+        PlugDesc.Name = lower(PlugDesc.Name);
+        PlugDesc.Category = 'User defined';
+        Err  = '';
+
     if ~isempty(Err)
         isOk = 0;
         return;
     end
-    
-    [~, plugName, ~] = fileparts(plugin_file);
 
-    fileID = fopen(fullfile(bst_get('BrainstormUserDir'), sprintf('plugin_%s.json', plugName)),'w');
-    fprintf(fileID,'%s', plugin_text );
-    fclose(fileID);
+    % Write validated JSON file
+    pluginJsonFileOut = fullfile(bst_get('BrainstormUserDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
+    fid = fopen(pluginJsonFileOut, 'wt');
+    jsonText = bst_jsonencode(PlugDesc);
+    fprintf(fid, jsonText);
+    fclose(fid);
 
+    % TODO Confirmation popup
 end
 
 %% ===== CONFIGURE PLUGIN =====
