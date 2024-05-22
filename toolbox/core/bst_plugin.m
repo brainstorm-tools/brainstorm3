@@ -649,10 +649,9 @@ function PlugDesc = GetSupported(SelPlug)
     plugJsonFiles = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
-        PlugDesc_tmp = bst_jsondecode(plugJsonText);
-        PlugDesc(end+1) = GetStruct(PlugDesc_tmp.Name);
-        PlugDesc_tmp.Category = 'User defined';
-        PlugDesc(end) = struct_copy_fields(PlugDesc(end), PlugDesc_tmp);
+        PlugUserDesc = bst_jsondecode(plugJsonText);
+        PlugUserDesc.ExtraMenus = PlugUserDesc.ExtraMenus';
+        PlugDesc(end) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
     end
 
     % ================================================================================================================
@@ -684,10 +683,11 @@ end
 
 
 %% ===== ADD USER DEFINED PLUGIN DESCRIPTION =====
-function [isOk, Err] = AddUserDefDesc(inputMethod, jsonLocation)
+function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
     isOk    = 1; 
-    Err     = '';
+    errMsg     = '';
     isInteractive = strcmp(inputMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
+
     % Get json file location from user
     if ismember(inputMethod, {'file', 'url'}) && isInteractive
         if strcmp(inputMethod, 'file')
@@ -707,6 +707,7 @@ function [isOk, Err] = AddUserDefDesc(inputMethod, jsonLocation)
             return
         end
     end
+
     % Get plugin description
     switch inputMethod
         case 'file'
@@ -728,23 +729,31 @@ function [isOk, Err] = AddUserDefDesc(inputMethod, jsonLocation)
             % Create a GUI to ask for the basic information, point that addition information should be creating a json file
             % this gives as results a description structure
     end
-
-    if ~isempty(Err)
+    if ~isempty(errMsg)
+        bst_error(errMsg);
         isOk = 0;
         return;
     end
 
     % Validate retrieved plugin description
-        % TODO Check that all the mandatory information
-        % TODO Name: sanitize and uniqueness
+    if length(PlugDesc) > 1
+        errMsg = 'JSON file should contain only one plugin description';
+    elseif ~all(ismember({'Name', 'Version', 'URLzip', 'URLinfo'}, fieldnames(PlugDesc)))
+        errMsg = 'Plugin description must contain the fields ''Name'', ''Version'', ''URLzip'' and ''URLinfo''';
+    else
         PlugDesc.Name = lower(PlugDesc.Name);
-        PlugDesc.Category = 'User defined';
-        Err  = '';
-
-    if ~isempty(Err)
+        PlugDescs = GetSupported();
+        if ismember(PlugDesc.Name, {PlugDescs.Name})
+            errMsg = sprintf('Plugin ''%s'' already exist in Brainstorm', PlugDesc.Name);
+        end
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg);
         isOk = 0;
         return;
     end
+    % Override category
+    PlugDesc.Category = 'User defined';
 
     % Write validated JSON file
     pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
