@@ -1851,6 +1851,10 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
+    % Delete json file for user defined plugins
+    if strcmp(PlugDesc.Category, 'User defined')
+        file_delete(fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name))), 1);
+    end
     
     % === CALLBACK: POST-UNINSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UninstalledFcn');
