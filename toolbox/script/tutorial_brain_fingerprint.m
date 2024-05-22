@@ -216,8 +216,10 @@ for iBand = 1 : nBands
 end
 
 %% ===== SAVE OUTCOME IN BRAINSTORM DATABASE =====
+% Retrieve 'Group_analysis' subject
+sNormSubj = bst_get('NormalizedSubject');
 % Study to save files
-[sOutputStudy, iOutputStudy] = bst_get('StudyWithCondition', bst_fullfile(bst_get('NormalizedSubjectName'), bst_get('DirAnalysisIntra')));
+[sOutputStudy, iOutputStudy] = bst_get('StudyWithCondition', bst_fullfile(sNormSubj.Name, bst_get('DirAnalysisIntra')));
 
 % Similarity matrix
 sSimilarityMat = db_template('timefreqmat');
