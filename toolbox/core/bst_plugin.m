@@ -646,7 +646,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
 
     % === USER DEFINED PLUGINS ===
-    plugJsonFiles = dir(fullfile(bst_get('BrainstormUserDir'), 'plugin_*.json'));
+    plugJsonFiles = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
         PlugDesc_tmp = bst_jsondecode(plugJsonText);
@@ -735,7 +735,7 @@ function [isOk, Err] = AddCustom(plugin_file)
     end
 
     % Write validated JSON file
-    pluginJsonFileOut = fullfile(bst_get('BrainstormUserDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
+    pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
     fid = fopen(pluginJsonFileOut, 'wt');
     jsonText = bst_jsonencode(PlugDesc);
     fprintf(fid, jsonText);
