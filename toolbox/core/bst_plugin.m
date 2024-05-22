@@ -683,44 +683,56 @@ function s = GetStruct(PlugName)
 end
 
 
-%% ===== ADD USER DEFINED PLUGIN =====
-function [isOk, Err] = AddCustom(plugin_file)
+%% ===== ADD USER DEFINED PLUGIN DESCRIPTION =====
+function [isOk, Err] = AddUserDefDesc(inputMethod, jsonLocation)
     isOk    = 1; 
     Err     = '';
-
-    if nargin < 1 
-        plugin_file = java_dialog('input', 'Enter the adress or path to the plugin description file (.json)', 'Custom Plugin File', [], '');
-        if isempty(plugin_file) 
+    isInteractive = strcmp(inputMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
+    % Get json file location from user
+    if ismember(inputMethod, {'file', 'url'}) && isInteractive
+        if strcmp(inputMethod, 'file')
+            jsonLocation = java_getfile('open', 'Plugin description JSON file...', '', 'single', 'files', {{'.json'}, 'Brainstorm plugin description (*.json)', 'JSON'}, 1);
+        elseif strcmp(inputMethod, 'url')
+            jsonLocation = java_dialog('input', 'Enter the URL the plugin description file (.json)', 'Plugin description JSON file...', [], '');
+        end
+        if isempty(jsonLocation)
             return
         end
         res = java_dialog('question', ['Warning: This plugin has not been verified.' 10 ...
-                                       'Malicious Plugins can alter your database, proceed with caution and only install plugins from trusted sources.' 10 ...
+                                       'Malicious plugins can alter your database, proceed with caution and only install plugins from trusted sources.' 10 ...
                                        'If any unusual behavior occurs after installation, start by uninstalling the plugins.' 10 ...
                                        'Are you sure you want to proceed?'], ...
                           'Warning', [], {'yes', 'no'});
+        if strcmp(res, 'no')
+            return
+        end
+    end
+    % Get plugin description
+    switch inputMethod
+        case 'file'
+            jsonText = fileread(jsonLocation);
+            PlugDesc = bst_jsondecode(jsonText);
 
-       if strcmp(res, 'no')
-           return
-       end
+        case 'url'
+            % Handle GitHub links, convert the link to load the raw content
+            if strcmp(jsonLocation(1:4),'http') && strcmp(jsonLocation(end-4:end),'.json')
+                if contains(jsonLocation, 'https://github.com')
+                    jsonLocation = strrep(jsonLocation, 'https://github.com','https://raw.githubusercontent.com');
+                    jsonLocation = strrep(jsonLocation, 'blob/', '');
+                end
+            end
+            jsonText = bst_webread(jsonLocation);
+            PlugDesc = bst_jsondecode(jsonText);
+
+        case 'manual'
+            % Create a GUI to ask for the basic information, point that addition information should be creating a json file
+            % this gives as results a description structure
     end
 
-    if strcmp(plugin_file(1:4),'http') &&  strcmp(plugin_file(end-4:end),'.json')  
-        % if from github, we convert the link to load the raw content 
-        if contains(plugin_file,'https://github.com')
-            plugin_file = strrep(plugin_file,'https://github.com','https://raw.githubusercontent.com' );
-            plugin_file = strrep(plugin_file,'blob/','' );
-        end
-        
-        plugin_text = bst_webread(plugin_file);
-    elseif exist(plugin_file,'file')
-        plugin_text = fileread(plugin_file);
-    else
+    if ~isempty(Err)
         isOk = 0;
-        Err  = 'Plugin format not recognized';
         return;
     end
-
-    PlugDesc = bst_jsondecode(plugin_text);
 
     % Validate retrieved plugin description
         % TODO Check that all the mandatory information
@@ -741,8 +753,9 @@ function [isOk, Err] = AddCustom(plugin_file)
     fprintf(fid, jsonText);
     fclose(fid);
 
-    % TODO Confirmation popup
+    fprintf(1, 'BST> Adding plugin ''%s'' to ''User defined'' plugins\n', PlugDesc.Name);
 end
+
 
 %% ===== CONFIGURE PLUGIN =====
 function Configure(PlugDesc)
@@ -2561,9 +2574,14 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         if isempty(jMenuUserDef)
             jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         end
-        jAddUserDefUrl = gui_component('MenuItem', [], [], 'Add custom Plugin', IconLoader.ICON_EDIT, [], @(h,ev)AddCustom, fontSize);
-        jMenuUserDef.insert(jAddUserDefUrl, 0); % Insert at the begining of the menu
-        jMenuUserDef.insertSeparator(1);
+        jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('file'),   fontSize);
+        jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('url'),    fontSize);
+        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('manual'), fontSize);
+        % Insert "Add" options at the begining of the 'User defined' menu
+        jMenuUserDef.insert(jAddUserDefFile, 0);
+        jMenuUserDef.insert(jAddUserDefUrl, 1);
+        jMenuUserDef.insert(jAddUserDefMan, 2);
+        jMenuUserDef.insertSeparator(3);
     end
     % List
     if ~isCompiled && isNewMenu
