@@ -2420,7 +2420,7 @@ end
 
 
 %% ===== MENUS: CREATE =====
-function j = MenuCreate(jMenu, fontSize)
+function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
     import org.brainstorm.icon.*;
     % Get all the supported plugins
     PlugDesc = GetSupported();
@@ -2429,8 +2429,23 @@ function j = MenuCreate(jMenu, fontSize)
     isCompiled = bst_iscompiled();
     % Submenus
     jSub = {};
+    % Generate submenus from existing menu
+    if ~isCompiled && jMenu.getMenuComponentCount > 0
+        for iItem = 0 : jMenu.getItemCount-1
+            if contains(jMenu.getMenuComponent(iItem).class, 'JMenu')
+                jSub(end+1,1:2) = {char(jMenu.getMenuComponent(iItem).getText), jMenu.getMenuComponent(iItem)};
+            end
+        end
+    end
+    % Editing an existing menu?
+    if isempty(jPlugsPrev)
+        isNewMenu = 1;
+        j = repmat(struct(), 0);
+    else
+        isNewMenu = 0;
+        j = repmat(jPlugsPrev(1), 0);
+    end
     % Process each plugin
-    j = repmat(struct(), 0);
     for iPlug = 1:length(PlugDesc)
         Plug = PlugDesc(iPlug);
         % Skip if Matlab is too old
@@ -2440,6 +2455,18 @@ function j = MenuCreate(jMenu, fontSize)
         % Skip if not supported in compiled version
         if isCompiled && (Plug.CompiledStatus == 0)
             continue;
+        end
+        % === Add menus for each plugin ===
+        % One menu per plugin
+        ij = length(j) + 1;
+        j(ij).name = Plug.Name;
+        % Skip if it is already a menu item
+        if ~isNewMenu
+            iPlugPrev = ismember({jPlugsPrev.name}, Plug.Name);
+            if any(iPlugPrev)
+                j(ij) = jPlugsPrev(iPlugPrev);
+                continue
+            end
         end
         % Category=submenu
         if ~isempty(Plug.Category)
@@ -2453,9 +2480,6 @@ function j = MenuCreate(jMenu, fontSize)
         else
             jParent = jMenu;
         end
-        % One menu per plugin
-        ij = length(j) + 1;
-        j(ij).name = Plug.Name;
         % Compiled and included: Simple static menu
         if isCompiled && (Plug.CompiledStatus == 2)
             j(ij).menu = gui_component('MenuItem', jParent, [], Plug.Name, [], [], [], fontSize);
@@ -2498,18 +2522,59 @@ function j = MenuCreate(jMenu, fontSize)
             end
         end
     end
+    % === Remove menus for plugins with description ===
+    if ~isempty(jPlugsPrev)
+        [~, iOld] = setdiff({jPlugsPrev.name}, {PlugDesc.Name});
+        for ix = 1 : length(iOld)
+            % Find category menu component
+            jMenu = jPlugsPrev(iOld(ix)).menu.getParent.getInvoker;
+            % Find index in parent
+            iDel = [];
+            for ic = 0 : jMenu.getMenuComponentCount-1
+                if jPlugsPrev(iOld(ix)).menu == jMenu.getMenuComponent(ic)
+                    iDel = ic;
+                    break
+                end
+            end
+            % Remove from parent
+            if ~isempty(iDel)
+                jMenu.remove(iDel);
+            end
+        end
+    end
+    % Create options for adding user-defined plugins
+    if ~isCompiled && isNewMenu
+        menuCategory = 'User defined';
+        jMenuUserDef = [];
+        for iMenuItem = 0 : jMenu.getItemCount-1
+             if contains(jMenu.getMenuComponent(iMenuItem).class, 'JMenu') && ...
+                contains(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
+                jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
+             end
+        end
+        if isempty(jMenuUserDef)
+            jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
+        end
+        jAddUserDefUrl = gui_component('MenuItem', [], [], 'Add custom Plugin', IconLoader.ICON_EDIT, [], @(h,ev)AddCustom, fontSize);
+        jMenuUserDef.insert(jAddUserDefUrl, 0); % Insert at the begining of the menu
+        jMenuUserDef.insertSeparator(1);
+    end
     % List
-    if ~isCompiled
+    if ~isCompiled && isNewMenu
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
-        gui_component('MenuItem', jMenu, [], 'Add custom Plugin', IconLoader.ICON_EDIT, [], @(h,ev)AddCustom, fontSize);
     end
 end
 
 
 %% ===== MENUS: UPDATE =====
-function MenuUpdate(jPlugs)
+function MenuUpdate(jMenu, fontSize)
     import org.brainstorm.icon.*;
+    % Regenerate plugin menu to look for new plugins
+    global GlobalData
+    jPlugs = GlobalData.Program.GUI.pluginMenus;
+    jPlugs = MenuCreate(jMenu, jPlugs, fontSize);
+    GlobalData.Program.GUI.pluginMenus = jPlugs;
     % If compiled: disable most menus
     isCompiled = bst_iscompiled();
     % Interface scaling

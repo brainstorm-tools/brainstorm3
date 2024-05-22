@@ -171,8 +171,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % ==== Menu PLUGINS ====
     jMenuPlugins = gui_component('Menu', jMenuBar, [], 'Plugins', [], [], [], fontSize);
-        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, fontSize);
-        java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenusPlug));
+        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, [], fontSize);
+        java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenuPlugins, fontSize));
        
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
@@ -491,7 +491,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
                struct('name', 'tools', ...
                       'jHandle', jTabpaneTools)], ...
          'panels',  BstPanel(), ...  % [0x0] array of BstPanel objects
-         'nodelists', repmat(db_template('nodelist'), 0));
+         'nodelists', repmat(db_template('nodelist'), 0), ...
+         'pluginMenus', jMenusPlug);
 
 
 %% =================================================================================
