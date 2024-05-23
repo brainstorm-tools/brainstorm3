@@ -761,7 +761,27 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
     fprintf(fid, jsonText);
     fclose(fid);
 
-    fprintf(1, 'BST> Adding plugin ''%s'' to ''User defined'' plugins\n', PlugDesc.Name);
+    fprintf(1, 'BST> Plugin ''%s'' was added to ''User defined'' plugins\n', PlugDesc.Name);
+end
+
+
+%% ===== REMOVE USER DEFINED PLUGIN DESCRIPTION =====
+function [isOk, errMsg] = RemoveUserDefDesc(PlugName)
+    isOk   = 1;
+    errMsg = '';
+    if nargin < 1 || isempty(PlugName)
+        PlugName = java_dialog('input', 'Indicate the name of the plugin to remove:', 'Remove plugin from ''User defined'' list', [], '');
+    end
+    PlugDesc = GetSupported(PlugName);
+    if ~isempty(PlugDesc.Path) || file_exist(bst_fullfile(bst_get('UserPluginsDir'), PlugDesc.Name))
+        [isOk, errMsg] = Uninstall(PlugDesc.Name, 0);
+    end
+    % Delete json file
+    if isOk
+       isOk = file_delete(fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name))), 1);
+    end
+
+    fprintf(1, 'BST> Plugin ''%s'' was removed from ''User defined'' plugins\n', PlugDesc.Name);
 end
 
 
@@ -1872,10 +1892,6 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
-    % Delete json file for user defined plugins
-    if strcmp(PlugDesc.Category, 'User defined')
-        file_delete(fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name))), 1);
-    end
     
     % === CALLBACK: POST-UNINSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UninstalledFcn');
@@ -2582,14 +2598,16 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         if isempty(jMenuUserDef)
             jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         end
-        jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('file'),   fontSize);
-        jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('url'),    fontSize);
-        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT, [], @(h,ev)AddUserDefDesc('manual'), fontSize);
+        jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('file'),   fontSize);
+        jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('url'),    fontSize);
+        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
+        jRmvUserDefMan  = gui_component('MenuItem', [], [], 'Remove plugin', IconLoader.ICON_DELETE, [], @(h,ev)RemoveUserDefDesc,        fontSize);
         % Insert "Add" options at the begining of the 'User defined' menu
         jMenuUserDef.insert(jAddUserDefFile, 0);
-        jMenuUserDef.insert(jAddUserDefUrl, 1);
-        jMenuUserDef.insert(jAddUserDefMan, 2);
-        jMenuUserDef.insertSeparator(3);
+        jMenuUserDef.insert(jAddUserDefUrl,  1);
+        jMenuUserDef.insert(jAddUserDefMan,  2);
+        jMenuUserDef.insert(jRmvUserDefMan,  3);
+        jMenuUserDef.insertSeparator(4);
     end
     % List
     if ~isCompiled && isNewMenu
