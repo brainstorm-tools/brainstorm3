@@ -770,7 +770,12 @@ function [isOk, errMsg] = RemoveUserDefDesc(PlugName)
     isOk   = 1;
     errMsg = '';
     if nargin < 1 || isempty(PlugName)
-        PlugName = java_dialog('input', 'Indicate the name of the plugin to remove:', 'Remove plugin from ''User defined'' list', [], '');
+        PlugDescs = GetSupported();
+        PlugDescs = PlugDescs(ismember({PlugDescs.Category}, 'User defined'));
+        PlugName = java_dialog('combo', 'Indicate the name of the plugin to remove:', 'Remove plugin from ''User defined'' list', [], {PlugDescs.Name});
+    end
+    if isempty(PlugName)
+        return
     end
     PlugDesc = GetSupported(PlugName);
     if ~isempty(PlugDesc.Path) || file_exist(bst_fullfile(bst_get('UserPluginsDir'), PlugDesc.Name))
