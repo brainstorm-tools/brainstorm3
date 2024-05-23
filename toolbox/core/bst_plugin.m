@@ -2924,7 +2924,18 @@ function Archive(OutputFile)
         envPlug = bst_fullfile(envPlugins, PlugDesc(iPlug).Name);
         isOk = file_copy(PlugDesc(iPlug).Path, envPlug);
         if ~isOk
-            error(['Cannot copy folder: "' userProc '" into "' envProc '"']);
+            error(['Cannot copy folder: "' PlugDesc(iPlug).Path '" into "' envProc '"']);
+        end
+    end
+    % Copy user-defined JSON files
+    PlugJson = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    for iPlugJson = 1:length(PlugJson)
+        bst_progress('text', ['Copying use-defined plugin JSON file: ' PlugJson(iPlugJson).name '...']);
+        plugJsonFile = bst_fullfile(PlugJson(iPlugJson), PlugJson(iPlugJson).name);
+        envPlugJson = bst_fullfile(envPlugins, PlugJson(iPlugJson).name);
+        isOk = file_copy(plugJsonFile, envPlugJson);
+        if ~isOk
+            error(['Cannot copy file: "' plugJsonFile '" into "' envProc '"']);
         end
     end
 
