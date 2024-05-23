@@ -2931,7 +2931,7 @@ function Archive(OutputFile)
     PlugJson = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
     for iPlugJson = 1:length(PlugJson)
         bst_progress('text', ['Copying use-defined plugin JSON file: ' PlugJson(iPlugJson).name '...']);
-        plugJsonFile = bst_fullfile(PlugJson(iPlugJson), PlugJson(iPlugJson).name);
+        plugJsonFile = bst_fullfile(PlugJson(iPlugJson).folder, PlugJson(iPlugJson).name);
         envPlugJson = bst_fullfile(envPlugins, PlugJson(iPlugJson).name);
         isOk = file_copy(plugJsonFile, envPlugJson);
         if ~isOk
