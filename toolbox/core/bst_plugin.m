@@ -650,8 +650,7 @@ function PlugDesc = GetSupported(SelPlug)
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
         PlugUserDesc = bst_jsondecode(plugJsonText);
-        PlugUserDesc.ExtraMenus = PlugUserDesc.ExtraMenus';
-        PlugDesc(end) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+        PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
     end
 
     % ================================================================================================================
@@ -2555,18 +2554,18 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         [~, iOld] = setdiff({jPlugsPrev.name}, {PlugDesc.Name});
         for ix = 1 : length(iOld)
             % Find category menu component
-            jMenu = jPlugsPrev(iOld(ix)).menu.getParent.getInvoker;
+            jMenuCat = jPlugsPrev(iOld(ix)).menu.getParent.getInvoker;
             % Find index in parent
             iDel = [];
-            for ic = 0 : jMenu.getMenuComponentCount-1
-                if jPlugsPrev(iOld(ix)).menu == jMenu.getMenuComponent(ic)
+            for ic = 0 : jMenuCat.getMenuComponentCount-1
+                if jPlugsPrev(iOld(ix)).menu == jMenuCat.getMenuComponent(ic)
                     iDel = ic;
                     break
                 end
             end
             % Remove from parent
             if ~isempty(iDel)
-                jMenu.remove(iDel);
+                jMenuCat.remove(iDel);
             end
         end
     end
