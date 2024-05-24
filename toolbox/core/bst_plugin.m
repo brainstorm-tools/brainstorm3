@@ -2631,14 +2631,14 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         if isempty(jMenuUserDef)
             jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         end
+        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
         jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('file'),   fontSize);
         jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('url'),    fontSize);
-        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
         jRmvUserDefMan  = gui_component('MenuItem', [], [], 'Remove plugin', IconLoader.ICON_DELETE, [], @(h,ev)RemoveUserDefDesc,        fontSize);
         % Insert "Add" options at the begining of the 'User defined' menu
-        jMenuUserDef.insert(jAddUserDefFile, 0);
-        jMenuUserDef.insert(jAddUserDefUrl,  1);
-        jMenuUserDef.insert(jAddUserDefMan,  2);
+        jMenuUserDef.insert(jAddUserDefMan,  0);
+        jMenuUserDef.insert(jAddUserDefFile, 1);
+        jMenuUserDef.insert(jAddUserDefUrl,  2);
         jMenuUserDef.insert(jRmvUserDefMan,  3);
         jMenuUserDef.insertSeparator(4);
     end
