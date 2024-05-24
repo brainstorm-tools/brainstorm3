@@ -24,6 +24,14 @@ function events = in_events_oebin(sFile, EventFile)
 % Authors: Francois Tadel, 2020
 %          Raymundo Cassani, 2024
 
+% Install/load npy-matlab Toolbox (https://github.com/kwikteam/npy-matlab) as plugin
+if ~exist('readNPY', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'npy-matlab');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % Read event sample number
 evtIndices = reshape(readNPY(EventFile), 1, []);
 if isempty(evtIndices)

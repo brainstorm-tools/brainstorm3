@@ -15,7 +15,7 @@ function [varargout] = bst_plugin(varargin)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('UnloadInteractive',    PlugName/PlugDesc)
-% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[])
+% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[]) % Install and Load a plugin and its dependencies
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice',PlugNames, isInteractive=0)  % Install at least one of the input plugins
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive',   PlugName)
 %           [isOk, errMsg] = bst_plugin('Uninstall',            PlugName, isInteractive=0, isDependencies=1)
@@ -359,6 +359,17 @@ function PlugDesc = GetSupported(SelPlug)
                                     'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
                                     'cd(d);'];
 
+    % === I/O: npy-matlab ===
+    PlugDesc(end+1)              = GetStruct('npy-matlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/kwikteam/npy-matlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/kwikteam/npy-matlab';
+    PlugDesc(end).TestFile       = 'constructNPYheader.m';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');
     PlugDesc(end).Version        = 'github-master';
@@ -517,17 +528,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'npy-matlab'};
-    
-    % === ELECTROPHYSIOLOGY: npy-matlab ===
-    PlugDesc(end+1)              = GetStruct('npy-matlab');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'e-phys';
-    PlugDesc(end).URLzip         = 'https://github.com/kwikteam/npy-matlab/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/kwikteam/npy-matlab';
-    PlugDesc(end).TestFile       = 'constructNPYheader.m';
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).CompiledStatus = 0;
     
     % === ELECTROPHYSIOLOGY: ultramegasort2000 ===
     PlugDesc(end+1)              = GetStruct('ultramegasort2000');
@@ -1333,7 +1333,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
                     '<BR><BR>Brainstorm will now install these plugins.' 10 10], 'Plugin manager');
             end
             for iPlug = 1:length(installPlugs)
-                [isInstalled, errMsg] = Install(installPlugs{iPlug}, isInteractive, installPlugs{iPlug});
+                [isInstalled, errMsg] = Install(installPlugs{iPlug}, isInteractive, installVer{iPlug});
                 if ~isInstalled
                     errMsg = ['Error processing dependency: ' PlugDesc.RequiredPlugs{iPlug,1} 10 errMsg];
                     return;

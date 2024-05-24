@@ -28,6 +28,13 @@ function [sFile, ChannelMat] = in_fopen_oebin(DataFile)
 %          Raymundo Cassani, 2024
 
 %% ===== GET FILES =====
+% Install/load npy-matlab Toolbox (https://github.com/kwikteam/npy-matlab) as plugin
+if ~exist('readNPY', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'npy-matlab');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 % Build header and markers files names
 procDir = bst_fileparts(DataFile);
 [contDir, procName] = bst_fileparts(procDir);
