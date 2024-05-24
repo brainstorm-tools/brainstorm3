@@ -716,8 +716,8 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
         case 'url'
             % Handle GitHub links, convert the link to load the raw content
             if strcmp(jsonLocation(1:4),'http') && strcmp(jsonLocation(end-4:end),'.json')
-                if contains(jsonLocation, 'https://github.com')
-                    jsonLocation = strrep(jsonLocation, 'https://github.com','https://raw.githubusercontent.com');
+                if ~isempty(regexp(jsonLocation, '^http[s]*://github.com', 'once'))
+                    jsonLocation = strrep(jsonLocation, 'github.com','raw.githubusercontent.com');
                     jsonLocation = strrep(jsonLocation, 'blob/', '');
                 end
             end
@@ -2494,12 +2494,12 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
-    % Submenus
+    % Submenus array
     jSub = {};
-    % Generate submenus from existing menu
+    % Generate submenus array from existing menu
     if ~isCompiled && jMenu.getMenuComponentCount > 0
         for iItem = 0 : jMenu.getItemCount-1
-            if contains(jMenu.getMenuComponent(iItem).class, 'JMenu')
+            if ~isempty(regexp(jMenu.getMenuComponent(iItem).class, 'JMenu$', 'once'))
                 jSub(end+1,1:2) = {char(jMenu.getMenuComponent(iItem).getText), jMenu.getMenuComponent(iItem)};
             end
         end
@@ -2614,9 +2614,8 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         menuCategory = 'User defined';
         jMenuUserDef = [];
         for iMenuItem = 0 : jMenu.getItemCount-1
-             if contains(jMenu.getMenuComponent(iMenuItem).class, 'JMenu') && ...
-                contains(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
-                jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
+             if ~isempty(regexp(jMenu.getMenuComponent(iMenuItem).class, 'JMenu$', 'once')) && strcmp(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
+                 jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
              end
         end
         if isempty(jMenuUserDef)
