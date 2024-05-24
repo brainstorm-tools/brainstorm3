@@ -711,7 +711,11 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
     switch inputMethod
         case 'file'
             jsonText = fileread(jsonLocation);
-            PlugDesc = bst_jsondecode(jsonText);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file:' 10 '%s'], jsonLocation);
+            end
 
         case 'url'
             % Handle GitHub links, convert the link to load the raw content
@@ -722,7 +726,11 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
                 end
             end
             jsonText = bst_webread(jsonLocation);
-            PlugDesc = bst_jsondecode(jsonText);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file at:' 10 '%s'], jsonLocation);
+            end
 
         case 'manual'
             % Get info for user-defined plugin description from user
