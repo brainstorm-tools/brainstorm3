@@ -11,6 +11,8 @@ function [varargout] = bst_plugin(varargin)
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
 %                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
+%           [isOk, errMsg] = bst_plugin('AddUserDefDesc',       RegMethod, jsonLocation=[])  % Register user-defined plugin definition
+%           [isOk, errMsg] = bst_plugin('RemoveUserDefDesc'     PlugName)                    % Remove user-defined plugin definition
 % [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
@@ -682,16 +684,16 @@ end
 
 
 %% ===== ADD USER DEFINED PLUGIN DESCRIPTION =====
-function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
+function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
     isOk    = 1; 
     errMsg     = '';
-    isInteractive = strcmp(inputMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
+    isInteractive = strcmp(RegMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
 
     % Get json file location from user
-    if ismember(inputMethod, {'file', 'url'}) && isInteractive
-        if strcmp(inputMethod, 'file')
+    if ismember(RegMethod, {'file', 'url'}) && isInteractive
+        if strcmp(RegMethod, 'file')
             jsonLocation = java_getfile('open', 'Plugin description JSON file...', '', 'single', 'files', {{'.json'}, 'Brainstorm plugin description (*.json)', 'JSON'}, 1);
-        elseif strcmp(inputMethod, 'url')
+        elseif strcmp(RegMethod, 'url')
             jsonLocation = java_dialog('input', 'Enter the URL the plugin description file (.json)', 'Plugin description JSON file...', [], '');
         end
         if isempty(jsonLocation)
@@ -708,7 +710,7 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
     end
 
     % Get plugin description
-    switch inputMethod
+    switch RegMethod
         case 'file'
             jsonText = fileread(jsonLocation);
             try
