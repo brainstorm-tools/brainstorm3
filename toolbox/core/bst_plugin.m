@@ -11,6 +11,8 @@ function [varargout] = bst_plugin(varargin)
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
 %                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
+%           [isOk, errMsg] = bst_plugin('AddUserDefDesc',       RegMethod, jsonLocation=[])  % Register user-defined plugin definition
+%           [isOk, errMsg] = bst_plugin('RemoveUserDefDesc'     PlugName)                    % Remove user-defined plugin definition
 % [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
@@ -682,16 +684,16 @@ end
 
 
 %% ===== ADD USER DEFINED PLUGIN DESCRIPTION =====
-function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
+function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
     isOk    = 1; 
     errMsg     = '';
-    isInteractive = strcmp(inputMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
+    isInteractive = strcmp(RegMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
 
     % Get json file location from user
-    if ismember(inputMethod, {'file', 'url'}) && isInteractive
-        if strcmp(inputMethod, 'file')
+    if ismember(RegMethod, {'file', 'url'}) && isInteractive
+        if strcmp(RegMethod, 'file')
             jsonLocation = java_getfile('open', 'Plugin description JSON file...', '', 'single', 'files', {{'.json'}, 'Brainstorm plugin description (*.json)', 'JSON'}, 1);
-        elseif strcmp(inputMethod, 'url')
+        elseif strcmp(RegMethod, 'url')
             jsonLocation = java_dialog('input', 'Enter the URL the plugin description file (.json)', 'Plugin description JSON file...', [], '');
         end
         if isempty(jsonLocation)
@@ -708,25 +710,52 @@ function [isOk, errMsg] = AddUserDefDesc(inputMethod, jsonLocation)
     end
 
     % Get plugin description
-    switch inputMethod
+    switch RegMethod
         case 'file'
             jsonText = fileread(jsonLocation);
-            PlugDesc = bst_jsondecode(jsonText);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file:' 10 '%s'], jsonLocation);
+            end
 
         case 'url'
             % Handle GitHub links, convert the link to load the raw content
             if strcmp(jsonLocation(1:4),'http') && strcmp(jsonLocation(end-4:end),'.json')
-                if contains(jsonLocation, 'https://github.com')
-                    jsonLocation = strrep(jsonLocation, 'https://github.com','https://raw.githubusercontent.com');
+                if ~isempty(regexp(jsonLocation, '^http[s]*://github.com', 'once'))
+                    jsonLocation = strrep(jsonLocation, 'github.com','raw.githubusercontent.com');
                     jsonLocation = strrep(jsonLocation, 'blob/', '');
                 end
             end
             jsonText = bst_webread(jsonLocation);
-            PlugDesc = bst_jsondecode(jsonText);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file at:' 10 '%s'], jsonLocation);
+            end
 
         case 'manual'
-            % Create a GUI to ask for the basic information, point that addition information should be creating a json file
-            % this gives as results a description structure
+            % Get info for user-defined plugin description from user
+            res = java_dialog('input', { ['<HTML>Provide the <B>mandatory</B> fields for a user defined Brainstorm plugin<BR>' ...
+                                          'See this page for further details:<BR>' ...
+                                          '<FONT COLOR="#0000FF">https://neuroimage.usc.edu/brainstorm/Tutorials/Plugins</FONT>' ...
+                                          '<BR><BR>' ...
+                                          'Plugin name<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: bst-users</FONT></I>'], ...
+                                         ['<HTML>Version<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: github-main or 3.1.4</FONT></I>'], ...
+                                         ['<HTML>URL for zip<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users/archive/refs/heads/master.zip</FONT></I>'], ...
+                                         ['<HTML>URL for information<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users</FONT></I>']}, ...
+                                       'User defined plugin', [], {'', '', '', ''});
+            if isempty(res)
+                return
+            end
+            PlugDesc.Name    = lower(res{1});
+            PlugDesc.Version = res{2};
+            PlugDesc.URLzip  = res{3};
+            PlugDesc.URLinfo = res{4};
     end
     if ~isempty(errMsg)
         bst_error(errMsg);
@@ -2475,12 +2504,12 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
-    % Submenus
+    % Submenus array
     jSub = {};
-    % Generate submenus from existing menu
+    % Generate submenus array from existing menu
     if ~isCompiled && jMenu.getMenuComponentCount > 0
         for iItem = 0 : jMenu.getItemCount-1
-            if contains(jMenu.getMenuComponent(iItem).class, 'JMenu')
+            if ~isempty(regexp(jMenu.getMenuComponent(iItem).class, 'JMenu$', 'once'))
                 jSub(end+1,1:2) = {char(jMenu.getMenuComponent(iItem).getText), jMenu.getMenuComponent(iItem)};
             end
         end
@@ -2595,22 +2624,21 @@ function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
         menuCategory = 'User defined';
         jMenuUserDef = [];
         for iMenuItem = 0 : jMenu.getItemCount-1
-             if contains(jMenu.getMenuComponent(iMenuItem).class, 'JMenu') && ...
-                contains(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
-                jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
+             if ~isempty(regexp(jMenu.getMenuComponent(iMenuItem).class, 'JMenu$', 'once')) && strcmp(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
+                 jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
              end
         end
         if isempty(jMenuUserDef)
             jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
         end
+        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
         jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('file'),   fontSize);
         jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('url'),    fontSize);
-        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
         jRmvUserDefMan  = gui_component('MenuItem', [], [], 'Remove plugin', IconLoader.ICON_DELETE, [], @(h,ev)RemoveUserDefDesc,        fontSize);
         % Insert "Add" options at the begining of the 'User defined' menu
-        jMenuUserDef.insert(jAddUserDefFile, 0);
-        jMenuUserDef.insert(jAddUserDefUrl,  1);
-        jMenuUserDef.insert(jAddUserDefMan,  2);
+        jMenuUserDef.insert(jAddUserDefMan,  0);
+        jMenuUserDef.insert(jAddUserDefFile, 1);
+        jMenuUserDef.insert(jAddUserDefUrl,  2);
         jMenuUserDef.insert(jRmvUserDefMan,  3);
         jMenuUserDef.insertSeparator(4);
     end
@@ -2924,7 +2952,18 @@ function Archive(OutputFile)
         envPlug = bst_fullfile(envPlugins, PlugDesc(iPlug).Name);
         isOk = file_copy(PlugDesc(iPlug).Path, envPlug);
         if ~isOk
-            error(['Cannot copy folder: "' userProc '" into "' envProc '"']);
+            error(['Cannot copy folder: "' PlugDesc(iPlug).Path '" into "' envProc '"']);
+        end
+    end
+    % Copy user-defined JSON files
+    PlugJson = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    for iPlugJson = 1:length(PlugJson)
+        bst_progress('text', ['Copying use-defined plugin JSON file: ' PlugJson(iPlugJson).name '...']);
+        plugJsonFile = bst_fullfile(PlugJson(iPlugJson).folder, PlugJson(iPlugJson).name);
+        envPlugJson = bst_fullfile(envPlugins, PlugJson(iPlugJson).name);
+        isOk = file_copy(plugJsonFile, envPlugJson);
+        if ~isOk
+            error(['Cannot copy file: "' plugJsonFile '" into "' envProc '"']);
         end
     end
 
