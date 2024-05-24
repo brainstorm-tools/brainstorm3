@@ -125,6 +125,7 @@ function PlugDesc = GetSupported(SelPlug)
     % Get OS
     OsType = bst_get('OsType', 0);
     
+    % Add new curated plugins by 'CATEGORY:' and alphabetic order
     % ================================================================================================================
     % === ANATOMY: BRAIN2MESH ===
     PlugDesc(end+1)              = GetStruct('brain2mesh');
@@ -154,6 +155,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
     PlugDesc(end).LoadedFcn      = 'LinkCatSpm(2);';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
+
+    % === ANATOMY: CT2MRIREG ===
+    PlugDesc(end+1)              = GetStruct('ct2mrireg');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/ajoshiusc/USCCleveland/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/USCCleveland/tree/master/ct2mrireg';
+    PlugDesc(end).TestFile       = 'ct2mrireg.m';
+    PlugDesc(end).ReadmeFile     = 'ct2mrireg/README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'ct2mrireg'};
+    PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
@@ -192,19 +206,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
 
-    % === ANATOMY: CT2MRIREG ===
-    % this plugin is used for performing CT to MRI co-registration
-    PlugDesc(end+1)              = GetStruct('ct2mrireg');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/ajoshiusc/USCCleveland/archive/master.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/USCCleveland/tree/master/ct2mrireg';
-    PlugDesc(end).TestFile       = 'ct2mrireg.m';
-    PlugDesc(end).ReadmeFile     = 'ct2mrireg/README.md';
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'ct2mrireg'};
-    PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
 
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
@@ -316,6 +317,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
 
+    % === I/O: JSNIRF ===
+    PlugDesc(end+1)              = GetStruct('jsnirfy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsnirfy/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsnirfy';
+    PlugDesc(end).TestFile       = 'loadsnirf.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).RequiredPlugs  = {'easyh5'};
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -344,19 +358,6 @@ function PlugDesc = GetSupported(SelPlug)
                                     'f=fopen(''private' filesep 'eeg_emptyset.m'',''wt''); fprintf(f,''function EEG=eeg_emptyset()\nEEG=struct();''); fclose(f);' ...
                                     'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
                                     'cd(d);'];
-
-    % === I/O: JSNIRF ===
-    PlugDesc(end+1)              = GetStruct('jsnirfy');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsnirfy/archive/master.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsnirfy';
-    PlugDesc(end).TestFile       = 'loadsnirf.m';
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
-    PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).RequiredPlugs  = {'easyh5'};
 
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');
@@ -432,6 +433,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
+
+    % === STATISTICS: FASTICA ===
+    PlugDesc(end+1)              = GetStruct('fastica');
+    PlugDesc(end).Version        = '2.5';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://research.ics.aalto.fi/ica/fastica/code/FastICA_2.5.zip';
+    PlugDesc(end).URLinfo        = 'https://research.ics.aalto.fi/ica/fastica/';
+    PlugDesc(end).TestFile       = 'fastica.m';
+    PlugDesc(end).ReadmeFile     = 'Contents.m';
+    PlugDesc(end).CompiledStatus = 2;
+
     % === STATISTICS: LIBSVM ===
     PlugDesc(end+1)              = GetStruct('libsvm');
     PlugDesc(end).Version        = 'github-master';
@@ -444,16 +456,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
-
-    % === STATISTICS: FASTICA ===
-    PlugDesc(end+1)              = GetStruct('fastica');
-    PlugDesc(end).Version        = '2.5';
-    PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://research.ics.aalto.fi/ica/fastica/code/FastICA_2.5.zip';
-    PlugDesc(end).URLinfo        = 'https://research.ics.aalto.fi/ica/fastica/';
-    PlugDesc(end).TestFile       = 'fastica.m';
-    PlugDesc(end).ReadmeFile     = 'Contents.m';
-    PlugDesc(end).CompiledStatus = 2;
 
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
@@ -549,7 +551,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
 
-    % === NIRSTORM ===
+    % === fNIRS: NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'fNIRS';
@@ -566,7 +568,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).DeleteFiles    = {'scripts', 'test', 'run_tests.m', 'test_suite_bak.m', '.gitignore'};
     
-    % === MCXLAB CUDA ===
+    % === fNIRS: MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
     PlugDesc(end).Version        = '2021.12.04';
     PlugDesc(end).Category       = 'fNIRS';
@@ -578,7 +580,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
-    % === MCXLAB CL ===
+    % === fNIRS: MCXLAB CL ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
     PlugDesc(end).Version        = '2020';
     PlugDesc(end).Category       = 'fNIRS';
@@ -590,7 +592,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
-    % === MIA ===
+    % === sEEG: MIA ===
     PlugDesc(end+1)              = GetStruct('mia');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'sEEG';
