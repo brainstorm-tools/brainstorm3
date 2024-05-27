@@ -318,24 +318,24 @@ for i = 1:length(sScoutStructSrc)
     % ===== USE FREESURFER SPHERES =====
     % Interpolate using the sphere and the Shepard's algorithm
     if isCortexL && isFreeSurfer
-        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertSphLdest, vertSphLsrc, nbNeighbors, 0);
+        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertSphLdest, vertSphLsrc, nbNeighbors, 0, [], isInteractive);
     elseif isCortexR && isFreeSurfer
-        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertSphRdest, vertSphRsrc, nbNeighbors, 0);
+        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertSphRdest, vertSphRsrc, nbNeighbors, 0, [], isInteractive);
         
     % ===== USE BRAINSUITE SQUARES =====
     % Interpolate using the Brainsuite squares and the Shepard's algorithm
     elseif isCortexL && isBrainSuite
         % Interpolation: Subject => BrainSuiteAtlas1
-        Wsrc2atlas = bst_shepards(vertAtlasLsrc, vertSquareLsrc, nbNeighbors, 0);
+        Wsrc2atlas = bst_shepards(vertAtlasLsrc, vertSquareLsrc, nbNeighbors, 0, [], isInteractive);
         % Interpolation: BrainSuiteAtlas1 => Default anatomy
-        Watlas2dest = bst_shepards(vertSquareLdest, vertAtlasLdest, nbNeighbors, 0);
+        Watlas2dest = bst_shepards(vertSquareLdest, vertAtlasLdest, nbNeighbors, 0, [], isInteractive);
         % Combined: Subject => Default anatomy
         Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = Watlas2dest * Wsrc2atlas;
     elseif isCortexR && isBrainSuite
         % Interpolation: Subject => BrainSuiteAtlas1
-        Wsrc2atlas = bst_shepards(vertAtlasRsrc, vertSquareRsrc, nbNeighbors, 0);
+        Wsrc2atlas = bst_shepards(vertAtlasRsrc, vertSquareRsrc, nbNeighbors, 0, [], isInteractive);
         % Interpolation: BrainSuiteAtlas1 => Default anatomy
-        Watlas2dest = bst_shepards(vertSquareRdest, vertAtlasRdest, nbNeighbors, 0);
+        Watlas2dest = bst_shepards(vertSquareRdest, vertAtlasRdest, nbNeighbors, 0, [], isInteractive);
         % Combined: Subject => Default anatomy
         Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = Watlas2dest * Wsrc2atlas;
 
@@ -386,7 +386,7 @@ for i = 1:length(sScoutStructSrc)
         
         % === INTERPOLATION ===
         % Compute Shepard's interpolation
-        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertDest, vertSrcFit, nbNeighbors, 0);
+        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertDest, vertSrcFit, nbNeighbors, 0, [], isInteractive);
        
         % === DISPLAY ALIGNMENT ===
         if isInteractive && ~isSameSubject

@@ -331,7 +331,7 @@ else
     FileType = 'results';
     % Time vector
     if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.ImageGridAmp,2))
-        ResultsMat.Time = 0:(size(map,2)-1);
+        ResultsMat.Time = 0:(size(ResultsMat.ImageGridAmp,2)-1);
     else
         ResultsMat.Time = TimeVector;
     end
