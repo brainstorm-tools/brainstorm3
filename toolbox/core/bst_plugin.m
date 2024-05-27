@@ -652,6 +652,14 @@ function PlugDesc = GetSupported(SelPlug)
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
         PlugUserDesc = bst_jsondecode(plugJsonText);
+        % Reshape fields "ExtraMenus"
+        if isfield(PlugUserDesc, 'ExtraMenus') && ~isempty(PlugUserDesc.ExtraMenus) && iscell(PlugUserDesc.ExtraMenus{1})
+            PlugUserDesc.ExtraMenus = cat(2, PlugUserDesc.ExtraMenus{:})';
+        end
+        % Reshape fields "RequiredPlugs"
+        if isfield(PlugUserDesc, 'RequiredPlugs') && ~isempty(PlugUserDesc.RequiredPlugs) && iscell(PlugUserDesc.RequiredPlugs{1})
+            PlugUserDesc.RequiredPlugs = cat(2, PlugUserDesc.RequiredPlugs{:})';
+        end
         PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
     end
 
@@ -786,7 +794,7 @@ function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
     % Write validated JSON file
     pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
     fid = fopen(pluginJsonFileOut, 'wt');
-    jsonText = bst_jsonencode(PlugDesc);
+    jsonText = bst_jsonencode(PlugDesc, 0);
     fprintf(fid, jsonText);
     fclose(fid);
 
