@@ -2188,11 +2188,16 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                     if isequal(filesep, '\')
                         subDir = strrep(subDir, '/', '\');
                     end
-                    if isdir([PlugHomeDir, filesep, subDir])
+                    if ~isempty(dir([PlugHomeDir, filesep, subDir]))
                         if isVerbose
                             disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
                         end
-                        addpath([PlugHomeDir, filesep, subDir]);
+                        if regexp(subDir, '\*[/\\]*$')
+                            subDir = regexprep(subDir, '\*[/\\]*$', '');
+                            addpath(genpath([PlugHomeDir, filesep, subDir]));
+                        else
+                            addpath([PlugHomeDir, filesep, subDir]);
+                        end
                     end
                 end
             end
