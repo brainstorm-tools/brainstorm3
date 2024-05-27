@@ -11,6 +11,8 @@ function [varargout] = bst_plugin(varargin)
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
 %                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
+%           [isOk, errMsg] = bst_plugin('AddUserDefDesc',       RegMethod, jsonLocation=[])  % Register user-defined plugin definition
+%           [isOk, errMsg] = bst_plugin('RemoveUserDefDesc'     PlugName)                    % Remove user-defined plugin definition
 % [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
@@ -646,6 +648,23 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
+
+    % === USER DEFINED PLUGINS ===
+    plugJsonFiles = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    for ix = 1:length(plugJsonFiles)
+        plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
+        PlugUserDesc = bst_jsondecode(plugJsonText);
+        % Reshape fields "ExtraMenus"
+        if isfield(PlugUserDesc, 'ExtraMenus') && ~isempty(PlugUserDesc.ExtraMenus) && iscell(PlugUserDesc.ExtraMenus{1})
+            PlugUserDesc.ExtraMenus = cat(2, PlugUserDesc.ExtraMenus{:})';
+        end
+        % Reshape fields "RequiredPlugs"
+        if isfield(PlugUserDesc, 'RequiredPlugs') && ~isempty(PlugUserDesc.RequiredPlugs) && iscell(PlugUserDesc.RequiredPlugs{1})
+            PlugUserDesc.RequiredPlugs = cat(2, PlugUserDesc.RequiredPlugs{:})';
+        end
+        PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+    end
+
     % ================================================================================================================
     
     % Select only one plugin
@@ -671,6 +690,142 @@ end
 function s = GetStruct(PlugName)
     s = db_template('PlugDesc');
     s.Name = PlugName;
+end
+
+
+%% ===== ADD USER DEFINED PLUGIN DESCRIPTION =====
+function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
+    isOk    = 1; 
+    errMsg     = '';
+    isInteractive = strcmp(RegMethod, 'manual') || nargin < 2 || isempty(jsonLocation);
+
+    % Get json file location from user
+    if ismember(RegMethod, {'file', 'url'}) && isInteractive
+        if strcmp(RegMethod, 'file')
+            jsonLocation = java_getfile('open', 'Plugin description JSON file...', '', 'single', 'files', {{'.json'}, 'Brainstorm plugin description (*.json)', 'JSON'}, 1);
+        elseif strcmp(RegMethod, 'url')
+            jsonLocation = java_dialog('input', 'Enter the URL the plugin description file (.json)', 'Plugin description JSON file...', [], '');
+        end
+        if isempty(jsonLocation)
+            return
+        end
+        res = java_dialog('question', ['Warning: This plugin has not been verified.' 10 ...
+                                       'Malicious plugins can alter your database, proceed with caution and only install plugins from trusted sources.' 10 ...
+                                       'If any unusual behavior occurs after installation, start by uninstalling the plugins.' 10 ...
+                                       'Are you sure you want to proceed?'], ...
+                          'Warning', [], {'yes', 'no'});
+        if strcmp(res, 'no')
+            return
+        end
+    end
+
+    % Get plugin description
+    switch RegMethod
+        case 'file'
+            jsonText = fileread(jsonLocation);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file:' 10 '%s'], jsonLocation);
+            end
+
+        case 'url'
+            % Handle GitHub links, convert the link to load the raw content
+            if strcmp(jsonLocation(1:4),'http') && strcmp(jsonLocation(end-4:end),'.json')
+                if ~isempty(regexp(jsonLocation, '^http[s]*://github.com', 'once'))
+                    jsonLocation = strrep(jsonLocation, 'github.com','raw.githubusercontent.com');
+                    jsonLocation = strrep(jsonLocation, 'blob/', '');
+                end
+            end
+            jsonText = bst_webread(jsonLocation);
+            try
+                PlugDesc = bst_jsondecode(jsonText);
+            catch
+                errMsg = sprintf(['Could not parse JSON file at:' 10 '%s'], jsonLocation);
+            end
+
+        case 'manual'
+            % Get info for user-defined plugin description from user
+            res = java_dialog('input', { ['<HTML>Provide the <B>mandatory</B> fields for a user defined Brainstorm plugin<BR>' ...
+                                          'See this page for further details:<BR>' ...
+                                          '<FONT COLOR="#0000FF">https://neuroimage.usc.edu/brainstorm/Tutorials/Plugins</FONT>' ...
+                                          '<BR><BR>' ...
+                                          'Plugin name<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: bst-users</FONT></I>'], ...
+                                         ['<HTML>Version<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: github-main or 3.1.4</FONT></I>'], ...
+                                         ['<HTML>URL for zip<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users/archive/refs/heads/master.zip</FONT></I>'], ...
+                                         ['<HTML>URL for information<BR>' ...
+                                          '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users</FONT></I>']}, ...
+                                       'User defined plugin', [], {'', '', '', ''});
+            if isempty(res)
+                return
+            end
+            PlugDesc.Name    = lower(res{1});
+            PlugDesc.Version = res{2};
+            PlugDesc.URLzip  = res{3};
+            PlugDesc.URLinfo = res{4};
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg);
+        isOk = 0;
+        return;
+    end
+
+    % Validate retrieved plugin description
+    if length(PlugDesc) > 1
+        errMsg = 'JSON file should contain only one plugin description';
+    elseif ~all(ismember({'Name', 'Version', 'URLzip', 'URLinfo'}, fieldnames(PlugDesc)))
+        errMsg = 'Plugin description must contain the fields ''Name'', ''Version'', ''URLzip'' and ''URLinfo''';
+    else
+        PlugDesc.Name = lower(PlugDesc.Name);
+        PlugDescs = GetSupported();
+        if ismember(PlugDesc.Name, {PlugDescs.Name})
+            errMsg = sprintf('Plugin ''%s'' already exist in Brainstorm', PlugDesc.Name);
+        end
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg);
+        isOk = 0;
+        return;
+    end
+    % Override category
+    PlugDesc.Category = 'User defined';
+
+    % Write validated JSON file
+    pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
+    fid = fopen(pluginJsonFileOut, 'wt');
+    jsonText = bst_jsonencode(PlugDesc, 0);
+    fprintf(fid, jsonText);
+    fclose(fid);
+
+    fprintf(1, 'BST> Plugin ''%s'' was added to ''User defined'' plugins\n', PlugDesc.Name);
+end
+
+
+%% ===== REMOVE USER DEFINED PLUGIN DESCRIPTION =====
+function [isOk, errMsg] = RemoveUserDefDesc(PlugName)
+    isOk   = 1;
+    errMsg = '';
+    if nargin < 1 || isempty(PlugName)
+        PlugDescs = GetSupported();
+        PlugDescs = PlugDescs(ismember({PlugDescs.Category}, 'User defined'));
+        PlugName = java_dialog('combo', 'Indicate the name of the plugin to remove:', 'Remove plugin from ''User defined'' list', [], {PlugDescs.Name});
+    end
+    if isempty(PlugName)
+        return
+    end
+    PlugDesc = GetSupported(PlugName);
+    if ~isempty(PlugDesc.Path) || file_exist(bst_fullfile(bst_get('UserPluginsDir'), PlugDesc.Name))
+        [isOk, errMsg] = Uninstall(PlugDesc.Name, 0);
+    end
+    % Delete json file
+    if isOk
+       isOk = file_delete(fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name))), 1);
+    end
+
+    fprintf(1, 'BST> Plugin ''%s'' was removed from ''User defined'' plugins\n', PlugDesc.Name);
 end
 
 
@@ -2035,11 +2190,16 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                     if isequal(filesep, '\')
                         subDir = strrep(subDir, '/', '\');
                     end
-                    if isdir([PlugHomeDir, filesep, subDir])
+                    if ~isempty(dir([PlugHomeDir, filesep, subDir]))
                         if isVerbose
                             disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
                         end
-                        addpath([PlugHomeDir, filesep, subDir]);
+                        if regexp(subDir, '\*[/\\]*$')
+                            subDir = regexprep(subDir, '\*[/\\]*$', '');
+                            addpath(genpath([PlugHomeDir, filesep, subDir]));
+                        else
+                            addpath([PlugHomeDir, filesep, subDir]);
+                        end
                     end
                 end
             end
@@ -2352,17 +2512,32 @@ end
 
 
 %% ===== MENUS: CREATE =====
-function j = MenuCreate(jMenu, fontSize)
+function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
     import org.brainstorm.icon.*;
     % Get all the supported plugins
     PlugDesc = GetSupported();
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
-    % Submenus
+    % Submenus array
     jSub = {};
+    % Generate submenus array from existing menu
+    if ~isCompiled && jMenu.getMenuComponentCount > 0
+        for iItem = 0 : jMenu.getItemCount-1
+            if ~isempty(regexp(jMenu.getMenuComponent(iItem).class, 'JMenu$', 'once'))
+                jSub(end+1,1:2) = {char(jMenu.getMenuComponent(iItem).getText), jMenu.getMenuComponent(iItem)};
+            end
+        end
+    end
+    % Editing an existing menu?
+    if isempty(jPlugsPrev)
+        isNewMenu = 1;
+        j = repmat(struct(), 0);
+    else
+        isNewMenu = 0;
+        j = repmat(jPlugsPrev(1), 0);
+    end
     % Process each plugin
-    j = repmat(struct(), 0);
     for iPlug = 1:length(PlugDesc)
         Plug = PlugDesc(iPlug);
         % Skip if Matlab is too old
@@ -2372,6 +2547,18 @@ function j = MenuCreate(jMenu, fontSize)
         % Skip if not supported in compiled version
         if isCompiled && (Plug.CompiledStatus == 0)
             continue;
+        end
+        % === Add menus for each plugin ===
+        % One menu per plugin
+        ij = length(j) + 1;
+        j(ij).name = Plug.Name;
+        % Skip if it is already a menu item
+        if ~isNewMenu
+            iPlugPrev = ismember({jPlugsPrev.name}, Plug.Name);
+            if any(iPlugPrev)
+                j(ij) = jPlugsPrev(iPlugPrev);
+                continue
+            end
         end
         % Category=submenu
         if ~isempty(Plug.Category)
@@ -2385,9 +2572,6 @@ function j = MenuCreate(jMenu, fontSize)
         else
             jParent = jMenu;
         end
-        % One menu per plugin
-        ij = length(j) + 1;
-        j(ij).name = Plug.Name;
         % Compiled and included: Simple static menu
         if isCompiled && (Plug.CompiledStatus == 2)
             j(ij).menu = gui_component('MenuItem', jParent, [], Plug.Name, [], [], [], fontSize);
@@ -2430,8 +2614,51 @@ function j = MenuCreate(jMenu, fontSize)
             end
         end
     end
+    % === Remove menus for plugins with description ===
+    if ~isempty(jPlugsPrev)
+        [~, iOld] = setdiff({jPlugsPrev.name}, {PlugDesc.Name});
+        for ix = 1 : length(iOld)
+            % Find category menu component
+            jMenuCat = jPlugsPrev(iOld(ix)).menu.getParent.getInvoker;
+            % Find index in parent
+            iDel = [];
+            for ic = 0 : jMenuCat.getMenuComponentCount-1
+                if jPlugsPrev(iOld(ix)).menu == jMenuCat.getMenuComponent(ic)
+                    iDel = ic;
+                    break
+                end
+            end
+            % Remove from parent
+            if ~isempty(iDel)
+                jMenuCat.remove(iDel);
+            end
+        end
+    end
+    % Create options for adding user-defined plugins
+    if ~isCompiled && isNewMenu
+        menuCategory = 'User defined';
+        jMenuUserDef = [];
+        for iMenuItem = 0 : jMenu.getItemCount-1
+             if ~isempty(regexp(jMenu.getMenuComponent(iMenuItem).class, 'JMenu$', 'once')) && strcmp(char(jMenu.getMenuComponent(iMenuItem).getText), menuCategory)
+                 jMenuUserDef = jMenu.getMenuComponent(iMenuItem);
+             end
+        end
+        if isempty(jMenuUserDef)
+            jMenuUserDef = gui_component('Menu', jMenu, [], menuCategory, IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
+        end
+        jAddUserDefMan  = gui_component('MenuItem', [], [], 'Add manually',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('manual'), fontSize);
+        jAddUserDefFile = gui_component('MenuItem', [], [], 'Add from file', IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('file'),   fontSize);
+        jAddUserDefUrl  = gui_component('MenuItem', [], [], 'Add from URL',  IconLoader.ICON_EDIT,   [], @(h,ev)AddUserDefDesc('url'),    fontSize);
+        jRmvUserDefMan  = gui_component('MenuItem', [], [], 'Remove plugin', IconLoader.ICON_DELETE, [], @(h,ev)RemoveUserDefDesc,        fontSize);
+        % Insert "Add" options at the begining of the 'User defined' menu
+        jMenuUserDef.insert(jAddUserDefMan,  0);
+        jMenuUserDef.insert(jAddUserDefFile, 1);
+        jMenuUserDef.insert(jAddUserDefUrl,  2);
+        jMenuUserDef.insert(jRmvUserDefMan,  3);
+        jMenuUserDef.insertSeparator(4);
+    end
     % List
-    if ~isCompiled
+    if ~isCompiled && isNewMenu
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
     end
@@ -2439,8 +2666,13 @@ end
 
 
 %% ===== MENUS: UPDATE =====
-function MenuUpdate(jPlugs)
+function MenuUpdate(jMenu, fontSize)
     import org.brainstorm.icon.*;
+    % Regenerate plugin menu to look for new plugins
+    global GlobalData
+    jPlugs = GlobalData.Program.GUI.pluginMenus;
+    jPlugs = MenuCreate(jMenu, jPlugs, fontSize);
+    GlobalData.Program.GUI.pluginMenus = jPlugs;
     % If compiled: disable most menus
     isCompiled = bst_iscompiled();
     % Interface scaling
@@ -2735,7 +2967,18 @@ function Archive(OutputFile)
         envPlug = bst_fullfile(envPlugins, PlugDesc(iPlug).Name);
         isOk = file_copy(PlugDesc(iPlug).Path, envPlug);
         if ~isOk
-            error(['Cannot copy folder: "' userProc '" into "' envProc '"']);
+            error(['Cannot copy folder: "' PlugDesc(iPlug).Path '" into "' envProc '"']);
+        end
+    end
+    % Copy user-defined JSON files
+    PlugJson = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    for iPlugJson = 1:length(PlugJson)
+        bst_progress('text', ['Copying use-defined plugin JSON file: ' PlugJson(iPlugJson).name '...']);
+        plugJsonFile = bst_fullfile(PlugJson(iPlugJson).folder, PlugJson(iPlugJson).name);
+        envPlugJson = bst_fullfile(envPlugins, PlugJson(iPlugJson).name);
+        isOk = file_copy(plugJsonFile, envPlugJson);
+        if ~isOk
+            error(['Cannot copy file: "' plugJsonFile '" into "' envProc '"']);
         end
     end
 
