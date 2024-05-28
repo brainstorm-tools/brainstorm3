@@ -505,7 +505,7 @@ function UpdateContactList(CoordSpace)
     if ~strcmpi('scs', CoordSpace)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
-        sContactsMm = (cs_convert(sMri, 'scs', lower(CoordSpace), sContacts') * 1000)';
+        sContactsMm = (cs_convert(sMri, 'scs', lower(CoordSpace), cell2mat(sContacts)') * 1000)';
         switch lower(CoordSpace)
             case 'mni',   ctrl.jRadioMni.setSelected(1);
             case 'mri',   ctrl.jRadioMri.setSelected(1);
@@ -514,7 +514,7 @@ function UpdateContactList(CoordSpace)
         listModel.clear();
         ctrl.jListCont.setModel(listModel);
     else
-        sContactsMm = sContacts * 1000;
+        sContactsMm = cell2mat(sContacts) * 1000;
         ctrl.jRadioScs.setSelected(1);
     end
     % Update the list for display
@@ -798,7 +798,7 @@ function [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContac
     % Get JList selected indices
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
     sContactName = sContactsName(iSelCont);
-    sSelCont = sContacts(:, iSelCont);
+    sSelCont = cell2mat(sContacts(:, iSelCont));
 end
 
 
@@ -1262,7 +1262,7 @@ function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(sele
     ChannelData = GlobalData.DataSet(iDSall).Channel;
     for i=1:length(ChannelData)
         if strcmpi(ChannelData(i).Group, selectedElecName)
-            sContacts = [sContacts, ChannelData(i).Loc];
+            sContacts = [sContacts, {ChannelData(i).Loc}];
             sContactsName = [sContactsName, {ChannelData(i).Name}];
         end
     end
