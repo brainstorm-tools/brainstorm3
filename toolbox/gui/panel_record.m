@@ -2060,6 +2060,7 @@ end
 
 %% ===== CONVERT TO SIMPLE EVENTS =====
 function EventConvertToSimple()
+    global GlobalData;
     % Get selected events
     [iEvents, tmp__, isExtended] = GetSelectedEvents();
     if isempty(iEvents)
@@ -2075,22 +2076,19 @@ function EventConvertToSimple()
     % Ask if we should keep only the first or the last sample of the extended event
     res = java_dialog('question', ...
         'What part of the extended events do you want to keep?', ...
-        'Convert event type', [], {'Start', 'Middle', 'End', 'Cancel'}, 'Middle');
+        'Convert event type', [], {'Start', 'Middle', 'End', 'Every sample', 'Cancel'}, 'Middle');
     % User canceled operation
     if isempty(res) || strcmpi(res, 'Cancel')
         return
     end
+    % Get current dataset
+    [iDS, ~] = GetCurrentDataset();
+    % Get sampling rate
+    sfreq = 1 / GlobalData.DataSet(iDS).Measures.SamplingRate;
     % Apply modificiation to each event type
+    Method = strrep(lower(res), ' ', '_');
+    sEvents = process_evt_simple('Compute', sEvents, Method, sfreq);
     for i = 1:length(sEvents)
-        % Keep only one of the two time values
-        switch (res)
-            case 'Start'
-                sEvents(i).times = sEvents(i).times(1,:);
-            case 'Middle'
-                sEvents(i).times = mean(sEvents(i).times, 1);
-            case 'End'
-                sEvents(i).times = sEvents(i).times(2,:);
-        end
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
@@ -2131,18 +2129,14 @@ function EventConvertToExtended()
     sfreq = 1 / GlobalData.DataSet(iDS).Measures.SamplingRate;
     % Get time window in seconds
     evtWindow = [-abs(str2num(res{1})), str2num(res{2})] ./ 1000;
-    % Align to samples
-    evtWindow = round(evtWindow .* sfreq) ./ sfreq;
-    
     % Apply modificiation to each event type
     if isempty(GlobalData.FullTimeWindow) || isempty(GlobalData.FullTimeWindow.CurrentEpoch)
         FullTimeWindow = GlobalData.DataSet(iDS).Measures.Time;
     else
         FullTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
     end
+    sEvents = process_evt_extended('Compute', sEvents, evtWindow, FullTimeWindow, sfreq);
     for i = 1:length(sEvents)
-        sEvents(i).times = [max(FullTimeWindow(1), sEvents(i).times(1,:) + evtWindow(1)); ...
-                            min(FullTimeWindow(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
