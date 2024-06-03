@@ -908,7 +908,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Edit channel file', IconLoader.ICON_EDIT, [], @(h,ev)gui_edit_channel(filenameRelative));
                 end
                 % === RENAME CHANNELS BIOSEMI ===
-                if ~isempty(regexp(char(bstNodes(1).getComment()), 'BDF'))
+                if ~isempty(regexp(lower(char(bstNodes(1).getComment())), 'bdf')) || ~isempty(regexp(lower(char(bstNodes(1).getComment())), 'biosemi'))
                     gui_component('MenuItem', jPopup, [], 'BioSemi channels names to 10-10 system', IconLoader.ICON_EDIT, [], @(h,ev)process_channel_biosemi('ComputeInteractive', filenameRelative));
                 end
   
