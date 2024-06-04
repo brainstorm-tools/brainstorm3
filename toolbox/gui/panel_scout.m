@@ -928,39 +928,11 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
         GlobalData.CurrentScoutsSurface = '';
         return
     end
-    % Get surfaces in new figure
-    TessInfo = getappdata(hFig, 'Surface');
-    iTess = getappdata(hFig, 'iSurface');
-    if isempty(iTess) || isempty(TessInfo)
-        SurfaceFile = [];
-    else
-        SurfaceFile = TessInfo(iTess).SurfaceFile;
-    end
+    % Get scout surface in new figure
+    SurfaceFile = GetScoutSurface(hFig);
     % If the current surface didn't change: nothing to do
     if file_compare(GlobalData.CurrentScoutsSurface, SurfaceFile)
         return;
-    end
-    % If surface file is an MRI or fibers
-    if ~isempty(iTess) && ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
-        % By default: no attached surface
-        SurfaceFile = [];
-        % If there are some data associated with this file: get the associated scouts
-        if ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
-            FileMat.SurfaceFile = [];
-            if strcmpi(TessInfo(iTess).DataSource.Type, 'Source')
-                FileMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
-            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'Timefreq')
-                FileMat = in_bst_timefreq(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile', 'DataFile', 'DataType');
-                if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
-                    FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
-                end
-            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
-                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
-            end
-            if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
-                SurfaceFile = FileMat.SurfaceFile;
-            end
-        end
     end
     % Update current surface
     SetCurrentSurface(SurfaceFile);
@@ -1101,6 +1073,41 @@ function SetCurrentAtlas(iAtlas, isForced)
     % Close progress bar
     if isProgress
         bst_progress('stop');
+    end
+end
+
+
+%% ===== GET SCOUT SURFACE FOR FIGURE =====
+function SurfaceFile = GetScoutSurface(hFig)
+    % Get surface in new figure
+    TessInfo = getappdata(hFig, 'Surface');
+    iTess = getappdata(hFig, 'iSurface');
+    SurfaceFile = [];
+    if isempty(iTess) || isempty(TessInfo)
+        return
+    % If surface file is an MRI or fibers
+    elseif ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
+        % By default: no attached surface
+        SurfaceFile = [];
+        % If there are some data associated with this file: get the associated scouts
+        if ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
+            FileMat.SurfaceFile = [];
+            if strcmpi(TessInfo(iTess).DataSource.Type, 'Source')
+                FileMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'Timefreq')
+                FileMat = in_bst_timefreq(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile', 'DataFile', 'DataType');
+                if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
+                    FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
+                end
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
+            end
+            if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
+                SurfaceFile = FileMat.SurfaceFile;
+            end
+        end
+    else
+        SurfaceFile = TessInfo(iTess).SurfaceFile;
     end
 end
 
@@ -4752,7 +4759,7 @@ function ReloadScouts(hFig)
     % Plot all scouts again
     PlotScouts([], hFig);
     % Update selected/displayed scouts
-    UpdateScoutsDisplay(hFig);
+    UpdateScoutsDisplay('current');
 end
 
 
@@ -4950,13 +4957,9 @@ function UpdateScoutsDisplay(target)
     % Get target scouts
     if ~ischar(target)
         hFigTarget = target;
-        TessInfo = getappdata(hFigTarget, 'Surface');
-        iTess = getappdata(hFigTarget, 'iSurface');
-        if isempty(TessInfo) || isempty(iTess)
+        SurfaceFile = GetScoutSurface(hFigTarget);
+        if isempty(SurfaceFile)
             hFigTarget = [];
-            SurfaceFile = [];
-        else
-            SurfaceFile = TessInfo(iTess).SurfaceFile;
         end
     elseif strcmpi(target, 'all')
         SurfaceFile = [];
