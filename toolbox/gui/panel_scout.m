@@ -4417,9 +4417,9 @@ function PlotScouts(iScouts, hFigSel)
                 continue;
             end
             % Skip the display of the scouts that are on a hidden half of the cortex (for struct atlas)
-            if isequal(sSurface.Resect, 'left') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'R')
+            if isequal(sSurface.Resect{2}, 'left') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'R')
                 continue;
-            elseif isequal(sSurface.Resect, 'right') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'L')
+            elseif isequal(sSurface.Resect{2}, 'right') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'L')
                 continue;
             end
             % Get indice of the target figure in the sScouts.Handles array

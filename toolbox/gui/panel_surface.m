@@ -201,7 +201,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jToggleResectLeft   = gui_component('toggle', jPanelSurfaceResect, 'br center', 'Left',   {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectLeftToggle_Callback);           
             jToggleResectRight  = gui_component('toggle', jPanelSurfaceResect, '',          'Right',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectRightToggle_Callback);           
             jToggleResectStruct = gui_component('toggle', jPanelSurfaceResect, '',          'Struct', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectStruct_Callback);           
-            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
+            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0),  Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
         jPanelOptions.add(jPanelSurfaceResect);
  
         % ===== SURFACE LABELS =====
@@ -308,7 +308,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if strcmpi(TessInfo(iSurf).Name, 'FEM')
                 iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
             end
-            [TessInfo(iSurf).Resect] = deal('none');
+            for ix = 1 : length(iSurf)
+                TessInfo(iSurf(ix)).Resect{1} = [0, 0, 0];
+                TessInfo(iSurf(ix)).Resect{2} = 'none';
+            end
             setappdata(hFig, 'Surface', TessInfo);
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
         end
@@ -705,13 +708,9 @@ function SelectHemispheres(name)
     end
     % Update surface Resect field
     for i = 1:length(iSurf)
-        TessInfo(iSurf(i)).Resect = name;
+        TessInfo(iSurf(i)).Resect{2} = name;
     end
     setappdata(hFig, 'Surface', TessInfo);
-    % Reset all the resect sliders
-    ctrl.jSliderResectX.setValue(0);
-    ctrl.jSliderResectY.setValue(0);
-    ctrl.jSliderResectZ.setValue(0);
     % Display progress bar
     bst_progress('start', 'Select hemisphere', 'Selecting hemisphere...');
     % Update surface display
@@ -739,13 +738,8 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
     end
     % Update all selected surfaces
     for i = 1:length(iSurf)
-        % If previously using "Select hemispheres"
-        if ischar(TessInfo(iSurf(i)).Resect)
-            % Reset "Resect" field
-            TessInfo(iSurf(i)).Resect = [0 0 0];
-        end
         % Update value in Surface array
-        TessInfo(iSurf(i)).Resect(resectDim) = resectValue;
+        TessInfo(iSurf(i)).Resect{1}(resectDim) = resectValue;
     end
     % Update surface
     setappdata(hFig, 'Surface', TessInfo);
@@ -764,11 +758,6 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
             figure_callback(hFig, 'PlotTensorCut', hFig, resectValue, resectDim, 1);
         end
     end
-    % Deselect both Left and Right buttons
-    ctrl = bst_get('PanelControls', 'Surface');
-    ctrl.jToggleResectLeft.setSelected(0);
-    ctrl.jToggleResectRight.setSelected(0);
-    ctrl.jToggleResectStruct.setSelected(0);
     % Close progress bar
     if isProgress
         bst_progress('text', 'Updating figure...');
@@ -1188,12 +1177,9 @@ function UpdateSurfaceProperties()
             ResectXYZ = [0,0,0];
         end
         radioSelected = 'none';
-    elseif ischar(TessInfo(iSurface).Resect)
-        ResectXYZ = [0,0,0];
-        radioSelected = TessInfo(iSurface).Resect;
     else
-        ResectXYZ = 100 * TessInfo(iSurface).Resect;
-        radioSelected = 'none';
+        ResectXYZ     = 100 * TessInfo(iSurface).Resect{1};
+        radioSelected = TessInfo(iSurface).Resect{2};
     end
     % X, Y, Z
     ctrl.jSliderResectX.setValue(ResectXYZ(1));
