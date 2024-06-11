@@ -204,8 +204,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             blockLengthSamples = max(floor(ProcessOptions.MaxBlockSize / nChannels), 1);
             % Sampling frequency
             fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
-            % Length of window of analysis in samples
+            % Length of the analysis window in samples
             winLengthSamples   = round(fs*winLength);
+            % Block length as multiple of the length of the analysis window
+            blockLengthSamples = winLengthSamples * floor(blockLengthSamples / winLengthSamples);
             % List of bad events for this file
             sBadEvents = repmat(db_template('event'), 0);
             % Indices for each block
