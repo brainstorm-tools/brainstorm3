@@ -165,11 +165,11 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
         name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
+        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
 
         % Fiducials NAS/LPA/RPA
         switch lower(name)
-            case {'nasion','nas'}
+            case {'nasion','nas','nz'}
                 ChannelMat.SCS.NAS = coord;
                 ltype = 'CARDINAL';
             case {'leftear', 'lpa'}
