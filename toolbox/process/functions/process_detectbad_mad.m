@@ -66,6 +66,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.n_std.Comment = 'Number of std for Amplitude and Gradient: ';
     sProcess.options.n_std.Type    = 'value';
     sProcess.options.n_std.Value   = {3, 'std', []};
+    % Option: Ignore sign for gradient
+    sProcess.options.abs_gradient.Comment = 'Ignore sign for Gradient: ';
+    sProcess.options.abs_gradient.Type    = 'checkbox';
+    sProcess.options.abs_gradient.Value   = 1;
 end
 
 
@@ -100,6 +104,8 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
         bst_error('Number of std must be greater than 0', 'Detect bad segments', 0);
         return;
     end
+    abs_gradient = sProcess.options.abs_gradient.Value;
+
     % TODO error if modality is not MEG, MEG GRAD or MEG MAG
     modality = 'MEG';
 
@@ -198,7 +204,11 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                     % Compute metrics
                     max_p2p(iWindow) = max(max(RawDataMat.F(iMegChannels, iTimesSegment(1):iTimesSegment(2)), [], 2) - ...
                                            min(RawDataMat.F(iMegChannels, iTimesSegment(1):iTimesSegment(2)), [], 2), [], 1);
-                    max_gradient(iWindow) = max(max(gradient(RawDataMat.F(iMegChannels, iTimesSegment(1):iTimesSegment(2)), 1./fs), [], 2), [], 1);
+                    if abs_gradient
+                        max_gradient(iWindow) = max(max(abs(gradient(RawDataMat.F(iMegChannels, iTimesSegment(1):iTimesSegment(2)), 1./fs)), [], 2), [], 1);
+                    else
+                        max_gradient(iWindow) = max(max(gradient(RawDataMat.F(iMegChannels, iTimesSegment(1):iTimesSegment(2)), 1./fs), [], 2), [], 1);
+                    end
                     iWindow = iWindow + 1;
                 end
             end
@@ -288,7 +298,11 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                 % Compute metrics
                 max_p2p(iFile) = max(max(DataMat.F(iMegChannels, iTime), [], 2) - ...
                                        min(DataMat.F(iMegChannels, iTime), [], 2), [], 1);
-                max_gradient(iFile) = max(max(gradient(DataMat.F(iMegChannels, iTime), 1./fs), [], 2), [], 1);
+                if abs_gradient
+                    max_gradient(iFile) = max(max(abs(gradient(DataMat.F(iMegChannels, iTime), 1./fs)), [], 2), [], 1);
+                else
+                    max_gradient(iFile) = max(max(gradient(DataMat.F(iMegChannels, iTime), 1./fs), [], 2), [], 1);
+                end
             end
             % Compute thresholds
             threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
