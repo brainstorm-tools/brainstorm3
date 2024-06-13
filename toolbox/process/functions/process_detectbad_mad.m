@@ -332,7 +332,7 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                 process_detectbad('SetTrialStatus', {sInputs(iFile).FileName}, 1);
             end
             % Report by Study
-            bst_report('Info', sProcess, sInputs(1), sprintf('Subject = %s, Study =%s, P2P threshold = %E, Gradient threshold %E, Total files = %d, Acepted files = %d', ...
+            bst_report('Info', sProcess, sInputs(1), sprintf('Subject = %s, Study = %s, P2P threshold = %E, Gradient threshold %E, Total files = %d, Acepted files = %d', ...
                                                              sSubject.Name, sStudy.Name, threshold_p2p, threshold_gradient, nFiles, nFiles-length(iBadTrials)));
             % Return only good files
             iGoodTrials = setdiff(1:length(sInputs), iBadTrials);
