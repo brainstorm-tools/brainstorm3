@@ -112,11 +112,13 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
     % Group files by Study
     [iGroups, ~, StudyPaths] = process_average('SortFiles', sInputsAll, 3);
 
+    % Get current progressbar position
+    progressPos = bst_progress('get');
+
     OutputFiles = {};
     % ===== LOOP ON STUDIES =====
     for ix = 1 : length(StudyPaths)
-        % TODO progressbar
-        %bst_progress('set', progressPos + round(ix / length(StudyPaths) * 100));
+        bst_progress('set', progressPos + round(ix / length(StudyPaths) * 100));
         % Find Study in database
         [sStudy, iStudy] = bst_get('StudyWithCondition', StudyPaths{ix});
         % Find Subject with Study
