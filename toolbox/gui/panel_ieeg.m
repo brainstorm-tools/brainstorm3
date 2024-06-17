@@ -109,7 +109,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
-                    'MouseClickedCallback', @(h,ev)bst_call(@ContListClick_Callback,h,ev));
+                    'ValueChangedCallback', @(h,ev)bst_call(@ContListChanged_Callback,h,ev));
                 jPanelScrollContList = JScrollPane();
                 jPanelScrollContList.getLayout.getViewport.setView(jListCont);
                 jPanelScrollContList.setBorder([]);
@@ -337,20 +337,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
     end
 
-    %% ===== CONTACT LIST CLICK CALLBACK =====
-    function ContListClick_Callback(h, ev)
-        % IF SINGLE CLICK
-        if (ev.getClickCount() == 1)
-            ctrl = bst_get('PanelControls', 'iEEG');
-            % if contact list rendering is blank in panel then dont't proceed
-            if ctrl.jListCont.isSelectionEmpty()
-                return;
-            end
-            % highlight the location on MRI Viewer and Surface
-            HighlightLocCont();
-            sContacts = GetSelectedContacts();
-            bst_figures('SetSelectedRows', {sContacts.Name});
+    %% ===== CONTACT LIST CHANGED CALLBACK =====
+    function ContListChanged_Callback(h, ev)
+        ctrl = bst_get('PanelControls', 'iEEG');
+        % if contact list rendering is blank in panel then dont't proceed
+        if ctrl.jListCont.isSelectionEmpty()
+            return;
         end
+        % highlight the location on MRI Viewer and Surface
+        sContacts = GetSelectedContacts();
+        HighlightLocCont(sContacts);
+        bst_figures('SetSelectedRows', {sContacts.Name});
     end
 end
                    
@@ -740,20 +737,15 @@ function UpdateElecProperties(isUpdateModelList)
 end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
-% on clicking on the coordinates on the panel, the crosshair on the MRI Viewer gets updated to show the corresponding location 
-function HighlightLocCont() %#ok<DEFNU>
+function HighlightLocCont(sSelContacts) %#ok<DEFNU>
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
-    if isempty(hFig)
+    if isempty(hFig) || isempty(sSelContacts)
         return
     end 
     
-    % coordinates in SCS
-    sSelContacts = GetSelectedContacts();
-
-    % ===== FOR MRI =====
-    % update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts.Loc]);
+    % Update the cross-hair position on the MRI
+    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
 end
 
 %% ===== GET SELECTED ELECTRODES =====
@@ -916,7 +908,8 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
-    HighlightLocCont();
+    sContacts = GetSelectedContacts();
+    HighlightLocCont(sContacts);
 end
 
 %% ===== SHOW CONTACTS MENU =====
