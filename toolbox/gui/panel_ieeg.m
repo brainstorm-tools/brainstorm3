@@ -348,8 +348,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             end
             % highlight the location on MRI Viewer and Surface
             HighlightLocCont();
-            [sSelCont, sContactName] = GetSelectedContacts();
-            bst_figures('SetSelectedRows', sContactName);
+            sContacts = GetSelectedContacts();
+            bst_figures('SetSelectedRows', {sContacts.Name});
         end
     end
 end
@@ -467,8 +467,9 @@ end
 %% ===== UPDATE CONTACT LIST =====
 function UpdateContactList(CoordSpace)
     import org.brainstorm.list.*;
+    global GlobalData
     % Get current electrodes
-    sElectrodes = GetElectrodes();
+    [sElectrodes, iDS] = GetElectrodes();
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
@@ -491,21 +492,21 @@ function UpdateContactList(CoordSpace)
     % Add an item in list for each electrode
     Wmax = 0;
 
-    % Get the contacts and their respective name
-    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(SelName);
+    % Get the contacts for selected electrodes
+    sContacts = GetContacts(SelName);
     if isempty(sContacts)
         ctrl.jListCont.setModel(listModel);
         return;
     end
-    SubjectFile = getappdata(hFig(1), 'SubjectFile');
-    sSubject = bst_get('Subject', SubjectFile);
-    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    sMri = bst_memory('LoadMri', MriFile);
+    contacLocsMm = [sContacts.Loc]' * 1000;
     % Convert contact coodinates
     if ~strcmpi('scs', CoordSpace)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
-        sContactsMm = (cs_convert(sMri, 'scs', lower(CoordSpace), sContacts') * 1000)';
+        sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        sMri = bst_memory('LoadMri', MriFile);
+        contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), contacLocsMm);
         switch lower(CoordSpace)
             case 'mni',   ctrl.jRadioMni.setSelected(1);
             case 'mri',   ctrl.jRadioMri.setSelected(1);
@@ -514,12 +515,12 @@ function UpdateContactList(CoordSpace)
         listModel.clear();
         ctrl.jListCont.setModel(listModel);
     else
-        sContactsMm = sContacts * 1000;
         ctrl.jRadioScs.setSelected(1);
     end
+
     % Update the list for display
     for i = 1:length(sContacts)
-        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContactsMm(:,i));
+        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContacts(i).Name), contacLocsMm(i,:));
         listModel.addElement(BstListItem('', [], itemText, i));
         % Get longest string
         W = tk.getFontMetrics(jFont).stringWidth(itemText);
@@ -748,11 +749,11 @@ function HighlightLocCont() %#ok<DEFNU>
     end 
     
     % coordinates in SCS
-    selCoordScs = GetSelectedContacts();
+    sSelContacts = GetSelectedContacts();
 
     % ===== FOR MRI =====
     % update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], selCoordScs);    
+    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts.Loc]);
 end
 
 %% ===== GET SELECTED ELECTRODES =====
@@ -778,27 +779,22 @@ function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
 end
 
 %% ===== GET SELECTED CONTACTS =====
-function [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
-    sSelCont = [];
-    iSelCont = [];
-    iDS = [];
-    iFig = [];
-    hFig = [];
+function sSelContacts = GetSelectedContacts()
+    sSelContacts = [];
     % Get panel handles
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
     % Get all contacts
-    sSelElec = GetSelectedElectrodes();
-    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(sSelElec.Name);
+    sSelElec  = GetSelectedElectrodes();
+    sContacts = GetContacts(sSelElec.Name);
     if isempty(sContacts)
         return
     end
     % Get JList selected indices
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
-    sContactName = sContactsName(iSelCont);
-    sSelCont = sContacts(:, iSelCont);
+    sSelContacts = sContacts(iSelCont);
 end
 
 
@@ -1228,43 +1224,23 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
 end
 
 %% ===== GET CONTACTS FOR AN ELECTRODE ===== %%
-function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(selectedElecName)
+function sContacts = GetContacts(selectedElecName)
     global GlobalData;
+
+    sContacts = [];
     % Get current figure
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
     % Check if there are electrodes defined for this file
-    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
-        sContacts = [];
-        sContactsName = [];
+    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile) || isempty(selectedElecName)
         return;
     end
-    % Get the channel file
-    ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
-    % Get all the figures that share this channel file
-    for iDS = 1:length(GlobalData.DataSet)
-        % Skip if not the correct channel file
-        if ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
-            continue;
-        end
-        % Get all the figures
-        for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
-            if ((iDS ~= iDSall(1)) || (iFig ~= iFigall(1))) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
-                iDSall(end+1) = iDS;
-                iFigall(end+1) = iFig;
-                hFigall(end+1) = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-            end
-        end
-    end
-
-    % Get the contacts for the electrode
-    sContacts = [];
-    sContactsName = [];
+    % Get the channel data
     ChannelData = GlobalData.DataSet(iDSall).Channel;
-    for i=1:length(ChannelData)
-        if strcmpi(ChannelData(i).Group, selectedElecName)
-            sContacts = [sContacts, ChannelData(i).Loc];
-            sContactsName = [sContactsName, {ChannelData(i).Name}];
-        end
+    % Get the contacts for the electrode
+    iChannels = find(ismember({ChannelData.Group}, selectedElecName));
+    for i = 1:length(iChannels)
+        sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
+        sContacts(i).Name = ChannelData(iChannels(i)).Name;
     end
 end
 
