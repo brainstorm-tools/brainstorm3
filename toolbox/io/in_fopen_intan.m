@@ -38,7 +38,7 @@ function [sFile, ChannelMat] = in_fopen_intan(DataFile)
 %% ===== GET FILES =====
 % Get base dataset folder
 [hdr.BaseFolder, isItInfo, hdr.FileExt] = bst_fileparts(DataFile);
-[filePath, fileComment] = bst_fileparts(hdr.BaseFolder);
+[filePath, fileComment] = bst_fileparts(DataFile);
 
 % Check the type of file
 if strcmp(isItInfo,'info')
