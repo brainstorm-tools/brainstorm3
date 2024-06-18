@@ -1995,8 +1995,8 @@ function DisplayFigurePopup(hFig)
         DefaultOutputDir = LastUsedDirs.ExportImage;
         % Is there a time window defined
         isTime = ~isempty(GlobalData) && ~isempty(GlobalData.UserTimeWindow.CurrentTime) && ~isempty(GlobalData.UserTimeWindow.Time) ...
-                 && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile));
-        isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile);
+                 && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile)) && ~getappdata(hFig, 'isStatic');
+        isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile) && ~getappdata(hFig, 'isStaticFreq');
         % === SAVE AS IMAGE ===
         jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
@@ -2069,6 +2069,12 @@ function DisplayFigurePopup(hFig)
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir));
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir));
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir));
+            end
+            if isFreq
+                jMenuSave.addSeparator();
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'y', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'x', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'z', DefaultOutputDir));
             end
             jMenuSave.addSeparator();
             gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir));

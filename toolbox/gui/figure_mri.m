@@ -1099,6 +1099,13 @@ function DisplayFigurePopup(hFig)
             gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir));
             gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir));
         end
+        if ~getappdata(hFig, 'isStaticFreq')
+            % Separator
+            jMenuSave.addSeparator();
+            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'y', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'x', DefaultOutputDir));
+            gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'z', DefaultOutputDir));
+        end
         jMenuSave.addSeparator();
         gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir));
         gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'x', DefaultOutputDir));
