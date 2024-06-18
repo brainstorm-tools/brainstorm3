@@ -211,14 +211,13 @@ end
 if ~is3D
     sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
     overlayFile = '';
-    if ~getappdata(hFig, 'isStatic')
-        overlayFile = getappdata(hFig, 'ResultsFile');
-    elseif ~getappdata(hFig, 'isStaticFreq')
-        tmp = getappdata(hFig, 'Timefreq');
-        overlayFile = tmp.FileName;
+    isAnatomy = 1;
+    if isfield(TessInfo(iTess), 'DataSource') && ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
+        overlayFile = TessInfo(iTess).DataSource.FileName;
+        [~, ~, isAnatomy] = file_fullpath(overlayFile);
     end
-    if isempty(overlayFile)
-        hFig3d = view_mri_3d(sMri.FileName);
+    if isAnatomy
+        hFig3d = view_mri_3d(sMri.FileName, overlayFile);
     else
         hFig3d = view_surface_data(sMri.FileName, overlayFile);
     end
