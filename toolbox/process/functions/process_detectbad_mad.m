@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Detect bad: MAD peak-to-peak and gradient';
+    sProcess.Comment     = 'Detect bad: amplitude and gradient thresholds';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 116;
@@ -43,13 +43,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
-    % Warning
-    sProcess.options.warning.Comment = ['<B>Warning</B>: ONLY FOR MEG, AUTOMATIC<BR>' ...
-                                        '<BR>' ...
-                                        '<BR>' ...
-                                        '<BR>' ...
-                                        '<BR><BR>'];
-    sProcess.options.warning.Type    = 'label';
+    % Extra info
+    sProcess.options.info.Comment = ['Reject bad segments/trials based on:<BR>'...
+                                     ' peak-to-peak amplitude, and/or<BR>' ...
+                                     ' numerical gradient values, ' ...
+                                     ' values outside a specified threshold.<BR>' ...
+                                     '<BR>', ...
+                                     '<BR>'];
+    sProcess.options.info.Type    = 'label';
     % Time window
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
