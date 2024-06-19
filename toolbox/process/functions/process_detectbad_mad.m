@@ -22,7 +22,7 @@ function varargout = process_detectbad_mad( varargin )
 % Authors: Raymundo Cassani, 2024
 %          Alex Wiesman, 2024
 %
-% Process based on the AUTO method from Trial Exclusion in ArtifactScanTool
+% Process based on the AUTO and MANUAL methods from Trial Exclusion in ArtifactScanTool
 % https://github.com/nichrishayes/ArtifactScanTool
 
 eval(macro_method);
@@ -44,10 +44,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
 
     % Extra info
-    sProcess.options.info.Comment = ['Reject bad segments/trials based on:<BR>'...
+    sProcess.options.info.Comment = ['Reject bad segments/trials based on MEG recordings, based on:<BR>'...
                                      ' peak-to-peak amplitude, and/or<BR>' ...
                                      ' numerical gradient values, ' ...
-                                     ' values outside a specified threshold.<BR>' ...
+                                     ' outside of specified thresholds.<BR>' ...
                                      '<BR>', ...
                                      '<BR>'];
     sProcess.options.info.Type    = 'label';
@@ -131,14 +131,12 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
     end
     abs_gradient = sProcess.options.abs_gradient.Value;
 
-    % TODO error if modality is not MEG, MEG GRAD or MEG MAG
-    modality = 'MEG';
-
     % Threshold method
     thMethod = sProcess.options.threshold_method.Value;
     switch thMethod
         case 'auto'
             isThAuto = 1;
+
         case 'manual'
             isThAuto = 0;
             threshold_p2p      = sProcess.options.threshold_p2p.Value{1}  * 1e-15;
@@ -149,7 +147,7 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             end
 
         otherwise
-            bst_error(sprintf('Threshold methos "%s" is not supported', thMethod), 'Detect bad segments', 0);
+            bst_error(sprintf('Threshold method "%s" is not supported', thMethod), 'Detect bad segments', 0);
             return;
     end
 
@@ -173,8 +171,9 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
         ChannelMat = in_bst_channel(sChannel.FileName);
         % Get MEG channels
         Modalities = channel_get_modalities(ChannelMat.Channel);
-        if ~ismember(modality, Modalities)
-            % TODO ERROR, modality was not found
+        if ~any(ismember(Modalities, {'MEG', 'MEG GRAD', 'MEG MAG'}))
+            bst_error(sprintf('Channel files "%s" does not contain MEG sensors', sChannel.FileName), 'Detect bad segments', 0);
+            return;
         end
 
         % === PROCESS RAW DATA ===
@@ -200,8 +199,8 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             end
             % Sampling frequency
             fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
-            % MEG channels
-            iMegChannels = good_channel(ChannelMat.Channel, DataMat.ChannelFlag, modality);
+            % MEG channels (includes 'MEG GRAD' and 'MEG MAG')
+            iMegChannels = good_channel(ChannelMat.Channel, DataMat.ChannelFlag, 'MEG');
             nChannels = length(iMegChannels);
             % Get maximum size of a data block
             ProcessOptions = bst_get('ProcessOptions');
@@ -308,6 +307,7 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             % Report by Study
             bst_report('Info', sProcess, sInputs(1), sprintf('Subject = %s, Study = %s, P2P threshold = %E, Gradient threshold %E, Total windows = %d, Acepted files = %d', ...
                                                              sSubject.Name, sStudy.Name, threshold_p2p, threshold_gradient, nWindows, nWindows-length(iBadWindows)));
+
             % Return input file
             OutputFiles = [OutputFiles, sInputs(1).FileName];
 
@@ -337,8 +337,8 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                 end
                 % Sampling frequency
                 fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
-                % MEG channels
-                iMegChannels = good_channel(ChannelMat.Channel, DataMat.ChannelFlag, modality);
+                % MEG channels (includes 'MEG GRAD' and 'MEG MAG')
+                iMegChannels = good_channel(ChannelMat.Channel, DataMat.ChannelFlag, 'MEG');
                 % Scale gradiometers / magnetometers:
                 %    - Neuromag: Apply axial factor to MEG GRAD sensors, to convert in fT/cm
                 %    - CTF: Apply factor to MEG REF gradiometers
