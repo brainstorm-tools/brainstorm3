@@ -44,10 +44,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
 
     % Extra info
-    sProcess.options.info.Comment = ['Reject bad segments/trials based on MEG recordings, based on:<BR>'...
-                                     ' peak-to-peak amplitude, and/or<BR>' ...
-                                     ' numerical gradient values, ' ...
-                                     ' outside of specified thresholds.<BR>' ...
+    sProcess.options.info.Comment = ['Reject bad segments/trials on MEG recordings, based on:<BR>'...
+                                     '1. peak-to-peak amplitude, and/or<BR>' ...
+                                     '2. numerical gradient values <BR> ' ...
+                                     'outside of specified thresholds.<BR>' ...
                                      '<BR>', ...
                                      '<BR>'];
     sProcess.options.info.Type    = 'label';
@@ -73,11 +73,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.threshold_method.Value      = 'auto';
     sProcess.options.threshold_method.Controller = struct('auto', 'auto', 'manual', 'manual');
     % AUTO
-    % Option: Number of std for amplitude and grandient
-    sProcess.options.n_std.Comment = 'Number of std for Amplitude and Gradient: ';
-    sProcess.options.n_std.Type    = 'value';
-    sProcess.options.n_std.Value   = {3, 'std', []};
-    sProcess.options.n_std.Class   = 'auto';
+    % Option: Number of mad for amplitude and grandient
+    sProcess.options.n_mad.Comment = 'Number of MAD (median absolute deviation) for thresholding: ';
+    sProcess.options.n_mad.Type    = 'value';
+    sProcess.options.n_mad.Value   = {3, 'mad', []};
+    sProcess.options.n_mad.Class   = 'auto';
     % MANUAL
     % Option: Threshold p2p amplitude
     sProcess.options.threshold_p2p.Comment  = 'Threshold peak-to-peak amplitude: ';
@@ -87,7 +87,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Threshold gradiente
     sProcess.options.threshold_grad.Comment = 'Threshold gradient: ';
     sProcess.options.threshold_grad.Type    = 'value';
-    sProcess.options.threshold_grad.Value   = {0, 'fT', 2};
+    sProcess.options.threshold_grad.Value   = {0, 'fT/s', 2};
     sProcess.options.threshold_grad.Class   = 'manual';
     % Separator
     sProcess.options.sep2.Type              = 'separator';
@@ -123,10 +123,10 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
     if is_raw(1) && isfield(sProcess.options, 'win_length') && ~isempty(sProcess.options.win_length) && ~isempty(sProcess.options.win_length.Value) && iscell(sProcess.options.win_length.Value)
         winLength  = sProcess.options.win_length.Value{1};
     end
-    % Number of std
-    nStd = sProcess.options.n_std.Value{1};
-    if nStd <= 0
-        bst_error('Number of std must be greater than 0', 'Detect bad segments', 0);
+    % Number of mad
+    nMad = sProcess.options.n_mad.Value{1};
+    if nMad <= 0
+        bst_error('Number of MAD must be greater than 0', 'Detect bad segments', 0);
         return;
     end
     abs_gradient = sProcess.options.abs_gradient.Value;
@@ -259,8 +259,8 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             end
             if isThAuto
                 % Compute thresholds
-                threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
-                threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+                threshold_p2p      = median(max_p2p)      + (nMad * mad(max_p2p,1));
+                threshold_gradient = median(max_gradient) + (nMad * mad(max_gradient,1));
             end
             % Create one bad event for each window over any threshold
             iBadWindows = [];
@@ -354,8 +354,8 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             end
             if isThAuto
                 % Compute thresholds
-                threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
-                threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+                threshold_p2p      = median(max_p2p)      + (nMad * mad(max_p2p,1));
+                threshold_gradient = median(max_gradient) + (nMad * mad(max_gradient,1));
             end
             % Set as bad trials over any threshold
             iBadTrials = [];
