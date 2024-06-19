@@ -154,7 +154,8 @@ if ~isempty(sSubject)
     end
 end
 % Warning if no surface was found
-if isempty(hFig)
+if isempty(hFig) || strcmp(hFig, 'NewFigure')
+    hFig = [];
     disp('BST> Warning: The anatomy of this subject was not imported properly.');
 end
 
