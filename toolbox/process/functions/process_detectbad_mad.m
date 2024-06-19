@@ -52,25 +52,49 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                      '<BR>'];
     sProcess.options.info.Type    = 'label';
     % Time window
-    sProcess.options.timewindow.Comment = 'Time window:';
-    sProcess.options.timewindow.Type    = 'timewindow';
-    sProcess.options.timewindow.Value   = [];
-    sProcess.options.sep1.Type    = 'separator';
+    sProcess.options.timewindow.Comment     = 'Time window:';
+    sProcess.options.timewindow.Type        = 'timewindow';
+    sProcess.options.timewindow.Value       = [];
     % Option: Window length
-    sProcess.options.win_length.Comment = 'Length of analysis window: ';
-    sProcess.options.win_length.Type    = 'value';
-    sProcess.options.win_length.Value   = {1, 's', []};
-    sProcess.options.win_length.InputTypes = {'raw'};
-    % TODO for raw, only complete windows will be analyzed
-
+    sProcess.options.win_length.Comment     = 'Length of analysis window: ';
+    sProcess.options.win_length.Type        = 'value';
+    sProcess.options.win_length.Value       = {1, 's', []};
+    sProcess.options.win_length.InputTypes  = {'raw'};
+    % Warning on complete windows
+    sProcess.options.warning_raw.Comment    = 'Only will complete windows be analyzed';
+    sProcess.options.warning_raw.Type       = 'label';
+    sProcess.options.warning_raw.InputTypes = {'raw'};
+    % Separator
+    sProcess.options.sep1.Type              = 'separator';
+    % Threshold method: Auto or Manual
+    sProcess.options.threshold_method.Comment    = {'auto', 'manual', 'Threshold method: '; ...
+                                                    'auto', 'manual', ''};
+    sProcess.options.threshold_method.Type       = 'radio_linelabel';
+    sProcess.options.threshold_method.Value      = 'auto';
+    sProcess.options.threshold_method.Controller = struct('auto', 'auto', 'manual', 'manual');
+    % AUTO
     % Option: Number of std for amplitude and grandient
     sProcess.options.n_std.Comment = 'Number of std for Amplitude and Gradient: ';
     sProcess.options.n_std.Type    = 'value';
     sProcess.options.n_std.Value   = {3, 'std', []};
+    sProcess.options.n_std.Class   = 'auto';
+    % MANUAL
+    % Option: Threshold p2p amplitude
+    sProcess.options.threshold_p2p.Comment  = 'Threshold peak-to-peak amplitude: ';
+    sProcess.options.threshold_p2p.Type     = 'value';
+    sProcess.options.threshold_p2p.Value    = {0, 'fT', 2};
+    sProcess.options.threshold_p2p.Class    = 'manual';
+    % Option: Threshold gradiente
+    sProcess.options.threshold_grad.Comment = 'Threshold gradient: ';
+    sProcess.options.threshold_grad.Type    = 'value';
+    sProcess.options.threshold_grad.Value   = {0, 'fT', 2};
+    sProcess.options.threshold_grad.Class   = 'manual';
+    % Separator
+    sProcess.options.sep2.Type              = 'separator';
     % Option: Ignore sign for gradient
-    sProcess.options.abs_gradient.Comment = 'Ignore sign for Gradient: ';
-    sProcess.options.abs_gradient.Type    = 'checkbox';
-    sProcess.options.abs_gradient.Value   = 1;
+    sProcess.options.abs_gradient.Comment   = 'Use absolute gradient: ';
+    sProcess.options.abs_gradient.Type      = 'checkbox';
+    sProcess.options.abs_gradient.Value     = 1;
 end
 
 
@@ -109,6 +133,25 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
 
     % TODO error if modality is not MEG, MEG GRAD or MEG MAG
     modality = 'MEG';
+
+    % Threshold method
+    thMethod = sProcess.options.threshold_method.Value;
+    switch thMethod
+        case 'auto'
+            isThAuto = 1;
+        case 'manual'
+            isThAuto = 0;
+            threshold_p2p      = sProcess.options.threshold_p2p.Value{1}  * 1e-15;
+            threshold_gradient = sProcess.options.threshold_grad.Value{1} * 1e-15;
+            if threshold_p2p <= 0 || threshold_gradient <=0
+                bst_error('Thresholds cannot be smaller than zero', 'Detect bad segments', 0);
+                return;
+            end
+
+        otherwise
+            bst_error(sprintf('Threshold methos "%s" is not supported', thMethod), 'Detect bad segments', 0);
+            return;
+    end
 
     % Group files by Study
     [iGroups, ~, StudyPaths] = process_average('SortFiles', sInputsAll, 3);
@@ -215,9 +258,11 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                     iWindow = iWindow + 1;
                 end
             end
-            % Compute thresholds
-            threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
-            threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+            if isThAuto
+                % Compute thresholds
+                threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
+                threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+            end
             % Create one bad event for each window over any threshold
             iBadWindows = [];
             for iWindow = 1 : nWindows
@@ -307,9 +352,11 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                     max_gradient(iFile) = max(max(gradient(DataMat.F(iMegChannels, iTime), 1./fs), [], 2), [], 1);
                 end
             end
-            % Compute thresholds
-            threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
-            threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+            if isThAuto
+                % Compute thresholds
+                threshold_p2p      = median(max_p2p)      + (nStd * mad(max_p2p,1));
+                threshold_gradient = median(max_gradient) + (nStd * mad(max_gradient,1));
+            end
             % Set as bad trials over any threshold
             iBadTrials = [];
             % === TAG FILE ===
