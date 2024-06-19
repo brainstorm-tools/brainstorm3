@@ -305,9 +305,9 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
             % Save bad events
             bst_save(file_fullpath(sInputs(1).FileName), DataMat, 'v6', 1);
             % Report by Study
-            bst_report('Info', sProcess, sInputs(1), sprintf('Subject = %s, Study = %s, P2P threshold = %E, Gradient threshold %E, Total windows = %d, Acepted files = %d', ...
-                                                             sSubject.Name, sStudy.Name, threshold_p2p, threshold_gradient, nWindows, nWindows-length(iBadWindows)));
-
+            GenerateReportEntry(sProcess, sInputs(1), sSubject, sStudy, is_raw, ...
+                                {max_p2p, max_gradient}, {threshold_p2p, threshold_gradient}, ...
+                                nWindows, nWindows-length(iBadWindows));
             % Return input file
             OutputFiles = [OutputFiles, sInputs(1).FileName];
 
@@ -379,12 +379,41 @@ function OutputFiles = Run(sProcess, sInputsAll) %#ok<DEFNU>
                 % Set bad in Study
                 process_detectbad('SetTrialStatus', {sInputs(iFile).FileName}, 1);
             end
-            % Report by Study
-            bst_report('Info', sProcess, sInputs(1), sprintf('Subject = %s, Study = %s, P2P threshold = %E, Gradient threshold %E, Total files = %d, Acepted files = %d', ...
-                                                             sSubject.Name, sStudy.Name, threshold_p2p, threshold_gradient, nFiles, nFiles-length(iBadTrials)));
+            % Report by study
+            GenerateReportEntry(sProcess, sInputs(1), sSubject, sStudy, is_raw, ...
+                                {max_p2p, max_gradient}, {threshold_p2p, threshold_gradient}, ...
+                                nFiles, nFiles-length(iBadTrials));
             % Return only good files
             iGoodTrials = setdiff(1:length(sInputs), iBadTrials);
             OutputFiles = [OutputFiles, sInputs(iGoodTrials).FileName];
         end
     end
+end
+
+
+function GenerateReportEntry(sProcess, sInput, sSubject, sStudy, is_raw, maxValues, thresholdValues, nTotal, nAccepted)
+    histLegends = {'Max P2P range', 'Max Gradient range'};
+    histColors  = {'b', 'r'};
+    histUnits   = {'fT', 'fT/s'};
+    itemLabel = 'windows';
+    if ~is_raw
+        itemLabel = 'files';
+    end
+    % Report thresholds and number of windows/files
+    bst_report('Info', sProcess, sInput, sprintf('Subject = %s, Study = %s, P2P threshold = %E %s, Gradient threshold %E %s, Total %s = %d, Acepted %s = %d', ...
+                                                  sSubject.Name, sStudy.Name, ...
+                                                  thresholdValues{1}*1e15, histUnits{1}, thresholdValues{2}*1e15, histUnits{2}, ...
+                                                  itemLabel, nTotal, itemLabel, nAccepted));
+    % Report histograms
+    hFig = figure();
+    for iHist = 1 : length(maxValues)
+        ax = subplot(2,1,iHist);
+        histogram(ax, maxValues{iHist}*1e15,'BinWidth',(max(maxValues{iHist}) - min(maxValues{iHist}))*1e15/10, 'FaceColor', histColors{iHist});
+        line(ax, [thresholdValues{iHist}, thresholdValues{iHist}]*1e15, ylim, 'Color','black','LineStyle','--');
+        legend(ax, histLegends{iHist});
+        xlabel(ax, histUnits{iHist});
+        ylabel(ax, [itemLabel, ' count'])
+    end
+    bst_report('Snapshot', hFig, sInput, [sProcess.Comment, ':: Distributions P2P and Gradient']);
+    close(hFig);
 end
