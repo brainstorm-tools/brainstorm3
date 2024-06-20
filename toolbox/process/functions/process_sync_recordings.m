@@ -231,8 +231,24 @@ function OutputFiles = Run(sProcess, sInputs)
         else
             % New raw condition
             newCondition = [sInputs(iInput).Condition '_synced'];
+            sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
+
             iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition);
             sNewStudy = bst_get('Study', iNewStudy);
+            
+            if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
+
+                sOldVideo = load( file_fullpath(sOldStudy.Image.FileName));
+                if isempty(sOldVideo.VideoStart)
+                    sOldVideo.VideoStart = 0;
+                end
+                import_video(iNewStudy, sOldVideo.LinkTo);
+                sNewStudy = bst_get('Study', iNewStudy);
+
+                figure_video('SetVideoStart', file_fullpath(sNewStudy.Image.FileName), sprintf('%.3f', sOldVideo.VideoStart - mean_shifting(iInput) - new_start));
+            end
+
+
             newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
             % Save channel definition
             ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
