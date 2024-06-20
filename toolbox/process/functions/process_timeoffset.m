@@ -94,6 +94,9 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.Time = DataMat.Time + OffsetTime;
     if isRaw
         DataMat.F.prop.times = DataMat.Time;
+        if isfield(DataMat.F, 'epochs') && ~isempty(DataMat.F.epochs)
+            [DataMat.F.epochs(:).times] = deal(DataMat.Time);
+        end
     end
 
     % Add offset to all events
@@ -121,9 +124,11 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     else
         % Create new raw condition
         if isRaw
+            ChannelFile = sInput.ChannelFile;
             newCondition = [sInput.Condition '_' sProcess.FileTag];
             iStudy = db_add_condition(sInput.SubjectName, newCondition);
             sNewStudy = bst_get('Study', iStudy);
+            db_set_channel(iStudy, ChannelFile, 0, 0);
             newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
             [~, base, ext] = bst_fileparts(sInput.FileName);
             OutputFile = bst_fullfile(newStudyPath, [base '.' ext]);
