@@ -254,7 +254,7 @@ for iEvt = 1:length(jnirs.nirs.stim)
     if isfield(jnirs.nirs.stim(iEvt), 'dataLabels')
         nStimDataCols = length(jnirs.nirs.stim(iEvt).dataLabels);
     end
-    % Transpose if needed
+    % Transpose to match number of columns
     if size(jnirs.nirs.stim(iEvt).data, 1) == nStimDataCols && diff(size(jnirs.nirs.stim(iEvt).data)) ~= 0
         jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
     end    
