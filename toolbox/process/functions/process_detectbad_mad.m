@@ -74,7 +74,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.threshold_method.Controller = struct('auto', 'auto', 'manual', 'manual');
     % AUTO
     % Option: Number of mad for amplitude and grandient
-    sProcess.options.n_mad.Comment = 'Number of MAD (median absolute deviation) for thresholding: ';
+    sProcess.options.n_mad.Comment = 'Number of median absolute deviations for thresholds:';
     sProcess.options.n_mad.Type    = 'value';
     sProcess.options.n_mad.Value   = {3, 'mad', []};
     sProcess.options.n_mad.Class   = 'auto';
