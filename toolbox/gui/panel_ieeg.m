@@ -518,7 +518,7 @@ function UpdateContactList(CoordSpace)
         ctrl.jRadioScs.setSelected(1);
     end
     % Update the list for display
-    for i = 1:length(sContacts)
+    for i = 1:size(sContacts,2)
         itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContactsMm(:,i));
         listModel.addElement(BstListItem('', [], itemText, i));
         % Get longest string
