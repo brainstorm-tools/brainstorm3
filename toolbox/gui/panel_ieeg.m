@@ -765,7 +765,7 @@ end
 
 %% ===== GET SELECTED ELECTRODES =====
 function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
-    sSelElec = [];
+    sSelElec = repmat(db_template('intraelectrode'), 0);
     iSelElec = [];
     iDS = [];
     iFig = [];
@@ -787,7 +787,7 @@ end
 
 %% ===== GET SELECTED CONTACTS =====
 function sSelContacts = GetSelectedContacts()
-    sSelContacts = [];
+    sSelContacts = repmat(db_template('intracontact'), 0);
     % Get panel handles
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
@@ -1234,7 +1234,7 @@ end
 function sContacts = GetContacts(selectedElecName)
     global GlobalData;
 
-    sContacts = repmat(struct('Name', '', 'Loc', []), 0);
+    sContacts = repmat(db_template('intracontact'), 0);
     % Get current figure
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
     % Check if there are electrodes defined for this file
