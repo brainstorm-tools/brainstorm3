@@ -340,14 +340,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== CONTACT LIST CHANGED CALLBACK =====
     function ContListChanged_Callback(h, ev)
         ctrl = bst_get('PanelControls', 'iEEG');
-        % if contact list rendering is blank in panel then dont't proceed
-        if ctrl.jListCont.isSelectionEmpty()
-            return;
-        end
-        % highlight the location on MRI Viewer and Surface
         sContacts = GetSelectedContacts();
-        HighlightLocCont(sContacts);
         bst_figures('SetSelectedRows', {sContacts.Name});
+        SetMriCrosshair(sContacts);
     end
 end
                    
@@ -737,13 +732,12 @@ function UpdateElecProperties(isUpdateModelList)
 end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
-function HighlightLocCont(sSelContacts) %#ok<DEFNU>
+function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
     if isempty(hFig) || isempty(sSelContacts)
         return
-    end 
-    
+    end
     % Update the cross-hair position on the MRI
     figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
 end
@@ -909,7 +903,7 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.repaint();
     end
     sContacts = GetSelectedContacts();
-    HighlightLocCont(sContacts);
+    SetMriCrosshair(sContacts);
 end
 
 %% ===== SHOW CONTACTS MENU =====
@@ -1220,7 +1214,7 @@ end
 function sContacts = GetContacts(selectedElecName)
     global GlobalData;
 
-    sContacts = [];
+    sContacts = repmat(struct('Name', '', 'Loc', []), 0);
     % Get current figure
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
     % Check if there are electrodes defined for this file
@@ -1232,8 +1226,8 @@ function sContacts = GetContacts(selectedElecName)
     % Get the contacts for the electrode
     iChannels = find(ismember({ChannelData.Group}, selectedElecName));
     for i = 1:length(iChannels)
-        sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
         sContacts(i).Name = ChannelData(iChannels(i)).Name;
+        sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
     end
 end
 
