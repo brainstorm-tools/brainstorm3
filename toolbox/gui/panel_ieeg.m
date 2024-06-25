@@ -507,7 +507,6 @@ function UpdateContactList(varargin)
         ctrl.jListCont.setModel(listModel);
         return;
     end
-    contacLocsMm = [sContacts.Loc]' * 1000;
     % Convert contact coodinates
     if ~strcmpi('scs', CoordSpace)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
@@ -515,7 +514,7 @@ function UpdateContactList(varargin)
         sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
         sMri = bst_memory('LoadMri', MriFile);
-        contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), contacLocsMm);
+        contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), [sContacts.Loc]') * 1000;
         switch lower(CoordSpace)
             case 'mni',   ctrl.jRadioMni.setSelected(1);
             case 'mri',   ctrl.jRadioMri.setSelected(1);
@@ -524,6 +523,7 @@ function UpdateContactList(varargin)
         listModel.clear();
         ctrl.jListCont.setModel(listModel);
     else
+        contacLocsMm = [sContacts.Loc]' * 1000;
         ctrl.jRadioScs.setSelected(1);
     end
 
