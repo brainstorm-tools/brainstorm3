@@ -332,6 +332,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
 
         if (ev.getClickCount() == 1)
+            % Unselect all contacts in list
+            SetSelectedContacts(0);
             % Update contact list
             UpdateContactList();
         end
@@ -460,8 +462,6 @@ end
 function UpdateContactList(varargin)
     import org.brainstorm.list.*;
     global GlobalData
-    % Get current electrodes
-    [sElectrodes, iDS] = GetElectrodes();
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
@@ -482,10 +482,14 @@ function UpdateContactList(varargin)
     end
 
     % Get selected electrodes
-    iSelElec = ctrl.jListElec.getSelectedIndex() + 1;
-    SelName = char(ctrl.jListElec.getSelectedValue());
-    if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
+    [sSelElec, ~, iDS] = GetSelectedElectrodes();
+    if isempty(sSelElec)
         SelName = [];
+        sSelContacts = [];
+    else
+        SelName = sSelElec(end).Name;
+        % Get selected contacts
+        sSelContacts = GetSelectedContacts();
     end
 
     % Create a new empty list
@@ -538,6 +542,10 @@ function UpdateContactList(varargin)
     ctrl.jListCont.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
     ctrl.jListCont.repaint();
     drawnow;
+    % Seletect previously selected contacts
+    if ~isempty(sSelContacts)
+        SetSelectedContacts({sSelContacts.Name});
+    end
 end
 
 %% ===== UPDATE MODEL LIST =====
@@ -885,10 +893,9 @@ function SetSelectedContacts(iSelCont)
         listModel = ctrl.jListCont.getModel();
         iSelItem = [];
         for i = 1:listModel.getSize()
-            contName = regexp(char(listModel.getElementAt(i-1)), SelContNames, 'match');
-            if strcmpi(contName{1},SelContNames)
+            itemNameParts = str_split(char(listModel.getElementAt(i-1)), ' ');
+            if ismember(itemNameParts{1}, SelContNames)
                 iSelItem(end+1) = i - 1;
-                break;
             end
         end
         if isempty(iSelItem)
