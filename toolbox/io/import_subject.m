@@ -108,8 +108,8 @@ for i = 1:length(subjectNames)
     end
     % Check the subject configuration
     SubjectMat = load(SubjectFile);
-    if (SubjectMat.UseDefaultAnat == 1) || (SubjectMat.UseDefaultChannel == 1)
-        errMsg = [errMsg, 'Subjects using a default anatomy or channel file cannot be imported in an existing protocol.' 10 ...
+    if (SubjectMat.UseDefaultAnat == 1) || (SubjectMat.UseDefaultChannel == 2)
+        errMsg = [errMsg, 'Subjects using "Default anatomy" or "global channel file" cannot be imported in an existing protocol.' 10 ...
                           'Use the menu: File > Load protocol > Load from zip file.'];
         continue;
     end
