@@ -333,7 +333,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         if (ev.getClickCount() == 1)
             % Update contact list
-            UpdateContactList('SCS');
+            UpdateContactList();
         end
     end
 
@@ -457,7 +457,7 @@ function UpdateElecList()
 end
 
 %% ===== UPDATE CONTACT LIST =====
-function UpdateContactList(CoordSpace)
+function UpdateContactList(varargin)
     import org.brainstorm.list.*;
     global GlobalData
     % Get current electrodes
@@ -466,6 +466,19 @@ function UpdateContactList(CoordSpace)
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
+    end
+    % Get coordinate space from ctrls
+    if nargin < 1 || isempty(varargin{1})
+        CoordSpace = 'scs';
+        if ctrl.jRadioMni.isSelected()
+            CoordSpace = 'mni';
+        elseif ctrl.jRadioMri.isSelected()
+            CoordSpace = 'mri';
+        elseif ctrl.jRadioWorld.isSelected()
+            CoordSpace = 'world';
+        end
+    else
+        CoordSpace = varargin{1};
     end
 
     % Get selected electrodes
@@ -843,7 +856,7 @@ function SetSelectedElectrodes(iSelElec)
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields
     UpdateElecProperties();
-    UpdateContactList('SCS');
+    UpdateContactList();
 end
 
 %% ===== SET SELECTED CONTACT =====
