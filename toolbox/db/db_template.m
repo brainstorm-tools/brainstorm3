@@ -739,7 +739,7 @@ switch lower(structureName)
     case 'intracontact'
         template = struct(...
             'Name', '', ...    % Identification)
-            'Loc',   []);      % [1x3] position for contact
+            'Loc',   []);      % [3x1] position for contact
 
     case 'dataset'
         template = struct(...
