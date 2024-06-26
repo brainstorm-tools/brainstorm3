@@ -127,10 +127,20 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE FREESURFER FOLDER =====
 bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 % Find MRI
-T1File = file_find(FsDir, 'T1.mgz', 2);
-T2File = file_find(FsDir, 'T2.mgz', 2);
+
+isReconAllClinical = ~isempty(file_find(FsDir, 'synthSR.mgz', 2));
+
+if ~isReconAllClinical
+    T1File = file_find(FsDir, 'T1.mgz', 2);
+    T2File = file_find(FsDir, 'T2.mgz', 2);
+else
+    T1File = file_find(FsDir, 'native.mgz', 2);
+    T2File = file_find(FsDir, 'synthSR.mgz', 2);
+end
+
 if isempty(T1File)
     T1File = file_find(FsDir, '*.nii.gz', 0);
+
     if ~isempty(T1File)
         T1Comment = 'MRI';
     else
