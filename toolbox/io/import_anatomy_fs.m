@@ -134,8 +134,8 @@ if ~isReconAllClinical
     T1File = file_find(FsDir, 'T1.mgz', 2);
     T2File = file_find(FsDir, 'T2.mgz', 2);
 else
-    T1File = file_find(FsDir, 'native.mgz', 2);
-    T2File = file_find(FsDir, 'synthSR.mgz', 2);
+    T1File = file_find(FsDir, 'synthSR.raw.mgz', 2);
+    T2File = file_find(FsDir, 'native.mgz', 2);
 end
 
 if isempty(T1File)
@@ -146,6 +146,9 @@ if isempty(T1File)
     else
         errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
     end
+elseif isReconAllClinical
+    T1Comment = 'MRI (synthSR)';
+    T2Comment = 'MRI (native)';
 elseif ~isempty(T1File) && ~isempty(T2File)
     T1Comment = 'MRI T1';
     T2Comment = 'MRI T2';
