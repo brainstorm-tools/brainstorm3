@@ -16,7 +16,8 @@ function [sFile, ChannelMat] = in_fopen_neuralynx(DataFile)
 %             |- ChanNumber   : int32
 %             |- SampFreq     : int32
 %             |- NumValidSamp : int32
-%             |- Data         : 512 x int16
+%             |- Data         : 512 samples x int16
+%
 %     NSE files structure:  
 %        |- Header ASCII: 16*1044 bytes
 %        |- Records: nRecords x 112 bytes
@@ -24,7 +25,8 @@ function [sFile, ChannelMat] = in_fopen_neuralynx(DataFile)
 %             |- ScNumber     : int32
 %             |- CellNumber   : int32
 %             |- Param        : 8 x int32
-%             |- Data         : NumSamples x int16
+%             |- Data         : 32 samples x int16
+%
         
 % @=============================================================================
 % This function is part of the Brainstorm software:

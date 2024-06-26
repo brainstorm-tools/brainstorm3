@@ -74,8 +74,8 @@ for iChan = 1:length(iChannels)
             SpikeSamples = round(hdr.SpikeTimes .* sFile.prop.sfreq);
             % Get the spikes happening during the selected segment
             iSpikes = find((SpikeSamples + hdr.NumSamples >= SamplesBounds(1)) & (SpikeSamples <= SamplesBounds(2)));
-            % Size of one record in the file
-            sizeRecHdr = 48 + hdr.NumSamples * 2;
+            % Size the header in each record
+            sizeRecHdr = hdr.RecordSize - hdr.NumSamples * 2 * nChannels;
             % Loop on the spikes that were found
             for i = 1:length(iSpikes)
                 % Seek at the beginning of the spike data
