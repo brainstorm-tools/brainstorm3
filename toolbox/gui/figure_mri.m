@@ -2276,7 +2276,7 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     if Handles.isEeg
         % Hide all the points that we will never show
         iEegHide = Handles.HiddenChannels;
-        iEegShow = setdiff(1:length(Handles.hPointEEG), iEegHide);
+        iEegShow = setdiff(1:size(Handles.hPointEEG,1), iEegHide);
         if ~isempty(iEegHide)
             set(Handles.hPointEEG(iEegHide(:),:), 'Visible', 'off');
         end
