@@ -11,7 +11,7 @@
 #         Raymundo Cassani, 2024
 
 # Configuration
-VER_YEAR_VERSION="2022b"
+VER_YEAR_VERSION="2023a"
 VER_NAME="R$VER_YEAR_VERSION"
 MDIR="$HOME/.brainstorm"
 MFILE="$MDIR/MATLABROOT_$VER_NAME.txt"

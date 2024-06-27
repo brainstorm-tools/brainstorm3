@@ -258,13 +258,15 @@ if file_exist(bstJar)
     delete(bstJar);
 end
 if ispc
-    cmdSeparator = '&';
+    cdCall = 'cd /d';
+    cmdSeparator = '&&';
     jarExePath = '\bin\jar.exe'; 
-else   
+else
+    cdCall = 'cd';
     cmdSeparator = ';';
     jarExePath = '/bin/jar'; 
 end
-system(['cd "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
+system([cdCall ' "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
 
 
 
