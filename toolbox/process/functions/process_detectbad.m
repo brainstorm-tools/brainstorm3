@@ -172,8 +172,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % === LOAD FILE ===
         % Progress bar
         bst_progress('set', progressPos + round(iFile / length(sInputs) * 100));
-        % Get file in database
-        [sStudy, iStudy, iData] = bst_get('DataFile', sInputs(iFile).FileName);
         % Load channel file (if not already loaded
         ChannelFile = sInputs(iFile).ChannelFile;
         if isempty(prevChannelFile) || ~strcmpi(ChannelFile, prevChannelFile)
@@ -314,9 +312,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iBadTrials(end+1) = iFile;
                     % Report
                     bst_report('Info', sProcess, sInputs(iFile), 'Marked as bad trial.');
-                    % Update study
-                    sStudy.Data(iData).BadTrial = 1;
-                    bst_set('Study', iStudy, sStudy);
                 % Reject channels only
                 else
                     % Add detected channels to list of file bad channels
