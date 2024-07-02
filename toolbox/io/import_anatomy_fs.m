@@ -244,12 +244,12 @@ end
 
 %% ===== IMPORT PRIMARY MRI =====
 if isKeepMri && ~isempty(sSubject.Anatomy)
-    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-    in_mri_bst(BstT1File);
+    BstMri1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    in_mri_bst(BstMri1File);
 else
     % Read primary MRI
-    BstT1File = import_mri(iSubject, mri1File, 'ALL', 0, [], mri1Comment);
-    if isempty(BstT1File)
+    BstMri1File = import_mri(iSubject, mri1File, 'ALL', 0, [], mri1Comment);
+    if isempty(BstMri1File)
         errorMsg = ['Could not import FreeSurfer folder: MRI "' mri1File '" was not imported properly'];
         if isInteractive
             bst_error(errorMsg, 'Import FreeSurfer folder', 0);
@@ -263,7 +263,7 @@ end
 
 %% ===== DEFINE FIDUCIALS / MNI NORMALIZATION =====
 % Set fiducials and/or compute linear MNI normalization
-[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, FsDir, BstT1File, sFid, isKeepMri, isInteractive);
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, FsDir, BstMri1File, sFid, isKeepMri, isInteractive);
 % Error handling
 if ~isempty(errCall)
     errorMsg = [errorMsg, errCall];
@@ -279,8 +279,8 @@ end
 %% ===== IMPORT SECONDARY MRI =====
 % Read secondary MRI (optional)
 if ~isempty(mri2File)
-    BstT2File = import_mri(iSubject, mri2File, 'ALL', 0, [], mri2Comment);
-    if isempty(BstT2File)
+    BstMri2File = import_mri(iSubject, mri2File, 'ALL', 0, [], mri2Comment);
+    if isempty(BstMri2File)
         disp(['BST> Could not import "' mri2File '" MRI file.']);
     end
 end
@@ -543,11 +543,26 @@ HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
 %% ===== IMPORT ASEG ATLAS =====
 if isVolumeAtlas && ~isempty(AsegFile)
+    BstMriFiles = {};
     % Import atlas as volume
-    import_mri(iSubject, AsegFile);
+    BstMriFiles{end+1} = import_mri(iSubject, AsegFile);
     % Import other ASEG volumes
     for iFile = 1:length(OtherAsegFiles)
-        import_mri(iSubject, OtherAsegFiles{iFile});
+        BstMriFiles{end+1} = import_mri(iSubject, OtherAsegFiles{iFile});
+    end
+    % Remove padding introduced in every direction by 'mri_synth_surf.py' call in 'recon-all-clinical.sh'
+    if isReconAllClinical
+        for iAtlas = 1 : length(BstMriFiles)
+            sMriAtlas = in_mri_bst(BstMriFiles{iAtlas});
+            if iAtlas == 1
+                sMri1 = in_mri_bst(BstMri1File);
+                nPad = unique((size(sMriAtlas.Cube) - size(sMri1.Cube)) / 2);
+            end
+            if length(nPad) == 1 && nPad > 0 && round(nPad) == nPad
+                sMriAtlas.Cube = sMriAtlas.Cube(1+nPad:end-nPad, 1+nPad:end-nPad, 1+nPad:end-nPad);
+                bst_save(BstMriFiles{iAtlas}, sMriAtlas, 'v7');
+            end
+        end
     end
     % Import atlas as surfaces
     SelLabels = {...
