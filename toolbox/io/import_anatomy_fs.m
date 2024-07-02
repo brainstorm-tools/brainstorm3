@@ -1,5 +1,5 @@
 function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas, isKeepMri)
-% IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
+% IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy, obtained with either 'recon-all' or 'recon-all-clinical'
 %
 % USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isExtraMaps=0, isVolumeAtlas=1, isKeepMri=0)
 %
