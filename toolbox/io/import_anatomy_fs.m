@@ -126,34 +126,31 @@ nVertHemi = round(nVertices / 2);
 
 %% ===== PARSE FREESURFER FOLDER =====
 bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
-% Find MRI
-
+% Find MRI files
 isReconAllClinical = ~isempty(file_find(FsDir, 'synthSR.mgz', 2));
+isReconAll         = ~isempty(file_find(FsDir, 'T1.mgz', 2)) && ~isReconAllClinical;
 
-if ~isReconAllClinical
-    T1File = file_find(FsDir, 'T1.mgz', 2);
-    T2File = file_find(FsDir, 'T2.mgz', 2);
-else
-    T1File = file_find(FsDir, 'synthSR.raw.mgz', 2);
-    T2File = file_find(FsDir, 'native.mgz', 2);
+mri1File = '';
+if isReconAll
+    mri1File = file_find(FsDir, 'T1.mgz', 2);
+    mri2File = file_find(FsDir, 'T2.mgz', 2);
+    mri1Comment = 'MRI T1';
+    mri2Comment = 'MRI T2';
+elseif isReconAllClinical
+    mri1File = file_find(FsDir, 'synthSR.raw.mgz', 2);
+    mri2File = file_find(FsDir, 'native.mgz', 2);
+    mri1Comment = 'MRI (synthSR)';
+    mri2Comment = 'MRI (native)';
 end
-
-if isempty(T1File)
-    T1File = file_find(FsDir, '*.nii.gz', 0);
-
-    if ~isempty(T1File)
-        T1Comment = 'MRI';
+if isempty(mri1File)
+    mri1File = file_find(FsDir, '*.nii.gz', 0);
+    if ~isempty(mri1File)
+        mri2File    = '';
+        mri1Comment = 'MRI';
+        mri2Comment = '';
     else
         errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
     end
-elseif isReconAllClinical
-    T1Comment = 'MRI (synthSR)';
-    T2Comment = 'MRI (native)';
-elseif ~isempty(T1File) && ~isempty(T2File)
-    T1Comment = 'MRI T1';
-    T2Comment = 'MRI T2';
-else
-    T1Comment = 'MRI';
 end
 % Find surface: lh.pial (or lh.pial.T1)
 TessLhFile = file_find(FsDir, 'lh.pial', 2);
@@ -245,15 +242,15 @@ if ~isempty(errorMsg)
 end
 
 
-%% ===== IMPORT T1 =====
+%% ===== IMPORT PRIMARY MRI =====
 if isKeepMri && ~isempty(sSubject.Anatomy)
     BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     in_mri_bst(BstT1File);
 else
-    % Read T1 MRI
-    BstT1File = import_mri(iSubject, T1File, 'ALL', 0, [], T1Comment);
+    % Read primary MRI
+    BstT1File = import_mri(iSubject, mri1File, 'ALL', 0, [], mri1Comment);
     if isempty(BstT1File)
-        errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
+        errorMsg = ['Could not import FreeSurfer folder: MRI "' mri1File '" was not imported properly'];
         if isInteractive
             bst_error(errorMsg, 'Import FreeSurfer folder', 0);
         end
@@ -279,12 +276,12 @@ if ~isempty(errCall)
 end
 
 
-%% ===== IMPORT T2 =====
-% Read T2 MRI (optional)
-if ~isempty(T2File)
-    BstT2File = import_mri(iSubject, T2File, 'ALL', 0, [], T2Comment);
+%% ===== IMPORT SECONDARY MRI =====
+% Read secondary MRI (optional)
+if ~isempty(mri2File)
+    BstT2File = import_mri(iSubject, mri2File, 'ALL', 0, [], mri2Comment);
     if isempty(BstT2File)
-        disp('BST> Could not import T2.mgz.');
+        disp(['BST> Could not import "' mri2File '" MRI file.']);
     end
 end
 
