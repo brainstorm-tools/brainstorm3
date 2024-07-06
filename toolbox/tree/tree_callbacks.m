@@ -896,8 +896,8 @@ switch (lower(action))
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
-                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0));
-                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (pairs)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 1));
+                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, 'NIRS-BRS', 'scalp', 0, 0));
+                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (pairs)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, 'NIRS-BRS', 'scalp', 0, 1));
                         else
                             gui_component('MenuItem', jMenuDisplay, [], channelTypeDisplay, IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'scalp'));
                         end
