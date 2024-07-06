@@ -99,7 +99,7 @@ function OutputFiles = Run(sProcess, sInputs)
     for iInput = 2:nInputs
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
 
-        sIdxChAn{iInput} = length(NewChannelMat.Channel) +  1:length(ChannelMat.Channel);
+        sIdxChAn{iInput} = length(NewChannelMat.Channel) +  (1:length(ChannelMat.Channel));
         NewChannelMat.Channel = [ NewChannelMat.Channel , ChannelMat.Channel  ];
     end
 
@@ -144,7 +144,9 @@ function OutputFiles = Run(sProcess, sInputs)
         sDataSync        = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no');
 
         % Update raw data
-        sDataSync.F      = interp1(sOldTiming{iInput}.Time, sDataSync.F', new_times)';
+        if iInput > 1
+            sDataSync.F      = interp1(sDataSync.Time, sDataSync.F', new_times)';
+        end
         % Save new link to raw .mat file
         % Write block
         out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChAn{iInput}, sDataSync.F);
