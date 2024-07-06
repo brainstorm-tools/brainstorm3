@@ -104,9 +104,9 @@ function OutputFiles = Run(sProcess, sInputs)
 
 
         if isfield(ChannelMat,'Nirs') && isfield(NewChannelMat,'Nirs')
-            NewChannelMat.NIRS = sort( union(ChannelMat.Nirs, NewChannelMat.Nirs));
+            NewChannelMat.Nirs = sort( union(ChannelMat.Nirs, NewChannelMat.Nirs));
         elseif isfield(ChannelMat,'Nirs')  && ~isfield(NewChannelMat,'Nirs')
-            NewChannelMat.NIRS = ChannelMat.Nirs;
+            NewChannelMat.Nirs = ChannelMat.Nirs;
         end
     end
 
