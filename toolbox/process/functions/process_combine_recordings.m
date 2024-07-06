@@ -98,9 +98,16 @@ function OutputFiles = Run(sProcess, sInputs)
     % Save sync data to file
     for iInput = 2:nInputs
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-
+        
         sIdxChAn{iInput} = length(NewChannelMat.Channel) +  (1:length(ChannelMat.Channel));
         NewChannelMat.Channel = [ NewChannelMat.Channel , ChannelMat.Channel  ];
+
+
+        if isfield(ChannelMat,'Nirs') && isfield(NewChannelMat,'Nirs')
+            NewChannelMat.NIRS = sort( union(ChannelMat.Nirs, NewChannelMat.Nirs));
+        elseif isfield(ChannelMat,'Nirs')  && ~isfield(NewChannelMat,'Nirs')
+            NewChannelMat.NIRS = ChannelMat.Nirs;
+        end
     end
 
     [~, iChannelStudy] = bst_get('ChannelForStudy', iNewStudy);
