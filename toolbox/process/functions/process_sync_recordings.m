@@ -252,7 +252,7 @@ function OutputFiles = Run(sProcess, sInputs)
             [~, iChannelStudy] = bst_get('ChannelForStudy', iNewStudy);
             db_set_channel(iChannelStudy, ChannelMat, 0, 0);
             % Link to raw file
-            OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_raw_sync');
+            OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_sync');
             % Raw file
             [~, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
             rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
