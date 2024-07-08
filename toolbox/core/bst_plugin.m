@@ -481,6 +481,18 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'matlab_octave'};
 
+    % === STATISTICS: mTRF ===
+    PlugDesc(end+1)              = GetStruct('mtrf');
+    PlugDesc(end).Version        = '2.4';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/mickcrosse/mTRF-Toolbox/archive/refs/tags/v2.4.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/mickcrosse/mTRF-Toolbox';
+    PlugDesc(end).TestFile       = 'mTRFtrain.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'mtrf'};
+    PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
+
     % === ELECTROPHYSIOLOGY: DERIVELFP ===
     PlugDesc(end+1)              = GetStruct('derivelfp');
     PlugDesc(end).Version        = '1.0';
