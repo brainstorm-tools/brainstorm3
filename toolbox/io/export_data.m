@@ -82,7 +82,7 @@ end
 % ===== LOAD DATA =====
 % CALL: export_data( DataFile, [], ExportFile )
 if ischar(DataFile) 
-    isRawIn = ~isempty(strfind(DataFile, '_0raw'));
+    isRawIn = ~isempty(strfind(DataFile, '_0raw')) || ~isempty(strfind(DataFile, '_raw')) 
     % Load initial file
     DataMat = in_bst_data(DataFile);
     % Get raw file structure
