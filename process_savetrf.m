@@ -47,6 +47,14 @@ function OutputFiles = Run(sProcess, sInput)
     % Initialize output file list
     OutputFiles = {};
 
+    % Install/load mTRF-Toolbox as plugin
+    if ~exist('mTRFtrain', 'file')
+        [isInstalled, errMsg] = bst_plugin('Install', 'mtrf');
+        if ~isInstalled
+            error(errMsg);
+        end
+    end
+
     % Check for exactly one input file
     if length(sInput) ~= 1
         bst_report('Error', sProcess, sInput, 'This process requires exactly one input file.');
