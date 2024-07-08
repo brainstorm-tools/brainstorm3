@@ -115,7 +115,7 @@ function OutputFiles = Run(sProcess, sInputs)
     newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
 
     % Link to raw file
-    OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_raw_combned');
+    OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_combned');
 
     % Raw file
     [~, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
@@ -126,15 +126,15 @@ function OutputFiles = Run(sProcess, sInputs)
     bst_progress('text', 'Saving files...');
 
 
+    % Set Output sFile structure
     sDataRawSync = in_bst_data(sInputs(1).FileName, 'F');
     sFileIn = sDataRawSync.F;
-    % Set new time and events
     sFileIn.header.nsamples = length(new_times);
     sFileIn.prop.times      = [ new_times(1), new_times(end)];
     sFileIn.channelflag     = ones(1,length(NewChannelMat.Channel));
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
 
-    % Set Output sFile structure
+    
     sDataSync        = in_bst(sInputs(1).FileName, [], 1, 1, 'no');
     sOutMat          = rmfield(sDataSync, 'F');
     sOutMat.format   = 'BST-BIN';
@@ -147,19 +147,17 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % Save sync data to file
     for iInput = 1:nInputs
-        
+        % Load raw data
         sDataSync        = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no');
 
         % Update raw data
         if iInput > 1
             sDataSync.F      = interp1(sDataSync.Time, sDataSync.F', new_times)';
         end
-        % Save new link to raw .mat file
         % Write block
         out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChAn{iInput}, sDataSync.F);
 
         bst_progress('inc', 1);
-
     end
     
     % Register in BST database
