@@ -170,6 +170,23 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'ct2mrireg'};
     PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
+
+    % === ANATOMY: ZEFFIRO ===
+    % this plugin is used for Zeffiro-BST integration
+    PlugDesc(end+1)              = GetStruct('zeffiro');
+    PlugDesc(end).Version        = 'github-main_development_branch';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/sampsapursiainen/zeffiro_interface/archive/main_development_branch.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
+    PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs    = {};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn    = {};
+    PlugDesc(end).DeleteFiles    = {'.gitignore'};
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
