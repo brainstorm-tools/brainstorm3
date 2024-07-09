@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = '[Experimental] Compare (A) to normative PSDs (B)';
+    sProcess.Comment     = 'Compare (A) to normative PSDs (B)';
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Other';
