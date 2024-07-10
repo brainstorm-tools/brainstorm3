@@ -211,21 +211,25 @@ function PlugDesc = GetSupported(SelPlug)
 
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
-    PlugDesc(end).Version        = '2.4.1';
+    PlugDesc(end).Version        = '2.5.8';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
+    urlZipBase = ['https://github.com/openmeeg/openmeeg/releases/download/', PlugDesc(end).Version, '/OpenMEEG-', PlugDesc(end).Version, '-'];
     switch(OsType)
         case 'linux64'
-            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Linux.tar.gz';
+            PlugDesc(end).URLzip   = [urlZipBase, 'Linux.tar.gz'];
             PlugDesc(end).TestFile = 'libOpenMEEG.so';
         case 'mac64'
-            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+            PlugDesc(end).URLzip   = [urlZipBase, 'macOS_Intel.tar.gz'];
+            PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
+        case 'mac64arm'
+            PlugDesc(end).URLzip   = [urlZipBase, 'macOS_M1.tar.gz'];
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
         case 'win64'
-            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Win64.tar.gz';
+            PlugDesc(end).URLzip   = [urlZipBase, 'Windows.tar.gz'];
             PlugDesc(end).TestFile = 'om_assemble.exe';
     end
     PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
@@ -3131,6 +3135,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
-                   'openmeeg', 'xdf'};
+    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', 'xdf'};
 end
