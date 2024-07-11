@@ -69,7 +69,8 @@ Def_OPTIONS.MorletFc        = 1;
 Def_OPTIONS.MorletFwhmTc    = 3;
 Def_OPTIONS.WinLength       = [];
 Def_OPTIONS.WinOverlap      = 50;
-Def_OPTIONS.WinStd          = 0;
+Def_OPTIONS.IsRelative      = 0;
+Def_OPTIONS.WinFunc         = 'mean';
 Def_OPTIONS.isMirror        = 0;
 Def_OPTIONS.SensorTypes     = 'MEG, EEG';
 Def_OPTIONS.Clusters        = {};
@@ -136,6 +137,12 @@ end
 % Cannot use the options "normalized units" and "frequency bands" at the same time
 if strcmpi(OPTIONS.Method, 'psd') && strcmpi(OPTIONS.PowerUnits, 'normalized') && ~isempty(FreqBands)
     Messages = 'Cannot use the options "normalized units" and "frequency bands" together.';
+    isError = 1;
+    return;      
+end
+% Cannot do average and compute several TF at same time
+if isAverage && contains(OPTIONS.WinFunc, '+')
+    Messages = ['Incompatible options: 1)Use several functions for PSD and 2)average trials.'];
     isError = 1;
     return;      
 end
@@ -528,7 +535,7 @@ for iData = 1:length(Data)
         % PSD: Homemade computation based on Matlab's FFT
         case 'psd'
             % Calculate PSD/FFT
-            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinStd, OPTIONS.PowerUnits);
+            [TF, OPTIONS.Freqs, Nwin, Messages, TFbis] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinFunc, OPTIONS.PowerUnits, OPTIONS.IsRelative);
             if isempty(TF)
                 continue;
             end
@@ -548,6 +555,14 @@ for iData = 1:length(Data)
             OPTIONS.Comment = sprintf('PSD: %d/%dms %s', Nwin, round(OPTIONS.WinLength.*1000), OPTIONS.Comment);
             % Measure is already applied (power)
             isMeasureApplied = 1;
+            % If second TF, post process it
+            if ~isempty(TFbis)
+                % Set to zero the bad channels
+                TFbis = SetBadChannels(TFbis,iGoodChannels);
+                % Apply post processing steps
+                TFbis = PostprocessTF(TFbis, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);
+                OPTIONS.TFbis = TFbis;
+            end
             
         % SPRiNT: Spectral Parameterization Resolved iN Time (Luc Wilson)
         case 'sprint'
@@ -622,127 +637,14 @@ for iData = 1:length(Data)
             % Permute dimensions to get [nChannels x nTime x nFreq x nTapers]
             TF = permute(TF, [2 4 3 1]);
     end
-    bst_progress('inc', 1);
+
     % Set to zero the bad channels
-    if ~isempty(iGoodChannels)
-        iBadChannels = setdiff(1:size(F,1), iGoodChannels);
-        if ~isempty(iBadChannels)
-            TF(iBadChannels, :, :, :) = 0;
-        end
-    end
+    TF=SetBadChannels(TF,iGoodChannels);
     % Clean memory
     clear F;
+    % Apply post processing steps
+    [TF, GridAtlas, RowNames, isAddedCommentNorm, OPTIONS] = PostprocessTF(TF, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);
 
-    % ===== REBUILD FULL SOURCES =====
-    % Kernel => Full results
-    if strcmpi(DataType, 'results') && ~isempty(ImagingKernel) && ~OPTIONS.SaveKernel
-        % Initialize full time-frequency matrix
-        TF_full = zeros(size(ImagingKernel,1), size(TF,2), size(TF,3), size(TF,4));
-        % Loop on the frequencies and tapers
-        for itaper = 1:size(TF,4)
-            for ifreq = 1:size(TF,3)
-                TF_full(:,:,ifreq,itaper) = ImagingKernel * TF(:,:,ifreq,itaper);
-            end
-        end
-        % Replace previous values with new ones
-        TF = TF_full;
-        clear TF_full;
-    end
-    % Cannot save kernel when components > 1
-    if strcmpi(DataType, 'results') && OPTIONS.SaveKernel && (nComponents ~= 1)
-        Messages = ['Cannot keep the inversion kernel when processing unconstrained sources.' 10 ...
-                    'Please selection the option "Optimize: No, save full sources."'];
-        isError = 1;
-        return;
-    end
-    
-    % ===== APPLY MEASURE =====
-    if ~isMeasureApplied
-        % Multitaper: average power across tapers
-        if strcmpi(OPTIONS.Method, 'mtmconvol')
-            TF = nanmean(TF .* conj(TF), 4);
-            % Power or magnitude
-            if strcmpi(OPTIONS.Measure, 'magnitude')
-                TF = sqrt(TF);
-            end
-        % Other measures: Apply the expected measure
-        else
-            switch lower(OPTIONS.Measure)
-                case 'none'       % Nothing to do
-                case 'power',     TF = abs(TF) .^ 2;
-                case 'magnitude', TF = abs(TF);
-                otherwise,        error('Unknown measure.');
-            end
-        end
-    end
-    
-    % ===== PROCESS UNCONSTRAINED SOURCES =====
-    % Unconstrained sources => SUM for each point  (only if not complex)
-    if ismember(DataType, {'results','scout','matrix'}) && ~isempty(nComponents) && (nComponents ~= 1)
-        % This doesn't work for complex values: TODO
-        if strcmpi(OPTIONS.Measure, 'none')
-            Messages = ['Cannot keep the complex values when processing unconstrained sources.' 10 ...
-                        'Please selection the option "Optimize: No, save full sources."'];
-            isError = 1;
-            return;
-        end
-        % Apply orientation
-        [TF, GridAtlas, RowNames] = bst_source_orient([], nComponents, GridAtlas, TF, 'sum', DataType, RowNames);
-    end
-
-    % ===== PROCESS POWER FOR SCOUTS =====
-    % Get the lists of clusters
-    [tmp,I,J] = unique(RowNames);
-    ScoutNames = RowNames(sort(I));
-    % If processing data blocks and if there are identical row names => Processing clusters / scouts
-    if ~isFile && ~isempty(OPTIONS.Clusters) && (length(ScoutNames) ~= length(RowNames))
-        % If cluster function should be applied AFTER time-freq: we have now all the time series
-        if strcmpi(OPTIONS.ClusterFuncTime, 'after')
-            TF_cluster = zeros(length(ScoutNames), size(TF,2), size(TF,3));
-            % For each unique row name: compute a measure over the clusters values
-            for iScout = 1:length(ScoutNames)
-                indClust = find(strcmpi(ScoutNames{iScout}, RowNames));
-                % Compute cluster/scout measure
-                for iFreq = 1:size(TF,3)
-                    TF_cluster(iScout,:,iFreq) = bst_scout_value(TF(indClust,:,iFreq), OPTIONS.ScoutFunc);
-                end
-            end
-            % Save only the requested rows
-            RowNames = ScoutNames;
-            TF = TF_cluster;
-        % Just make all RowNames unique
-        else
-            initRowNames = RowNames;
-            RowNames = cell(size(TF,1),1);
-            % For each row name: update name with the index of the row
-            for iScout = 1:length(ScoutNames)
-                indClust = find(strcmpi(ScoutNames{iScout}, initRowNames));
-                % Process each cluster element: add an indice
-                for i = 1:length(indClust)
-                    RowNames{indClust(i)} = sprintf('%s.%d', ScoutNames{iScout}, i);
-                end
-            end
-        end
-    end
-
-    % ===== NORMALIZE VALUES =====
-    if ~isempty(OPTIONS.NormalizeFunc) && ismember(OPTIONS.NormalizeFunc, {'multiply', 'multiply2020'})
-        % Call normalization function
-        [TF, errorMsg] = process_tf_norm('Compute', TF, OPTIONS.Measure, OPTIONS.Freqs, OPTIONS.NormalizeFunc);
-        % Error handling
-        if ~isempty(errorMsg)
-            Messages = errorMsg;
-            isError = 1;
-            return;
-        end
-        % Add normalization comment
-        if ~isAddedCommentNorm
-            isAddedCommentNorm = 1;
-            OPTIONS.Comment = [OPTIONS.Comment ' | ' strrep(OPTIONS.NormalizeFunc, '2020', '')];
-        end
-    end
-
-    
     % ===== SAVE FILE / COMPUTE AVERAGE =====
     % Only save average
     if isAverage
@@ -799,7 +701,128 @@ if isAverage
 end
 
 
-
+    %% ===== SET BAD CHANNELS =====
+    function TF=SetBadChannels(TF, iGoodChannels)
+        % Set to zero the bad channels
+        if ~isempty(iGoodChannels)
+            iBadChannels = setdiff(1:size(F,1), iGoodChannels);
+            if ~isempty(iBadChannels)
+                TF(iBadChannels, :, :, :) = 0;
+            end
+        end
+    end
+    
+    %% ===== Post PROCESS TF =====
+    function [TF, GridAtlas, RowNames, isAddedCommentNorm, OPTIONS] = PostprocessTF(TF, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm)
+        % ===== REBUILD FULL SOURCES =====
+        % Kernel => Full results
+        if strcmpi(DataType, 'results') && ~isempty(ImagingKernel) && ~OPTIONS.SaveKernel
+            % Initialize full time-frequency matrix
+            TF_full = zeros(size(ImagingKernel,1), size(TF,2), size(TF,3), size(TF,4));
+            % Loop on the frequencies and tapers
+            for itaper = 1:size(TF,4)
+                for ifreq = 1:size(TF,3)
+                    TF_full(:,:,ifreq,itaper) = ImagingKernel * TF(:,:,ifreq,itaper);
+                end
+            end
+            % Replace previous values with new ones
+            TF = TF_full;
+            clear TF_full;
+        end
+        % Cannot save kernel when components > 1
+        if strcmpi(DataType, 'results') && OPTIONS.SaveKernel && (nComponents ~= 1)
+            Messages = ['Cannot keep the inversion kernel when processing unconstrained sources.' 10 ...
+                        'Please selection the option "Optimize: No, save full sources."'];
+            isError = 1;
+            return;
+        end
+        
+        % ===== APPLY MEASURE =====
+        if ~isMeasureApplied
+            % Multitaper: average power across tapers
+            if strcmpi(OPTIONS.Method, 'mtmconvol')
+                TF = nanmean(TF .* conj(TF), 4);
+                % Power or magnitude
+                if strcmpi(OPTIONS.Measure, 'magnitude')
+                    TF = sqrt(TF);
+                end
+            % Other measures: Apply the expected measure
+            else
+                switch lower(OPTIONS.Measure)
+                    case 'none'       % Nothing to do
+                    case 'power',     TF = abs(TF) .^ 2;
+                    case 'magnitude', TF = abs(TF);
+                    otherwise,        error('Unknown measure.');
+                end
+            end
+        end
+        
+        % ===== PROCESS UNCONSTRAINED SOURCES =====
+        % Unconstrained sources => SUM for each point  (only if not complex)
+        if ismember(DataType, {'results','scout','matrix'}) && ~isempty(nComponents) && (nComponents ~= 1)
+            % This doesn't work for complex values: TODO
+            if strcmpi(OPTIONS.Measure, 'none')
+                Messages = ['Cannot keep the complex values when processing unconstrained sources.' 10 ...
+                            'Please selection the option "Optimize: No, save full sources."'];
+                isError = 1;
+                return;
+            end
+            % Apply orientation
+            [TF, GridAtlas, RowNames] = bst_source_orient([], nComponents, GridAtlas, TF, 'sum', DataType, RowNames);
+        end
+    
+        % ===== PROCESS POWER FOR SCOUTS =====
+        % Get the lists of clusters
+        [tmp,I,J] = unique(RowNames);
+        ScoutNames = RowNames(sort(I));
+        % If processing data blocks and if there are identical row names => Processing clusters / scouts
+        if ~isFile && ~isempty(OPTIONS.Clusters) && (length(ScoutNames) ~= length(RowNames))
+            % If cluster function should be applied AFTER time-freq: we have now all the time series
+            if strcmpi(OPTIONS.ClusterFuncTime, 'after')
+                TF_cluster = zeros(length(ScoutNames), size(TF,2), size(TF,3));
+                % For each unique row name: compute a measure over the clusters values
+                for iScout = 1:length(ScoutNames)
+                    indClust = find(strcmpi(ScoutNames{iScout}, RowNames));
+                    % Compute cluster/scout measure
+                    for iFreq = 1:size(TF,3)
+                        TF_cluster(iScout,:,iFreq) = bst_scout_value(TF(indClust,:,iFreq), OPTIONS.ScoutFunc);
+                    end
+                end
+                % Save only the requested rows
+                RowNames = ScoutNames;
+                TF = TF_cluster;
+            % Just make all RowNames unique
+            else
+                initRowNames = RowNames;
+                RowNames = cell(size(TF,1),1);
+                % For each row name: update name with the index of the row
+                for iScout = 1:length(ScoutNames)
+                    indClust = find(strcmpi(ScoutNames{iScout}, initRowNames));
+                    % Process each cluster element: add an indice
+                    for idx = 1:length(indClust)
+                        RowNames{indClust(idx)} = sprintf('%s.%d', ScoutNames{iScout}, idx);
+                    end
+                end
+            end
+        end
+    
+        % ===== NORMALIZE VALUES =====
+        if ~isempty(OPTIONS.NormalizeFunc) && ismember(OPTIONS.NormalizeFunc, {'multiply', 'multiply2020'})
+            % Call normalization function
+            [TF, errorMsg] = process_tf_norm('Compute', TF, OPTIONS.Measure, OPTIONS.Freqs, OPTIONS.NormalizeFunc);
+            % Error handling
+            if ~isempty(errorMsg)
+                Messages = errorMsg;
+                isError = 1;
+                return;
+            end
+            % Add normalization comment
+            if ~isAddedCommentNorm
+                isAddedCommentNorm = 1;
+                OPTIONS.Comment = [OPTIONS.Comment ' | ' strrep(OPTIONS.NormalizeFunc, '2020', '')];
+            end
+        end
+    end
 %% ===== SAVE FILE =====
     function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas, strHistory)
         % Create file structure
@@ -837,6 +860,7 @@ end
         FileMat.Options.MorletFwhmTc    = OPTIONS.MorletFwhmTc;
         FileMat.Options.ClusterFuncTime = OPTIONS.ClusterFuncTime;
         FileMat.Options.PowerUnits      = OPTIONS.PowerUnits;
+        
         % Compute edge effects mask
         if ismember(OPTIONS.Method, {'hilbert', 'morlet'})
             FileMat.TFmask = process_timefreq('GetEdgeEffectMask', FileMat.Time, FileMat.Freqs, FileMat.Options);
@@ -847,6 +871,14 @@ end
         % Add SPRiNT structure
         if isequal(OPTIONS.Method,'sprint')
             FileMat.Options.SPRiNT      = OPTIONS.SPRiNT;
+        end
+        % Add PSD options
+        if strcmpi(OPTIONS.Method, 'psd')
+            FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
+            FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
+            if strcmpi(OPTIONS.WinFunc, 'mean+std')
+                FileMat.Std = OPTIONS.TFbis;
+            end
         end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
