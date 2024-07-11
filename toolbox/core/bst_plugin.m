@@ -221,6 +221,10 @@ function PlugDesc = GetSupported(SelPlug)
         case 'mac64'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
+        case 'mac64arm'
+            PlugDesc(end).Version  = '2.5.8';
+            PlugDesc(end).URLzip   = 'https://github.com/openmeeg/openmeeg/releases/download/macOS_M1.tar.gz';
+            PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
@@ -3131,6 +3135,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
-                   'openmeeg', 'xdf'};
+    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', 'xdf'};
 end
