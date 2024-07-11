@@ -227,7 +227,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'mac64arm'
             PlugDesc(end).Version  = '2.5.8';
-            PlugDesc(end).URLzip   = 'https://github.com/openmeeg/openmeeg/releases/download/macOS_M1.tar.gz';
+            PlugDesc(end).URLzip   = ['https://github.com/openmeeg/openmeeg/releases/download/', PlugDesc(end).Version, '/OpenMEEG-', PlugDesc(end).Version, '-', 'macOS_M1.tar.gz'];
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
