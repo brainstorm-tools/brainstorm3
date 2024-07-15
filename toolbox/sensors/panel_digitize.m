@@ -26,6 +26,7 @@ function varargout = panel_digitize(varargin)
 % =============================================================================@
 %
 % Authors: Elizabeth Bock & Francois Tadel, 2012-2017
+%          Chinmay Chinara, 2024
 
 eval(macro_method);
 end
@@ -39,25 +40,53 @@ end
 %#function icinterface
 
 %% ===== START =====
-function Start() %#ok<DEFNU>
-    global Digitize;
+function Start(DigitizerType) %#ok<DEFNU>
+    global Digitize
+
+    % ===== INITIALIZE CONNECTION =====
+    % Intialize global variable
+    Digitize = struct(...
+        'Type'            , [], ...
+        'SerialConnection', [], ...
+        'Mode',             0, ...
+        'hFig',             [], ...
+        'iDS',              [], ...
+        'FidSets',          2, ...
+        'EEGlabels',        [], ...
+        'SubjectName',      [], ...
+        'ConditionName',    [], ...
+        'BeepWav',          [], ...
+        'Points',           struct(...
+            'nasion',   [], ...
+            'LPA',      [], ...
+            'RPA',      [], ...
+            'hpiN',     [], ...
+            'hpiL',     [], ...
+            'hpiR',     [], ...
+            'EEG',      [], ...
+            'headshape',[], ...
+            'trans',    []));
+    
+    % ===== PARSE INPUTS =====
+    if nargin == 0 || isempty(DigitizerType)
+        Digitize.Type = 'Digitizer';
+    elseif nargin == 1
+        if strcmpi(DigitizerType, 'revopoint')
+            Digitize.Type = 'Revopoint';
+            % Simulate
+            SetSimulate(1);
+        else
+            Digitize.Type = 'Digitizer';
+        end
+    else
+        error('Usage : panel_digitize(DigitizerType)');
+    end
+
     % ===== PREPARE DATABASE =====
     % If no protocol: exit
     if (bst_get('iProtocol') <= 0)
-        bst_error('Please create a protocol first.', 'Digitize', 0);
+        bst_error('Please create a protocol first.', Digitize.Type, 0);
         return;
-    end
-    % Get subject
-    SubjectName = 'Digitize';
-    [sSubject, iSubject] = bst_get('Subject', SubjectName);
-    % Create if subject doesnt exist
-    if isempty(iSubject)
-        % Default anat / one channel file per subject
-        UseDefaultAnat = 1;
-        UseDefaultChannel = 0;
-        [sSubject, iSubject] = db_add_subject(SubjectName, iSubject, UseDefaultAnat, UseDefaultChannel);
-        % Update tree
-        panel_protocols('UpdateTree');
     end
     
     % ===== PATIENT ID =====
@@ -71,29 +100,33 @@ function Start() %#ok<DEFNU>
     % Save the new default patient id
     DigitizeOptions.PatientId = PatientId;
     bst_set('DigitizeOptions', DigitizeOptions);
+
+    % ===== GET SUBJECT =====
+    if strcmpi(Digitize.Type, 'Revopoint')
+        SubjectName = [Digitize.Type, '_', PatientId];
+    else
+        SubjectName = Digitize.Type;
+    end
+    % Save the new SubjectName
+    Digitize.SubjectName = SubjectName;
+
+    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    % Create if subject doesnt exist
+    if isempty(iSubject)
+        % Default anat / one channel file per subject
+        if strcmpi(Digitize.Type, 'Revopoint')
+            [sSubject, iSubject] = db_add_subject(SubjectName, iSubject);
+            sTemplates = bst_get('AnatomyDefaults');
+            db_set_template(iSubject, sTemplates(1), 1);
+        else
+            UseDefaultAnat = 1;
+            UseDefaultChannel = 0;
+            [sSubject, iSubject] = db_add_subject(SubjectName, iSubject, UseDefaultAnat, UseDefaultChannel);
+        end
+        % Update tree
+        panel_protocols('UpdateTree');
+    end
     
-    % ===== INITIALIZE CONNECTION =====
-    % Intialize global variable
-    Digitize = struct(...
-        'SerialConnection', [], ...
-        'Mode',             0, ...
-        'hFig',             [], ...
-        'iDS',              [], ...
-        'FidSets',          2, ...
-        'EEGlabels',        [], ...
-        'SubjectName',      SubjectName, ...
-        'ConditionName',    [], ...
-        'BeepWav',          [], ...
-        'Points',           struct(...
-            'nasion',   [], ...
-            'LPA',      [], ...
-            'RPA',      [], ...
-            'hpiN',     [], ...
-            'hpiL',     [], ...
-            'hpiR',     [], ...
-            'EEG',      [], ...
-            'headshape',[], ...
-            'trans',    []));
     % Start Serial Connection
     if ~CreateSerialConnection();
         return;
@@ -126,6 +159,22 @@ function Start() %#ok<DEFNU>
     db_reload_studies(iStudy);
     % Save condition name
     Digitize.ConditionName = ConditionName;
+    
+    if strcmpi(Digitize.Type, 'Revopoint')
+        % import surface
+        iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment}));
+        if(isempty(iTargetSurface))
+            [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubject);
+            sSurf = bst_memory('LoadSurface', OutputSurfacesFiles{end});
+            [sSubject, iSubject] = bst_get('Subject', SubjectName);
+            iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment})); 
+        else
+            sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface).FileName);
+        end
+        
+        % view the surface
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], sSubject.Surface(iTargetSurface).FileName);
+    end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
     % Display panel
@@ -156,8 +205,10 @@ end
 
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
+    global Digitize
+
     % Constants
-    panelName = 'Digitize';
+    panelName = Digitize.Type;
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -320,12 +371,15 @@ end
 
 %% ===== CLOSE =====
 function Close_Callback()
-    gui_hide('Digitize');
+    global Digitize
+
+    gui_hide(Digitize.Type);
 end
 
 %% ===== HIDING CALLBACK =====
 function isAccepted = PanelHidingCallback() %#ok<DEFNU>
-    global Digitize;
+    global Digitize
+
     % If Brainstorm window was hidden before showing the Digitizer
     if bst_get('isGUI')
         % Get Brainstorm frame
@@ -422,13 +476,14 @@ end
 %% ===== RESET DATA COLLECTION =====
 function ResetDataCollection(isResetSerial)
     global Digitize
-    bst_progress('start', 'Digitize', 'Initializing...');
+
+    bst_progress('start', Digitize.Type, 'Initializing...');
     % Reset serial?
     if (nargin == 1) && isequal(isResetSerial, 1)
         CreateSerialConnection();
     end
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Reset points structure
     Digitize.Points = struct(...
         'nasion',    [], ...
@@ -448,7 +503,9 @@ function ResetDataCollection(isResetSerial)
     % Reset figure
     if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
         %close(Digitize.hFig);
-        bst_figures('DeleteFigure', Digitize.hFig, []);
+        if ~strcmpi(Digitize.Type, 'Revopoint')
+            bst_figures('DeleteFigure', Digitize.hFig, []);
+        end
     end
     Digitize.iDS = [];
     
@@ -474,8 +531,9 @@ end
 %    - Mode 8 = Headshape
 function SwitchToNewMode(mode)
     global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Select mode
@@ -581,9 +639,10 @@ end
 
 %% ===== UPDATE LIST =====
 function UpdateList()
-    global Digitize;
+    global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Define the model
     listModel = javax.swing.DefaultListModel();
     % Get current montage
@@ -695,8 +754,10 @@ end
 
 %% ===== SET SELECTED BUTTON =====
 function SetSelectedButton(iButton)
+    global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Create list of buttons
     jButton = javaArray('javax.swing.JToggleButton', 8);
     jButton(1) = ctrl.jButtonhpiN;
@@ -728,6 +789,7 @@ end
 %% ===== MANUAL COLLECT CALLBACK ======
 function ManualCollect_Callback(h, ev)
     global Digitize
+
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation: call the callback directly
@@ -744,8 +806,9 @@ end
 %% ===== DELETE POINT CALLBACK =====
 function DeletePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     DigitizeOptions = bst_get('DigitizeOptions');
     
     % only remove cardinal points when MEG coils are used for the
@@ -838,8 +901,9 @@ end
 %% ===== COMPUTE TRANFORMATION =====
 function ComputeTransform()
     global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -949,7 +1013,8 @@ end
 
 %% ===== CREATE FIGURE =====
 function CreateHeadpointsFigure()
-    global Digitize    
+    global Digitize
+
     if isempty(Digitize.hFig) || ~ishandle(Digitize.hFig) || isempty(Digitize.iDS)
         % Get study
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
@@ -977,6 +1042,7 @@ end
 %% ===== PLOT POINTS =====
 function PlotCoordinate(Loc, Label, Type, iPoint)
     global Digitize GlobalData  
+
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);
     ChannelMat = load(ChannelFile);
@@ -1016,8 +1082,9 @@ end
 %% ===== EEG CHANGE POINT CALLBACK =====
 function EEGChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Get digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     
@@ -1031,8 +1098,9 @@ end
 %% ===== EXTRA CHANGE POINT CALLBACK =====
 function ExtraChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     
     initPoint = str2num(ctrl.jTextFieldExtra.getText()); %#ok<*ST2NM>
     % restrict to a maximum of points collected and minimum of '1'
@@ -1043,6 +1111,7 @@ end
 %% ===== SAVE CALLBACK =====
 function Save_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);  
     export_channel( ChannelFile );
@@ -1052,7 +1121,7 @@ end
 function CreateMontageMenu(jMenu)
     % Get menu pointer if not in argument
     if (nargin < 1) || isempty(jMenu)
-        ctrl = bst_get('PanelControls', 'Digitize');
+        ctrl = bst_get('PanelControls', Digitize.Type);
         jMenu = ctrl.jMenuEeg;
     end
     % Get Digitize options
@@ -1299,6 +1368,7 @@ end
 %% ===== CREATE SERIAL COLLECTION =====
 function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
     global Digitize
+
     isOk = 0;
     while ~isOk
         % Get COM port options
@@ -1363,8 +1433,9 @@ end
 %% ===== BYTES AVAILABLE CALLBACK =====
 function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     global Digitize rawpoints
+    
     % Get controls
-    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl = bst_get('PanelControls', Digitize.Type);
     % Get digitizer options
     DigitizeOptions = bst_get('DigitizeOptions');
 

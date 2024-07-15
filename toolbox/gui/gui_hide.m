@@ -74,7 +74,7 @@ switch (panelName)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
-    case 'Digitize'
+    case {'Digitizer', 'Revopoint'}
         isAccepted = panel_digitize('PanelHidingCallback');
     case 'Dipinfo'
         if gui_brainstorm('isTabVisible', 'Dipinfo')
