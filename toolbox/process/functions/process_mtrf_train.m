@@ -38,6 +38,12 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MultivariateTemporalResponse';
 
+    % Event name
+    sProcess.options.labelevt.Comment  = '<HTML><I><FONT color="#777777">For multiple events: separate them with commas</FONT></I>';
+    sProcess.options.labelevt.Type     = 'label';
+    sProcess.options.eventname.Comment = 'Event names: ';
+    sProcess.options.eventname.Type    = 'text';
+    sProcess.options.eventname.Value   = '';
     % Minimum time lag
     sProcess.options.tmin.Comment = 'Minimun time lag:';
     sProcess.options.tmin.Type    = 'value';
@@ -47,11 +53,6 @@ function sProcess = GetDescription()
     sProcess.options.tmax.Type    = 'value';
     sProcess.options.tmax.Value   = {100, 'ms', 0};
 
-
-    % Options: Stimulus data file (user need to provide)
-    sProcess.options.stimFile.Comment = 'Stimulus data file:';
-    sProcess.options.stimFile.Type = 'filename';
-    sProcess.options.stimFile.Value = {''};
 
     % Options: Plot result
     sProcess.options.plotResult.Comment = 'Plot result:';
@@ -83,27 +84,17 @@ function OutputFiles = Run(sProcess, sInput)
         end
     end
 
-    % Check for exactly one input file
-    if length(sInput) ~= 1
-        bst_report('Error', sProcess, sInput, 'This process requires exactly one input file.');
-        return;
-    end
-
-    EEGDataStruct = in_bst_data(sInput.FileName);
-    if isempty(EEGDataStruct) || ~isfield(EEGDataStruct, 'F') || isempty(EEGDataStruct.F) || ~isnumeric(EEGDataStruct.F)
-        bst_report('Error', sProcess, sInput, 'EEG data is empty or not a numeric matrix.');
+    % ===== GET OPTIONS =====
+    % Get event names
+    evtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
+    if isempty(evtNames)
+        bst_report('Error', sProcess, [], 'No events were provided.');
         return;
     end
     % Get minimum time lag (ms)
     tmin = sProcess.options.tmin.Value{1};
     if isempty(tmin) || ~isnumeric(tmin) || isnan(tmin)
         bst_report('Error', sProcess, sInput, 'Invalid tmin.');
-    EEGData = EEGDataStruct.F;
-
-    % Load stimulus data
-    stimFilePath = sProcess.options.stimFile.Value{1};
-    if isempty(stimFilePath)
-        bst_report('Error', sProcess, sInput, 'Stimulus data file missing.');
         return;
     end
     tmin = tmin * 1000;
@@ -111,31 +102,34 @@ function OutputFiles = Run(sProcess, sInput)
     tmax = sProcess.options.tmax.Value{1};
     if isempty(tmax) || ~isnumeric(tmax) || isnan(tmax)
         bst_report('Error', sProcess, sInput, 'Invalid tmax.');
-    StimData = load(stimFilePath);
-
-    % Dynamically determine the field name and extract stimulus data
-    fieldNames = fieldnames(StimData);
-    disp(fieldNames);
-    if numel(fieldNames) ~= 1
-        bst_report('Error', sProcess, sInput, 'Stimulus data file must contain exactly one field.');
         return;
     end
     tmax = tmax * 1000;
     % Check for exactly one input file
-
+    if length(sInput) ~= 1
+        bst_report('Error', sProcess, sInput, 'This process requires exactly one input file.');
         return;
     end
 
     % Load file 
+    DataMat = in_bst_data(sInput.FileName);
+    if isempty(DataMat) || ~isfield(DataMat, 'F') || isempty(DataMat.F) || ~isnumeric(DataMat.F)
+        bst_report('Error', sProcess, sInput, 'EEG data is empty or not a numeric matrix.');
         return;
     end
     % Sampling frequency (Hz)
     fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     nSamples = size(DataMat.F,2);
 
+    % Generate stimulus vector
+    stim = zeros(nSamples, 1);
+    iEvt = find(strcmpi({DataMat.Events.label}, evtNames{1}));
+    iEvtOccur = bst_closest(DataMat.Events(iEvt).times, DataMat.Time);
+    stim(iEvtOccur) = 1;
 
+    % mTRF train
     lambda = 0.1;
-    model = mTRFtrain(stim, EEGData,fs,1, tmin, tmax, lambda);
+    model = mTRFtrain(stim, DataMat.F', fs, 1, tmin, tmax, lambda);
     modelSqueezed = squeeze(model.w(1,:,:));
 
     % Save the model to a new Brainstorm data file
