@@ -11,8 +11,8 @@ function sProcess = GetDescription()
     sProcess.Index = 702;
     sProcess.isSeparator = 1;
 
-    sProcess.InputTypes = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data'};
+    sProcess.OutputTypes = {'data'};
     sProcess.nInputs = 1;
     sProcess.nMinFiles = 1;
 
