@@ -1,5 +1,5 @@
-function tutorial_introduction(tutorial_dir, reports_dir)
-% TUTORIAL_INTRODUCTION: Script that runs all the Brainstorm introduction tutorials.
+function tutorial_BEst(tutorial_dir, reports_dir)
+% TUTORIAL_BEST: Script that runs all the Brain Entropy in space and time introduction tutorials.
 %
 % INPUTS: 
 %    - tutorial_dir : Directory where the sample_introduction.zip file has been unzipped
@@ -23,7 +23,7 @@ function tutorial_introduction(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2017
+% Author: Francois Tadel, 2016-2017, Edouard Delaire 2024
 
 
 % ===== FILES TO IMPORT =====
@@ -55,7 +55,7 @@ end
 %  ===================================================================================
 disp([10 'DEMO> Tutorial #1: Create protocol' 10]);
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialIntroduction';
+ProtocolName = 'TutorialBEst';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -465,6 +465,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesAvgDeviant01, [], ...
 disp([10 'DEMO> Tutorial #22: Source estimation' 10]);
 
 % coherent Maximu Entropy on the Mean (cMEM)
+disp([10 'DEMO> Tutorial #22: Source estimation using cMEM' 10]);
 
 % Process: Compute sources: BEst
 sAvgSrcMEM = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
@@ -518,6 +519,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrcMEM, [], ...
 
 
 % wawelet Maximum Entropy on the Mean (wMEM)
+disp([10 'DEMO> Tutorial #22: Source estimation using wMEM' 10]);
 
 wMEM_options = struct(...
                'InverseMethod', 'MEM', ...
@@ -581,7 +583,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scale4, [], ...
     'threshold', 0, ...
     'Comment',   'Average Devient (wMEM - scale 4)');
 
-% 2. Localizing only scale 4: 
+% 2. Localizing only scale 5: 
 wMEM_options.wavelet.selected_scales    = [5];
 
 sAvgSrwMEM_scale5 = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
