@@ -37,7 +37,11 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MultivariateTemporalResponse';
-
+    % === Sensor types
+    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.sensortypes.Type    = 'text';
+    sProcess.options.sensortypes.Value   = 'MEG, EEG';
+    sProcess.options.sensortypes.InputTypes = {'data', 'raw'};
     % Event name
     sProcess.options.labelevt.Comment  = '<HTML><I><FONT color="#777777">For multiple events: separate them with commas</FONT></I>';
     sProcess.options.labelevt.Type     = 'label';
@@ -85,6 +89,11 @@ function OutputFiles = Run(sProcess, sInput)
     end
 
     % ===== GET OPTIONS =====
+    % Sensor types
+    sensorTypes = [];
+    if isfield(sProcess.options, 'sensortypes') && ~isempty(sProcess.options.sensortypes) && ~isempty(sProcess.options.sensortypes.Value)
+        sensorTypes = sProcess.options.sensortypes.Value;
+    end
     % Get event names
     evtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
     if isempty(evtNames)
@@ -110,6 +119,7 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'This process requires exactly one input file.');
         return;
     end
+
     % Load file 
     DataMat = in_bst_data(sInput.FileName);
     if isempty(DataMat) || ~isfield(DataMat, 'F') || isempty(DataMat.F) || ~isnumeric(DataMat.F)
@@ -119,8 +129,25 @@ function OutputFiles = Run(sProcess, sInput)
     % Sampling frequency (Hz)
     fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     nSamples = size(DataMat.F,2);
+    % Load channel file
+    ChannelFile = sInput.ChannelFile;
+    ChannelMat = in_bst_channel(ChannelFile);
 
-
+    % Select sensors
+    if ~isempty(sensorTypes)
+        % Find selected channels
+        iChannels = channel_find(ChannelMat.Channel, sensorTypes);
+        if isempty(iChannels)
+            bst_report('Error', sProcess, sInput, 'Could not load any sensor from the input file. Check the sensor selection.');
+            return;
+        end
+        % Keep only selected channels
+        F = DataMat.F(iChannels, :);
+        channelNames = {ChannelMat.Channel(iChannels).Name}';
+    else
+        F = DataMat.F;
+        channelNames = {ChannelMat.Channel.Name}';
+    end
 
     % mTRF train for each event
     for iEvent = 1 : length(evtNames)
@@ -140,8 +167,9 @@ function OutputFiles = Run(sProcess, sInput)
 
         % mTRF train
         lambda = 0.1;
-        model = mTRFtrain(stim, DataMat.F', fs, 1, tmin, tmax, lambda);
         modelSqueezed = squeeze(model.w(1,:,:));
+        model = mTRFtrain(stim, F', fs, 1, tmin, tmax, lambda);
+
 
         % Save the model to a new Brainstorm data file
         OutputMat = db_template('matrixmat');
