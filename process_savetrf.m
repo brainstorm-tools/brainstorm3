@@ -5,7 +5,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description of the process
-    sProcess.Comment = 'Save Temporal Response Function Weights';
+    sProcess.Comment = 'Temporal Response Function Analyis';
     sProcess.Category = 'Custom';
     sProcess.SubGroup = 'User';
     sProcess.Index = 1001;
@@ -35,6 +35,17 @@ function sProcess = GetDescription()
     sProcess.options.stimFile.Comment = 'Stimulus data file:';
     sProcess.options.stimFile.Type = 'filename';
     sProcess.options.stimFile.Value = {''};
+
+    % Options: Plot result
+    sProcess.options.plotResult.Comment = 'Plot result:';
+    sProcess.options.plotResult.Type = 'checkbox';
+    sProcess.options.plotResult.Value = 0;
+
+    % Options: Channel number for plotting
+    sProcess.options.channelNum.Comment = 'Channel number for plot:';
+    sProcess.options.channelNum.Type = 'value';
+    sProcess.options.channelNum.Value = {1, 'channels', 0};
+    sProcess.options.channelNum.Conditions = {'plotResult', 1};
 end
 
 %% ===== FORMAT COMMENT =====
@@ -118,5 +129,25 @@ function OutputFiles = Run(sProcess, sInput)
     db_add_data(sInput.iStudy, OutputFile, OutputMat);  
     OutputFiles{end+1} = OutputFile;
 
-end
+    % Plotting, if requested
+    if sProcess.options.plotResult.Value
+        channelNum = sProcess.options.channelNum.Value{1};
+        % Plot STRF
+        figure
+        subplot(2,2,1), mTRFplot(model,'mtrf','all',channelNum,[tmin,tmax]);
+        title('Speech STRF (Fz)'), ylabel('Frequency band'), xlabel('')
+        
+        % Plot GFP
+        subplot(2,2,2), mTRFplot(model,'mgfp','all','all',[tmin,tmax]);
+        title('Global Field Power'), xlabel('')
+        
+        % Plot TRF
+        subplot(2,2,3), mTRFplot(model,'trf','all',channelNum,[tmin,tmax]);
+        title('Speech TRF (Fz)'), ylabel('Amplitude (a.u.)')
+        
+        % Plot GFP
+        subplot(2,2,4), mTRFplot(model,'gfp','all','all',[tmin,tmax]);
+        title('Global Field Power')
+    end
 
+end
