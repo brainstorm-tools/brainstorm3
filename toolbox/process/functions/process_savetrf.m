@@ -7,8 +7,8 @@ function sProcess = GetDescription()
     % Description of the process
     sProcess.Comment = 'Temporal Response Function Analyis';
     sProcess.Category = 'Custom';
-    sProcess.SubGroup = 'User';
-    sProcess.Index = 1001;
+    sProcess.SubGroup = 'Encoding';
+    sProcess.Index = 702;
     sProcess.isSeparator = 1;
 
     sProcess.InputTypes = {'data', 'raw'};
