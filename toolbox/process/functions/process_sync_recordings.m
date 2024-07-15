@@ -130,7 +130,7 @@ function OutputFiles = Run(sProcess, sInputs)
             offsetStd = std(shifting);
         end
 
-        if  size(sEvtSync(iInput).times, 2) ~= size(sEvtSync(1).times, 2) || offsetStd > 1000
+        if  size(sEvtSync(iInput).times, 2) ~= size(sEvtSync(1).times, 2) || offsetStd > 1
 
             if size(sEvtSync(iInput).times, 2) ~= size(sEvtSync(1).times, 2)
                 bst_report('Warning', sProcess, sInputs, 'Files doesnt have the same number of sync events. Using approximation');
