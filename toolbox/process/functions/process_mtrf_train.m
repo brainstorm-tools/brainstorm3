@@ -56,18 +56,6 @@ function sProcess = GetDescription()
     sProcess.options.tmax.Comment = 'Maximum time lag:';
     sProcess.options.tmax.Type    = 'value';
     sProcess.options.tmax.Value   = {100, 'ms', 0};
-
-
-    % Options: Plot result
-    sProcess.options.plotResult.Comment = 'Plot result:';
-    sProcess.options.plotResult.Type = 'checkbox';
-    sProcess.options.plotResult.Value = 0;
-
-    % Options: Channel number for plotting
-    sProcess.options.channelNum.Comment = 'Channel number for plot:';
-    sProcess.options.channelNum.Type = 'value';
-    sProcess.options.channelNum.Value = {1, 'channels', 0};
-    sProcess.options.channelNum.Conditions = {'plotResult', 1};
 end
 
 %% ===== FORMAT COMMENT =====
@@ -167,39 +155,19 @@ function OutputFiles = Run(sProcess, sInput)
 
         % mTRF train
         lambda = 0.1;
-        modelSqueezed = squeeze(model.w(1,:,:));
         model = mTRFtrain(stim, F', fs, 1, tmin, tmax, lambda);
 
-
-        % Save the model to a new Brainstorm data file
-        OutputMat = db_template('matrixmat');
-        OutputMat.Value = modelSqueezed;
-        OutputMat.Comment = ['TRF Model Weights: ' evtNames{iEvent}];
-        OutputFile = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'matrix_trf_weights');
-
+        % Store weights of the mTRF model in a matrix file
+        OutputMat             = db_template('matrixmat');
+        OutputMat.Comment     = ['TRF Model Weights: ' evtNames{iEvent}];
+        OutputMat.Time        = squeeze(model.t);
+        OutputMat.Value       = squeeze(model.w(1,:,:))';
+        OutputMat.Description = channelNames;
+        % Save and add to database
+        OutputFile = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'matrix_trf_weights');        
         bst_save(OutputFile, OutputMat, 'v6');
         db_add_data(sInput.iStudy, OutputFile, OutputMat);
+
         OutputFiles{end+1} = OutputFile;
-
-        % Plotting, if requested
-        if sProcess.options.plotResult.Value
-            channelNum = sProcess.options.channelNum.Value{1};
-            % Plot STRF
-            figure
-            subplot(2,2,1), mTRFplot(model,'mtrf','all',channelNum,[tmin,tmax]);
-            title('Speech STRF (Fz)'), ylabel('Frequency band'), xlabel('')
-
-            % Plot GFP
-            subplot(2,2,2), mTRFplot(model,'mgfp','all','all',[tmin,tmax]);
-            title('Global Field Power'), xlabel('')
-
-            % Plot TRF
-            subplot(2,2,3), mTRFplot(model,'trf','all',channelNum,[tmin,tmax]);
-            title('Speech TRF (Fz)'), ylabel('Amplitude (a.u.)')
-
-            % Plot GFP
-            subplot(2,2,4), mTRFplot(model,'gfp','all','all',[tmin,tmax]);
-            title('Global Field Power')
-        end
     end
 end
