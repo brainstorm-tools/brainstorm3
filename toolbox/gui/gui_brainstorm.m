@@ -147,7 +147,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuFile.addSeparator();
         end
         % === DIGITIZE ===  
-        gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
+        jSubMenu = gui_component('Menu', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL,[],[], fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Digitizer', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
+            gui_component('MenuItem', jSubMenu, [], 'Revopoint', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start','revopoint'), fontSize);
         gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();
         % === QUIT ===
