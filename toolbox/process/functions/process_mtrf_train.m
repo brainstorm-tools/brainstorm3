@@ -1,4 +1,4 @@
-function varargout = process_savetrf( varargin )
+function varargout = process_mtrf_train( varargin )
 eval(macro_method);
 end
 
@@ -120,13 +120,13 @@ function OutputFiles = Run(sProcess, sInput)
     modelSqueezed = squeeze(model.w(1,:,:));
 
     % Save the model to a new Brainstorm data file
-    OutputMat = db_template('matrixmat');  
+    OutputMat = db_template('matrixmat');
     OutputMat.Value = modelSqueezed;
-    OutputMat.Comment = 'TRF Model Weights';  
+    OutputMat.Comment = 'TRF Model Weights';
     OutputFile = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'matrix_trf_weights');
 
-    bst_save(OutputFile, OutputMat, 'v6'); 
-    db_add_data(sInput.iStudy, OutputFile, OutputMat);  
+    bst_save(OutputFile, OutputMat, 'v6');
+    db_add_data(sInput.iStudy, OutputFile, OutputMat);
     OutputFiles{end+1} = OutputFile;
 
     % Plotting, if requested
@@ -136,15 +136,15 @@ function OutputFiles = Run(sProcess, sInput)
         figure
         subplot(2,2,1), mTRFplot(model,'mtrf','all',channelNum,[tmin,tmax]);
         title('Speech STRF (Fz)'), ylabel('Frequency band'), xlabel('')
-        
+
         % Plot GFP
         subplot(2,2,2), mTRFplot(model,'mgfp','all','all',[tmin,tmax]);
         title('Global Field Power'), xlabel('')
-        
+
         % Plot TRF
         subplot(2,2,3), mTRFplot(model,'trf','all',channelNum,[tmin,tmax]);
         title('Speech TRF (Fz)'), ylabel('Amplitude (a.u.)')
-        
+
         % Plot GFP
         subplot(2,2,4), mTRFplot(model,'gfp','all','all',[tmin,tmax]);
         title('Global Field Power')
