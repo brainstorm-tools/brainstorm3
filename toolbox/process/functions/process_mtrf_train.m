@@ -110,7 +110,6 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'This process requires exactly one input file.');
         return;
     end
-
     % Load file 
     DataMat = in_bst_data(sInput.FileName);
     if isempty(DataMat) || ~isfield(DataMat, 'F') || isempty(DataMat.F) || ~isnumeric(DataMat.F)
@@ -121,46 +120,58 @@ function OutputFiles = Run(sProcess, sInput)
     fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     nSamples = size(DataMat.F,2);
 
-    % Generate stimulus vector
-    stim = zeros(nSamples, 1);
-    iEvt = find(strcmpi({DataMat.Events.label}, evtNames{1}));
-    iEvtOccur = bst_closest(DataMat.Events(iEvt).times, DataMat.Time);
-    stim(iEvtOccur) = 1;
 
-    % mTRF train
-    lambda = 0.1;
-    model = mTRFtrain(stim, DataMat.F', fs, 1, tmin, tmax, lambda);
-    modelSqueezed = squeeze(model.w(1,:,:));
 
-    % Save the model to a new Brainstorm data file
-    OutputMat = db_template('matrixmat');
-    OutputMat.Value = modelSqueezed;
-    OutputMat.Comment = 'TRF Model Weights';
-    OutputFile = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'matrix_trf_weights');
+    % mTRF train for each event
+    for iEvent = 1 : length(evtNames)
+        stim = zeros(nSamples, 1);
+        iEvt = find(strcmpi({DataMat.Events.label}, evtNames{iEvent}));
+        if isempty(iEvt)
+            continue
+        end
+        % Event must be simple event
+        if size(DataMat.Events(iEvt).times, 1) ~= 1
+            bst_report('Warning', sProcess, sInputs, ['Events must be simple. Skipping event: "' evtNames{iEvent} '"' ]);            
+            continue;
+        end
+        % Event occurrences (in samples)
+        iEvtOccur = bst_closest(DataMat.Events(iEvt).times, DataMat.Time);
+        stim(iEvtOccur) = 1;
 
-    bst_save(OutputFile, OutputMat, 'v6');
-    db_add_data(sInput.iStudy, OutputFile, OutputMat);
-    OutputFiles{end+1} = OutputFile;
+        % mTRF train
+        lambda = 0.1;
+        model = mTRFtrain(stim, DataMat.F', fs, 1, tmin, tmax, lambda);
+        modelSqueezed = squeeze(model.w(1,:,:));
 
-    % Plotting, if requested
-    if sProcess.options.plotResult.Value
-        channelNum = sProcess.options.channelNum.Value{1};
-        % Plot STRF
-        figure
-        subplot(2,2,1), mTRFplot(model,'mtrf','all',channelNum,[tmin,tmax]);
-        title('Speech STRF (Fz)'), ylabel('Frequency band'), xlabel('')
+        % Save the model to a new Brainstorm data file
+        OutputMat = db_template('matrixmat');
+        OutputMat.Value = modelSqueezed;
+        OutputMat.Comment = ['TRF Model Weights: ' evtNames{iEvent}];
+        OutputFile = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'matrix_trf_weights');
 
-        % Plot GFP
-        subplot(2,2,2), mTRFplot(model,'mgfp','all','all',[tmin,tmax]);
-        title('Global Field Power'), xlabel('')
+        bst_save(OutputFile, OutputMat, 'v6');
+        db_add_data(sInput.iStudy, OutputFile, OutputMat);
+        OutputFiles{end+1} = OutputFile;
 
-        % Plot TRF
-        subplot(2,2,3), mTRFplot(model,'trf','all',channelNum,[tmin,tmax]);
-        title('Speech TRF (Fz)'), ylabel('Amplitude (a.u.)')
+        % Plotting, if requested
+        if sProcess.options.plotResult.Value
+            channelNum = sProcess.options.channelNum.Value{1};
+            % Plot STRF
+            figure
+            subplot(2,2,1), mTRFplot(model,'mtrf','all',channelNum,[tmin,tmax]);
+            title('Speech STRF (Fz)'), ylabel('Frequency band'), xlabel('')
 
-        % Plot GFP
-        subplot(2,2,4), mTRFplot(model,'gfp','all','all',[tmin,tmax]);
-        title('Global Field Power')
+            % Plot GFP
+            subplot(2,2,2), mTRFplot(model,'mgfp','all','all',[tmin,tmax]);
+            title('Global Field Power'), xlabel('')
+
+            % Plot TRF
+            subplot(2,2,3), mTRFplot(model,'trf','all',channelNum,[tmin,tmax]);
+            title('Speech TRF (Fz)'), ylabel('Amplitude (a.u.)')
+
+            % Plot GFP
+            subplot(2,2,4), mTRFplot(model,'gfp','all','all',[tmin,tmax]);
+            title('Global Field Power')
+        end
     end
-
 end
