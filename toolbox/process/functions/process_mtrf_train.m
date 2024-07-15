@@ -28,16 +28,15 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description of the process
-    sProcess.Comment = 'Temporal Response Function Analyis';
-    sProcess.Category = 'Custom';
-    sProcess.SubGroup = 'Encoding';
-    sProcess.Index = 702;
-    sProcess.isSeparator = 1;
-
+    sProcess.Comment     = 'Temporal Response Function Analyis';
+    sProcess.Category    = 'Custom';
+    sProcess.SubGroup    = 'Encoding';
+    sProcess.Index       = 702;
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};
-    sProcess.nInputs = 1;
-    sProcess.nMinFiles = 1;
+    sProcess.nInputs     = 1;
+    sProcess.nMinFiles   = 1;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MultivariateTemporalResponse';
 
     % Options: Sampling rate
     sProcess.options.samplingRate.Comment = 'Sampling Rate [Hz]:';
