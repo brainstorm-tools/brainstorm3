@@ -38,15 +38,15 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MultivariateTemporalResponse';
 
-     % Options: tmin
-    sProcess.options.tmin.Comment = 'tMin:';
-    sProcess.options.tmin.Type = 'value';
-    sProcess.options.tmin.Value = {100, '', 0};
+    % Minimum time lag
+    sProcess.options.tmin.Comment = 'Minimun time lag:';
+    sProcess.options.tmin.Type    = 'value';
+    sProcess.options.tmin.Value   = {-100, 'ms', 0};
+    % Maximum time lag
+    sProcess.options.tmax.Comment = 'Maximum time lag:';
+    sProcess.options.tmax.Type    = 'value';
+    sProcess.options.tmax.Value   = {100, 'ms', 0};
 
-     % Options: tmax
-    sProcess.options.tmax.Comment = 'tMax:';
-    sProcess.options.tmax.Type = 'value';
-    sProcess.options.tmax.Value = {100, '', 0};
 
     % Options: Stimulus data file (user need to provide)
     sProcess.options.stimFile.Comment = 'Stimulus data file:';
@@ -94,6 +94,10 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'EEG data is empty or not a numeric matrix.');
         return;
     end
+    % Get minimum time lag (ms)
+    tmin = sProcess.options.tmin.Value{1};
+    if isempty(tmin) || ~isnumeric(tmin) || isnan(tmin)
+        bst_report('Error', sProcess, sInput, 'Invalid tmin.');
     EEGData = EEGDataStruct.F;
 
     % Load stimulus data
@@ -102,6 +106,11 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'Stimulus data file missing.');
         return;
     end
+    tmin = tmin * 1000;
+    % Get maximum time lag (ms)
+    tmax = sProcess.options.tmax.Value{1};
+    if isempty(tmax) || ~isnumeric(tmax) || isnan(tmax)
+        bst_report('Error', sProcess, sInput, 'Invalid tmax.');
     StimData = load(stimFilePath);
 
     % Dynamically determine the field name and extract stimulus data
@@ -111,25 +120,19 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'Stimulus data file must contain exactly one field.');
         return;
     end
-    stim = StimData.(fieldNames{1});
+    tmax = tmax * 1000;
+    % Check for exactly one input file
 
         return;
     end
 
-    tmin = sProcess.options.tmin.Value{1};
-    if isempty(tmin) || ~isnumeric(tmin) || isnan(tmin)
-        bst_report('Error', sProcess, sInput, 'Invalid tmin.');
+    % Load file 
         return;
     end
     % Sampling frequency (Hz)
     fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     nSamples = size(DataMat.F,2);
 
-    tmax = sProcess.options.tmax.Value{1};
-    if isempty(tmax) || ~isnumeric(tmax) || isnan(tmax)
-        bst_report('Error', sProcess, sInput, 'Invalid tmax.');
-        return;
-    end
 
     lambda = 0.1;
     model = mTRFtrain(stim, EEGData,fs,1, tmin, tmax, lambda);
