@@ -1,4 +1,4 @@
-function varargout = process_trf( varargin )
+function varargout = process_savetrf( varargin )
 eval(macro_method);
 end
 
