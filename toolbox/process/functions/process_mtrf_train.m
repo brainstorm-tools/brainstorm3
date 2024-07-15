@@ -38,11 +38,6 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MultivariateTemporalResponse';
 
-    % Options: Sampling rate
-    sProcess.options.samplingRate.Comment = 'Sampling Rate [Hz]:';
-    sProcess.options.samplingRate.Type = 'value';
-    sProcess.options.samplingRate.Value = {100, '', 0};
-
      % Options: tmin
     sProcess.options.tmin.Comment = 'tMin:';
     sProcess.options.tmin.Type = 'value';
@@ -118,10 +113,6 @@ function OutputFiles = Run(sProcess, sInput)
     end
     stim = StimData.(fieldNames{1});
 
-    % Get sampling rate from the process options
-    fs = sProcess.options.samplingRate.Value{1};
-    if isempty(fs) || ~isnumeric(fs) || isnan(fs)
-        bst_report('Error', sProcess, sInput, 'Invalid sampling rate.');
         return;
     end
 
@@ -130,6 +121,9 @@ function OutputFiles = Run(sProcess, sInput)
         bst_report('Error', sProcess, sInput, 'Invalid tmin.');
         return;
     end
+    % Sampling frequency (Hz)
+    fs = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+    nSamples = size(DataMat.F,2);
 
     tmax = sProcess.options.tmax.Value{1};
     if isempty(tmax) || ~isnumeric(tmax) || isnan(tmax)
