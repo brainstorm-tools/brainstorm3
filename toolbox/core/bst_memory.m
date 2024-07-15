@@ -304,6 +304,9 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         sSurf.Comment         = surfMat.Comment;
         sSurf.Faces           = double(surfMat.Faces);
         sSurf.Vertices        = double(surfMat.Vertices);
+        if isfield(surfMat, 'Color')
+            sSurf.Color       = double(surfMat.Color);
+        end
         sSurf.VertConn        = surfMat.VertConn;
         sSurf.VertNormals     = surfMat.VertNormals;
         [tmp, sSurf.VertArea] = tess_area(surfMat.Vertices, surfMat.Faces);
