@@ -124,20 +124,22 @@ function OutputFiles = Run(sProcess, sInputs)
     new_times{1}  = sOldTiming{1}.Time;
     mean_shifting = zeros(1, nInputs);
     for iInput = 2:nInputs
-        if size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2)
+        isSameNumberEvts = size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2);
+        % Same number of sync events
+        if isSameNumberEvts
             shifting = sEvtSync(iInput).times - sEvtSync(1).times;
             mean_shifting(iInput) = mean(shifting);
             offsetStd = std(shifting);
         end
-
-        if  size(sEvtSync(iInput).times, 2) ~= size(sEvtSync(1).times, 2) || offsetStd > 1
-
-            if size(sEvtSync(iInput).times, 2) ~= size(sEvtSync(1).times, 2)
-                bst_report('Warning', sProcess, sInputs, 'Files doesnt have the same number of sync events. Using approximation');
+        % Diff number of sync events OR shift std > 1s
+        if ~isSameNumberEvts || offsetStd > 1
+            if ~isSameNumberEvts
+                strWarning = 'Files doesnt have the same number of sync events.';
             else
-                bst_report('Warning', sProcess, sInputs, 'Large uncertainty on the synchronization. Using approximation instead');
+                strWarning = sprintf('Files have the same number of sync events, but large shift std (%.3f s)', offsetStd);
             end
-
+            strWarning = [strWarning, 10, 'Using cross-correlation approximation'];
+            bst_report('Warning', sProcess, sInputs, strWarning);
             % Cross-correlate trigger signals; need to be at the same sampling frequency
             tmp_fs      = max(fs(iInput), fs(1));
             tmp_time_a  = sOldTiming{iInput}.Time(1):1/tmp_fs:sOldTiming{iInput}.Time(end);
