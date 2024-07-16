@@ -526,17 +526,24 @@ function UpdateContactList(varargin)
         contacLocsMm = [sContacts.Loc]' * 1000;
         ctrl.jRadioScs.setSelected(1);
     end
-
-    % Update the list for display
-    for i = 1:length(sContacts)
-        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContacts(i).Name), contacLocsMm(i,:));
-        listModel.addElement(BstListItem('', [], itemText, i));
-        % Get longest string
-        W = tk.getFontMetrics(jFont).stringWidth(itemText);
-        if (W > Wmax)
-            Wmax = W;
+    % Udpate list content
+    if isempty(contacLocsMm)
+        % Requested coordinates system is not available
+        itemText = 'Not available';
+        listModel.addElement(BstListItem('', [], itemText, 1));
+        Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
+    else
+        for i = 1:length(sContacts)
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', sContacts(i).Name, contacLocsMm(i,:));
+            listModel.addElement(BstListItem('', [], itemText, i));
+            % Get longest string
+            W = tk.getFontMetrics(jFont).stringWidth(itemText);
+            if (W > Wmax)
+                Wmax = W;
+            end
         end
     end
+
     ctrl.jListCont.setModel(listModel);
     % Update cell rederer based on longest channel name
     ctrl.jListCont.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
