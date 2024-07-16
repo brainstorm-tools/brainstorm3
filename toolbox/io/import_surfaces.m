@@ -172,6 +172,9 @@ for iFile = 1:length(SurfaceFiles)
             if isfield(Tess, 'Faces')   % Volume meshes do not have Faces field
                 NewTess.Faces = Tess(1).Faces;
             end
+            if isfield(Tess, 'Color')   % Not all meshes have color
+                NewTess.Color = Tess(1).Color;
+            end
         % Volume FEM mesh
         else
             NewTess = Tess;
