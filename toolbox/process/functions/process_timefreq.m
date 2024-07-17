@@ -89,12 +89,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % Extract method name from the process name
     switch (func2str(sProcess.Function))
-        case 'process_timefreq',      strProcess = 'morlet';
-        case 'process_hilbert',       strProcess = 'hilbert';
-        case 'process_fft',           strProcess = 'fft';
-        case 'process_psd',           strProcess = 'psd';
-        case 'process_sprint',        strProcess = 'sprint';
-        case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
+        case 'process_timefreq',                      strProcess = 'morlet';
+        case 'process_hilbert',                       strProcess = 'hilbert';
+        case 'process_fft',                           strProcess = 'fft';
+        case ['process_psd', 'process_fft_features'], strProcess = 'psd';
+        case 'process_sprint',                        strProcess = 'sprint';
+        case 'process_ft_mtmconvol',                  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
     end
     % Get editable options (Edit... button)
