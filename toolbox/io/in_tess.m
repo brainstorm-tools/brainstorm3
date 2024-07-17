@@ -221,7 +221,7 @@ switch (FileFormat)
     
     case 'WFTOBJ'
         % Read the OBJ file for the surface mesh structure
-        TessMat = in_tess_wftobj(TessFile, 'meshed');
+        TessMat = in_tess_wftobj(TessFile);
         isConvertScs = 0;
 
     case 'MRI-MASK'

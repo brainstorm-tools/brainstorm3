@@ -1,11 +1,10 @@
-function TessMat = in_tess_wftobj(TessFile, FileType)
+function TessMat = in_tess_wftobj(TessFile)
 % IN_TESS_WFTOBJ: Load a WAVEFRONT OBJ mesh file.
 %
 % USAGE:  TessMat = in_tess_wftobj(TessFile, FileType);
 %
 % INPUT: 
 %     - TessFile   : full path to a tesselation file (*.obj)
-%     - FileType   : the type of file: { 'meshed', 'pointcloud', ...}
 %
 % OUTPUT:
 %     - TessMat:  Brainstorm tesselation structure with fields:
@@ -37,26 +36,16 @@ function TessMat = in_tess_wftobj(TessFile, FileType)
 
 %% ===== Parse inputs =====
 % Check inputs
-if (nargin < 2) || isempty(FileType)
-    FileType = 'meshed';
-end
 if (nargin < 1) 
     bst_error('Invalid call. Please specify the mesh file to be loaded.', 'Importing tesselation', 1);
 end
 
 %% ===== Set up import options and import the data =====
 % Specify range and delimiter
-if strcmpi(FileType,'meshed')
-    opts = delimitedTextImportOptions('NumVariables', 10);
-    opts.Delimiter = [" ", "/"];
-    opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
-    opts.VariableTypes = ["categorical", "double", "double", "double", "double", "double", "double", "double", "double", "double"]; 
-else
-    opts = delimitedTextImportOptions("NumVariables", 7);
-    opts.Delimiter = [" ", "//"];
-    opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6"];
-    opts.VariableTypes = ["categorical", "double", "double", "double", "double", "double", "double"];
-end
+opts = delimitedTextImportOptions('NumVariables', 10);
+opts.Delimiter = [" ", "/"];
+opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
+opts.VariableTypes = ["categorical", "double", "double", "double", "double", "double", "double", "double", "double", "double"]; 
 opts.DataLines = [1,Inf];
 
 % Specify file level properties
@@ -72,18 +61,13 @@ objtbl = readtable(TessFile, opts);
 obj = struct;
 obj.Vertices = objtbl{objtbl.type=="v",2:4};
 obj.VertexNormals = objtbl{objtbl.type=="vn",2:4};
-if strcmpi(FileType, 'meshed')
-    obj.Faces = objtbl{objtbl.type=="f",[2,5,8]};
-    obj.TextCoords = objtbl{objtbl.type=="vt",2:3};
-    obj.TextIndices = objtbl{objtbl.type=="f",[3,6,9]};
-else
-    obj.FaceVertexCData = objtbl{objtbl.type=="v",5:7};
-    obj.Faces = objtbl{objtbl.type=="f",[2,4,6]};
-end
+obj.Faces = objtbl{objtbl.type=="f",[2,5,8]};
+obj.TextCoords = objtbl{objtbl.type=="vt",2:3};
+obj.TextIndices = objtbl{objtbl.type=="f",[3,6,9]};
 
-%% ===== Refine triangle, mesh and generate color matrix =====
-pos = obj.Vertices;
-tri = obj.Faces;
+%% ===== Refine faces, mesh and generate color matrix =====
+vertices = obj.Vertices;
+faces = obj.Faces;
 texture = obj.TextCoords;
 textureIdx = obj.TextIndices;
 
@@ -100,22 +84,22 @@ else
 end
 
 % Check if the texture is defined per vertex, in which case the texture can be refined below
-if size(texture, 1)==size(pos, 1)
+if size(texture, 1)==size(vertices, 1)
     texture_per_vert = true;
 else
     texture_per_vert = false;
 end
 
-% Remove the triangles with 0's first
-allzeros = sum(tri==0,2)==3;
-tri(allzeros, :)        = [];
+% Remove the faces with 0's first
+allzeros = sum(faces==0,2)==3;
+faces(allzeros, :)        = [];
 textureIdx(allzeros, :) = [];
 
-% Check whether all vertices belong to a triangle. If not, prune the vertices and keep the faces consistent.
-utriIdx = unique(tri(:));
-remove  = setdiff((1:size(pos, 1))', utriIdx);
+% Check whether all vertices belong to a face. If not, prune the vertices and keep the faces consistent.
+ufacesIdx = unique(faces(:));
+remove  = setdiff((1:size(vertices, 1))', ufacesIdx);
 if ~isempty(remove)
-    [pos, tri] = tess_remove_vert(pos, tri, remove);
+    [vertices, faces] = tess_remove_vert(vertices, faces, remove);
     if texture_per_vert
         % Also remove the removed vertices from the texture
         texture(remove, :) = [];
@@ -126,10 +110,10 @@ if hasimage
     % If true then there is an image/texture with color information
     if texture_per_vert
         % Refines the mesh and textures to increase resolution of the colormapping
-        [pos, tri, texture] = refine(pos, tri, 'banks', texture);
+        [vertices, faces, texture] = refine(vertices, faces, 'banks', texture);
         picture = imread(image);
-        color   = zeros(size(pos, 1), 3);
-        for i = 1:size(pos, 1)
+        color   = zeros(size(vertices, 1), 3);
+        for i = 1:size(vertices, 1)
             color(i,1:3) = picture(floor((1-texture(i,2))*length(picture)),1+floor(texture(i,1)*length(picture)),1:3);
         end
     else
@@ -142,7 +126,7 @@ if hasimage
         if sz == 1
             picture = repmat(picture, 1, 3);
         end
-        [~, ix] = unique(tri);
+        [~, ix] = unique(faces);
         textureIdx = textureIdx(ix);
         
         % get the indices into the image
@@ -172,7 +156,7 @@ if hasimage
 end
 
 % Centering vertices
-pos = pos - repmat(mean(pos,1), [size(pos, 1),1]);
+vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 
 %% ===== Convert to Brainstorm structure =====
 % Define the structure
@@ -183,10 +167,10 @@ TessMat = struct( ...
     'Comment', 'revopoint head surface');
 
 % Convert face data
-TessMat.Faces = tri;
+TessMat.Faces = faces;
 
 % Convert vertices data
-TessMat.Vertices = pos ./ 1000;
+TessMat.Vertices = vertices ./ 1000;
 
 % Convert color data
 TessMat.Color = color;
