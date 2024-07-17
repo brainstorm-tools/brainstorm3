@@ -973,7 +973,7 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)   
-    global GlobalData TimeSliderMutex;
+    global GlobalData TimeSliderMutex Digitize;
     % Prevent multiple executions
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     set([hFig hAxes], 'BusyAction', 'cancel');
@@ -1094,7 +1094,13 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case 'a'
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
-                    end 
+                    end
+                % C : Collect point
+                case 'c'
+                    % for Revopoint
+                    if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, 'Revopoint')
+                	    panel_digitize('ManualCollect_Callback', hFig, keyEvent);
+                    end
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
