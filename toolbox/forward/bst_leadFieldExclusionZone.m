@@ -1,9 +1,9 @@
 function hmwExclusion = bst_leadFieldExclusionZone(HeadmodelFile, mod)
-% bst_leadFieldExclusionZone: Remove the LFs and sources within the ExclusionZone.
+% BST_LEADFIELDEXCLUSIONZONE: Remove the LFs and the sources within the ExclusionZone.
 %
 % USAGE:  hmwExclusion = bst_leadFieldExclusionZone(HeadmodelFiles, mod)
 % INPUTS:
-%    - HeadmodelFiles : Absolute or relative path to the surface file
+%    - HeadmodelFiles : Absolute path to the headmodel file
 %    - mod : Modality [EEG, sEEG, Ecog, MEG]
 
 % @=============================================================================
@@ -36,36 +36,35 @@ exclusionDistance = java_dialog('input', ['Define the exclusion zone around the 
     'Do not apply to surface grid: This approach is working only for volum sources.' 10 10 ...
     'Exclusion distance(mm):'], ...
     'Leadfield Exclusion Zone', [], num2str(0));
-if isempty(exclusionDistance)
-    return
-end
 % Read user input
 exclusionDistance = str2double(exclusionDistance);
-exclusionDistance = exclusionDistance/1000;
+% Conversion to mm
+exclusionDistance = exclusionDistance/1e3;
 if exclusionDistance == 0
     bst_error('You must define a value greater than zero.', 'Leadfield Exclusion Zone', 0);
     return;
 end
 
-% Start the process
+% Start the progress bar
 bst_progress('start', 'Leadfield Exclusion Zone', 'Loading Leadfield...');
 % Get study description
-iFile = 1;
-[sStudy, iStudy, ~] = bst_get('HeadModelFile', HeadmodelFile{iFile});
+[sStudy, iStudy, ~] = bst_get('HeadModelFile', HeadmodelFile{1});
 % Load lead field matrix
-HeadmodelMat{iFile} = in_bst_headmodel(HeadmodelFile{iFile});
+HeadmodelMat = in_bst_headmodel(HeadmodelFile{1});
 % Load channel file
 ChannelMat = in_bst_channel(sStudy.Channel.FileName, 'Channel');
-
-hmwExclusion = create_exclusion_zone(HeadmodelMat{iFile}, ChannelMat, exclusionDistance, mod);
+% Apply the exclusion zone
+hmwExclusion = create_exclusion_zone(HeadmodelMat, ChannelMat, exclusionDistance, mod);
 if isempty(hmwExclusion)
     bst_progress('stop');
     bst_error('There is nothing to remove within this zone.', 'Leadfield Exclusion Zone', 0);
     return;
 end
-
 hmwExclusion.Comment = char(hmwExclusion.Comment);
-db_add(iStudy, hmwExclusion)
+% Add history
+hmwExclusion = bst_history('add', hmwExclusion, 'apply exclusion zone', [num2str(1e3*exclusionDistance) 'mm']);
+% Add to database
+db_add(iStudy, hmwExclusion);
 % Close progress bar
 bst_progress('stop');
 end
@@ -89,9 +88,6 @@ all_bad_xyz = sort([3*all_bad;3*all_bad-1;3*all_bad-2]);
 leadstructwExclusion=head_model;
 leadstructwExclusion.GridLoc(all_bad,:)=[];
 leadstructwExclusion.Gain(:,all_bad_xyz)=[];
-% if ~isempty(leadstructwExclusion.GridOrient),
-%     leadstructwExclusion.GridOrient(all_bad,:)=[];
-% end
 leadstructwExclusion.Comment = char(head_model.Comment + " | exclusion zone "+ exclusion_radius_m*1e3+" mm");
 end
 
