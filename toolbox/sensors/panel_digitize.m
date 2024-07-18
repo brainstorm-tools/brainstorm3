@@ -1387,7 +1387,7 @@ function CreateMontageMenu(jMenu)
                 if isAddLoc 
                     fcnCallback = @(h,ev)channel_add_loc(1, fList(iFile).fullpath, 1, isMni);
                 else
-                    fcnCallback = @(h,ev)AddChannelMontage(fList(iFile).fullpath);
+                    fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
                 end
                 
                 % Find corresponding submenu
@@ -1427,53 +1427,6 @@ function CreateMontageMenu(jMenu)
                 jMenuDir.add(jMenuNs);
             end
         end
-    end
-end
-
-%% ===== ADD CHANNEL AS MONMTAGE =====
-function AddChannelMontage(ChannelFile)
-    % Load existing file
-    ChannelMat = in_bst_channel(ChannelFile);
-    DigitizeOptions = bst_get('DigitizeOptions');
-    DigitizeOptions.ChannelFile = ChannelFile;
-    bst_set('DigitizeOptions', DigitizeOptions);
-    
-    if ~isempty(ChannelMat)
-        % Intialize new montage
-        newMontage.Name = ChannelMat.Comment;
-        newMontage.Labels = {};
-        
-        % Get labels
-        [~,col] = size(ChannelMat.Channel);
-    
-        for i=1:col
-            newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
-        end
-        % If no labels were read: exit
-        if isempty(newMontage.Labels)
-            return
-        end
-    
-        % Get Digitize options
-        DigitizeOptions = bst_get('DigitizeOptions');
-        % Get existing montage with the same name
-        iMontage = find(strcmpi({DigitizeOptions.Montages.Name}, newMontage.Name));
-        % If not found: create new montage entry
-        if isempty(iMontage)
-            iMontage = length(DigitizeOptions.Montages) + 1;
-        else
-            iMontage = iMontage(1);
-            disp('DIGITIZER> Warning: Montage name already exists. Overwriting...');
-        end
-        % Add new montage to registered montages
-        DigitizeOptions.Montages(iMontage) = newMontage;
-        DigitizeOptions.iMontage = iMontage;
-        % Save options
-        bst_set('DigitizeOptions', DigitizeOptions);
-        % Reload Menu
-        CreateMontageMenu();
-        % Update List
-        UpdateList();
     end
 end
 
@@ -1527,46 +1480,70 @@ function [curMontage, nEEG] = GetCurrentMontage()
 end
 
 %% ===== ADD EEG MONTAGE =====
-function AddMontage()
-    % Get recently used folders
-    LastUsedDirs = bst_get('LastUsedDirs');
-    % Open file
-    MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
-                   {{'*.txt'}, 'Text files', 'TXT'}, 0);
-    if isempty(MontageFile)
-        return;
-    end
-    % Get filename
-    [MontageDir, MontageName] = bst_fileparts(MontageFile);
-    % Intialize new montage
-    newMontage.Name = MontageName;
-    newMontage.Labels = {};
+function AddMontage(ChannelFile)
+    if nargin<1
+        % Get recently used folders
+        LastUsedDirs = bst_get('LastUsedDirs');
+        % Open file
+        MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
+                       {{'*.txt'}, 'Text files', 'TXT'}, 0);
+        if isempty(MontageFile)
+            return;
+        end
+        % Get filename
+        [MontageDir, MontageName] = bst_fileparts(MontageFile);
+        % Intialize new montage
+        newMontage.Name = MontageName;
+        newMontage.Labels = {};
+        
+        % Open file
+        fid = fopen(MontageFile,'r');
+        if (fid == -1)
+            error('Cannot open file.');
+        end
+        % Read file
+        while (1)
+            tline = fgetl(fid);
+            if ~ischar(tline)
+                break;
+            end
+            spl = regexp(tline,'\s+','split');
+            if (length(spl) >= 2)
+                newMontage.Labels{end+1} = spl{2};
+            end
+        end
+        % Close file
+        fclose(fid);
+        % If no labels were read: exit
+        if isempty(newMontage.Labels)
+            return
+        end
+        % Save last dir
+        LastUsedDirs.ImportChannel = MontageDir;
+        bst_set('LastUsedDirs', LastUsedDirs);
+    else
+        % Load existing file
+        ChannelMat = in_bst_channel(ChannelFile);
+        DigitizeOptions = bst_get('DigitizeOptions');
+        DigitizeOptions.ChannelFile = ChannelFile;
+        bst_set('DigitizeOptions', DigitizeOptions);
+
+        % Intialize new montage
+        newMontage.Name = ChannelMat.Comment;
+        newMontage.Labels = {};
+        
+        % Get labels
+        [~,col] = size(ChannelMat.Channel);
     
-    % Open file
-    fid = fopen(MontageFile,'r');
-    if (fid == -1)
-        error('Cannot open file.');
-    end
-    % Read file
-    while (1)
-        tline = fgetl(fid);
-        if ~ischar(tline)
-            break;
+        for i=1:col
+            newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
         end
-        spl = regexp(tline,'\s+','split');
-        if (length(spl) >= 2)
-            newMontage.Labels{end+1} = spl{2};
+        % If no labels were read: exit
+        if isempty(newMontage.Labels)
+            return
         end
     end
-    % Close file
-    fclose(fid);
-    % If no labels were read: exit
-    if isempty(newMontage.Labels)
-        return
-    end
-    % Save last dir
-    LastUsedDirs.ImportChannel = MontageDir;
-    bst_set('LastUsedDirs', LastUsedDirs);
+    
     
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -1586,8 +1563,13 @@ function AddMontage()
     bst_set('DigitizeOptions', DigitizeOptions);
     % Reload Menu
     CreateMontageMenu();
-    % Restart acquisition
-    ResetDataCollection();
+    if nargin<1
+        % Restart acquisition
+        ResetDataCollection();
+    else
+        % Update List
+        UpdateList();
+    end
 end
 
 %% ===== UNLOAD ALL MONTAGES =====
