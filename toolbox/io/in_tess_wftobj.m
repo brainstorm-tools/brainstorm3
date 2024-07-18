@@ -40,7 +40,7 @@ if (nargin < 1)
     bst_error('Invalid call. Please specify the mesh file to be loaded.', 'Importing tesselation', 1);
 end
 
-%% ===== Set up import options and import the data =====
+%% ===== Parse the OBJ file: Set up import options and import the data =====
 % Specify range and delimiter
 opts = delimitedTextImportOptions('NumVariables', 10);
 opts.Delimiter = [" ", "/"];
