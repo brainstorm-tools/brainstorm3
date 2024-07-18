@@ -2088,12 +2088,19 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     vc_sq = 0*X;
     vc_sq(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
 
-    % uncomment for white caps (66 easycap)
-    % vc_sq = imcomplement(vc_sq);
+    [curMontage, nEEG] = GetCurrentMontage();
+    if ~isempty(regexp(curMontage.Name, 'Polhemus', 'match'))
+        vc_sq = imcomplement(vc_sq);
+    end
 
     % toggle comment depending on cap
-    % [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
-    [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
+    if ~isempty(regexp(curMontage.Name, 'Polhemus', 'match'))
+        [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
+    elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
+        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
+    else % NEED TO WORK ON THIS
+        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
+    end
 
     centers_cap = centers; 
     cap_img = vc_sq;
@@ -2115,46 +2122,64 @@ function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, c
         Y1 = [Y1 Y];
     end
     centerssketch = [X1' Y1'];
-
+    
+    [curMontage, nEEG] = GetCurrentMontage();
     % warping EEG cap layout electrodes to mesh 
-    %% This needs to be manually edited to match 4 corresponding points sketch and cap image 64/65 channel
-    % https://www.ant-neuro.com/sites/default/files/images/waveguard_layout_064ch.png 
-    % order for 64/65: Oz, T8, Fpz, T7
+    
+    %% order for 64/65: Oz, T8, Fpz, T7
+    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && ~isempty(regexp(curMontage.Name, '65', 'match'))
+        Fpz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:);
+        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
+        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
+        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
+        sketch_pts = [Oz;T8;Fpz;T7];
+    
+        for i=1:4
+            DeletePoint_Callback();
+        end
+    
+        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
+        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
+        [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
+        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
+        cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
 
-    Fpz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:);
-    T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
-    T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
-    Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
-    sketch_pts = [Oz;T8;Fpz;T7];
-
-    for i=1:4
-        DeletePoint_Callback();
+    %% order for 66: Oz, T8, GND, T7
+    elseif ~isempty(regexp(curMontage.Name, 'Polhemus', 'match')) && ~isempty(regexp(curMontage.Name, '66', 'match'))
+        GND = centerssketch(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:);
+        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
+        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
+        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
+        sketch_pts = [Oz;T8;GND;T7];
+    
+        for i=1:4
+            DeletePoint_Callback();
+        end
+    
+        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
+        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
+        [GNDx, GNDy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
+        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
+        cap_pts = ([Ozx,Ozy;T8x,T8y;GNDx,GNDy;T7x,T7y]+1)*256;
+    
+    %% any other cap (NEED TO WORK ON THIS)
+    else
+        Fpz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:);
+        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
+        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
+        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
+        sketch_pts = [Oz;T8;Fpz;T7];
+    
+        for i=1:4
+            DeletePoint_Callback();
+        end
+    
+        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
+        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
+        [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
+        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
+        cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
     end
-
-    [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-    [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-    [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-    [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-    cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
-
-    %% This needs to be manually edited to match 4 corresponding points sketch and cap image 66 channel Easycap
-    % order for 66: Oz, T8, GND, T7
-
-    % GND = centerssketch(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:);
-    % T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
-    % T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
-    % Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
-    % sketch_pts = [Oz;T8;GND;T7];
-    % 
-    % for i=1:4
-    %     DeletePoint_Callback();
-    % end
-    % 
-    % [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-    % [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-    % [GNDx, GNDy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-    % [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-    % cap_pts = ([Ozx,Ozy;T8x,T8y;GNDx,GNDy;T7x,T7y]+1)*256;
     
     %% Do the warping and interpolation
     [warp,L,LnInv,bendE] = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
