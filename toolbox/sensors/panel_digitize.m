@@ -1199,7 +1199,7 @@ function CreateHeadpointsFigure()
         % Hide head surface
         panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
         % Get Digitizer JFrame
-        bstContainer = get(bst_get('Panel','Digitize'), 'container');
+        bstContainer = get(bst_get('Panel',Digitize.Type), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
         [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
@@ -1801,6 +1801,8 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                     pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
                 end
             end
+            Digitize.hFig = hFig;
+            Digitize.iDS = iDS;
         else
             switch (Digitize.Mode)
                 case 1,     pointCoord = [.08 0 -.01];
@@ -1812,8 +1814,6 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                 otherwise,  pointCoord = rand(1,3) * .15 - .075;
             end
         end
-        Digitize.hFig = hFig;
-        Digitize.iDS = iDS;
     % Else: Get digitized point coordinates
     else
         vals = zeros(1,6);
