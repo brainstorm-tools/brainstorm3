@@ -172,5 +172,7 @@ TessMat.Faces = faces;
 % Convert vertices data
 TessMat.Vertices = vertices ./ 1000;
 
-% Convert color data
-TessMat.Color = color;
+if hasimage
+    % Convert color data
+    TessMat.Color = color;
+end
