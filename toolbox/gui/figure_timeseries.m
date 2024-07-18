@@ -3250,6 +3250,10 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if (TsInfo.ShowLegend)
         if isempty(LinesColor)
             ColorOrder = panel_scout('GetScoutsColorTable');
+            if ~isempty(strfind(TsInfo.DisplayUnits,'mol'))
+                ColorOrder([1,3,2],:) = ColorOrder([2,1,3],: );
+
+            end
         else
             ColorOrder = [];
         end
