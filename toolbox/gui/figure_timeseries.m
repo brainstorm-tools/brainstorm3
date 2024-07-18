@@ -3256,16 +3256,12 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
             iHbT = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbT')));
             
             if ~isempty(iHbO) ||  ~isempty(iHbR) || ~isempty(iHbT)
+
                 ColorOrderNew = ColorOrder;
-                if ~isempty(iHbO) 
-                    ColorOrderNew(iHbO,:) = ColorOrder(2, :);
-                end
-                if ~isempty(iHbR)
-                    ColorOrderNew(iHbR,:) = ColorOrder(3, :);
-                end
-                if ~isempty(iHbT)
-                    ColorOrderNew(iHbT,:) = ColorOrder(1, :);
-                end
+                ColorOrderNew(iHbO,:) = repmat( ColorOrder(2, :), length(iHbO),1);
+                ColorOrderNew(iHbR,:) = repmat(ColorOrder(3, :), length(iHbR),1);
+                ColorOrderNew(iHbT,:) = repmat( ColorOrder(1, :), length(iHbT),1);
+
                 ColorOrder = ColorOrderNew;
             end
 
