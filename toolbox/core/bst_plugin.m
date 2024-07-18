@@ -117,8 +117,12 @@ end
 %% ===== GET SUPPORTED PLUGINS =====
 % USAGE:  PlugDesc = bst_plugin('GetSupported')                      % List all the plugins supported by Brainstorm
 %         PlugDesc = bst_plugin('GetSupported', PlugName/PlugDesc)   % Get only one specific supported plugin
-function PlugDesc = GetSupported(SelPlug)
+%         PlugDesc = bst_plugin('GetSupported', ..., UserDefVerbose) % Print info on user-defined plugins
+function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     % Parse inputs
+    if (nargin < 2) || isempty(UserDefVerbose)
+        UserDefVerbose = 0;
+    end
     if (nargin < 1) || isempty(SelPlug)
         SelPlug = [];
     end
@@ -223,7 +227,7 @@ function PlugDesc = GetSupported(SelPlug)
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'mac64arm'
             PlugDesc(end).Version  = '2.5.8';
-            PlugDesc(end).URLzip   = 'https://github.com/openmeeg/openmeeg/releases/download/macOS_M1.tar.gz';
+            PlugDesc(end).URLzip   = ['https://github.com/openmeeg/openmeeg/releases/download/', PlugDesc(end).Version, '/OpenMEEG-', PlugDesc(end).Version, '-', 'macOS_M1.tar.gz'];
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
@@ -654,10 +658,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
 
     % === USER DEFINED PLUGINS ===
-    plugJsonFiles = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    plugJsonFiles    = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    badJsonFiles     = {};
+    plugUserDefNames = {};
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
-        PlugUserDesc = bst_jsondecode(plugJsonText);
+        try
+            PlugUserDesc = bst_jsondecode(plugJsonText);
+        catch
+            badJsonFiles{end+1} = plugJsonFiles(ix).name;
+            continue
+        end
         % Reshape fields "ExtraMenus"
         if isfield(PlugUserDesc, 'ExtraMenus') && ~isempty(PlugUserDesc.ExtraMenus) && iscell(PlugUserDesc.ExtraMenus{1})
             PlugUserDesc.ExtraMenus = cat(2, PlugUserDesc.ExtraMenus{:})';
@@ -666,7 +677,20 @@ function PlugDesc = GetSupported(SelPlug)
         if isfield(PlugUserDesc, 'RequiredPlugs') && ~isempty(PlugUserDesc.RequiredPlugs) && iscell(PlugUserDesc.RequiredPlugs{1})
             PlugUserDesc.RequiredPlugs = cat(2, PlugUserDesc.RequiredPlugs{:})';
         end
-        PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+        % Check for uniqueness for user-defined plugin
+        if ~ismember(PlugUserDesc.Name, {PlugDesc.Name})
+            plugUserDefNames{end+1} = PlugUserDesc.Name;
+            PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+        end
+    end
+    % Print info on user-defined plugins
+    if UserDefVerbose
+        if ~isempty(plugUserDefNames)
+            fprintf(['BST> User-defined plugins... ' strjoin(plugUserDefNames, ' ') '\n']);
+        end
+        for iBad = 1 : length(badJsonFiles)
+            fprintf(['BST> User-defined plugins, error reading .json file... ' badJsonFiles{iBad} '\n']);
+        end
     end
 
     % ================================================================================================================
@@ -763,7 +787,7 @@ function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
                                          ['<HTML>URL for information<BR>' ...
                                           '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users</FONT></I>']}, ...
                                        'User defined plugin', [], {'', '', '', ''});
-            if isempty(res)
+            if isempty(res) || any(cellfun(@isempty,res))
                 return
             end
             PlugDesc.Name    = lower(res{1});

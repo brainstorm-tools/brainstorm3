@@ -85,6 +85,7 @@ function bst_set( varargin )
 %    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
 %    - bst_set('KlustersExecutable',    ExecutablePath)
 %    - bst_set('ExportBidsOptions'),    ExportBidsOptions)
+%    - bst_set('Pipelines')             Saved Pipelines stored
 %
 % SEE ALSO bst_get
 
@@ -134,6 +135,8 @@ switch contextName
         GlobalData.DataBase.BrainstormDbDir = contextValue;
     case 'BrainstormTmpDir'
         GlobalData.Preferences.BrainstormTmpDir = contextValue;
+    case 'Pipelines'
+        GlobalData.Processes.Pipelines = contextValue;
 
 %% ==== PROTOCOL ====
     case 'iProtocol'

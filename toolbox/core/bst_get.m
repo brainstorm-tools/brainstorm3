@@ -203,6 +203,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
+%    - bst_get('Pipelines')               : Saved Pipelines stored
 %
 % SEE ALSO bst_set
 
@@ -500,6 +501,9 @@ switch contextName
         
     case 'BrainstormDbFile'
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'brainstorm.mat');
+
+    case 'Pipelines'
+        argout1 = GlobalData.Processes.Pipelines;
 
 %% ==== PROTOCOL ====
     case 'iProtocol'

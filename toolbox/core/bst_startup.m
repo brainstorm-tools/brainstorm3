@@ -435,6 +435,11 @@ if (GuiLevel >= 0)
 end
 
 
+%% ===== USER-DEFINED PLUGINS =====
+% Print information about user-defined plugins
+bst_plugin('GetSupported', [], 1);
+
+
 %% ===== LOAD PLUGINS =====
 % Get installed plugins
 [InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
