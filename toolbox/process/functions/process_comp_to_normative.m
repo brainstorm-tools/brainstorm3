@@ -281,6 +281,7 @@ function sRefMap = ComputeRefMap(norm_values, opt, sProcess, sRefMapTemplate)
         % Assuming that the residuals are normally distributed
         % We can test the normality of the residuals using the Shapiro-Wilk test
         % Results are displayed in the report
+        nFreqs = length(sRefMapTemplate.refFreqs);
         res_shapiro = zeros(sRefMap.nSources, nFreqs);
         p_shapiro = zeros(sRefMap.nSources, nFreqs);
         % Compute the Shapiro-Wilk test for normality
