@@ -320,7 +320,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonExtraStart.setPreferredSize(newButtonSize);
         jButtonExtraStart.setFocusable(0);
         % Separator
-        gui_component('label', jPanelExtra, 'hfill', '');
+        jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
+        jButtonRandomHeadPts.setPreferredSize(newButtonSize);
         % Number
         jTextFieldExtra = gui_component('text',jPanelExtra, [], '1',[], 'Head shape point to be digitized', @ExtraChangePoint_Callback, largeFontSize);
         jTextFieldExtra.setPreferredSize(newButtonSize)
@@ -370,6 +371,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                   'jButtonEEGAutoDetectElectrodes', jButtonEEGAutoDetectElectrodes, ...
                   'jTextFieldEEG',                  jTextFieldEEG, ...
                   'jButtonExtraStart',              jButtonExtraStart, ...
+                  'jButtonRandomHeadPts',           jButtonRandomHeadPts, ...
                   'jTextFieldExtra',                jTextFieldExtra, ...
                   'jButtonDeletePoint',             jButtonDeletePoint);
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
@@ -652,6 +654,7 @@ function SwitchToNewMode(mode)
             ctrl.jButtonEEGStart.setEnabled(0);
             ctrl.jTextFieldEEG.setEnabled(0);
             ctrl.jButtonExtraStart.setEnabled(0);
+            ctrl.jButtonRandomHeadPts.setEnabled(0);
             ctrl.jTextFieldExtra.setEnabled(0);
 
             
@@ -711,6 +714,7 @@ function SwitchToNewMode(mode)
                 ctrl.jButtonExtraStart.setEnabled(1);
                 if strcmpi(Digitize.Type, 'Revopoint')
                     ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+                    ctrl.jButtonRandomHeadPts.setEnabled(0);
                 end
                 ctrl.jTextFieldExtra.setEnabled(1);
                 SetSelectedButton(8);
@@ -721,6 +725,7 @@ function SwitchToNewMode(mode)
             ctrl.jButtonExtraStart.setEnabled(1);
             if strcmpi(Digitize.Type, 'Revopoint')
                 ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
+                ctrl.jButtonRandomHeadPts.setEnabled(1);
             end
             ctrl.jTextFieldExtra.setEnabled(1);
             SetSelectedButton(8);
@@ -943,6 +948,38 @@ function ManualCollect_Callback(h, ev)
         fprintf(Digitize.SerialConnection,'%s','P');
         pause(0.2);
     end
+end
+
+%% ===== COLLECT RANDOM HEADPOINTS =====
+function CollectRandomHeadPts_Callback(h, ev)
+    global Digitize;
+    
+    % Get controls
+    ctrl = bst_get('PanelControls', Digitize.Type);
+
+    hFig = bst_figures('GetCurrentFigure','3D');
+    [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
+    TessMat.Vertices = double(TessInfo.hPatch.Vertices);
+    TessMat.Faces = double(TessInfo.hPatch.Faces);
+    TessMat.Color = TessInfo.hPatch.FaceVertexCData;
+    dsFactor = 100 / size(TessMat.Vertices, 1); 
+    % Reduce number of vertices
+    [NewTessMat.Faces, NewTessMat.Vertices] = reducepatch(TessMat.Faces, TessMat.Vertices, dsFactor);
+    
+    for i= 1:100
+        % pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
+        pointCoord = NewTessMat.Vertices(i, :);
+        % find the index for the current point in the headshape points
+        iPoint = str2double(ctrl.jTextFieldExtra.getText());
+        % Transformed points_pen from original points_pen
+        Digitize.Points.headshape(iPoint,:) = pointCoord;
+        % add the point to the display (in cm)
+        PlotCoordinate(Digitize.Points.headshape(iPoint,:), 'EXTRA', 'EXTRA', iPoint)
+        % update text field counter to the next point in the list
+        nextPoint = iPoint+1;
+        ctrl.jTextFieldExtra.setText(java.lang.String.valueOf(int16(nextPoint)));
+    end
+    UpdateList();
 end
 
 %% ===== DELETE POINT CALLBACK =====
