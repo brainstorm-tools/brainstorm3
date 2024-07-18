@@ -108,9 +108,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Process options
     if (sProcess.options.mean.Value && sProcess.options.std.Value) || sProcess.options.varcoef.Value
         sProcess.options.win_std.Value = 'mean+std';
-    elif sProcess.options.mean.Value
+    elseif sProcess.options.mean.Value
         sProcess.options.win_std.Value = 'mean';
-    elif sProcess.options.std.Value
+    elseif sProcess.options.std.Value
         sProcess.options.win_std.Value = 'std';
     else
         bst_report('Error', sProcess, [], 'Must choose at least one feature.'); return;
@@ -137,8 +137,11 @@ function OutputFiles = ExtractStdVarcoef(sProcess, MeanStdFiles, sStudy, iStudy)
     extractStd     = sProcess.options.std.Value;
     extractVarcoef = sProcess.options.varcoef.Value;
 
-    inputFile = MeanStdFiles(1);
-    inputMat = in_bst_timefreq(inputFile.FileName);
+    inputFileFullName = MeanStdFiles{1};
+    %inputFile = MeanStdFiles(1);
+    %inputFileName = inputFile.FileName;
+    %disp(inputFile.FileName);
+    inputMat = in_bst_timefreq(inputFileFullName);
 
     if isempty(inputMat.Std)
         bst_report('Error', sProcess, [], 'Input file must contain Std matrix.');  
@@ -148,13 +151,13 @@ function OutputFiles = ExtractStdVarcoef(sProcess, MeanStdFiles, sStudy, iStudy)
     if extractStd
         % Copy Std matrix of input file into TF field of stdFile
         newTF = inputMat.Std;
-        OutputFiles = saveMat(inputMat, inputFile, newTF, 'std', sStudy, iStudy, OutputFiles);
+        OutputFiles = saveMat(inputMat, inputFileFullName, newTF, 'std', sStudy, iStudy, OutputFiles);
     end
 
     if extractVarcoef
         % Varcoef = std ./ mean
         newTF = inputMat.Std ./ inputMat.TF;
-        OutputFiles = saveMat(inputMat, inputFile, newTF, 'varcoef', sStudy, iStudy, OutputFiles);
+        OutputFiles = saveMat(inputMat, inputFileFullName, newTF, 'varcoef', sStudy, iStudy, OutputFiles);
     end
 
     if extractMean
@@ -167,8 +170,8 @@ function OutputFiles = ExtractStdVarcoef(sProcess, MeanStdFiles, sStudy, iStudy)
         newMat.Comment = replace(inputMat.Comment, 'mean+std', 'mean');
         % Add extraction in history
         newMat.History = inputMat.History;
-        newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('mean matrix extracted from %s', inputFile.FileName));
-        fileName = file_fullpath(inputFile.FileName);
+        newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('mean matrix extracted from %s', inputFileFullName));
+        fileName = file_fullpath(inputFileFullName);
         bst_save(fileName, newMat, [], 1);
         OutputFiles{end+1} = fileName;
 
@@ -180,7 +183,7 @@ function OutputFiles = ExtractStdVarcoef(sProcess, MeanStdFiles, sStudy, iStudy)
     db_reload_studies(iStudy);
 end
 
-function OutputFiles = saveMat(inputMat, inputFile, newTF, function_name, sStudy, iStudy, OutputFiles)
+function OutputFiles = saveMat(inputMat, inputFileFullName, newTF, function_name, sStudy, iStudy, OutputFiles)
     newMat = inputMat;
     newMat.TF = newTF;
     newMat.Std = [];
@@ -189,8 +192,8 @@ function OutputFiles = saveMat(inputMat, inputFile, newTF, function_name, sStudy
     % Update Comment, replace mean+std with function name
     newMat.Comment = replace(inputMat.Comment, 'mean+std', function_name);
     % Add extraction in history
-    newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('%s matrix extracted from %s', function_name, inputFile.FileName));
-    [~, inputFilename] = bst_fileparts(inputFile.FileName);
+    newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('%s matrix extracted from %s', function_name, inputFileFullName));
+    [~, inputFilename] = bst_fileparts(inputFileFullName);
     output = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [inputFilename, function_name]);
     % Save the file
     bst_save(output, newMat, 'v6');

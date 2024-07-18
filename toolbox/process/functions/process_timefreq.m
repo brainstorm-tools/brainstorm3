@@ -92,7 +92,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 'process_timefreq',                      strProcess = 'morlet';
         case 'process_hilbert',                       strProcess = 'hilbert';
         case 'process_fft',                           strProcess = 'fft';
-        case ['process_psd', 'process_fft_features'], strProcess = 'psd';
+        case 'process_psd',                           strProcess = 'psd';
+        case 'process_fft_features',                  strProcess = 'fftfeatures';
         case 'process_sprint',                        strProcess = 'sprint';
         case 'process_ft_mtmconvol',                  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
@@ -158,16 +159,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     elseif ~isfield(tfOPTIONS, 'TimeWindow')
         tfOPTIONS.TimeWindow = [];
     end
-    % If a window length was specified (PSD)
+    % If a window length was specified (PSD, FFT_FEATURES)
     if isfield(sProcess.options, 'win_length') && ~isempty(sProcess.options.win_length) && ~isempty(sProcess.options.win_length.Value) && iscell(sProcess.options.win_length.Value)
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
-    % If units specified (PSD)
+    % If units specified (PSD, FFT_FEATURES)
     if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
         tfOPTIONS.PowerUnits = sProcess.options.units.Value;
     end
-     % Compute relative power (PSD)
+     % Compute relative power (FFT_FEATURES)
     if isfield(sProcess.options, 'relative') && ~isempty(sProcess.options.relative) && ~isempty(sProcess.options.relative.Value)
         tfOPTIONS.IsRelative = sProcess.options.relative.Value;
         if tfOPTIONS.IsRelative
@@ -175,7 +176,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             tfOPTIONS.Comment = [tfOPTIONS.Comment, ' relative'];
         end
     end
-    % Aggregating function across windows (PSD)
+    % Aggregating function across windows (FFT_FEATURES)
     if isfield(sProcess.options, 'win_std') && isfield(sProcess.options.win_std, 'Value') && ~isempty(sProcess.options.win_std.Value)
         switch lower(sProcess.options.win_std.Value)
             case {0, 'mean'},     tfOPTIONS.WinFunc = 'mean';

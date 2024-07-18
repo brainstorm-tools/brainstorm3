@@ -72,14 +72,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'MEG, EEG';
     sProcess.options.sensortypes.InputTypes = {'raw','data'};
-    % Options: Function to aggregate values across windows
-    sProcess.options.win_std.Comment = {'mean (regular PSD)', 'std', 'mean+std', 'Function to aggregate power across windows:'; 'mean', 'std', 'mean+std', ''};
-    sProcess.options.win_std.Type    = 'radio_linelabel';
-    sProcess.options.win_std.Value   = 'mean';
-    % Options: Compute relative power
-    sProcess.options.relative.Comment = 'Use relative power';
-    sProcess.options.relative.Type    = 'checkbox';
-    sProcess.options.relative.Value   = 0;
     % Separator
     sProcess.options.sep.Type     = 'label';
     sProcess.options.sep.Comment  = '  ';

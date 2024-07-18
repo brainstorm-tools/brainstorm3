@@ -83,6 +83,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         Method = sProcess.options.tfmeasure.Value;
     else % hilbert, psd, timefreq
         Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+        if strcmpi(Method,'fft_features')
+            Method = 'psd';
+        end
     end
     
     hFigWavelet = [];

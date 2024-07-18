@@ -149,12 +149,13 @@ end
         
 % Progress bar
 switch(OPTIONS.Method)
-    case 'morlet',    strMap = 'time-frequency maps';
-    case 'fft',       strMap = 'FFT values';
-    case 'psd',       strMap = 'PSD values';
-    case 'sprint',    strMap = 'SPRiNT maps';
-    case 'hilbert',   strMap = 'Hilbert maps';
-    case 'mtmconvol', strMap = 'multitaper maps';
+    case 'morlet',      strMap = 'time-frequency maps';
+    case 'fft',         strMap = 'FFT values';
+    case 'psd',         strMap = 'PSD values';
+    case 'fftfeatures', strMap = 'FFT features';
+    case 'sprint',      strMap = 'SPRiNT maps';
+    case 'hilbert',     strMap = 'Hilbert maps';
+    case 'mtmconvol',   strMap = 'multitaper maps';
 end
 
 
@@ -461,8 +462,8 @@ for iData = 1:length(Data)
                 nComponents = OPTIONS.nComponents(iData);
             end
             
-            % PSD: we don't want the bad segments
-            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd') && ~isempty(sStudy.Result(iFile).DataFile)
+            % PSD, FFT_FEATURES: we don't want the bad segments
+            if ~isempty(iStudy) && (strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'fft_features')) && ~isempty(sStudy.Result(iFile).DataFile)
                 % Load associated data file
                 sMat = in_bst_data(sStudy.Result(iFile).DataFile);
                 % Raw file
@@ -532,8 +533,8 @@ for iData = 1:length(Data)
             % Measure is already applied (power)
             isMeasureApplied = 1;
             
-        % PSD: Homemade computation based on Matlab's FFT
-        case 'psd'
+        % PSD, FFT_FEATURES: Homemade computation based on Matlab's FFT
+        case {'psd', 'fftfeatures'}
             % Calculate PSD/FFT
             [TF, OPTIONS.Freqs, Nwin, Messages, TFbis] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinFunc, OPTIONS.PowerUnits, OPTIONS.IsRelative);
             if isempty(TF)
@@ -555,7 +556,7 @@ for iData = 1:length(Data)
             OPTIONS.Comment = sprintf('PSD: %d/%dms %s', Nwin, round(OPTIONS.WinLength.*1000), OPTIONS.Comment);
             % Measure is already applied (power)
             isMeasureApplied = 1;
-            % If second TF, post process it
+            % For FFT features, if second TF is returned, apply the same process
             if ~isempty(TFbis)
                 % Set to zero the bad channels
                 TFbis = SetBadChannels(TFbis,iGoodChannels);
@@ -872,14 +873,6 @@ end
         if isequal(OPTIONS.Method,'sprint')
             FileMat.Options.SPRiNT      = OPTIONS.SPRiNT;
         end
-        % Add PSD options
-        if strcmpi(OPTIONS.Method, 'psd')
-            FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
-            FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
-            if strcmpi(OPTIONS.WinFunc, 'mean+std')
-                FileMat.Std = OPTIONS.TFbis;
-            end
-        end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
         if ~isempty(strHistory)
@@ -890,7 +883,7 @@ end
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
             if strcmpi(OPTIONS.Method, 'hilbert') && ~isempty(OPTIONS.TimeBands)
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
-            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') 
+            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'fftfeatures') 
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
             elseif strcmpi(OPTIONS.Method, 'mtmconvol') && ~isempty(OPTIONS.TimeBands)
                 FileMat.TimeBands = OPTIONS.TimeBands;
@@ -902,6 +895,22 @@ end
                     error('Unknow error while processing time or frequency bands.');
                 end
             end
+        end
+
+        % Add FFT features options
+        if strcmpi(OPTIONS.Method, 'fftfeatures')
+            FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
+            FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
+            % Apply time and frequency bands on TFbis
+            if (~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)) && ~isempty(TFbis)
+                FileMat2 = FileMat;
+                FileMat2.TF = OPTIONS.TFbis;
+                FileMat2.Freqs = OPTIONS.Freqs;
+                [FileMat2, Messages] = process_tf_bands('Compute', FileMat2, FreqBands, OPTIONS.TimeBands);
+                OPTIONS.TFbis = FileMat2.TF;
+                clear FileMat2;
+            end
+            FileMat.Std = OPTIONS.TFbis;
         end
         
         % Save the file
