@@ -3250,10 +3250,25 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if (TsInfo.ShowLegend)
         if isempty(LinesColor)
             ColorOrder = panel_scout('GetScoutsColorTable');
-            if ~isempty(strfind(TsInfo.DisplayUnits,'mol'))
-                ColorOrder([1,3,2],:) = ColorOrder([2,1,3],: );
 
+            iHbO = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbO')));
+            iHbR = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbR')));
+            iHbT = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbT')));
+            
+            if ~isempty(iHbO) ||  ~isempty(iHbR) || ~isempty(iHbT)
+                ColorOrderNew = ColorOrder;
+                if ~isempty(iHbO) 
+                    ColorOrderNew(iHbO,:) = ColorOrder(2, :);
+                end
+                if ~isempty(iHbR)
+                    ColorOrderNew(iHbR,:) = ColorOrder(3, :);
+                end
+                if ~isempty(iHbT)
+                    ColorOrderNew(iHbT,:) = ColorOrder(1, :);
+                end
+                ColorOrder = ColorOrderNew;
             end
+
         else
             ColorOrder = [];
         end
