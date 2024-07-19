@@ -2089,12 +2089,12 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     vc_sq(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
 
     [curMontage, nEEG] = GetCurrentMontage();
-    if ~isempty(regexp(curMontage.Name, 'Polhemus', 'match'))
+    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
         vc_sq = imcomplement(vc_sq);
     end
 
     % toggle comment depending on cap
-    if ~isempty(regexp(curMontage.Name, 'Polhemus', 'match'))
+    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
         [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
     elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
         [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
@@ -2145,7 +2145,7 @@ function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, c
         cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
 
     %% order for 66: Oz, T8, GND, T7
-    elseif ~isempty(regexp(curMontage.Name, 'Polhemus', 'match')) && ~isempty(regexp(curMontage.Name, '66', 'match'))
+    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && ~isempty(regexp(curMontage.Name, '66', 'match'))
         GND = centerssketch(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:);
         T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
         T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
