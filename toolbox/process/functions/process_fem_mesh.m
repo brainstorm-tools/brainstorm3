@@ -1138,6 +1138,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 elem = [zef.tetra zef.domain_labels];
                 TissueLabels = zef.name_tags(1:end-1);
             else % use advanced Zeffiro Interface
+                bst_progress('text', 'Opening Zeffiro Advanced Panel...');
+                pause(2); % some time to display the progress bar. 
                 % Advanced option ==> that will be used from Zef side
                 % Zef team is developing this interface within the Zef repo
                 % Get the Zef folder path for brainstorm utilities
@@ -1145,7 +1147,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 utilities.brainstorm2zef.m.zef_bst_plugin_start(zefPath)
                 % Sampsa team : export back the output to brainstorm db
                 % import the data from the Zef outputs and ad to bst database
-
+                % add some information to the History field from the Zef codes
+                
                 % Return success
                 isOk = 1;
                 return
@@ -1503,14 +1506,29 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             if strcmpi(res, 'Zeffiro Advanced Options')
                 OPTIONS.zefAdvancedInterface = 1;
             else % use 'Brainstorm Basic Options'
+                OPTIONS.zefAdvancedInterface = 0;
+
                 [res, isCancel]  = java_dialog('input', {'Mesh Resolution [edge length mm]:', 'Use GPU ? [0: no,  1: yes]:'}, ...
                     'Zeffiro FEM mesh', [], {num2str(OPTIONS.zefMeshResolution), num2str(OPTIONS.zefUseGPU)});
                 if isCancel || isempty(str2double(res))
                     return
                 end
+
                 % Get new values
                 OPTIONS.zefMeshResolution = str2num(res{1});
-                OPTIONS.zefUseGPU = str2num(res{2});       
+                OPTIONS.zefUseGPU = str2num(res{2});   
+                
+                % Check the values
+                if isempty(OPTIONS.zefMeshResolution) || (OPTIONS.zefMeshResolution < 0.5) || (OPTIONS.zefMeshResolution > 4.5)
+                    errMsg = ['Invalid Mesh resolution value.' 10 'Please use value from this interval [1 - 4.5] mm.'];
+                    java_dialog('msgbox', ['Warning: ' errMsg]);
+                    return;
+                end
+                if isempty(OPTIONS.zefUseGPU) || (OPTIONS.zefUseGPU < 0) || (OPTIONS.zefUseGPU > 1)
+                    errMsg = ['Invalid value fro UseGPU parameter.' 10 'Please use value 1 for yes or 0 for no.'];
+                    java_dialog('msgbox', ['Error: ' errMsg]);
+                    return;
+                end    
             end
             OPTIONS.MeshType =  'tetrahedral';
     end
