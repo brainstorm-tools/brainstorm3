@@ -115,11 +115,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Zeffiro options: Mesh resolution [Add more Zef option TODO by Zef team]
     sProcess.options.zefMeshResolution.Comment = 'Mesh resolution (edge mm): ';
     sProcess.options.zefMeshResolution.Type    = 'value';
-    sProcess.options.zefMeshResolution.Value   = {OPTIONS.zefMeshResolution, '', 4};
-     % Zeffiro options:Use GPU
+    sProcess.options.zefMeshResolution.Value   = {OPTIONS.zefMeshResolution, '', 3};
+    % Zeffiro options:Use GPU
     sProcess.options.zefUseGPU.Comment = 'Use GPU for Zeffiro mesh generation';
     sProcess.options.zefUseGPU.Type    = 'value';
     sProcess.options.zefUseGPU.Value   = {OPTIONS.zefUseGPU, '', 0};
+    % Zeffiro options:Use GPU
+    sProcess.options.zefAdvancedInterface.Comment = 'Use Zeffiro advanced interface';
+    sProcess.options.zefAdvancedInterface.Type    = 'value';
+    sProcess.options.zefAdvancedInterface.Value   = {OPTIONS.zefAdvancedInterface, '', 0};
+    
 end
 
 
@@ -210,10 +215,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Zeffiro: Use the GPU -Edge Length-
     OPTIONS.zefUseGPU = sProcess.options.zefUseGPU.Value{1};
-    if isempty(OPTIONS.zefUseGPU) || (OPTIONS.zefMeshResolution < 0) || (OPTIONS.zefMeshResolution > 1)
+    if isempty(OPTIONS.zefUseGPU) || (OPTIONS.zefUseGPU < 0) || (OPTIONS.zefUseGPU > 1)
         bst_report('Error', sProcess, [], 'Invalid value, please use 0 or 1.');
         return
     end
+    % Zeffiro: Use the zef Advanced Interface
+    OPTIONS.zefAdvancedInterface = sProcess.options.zefAdvancedInterface.Value{1};
+    if isempty(OPTIONS.zefAdvancedInterface) || (OPTIONS.zefAdvancedInterface < 0) || (OPTIONS.zefAdvancedInterface > 1)
+        bst_report('Error', sProcess, [], 'Invalid value, please use 0 or 1.');
+        return
+    end
+    
     % Call processing function
     [isOk, errMsg] = Compute(iSubject, [], 0, OPTIONS);
     % Handling errors
@@ -243,6 +255,7 @@ function OPTIONS = GetDefaultOptions()
         'Downsample',     3, ...               % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
         'zefMeshResolution' ,     3, ...       % zefMeshResolution: size of the element edge im mm
         'zefUseGPU',   0, ...                  % zefUseGPU: Use the GPU for the mesh generation (1), or not (0)
+        'zefAdvancedInterface' ,     0, ...    % zefAdvancedInterface: boolean, if set 1, it open the BST-Zef interface
         'Zneck',          -115);               % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
 end
 
@@ -968,9 +981,17 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             node = no; % need to updates the new list         
      
         case 'zeffiro'
-            % Note:
+            % Notes:
             % This case follows mainly the same steps as Iso2mesh cases,
             % with adaptation of the data with Zef Interface
+            % Some advantage compare to the other methods:
+            % - Source code in matlab, and no external binary dependencies
+            % - Ability to use the GPU and Parallel toolboxes
+            % - Can support intersected meshes and avoid errors observed
+            % with other methods [example: defaced head + inner +...]
+            % - Check the https://github.com/sampsapursiainen/zeffiro_interface/wiki
+            % - Possible issues: very rare instabilities due to unknow issues
+            %                  : when using low resolution >4.5mm hole in the meshes 
 
             % Install/load iso2mesh plugin
             [isInstalled, errInstall] = bst_plugin('Install', 'zeffiro', isInteractive);
@@ -980,11 +1001,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             % Get the Zeffiro folder
             PlugDesc = bst_plugin('GetInstalled', 'zeffiro');
+            bst_plugin('SetProgressLogo', 'zeffiro');
             % Use the BST Zef Interface or the advanced Zef Interface
             if OPTIONS.zefAdvancedInterface == 0
-                bst_plugin('SetProgressLogo', 'zeffiro');
                 % If surfaces are not passed in input: get default surfaces
                 % Zeffiro require inverse order ... from outer to inner (not as the other methods)
+                bst_progress('text', 'Loading data...');
                 if isempty(OPTIONS.BemFiles)
                     if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
                         OPTIONS.BemFiles = {...
@@ -1037,7 +1059,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 end
 
                 % ===== CALL ZEFFIRO FROM HERE =====
-                disp(' Now call Zeffiro');
+                bst_progress('text', 'Calling Zeffiro FEM Mesh Generation...');
+                disp('Now Calling Zeffiro FEM Mesh Generation ...');
                 % basic options ==> that can be used from Brainstorm
                 % ===== WRITE ZEF SETTING FILE =====
                 % documentation : https://github.com/sampsapursiainen/zeffiro_interface/wiki/Finite-Element-Mesh-generation
@@ -1050,11 +1073,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 fprintf(fid, 'zef = zef_add_bounding_box(zef);\n');
                 % zef.exclude_box: include the bounding box in the mesh => default no ==>1
                 fprintf(fid, 'zef.exclude_box = %d;\n', 1);
-                fprintf(fid, 'zef.max_surface_face_count = %s;\n', num2str(1));
-                % default 1: fit to the input mesh, if <1:coraser, if >1 finer
-                % can be tuned from the advanced parameters (recomended was 0.5, bst set to 1)
-                fprintf(fid, 'zef.mesh_smoothing_on = %d;\n', 1); % which part of the mesh to smooth?
-                % this option smooth all the volum usinth Taubin algo
+                % max_surface_face_count : default 1: fit to the input mesh, if <1:coraser, if >1 finer
+                % can be tuned from the advanced parameters (recomended is 0.5)
+                fprintf(fid, 'zef.max_surface_face_count = %d;\n', 0.5);
+                fprintf(fid, 'zef.mesh_smoothing_on = %d;\n', 1);
+                % this option smooth all the volum using the Taubin algo
                 % for advanced users.
                 fprintf(fid, 'zef.mesh_resolution = %d;\n', OPTIONS.zefMeshResolution);
                 % unit is mm; the coarsest value is 4.5mm. value [minValue = 1.3  maxValue = 4.5]mm
@@ -1072,13 +1095,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % Parallel threads in CPU forward computing,4,parallel_processes,number
                 % Check zeffiro_interface.ini
                 % Refinement
-                fprintf(fid, 'zef.refinement_on = %d;\n', 0); %
-                % boolean value to refine the mesh ==> default 1, => set to 0 for BST users
+                fprintf(fid, 'zef.refinement_on = %d;\n', 1); %
+                % boolean value to refine the mesh ==> default 1, => set to 1 for BST users
                 % Other function to check
                 % edit zef_init_forward_and_inverse_options.m
                 % edit zef_open_forward_and_inverse_options.m
-                fprintf(fid, 'zef.refinement_surface_on = %d;\n', 0);
-                % Activat the refinement of the surface, default 1, set to 0 in for BST users
+                fprintf(fid, 'zef.refinement_surface_on = %d;\n', 1);
+                % Activat the refinement of the surface, default 1, set to 1 in for BST users
                 % wiki page of the refienement:https://github.com/sampsapursiainen/zeffiro_interface/wiki/Finite-Element-Mesh-generation
                 fprintf(fid, 'import_compartment_list_aux = zef_get_active_compartments(zef);\n'); % list of the compartement
                 fprintf(fid, 'import_compartment_list_aux = import_compartment_list_aux(end-%d:end-1);\n', nBem);
@@ -1088,10 +1111,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 fprintf(fid, 'zef.refinement_surface_compartments = [-1 import_compartment_list_aux];\n');
                 % -1 : refine all the compartement that have the sources [Not used here]
                 % in this case it will also refine the labeld tissue in import_compartment_list_aux indexes
-                fprintf(fid, 'zef_mesh_tool;\n'); % what does this function do?
+                fprintf(fid, 'zef_mesh_tool;\n'); % set the other options to default
                 fclose(fid);
-
-                % ===== WRITE BrainStorm2Zeffiro IMPORT FILE (Interface) =====
+                % ===== WRITE BrainStorm2Zeffiro IMPORT FILE (BST to Zef Interface) =====
                 % Get temp folder
                 TmpDir = bst_get('BrainstormTmpDir', 1, 'zeffiro');
                 % writeZefFile() ==> Need to discuss with Sampsa
@@ -1117,12 +1139,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 TissueLabels = zef.name_tags(1:end-1);
             else % use advanced Zeffiro Interface
                 % Advanced option ==> that will be used from Zef side
+                % Zef team is developing this interface within the Zef repo
                 % Get the Zef folder path for brainstorm utilities
                 zefPath = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
                 utilities.brainstorm2zef.m.zef_bst_plugin_start(zefPath)
                 % Sampsa team : export back the output to brainstorm db
-                % import the data from the Zef outputs and ad to bst
-                % database
+                % import the data from the Zef outputs and ad to bst database
 
                 % Return success
                 isOk = 1;
