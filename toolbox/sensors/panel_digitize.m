@@ -170,11 +170,11 @@ function Start(DigitizerType) %#ok<DEFNU>
             [sSubject, iSubject] = bst_get('Subject', SubjectName);
             iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment})); 
         else
-            sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface).FileName);
+            sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
         end
         
         % view the surface
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], sSubject.Surface(iTargetSurface).FileName);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], sSubject.Surface(iTargetSurface(end)).FileName);
     end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
