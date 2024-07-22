@@ -1369,7 +1369,11 @@ function CreateMontageMenu(jMenu)
     end
     % Add new montage / reset list
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+
+    % Adding montage from text files only available for Polhemus Digitizer
+    if ~strcmpi(Digitize.Type, 'Revopoint')
+        gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+    end
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
     
     % Creating montages from EEG cap layout mat files (only for Revopoint)
@@ -1396,15 +1400,9 @@ function CreateMontageMenu(jMenu)
                 % Sort in natural order
                 [tmp,I] = sort_nat({fList.name});
                 fList = fList(I);
-                % Create an entry for each default
-                isAddLoc = 0;
                 for iFile = 1:length(fList)
-                    % Define callback function
-                    if isAddLoc 
-                        fcnCallback = @(h,ev)channel_add_loc(1, fList(iFile).fullpath, 1, isMni);
-                    else
-                        fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
-                    end
+                    % Define callback function to add montage from mat file
+                    fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
                     
                     % Find corresponding submenu
                     if ~isempty(strfind(fList(iFile).name, 'ANT'))
