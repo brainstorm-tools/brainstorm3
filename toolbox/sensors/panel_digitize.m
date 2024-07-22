@@ -302,10 +302,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         newButtonSize = Dimension(initButtonSize.getWidth()*1.5, initButtonSize.getHeight()*1.5);
         jButtonEEGStart.setPreferredSize(newButtonSize);
         jButtonEEGStart.setFocusable(0);
-        % Separator
-        % Auto EEG cap electrodes detection button
-        jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelEEG, [], 'Auto', [], 'Automatically detect and label electrodes on EEG cap', @EEGAutoDetectElectrodes, largeFontSize);
-        jButtonEEGAutoDetectElectrodes.setPreferredSize(newButtonSize);
+        
+        if strcmpi(Digitize.Type, 'Revopoint')
+            % Auto EEG cap electrodes detection button
+            jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelEEG, [], 'Auto', [], 'Automatically detect and label electrodes on EEG cap', @EEGAutoDetectElectrodes, largeFontSize);
+            jButtonEEGAutoDetectElectrodes.setPreferredSize(newButtonSize);
+        else
+            % Separator
+            jButtonEEGAutoDetectElectrodes = gui_component('label', jPanelEEG, 'hfill', '');
+        end
+
         % Number
         jTextFieldEEG = gui_component('text',jPanelEEG, [], '1', [], 'EEG Sensor # to be digitized', @EEGChangePoint_Callback, largeFontSize);
         jTextFieldEEG.setPreferredSize(newButtonSize)
@@ -319,9 +325,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonExtraStart = gui_component('toggle',jPanelExtra, [], 'Shape', {modeButtonGroup}, 'Start/Restart head shape digitization', @(h,ev)SwitchToNewMode(8), largeFontSize);
         jButtonExtraStart.setPreferredSize(newButtonSize);
         jButtonExtraStart.setFocusable(0);
-        % Separator
-        jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
-        jButtonRandomHeadPts.setPreferredSize(newButtonSize);
+        
+        if strcmpi(Digitize.Type, 'Revopoint')
+            % Add Random 100 points generation button
+            jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
+            jButtonRandomHeadPts.setPreferredSize(newButtonSize);
+        else
+            % Separator
+            jButtonRandomHeadPts = gui_component('label', jPanelExtra, 'hfill', '');
+        end
+
         % Number
         jTextFieldExtra = gui_component('text',jPanelExtra, [], '1',[], 'Head shape point to be digitized', @ExtraChangePoint_Callback, largeFontSize);
         jTextFieldExtra.setPreferredSize(newButtonSize)
@@ -905,11 +918,11 @@ function EEGAutoDetectElectrodes(h, ev)
     else
         ChannelMat = in_bst_channel(DigitizeOptions.ChannelFile);
     end
-    [~, sketch_points] = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
+    capPoints3d = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
     
     % Plot the electrodes and their labels
-    for i= 1:length(sketch_points)
-        pointCoord = sketch_points(i, :);
+    for i= 1:length(capPoints3d)
+        pointCoord = capPoints3d(i, :);
         % find the index for the current point
         iPoint = str2double(ctrl.jTextFieldEEG.getText());
         % Transform coordinate
@@ -1358,73 +1371,77 @@ function CreateMontageMenu(jMenu)
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
-    jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], [], 12);
-
-    % === USE DEFAULT CHANNEL FILE ===
-    % Get registered Brainstorm EEG defaults
-    bstDefaults = bst_get('EegDefaults');
-    if ~isempty(bstDefaults)
-        % Add a directory per template block available
-        for iDir = 1:length(bstDefaults)
-            jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
-            % Create subfolder for cap manufacturer
-            jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-            % Add an item per Template available
-            fList = bstDefaults(iDir).contents;
-            % Sort in natural order
-            [tmp,I] = sort_nat({fList.name});
-            fList = fList(I);
-            % Create an entry for each default
-            isAddLoc = 0;
-            for iFile = 1:length(fList)
-                % Define callback function
-                if isAddLoc 
-                    fcnCallback = @(h,ev)channel_add_loc(1, fList(iFile).fullpath, 1, isMni);
-                else
-                    fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
+    
+    % Creating montages from EEG cap layout mat files (only for Revopoint)
+    if strcmpi(Digitize.Type, 'Revopoint')
+        jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], [], 12);
+    
+        % === USE DEFAULT CHANNEL FILE ===
+        % Get registered Brainstorm EEG defaults
+        bstDefaults = bst_get('EegDefaults');
+        if ~isempty(bstDefaults)
+            % Add a directory per template block available
+            for iDir = 1:length(bstDefaults)
+                jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
+                % Create subfolder for cap manufacturer
+                jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                % Add an item per Template available
+                fList = bstDefaults(iDir).contents;
+                % Sort in natural order
+                [tmp,I] = sort_nat({fList.name});
+                fList = fList(I);
+                % Create an entry for each default
+                isAddLoc = 0;
+                for iFile = 1:length(fList)
+                    % Define callback function
+                    if isAddLoc 
+                        fcnCallback = @(h,ev)channel_add_loc(1, fList(iFile).fullpath, 1, isMni);
+                    else
+                        fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
+                    end
+                    
+                    % Find corresponding submenu
+                    if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                        jMenuType = jMenuAnt;
+                    elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                        jMenuType = jMenuBs;
+                    elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
+                        jMenuType = jMenuBp;
+                    elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
+                        jMenuType = jMenuEgi;
+                    elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
+                        jMenuType = jMenuNs;
+                    else
+                        jMenuType = jMenuOther;
+                    end
+                    % Create item
+                    gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
                 end
-                
-                % Find corresponding submenu
-                if ~isempty(strfind(fList(iFile).name, 'ANT'))
-                    jMenuType = jMenuAnt;
-                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                    jMenuType = jMenuBs;
-                elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
-                    jMenuType = jMenuBp;
-                elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
-                    jMenuType = jMenuEgi;
-                elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
-                    jMenuType = jMenuNs;
-                else
-                    jMenuType = jMenuOther;
+                % Add if not empty
+                if (jMenuOther.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuOther);
                 end
-                % Create item
-                gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
-            end
-            % Add if not empty
-            if (jMenuOther.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuOther);
-            end
-            if (jMenuAnt.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuAnt);
-            end
-            if (jMenuBs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBs);
-            end
-            if (jMenuBp.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBp);
-            end
-            if (jMenuEgi.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuEgi);
-            end
-            if (jMenuNs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuNs);
+                if (jMenuAnt.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuAnt);
+                end
+                if (jMenuBs.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuBs);
+                end
+                if (jMenuBp.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuBp);
+                end
+                if (jMenuEgi.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuEgi);
+                end
+                if (jMenuNs.getMenuComponentCount() > 0)
+                    jMenuDir.add(jMenuNs);
+                end
             end
         end
     end
@@ -1536,12 +1553,39 @@ function AddMontage(ChannelFile)
         
         % Get labels
         [~,col] = size(ChannelMat.Channel);
-    
-        for i=1:col
-            newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
+        
+        % if Acticap
+        if ~isempty(regexp(newMontage.Name, 'ActiCap', 'match')) && col==66
+            newMontage.Labels{end+1} = 'Oz';
+            newMontage.Labels{end+1} = 'T8';
+            newMontage.Labels{end+1} = 'GND';
+            newMontage.Labels{end+1} = 'T7';
+            for i=1:col
+                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'GND') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
+                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
+                end
+            end
+        % if Waveguard
+        elseif ~isempty(regexp(newMontage.Name, 'Waveguard', 'match')) && col==65
+            newMontage.Labels{end+1} = 'Oz';
+            newMontage.Labels{end+1} = 'T8';
+            newMontage.Labels{end+1} = 'Fpz';
+            newMontage.Labels{end+1} = 'T7';
+            for i=1:col
+                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'Fpz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
+                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
+                end
+            end
         end
         % If no labels were read: exit
         if isempty(newMontage.Labels)
+            bst_error('EEG cap configuration not supported', 'Revopoint', 0);
             return
         end
     end
@@ -2077,7 +2121,6 @@ end
 %  ======= REVOPOINT AUTOMATION ===========================================
 %  ========================================================================
 
-%
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
 function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surface)
     % Flatten the 3D mesh to 2D space
@@ -2099,9 +2142,10 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
         [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
     elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
-        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
+        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
     else % NEED TO WORK ON THIS
-        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 64 ANT waveguard
+        bst_error('EEG cap not supported', 'Revopoint', 0);
+        return;
     end
 
     centers_cap = centers; 
@@ -2109,31 +2153,71 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
+function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
     % hyperparameters for warping and interpolation
     NIT=1000;
     lambda = 100000;
+    
+    % Grt current montage
+    [curMontage, nEEG] = GetCurrentMontage();
 
     % convert EEG cap manufacturer layout from 3D to 2D 
     X1 = [];
     Y1 = [];
-    [~,col] = size(ChannelRef);
-    for i=1:col
+    for i=1:nEEG
         [X,Y] = bst_project_2d(ChannelRef(i).Loc(1,:), ChannelRef(i).Loc(2,:), ChannelRef(i).Loc(3,:), '2dcap');
         X1 = [X1 X];
         Y1 = [Y1 Y];
     end
-    centerssketch = [X1' Y1'];
+    centerssketch_temp = [X1' Y1'];
+    centerssketch = [];
+
+    %% sort as per the initialization points per EEG Cap 
+    % order for 65: Oz, T8, Fpz, T7 (custom cap)
+    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
+
+        for i=1:nEEG
+            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
+               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
+               ~strcmpi(ChannelRef(i).Name, 'Fpz') &&...
+               ~strcmpi(ChannelRef(i).Name, 'T7')
+                centerssketch = [centerssketch; centerssketch_temp(i, :)];
+            end
+        end
+
+    % order for ActiCap 66: Oz, T8, Fpz, T7 (custom cap)
+    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:)];
+        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
+
+        for i=1:nEEG
+            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
+               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
+               ~strcmpi(ChannelRef(i).Name, 'GND') &&...
+               ~strcmpi(ChannelRef(i).Name, 'T7')
+                centerssketch = [centerssketch; centerssketch_temp(i, :)];
+            end
+        end
     
-    [curMontage, nEEG] = GetCurrentMontage();
-    % warping EEG cap layout electrodes to mesh 
+    % any other cap (NEED TO WORK ON THIS)
+    else
+        bst_error('EEG cap not supported', 'Revopoint', 0);
+        return;
+    end
     
-    %% order for 64/65: Oz, T8, Fpz, T7
-    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && ~isempty(regexp(curMontage.Name, '65', 'match'))
-        Fpz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:);
-        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
-        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
-        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
+    %% warping EEG cap layout electrodes to mesh 
+    % for Waveguard 65
+    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
+        Oz = centerssketch(1,:);
+        T8 = centerssketch(2,:);
+        Fpz = centerssketch(3,:);
+        T7 = centerssketch(4,:);
         sketch_pts = [Oz;T8;Fpz;T7];
     
         for i=1:4
@@ -2146,12 +2230,12 @@ function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, c
         [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
         cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
 
-    %% order for 66: Oz, T8, GND, T7
-    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && ~isempty(regexp(curMontage.Name, '66', 'match'))
-        GND = centerssketch(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:);
-        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
-        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
-        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
+    % for ActiCap 66
+    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
+        Oz = centerssketch(1,:);
+        T8 = centerssketch(2,:);
+        GND = centerssketch(3,:);
+        T7 = centerssketch(4,:);
         sketch_pts = [Oz;T8;GND;T7];
     
         for i=1:4
@@ -2163,29 +2247,11 @@ function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, c
         [GNDx, GNDy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
         [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
         cap_pts = ([Ozx,Ozy;T8x,T8y;GNDx,GNDy;T7x,T7y]+1)*256;
-    
-    %% any other cap (NEED TO WORK ON THIS)
-    else
-        Fpz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:);
-        T8 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:);
-        T7 = centerssketch(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:);
-        Oz = centerssketch(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:);
-        sketch_pts = [Oz;T8;Fpz;T7];
-    
-        for i=1:4
-            DeletePoint_Callback();
-        end
-    
-        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-        [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-        cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
     end
     
     %% Do the warping and interpolation
-    [warp,L,LnInv,bendE] = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
-    [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
+    warp = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
+    [xsR,ysR] = tpsInterpolate(warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     centerssketch(:,1) = xsR;
     centerssketch(:,2) = ysR;
     centerssketch = max(min(centerssketch,512-15),15);
@@ -2226,17 +2292,12 @@ function [cap_points, sketch_points] = warpLayout2Mesh(centerscap, ChannelRef, c
     
     u_sketch = interp2(X1,xsR,ysR);
     v_sketch = interp2(Y1,xsR,ysR);
-
-    centerscapuv = 2*centerscap/NPTS - 1;
     
     u_cap=head_surface.u;
     v_cap=head_surface.v;
-
-    cap_points(:,1)=griddata(u_cap,v_cap,head_surface.Vertices(:,1),centerscapuv(:,1),centerscapuv(:,2));
-    cap_points(:,2)=griddata(u_cap,v_cap,head_surface.Vertices(:,2),centerscapuv(:,1),centerscapuv(:,2));
-    cap_points(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),centerscapuv(:,1),centerscapuv(:,2));
-
-    sketch_points(:,1)=griddata(u_cap,v_cap,head_surface.Vertices(:,1),u_sketch,v_sketch);
-    sketch_points(:,2)=griddata(u_cap,v_cap,head_surface.Vertices(:,2),u_sketch,v_sketch);
-    sketch_points(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),u_sketch,v_sketch);
+    
+    % get the desired electrodes on the 3D EEG cap 
+    capPoints3d(:,1)=griddata(u_cap,v_cap,head_surface.Vertices(:,1),u_sketch,v_sketch);
+    capPoints3d(:,2)=griddata(u_cap,v_cap,head_surface.Vertices(:,2),u_sketch,v_sketch);
+    capPoints3d(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),u_sketch,v_sketch);
 end
