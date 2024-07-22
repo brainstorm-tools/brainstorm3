@@ -3250,21 +3250,17 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     if (TsInfo.ShowLegend)
         if isempty(LinesColor)
             ColorOrder = panel_scout('GetScoutsColorTable');
-
-            iHbO = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbO')));
-            iHbR = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbR')));
-            iHbT = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbT')));
-            
-            if ~isempty(iHbO) ||  ~isempty(iHbR) || ~isempty(iHbT)
-
-                ColorOrderNew = ColorOrder;
-                ColorOrderNew(iHbO,:) = repmat( ColorOrder(2, :), length(iHbO),1);
-                ColorOrderNew(iHbR,:) = repmat(ColorOrder(3, :), length(iHbR),1);
-                ColorOrderNew(iHbT,:) = repmat( ColorOrder(1, :), length(iHbT),1);
-
-                ColorOrder = ColorOrderNew;
+            if strcmpi(TsInfo.Modality, 'NIRS')
+                iHbO = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbO')));
+                iHbR = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbR')));
+                iHbT = find(cellfun(@(x)~isempty(x), strfind(LinesLabels, 'HbT')));
+                if ~isempty(iHbO) ||  ~isempty(iHbR) || ~isempty(iHbT)
+                    ColorsGRB = ColorOrder(1:3,:);
+                    ColorOrder(iHbO,:) = repmat(ColorsGRB(2,:), length(iHbO),1); % Red
+                    ColorOrder(iHbR,:) = repmat(ColorsGRB(3,:), length(iHbR),1); % Blue
+                    ColorOrder(iHbT,:) = repmat(ColorsGRB(1,:), length(iHbT),1); % Green
+                end
             end
-
         else
             ColorOrder = [];
         end
