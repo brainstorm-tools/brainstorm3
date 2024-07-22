@@ -1560,16 +1560,3 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
 end
-
-% function writeZefFile()
-%     % Open the mini file
-%     ZefFile = fullfile(TmpDir, 'BrainStorm2Zeffiro_import.zef');
-%     fid = fopen(ZefFile, 'wt+');
-%     for iBem = 1:nBem
-%         fprintf(fid, ...
-%             'type,segmentation,name,%s,database,bst,tag,%s,parameter_name,sigma,parameter_value,0.33,invert,1 \n',...
-%             bemComment{iBem}, bemComment{iBem});
-%     end
-%     fprintf(fid,'type,script,filename,utilities.brainstorm2zef.m.zef_bst_import_settings \n');
-%     fclose(fid);
-% end
