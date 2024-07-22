@@ -1233,13 +1233,13 @@ function CreateHeadpointsFigure()
         % Get subject
         [sSubject, iSubject] = bst_get('Subject', Digitize.SubjectName);
         iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment})); 
-        sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface).FileName);
+        sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
         [nRows,nCols] = size(sSurf.Vertices);
         sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(nRows,1)]')';
         panel_surface('RemoveSurface', hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], sSubject.Surface(iTargetSurface).FileName);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], sSubject.Surface(iTargetSurface(end)).FileName);
         % Hide head surface
         if ~strcmpi(Digitize.Type, 'Revopoint')
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
@@ -1825,7 +1825,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                 else
                     [sSubject, ~] = bst_get('Subject', Digitize.SubjectName);
                     iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment}));
-                    [sSurf, ~] = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface).FileName);
+                    [sSurf, ~] = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
                     pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
                 end
             end
