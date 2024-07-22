@@ -209,8 +209,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Zeffiro: Mesh resolution -Edge Length-
     OPTIONS.ZefMeshResolution = sProcess.options.zefMeshResolution.Value{1};
-    if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 0.5) || (OPTIONS.ZefMeshResolution > 4.5)
-        bst_report('Error', sProcess, [], 'Invalid Mesh resolution value, please use value [0.5 - 4.5] mm.');
+    if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 1) || (OPTIONS.ZefMeshResolution > 4.5)
+        bst_report('Error', sProcess, [], 'Invalid Mesh resolution value, please use value [1 - 4.5] mm.');
         return
     end
     % Zeffiro: Use the GPU -Edge Length-
@@ -1505,7 +1505,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 end
                 OPTIONS.ZefMeshResolution = str2num(res{1});
                 % Check the values
-                if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 0.5) || (OPTIONS.ZefMeshResolution > 4.5)
+                if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 1) || (OPTIONS.ZefMeshResolution > 4.5)
                     errMsg = ['Invalid Mesh resolution value.' 10 'Please use value from this interval [1 - 4.5] mm.'];
                     java_dialog('msgbox', ['Warning: ' errMsg]);
                     return;
