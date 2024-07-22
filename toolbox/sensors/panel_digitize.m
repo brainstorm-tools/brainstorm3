@@ -1481,6 +1481,7 @@ end
 
 %% ===== ADD EEG MONTAGE =====
 function AddMontage(ChannelFile)
+    % Add Montage from text file
     if nargin<1
         % Get recently used folders
         LastUsedDirs = bst_get('LastUsedDirs');
@@ -1521,6 +1522,7 @@ function AddMontage(ChannelFile)
         % Save last dir
         LastUsedDirs.ImportChannel = MontageDir;
         bst_set('LastUsedDirs', LastUsedDirs);
+    % Add Montage from mat file of EEG caps
     else
         % Load existing file
         ChannelMat = in_bst_channel(ChannelFile);
