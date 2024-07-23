@@ -156,6 +156,11 @@ sLoadedSurf.Name        = SurfType;
 sLoadedSurf.Comment     = 'User_surface';
 sLoadedSurf.Vertices    = Vertices;
 sLoadedSurf.Faces       = Faces;
+if ~isempty(SurfColor)
+    sLoadedSurf.Color = SurfColor;
+else
+    sLoadedSurf.Color = [];
+end
 if ~isempty(sSurf)
     sLoadedSurf.VertConn    = sSurf.VertConn;
     sLoadedSurf.VertNormals = sSurf.VertNormals;
@@ -180,6 +185,7 @@ if ~isempty(GlobalData.Surface)
     sLoadedSurf.FileName = file_unique(sLoadedSurf.FileName, {GlobalData.Surface.FileName});
 end
 % Register in the GUI
+GlobalData.Surface(end + 1).Color = sLoadedSurf.Color;
 GlobalData.Surface(end + 1) = sLoadedSurf;
 
 % ===== Add target surface =====

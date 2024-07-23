@@ -306,6 +306,8 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         sSurf.Vertices        = double(surfMat.Vertices);
         if isfield(surfMat, 'Color')
             sSurf.Color       = double(surfMat.Color);
+        else
+            sSurf.Color       = [];
         end
         sSurf.VertConn        = surfMat.VertConn;
         sSurf.VertNormals     = surfMat.VertNormals;
@@ -334,6 +336,7 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         % Add surface to loaded surfaces list in this protocol (if not already loaded)
         iSurf = length(GlobalData.Surface) + 1;
         % Save surface in memory
+        GlobalData.Surface(iSurf).Color = sSurf.Color;
         GlobalData.Surface(iSurf) = sSurf;
         
     % Else, return the existing instance
