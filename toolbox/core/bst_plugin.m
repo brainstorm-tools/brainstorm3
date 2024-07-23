@@ -217,7 +217,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'github-main_development_branch';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).URLzip         = 'https://github.com/sampsapursiainen/zeffiro_interface/archive/main_development_branch.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
     PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
