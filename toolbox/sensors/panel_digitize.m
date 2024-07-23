@@ -1541,10 +1541,7 @@ function AddMontage(ChannelFile)
     else
         % Load existing file
         ChannelMat = in_bst_channel(ChannelFile);
-        % DigitizeOptions = bst_get('DigitizeOptions');
-        % DigitizeOptions.ChannelFile = ChannelFile;
-        % bst_set('DigitizeOptions', DigitizeOptions);
-
+        
         % Intialize new montage
         newMontage.Name = ChannelMat.Comment;
         newMontage.Labels = {};
