@@ -1489,21 +1489,14 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         case 'zeffiro'
             % Ask user for the Zeffiro Option here
             advancedZefMsg = 'Would you like to use the advanced interface for Zeffiro mesh generation?';
-            questionOptions = {'Brainstrom Basic Options', 'Zeffiro Advanced Options', 'Cancel'};
-            [res, isCancel] = java_dialog('question', [advancedZefMsg 10 ' This will open the advanced Zeffiro panel '],...
-                'Zeffiro FEM Mesh Interface', [], questionOptions);                  
-            
+            [res, isCancel] = java_dialog('question', [advancedZefMsg 10 ' This will open the advanced Zeffiro panel '], 'Zeffiro FEM Mesh Interface');           
             if isCancel || isempty(res)
-                return;
+                return
             end
-
-            if strcmpi(res, questionOptions{3})
-                 return;
-            end
-            if strcmpi(res, questionOptions{2})
+            if strcmpi(res, 'yes')
                 OPTIONS.ZefAdvancedInterface = 1;
 
-            elseif strcmpi(res, questionOptions{1}) % use 'Brainstorm Basic Options'
+            else  % use 'Brainstorm Basic Options'
                 OPTIONS.ZefAdvancedInterface = 0;
                 % Get mesh resolution
                 [res, isCancel] = java_dialog('input', 'Mesh Resolution (edge length) in [mm]:', 'Zeffiro FEM mesh', [], num2str(OPTIONS.ZefMeshResolution));
