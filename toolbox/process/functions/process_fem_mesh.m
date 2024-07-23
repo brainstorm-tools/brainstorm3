@@ -1503,7 +1503,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 if isCancel || isempty(res)
                     return
                 end
-                OPTIONS.ZefMeshResolution = str2num(res});
+                OPTIONS.ZefMeshResolution = str2num(res);
                 % Check the values
                 if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 1) || (OPTIONS.ZefMeshResolution > 4.5)
                     errMsg = ['Invalid Mesh resolution value.' 10 'Please use value from this interval [1 - 4.5] mm.'];
