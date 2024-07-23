@@ -470,17 +470,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
-    % === STATISTICS: PICARD ===
-    PlugDesc(end+1)              = GetStruct('picard');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/pierreablin/picard/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/pierreablin/picard';
-    PlugDesc(end).TestFile       = 'picard.m';
-    PlugDesc(end).ReadmeFile     = 'README.rst';
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'matlab_octave'};
-
     % === STATISTICS: mTRF ===
     PlugDesc(end+1)              = GetStruct('mtrf');
     PlugDesc(end).Version        = '2.4';
@@ -492,6 +481,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'mtrf'};
     PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
+
+    % === STATISTICS: PICARD ===
+    PlugDesc(end+1)              = GetStruct('picard');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/pierreablin/picard/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/pierreablin/picard';
+    PlugDesc(end).TestFile       = 'picard.m';
+    PlugDesc(end).ReadmeFile     = 'README.rst';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'matlab_octave'};
 
     % === ELECTROPHYSIOLOGY: DERIVELFP ===
     PlugDesc(end+1)              = GetStruct('derivelfp');
