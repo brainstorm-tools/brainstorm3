@@ -491,6 +491,18 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
+    % === STATISTICS: mTRF ===
+    PlugDesc(end+1)              = GetStruct('mtrf');
+    PlugDesc(end).Version        = '2.4';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/mickcrosse/mTRF-Toolbox/archive/refs/tags/v2.4.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/mickcrosse/mTRF-Toolbox';
+    PlugDesc(end).TestFile       = 'mTRFtrain.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'mtrf'};
+    PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
+
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
     PlugDesc(end).Version        = 'github-master';

@@ -30,7 +30,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'SVM decoding';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Decoding';
-    sProcess.Index       = 702;
+    sProcess.Index       = 712;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Decoding';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
