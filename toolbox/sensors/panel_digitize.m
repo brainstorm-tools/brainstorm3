@@ -912,11 +912,11 @@ function EEGAutoDetectElectrodes(h, ev)
     % call automation functions to get the EEG cap electrodes
     [centers_cap, cap_img, sSurf] = findElectrodesEegCap(sSurf);
     DigitizeOptions = bst_get('DigitizeOptions');
-    if isempty(DigitizeOptions.ChannelFile)
+    if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', 'Revopoint', 1);
         return;
     else
-        ChannelMat = in_bst_channel(DigitizeOptions.ChannelFile);
+        ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
     end
     capPoints3d = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
     
@@ -1541,13 +1541,14 @@ function AddMontage(ChannelFile)
     else
         % Load existing file
         ChannelMat = in_bst_channel(ChannelFile);
-        DigitizeOptions = bst_get('DigitizeOptions');
-        DigitizeOptions.ChannelFile = ChannelFile;
-        bst_set('DigitizeOptions', DigitizeOptions);
+        % DigitizeOptions = bst_get('DigitizeOptions');
+        % DigitizeOptions.ChannelFile = ChannelFile;
+        % bst_set('DigitizeOptions', DigitizeOptions);
 
         % Intialize new montage
         newMontage.Name = ChannelMat.Comment;
         newMontage.Labels = {};
+        newMontage.ChannelFile = ChannelFile;
         
         % Get labels
         [~,col] = size(ChannelMat.Channel);
@@ -1623,13 +1624,13 @@ function UnloadAllMontages()
     % Remove all montages
     DigitizeOptions.Montages = [...
         struct('Name',   'No EEG', ...
-               'Labels', []), ...
+               'Labels', [], ...
+               'ChannelFile', []), ...
         struct('Name',   'Default', ...
-               'Labels', [])];
+               'Labels', [], ...
+               'ChannelFile', [])];
     % Reset to "No EEG"
     DigitizeOptions.iMontage = 1;
-    % Reset the channel file
-    DigitizeOptions.ChannelFile = [];
     % Save Digitize options
     bst_set('DigitizeOptions', DigitizeOptions);
     % Reload menu bar
