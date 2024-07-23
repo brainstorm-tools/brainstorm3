@@ -212,6 +212,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
 
+    % === ANATOMY: ZEFFIRO ===
+    PlugDesc(end+1)              = GetStruct('zeffiro');
+    PlugDesc(end).Version        = 'github-main_development_branch';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/sampsapursiainen/zeffiro_interface/archive/main_development_branch.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
+    PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.gitignore'};
+
 
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
