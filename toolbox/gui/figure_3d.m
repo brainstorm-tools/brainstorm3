@@ -2814,12 +2814,17 @@ function UpdateSurfaceColor(hFig, iTess)
             SulciMap = zeros(TessInfo(iTess).nVertices, 1);
         end
         % Compute RGB values
-        FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
-                                           TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
-                                           DataSurf, ...                                  % Data: values map
-                                           TessInfo(iTess).DataLimitValue, ...            % Data: limit value
-                                           TessInfo(iTess).DataAlpha,...                  % Data: transparency
-                                           sColormap);                                    % Colormap
+        if ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_textured', 'match'))
+            FaceVertexCdata = TessInfo(iTess).AnatomyColor(TessInfo(iTess).nVertices+1:end, :);
+        else
+            FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
+                                               TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
+                                               DataSurf, ...                                  % Data: values map
+                                               TessInfo(iTess).DataLimitValue, ...            % Data: limit value
+                                               TessInfo(iTess).DataAlpha,...                  % Data: transparency
+                                               sColormap);                                    % Colormap
+        end
+
         % Edge display : on/off
         if ~TessInfo(iTess).SurfShowEdges
             EdgeColor = 'none';
