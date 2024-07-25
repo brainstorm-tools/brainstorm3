@@ -167,12 +167,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Aggregating function across windows (PSD, PSD_FEATURES)
     if isfield(sProcess.options, 'win_std') && isfield(sProcess.options.win_std, 'Value') && ~isempty(sProcess.options.win_std.Value)
         switch lower(sProcess.options.win_std.Value)
-            case {0, 'mean'},     tfOPTIONS.WinFunc = 'mean';
-            case {1, 'std'},      tfOPTIONS.WinFunc = 'std';
-            case {2, 'mean+std'}, tfOPTIONS.WinFunc = 'mean+std';
-            otherwise,  bst_report('Error', sProcess, [], 'Invalid window aggregating function.');  return;
+            case {0, 'mean'}
+                tfOPTIONS.WinFunc = 'mean';
+            case {1, 'std'}
+                tfOPTIONS.WinFunc = 'std';
+                tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', tfOPTIONS.WinFunc];
+            case {2, 'mean+std'}
+                tfOPTIONS.WinFunc = 'mean+std';
+            otherwise
+                bst_report('Error', sProcess, [], ['Invalid "' num2str(lower(sProcess.options.win_std.Value)) '" window aggregating function.']);
+                return;
         end
-        tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', tfOPTIONS.WinFunc];
     end
     % If units specified (PSD, PSD_FEATURES)
     if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
