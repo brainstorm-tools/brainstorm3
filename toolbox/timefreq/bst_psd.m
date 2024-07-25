@@ -21,6 +21,7 @@ function [TF, FreqVector, Nwin, Messages, TFbis] = bst_psd( F, sfreq, WinLength,
 %
 % Authors: Francois Tadel, 2012-2017
 %          Marc Lalancette, 2020
+%          Pauline Amrouche, 2024
 
 % Parse inputs
 if (nargin < 9) || isempty(IsRelative)
@@ -45,22 +46,25 @@ if (nargin < 3) || isempty(WinLength) || (WinLength == 0)
     WinLength = size(F,2) ./ sfreq;
 end
 
-% To ensure compatibility with previous version of code where winFunc was a
-% 0/1 switch called isVariance
+Messages = '';
+% Get sampling frequency
+nTime = size(F,2);
+% Initialize returned values
+TF = [];
+TFbis = [];
+% Initialize frequency and number of windows
+FreqVector = [];
+Nwin = [];
+
+% ===== FUNCTION ACROSS WINDOWS =====
+% Backward compatibility with previous versions where winFunc could be 0 (mean) or 1 (std)
 switch lower(WinFunc)
     case {0, 'mean'},     WinFunc = 'mean';
     case {1, 'std'},      WinFunc = 'std';
     case {2, 'mean+std'}, WinFunc = 'mean+std';
-    otherwise,  bst_report('Error', sProcess, [], 'Invalid window aggregating function.');  return;
+    otherwise,  bst_error(['Invalid window aggregating function: ' num2str(lower(WinFunc))]); return
 end
-computeStd = contains(WinFunc,'std');
-
-Messages = '';
-% Get sampling frequency
-nTime = size(F,2);
-% Initialize frequency and number of windows
-FreqVector = [];
-Nwin = [];
+computeStd = ~isempty(strfind(WinFunc,'std'));
 
 % ===== WINDOWING =====
 Lwin  = round(WinLength * sfreq);
@@ -93,7 +97,6 @@ if ~isempty(ImagingKernel)
 else
     nChannels = size(F,1);
 end
-
 % Sum of the FFTs for each channel and each frequency bin
 S1 = zeros(nChannels, 1, NFFT/2+1);
 % Sum of the squares of the FFTs for each channel and each frequency bin
@@ -103,7 +106,6 @@ end
 
 % ===== CALCULATE FFT FOR EACH WINDOW =====
 Nbad = 0;
-
 for iWin = 1:Nwin
     % Build indices
     iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
@@ -159,25 +161,21 @@ for iWin = 1:Nwin
     TFwin = permute(TFwin, [1 3 2]);
     % Convert to power
     TFwin = process_tf_measure('Compute', TFwin, 'none', 'power');
-    
     % Convert to relative power
     if IsRelative
         TFwin = TFwin ./ sum(TFwin, 3);
     end
-
     % Compute sum and sum of squares
     S1 = S1 + TFwin;
     if computeStd
         S2 = S2 + TFwin.^2;
     end
-    
 end
 
 % Correct the dividing factor if there are bad segments
 if (Nbad > 0)
     Nwin = Nwin - Nbad;
 end
-
 % Compute mean and standard deviation
 TFmean = S1 ./ Nwin;
 if computeStd
