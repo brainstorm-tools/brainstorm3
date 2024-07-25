@@ -11,7 +11,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 %          - Matrix of time-series [nRow x nTime]
 %          - Cell-array of matrices of time series
 %     - OPTIONS: Structure with the following fields
-%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol', 'psdfeatures'}
+%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol'}
 %          - Output       : {'average', 'all'}
 %          - Comment      : Output file comment
 %          - ListFiles    : Cell array of filenames, used only if Data is a matrix of data (used to reference the "parent" file)
@@ -149,13 +149,12 @@ end
         
 % Progress bar
 switch(OPTIONS.Method)
-    case 'morlet',      strMap = 'time-frequency maps';
-    case 'fft',         strMap = 'FFT values';
-    case 'psd',         strMap = 'PSD values';
-    case 'psdfeatures', strMap = 'PSD features';
-    case 'sprint',      strMap = 'SPRiNT maps';
-    case 'hilbert',     strMap = 'Hilbert maps';
-    case 'mtmconvol',   strMap = 'multitaper maps';
+    case 'morlet',    strMap = 'time-frequency maps';
+    case 'fft',       strMap = 'FFT values';
+    case 'psd',       strMap = 'PSD values';
+    case 'sprint',    strMap = 'SPRiNT maps';
+    case 'hilbert',   strMap = 'Hilbert maps';
+    case 'mtmconvol', strMap = 'multitaper maps';
 end
 
 
@@ -462,8 +461,8 @@ for iData = 1:length(Data)
                 nComponents = OPTIONS.nComponents(iData);
             end
             
-            % PSD, PSD_FEATURES: we don't want the bad segments
-            if ~isempty(iStudy) && (strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures')) && ~isempty(sStudy.Result(iFile).DataFile)
+            % PSD: we don't want the bad segments
+            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd') && ~isempty(sStudy.Result(iFile).DataFile)
                 % Load associated data file
                 sMat = in_bst_data(sStudy.Result(iFile).DataFile);
                 % Raw file
@@ -534,8 +533,8 @@ for iData = 1:length(Data)
             % Measure is already applied (power)
             isMeasureApplied = 1;
             
-        % PSD, PSD_FEATURES: Homemade computation based on Matlab's FFT
-        case {'psd', 'psdfeatures'}
+        % PSD: Homemade computation based on Matlab's FFT
+        case 'psd'
             % Calculate PSD/FFT
             [TF, OPTIONS.Freqs, Nwin, Messages, TFbis] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinFunc, OPTIONS.PowerUnits, OPTIONS.IsRelative);
             if isempty(TF)
@@ -884,7 +883,7 @@ end
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
             if strcmpi(OPTIONS.Method, 'hilbert') && ~isempty(OPTIONS.TimeBands)
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
-            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures') 
+            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd')
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
             elseif strcmpi(OPTIONS.Method, 'mtmconvol') && ~isempty(OPTIONS.TimeBands)
                 FileMat.TimeBands = OPTIONS.TimeBands;
@@ -898,8 +897,8 @@ end
             end
         end
 
-        % Add PSD features options
-        if strcmpi(OPTIONS.Method, 'psdfeatures')
+        % Add extra PSD options
+        if strcmpi(OPTIONS.Method, 'psd')
             FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
             FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
             % Apply time and frequency bands on TFbis
@@ -974,7 +973,7 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     % Read data
     [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, [], ImportOptions);
     % PSD: we don't want the bad segments
-    if strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures') 
+    if strcmpi(OPTIONS.Method, 'psd')
         % Get list of bad segments in file
         isChannelEvtBad = 0;
         BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);
