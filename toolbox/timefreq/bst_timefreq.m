@@ -11,7 +11,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 %          - Matrix of time-series [nRow x nTime]
 %          - Cell-array of matrices of time series
 %     - OPTIONS: Structure with the following fields
-%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol'}
+%          - Method       : {'morlet', 'fft', 'psd', 'hilbert', 'mtmconvol', 'psdfeatures'}
 %          - Output       : {'average', 'all'}
 %          - Comment      : Output file comment
 %          - ListFiles    : Cell array of filenames, used only if Data is a matrix of data (used to reference the "parent" file)
@@ -152,7 +152,7 @@ switch(OPTIONS.Method)
     case 'morlet',      strMap = 'time-frequency maps';
     case 'fft',         strMap = 'FFT values';
     case 'psd',         strMap = 'PSD values';
-    case 'fftfeatures', strMap = 'FFT features';
+    case 'psdfeatures', strMap = 'PSD features';
     case 'sprint',      strMap = 'SPRiNT maps';
     case 'hilbert',     strMap = 'Hilbert maps';
     case 'mtmconvol',   strMap = 'multitaper maps';
@@ -462,8 +462,8 @@ for iData = 1:length(Data)
                 nComponents = OPTIONS.nComponents(iData);
             end
             
-            % PSD, FFT_FEATURES: we don't want the bad segments
-            if ~isempty(iStudy) && (strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'fft_features')) && ~isempty(sStudy.Result(iFile).DataFile)
+            % PSD, PSD_FEATURES: we don't want the bad segments
+            if ~isempty(iStudy) && (strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures')) && ~isempty(sStudy.Result(iFile).DataFile)
                 % Load associated data file
                 sMat = in_bst_data(sStudy.Result(iFile).DataFile);
                 % Raw file
@@ -533,8 +533,8 @@ for iData = 1:length(Data)
             % Measure is already applied (power)
             isMeasureApplied = 1;
             
-        % PSD, FFT_FEATURES: Homemade computation based on Matlab's FFT
-        case {'psd', 'fftfeatures'}
+        % PSD, PSD_FEATURES: Homemade computation based on Matlab's FFT
+        case {'psd', 'psdfeatures'}
             % Calculate PSD/FFT
             [TF, OPTIONS.Freqs, Nwin, Messages, TFbis] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinFunc, OPTIONS.PowerUnits, OPTIONS.IsRelative);
             if isempty(TF)
@@ -883,7 +883,7 @@ end
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
             if strcmpi(OPTIONS.Method, 'hilbert') && ~isempty(OPTIONS.TimeBands)
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
-            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'fftfeatures') 
+            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures') 
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
             elseif strcmpi(OPTIONS.Method, 'mtmconvol') && ~isempty(OPTIONS.TimeBands)
                 FileMat.TimeBands = OPTIONS.TimeBands;
@@ -897,8 +897,8 @@ end
             end
         end
 
-        % Add FFT features options
-        if strcmpi(OPTIONS.Method, 'fftfeatures')
+        % Add PSD features options
+        if strcmpi(OPTIONS.Method, 'psdfeatures')
             FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
             FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
             % Apply time and frequency bands on TFbis
@@ -974,7 +974,7 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     % Read data
     [F, TimeVector] = in_fread(sFile, ChannelMat, 1, SamplesBounds, [], ImportOptions);
     % PSD: we don't want the bad segments
-    if strcmpi(OPTIONS.Method, 'psd')
+    if strcmpi(OPTIONS.Method, 'psd') || strcmpi(OPTIONS.Method, 'psdfeatures') 
         % Get list of bad segments in file
         isChannelEvtBad = 0;
         BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);

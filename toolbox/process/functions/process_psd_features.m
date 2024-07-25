@@ -1,5 +1,5 @@
-function varargout = process_fft_features( varargin )
-% PROCESS_FFT_FEATURES: Extract features from the power spectrum
+function varargout = process_psd_features( varargin )
+% PROCESS_PSD_FEATURES: Extract features from the power spectrum
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Get FFT features';
+    sProcess.Comment     = 'Compute PSD features';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 482;
