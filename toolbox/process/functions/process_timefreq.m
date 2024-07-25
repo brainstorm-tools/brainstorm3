@@ -93,7 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 'process_hilbert',       strProcess = 'hilbert';
         case 'process_fft',           strProcess = 'fft';
         case 'process_psd',           strProcess = 'psd';
-        case 'process_fft_features',  strProcess = 'psdfeatures';
+        case 'process_psd_features',  strProcess = 'psdfeatures';
         case 'process_sprint',        strProcess = 'sprint';
         case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
