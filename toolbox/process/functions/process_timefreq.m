@@ -164,19 +164,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
-    % If units specified (PSD, PSD_FEATURES)
-    if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
-        tfOPTIONS.PowerUnits = sProcess.options.units.Value;
-    end
-     % Compute relative power (PSD_FEATURES)
-    if isfield(sProcess.options, 'relative') && ~isempty(sProcess.options.relative) && ~isempty(sProcess.options.relative.Value)
-        tfOPTIONS.IsRelative = sProcess.options.relative.Value;
-        if tfOPTIONS.IsRelative
-            % Add relative to comment
-            tfOPTIONS.Comment = [tfOPTIONS.Comment, ' relative'];
-        end
-    end
-    % Aggregating function across windows (PSD_FEATURES)
+    % Aggregating function across windows (PSD, PSD_FEATURES)
     if isfield(sProcess.options, 'win_std') && isfield(sProcess.options.win_std, 'Value') && ~isempty(sProcess.options.win_std.Value)
         switch lower(sProcess.options.win_std.Value)
             case {0, 'mean'},     tfOPTIONS.WinFunc = 'mean';
@@ -185,6 +173,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             otherwise,  bst_report('Error', sProcess, [], 'Invalid window aggregating function.');  return;
         end
         tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', tfOPTIONS.WinFunc];
+    end
+    % If units specified (PSD, PSD_FEATURES)
+    if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
+        tfOPTIONS.PowerUnits = sProcess.options.units.Value;
+    end
+    % Compute relative power (PSD_FEATURES)
+    if isfield(sProcess.options, 'relative') && ~isempty(sProcess.options.relative) && ~isempty(sProcess.options.relative.Value)
+        tfOPTIONS.IsRelative = sProcess.options.relative.Value;
+        if tfOPTIONS.IsRelative
+            % Add relative to comment
+            tfOPTIONS.Comment = [tfOPTIONS.Comment, ' relative'];
+        end
     end
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
