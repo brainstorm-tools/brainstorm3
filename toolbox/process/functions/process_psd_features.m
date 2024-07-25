@@ -188,8 +188,10 @@ function OutputFile = saveMat(timefreqtMat, tfMeanStdFile, newTF, function_name,
     newMat.Comment = [timefreqtMat.Comment ' ' function_name];
     % Add extraction in history
     newMat = bst_history('add', newMat, 'extract_std_cv', sprintf('%s matrix extracted from %s', function_name, tfMeanStdFile));
-    [tfMeanStdFilenamePath, tfMeanStdBase] = bst_fileparts(tfMeanStdFile);
-    output = bst_process('GetNewFilename', tfMeanStdFilenamePath, [tfMeanStdBase, function_name]);
+    % New file name
+    [tfMeanStdFilePath, tfMeanStdFileBase, tfMeanStdFileExt] = bst_fileparts(tfMeanStdFile);
+    output = bst_fullfile(tfMeanStdFilePath, [tfMeanStdFileBase, '_' function_name, tfMeanStdFileExt]);
+    output = file_unique(output);
     % Save the file
     bst_save(output, newMat, 'v6');
     db_add_data(sInput.iStudy, output, newMat);
