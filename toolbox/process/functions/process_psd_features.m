@@ -79,10 +79,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.std.Comment = 'Extract std';
     sProcess.options.std.Type    = 'checkbox';
     sProcess.options.std.Value   = 1;
-    % Options: Extract varcoef
-    sProcess.options.varcoef.Comment = 'Extract varcoef';
-    sProcess.options.varcoef.Type    = 'checkbox';
-    sProcess.options.varcoef.Value   = 1;
+    % Options: Extract coefficient of variation
+    sProcess.options.cv.Comment = 'Extract cv';
+    sProcess.options.cv.Type    = 'checkbox';
+    sProcess.options.cv.Value   = 1;
     % Options: Compute relative power
     sProcess.options.relative.Comment = 'Use relative power';
     sProcess.options.relative.Type    = 'checkbox';
@@ -104,103 +104,95 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
+    OutputFiles = {};
     % Process options
-    if (sProcess.options.mean.Value && sProcess.options.std.Value) || sProcess.options.varcoef.Value
-        sProcess.options.win_std.Value = 'mean+std';
+    if (sProcess.options.mean.Value && sProcess.options.std.Value) || sProcess.options.cv.Value
+        sProcess.options.win_std.Value = 'mean+std'; % One PSD file with mean and std across windows
     elseif sProcess.options.mean.Value
-        sProcess.options.win_std.Value = 'mean';
+        sProcess.options.win_std.Value = 'mean';     % One PSD file with mean (Welch)
     elseif sProcess.options.std.Value
-        sProcess.options.win_std.Value = 'std';
+        sProcess.options.win_std.Value = 'std';      % One PSD file with std
     else
         bst_report('Error', sProcess, [], 'Must choose at least one feature.'); return;
     end
 
     % Call TIME-FREQ process
-    OutputFiles = process_timefreq('Run', sProcess, sInputs);
+    OutputFile = process_timefreq('Run', sProcess, sInput);
 
-    % If extract several features or varcoef
+    % Extract std and/or cv from one PSD (mean+std) file
     if strcmpi(sProcess.options.win_std.Value, 'mean+std')
-        % Get Output Study
-        [sStudy, iStudy, ~] = bst_process('GetOutputStudy', sProcess, sInputs);
-        OutputFiles = ExtractStdVarcoef(sProcess, OutputFiles, sStudy, iStudy);
+        OutputFiles = ExtractStdCv(sProcess, OutputFile{1}, sInput);
+    else
+        OutputFiles = OutputFile;
     end
-
 end
 
-function OutputFiles = ExtractStdVarcoef(sProcess, MeanStdFiles, sStudy, iStudy) %#ok<DEFNU>
-    
-    OutputFiles = {};
-
+%% ===== EXTRACT PSD FEATURES =====
+function OutputFiles = ExtractStdCv(sProcess, tfMeanStdFile, sInput)
+    OutputFiles = {tfMeanStdFile};
     % Get options
-    extractMean    = sProcess.options.mean.Value;
-    extractStd     = sProcess.options.std.Value;
-    extractVarcoef = sProcess.options.varcoef.Value;
-
-    inputFileFullName = MeanStdFiles{1};
-    %inputFile = MeanStdFiles(1);
-    %inputFileName = inputFile.FileName;
-    %disp(inputFile.FileName);
-    inputMat = in_bst_timefreq(inputFileFullName);
-
-    if isempty(inputMat.Std)
+    extractMean = sProcess.options.mean.Value;
+    extractStd  = sProcess.options.std.Value;
+    extractCv   = sProcess.options.cv.Value;
+    % Load timefreq file with mean+std
+    timefreqtMat = in_bst_timefreq(tfMeanStdFile);
+    if isempty(timefreqtMat.Std)
         bst_report('Error', sProcess, [], 'Input file must contain Std matrix.');  
         return;
     end
 
+    % Extract std from mean+std file, and save in new timefreq file
     if extractStd
-        % Copy Std matrix of input file into TF field of stdFile
-        newTF = inputMat.Std;
-        OutputFiles = saveMat(inputMat, inputFileFullName, newTF, 'std', sStudy, iStudy, OutputFiles);
+        newTF = timefreqtMat.Std;
+        OutputFile = saveMat(timefreqtMat, tfMeanStdFile, newTF, 'std', sInput);
+        OutputFiles = [OutputFiles, OutputFile];
     end
 
-    if extractVarcoef
-        % Varcoef = std ./ mean
-        newTF = inputMat.Std ./ inputMat.TF;
-        OutputFiles = saveMat(inputMat, inputFileFullName, newTF, 'varcoef', sStudy, iStudy, OutputFiles);
+    % Extract cv (std/mean) from mean+std file, and save in new timefreq file
+    if extractCv
+        newTF = timefreqtMat.Std ./ timefreqtMat.TF;
+        OutputFile = saveMat(timefreqtMat, tfMeanStdFile, newTF, 'cv', sInput);
+        OutputFiles = [OutputFiles, OutputFile];
     end
 
+    % Modify or delete initial mean+std file
     if extractMean
-        % Do not change TF
+        % Update content of original mean+std file
+        % Remove std
         newMat.Std = [];
         % Update the function name
-        newMat.Options = inputMat.Options;
+        newMat.Options = timefreqtMat.Options;
         newMat.Options.WindowFunction = 'mean';
-        % Update Comment
-        newMat.Comment = replace(inputMat.Comment, 'mean+std', 'mean');
         % Add extraction in history
-        newMat.History = inputMat.History;
-        newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('mean matrix extracted from %s', inputFileFullName));
-        fileName = file_fullpath(inputFileFullName);
+        newMat.History = timefreqtMat.History;
+        newMat = bst_history('add', newMat, 'extract_std_cv', sprintf('mean matrix extracted from %s', tfMeanStdFile));
+        fileName = file_fullpath(tfMeanStdFile);
         bst_save(fileName, newMat, [], 1);
-        OutputFiles{end+1} = fileName;
-
     else
-        % Delete file
-        bst_process('CallProcess', 'process_delete', MeanStdFiles, [], ...
-            'target', 1);
+        % Delete mean+std file
+        bst_process('CallProcess', 'process_delete', tfMeanStdFile, [], 'target', 1);
+        OutputFiles(1) = [];
     end
-    db_reload_studies(iStudy);
 end
 
-function OutputFiles = saveMat(inputMat, inputFileFullName, newTF, function_name, sStudy, iStudy, OutputFiles)
-    newMat = inputMat;
-    newMat.TF = newTF;
+%% ===== UPDATE AND SAVE TIMEFREQ =====
+function OutputFile = saveMat(timefreqtMat, tfMeanStdFile, newTF, function_name, sInput)
+    % Update TF field
+    newMat     = timefreqtMat;
+    newMat.TF  = newTF;
     newMat.Std = [];
-    % Update the function name
+    % Update across-windows function name
     newMat.Options.WindowFunction = function_name;
-    % Update Comment, replace mean+std with function name
-    newMat.Comment = replace(inputMat.Comment, 'mean+std', function_name);
+    % Update Comment, append function name
+    newMat.Comment = [timefreqtMat.Comment ' ' function_name];
     % Add extraction in history
-    newMat = bst_history('add', newMat, 'extract_std_varcoef', sprintf('%s matrix extracted from %s', function_name, inputFileFullName));
-    [~, inputFilename] = bst_fileparts(inputFileFullName);
-    output = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [inputFilename, function_name]);
+    newMat = bst_history('add', newMat, 'extract_std_cv', sprintf('%s matrix extracted from %s', function_name, tfMeanStdFile));
+    [tfMeanStdFilenamePath, tfMeanStdBase] = bst_fileparts(tfMeanStdFile);
+    output = bst_process('GetNewFilename', tfMeanStdFilenamePath, [tfMeanStdBase, function_name]);
     % Save the file
     bst_save(output, newMat, 'v6');
-    db_add_data(iStudy, output, newMat);
-    OutputFiles{end+1} = output;
+    db_add_data(sInput.iStudy, output, newMat);
+    OutputFile = {output};
 end
-
-
-
 
