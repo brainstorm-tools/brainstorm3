@@ -491,6 +491,7 @@ for iData = 1:length(Data)
     end
     
     % ===== COMPUTE TRANSFORM =====
+    TFbis = [];
     isMeasureApplied = 0;
     switch (OPTIONS.Method)
         % Morlet wavelet transform (Dimitrios Pantazis)
@@ -556,14 +557,6 @@ for iData = 1:length(Data)
             OPTIONS.Comment = sprintf('PSD: %d/%dms %s', Nwin, round(OPTIONS.WinLength.*1000), OPTIONS.Comment);
             % Measure is already applied (power)
             isMeasureApplied = 1;
-            % For FFT features, if second TF is returned, apply the same process
-            if ~isempty(TFbis)
-                % Set to zero the bad channels
-                TFbis = SetBadChannels(TFbis,iGoodChannels);
-                % Apply post processing steps
-                TFbis = PostprocessTF(TFbis, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);
-                OPTIONS.TFbis = TFbis;
-            end
             
         % SPRiNT: Spectral Parameterization Resolved iN Time (Luc Wilson)
         case 'sprint'
@@ -638,13 +631,20 @@ for iData = 1:length(Data)
             % Permute dimensions to get [nChannels x nTime x nFreq x nTapers]
             TF = permute(TF, [2 4 3 1]);
     end
-
-    % Set to zero the bad channels
-    TF=SetBadChannels(TF,iGoodChannels);
+    nChannels = size(F,1);
     % Clean memory
     clear F;
+    % Set to zero the bad channels
+    TF=SetBadChannels(TF, nChannels, iGoodChannels);
     % Apply post processing steps
-    [TF, GridAtlas, RowNames, isAddedCommentNorm, OPTIONS] = PostprocessTF(TF, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);
+    [TF, GridAtlas, RowNames, isAddedCommentNorm, OPTIONS] = PostprocessTF(TF, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);   
+    % For PSD_FEATURES, if TFbis (second TF) is returned
+    if ~isempty(TFbis)
+        % Set to zero the bad channels
+        TFbis = SetBadChannels(TFbis, nChannels, iGoodChannels);
+        % Apply post processing steps
+        TFbis = PostprocessTF(TFbis, DataType, ImagingKernel, OPTIONS, nComponents, GridAtlas, RowNames, isFile, isMeasureApplied, isAddedCommentNorm);
+    end
 
     % ===== SAVE FILE / COMPUTE AVERAGE =====
     % Only save average
@@ -666,7 +666,7 @@ for iData = 1:length(Data)
     % Save all the time-frequency maps
     else
         % Save file
-        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas, strHistory);
+        SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF, TFbis, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvg, Atlas, strHistory);
     end
     bst_progress('inc', 1);
 end
@@ -698,15 +698,15 @@ if isAverage
         InitFile = '';
     end
     % Save file
-    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
+    SaveFile(iTargetStudy, InitFile, DataType, RowNames, TF_avg, [], OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgTotal, Atlas, strHistory);
 end
 
 
     %% ===== SET BAD CHANNELS =====
-    function TF=SetBadChannels(TF, iGoodChannels)
+    function TF=SetBadChannels(TF, nChannels, iGoodChannels)
         % Set to zero the bad channels
         if ~isempty(iGoodChannels)
-            iBadChannels = setdiff(1:size(F,1), iGoodChannels);
+            iBadChannels = setdiff(1:nChannels, iGoodChannels);
             if ~isempty(iBadChannels)
                 TF(iBadChannels, :, :, :) = 0;
             end
@@ -824,13 +824,15 @@ end
             end
         end
     end
+
 %% ===== SAVE FILE =====
-    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas, strHistory)
+    function SaveFile(iTargetStudy, DataFile, DataType, RowNames, TF, TFbis, OPTIONS, FreqBands, SurfaceFile, GridLoc, GridAtlas, HeadModelType, HeadModelFile, nAvgFile, Atlas, strHistory)
         % Create file structure
         FileMat = db_template('timefreqmat');
         FileMat.Comment   = OPTIONS.Comment;
         FileMat.DataType  = DataType;
         FileMat.TF        = TF;
+        FileMat.Std       = TFbis;
         FileMat.Time      = OPTIONS.TimeVector;
         FileMat.TimeBands = [];
         FileMat.Freqs     = OPTIONS.Freqs;
@@ -861,7 +863,6 @@ end
         FileMat.Options.MorletFwhmTc    = OPTIONS.MorletFwhmTc;
         FileMat.Options.ClusterFuncTime = OPTIONS.ClusterFuncTime;
         FileMat.Options.PowerUnits      = OPTIONS.PowerUnits;
-        
         % Compute edge effects mask
         if ismember(OPTIONS.Method, {'hilbert', 'morlet'})
             FileMat.TFmask = process_timefreq('GetEdgeEffectMask', FileMat.Time, FileMat.Freqs, FileMat.Options);
@@ -902,15 +903,14 @@ end
             FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
             FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
             % Apply time and frequency bands on TFbis
-            if (~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)) && ~isempty(TFbis)
+            if (~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)) && ~isempty(FileMat.Std)
                 FileMat2 = FileMat;
-                FileMat2.TF = OPTIONS.TFbis;
+                FileMat2.TF = FileMat.Std;
                 FileMat2.Freqs = OPTIONS.Freqs;
                 [FileMat2, Messages] = process_tf_bands('Compute', FileMat2, FreqBands, OPTIONS.TimeBands);
-                OPTIONS.TFbis = FileMat2.TF;
+                FileMat.Std = FileMat2.TF;
                 clear FileMat2;
             end
-            FileMat.Std = OPTIONS.TFbis;
         end
         
         % Save the file
