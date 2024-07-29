@@ -70,14 +70,14 @@ function Start(DigitizerType) %#ok<DEFNU>
     
     % ===== PARSE INPUTS =====
     if nargin == 0 || isempty(DigitizerType)
-        Digitize.Type = 'Digitizer';
+        Digitize.Type = 'Digitize';
     elseif nargin == 1
         if strcmpi(DigitizerType, 'revopoint')
             Digitize.Type = 'Revopoint';
             % Simulate
             SetSimulate(1);
         else
-            Digitize.Type = 'Digitizer';
+            Digitize.Type = 'Digitize';
         end
     else
         error('Usage : panel_digitize(DigitizerType)');
