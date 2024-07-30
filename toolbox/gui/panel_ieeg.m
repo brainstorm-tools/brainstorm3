@@ -26,11 +26,10 @@ function varargout = panel_ieeg(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017-2022
-%          Chinmay Chinara, 2024
+%          Chinmay Chinara, Raymundo Cassani, 2024
 
 eval(macro_method);
 end
-
 
 %% ===== CREATE PANEL =====
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
@@ -355,10 +354,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 end
                    
 
-
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+
 %% ===== CURRENT FIGURE CHANGED =====
 function CurrentFigureChanged_Callback(hFig) %#ok<DEFNU>
     UpdatePanel();
@@ -398,7 +397,6 @@ function UpdatePanel()
     UpdateElecList();
     UpdateContactList('SCS');
 end
-
 
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()
@@ -570,7 +568,6 @@ function UpdateModelList(elecType)
     % Restore callback
     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
 end
-
 
 %% ===== UPDATE ELECTRODE PROPERTIES =====
 function UpdateElecProperties(isUpdateModelList)
@@ -801,7 +798,6 @@ function [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContac
     sSelCont = sContacts(:, iSelCont);
 end
 
-
 %% ===== SET SELECTED ELECTRODES =====
 % USAGE:  SetSelectedElectrodes(iSelElec)      % array of indices
 %         SetSelectedElectrodes(SelElecNames)  % cell array of names
@@ -955,8 +951,6 @@ function ShowContactsMenu(jButton)
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
 
-
-
 %% ===== GET COLOR TABLE =====
 function ColorTable = GetElectrodeColorTable()
     ColorTable = [0    .8    0   ;
@@ -969,7 +963,6 @@ function ColorTable = GetElectrodeColorTable()
                   0    .4    0   ;
                   1    .843  0   ];
 end
-
 
 %% ===== EDIT ELECTRODE LABEL =====
 % Rename one selected electrode
@@ -1040,7 +1033,6 @@ function EditElectrodeLabel(varargin)
     UpdateFigures();
 end
 
-
 %% ===== EDIT ELECTRODE COLOR =====
 function EditElectrodeColor(newColor)
     % Get selected electrode
@@ -1072,7 +1064,6 @@ function EditElectrodeColor(newColor)
     % Update figures
     UpdateFigures();
 end
-
 
 %% ===== VALIDATE OPTIONS =====
 function ValidateOptions(optName, jControl)
@@ -1163,7 +1154,6 @@ function ValidateOptions(optName, jControl)
     end
 end
     
-
 %% ===== SHOW/HIDE ELECTRODE =====
 function SetElectrodeVisible(isVisible)
     % Get selected electrode
@@ -1195,7 +1185,6 @@ function SetElectrodeVisible(isVisible)
     UpdateFigures();
 end
     
-
 %% ===== GET ELECTRODES =====
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
@@ -1267,7 +1256,6 @@ function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(sele
         end
     end
 end
-
 
 %% ===== SET ELECTRODES =====
 % USAGE:  iElec = SetElectrodes(iElec=[], sElect)
@@ -1478,7 +1466,6 @@ function RemoveElectrode()
     UpdateFigures();
 end
 
-
 %% ===== GET ELECTRODE MODELS =====
 function sModels = GetElectrodeModels()
     global GlobalData;
@@ -1623,7 +1610,6 @@ function sModels = GetElectrodeModels()
     end
 end
 
-
 %% ===== GET SELECTED MODEL =====
 function [iModel, sModels] = GetSelectedModel()
     % Get figure controls
@@ -1641,7 +1627,6 @@ function [iModel, sModels] = GetSelectedModel()
         iModel = find(strcmpi({sModels.Model}, ModelName));
     end
 end
-
 
 %% ===== SET SELECTED MODEL =====
 function SetSelectedModel(selModel)
@@ -1754,7 +1739,6 @@ function AddElectrodeModel(sNewModel)
     UpdateElecProperties();
 end
 
-
 %% ===== REMOVE ELECTRODE MODEL =====
 function RemoveElectrodeModel()
     global GlobalData;
@@ -1778,7 +1762,6 @@ function RemoveElectrodeModel()
     % Update list of models
     UpdateElecProperties();
 end
-
 
 %% ===== SAVE ELECTRODE MODEL =====
 function SaveElectrodeModel()
@@ -1818,7 +1801,6 @@ function SaveElectrodeModel()
     end
 end
 
-
 %% ===== LOAD ELECTRODE MODEL =====
 function LoadElectrodeModel()
     % Get panel controls
@@ -1854,7 +1836,6 @@ function LoadElectrodeModel()
     end
 end
 
-
 %% ===== EXPORT ELECTRODE MODEL =====
 function ExportElectrodeModel()
     % Get panel controls
@@ -1870,7 +1851,6 @@ function ExportElectrodeModel()
     % Export to the base workspace
     export_matlab(sModels(iModel), []);
 end
-
 
 %% ===== IMPORT ELECTRODE MODEL =====
 function ImportElectrodeModel()
@@ -1889,7 +1869,6 @@ function ImportElectrodeModel()
     AddElectrodeModel(sModel);
     fprintf(1, 'Intracranial electrode model "%s" was imported\n', sModel.Model);
 end
-
 
 %% ===== UPDATE FIGURE TYPE =====
 function UpdateFigureModality(iDS, iFig)
@@ -1928,7 +1907,6 @@ function UpdateFigureModality(iDS, iFig)
         end
     end
 end
-
 
 %% ===== UPDATE FIGURES =====
 function UpdateFigures(hFigTarget)
@@ -1984,7 +1962,6 @@ function UpdateFigures(hFigTarget)
     end
 end
 
-
 %% ===== SET DISPLAY MODE =====
 function SetDisplayMode(DisplayMode)
     % Get current figure
@@ -1999,7 +1976,6 @@ function SetDisplayMode(DisplayMode)
     % Update figures
     UpdateFigures(hFig(1));
 end
-
 
 %% ===== DETECT ELECTRODES =====
 function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd, isUpdate) %#ok<DEFNU>
@@ -2118,9 +2094,7 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         ChannelMat.IntraElectrodes(iNewElec) = newElec;
     end
 end
-
-    
-                              
+                             
 %% =================================================================================
 %  === DISPLAY ELECTRODES  =========================================================
 %  =================================================================================
@@ -2451,7 +2425,6 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
     end
 end
 
-
 %% ===== GET CHANNEL NORMALS =====
 % USAGE: GetChannelNormal(sSubject, ChanLoc, Modality)
 %        GetChannelNormal(sSubject, ChanLoc, SurfaceType)   % SurfaceType={'scalp','innerskull','cortex','cortexhull','cortexmask'}
@@ -2550,7 +2523,6 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
 %     ChanLocProj = channel_project_scalp(fvh.vertices, ChanLoc);
 
 end
-
 
 %% ===== ALIGN CONTACTS =====
 function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
@@ -2840,7 +2812,6 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
     end
 end
 
-
 %% ===== PROJECT CONTACTS ON SURFACE =====
 function ProjectContacts(iDS, iFig, SurfaceType)
     global GlobalData;
@@ -3004,7 +2975,6 @@ function SetElectrodeLoc(iLoc, jButton)
     end
 end
 
-
 %% ===== CENTER MRI ON ELECTRODE =====
 function CenterMriOnElectrode(sElec, hFigTarget)
     global GlobalData;
@@ -3050,7 +3020,6 @@ function CenterMriOnElectrode(sElec, hFigTarget)
         end
     end
 end
-
 
 %% ===== CREATE NEW IMPLANTATION =====
 function CreateNewImplantation(MriFile) %#ok<DEFNU>
