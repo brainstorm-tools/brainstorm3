@@ -36,7 +36,7 @@ function sProcess = GetDescription()
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 321;
-    sProcess.Description = '';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutVolSource#Exclusion_zone';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw'};
     sProcess.OutputTypes = {'data', 'raw'};
