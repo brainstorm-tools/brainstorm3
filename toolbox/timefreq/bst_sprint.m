@@ -1130,7 +1130,7 @@ end
 
 function ys = expo_fl_function(freqs, params)
 
-    ys = log10(f.^(params(1)) * 10^(params(2)) + params(3));
+    ys = log10(freqs.^(params(1)) * 10^(params(2)) + params(3));
 
 end
 
