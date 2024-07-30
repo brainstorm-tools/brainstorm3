@@ -41,10 +41,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
+    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
+    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',25,25);
     
-    % ===== TOOLBAR =====
+    % ===== TOP TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
         jToolbar.setPreferredSize(TB_DIM);
@@ -68,6 +70,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Menu: Contacts
         jToolbar.addSeparator();
         jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+    
+    % ===== BOTTOM TOOLBAR =====
+    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
+        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
+        jToolbarBottom.setPreferredSize(TB_DIM);
+        jToolbarBottom.setOpaque(0);
+        % Add GARDEL
+        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'Auto detect contacts using GARDEL', @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
+        jToolbarBottom.addSeparator();
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -212,6 +223,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
+                                  'jToolbarBottom',      jToolbarBottom, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonShow',         jButtonShow, ...
@@ -374,12 +386,12 @@ function UpdatePanel()
     hFig = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -460,6 +472,16 @@ function UpdateElecList()
     % Restore callback
     drawnow;
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
+end
+
+%% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
+function AutoDetectContacts(method)
+    switch(method)
+        case 'gardel'
+            disp('Calling GARDEL !');
+        otherwise
+            disp('Not defined !')
+    end
 end
 
 %% ===== UPDATE CONTACT LIST =====
@@ -930,7 +952,10 @@ function ShowContactsMenu(jButton)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
+    % Menu: Auto Detect Contacts
+    gui_component('MenuItem', jMenu, [], 'Auto detect contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
     % Menu: Default positions
+    jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
     % Menu: Export select atlas
     if strcmpi(sSelElec(1).Type, 'ECOG')
