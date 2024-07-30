@@ -175,6 +175,23 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'ct2mrireg'};
     PlugDesc(end).DeleteFiles    = {'fmri_analysis', 'for_clio', 'mixed_atlas', 'process_script', 'reg_prepost', 'visualize_channels', '.gitignore', 'README.md'};
     
+    % === ANATOMY: GARDEL ===
+    % this plugin is used for performing MRI to CT coregistration, detect automatically SEEG contact and allow manual segmenation and labelling
+    PlugDesc(end+1)              = GetStruct('gardel');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/master/gardel-master.zip';
+    PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
+    PlugDesc(end).TestFile       = 'code/GARDEL.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs    = {'spm12'};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn    = {};
+    PlugDesc(end).DeleteFiles    = {'.gitignore'};
+    
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
     PlugDesc(end).Version        = '1.9.6';
