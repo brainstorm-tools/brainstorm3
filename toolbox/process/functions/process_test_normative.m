@@ -340,7 +340,7 @@ function normDistrib = ComputeNormDistrib(sProcess, norm_values, options)
     % Compute the residuals (z-scores) for normative values
     residuals = (norm_values - normDistrib.norm_means) ./ normDistrib.norm_stds;
 
-    if options.IsNormal && options.test_normality
+    if options.IsNormal && options.TestNormality
         % Assuming that the residuals are normally distributed
         % We can test the normality of the residuals using the Shapiro-Wilk test
         % Results are displayed in the report
