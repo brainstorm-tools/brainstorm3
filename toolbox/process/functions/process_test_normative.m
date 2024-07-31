@@ -208,24 +208,12 @@ function comment = GetComment(options)
     if options.IsNormal
         comment_suffix = [comment_suffix, ' normal'];
     end
-
     % Check that the options are valid and update the comment suffix
     if strcmp(options.FreqOut, 'range')
-        % Check that the frequency range is valid
-        if options.FreqRange(1) >= options.FreqRange(2)
-            bst_report('error', 'Invalid frequency range');
-            return
-        end
         comment_suffix = [comment_suffix, sprintf(' %d-%dHz', options.FreqRange(1), options.FreqRange(2))];
     elseif strcmp(options.FreqOut, 'bands')
-        % Check that the frequency bands are valid
-        if isempty(options.FreqBands)
-            bst_report('error', 'Invalid frequency bands');
-            return
-        end
         comment_suffix = [comment_suffix, ' bands'];
     end
-
     % Format the comment suffix
     if ~isempty(comment_suffix)
         comment_suffix = ['| ' comment_suffix];
