@@ -476,9 +476,37 @@ end
 
 %% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
 function AutoDetectContacts(method)
+    global GlobalData
+
     switch(method)
         case 'gardel'
             disp('Calling GARDEL !');
+            
+            % get subject
+            [~,~,iDSall] = bst_figures('GetCurrentFigure');
+            ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
+            % Get study
+            sStudy = bst_get('ChannelFile', ChannelFile);
+            % Get subject
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            if isempty(sSubject) || isempty(sSubject.Anatomy)
+                bst_error('No CT available for this subject.', 'GARDEL', 0);
+            end
+            % Find CT volumes
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+            CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            
+            CT_image = in_mri_bst(CtFile);
+            CT_info.pixdim(1) = CT_image.Voxsize(1, 1);
+            CT_info.pixdim(2) = CT_image.Voxsize(1, 2);
+            CT_info.pixdim(3) = CT_image.Voxsize(1, 3);    
+
+            % get isoSurface image
+            iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
+            isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
+            New_Centroids_vox = elec_auto_segmentation(CT_image.Cube, CT_info, str2double(isoValue{1}));
+            disp(New_Centroids_vox);
+
         otherwise
             disp('Not defined !')
     end
