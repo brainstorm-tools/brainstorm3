@@ -141,7 +141,6 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     opt.proximity_threshold = sProcess.options.proxthresh.Value{1};
     opt.optim_obj           = sProcess.options.method.Value; % negloglike or leastsquare
     opt.peak_type           = 'gaussian'; % 'cauchy', for interface simplification
-    opt.proximity_threshold = sProcess.options.proxthresh.Value{1}; % sProcess.options.proxthresh.Value{1};
     opt.guess_weight        = sProcess.options.guessweight.Value;
     opt.thresh_after        = true;   % Threshold after fitting always selected for Matlab (mirrors the Python FOOOF closest by removing peaks that do not satisfy a user's predetermined conditions)
     % Python-only options
