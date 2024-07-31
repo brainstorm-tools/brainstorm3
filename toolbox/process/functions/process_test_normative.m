@@ -115,6 +115,17 @@ function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
     opt.test_normality      = sProcess.options.shapiro.Value;
     opt.report              = true; % Use report if in a Brainstorm process
 
+    % FilesA in FilesB
+    Lia = ismember({sInputsA.FileName}, {sInputsB.FileName});
+    sInputsUnique = [sInputsB, sInputsA(~Lia)];
+
+    % Validate inputs
+    [errMsg, iInputErr, nRows, Freqs] = CheckInputs(sInputsUnique);
+    if ~isempty(errMsg) && ~isempty(iInputErr)
+        bst_report('Error', sProcess, sInputsUnique(iInputErr), errMsg);
+        return
+    end
+
     % Compute reference map
     [norm_values, sRefMapTemplate] = LoadNormData(sInputsB, opt);
     sRefMap = ComputeRefMap(norm_values, opt, sProcess, sRefMapTemplate);
@@ -225,25 +236,90 @@ function pData = ProcessInput(data, opt)
 end
 
 
-%% ===== VALIDATE FREQUENCY AXES =====
+%% ===== VALIDATE INPUT FILES =====
 % Check that the frequencies and sources are the same across all subjects
-function check = CheckInput(pData, sRefMap, fileName)
-    try
-        if abs(sum(pData.Freqs - sRefMap.refFreqs)) > 1e-6
-            bst_report('error', 'All inputs must have the same frequencies. Check the input files. \nProblem with file: %s', fileName);
+function [errMsg, iInputErr, nRows, Freqs] = CheckInputs(sInputs)
+    errMsg = '';
+    nRows  = [];
+    Freqs  = [];
+    % Files must: be PSD, have same DataType, have same space, and have same frequency definition
+    for iInput = 1 : length(sInputs)
+        iInputErr = iInput;
+        timefreqMat = in_bst_timefreq(sInputs(iInput).FileName, 0, 'Method', 'RowNames', 'DataType', 'HeadModelType', 'SurfaceFile', 'HeadModelFile', 'Freqs');
+        if ~strcmpi(timefreqMat.Method, 'psd')
+            errMsg = 'Input files must be PSD files.';
             return
         end
-    catch
-        if ~isequal(pData.Freqs, sRefMap.refFreqs)
-            bst_report('error', 'All inputs must have the same frequencies. Check the input files. \nProblem with file: %s', fileName);
-            return
+        %  Verify files that must be common
+        if iInput == 1
+            % Get reference fields
+            refDataType = timefreqMat.DataType;
+            if strcmpi(refDataType, 'results')
+                refHeadModelType = timefreqMat.HeadModelType;
+                switch refHeadModelType
+                    case 'surface'
+                        refCommonSpaceFile = timefreqMat.SurfaceFile;
+                    case 'volume'
+                        refCommonSpaceFile = timefreqMat.HeadModelFile;
+                    otherwise
+                        errMsg = ['HeadModel of type ' refHeadModelType ' is not supported.'];
+                        return
+                end
+            end
+            refRowNames = timefreqMat.RowNames;
+            nRows = length(refRowNames);
+            refFreqs = timefreqMat.Freqs;
+
+        else
+            % Check against reference DataType
+            if ~strcmpi(timefreqMat.DataType, refDataType)
+                errMsg = 'All PSD files must share the same "DataType"';
+                return
+            end
+            % PSD files must be computed in the same modality and space
+            switch timefreqMat.DataType
+                case {'data', 'matrix'}
+                    if ~isequal(refCommonSpaceFile, timefreqMat.RowNames)
+                        errMsg = 'PSD files from sensors (or matrices) must share the same channel names.';
+                    end
+                case 'results'
+                    switch timefreqMat.HeadModelType
+                        case 'surface'
+                            if ~isequal(refCommonSpaceFile, timefreqMat.SurfaceFile)
+                                errMsg = 'PSD files from surface sources must share the same surface file.';
+                            end
+                        case 'volume'
+                            if ~isequal(refCommonSpaceFile, timefreqMat.RowNames)
+                                errMsg = 'PSD files from volume sources must share the head model (volume grid) file.';
+                            end
+                        otherwise
+                            errMsg = ['HeadModel of type ' timefreqMat.HeadModelType ' is not supported.'];
+                            return
+                    end
+            end
+            % Check frequency definition
+            if isequal(size(timefreqMat.Freqs), size(refFreqs))
+                if iscell(refFreqs)
+                    for iBand = 1 : size(timefreqMat.Freqs, 1)
+                        if ~strcmpi(strjoin(timefreqMat.Freqs(iBand, :)), strjoin(refFreqs(iBand, :)))
+                            errMsg = 'PSD files have different frequency band definition.';
+                            return
+                        end
+                    end
+                else
+                    if abs(sum(timefreqMat.Freqs - refFreqs)) > 1e-6
+                        errMsg = 'PSD files have different frequency axes.';
+                        return
+                    end
+                end
+            else
+                errMsg = 'PSD files must have the same frequency definition.';
+                return
+            end
         end
     end
-    % Check that the number of sources is the same across all subjects
-    if length(pData.RowNames) ~= sRefMap.nSources
-        bst_report('error', 'All inputs must have the same number of sources. Check the input files. \nProblem with file: %s', fileName);
-        return
-    end
+    Freqs = refFreqs;
+    iInputErr = [];
 end
 
 
@@ -264,8 +340,6 @@ function [norm_values, sRefMapTemplate] = LoadNormData(refInputs, opt)
             nFreqs = length(pData.Freqs);
             sRefMapTemplate.nSources = length(pData.RowNames);
             norm_values = zeros(sRefMapTemplate.nSources, nFreqs, nNormativeSubjects);
-        else
-            CheckInput(pData, sRefMapTemplate, refInputs(iSubB).FileName);
         end
 
         % Get the subject's PSD and store it in the norm_values matrix
@@ -333,7 +407,6 @@ function sDevMap = CompareToRefMap(devInputs, iSub, opt, sRefMap, tf)
         % Process the data
         data = in_bst_timefreq(devInputs(iSub).FileName);
         sDevMap.pData = ProcessInput(data, opt);
-        CheckInput(sDevMap.pData, sRefMap, devInputs(iSub).FileName);
         tf = sDevMap.pData.TF;
     end
 
