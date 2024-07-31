@@ -98,9 +98,6 @@ end
 
 %% ===== RUN =====
 function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
-
-    bst_report('Start', [sInputsA, sInputsB]);
-
     % Initialize output
     sOutput = cell(1, length(sInputsA));
 
@@ -347,27 +344,18 @@ function normDistrib = ComputeNormDistrib(sProcess, norm_values, options)
         % Assuming that the residuals are normally distributed
         % We can test the normality of the residuals using the Shapiro-Wilk test
         % Results are displayed in the report
-        res_shapiro = zeros(nSources, nFreqs);
         p_shapiro   = zeros(nSources, nFreqs);
         % Compute the Shapiro-Wilk test for normality
         for iSource = 1:nSources
             for iFreq = 1:nFreqs
-                [h, p] = swtest(residuals(iSource, iFreq, :));
-                res_shapiro(iSource, iFreq) = h;
+                [~, p] = swtest(residuals(iSource, iFreq, :));
                 p_shapiro(iSource, iFreq)   = p;
             end
         end
-
-        if true
-            % Report the results
-            bst_report('Info', sProcess, [], 'Shapiro-Wilk test for normality of residuals:');
-            bst_report('Info', sProcess, [], sprintf('Significant at p < 0.05: %d/%d', sum(res_shapiro, "all"), nSources*nFreqs));
-            bst_report('Info', sProcess, [], sprintf('Significant at p < 0.1: %d/%d', sum(p_shapiro < 0.1, "all"), nSources*nFreqs));
-        else
-            disp('Shapiro-Wilk test for normality of residuals:');
-            fprintf('Significant at p < 0.05: %d/%d', sum(res_shapiro, "all"), nSources*nFreqs);
-            fprintf('Significant at p < 0.1: %d/%d', sum(p_shapiro < 0.1, "all"), nSources*nFreqs);
-        end
+        % Report the results of normality test
+        bst_report('Info', sProcess, [], ['Shapiro-Wilk test for normality of residuals:', 10, ...
+                   sprintf('Significant at p &lt 0.05 : %d/%d', sum(p_shapiro < 0.05, "all"), nSources*nFreqs), 10,...
+                   sprintf('Significant at p &lt 0.1 : %d/%d',  sum(p_shapiro < 0.1,  "all"), nSources*nFreqs)]);
     end
 
     % Compute the percentiles of the distribution of residuals
