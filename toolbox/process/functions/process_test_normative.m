@@ -47,10 +47,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 1;
-    % Options: Condition in which the data will be saved
-    sProcess.options.intraCond.Comment = 'Condition in which the data will be saved:';
-    sProcess.options.intraCond.Type    = 'text';
-    sProcess.options.intraCond.Value   = 'comp_to_normative';
     % Options: Log values
     sProcess.options.islog.Comment       = 'Use log10 values';
     sProcess.options.islog.Type          = 'checkbox';
@@ -102,7 +98,6 @@ function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
     sOutput = cell(1, length(sInputsA));
 
     % Fetch user options
-    OPTIONS.IntraCond     = sProcess.options.intraCond.Value;
     OPTIONS.IsLog         = sProcess.options.islog.Value;
     OPTIONS.FreqOut       = sProcess.options.freqout.Value;
     OPTIONS.FreqRange     = sProcess.options.freqrange.Value{1};
@@ -190,7 +185,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
         % Compute significance deviation map, replace TF field
         timefreqMat = CompareToNormDistrib(timefreqMat, normDistrib, OPTIONS);
         % Create the output file
-        sOutput{iSubA} = SaveData(sProcess, sInputsA(iSubA), sInputsB, timefreqMat, OPTIONS);
+        sOutput{iSubA} = SaveData(sInputsA(iSubA), sInputsB, timefreqMat, OPTIONS);
     end
 end
 
@@ -385,36 +380,26 @@ end
 
 
 %% ===== SAVE TEST RESULTS =====
-function output = SaveData(sProcess, sInputA, sInputsB, tfMat, options)
+function output = SaveData(sInputA, sInputsB, tfMat, options)
     % Add comment, change filename and save
     tfMat.ColormapType = 'stat2';
 
     % Get file comment from options
-    comment = GetComment(options);
-    % file path suffix
-    suffix = sprintf('comp_p_%.2d', options.Pvalue*100);
-    % Extract subject name from comment
-    subName = strsplit(sInputA.Comment, 'PSD');
-    subName = subName{1};
-    tfMat.Comment = [subName, ' ', comment];
+    tfMat.Comment = GetComment(options);
 
     % History
-    tfMat = bst_history('add', tfMat, 'comp2norm', comment);
-    % History: List files used for normative
     tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('File compared to normative: %s', sInputA.FileName));
+    tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('p-value = %.2f, isNorm = %d, isLog10 = %d', options.Pvalue, options.IsNormal, options.IsLog));
+    % History: List files used for normative
     tfMat = bst_history('add', tfMat, 'comp2norm', 'List of files used for normative distribution:');
     for i = 1:length(sInputsB)
         tfMat = bst_history('add', tfMat, 'comp2norm', [' - ' sInputsB(i).FileName]);
     end
-
-    % Inputs for this file are the input file and the normative files
-    sInputs = [sInputA, sInputsB];
-    % Add new condition
-    [sStudy, iStudy, ~, ~] = bst_process('GetOutputStudy', sProcess, sInputs, options.IntraCond, 1);
-    [~, original_filename] = bst_fileparts(sInputA.FileName);
-    output = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [original_filename, '_', suffix]);
-
+    % Output filename
+    [originalPath, originalBase, originalExt] = bst_fileparts(file_fullpath(sInputA.FileName));
+    output = bst_fullfile(originalPath, [originalBase, '_' 'comp2norm', originalExt]);
+    output = file_unique(output);
     % Save the file
     bst_save(output, tfMat, 'v6');
-    db_add_data(iStudy, output, tfMat);
+    db_add_data(sInputA.iStudy, output, tfMat);
 end
