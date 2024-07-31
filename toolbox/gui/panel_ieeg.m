@@ -481,7 +481,7 @@ function AutoDetectContacts(method)
     switch(method)
         case 'gardel'
             disp('Calling GARDEL !');
-
+            
             % get subject
             [~,~,iDSall] = bst_figures('GetCurrentFigure');
             ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
@@ -505,6 +505,10 @@ function AutoDetectContacts(method)
             iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
             isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
             
+            % Set process logo
+            bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
+            bst_plugin('SetProgressLogo', 'gardel');
+
             % use GARDEL routine for magic button
             New_Centroids_vox = elec_auto_segmentation(CT_image.Cube, CT_info, str2double(isoValue{1}));
             
@@ -516,6 +520,9 @@ function AutoDetectContacts(method)
                 % disp('-----------------------');
             end
             
+            % Stop process box
+            bst_progress('stop');
+
         otherwise
             disp('Not defined !')
     end
