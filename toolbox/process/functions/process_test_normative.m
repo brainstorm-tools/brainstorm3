@@ -40,37 +40,36 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = '';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Test';
-    sProcess.Index       = 175;
+    sProcess.Index       = 110;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
-    sProcess.isPaired    = 0;
-    sProcess.isSeparator = 0;
+    sProcess.isSeparator = 1;
     % Options: Condition in which the data will be saved
     sProcess.options.intraCond.Comment = 'Condition in which the data will be saved:';
     sProcess.options.intraCond.Type    = 'text';
     sProcess.options.intraCond.Value   = 'comp_to_normative';
     % Options: Log values
-    sProcess.options.islog.Comment = 'Use log10 values';
-    sProcess.options.islog.Type    = 'checkbox';
-    sProcess.options.islog.Value   = 1;
+    sProcess.options.islog.Comment       = 'Use log10 values';
+    sProcess.options.islog.Type          = 'checkbox';
+    sProcess.options.islog.Value         = 1;
     % Options : Select p-value
-    sProcess.options.pvalue.Comment = 'Deviation level (range 0-1):';
-    sProcess.options.pvalue.Type    = 'value';
-    sProcess.options.pvalue.Value   = {0.05, '', 2};
+    sProcess.options.pvalue.Comment      = 'Deviation level (range 0-1):';
+    sProcess.options.pvalue.Type         = 'value';
+    sProcess.options.pvalue.Value        = {0.05, '', 2};
     % Options: Normal distribution
     sProcess.options.isnormal.Comment    = 'Assume normal distribution of residuals';
     sProcess.options.isnormal.Type       = 'checkbox';
     sProcess.options.isnormal.Value      = 0;
     sProcess.options.isnormal.Controller = 'Normal';
     % Options : Shapiro-Wilk test for normality
-    sProcess.options.shapiro.Comment   = 'Test for normality of residuals (Shapiro-Wilk)';
-    sProcess.options.shapiro.Type      = 'checkbox';
-    sProcess.options.shapiro.Value     = 1;
-    sProcess.options.shapiro.Class     = 'Normal';
-    % Options: Frequency axis
+    sProcess.options.shapiro.Comment     = 'Test for normality of residuals (Shapiro-Wilk)';
+    sProcess.options.shapiro.Type        = 'checkbox';
+    sProcess.options.shapiro.Value       = 1;
+    sProcess.options.shapiro.Class       = 'Normal';
+    % Options: Frequency definition
     % === Frequency output
     sProcess.options.freqout.Comment   = {'Same as input', 'Frequency range', 'Frequency bands', 'Frequency definition:'; ...
                                           'input', 'range', 'bands', ''};
