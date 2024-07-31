@@ -191,7 +191,7 @@ end
 
 
 %% ===== FORMAT FILE COMMENT =====
-function comment = GetComment(options)
+function comment = GetComment(tfMat, options)
     % Initialize suffix for file comment
     comment_suffix = '';
     if options.IsLog
@@ -201,10 +201,17 @@ function comment = GetComment(options)
         comment_suffix = [comment_suffix, ' normal'];
     end
     % Check that the options are valid and update the comment suffix
-    if strcmp(options.FreqOut, 'range')
-        comment_suffix = [comment_suffix, sprintf(' %d-%dHz', options.FreqRange(1), options.FreqRange(2))];
-    elseif strcmp(options.FreqOut, 'bands')
-        comment_suffix = [comment_suffix, ' bands'];
+    switch options.FreqOut
+        case 'bands'
+            comment_suffix = [comment_suffix, ' bands'];
+
+        case 'range'
+            comment_suffix = [comment_suffix, sprintf(' %d-%dHz', options.FreqRange(1), options.FreqRange(2))];
+
+        case 'input'
+            if iscell(tfMat.Freqs)
+                comment_suffix = [comment_suffix, ' bands'];
+            end
     end
     % Format the comment suffix
     if ~isempty(comment_suffix)
@@ -385,7 +392,7 @@ function output = SaveData(sInputA, sInputsB, tfMat, options)
     tfMat.ColormapType = 'stat2';
 
     % Get file comment from options
-    tfMat.Comment = GetComment(options);
+    tfMat.Comment = GetComment(tfMat, options);
 
     % History
     tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('File compared to normative: %s', sInputA.FileName));
