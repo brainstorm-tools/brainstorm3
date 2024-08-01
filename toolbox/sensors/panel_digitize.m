@@ -496,6 +496,7 @@ function isOk = EditSettings()
     isOk = 0;
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
+    
     % Ask for new options
     if strcmpi(Digitize.Type, 'Revopoint')
         [res, isCancel] = java_dialog('input', ...
@@ -518,37 +519,52 @@ function isOk = EditSettings()
                  DigitizeOptions.UnitType, ...
                  num2str(DigitizeOptions.isMEG), ...
                  num2str(DigitizeOptions.nFidSets), ...
-                 num2str(DigitizeOptions.isBeep)});       
-    end 
+                 num2str(DigitizeOptions.isBeep)});    
+    end
+    
     if isempty(res) || isCancel
         return
     end
+
     % Check values
-    if (length(res) < 5) || isempty(res{1}) || isempty(res{2}) || ~ismember(str2double(res{3}), [0 1]) || isnan(str2double(res{4})) || ~ismember(str2double(res{5}), [0 1])
-        bst_error('Invalid values.', 'Digitize', 0);
-        return;
-    end
-    % Get entered values
-    DigitizeOptions.ComPort      = res{1};
-    DigitizeOptions.UnitType     = lower(res{2});
-    DigitizeOptions.isMEG        = str2double(res{3});
-    DigitizeOptions.nFidSets     = str2double(res{4});
-    DigitizeOptions.isBeep       = str2double(res{5});
-    
-    if strcmp(DigitizeOptions.UnitType,'fastrak')
-        DigitizeOptions.ComRate = 9600;
-        DigitizeOptions.ComByteCount = 94;
-    elseif strcmp(DigitizeOptions.UnitType,'patriot')
-        DigitizeOptions.ComRate = 115200;
-        DigitizeOptions.ComByteCount = 120;
+    if strcmpi(Digitize.Type, 'Revopoint')
+        if (length(res) < 3) || ~ismember(str2double(res{1}), [0 1]) || isnan(str2double(res{2})) || ~ismember(str2double(res{3}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+
+        % Get entered values
+        DigitizeOptions.isMEG        = str2double(res{1});
+        DigitizeOptions.nFidSets     = str2double(res{2});
+        DigitizeOptions.isBeep       = str2double(res{3});
     else
-        bst_error('Incorrect unit type.', 'Digitize', 0);
-        return;
+        if (length(res) < 5) || isempty(res{1}) || isempty(res{2}) || ~ismember(str2double(res{3}), [0 1]) || isnan(str2double(res{4})) || ~ismember(str2double(res{5}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+        % Get entered values
+        DigitizeOptions.ComPort      = res{1};
+        DigitizeOptions.UnitType     = lower(res{2});
+        DigitizeOptions.isMEG        = str2double(res{3});
+        DigitizeOptions.nFidSets     = str2double(res{4});
+        DigitizeOptions.isBeep       = str2double(res{5});
+        
+        if strcmp(DigitizeOptions.UnitType,'fastrak')
+            DigitizeOptions.ComRate = 9600;
+            DigitizeOptions.ComByteCount = 94;
+        elseif strcmp(DigitizeOptions.UnitType,'patriot')
+            DigitizeOptions.ComRate = 115200;
+            DigitizeOptions.ComByteCount = 120;
+        else
+            bst_error('Incorrect unit type.', 'Digitize', 0);
+            return;
+        end
     end
     
     % Save values
     bst_set('DigitizeOptions', DigitizeOptions);
     %ResetDataCollection();
+    UpdateList();
     isOk = 1;
 end
 
