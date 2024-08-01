@@ -231,9 +231,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     gui_component('MenuItem', jMenu, [], 'Save as...', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@Save_Callback), []);
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Edit settings...',    IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
-    gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
+    if ~strcmpi(Digitize.Type, 'Revopoint')
+        gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
+    end
     jMenu.addSeparator();
-    if exist('bst_headtracking')
+    if exist('bst_headtracking') && ~strcmpi(Digitize.Type, 'Revopoint')
         gui_component('MenuItem', jMenu, [], 'Start head tracking',     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
