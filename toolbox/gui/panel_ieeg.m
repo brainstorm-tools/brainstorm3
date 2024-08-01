@@ -483,8 +483,9 @@ function AutoDetectContacts(method)
             disp('Calling GARDEL !');
             
             % get subject
-            [~,~,iDSall] = bst_figures('GetCurrentFigure');
-            ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
+            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
+            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+            % Channels = GlobalData.DataSet(iDS).Channel;
             % Get study
             sStudy = bst_get('ChannelFile', ChannelFile);
             % Get subject
@@ -497,6 +498,7 @@ function AutoDetectContacts(method)
             CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
             
             CT_image = in_mri_bst(CtFile);
+            % CT_image.Cube = permute(CT_image.Cube, [3,1,2]);
             CT_info.pixdim(1) = CT_image.Voxsize(1, 1);
             CT_info.pixdim(2) = CT_image.Voxsize(1, 2);
             CT_info.pixdim(3) = CT_image.Voxsize(1, 3);    
@@ -509,15 +511,33 @@ function AutoDetectContacts(method)
             bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
             bst_plugin('SetProgressLogo', 'gardel');
 
-            % use GARDEL routine for magic button
+            % use GARDEL magic button routine
             New_Centroids_vox = elec_auto_segmentation(CT_image.Cube, CT_info, str2double(isoValue{1}));
             
+            sCt = bst_memory('GetMri', CtFile);
             % parse the coordinates for electrodes and contacts
+            contDetectedCnt=0; % to keep a count of valid contact detection
             for elec=1:size(New_Centroids_vox,1) % electrodes
-                for cont=1:size(New_Centroids_vox{elec},1) % contacts
-                    disp(New_Centroids_vox{elec}(cont,:));
+                % add only if minimum 2 contacts found per electrode
+                if size(New_Centroids_vox{elec},1)>2
+                    AddElectrode(char('A'+contDetectedCnt));
+                    contDetectedCnt = contDetectedCnt+1;
+                    
+                    % Get selected electrodes
+                    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+                    
+                    % Get selected electrode
+                    for cont=1:size(New_Centroids_vox{elec},1) % contacts
+                        % disp(New_Centroids_vox{elec}(cont,:));
+                        % Set electrode position
+                        sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                    end
+                    % Save electrode modification
+                    SetElectrodes(iSelElec, sSelElec);
+                    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
+                    % end
+                    % disp('-----------------------');
                 end
-                % disp('-----------------------');
             end
             
             % Stop process box
@@ -1381,7 +1401,13 @@ end
 
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(varargin) 
+    if nargin<1
+        elecName = [];
+    else
+        elecName = varargin{1};
+    end
+
     global GlobalData;
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
@@ -1392,9 +1418,13 @@ function AddElectrode()
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
+    if isempty(elecName)
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    else
+        newLabel = char(elecName);
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -2700,6 +2730,9 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+                    case 'auto'
+                        % Project the existing contact on the depth electrode
+                        Channels(iChan(i)).Loc = sElectrodes(iElec).Loc(:,i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
