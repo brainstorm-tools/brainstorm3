@@ -221,7 +221,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
     PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
 
