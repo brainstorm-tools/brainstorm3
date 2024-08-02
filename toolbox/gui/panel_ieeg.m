@@ -532,6 +532,7 @@ function AutoDetectContacts(method)
                         % Set electrode position
                         sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
                     end
+                    sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
                     % Save electrode modification
                     SetElectrodes(iSelElec, sSelElec);
                     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
