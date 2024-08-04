@@ -496,13 +496,21 @@ function AutoDetectContacts(method)
             % Find CT volumes
             iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
             CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            sCt = bst_memory('GetMri', CtFile);
             
-            CT_image = in_mri_bst(CtFile);
-            % CT_image.Cube = permute(CT_image.Cube, [3,1,2]);
-            CT_info.pixdim(1) = CT_image.Voxsize(1, 1);
-            CT_info.pixdim(2) = CT_image.Voxsize(1, 2);
-            CT_info.pixdim(3) = CT_image.Voxsize(1, 3);    
-
+            %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
+            %  Handle CT slice dimensions (to match with GARDEL segmentation function)
+            if size(sCt.Cube, 1)==size(sCt.Cube,3)
+                CT_image = permute(sCt.Cube, [1,3,2]);
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);
+            elseif size(sCt.Cube, 2)==size(sCt.Cube,3)
+                CT_image = permute(sCt.Cube, [2,3,1]);
+                CT_info.pixdim = sCt.Voxsize([2 3 1]);   
+            else
+                CT_image = sCt.Cube;
+                CT_info.pixdim = sCt.Voxsize;
+            end
+            
             % get isoValue from isoSurface
             iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
             isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
@@ -512,9 +520,8 @@ function AutoDetectContacts(method)
             bst_plugin('SetProgressLogo', 'gardel');
 
             % use GARDEL magic button routine
-            New_Centroids_vox = elec_auto_segmentation(CT_image.Cube, CT_info, str2double(isoValue{1}));
+            New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
             
-            sCt = bst_memory('GetMri', CtFile);
             % parse the coordinates for electrodes and contacts
             contDetectedCnt=0; % to keep a count of valid contact detection
             for elec=1:size(New_Centroids_vox,1) % electrodes
@@ -527,17 +534,29 @@ function AutoDetectContacts(method)
                     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
                     
                     % Get selected electrode
-                    for cont=1:size(New_Centroids_vox{elec},1) % contacts
-                        % disp(New_Centroids_vox{elec}(cont,:));
-                        % Set electrode position
-                        sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                    for cont=1:size(New_Centroids_vox{elec},1) % contacts   
+                        % Set electrode position (covert from GARDEL to Brainstorm coordinates)
+                        if size(sCt.Cube, 1)==size(sCt.Cube,3)
+                            x(1) = New_Centroids_vox{elec}(cont,1);
+                            x(2) = New_Centroids_vox{elec}(cont,3);
+                            x(3) = New_Centroids_vox{elec}(cont,2);
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
+                        elseif size(sCt.Cube, 2)==size(sCt.Cube,3)
+                            x(1) = New_Centroids_vox{elec}(cont,2);
+                            x(2) = New_Centroids_vox{elec}(cont,3);
+                            x(3) = New_Centroids_vox{elec}(cont,1);
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
+                        else
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                        end
                     end
+
                     sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
+
                     % Save electrode modification
                     SetElectrodes(iSelElec, sSelElec);
+
                     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
-                    % end
-                    % disp('-----------------------');
                 end
             end
             
