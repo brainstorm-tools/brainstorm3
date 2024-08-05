@@ -500,12 +500,9 @@ function AutoDetectContacts(method)
             
             %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
             %  Handle CT slice dimensions (to match with GARDEL segmentation function)
-            if size(sCt.Cube, 1)==size(sCt.Cube,3)
+            if size(sCt.Cube,1)==size(sCt.Cube,3)
                 CT_image = permute(sCt.Cube, [1,3,2]);
-                CT_info.pixdim = sCt.Voxsize([1 3 2]);
-            elseif size(sCt.Cube, 2)==size(sCt.Cube,3)
-                CT_image = permute(sCt.Cube, [2,3,1]);
-                CT_info.pixdim = sCt.Voxsize([2 3 1]);   
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);  
             else
                 CT_image = sCt.Cube;
                 CT_info.pixdim = sCt.Voxsize;
@@ -536,15 +533,10 @@ function AutoDetectContacts(method)
                     % Get selected electrode
                     for cont=1:size(New_Centroids_vox{elec},1) % contacts   
                         % Set electrode position (covert from GARDEL to Brainstorm coordinates)
-                        if size(sCt.Cube, 1)==size(sCt.Cube,3)
+                        if size(sCt.Cube,1)==size(sCt.Cube,3)
                             x(1) = New_Centroids_vox{elec}(cont,1);
                             x(2) = New_Centroids_vox{elec}(cont,3);
                             x(3) = New_Centroids_vox{elec}(cont,2);
-                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
-                        elseif size(sCt.Cube, 2)==size(sCt.Cube,3)
-                            x(1) = New_Centroids_vox{elec}(cont,2);
-                            x(2) = New_Centroids_vox{elec}(cont,3);
-                            x(3) = New_Centroids_vox{elec}(cont,1);
                             sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
                         else
                             sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
