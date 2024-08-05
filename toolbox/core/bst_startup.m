@@ -1,4 +1,4 @@
-function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
+function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir, TemplateName)
 % BST_STARTUP: Start a new Brainstorm Session.
 %
 % USAGE:  bst_startup(BrainstormHomeDir, GuiLevel=1, BrainstormDbDir=[])
@@ -7,6 +7,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 %    - BrainstormHomeDir : Path to the brainstorm3 folder
 %    - GuiLevel          : -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - BrainstormDbDir   : Database folder to use by default in this session
+%    - TemplateName      : Default anatomy template
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -34,6 +35,9 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % Parse inputs
 if (nargin < 3) || isempty(BrainstormDbDir)
     BrainstormDbDir = [];
+end
+if (nargin < 4) || isempty(TemplateName)
+    TemplateName = '';
 end
 % If version is too old
 MatlabVersion = bst_get('MatlabVersion');
@@ -475,10 +479,9 @@ panel_process_select('ParseProcessFolder', 1);
 
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
-% Download ICBM152 template if missing (e.g. when cloning from GitHub)
+% Download ICBM152 template if missing
 TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
-if ~isCompiled && ~exist(TemplateDir, 'file')
-    TemplateName = 'ICBM152_2023b';
+if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
     isSkipTemplate = 0;
     % Template file
     ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);
