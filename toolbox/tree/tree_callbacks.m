@@ -2888,6 +2888,36 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         jMenu = gui_component('Menu', jMenu, [], 'Add EEG positions', IconLoader.ICON_CHANNEL, [], []);
         % Import from file
         gui_component('MenuItem', jMenu, [], 'Import from file', IconLoader.ICON_CHANNEL, [], @(h,ev)channel_add_loc(iAllStudies, [], 1));
+        % From other Studies within same Subject
+        sStudies = bst_get('Study', iAllStudies);
+        % If adding locations to multiple channel files, they must be from the same subject
+        if length(unique({sStudies.BrainStormSubject})) == 1
+            sSubject = bst_get('Subject', sStudies(1).BrainStormSubject);
+            if sSubject.UseDefaultChannel == 0
+                % Only consider Studies with ChannelFile
+                [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+                iChStudies = ~cellfun(@isempty, {sStudies.Channel});
+                sStudies = sStudies(iChStudies);
+                iStudies = iStudies(iChStudies);
+                [~, ixDiff] = setdiff(iStudies, iAllStudies);
+                if ~isempty(ixDiff)
+                    % Create menu and entries
+                    AddSeparator(jMenu);
+                    jMenuStudy = gui_component('Menu', jMenu, [], 'From other studies', IconLoader.ICON_CHANNEL, [], []);
+                    for ix = 1 : length(ixDiff)
+                        conditionName = sStudies(ixDiff(ix)).Condition{1};
+                        if strcmpi(conditionName(1:4), '@raw')
+                            iconLoader = IconLoader.ICON_RAW_FOLDER_CLOSE;
+                            conditionName(1:4) = '';
+                        else
+                            iconLoader = IconLoader.ICON_FOLDER_CLOSE;
+                        end
+                        % Menu entry
+                        gui_component('MenuItem', jMenuStudy, [], conditionName, iconLoader, [], @(h,ev)channel_add_loc(iAllStudies, sStudies(ixDiff(ix)).Channel.FileName, 1));
+                    end
+                end
+            end
+        end
         % If only SEEG/ECOG, stop here (we do not want to offer the standard EEG caps, it doesn't make sense)
         if (isAddLoc < 2)
             return;
