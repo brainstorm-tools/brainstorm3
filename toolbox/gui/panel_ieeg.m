@@ -496,7 +496,7 @@ function AutoDetectContacts(method)
             % Find CT volumes
             iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
             CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
-            sCt = in_mri_bst(CtFile);
+            sCt = bst_memory('LoadMri', CtFile);
             
             %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
             %  Handle CT slice dimensions (to match with GARDEL segmentation function)
