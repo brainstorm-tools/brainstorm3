@@ -922,12 +922,12 @@ switch (lower(action))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
                 end
                 % === SEEG CONTACT LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
                 end
                 
                 % === NIRS CHANNEL LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'NIRS'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'NIRS'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'NIRS atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_nirs_atlas, filenameRelative));
                 end
                 
@@ -1018,7 +1018,7 @@ switch (lower(action))
                     end
 
                     % ===== PROJECT SENSORS =====
-                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
                         AddSeparator(jPopup);
                         if (iSubject == 0) || sSubject.UseDefaultAnat
                             gui_component('MenuItem', jPopup, [], 'Project to subject...', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, []));
