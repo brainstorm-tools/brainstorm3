@@ -922,13 +922,17 @@ switch (lower(action))
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG','NIRS'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
                 end
+                % === SEEG IMPLANTATION ===
+                if (length(bstNodes) == 1) && ((isempty(AllMod) && strcmpi(sStudy.Name, 'implantation')) || any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod)))
+                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)DisplayChannels(bstNodes, 'SEEG', 'anatomy', 1, 0));
+                end
                 % === SEEG CONTACT LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
                 end
                 
                 % === NIRS CHANNEL LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'NIRS'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'NIRS'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'NIRS atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_nirs_atlas, filenameRelative));
                 end
                 
@@ -1019,7 +1023,7 @@ switch (lower(action))
                     end
 
                     % ===== PROJECT SENSORS =====
-                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
                         AddSeparator(jPopup);
                         if (iSubject == 0) || sSubject.UseDefaultAnat
                             gui_component('MenuItem', jPopup, [], 'Project to subject...', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, []));
@@ -2889,6 +2893,36 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         jMenu = gui_component('Menu', jMenu, [], 'Add EEG positions', IconLoader.ICON_CHANNEL, [], []);
         % Import from file
         gui_component('MenuItem', jMenu, [], 'Import from file', IconLoader.ICON_CHANNEL, [], @(h,ev)channel_add_loc(iAllStudies, [], 1));
+        % From other Studies within same Subject
+        sStudies = bst_get('Study', iAllStudies);
+        % If adding locations to multiple channel files, they must be from the same subject
+        if length(unique({sStudies.BrainStormSubject})) == 1
+            sSubject = bst_get('Subject', sStudies(1).BrainStormSubject);
+            if sSubject.UseDefaultChannel == 0
+                % Only consider Studies with ChannelFile
+                [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+                iChStudies = ~cellfun(@isempty, {sStudies.Channel});
+                sStudies = sStudies(iChStudies);
+                iStudies = iStudies(iChStudies);
+                [~, ixDiff] = setdiff(iStudies, iAllStudies);
+                if ~isempty(ixDiff)
+                    % Create menu and entries
+                    AddSeparator(jMenu);
+                    jMenuStudy = gui_component('Menu', jMenu, [], 'From other studies', IconLoader.ICON_CHANNEL, [], []);
+                    for ix = 1 : length(ixDiff)
+                        conditionName = sStudies(ixDiff(ix)).Condition{1};
+                        if strcmpi(conditionName(1:4), '@raw')
+                            iconLoader = IconLoader.ICON_RAW_FOLDER_CLOSE;
+                            conditionName(1:4) = '';
+                        else
+                            iconLoader = IconLoader.ICON_FOLDER_CLOSE;
+                        end
+                        % Menu entry
+                        gui_component('MenuItem', jMenuStudy, [], conditionName, iconLoader, [], @(h,ev)channel_add_loc(iAllStudies, sStudies(ixDiff(ix)).Channel.FileName, 1));
+                    end
+                end
+            end
+        end
         % If only SEEG/ECOG, stop here (we do not want to offer the standard EEG caps, it doesn't make sense)
         if (isAddLoc < 2)
             return;
@@ -3177,7 +3211,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         end
         % === SEEG/ECOG ===
         if (length(iAnatomy) <= 1) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', MriFile));
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
         end
           
     % === TISSUE SEGMENTATION ===

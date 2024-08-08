@@ -238,7 +238,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
     PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
 
@@ -622,24 +622,24 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === fNIRS: MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
-    PlugDesc(end).Version        = '2021.12.04';
+    PlugDesc(end).Version        = '2024.07.23';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlab-allinone-x86_64-v2020.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlab-allinone-git20240723.zip';
     PlugDesc(end).TestFile       = 'mcxlab.m';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
     % === fNIRS: MCXLAB CL ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
-    PlugDesc(end).Version        = '2020';
+    PlugDesc(end).Version        = '2024.07.23';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlabcl-allinone-x86_64-v2020.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlabcl-allinone-git20240723.zip';
     PlugDesc(end).TestFile       = 'mcxlabcl.m';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
@@ -3201,5 +3201,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', 'xdf'};
+    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh','mcxlab-cuda', 'xdf'};
 end

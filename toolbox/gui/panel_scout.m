@@ -713,6 +713,58 @@ function CreateMenuInverse(jMenu)
 end
 
 
+%% ===== SET LOCATION CONSTRAINT =====
+function SetLocationConstraint(iScout, locationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set location constraint
+    switch lower(locationConstraint)
+        case 'surface'
+            regionArgument = '.S.';
+        case 'volume'
+            regionArgument = '.V.';
+        case 'deep brain'
+            regionArgument = '.D.';
+        case 'exclude'
+            regionArgument = '.X.';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
+end
+
+
+%% ===== SET ORIENTATION CONSTRAINT =====
+function SetOrientationConstraint(iScout, orientationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set orientation constraint
+    switch lower(orientationConstraint)
+        case 'constrained'
+            regionArgument = '..C.';
+        case 'unconstrained'
+            regionArgument = '..U';
+        case 'loose'
+            regionArgument = '..L';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
+end
+
+
 %% ===== UPDATE ATLAS LIST =====
 function UpdateAtlasList(sSurf)
     import org.brainstorm.list.*;
@@ -4010,7 +4062,7 @@ function ExpandWithCorrelation(varargin)
 end
 
 %% ===== NEW SURFACE: FROM SELECTED SCOUTS =====
-function NewSurface(isKeep)
+function NewTessFile = NewSurface(isKeep)
     % === GET VERTICES TO REMOVE ===
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
@@ -4060,8 +4112,10 @@ function NewSurface(isKeep)
     [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
     % Register this file in Brainstorm database
     db_add_surface(iSubject, NewTessFile, sSurfNew.Comment);
-    % Re-open one to show the modifications
-    view_surface(NewTessFile);
+    if nargout == 0
+        % Re-open one to show the modifications
+        view_surface(NewTessFile);
+    end
 end
 
 %% ===== EXPORT SCOUTS TO MATLAB =====
