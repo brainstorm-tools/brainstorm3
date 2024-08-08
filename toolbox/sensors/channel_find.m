@@ -59,7 +59,7 @@ for i = 1:length(target)
         iChan = good_channel(Channel, [], target{i});
     % Search by channel name
     else
-        iChan = find(strcmpi(allNames, target{i}));
+        iChan = find(contains(allNames, target{i}));
     end
     % Search by indices
     if isempty(iChan)
