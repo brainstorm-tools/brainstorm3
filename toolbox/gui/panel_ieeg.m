@@ -3061,6 +3061,8 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 elseif strcmpi(res, 'continue')
                     newCondition = 0;
                 elseif strcmpi(res, 'replace')
+                    % Delete existing Implantation study
+                    db_delete_studies(iStudy);
                     newCondition = 1;
                 end
             else
