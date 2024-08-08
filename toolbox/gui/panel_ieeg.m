@@ -3100,10 +3100,10 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display channels
-    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Display isosurface
     DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
+    % Display channels
+    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Close progress bar
     bst_progress('stop');
 end
