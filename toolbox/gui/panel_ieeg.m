@@ -26,11 +26,10 @@ function varargout = panel_ieeg(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017-2022
-%          Chinmay Chinara, 2024
+%          Chinmay Chinara, Raymundo Cassani, 2024
 
 eval(macro_method);
 end
-
 
 %% ===== CREATE PANEL =====
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
@@ -42,10 +41,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
+    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
+    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',25,25);
     
-    % ===== TOOLBAR =====
+    % ===== TOP TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
         jToolbar.setPreferredSize(TB_DIM);
@@ -69,6 +70,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Menu: Contacts
         jToolbar.addSeparator();
         jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+    
+    % ===== BOTTOM TOOLBAR =====
+    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
+        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
+        jToolbarBottom.setPreferredSize(TB_DIM);
+        jToolbarBottom.setOpaque(0);
+        % Add GARDEL
+        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'Auto detect contacts using GARDEL', @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
+        jToolbarBottom.addSeparator();
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -213,6 +223,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
+                                  'jToolbarBottom',      jToolbarBottom, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonShow',         jButtonShow, ...
@@ -349,10 +360,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 end
                    
 
-
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+
 %% ===== CURRENT FIGURE CHANGED =====
 function CurrentFigureChanged_Callback(hFig) %#ok<DEFNU>
     UpdatePanel();
@@ -369,12 +380,12 @@ function UpdatePanel()
     hFig = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -392,7 +403,6 @@ function UpdatePanel()
     UpdateElecList();
     UpdateContactList('SCS');
 end
-
 
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()
@@ -456,6 +466,92 @@ function UpdateElecList()
     % Restore callback
     drawnow;
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
+end
+
+%% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
+function AutoDetectContacts(method)
+    global GlobalData
+
+    switch(method)
+        case 'gardel'
+            disp('Calling GARDEL !');
+            
+            % get subject
+            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
+            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+            % Channels = GlobalData.DataSet(iDS).Channel;
+            % Get study
+            sStudy = bst_get('ChannelFile', ChannelFile);
+            % Get subject
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            if isempty(sSubject) || isempty(sSubject.Anatomy)
+                bst_error('No CT available for this subject.', 'GARDEL', 0);
+            end
+            % Find CT volumes
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+            CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            sCt = bst_memory('LoadMri', CtFile);
+            
+            %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
+            %  Handle CT slice dimensions (to match with GARDEL segmentation function)
+            if size(sCt.Cube,1)==size(sCt.Cube,3)
+                CT_image = permute(sCt.Cube, [1,3,2]);
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);  
+            else
+                CT_image = sCt.Cube;
+                CT_info.pixdim = sCt.Voxsize;
+            end
+            
+            % get isoValue from isoSurface
+            iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
+            isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
+            
+            % Set process logo
+            bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
+            bst_plugin('SetProgressLogo', 'gardel');
+
+            % use GARDEL magic button routine
+            New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
+            
+            % parse the coordinates for electrodes and contacts
+            contDetectedCnt=0; % to keep a count of valid contact detection
+            for elec=1:size(New_Centroids_vox,1) % electrodes
+                % add only if minimum 2 contacts found per electrode
+                if size(New_Centroids_vox{elec},1)>2
+                    AddElectrode(char('A'+contDetectedCnt));
+                    contDetectedCnt = contDetectedCnt+1;
+                    
+                    % Get selected electrodes
+                    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+                    
+                    % Get selected electrode
+                    for cont=1:size(New_Centroids_vox{elec},1) % contacts   
+                        % Set electrode position (covert from GARDEL to Brainstorm coordinates)
+                        if size(sCt.Cube,1)==size(sCt.Cube,3)
+                            x(1) = New_Centroids_vox{elec}(cont,1);
+                            x(2) = New_Centroids_vox{elec}(cont,3);
+                            x(3) = New_Centroids_vox{elec}(cont,2);
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
+                        else
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                        end
+                    end
+
+                    sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
+
+                    % Save electrode modification
+                    SetElectrodes(iSelElec, sSelElec);
+
+                    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
+                end
+            end
+            
+            % Stop process box
+            bst_progress('stop');
+
+        otherwise
+            disp('Not defined !')
+    end
 end
 
 %% ===== UPDATE CONTACT LIST =====
@@ -591,7 +687,6 @@ function UpdateModelList(elecType)
     % Restore callback
     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
 end
-
 
 %% ===== UPDATE ELECTRODE PROPERTIES =====
 function UpdateElecProperties(isUpdateModelList)
@@ -811,7 +906,6 @@ function sSelContacts = GetSelectedContacts()
     sSelContacts = sContacts(iSelCont);
 end
 
-
 %% ===== SET SELECTED ELECTRODES =====
 % USAGE:  SetSelectedElectrodes(iSelElec)      % array of indices
 %         SetSelectedElectrodes(SelElecNames)  % cell array of names
@@ -944,7 +1038,10 @@ function ShowContactsMenu(jButton)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
+    % Menu: Auto Detect Contacts
+    gui_component('MenuItem', jMenu, [], 'Auto detect contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
     % Menu: Default positions
+    jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
     % Menu: Export select atlas
     if strcmpi(sSelElec(1).Type, 'ECOG')
@@ -965,8 +1062,6 @@ function ShowContactsMenu(jButton)
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
 
-
-
 %% ===== GET COLOR TABLE =====
 function ColorTable = GetElectrodeColorTable()
     ColorTable = [0    .8    0   ;
@@ -979,7 +1074,6 @@ function ColorTable = GetElectrodeColorTable()
                   0    .4    0   ;
                   1    .843  0   ];
 end
-
 
 %% ===== EDIT ELECTRODE LABEL =====
 % Rename one selected electrode
@@ -1050,7 +1144,6 @@ function EditElectrodeLabel(varargin)
     UpdateFigures();
 end
 
-
 %% ===== EDIT ELECTRODE COLOR =====
 function EditElectrodeColor(newColor)
     % Get selected electrode
@@ -1082,7 +1175,6 @@ function EditElectrodeColor(newColor)
     % Update figures
     UpdateFigures();
 end
-
 
 %% ===== VALIDATE OPTIONS =====
 function ValidateOptions(optName, jControl)
@@ -1173,7 +1265,6 @@ function ValidateOptions(optName, jControl)
     end
 end
     
-
 %% ===== SHOW/HIDE ELECTRODE =====
 function SetElectrodeVisible(isVisible)
     % Get selected electrode
@@ -1205,7 +1296,6 @@ function SetElectrodeVisible(isVisible)
     UpdateFigures();
 end
     
-
 %% ===== GET ELECTRODES =====
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
@@ -1257,7 +1347,6 @@ function sContacts = GetContacts(selectedElecName)
         sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
     end
 end
-
 
 %% ===== SET ELECTRODES =====
 % USAGE:  iElec = SetElectrodes(iElec=[], sElect)
@@ -1314,7 +1403,13 @@ end
 
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(varargin) 
+    if nargin<1
+        elecName = [];
+    else
+        elecName = varargin{1};
+    end
+
     global GlobalData;
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
@@ -1325,9 +1420,13 @@ function AddElectrode()
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
+    if isempty(elecName)
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    else
+        newLabel = char(elecName);
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -1467,7 +1566,6 @@ function RemoveElectrode()
     % Update figure
     UpdateFigures();
 end
-
 
 %% ===== GET ELECTRODE MODELS =====
 function sModels = GetElectrodeModels()
@@ -1613,7 +1711,6 @@ function sModels = GetElectrodeModels()
     end
 end
 
-
 %% ===== GET SELECTED MODEL =====
 function [iModel, sModels] = GetSelectedModel()
     % Get figure controls
@@ -1631,7 +1728,6 @@ function [iModel, sModels] = GetSelectedModel()
         iModel = find(strcmpi({sModels.Model}, ModelName));
     end
 end
-
 
 %% ===== SET SELECTED MODEL =====
 function SetSelectedModel(selModel)
@@ -1744,7 +1840,6 @@ function AddElectrodeModel(sNewModel)
     UpdateElecProperties();
 end
 
-
 %% ===== REMOVE ELECTRODE MODEL =====
 function RemoveElectrodeModel()
     global GlobalData;
@@ -1768,7 +1863,6 @@ function RemoveElectrodeModel()
     % Update list of models
     UpdateElecProperties();
 end
-
 
 %% ===== SAVE ELECTRODE MODEL =====
 function SaveElectrodeModel()
@@ -1808,7 +1902,6 @@ function SaveElectrodeModel()
     end
 end
 
-
 %% ===== LOAD ELECTRODE MODEL =====
 function LoadElectrodeModel()
     % Get panel controls
@@ -1844,7 +1937,6 @@ function LoadElectrodeModel()
     end
 end
 
-
 %% ===== EXPORT ELECTRODE MODEL =====
 function ExportElectrodeModel()
     % Get panel controls
@@ -1860,7 +1952,6 @@ function ExportElectrodeModel()
     % Export to the base workspace
     export_matlab(sModels(iModel), []);
 end
-
 
 %% ===== IMPORT ELECTRODE MODEL =====
 function ImportElectrodeModel()
@@ -1879,7 +1970,6 @@ function ImportElectrodeModel()
     AddElectrodeModel(sModel);
     fprintf(1, 'Intracranial electrode model "%s" was imported\n', sModel.Model);
 end
-
 
 %% ===== UPDATE FIGURE TYPE =====
 function UpdateFigureModality(iDS, iFig)
@@ -1918,7 +2008,6 @@ function UpdateFigureModality(iDS, iFig)
         end
     end
 end
-
 
 %% ===== UPDATE FIGURES =====
 function UpdateFigures(hFigTarget)
@@ -1974,7 +2063,6 @@ function UpdateFigures(hFigTarget)
     end
 end
 
-
 %% ===== SET DISPLAY MODE =====
 function SetDisplayMode(DisplayMode)
     % Get current figure
@@ -1989,7 +2077,6 @@ function SetDisplayMode(DisplayMode)
     % Update figures
     UpdateFigures(hFig(1));
 end
-
 
 %% ===== DETECT ELECTRODES =====
 function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd, isUpdate) %#ok<DEFNU>
@@ -2108,9 +2195,7 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         ChannelMat.IntraElectrodes(iNewElec) = newElec;
     end
 end
-
-    
-                              
+                             
 %% =================================================================================
 %  === DISPLAY ELECTRODES  =========================================================
 %  =================================================================================
@@ -2441,7 +2526,6 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
     end
 end
 
-
 %% ===== GET CHANNEL NORMALS =====
 % USAGE: GetChannelNormal(sSubject, ChanLoc, Modality)
 %        GetChannelNormal(sSubject, ChanLoc, SurfaceType)   % SurfaceType={'scalp','innerskull','cortex','cortexhull','cortexmask'}
@@ -2540,7 +2624,6 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
 %     ChanLocProj = channel_project_scalp(fvh.vertices, ChanLoc);
 
 end
-
 
 %% ===== ALIGN CONTACTS =====
 function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
@@ -2649,6 +2732,9 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+                    case 'auto'
+                        % Project the existing contact on the depth electrode
+                        Channels(iChan(i)).Loc = sElectrodes(iElec).Loc(:,i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
@@ -2830,7 +2916,6 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
     end
 end
 
-
 %% ===== PROJECT CONTACTS ON SURFACE =====
 function ProjectContacts(iDS, iFig, SurfaceType)
     global GlobalData;
@@ -2994,7 +3079,6 @@ function SetElectrodeLoc(iLoc, jButton)
     end
 end
 
-
 %% ===== CENTER MRI ON ELECTRODE =====
 function CenterMriOnElectrode(sElec, hFigTarget)
     global GlobalData;
@@ -3040,7 +3124,6 @@ function CenterMriOnElectrode(sElec, hFigTarget)
         end
     end
 end
-
 
 %% ===== CREATE IMPLANTATION =====
 function CreateImplantation(MriFile) %#ok<DEFNU>
