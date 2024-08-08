@@ -3042,19 +3042,36 @@ function CenterMriOnElectrode(sElec, hFigTarget)
 end
 
 
-%% ===== CREATE NEW IMPLANTATION =====
-function CreateNewImplantation(MriFile) %#ok<DEFNU>
+%% ===== CREATE IMPLANTATION =====
+function CreateImplantation(MriFile) %#ok<DEFNU>
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
-            % Get new folder "Implantation"
-            ProtocolInfo = bst_get('ProtocolInfo');
-            ImplantFolder = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sSubject.Name, 'Implantation'));
-            [tmp, Condition] = bst_fileparts(ImplantFolder);
-            % Create new folder
-            iStudy = db_add_condition(sSubject.Name, Condition, 1);
+            % Get folder "Implantation"
+            conditionName = 'Implantation';
+            [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
+            if ~isempty(sStudy)
+                [res, isCancel] = java_dialog('question', ['Warning: there is already an "Implantation" folder for this Subject.' 10 10 ...
+                                                           'What do you want to do with the existing implantation?'], ...
+                                                           'SEEG/ECOG implantation', [], {'Continue', 'Replace', 'Cancel'}, 'Continue');
+                if strcmpi(res, 'cancel') || isCancel
+                    return
+                elseif strcmpi(res, 'continue')
+                    newCondition = 0;
+                elseif strcmpi(res, 'replace')
+                    newCondition = 1;
+                end
+            else
+                newCondition = 1;
+            end
+            % Create new folder if needed
+            if newCondition
+                iStudy = db_add_condition(sSubject.Name, conditionName, 1);
+            end
+            % Get Implantation study
+            sStudy = bst_get('Study', iStudy);
         case 1
             % Use default channel file
             [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
@@ -3067,12 +3084,18 @@ function CreateNewImplantation(MriFile) %#ok<DEFNU>
     end
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
-    % Create empty channel file structure
-    ChannelMat = db_template('channelmat');
-    ChannelMat.Comment = 'SEEG/ECOG';
-    ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 0);
-    % Save new channel in the database
-    ChannelFile = db_set_channel(iStudy, ChannelMat, 0, 0);
+    % Channel file
+    if isempty(sStudy.Channel) || isempty(sStudy.Channel(1).FileName)
+        % Create empty channel file structure
+        ChannelMat = db_template('channelmat');
+        ChannelMat.Comment = 'SEEG/ECOG';
+        ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 0);
+        % Save new channel in the database
+        ChannelFile = db_set_channel(iStudy, ChannelMat, 0, 0);
+    else
+        % Get channel file from existent study
+        ChannelFile = sStudy.Channel(1).FileName;
+    end
     % Switch to functional data
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
