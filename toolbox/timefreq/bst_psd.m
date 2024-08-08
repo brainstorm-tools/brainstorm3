@@ -1,4 +1,4 @@
-function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel, isVariance, PowerUnits )
+function [TF, FreqVector, Nwin, Messages, TFbis] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel, WinFunc, PowerUnits, IsRelative )
 % BST_PSD: Compute the PSD of a set of signals using Welch method
 
 % @=============================================================================
@@ -21,13 +21,17 @@ function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOve
 %
 % Authors: Francois Tadel, 2012-2017
 %          Marc Lalancette, 2020
+%          Pauline Amrouche, 2024
 
 % Parse inputs
+if (nargin < 9) || isempty(IsRelative)
+    IsRelative = 0;
+end
 if (nargin < 8) || isempty(PowerUnits)
     PowerUnits = 'physical';
 end
-if (nargin < 7) || isempty(isVariance)
-    isVariance = 0;
+if (nargin < 7) || isempty(WinFunc)
+    WinFunc = 'mean';
 end
 if (nargin < 6) || isempty(ImagingKernel)
     ImagingKernel = [];
@@ -41,14 +45,26 @@ end
 if (nargin < 3) || isempty(WinLength) || (WinLength == 0)
     WinLength = size(F,2) ./ sfreq;
 end
+
 Messages = '';
 % Get sampling frequency
 nTime = size(F,2);
 % Initialize returned values
 TF = [];
+TFbis = [];
+% Initialize frequency and number of windows
 FreqVector = [];
 Nwin = [];
-Var = [];
+
+% ===== FUNCTION ACROSS WINDOWS =====
+% Backward compatibility with previous versions where winFunc could be 0 (mean) or 1 (std)
+switch lower(WinFunc)
+    case {0, 'mean'},     WinFunc = 'mean';
+    case {1, 'std'},      WinFunc = 'std';
+    case {2, 'mean+std'}, WinFunc = 'mean+std';
+    otherwise,  bst_error(['Invalid window aggregating function: ' num2str(lower(WinFunc))]); return
+end
+computeStd = ~isempty(strfind(WinFunc,'std'));
 
 % ===== WINDOWING =====
 Lwin  = round(WinLength * sfreq);
@@ -75,6 +91,18 @@ NFFT = Lwin;                    % No zero-padding: Nfft = Ntime
 % Positive frequency bins spanned by FFT
 FreqVector = sfreq / 2 * linspace(0,1,NFFT/2+1);
 
+% ===== INITIALIZE INTERMEDIATE SUM MATRICES =====
+if ~isempty(ImagingKernel)
+    nChannels = size(ImagingKernel,1);
+else
+    nChannels = size(F,1);
+end
+% Sum of the FFTs for each channel and each frequency bin
+S1 = zeros(nChannels, 1, NFFT/2+1);
+% Sum of the squares of the FFTs for each channel and each frequency bin
+if computeStd
+    S2 = zeros(nChannels, 1, NFFT/2+1);
+end
 
 % ===== CALCULATE FFT FOR EACH WINDOW =====
 Nbad = 0;
@@ -133,46 +161,35 @@ for iWin = 1:Nwin
     TFwin = permute(TFwin, [1 3 2]);
     % Convert to power
     TFwin = process_tf_measure('Compute', TFwin, 'none', 'power');
-    
-    
-%     %%%%% OLD VERSION: MEAN ONLY %%%%%
-%     % Add PSD of the window to the average
-%     if isempty(TF)
-%         TF = TFwin ./ Nwin;
-%     else
-%         TF = TF + TFwin ./ Nwin;
-%     end
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-    %%%%% NEW VERSION: MEAN AND STD %%%%%
-    % If file is first of the list: Initialize returned matrices
-    if isempty(TF)
-        TF = zeros(size(TFwin));
-        if isVariance
-            Var = zeros(size(TFwin));
-        end
+    % Convert to relative power
+    if IsRelative
+        TFwin = TFwin ./ sum(TFwin, 3);
     end
-    % Compute mean and standard deviation
-    TFwin = TFwin - TF;
-    R = TFwin ./ (iWin-Nbad);
-    if isVariance
-        Var = Var + TFwin .* R .* (iWin-Nbad-1);
+    % Compute sum and sum of squares
+    S1 = S1 + TFwin;
+    if computeStd
+        S2 = S2 + TFwin.^2;
     end
-    TF = TF + R;
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-end
-
-% Convert variance to standard deviation
-if isVariance
-    Var = Var ./ (Nwin-Nbad - 1);
-    TF = sqrt(Var);
 end
 
 % Correct the dividing factor if there are bad segments
 if (Nbad > 0)
-    % TF = TF .* (Nwin ./ (Nwin - Nbad));   % OLD VERSION
     Nwin = Nwin - Nbad;
 end
+% Compute mean and standard deviation
+TFmean = S1 ./ Nwin;
+if computeStd
+    Var = S2 ./ Nwin - TFmean.^2;
+    TFstd = sqrt(Var);
+end
+
+% Define the matrices to return
+switch WinFunc
+    case 'mean',     TF = TFmean; TFbis = [];
+    case 'std',      TF = TFstd;  TFbis = [];
+    case 'mean+std', TF = TFmean; TFbis = TFstd;
+end
+
 % Format message
 if isempty(Messages)
     Messages = [Messages, sprintf('Using %d windows of %d samples each', Nwin, Lwin)];

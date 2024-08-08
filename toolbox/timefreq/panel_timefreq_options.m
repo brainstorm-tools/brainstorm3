@@ -76,13 +76,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     end
     
     % Determine which function is calling this pannel
-    % Used by process_: hilbert, psd, timefreq,  and connectivity: henv(1,1n,2), plv(1,1n,2)
+    % Used by process_: hilbert, psd, timefreq, psd_features, and connectivity: henv(1,1n,2), plv(1,1n,2), cohere(1,1n,2)
     % Connectivity processes have options.tfmeasure with value 'hilbert' or 'morlet' ('fourier' doesn't use this panel).
     isProcConnect = isfield(sProcess.options, 'tfmeasure'); % used multiple times
     if isProcConnect
         Method = sProcess.options.tfmeasure.Value;
-    else % hilbert, psd, timefreq
-        Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    else % hilbert, psd, timefreq, psd_features
+        tmp = regexp(func2str(sProcess.Function), '(?<=process_)\w*?(?=_|$)', 'match');
+        Method = strrep(tmp{1}, 'timefreq', 'morlet');
     end
     
     hFigWavelet = [];

@@ -93,6 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 'process_hilbert',       strProcess = 'hilbert';
         case 'process_fft',           strProcess = 'fft';
         case 'process_psd',           strProcess = 'psd';
+        case 'process_psd_features',  strProcess = 'psd';
         case 'process_sprint',        strProcess = 'sprint';
         case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
@@ -163,16 +164,33 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tfOPTIONS.WinLength  = sProcess.options.win_length.Value{1};
         tfOPTIONS.WinOverlap = sProcess.options.win_overlap.Value{1};
     end
-    if isfield(sProcess.options, 'win_std') && ~isempty(sProcess.options.win_std) && ~isempty(sProcess.options.win_std.Value)
-        tfOPTIONS.WinStd = sProcess.options.win_std.Value;
-        if tfOPTIONS.WinStd
-            tfOPTIONS.Comment = [tfOPTIONS.Comment ' std'];
+    % Aggregating function across windows (PSD)
+    if isfield(sProcess.options, 'win_std') && isfield(sProcess.options.win_std, 'Value') && ~isempty(sProcess.options.win_std.Value)
+        switch lower(sProcess.options.win_std.Value)
+            case {0, 'mean'}
+                tfOPTIONS.WinFunc = 'mean';
+            case {1, 'std'}
+                tfOPTIONS.WinFunc = 'std';
+                tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', tfOPTIONS.WinFunc];
+            case {2, 'mean+std'}
+                tfOPTIONS.WinFunc = 'mean+std';
+            otherwise
+                bst_report('Error', sProcess, [], ['Invalid "' num2str(lower(sProcess.options.win_std.Value)) '" window aggregating function.']);
+                return;
         end
     end
     % If units specified (PSD)
     if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
         tfOPTIONS.PowerUnits = sProcess.options.units.Value;
-    end    
+    end
+    % Compute relative power (PSD)
+    if isfield(sProcess.options, 'relative') && ~isempty(sProcess.options.relative) && ~isempty(sProcess.options.relative.Value)
+        tfOPTIONS.IsRelative = sProcess.options.relative.Value;
+        if tfOPTIONS.IsRelative
+            % Add relative to comment
+            tfOPTIONS.Comment = [tfOPTIONS.Comment, ' relative'];
+        end
+    end
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
         if iscell(sProcess.options.mt_taper.Value)
