@@ -231,9 +231,8 @@ function [bstPanelNew, panelName] = CreatePanel()
         % List of coordinates
         jListCoord = JList(fontSize);
         jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
-        jPanelScrollList = JScrollPane();
+        jPanelScrollList = JScrollPane(jListCoord);
         jPanelScrollList.setViewportView(jListCoord);
-        %jPanelScrollList.getLayout.getViewport.setView(jListCoord);
         jPanelScrollList.setHorizontalScrollBarPolicy(jPanelScrollList.HORIZONTAL_SCROLLBAR_NEVER);
         jPanelScrollList.setVerticalScrollBarPolicy(jPanelScrollList.VERTICAL_SCROLLBAR_ALWAYS);
         jPanelScrollList.setBorder(BorderFactory.createEmptyBorder(10,10,10,10));
@@ -516,11 +515,6 @@ function UpdateList()
     else
         ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed, -1 works even if 0
     end
-    % On Windows, randomly scrolls to top of list instead of at the end, try these to fix it
-    ctrl.jListCoord.repaint();
-    ctrl.jListCoord.getParent().repaint();
-    ctrl.jListCoord.getParent().getParent().repaint();
-
     % Also update label of next point to digitize.
     if numel(Digitize.Points) >= Digitize.iPoint + 1 && ~isempty(Digitize.Points(Digitize.iPoint + 1).Label)
         ctrl.jLabelNextPoint.setText(Digitize.Points(Digitize.iPoint + 1).Label);
