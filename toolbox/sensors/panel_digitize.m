@@ -2280,10 +2280,14 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     
         vec_atlas2sub=centerscap(ind,:)-centerssketch(vec_atlas_pts,:);
         dist = sqrt(vec_atlas2sub(:,1).^2+vec_atlas2sub(:,2).^2);
-    
-        [dist2,isoutlier]=rmoutliers(dist);
-        ind(isoutlier) = [];
-        vec_atlas_pts(isoutlier) = [];
+        
+        % MATLAB >= R2018b has 'rmoutliers'
+        % this function optimizes the matching by removing bad detections 
+        if (bst_get('MatlabVersion') >= 905)
+            [dist2,isoutlier]=rmoutliers(dist);
+            ind(isoutlier) = [];
+            vec_atlas_pts(isoutlier) = [];
+        end
     
         [warp,L,LnInv,bendE] = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
     
