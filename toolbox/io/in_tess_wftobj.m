@@ -12,7 +12,9 @@ function TessMat = in_tess_wftobj(TessFile)
 %         |- Faces    : {[nFaces x 3] double}
 %         |- Color    : {[nColors x 3] double}, normalized between 0-1
 %         |- Comment  : {information string}
-%
+% 
+% NOTE: Works for MATLAB >= R2016b
+% 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -42,18 +44,23 @@ end
 
 %% ===== Parse the OBJ file: Set up import options and import the data =====
 % Specify range and delimiter
-opts = delimitedTextImportOptions('NumVariables', 10);
-opts.Delimiter = [" ", "/"];
-opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
+% MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
+if (bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
+    opts = matlab.io.text.DelimitedTextImportOptions();
+    opts.Delimiter = {' ', '/'};
+    opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
+else 
+    opts = delimitedTextImportOptions('NumVariables', 10);
+    opts.Delimiter = [" ", "/"];
+    opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
+end
+
 opts.VariableTypes = ["categorical", "double", "double", "double", "double", "double", "double", "double", "double", "double"]; 
 opts.DataLines = [1,Inf];
 
 % Specify file level properties
 opts.ExtraColumnsRule = "ignore";
 opts.EmptyLineRule = "read";
-
-% Specify variable properties
-opts = setvaropts(opts, "type", "EmptyFieldRule", 'auto');
 
 % Import the data
 objtbl = readtable(TessFile, opts);
