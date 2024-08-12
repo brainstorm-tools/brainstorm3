@@ -47,30 +47,27 @@ end
 % MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
 if (bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
     opts = matlab.io.text.DelimitedTextImportOptions();
-    opts.Delimiter = {' ', '/'};
-    opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
 else 
     opts = delimitedTextImportOptions('NumVariables', 10);
-    opts.Delimiter = [" ", "/"];
-    opts.VariableNames = ["type", "c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9"];
 end
 
-opts.VariableTypes = ["categorical", "double", "double", "double", "double", "double", "double", "double", "double", "double"]; 
-opts.DataLines = [1,Inf];
+opts.Delimiter = {' ', '/'};
+opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
+opts.VariableTypes = {'categorical', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double'}; 
 
 % Specify file level properties
-opts.ExtraColumnsRule = "ignore";
-opts.EmptyLineRule = "read";
+opts.ExtraColumnsRule = 'ignore';
+opts.EmptyLineRule = 'read';
 
 % Import the data
 objtbl = readtable(TessFile, opts);
 
 obj = struct;
-obj.Vertices = objtbl{objtbl.type=="v",2:4};
-obj.VertexNormals = objtbl{objtbl.type=="vn",2:4};
-obj.Faces = objtbl{objtbl.type=="f",[2,5,8]};
-obj.TextCoords = objtbl{objtbl.type=="vt",2:3};
-obj.TextIndices = objtbl{objtbl.type=="f",[3,6,9]};
+obj.Vertices = objtbl{objtbl.type=='v',2:4};
+obj.VertexNormals = objtbl{objtbl.type=='vn',2:4};
+obj.Faces = objtbl{objtbl.type=='f',[2,5,8]};
+obj.TextCoords = objtbl{objtbl.type=='vt',2:3};
+obj.TextIndices = objtbl{objtbl.type=='f',[3,6,9]};
 
 %% ===== Refine faces, mesh and generate color matrix =====
 vertices = obj.Vertices;
