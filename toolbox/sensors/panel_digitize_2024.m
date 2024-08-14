@@ -217,7 +217,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     % ===== Other buttons =====
     jPanelMisc = gui_river([5,4], [10,4,4,4]);
-        gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
+        jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
         % Until initial fids are collected and figure displayed, "delete" button is used to "restart".
         jButtonDeletePoint = gui_component('button', jPanelMisc, [], 'Start over', [], [], @(h,ev)bst_call(@ResetDataCollection, 1));
         gui_component('label', jPanelMisc, 'hfill', ''); % spacing 
@@ -246,6 +246,7 @@ function [bstPanelNew, panelName] = CreatePanel()
                   'jLabelWarning',         jLabelWarning, ...
                   'jListCoord',            jListCoord, ...
                   'jTextFieldExtra',       jTextFieldExtra, ...
+                  'jButtonCollectPoint',   jButtonCollectPoint, ...
                   'jButtonDeletePoint',    jButtonDeletePoint);
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
 end
@@ -527,6 +528,8 @@ end
 %% ===== MANUAL COLLECT CALLBACK ======
 function ManualCollect_Callback()
     global Digitize
+    ctrl = bst_get('PanelControls', 'Digitize');
+    ctrl.jButtonCollectPoint.setEnabled(0);
     % Simulation: call the callback directly
     if Digitize.Options.isSimulate
         BytesAvailable_Callback();
@@ -536,6 +539,7 @@ function ManualCollect_Callback()
         writeline(Digitize.SerialConnection,'P');
         pause(0.2);
     end
+    ctrl.jButtonCollectPoint.setEnabled(1);
 end
 
 %% ===== DELETE POINT CALLBACK =====
