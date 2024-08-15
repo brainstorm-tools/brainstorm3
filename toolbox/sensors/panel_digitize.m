@@ -180,7 +180,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelMenu = gui_component('panel');
     jMenuBar = java_create('javax.swing.JMenuBar');
     jPanelMenu.add(jMenuBar, BorderLayout.NORTH);
-    jLabelNews = gui_component('label', jPanelMenu, BorderLayout.CENTER, 'Try the new Digitize version: File > Switch to new...  See Help.', [], [], [], fontSize);
+    jLabelNews = gui_component('label', jPanelMenu, BorderLayout.CENTER, ...
+                               ['<HTML><div align="center"><b>Digitize version: "legacy"</b></div>' ...
+                                '&bull Try the new Digitize version: <i>File > Switch to Digitize "2024"</i> &#8198&#8198' ...
+                                '&bull More details: <i>Help > Digitize tutorial</i>'], [], [], [], fontSize);
     jLabelNews.setHorizontalAlignment(SwingConstants.CENTER);
     jLabelNews.setOpaque(true);
     jLabelNews.setBackground(java.awt.Color.yellow);
@@ -191,7 +194,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     gui_component('MenuItem', jMenu, [], 'Save as...', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@Save_Callback), []);
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Edit settings...',    IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
-    gui_component('MenuItem', jMenu, [], 'Switch to new Digitize version', [], [], @(h,ev)bst_call(@SwitchVersion), []);
+    gui_component('MenuItem', jMenu, [], 'Switch to Digitize "2024"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
     gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     jMenu.addSeparator();
     if exist('bst_headtracking', 'file')

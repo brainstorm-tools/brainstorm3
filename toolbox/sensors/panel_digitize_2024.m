@@ -164,7 +164,10 @@ function [bstPanelNew, panelName] = CreatePanel()
     jPanelMenu = gui_component('panel');
     jMenuBar = java_create('javax.swing.JMenuBar');
     jPanelMenu.add(jMenuBar, BorderLayout.NORTH);
-    jLabelNews = gui_component('label', jPanelMenu, BorderLayout.CENTER, 'Digitize version 2024.  To go back to original version: File > Switch to old...  See Help.', [], [], [], fontSize);
+    jLabelNews = gui_component('label', jPanelMenu, BorderLayout.CENTER, ...
+                               ['<HTML><div align="center"><b>Digitize version: "2024"</b></div>' ...
+                                '&bull To go back to previous version: <i>File > Switch to Digitize "legacy"</i> &#8198&#8198' ...
+                                '&bull More details: <i>Help > Digitize tutorial</i>'], [], [], [], fontSize);
     jLabelNews.setHorizontalAlignment(SwingConstants.CENTER);
     jLabelNews.setOpaque(true);
     jLabelNews.setBackground(java.awt.Color.yellow);
@@ -173,7 +176,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     jMenu = gui_component('Menu', jMenuBar, [], 'File', [], [], [], []);
     gui_component('MenuItem', jMenu, [], 'Start over', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@ResetDataCollection, 1), []);
     gui_component('MenuItem', jMenu, [], 'Edit settings...', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
-    gui_component('MenuItem', jMenu, [], 'Switch to old Digitize version', [], [], @(h,ev)bst_call(@SwitchVersion), []);
+    gui_component('MenuItem', jMenu, [], 'Switch to Digitize "legacy"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
     gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     jMenu.addSeparator();
     if exist('bst_headtracking', 'file')
@@ -254,7 +257,7 @@ end
 %% ===== SWITCH to old version =====
 function SwitchVersion()
     % Always confirm this switch.
-    if ~java_dialog('confirm', ['<HTML>Switch to original version of the Digitize panel?<BR>', ...
+    if ~java_dialog('confirm', ['<HTML>Switch to legacy version of the Digitize panel?<BR>', ...
             'See Digitize tutorial (Digitize panel > Help menu).<BR>', ...
             '<B>This will close the window. Any unsaved points will be lost.</B>'], 'Digitize version')
         return;
@@ -263,10 +266,8 @@ function SwitchVersion()
     Close_Callback();
     % Save the preferred version. Must be after closing
     DigitizeOptions = bst_get('DigitizeOptions');
-    DigitizeOptions.Version = 'original';
+    DigitizeOptions.Version = 'legacy';
     bst_set('DigitizeOptions', DigitizeOptions);
-    % Start the other panel
-    %bst_call(@panel_digitize, 'Start');
 end
 
 %% ===== CLOSE =====
