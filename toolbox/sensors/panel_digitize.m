@@ -1396,7 +1396,7 @@ function CreateMontageMenu(jMenu)
     
     % Creating montages from EEG cap layout mat files (only for Revopoint)
     if strcmpi(Digitize.Type, 'Revopoint')
-        jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], [], 12);
+        jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
     
         % === USE DEFAULT CHANNEL FILE ===
         % Get registered Brainstorm EEG defaults
@@ -1404,15 +1404,15 @@ function CreateMontageMenu(jMenu)
         if ~isempty(bstDefaults)
             % Add a directory per template block available
             for iDir = 1:length(bstDefaults)
-                jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], []);
                 isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
                 % Create subfolder for cap manufacturer
-                jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-                jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-                jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-                jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-                jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
-                jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], 12);
+                jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
                 % Add an item per Template available
                 fList = bstDefaults(iDir).contents;
                 % Sort in natural order
