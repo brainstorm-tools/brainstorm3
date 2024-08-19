@@ -207,7 +207,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     CreateMontageMenu(jMenuEeg);
     % Help menu
     jMenuHelp = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], []);
-    gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitize', '-browser'), []);
+    gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitizeLegacy', '-browser'), []);
     
     jPanelNew.add(jPanelMenu, BorderLayout.NORTH);
 
