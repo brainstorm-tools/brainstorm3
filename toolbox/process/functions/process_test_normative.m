@@ -51,10 +51,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.islog.Comment       = 'Use log10 values';
     sProcess.options.islog.Type          = 'checkbox';
     sProcess.options.islog.Value         = 1;
-    % Options : Select p-value
-    sProcess.options.pvalue.Comment      = 'Deviation level (range 0-1):';
-    sProcess.options.pvalue.Type         = 'value';
-    sProcess.options.pvalue.Value        = {0.05, '', 2};
+    % Options : Select deviation level
+    sProcess.options.devlevel.Comment    = 'Deviation level (range 0-1):';
+    sProcess.options.devlevel.Type       = 'value';
+    sProcess.options.devlevel.Value      = {0.05, '', 2};
     % Options: Normal distribution
     sProcess.options.isnormal.Comment    = 'Assume normal distribution of residuals';
     sProcess.options.isnormal.Type       = 'checkbox';
@@ -102,7 +102,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
     OPTIONS.FreqOut       = sProcess.options.freqout.Value;
     OPTIONS.FreqRange     = sProcess.options.freqrange.Value{1};
     OPTIONS.FreqBands     = sProcess.options.freqbands.Value;
-    OPTIONS.Pvalue        = sProcess.options.pvalue.Value{1};
+    OPTIONS.DevLevel      = sProcess.options.devlevel.Value{1};
     OPTIONS.IsNormal      = sProcess.options.isnormal.Value;
     OPTIONS.TestNormality = sProcess.options.shapiro.Value;
 
@@ -217,7 +217,7 @@ function comment = GetComment(tfMat, options)
     if ~isempty(comment_suffix)
         comment_suffix = ['| ' comment_suffix];
     end
-    comment = sprintf('comp. to norm: p < %.2f %s', options.Pvalue, comment_suffix);
+    comment = sprintf('comp. to norm: devLevel (%.2f) %s', options.DevLevel, comment_suffix);
 end
 
 
@@ -362,9 +362,9 @@ function normDistrib = ComputeNormDistrib(sProcess, norm_values, options)
 
     % Compute the percentiles of the distribution of residuals
     if options.IsNormal
-        normDistrib.norm_percentile = norminv(1-options.Pvalue/2);
+        normDistrib.norm_percentile = norminv(1-options.DevLevel/2);
     else
-        normDistrib.percentiles = prctile(residuals, [(options.Pvalue/2)*100, (1-(options.Pvalue/2))*100], 3);
+        normDistrib.percentiles = prctile(residuals, [(options.DevLevel/2)*100, (1-(options.DevLevel/2))*100], 3);
     end
 end
 
@@ -396,7 +396,7 @@ function output = SaveData(sInputA, sInputsB, tfMat, options)
 
     % History
     tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('File compared to normative: %s', sInputA.FileName));
-    tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('p-value = %.2f, isNorm = %d, isLog10 = %d', options.Pvalue, options.IsNormal, options.IsLog));
+    tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('devLevel = %.2f, isNorm = %d, isLog10 = %d', options.DevLevel, options.IsNormal, options.IsLog));
     % History: List files used for normative
     tfMat = bst_history('add', tfMat, 'comp2norm', 'List of files used for normative distribution:');
     for i = 1:length(sInputsB)
