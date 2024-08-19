@@ -881,7 +881,7 @@ function AddMontage()
     Digitize.Options.Montages(iMontage) = newMontage;
     Digitize.Options.iMontage = iMontage;
     % Save options
-    bst_set('Digitize.Options', Digitize.Options);
+    bst_set('DigitizeOptions', Digitize.Options);
     % Reload Menu
     CreateMontageMenu();
     % Restart acquisition
@@ -900,7 +900,7 @@ function UnloadAllMontages()
     % Reset to "No EEG"
     Digitize.Options.iMontage = 1;
     % Save Digitize options
-    bst_set('Digitize.Options', Digitize.Options);
+    bst_set('DigitizeOptions', Digitize.Options);
     % Reload menu bar
     CreateMontageMenu();
 end
