@@ -91,7 +91,6 @@ function Start()
     % ===== CREATE CONDITION =====
     % Get current date
     CurrentDate = char(datetime('now'), 'yyyyMMdd');
-    % c = clock;
     % Condition name: PatientId_Date_Run
     for i = 1:99
         % Generate new condition name
@@ -674,8 +673,7 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
     hHeadPointsLabels  = findobj(hAxes, 'Tag', 'HeadPointsLabels');
     delete(hHeadPointsMarkers);
     delete(hHeadPointsLabels);
-    % If all EEG were removed, ViewSensors won't remove the last remaining (first) EEG from the
-    % figure, so do it manually.
+    % If all EEG were removed, ViewSensors won't remove the last remaining (first) EEG from the figure, so do it manually.
     if isempty(GlobalData.DataSet(Digitize.iDS).Channel)
         hSensorMarkers = findobj(hAxes, 'Tag', 'SensorsMarkers');
         hSensorLabels  = findobj(hAxes, 'Tag', 'SensorsLabels');
@@ -684,8 +682,7 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
     end
     % View all points in the channel file
     figure_3d('ViewHeadPoints', Digitize.hFig, 1);
-    % This would give error if the channel structure is not truely empty: db_template creates
-    % effectively 1 channel with empty fields.
+    % This would give error if the channel structure is not truely empty: db_template creates effectively 1 channel with empty fields.
     if ~isempty(GlobalData.DataSet(Digitize.iDS).Channel) && ~isempty(GlobalData.DataSet(Digitize.iDS).Channel(1).Name)
         figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
     end
@@ -719,8 +716,8 @@ function SaveDigitizeChannelFile()
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);
     ChannelMat = load(ChannelFile);
-    % GlobalData may not exist here: before 3d figure is created or after it is closed. So fill in
-    % ChannelMat from Digitize.Points.
+    % GlobalData may not exist here: before 3d figure is created or after it is closed.
+    % So fill in ChannelMat from Digitize.Points.
     iHead = 0;
     iChan = 0;
     % Reset points
@@ -924,7 +921,6 @@ function isOk = CreateSerialConnection()
             % Delete previous connection.
             if ~isempty(Digitize.SerialConnection)
                 delete(Digitize.SerialConnection);
-                %Digitize.SerialConnection = []; % cleaner than "handle to deleted serialport".
             end
             % Create the serial port connection and store in global variable.
             Digitize.SerialConnection = serialport(Digitize.Options.ComPort, Digitize.Options.ComRate);

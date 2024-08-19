@@ -353,8 +353,6 @@ function SwitchVersion()
     DigitizeOptions = bst_get('DigitizeOptions');
     DigitizeOptions.Version = '2024';
     bst_set('DigitizeOptions', DigitizeOptions);
-    % Start the other one
-    %bst_call(@panel_digitize_2024, 'Start');
 end
 
 %% ===== CLOSE =====
