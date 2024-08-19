@@ -1107,7 +1107,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
-                    
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
+                        for f = fieldnames(option.Controller)'
+                            if ~strcmpi(f{1}, option.Value{1}) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value{1}) && isequal(option.Controller.(option.Value{1}), option.Controller.(f{1})))
+                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                            end
+                        end
+                    end
+
                 case 'freqsel'
                     % Load Freq field from the input file
                     if strcmpi(sFiles(1).FileType, 'timefreq')
@@ -2291,7 +2299,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             opt = GlobalData.Processes.Current(iProcess).options.(optName);
             if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
                 ToggleClass(opt.Controller, value);
-            elseif ismember(optType, {'radio_label', 'radio_linelabel'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+            elseif ismember(optType, {'radio_label', 'radio_linelabel', 'combobox_label'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+                if strcmpi(optType, 'combobox_label')
+                    value = value{1};
+                end
                 for cl = fieldnames(opt.Controller)'
                     % Ignore a disabled class that is associated with 2 options, one selected and one not selected
                     if ~strcmp(cl{1}, value) && isfield(opt.Controller, value) && isequal(opt.Controller.(cl{1}), opt.Controller.(value))

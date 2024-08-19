@@ -186,6 +186,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jMenuSupport.addSeparator();
         % USAGE STATS
         gui_component('MenuItem', jMenuSupport, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat, fontSize);
+        gui_component('MenuItem', jMenuSupport, [], 'System info', IconLoader.ICON_SCREEN1, [], @(h,ev)bst_systeminfo(1), fontSize);
         jMenuSupport.addSeparator();
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);

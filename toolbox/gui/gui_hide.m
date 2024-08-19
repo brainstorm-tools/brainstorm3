@@ -74,7 +74,14 @@ switch (panelName)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
-    case {'Digitize', 'Revopoint'}
+    case 'Digitize'
+        DigitizeOptions = bst_get('DigitizeOptions');
+        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+            isAccepted = panel_digitize_2024('PanelHidingCallback');
+        else
+            isAccepted = panel_digitize('PanelHidingCallback');
+        end
+    case 'Revopoint'
         isAccepted = panel_digitize('PanelHidingCallback');
     case 'Dipinfo'
         if gui_brainstorm('isTabVisible', 'Dipinfo')

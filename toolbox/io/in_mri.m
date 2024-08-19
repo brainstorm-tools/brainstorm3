@@ -133,7 +133,13 @@ switch (FileFormat)
         if isInteractive
             [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, [], []);
         else
-            [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, 1, 0);
+            mriDir = bst_fileparts(MriFile);
+            isReconAllClinical = ~isempty(file_find(mriDir, 'synthSR.mgz', 2));
+            if isReconAllClinical
+                [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, 0, 1);
+            else
+                [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, 1, 0);
+            end
         end
     case 'KIT'
         error('Not supported yet');
