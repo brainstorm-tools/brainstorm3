@@ -281,13 +281,13 @@ function [bstPanelNew, panelName] = CreatePanel()
         jTextFieldExtra.setPreferredSize(Dimension(initSize.getWidth()*1.5, initSize.getHeight()*1.5))
         if strcmpi(Digitize.Type, 'Revopoint')
             % Add Random 100 points generation button
-            jButtonRandomHeadPts = gui_component('button', jPanelInfo, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
+            jButtonRandomHeadPts = gui_component('button', jPanelInfo, [], 'Random', [], 'Collect 100 random points from head surface', @(h,ev)bst_call(@CollectRandomHeadPts_Callback), largeFontSize);
             jButtonRandomHeadPts.setPreferredSize(Dimension(initSize.getWidth()*2.2, initSize.getHeight()*1.7));
         else
             % Separator
             jButtonRandomHeadPts = gui_component('label', jPanelInfo, 'hfill', '');
         end
-        jButtonRandomHeadPts.setEnabled(0);
+        % jButtonRandomHeadPts.setEnabled(0);
     jPanelControl.add(jPanelInfo, BorderLayout.CENTER);
     
     % ===== Other buttons =====
@@ -684,6 +684,36 @@ function ManualCollect_Callback()
         pause(0.2);
     end
     ctrl.jButtonCollectPoint.setEnabled(1);
+end
+
+%% ===== COLLECT RANDOM HEADPOINTS =====
+function CollectRandomHeadPts_Callback()
+    global Digitize
+    % Get controls
+    ctrl = bst_get('PanelControls', Digitize.Type);
+
+    hFig = bst_figures('GetCurrentFigure','3D');
+    [~, TessInfo, ~, ~] = panel_surface('GetSurfaceMri', hFig);
+    TessMat.Vertices = double(TessInfo.hPatch.Vertices);
+    TessMat.Faces = double(TessInfo.hPatch.Faces);
+    TessMat.Color = TessInfo.hPatch.FaceVertexCData;
+    dsFactor = 100 / size(TessMat.Vertices, 1); 
+    % Reduce number of vertices
+    [NewTessMat.Faces, NewTessMat.Vertices] = reducepatch(TessMat.Faces, TessMat.Vertices, dsFactor);
+    
+    for i= 1:100
+        % Increment current point index
+        Digitize.iPoint = Digitize.iPoint + 1;
+        % Update the coordinate and Type 
+        Digitize.Points(Digitize.iPoint).Loc = NewTessMat.Vertices(i, :);
+        Digitize.Points(Digitize.iPoint).Type = 'EXTRA';
+        % Add the point to the display (in cm)
+        PlotCoordinate();
+        % Update text field counter to the next point in the list
+        iCount = str2double(ctrl.jTextFieldExtra.getText());
+        ctrl.jTextFieldExtra.setText(num2str(iCount + 1));
+    end
+    UpdateList();
 end
 
 %% ===== DELETE POINT CALLBACK =====
@@ -1194,12 +1224,14 @@ function BytesAvailable_Callback() %#ok<INUSD>
     global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
-
+    
     % Simulate: Generate random points
     if Digitize.Options.isSimulate
         % Increment current point index
         Digitize.iPoint = Digitize.iPoint + 1;
-
+        if Digitize.iPoint > numel(Digitize.Points)
+            Digitize.Points(Digitize.iPoint).Type = 'EXTRA';
+        end
         if strcmpi(Digitize.Type, 'Revopoint')
             % Get current 3D figure
             [Digitize.hFig,~,Digitize.iDS] = bst_figures('GetCurrentFigure', '3D');
@@ -1222,10 +1254,6 @@ function BytesAvailable_Callback() %#ok<INUSD>
                 end
             end
         else
-            
-            if Digitize.iPoint > numel(Digitize.Points)
-                Digitize.Points(Digitize.iPoint).Type = 'EXTRA';
-            end
             Digitize.Points(Digitize.iPoint).Loc = rand(1,3) * .15 - .075;
         end
     % Else: Get digitized point coordinates
