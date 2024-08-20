@@ -85,8 +85,12 @@ function Start(DigitizerType) %#ok<DEFNU>
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Check if using new version
-    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024') && ~strcmpi(Digitize.Type, 'Revopoint')
-        bst_call(@panel_digitize_2024, 'Start');
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        if strcmpi(Digitize.Type, 'Revopoint')
+            bst_call(@panel_digitize_2024, 'Start', 'revopoint');
+        else
+            bst_call(@panel_digitize_2024, 'Start');
+        end
         return;
     end
 
@@ -136,7 +140,7 @@ function Start(DigitizerType) %#ok<DEFNU>
     end
     
     % Start Serial Connection
-    if ~CreateSerialConnection();
+    if ~CreateSerialConnection()
         return;
     end
     
@@ -148,7 +152,7 @@ function Start(DigitizerType) %#ok<DEFNU>
         % Generate new condition name
         ConditionName = sprintf('%s_%02d%02d%02d_%02d', DigitizeOptions.PatientId, c(1), c(2), c(3), i);
         % Get condition
-        [sStudy, iStudy] = bst_get('StudyWithCondition', [SubjectName '/' ConditionName]);
+        sStudy = bst_get('StudyWithCondition', [SubjectName '/' ConditionName]);
         % If condition doesn't exist: ok, keep this one
         if isempty(sStudy)
             break;
@@ -170,12 +174,12 @@ function Start(DigitizerType) %#ok<DEFNU>
     
     if strcmpi(Digitize.Type, 'Revopoint')
         % import surface
-        iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment}));
+        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment}));
         if(isempty(iTargetSurface))
-            [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubject);
+            [~, OutputSurfacesFiles, ~] = import_surfaces(iSubject);
             sSurf = bst_memory('LoadSurface', OutputSurfacesFiles{end});
-            [sSubject, iSubject] = bst_get('Subject', SubjectName);
-            iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment})); 
+            sSubject = bst_get('Subject', SubjectName);
+            iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment})); 
         else
             sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
         end
@@ -214,7 +218,6 @@ end
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global Digitize
-
     % Constants
     panelName = Digitize.Type;
     % Java initializations
@@ -463,7 +466,6 @@ end
 %% ===== GET SELECTED ELECTRODE =====
 function [sCoordName, iSelCoord] = GetSelectedCoord()
     global Digitize
-
     % Get panel handles
     ctrl = bst_get('PanelControls', Digitize.Type);
     if isempty(ctrl)
@@ -607,7 +609,7 @@ function isOk = EditSettings()
             DigitizeOptions.ComRate = 115200;
             DigitizeOptions.ComByteCount = 120;
         else
-            bst_error('Incorrect unit type.', 'Digitize', 0);
+            bst_error('Incorrect unit type.', Digitize.Type, 0);
             return;
         end
     end
@@ -1840,7 +1842,7 @@ function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
                 pause(0.2);
             catch %#ok<CTCH>
                 % If the connection cannot be established: error message
-                bst_error(['Cannot open serial connection.' 10 10 'Please check the serial port configuration.' 10], 'Digitize', 0);
+                bst_error(['Cannot open serial connection.' 10 10 'Please check the serial port configuration.' 10], Digitize.Type, 0);
                 % Ask user to edit the port options
                 isChanged = EditSettings();
                 % If edit was canceled: exit
@@ -1873,7 +1875,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     if DigitizeOptions.isSimulate
         if strcmpi(Digitize.Type, 'Revopoint')
             % Get current 3D figure
-            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
+            [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');
             if isempty(hFig)
                 return
             end
@@ -1887,7 +1889,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                     pointCoord = CoordinatesSelector.SCS;
                 else
                     [sSubject, ~] = bst_get('Subject', Digitize.SubjectName);
-                    iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment}));
+                    iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment}));
                     [sSurf, ~] = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
                     pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
                 end
