@@ -266,6 +266,10 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
             opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type);
         model = struct();
         for pk = 0:size(est_pars,1)
+            params = [];
+            aperiodic_pars_tmp = [];
+            peak_pars_tmp = [];
+
             peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, opt.peak_width_limits/2, opt.peak_type, opt.guess_weight,hOT);
             % Refit aperiodic
             aperiodic = spec(chan,:);
@@ -303,7 +307,11 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
                 params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
                     lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
             catch
-                a = 0; % for catching errors
+                % for catching errors
+            end
+            if isempty(params)
+                % TODO: Improve handling of errors at estimating 'params'
+                params = [0,0,0];
             end
             switch opt.aperiodic_mode
                 case 'fixed'
