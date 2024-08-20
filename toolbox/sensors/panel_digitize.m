@@ -371,7 +371,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== Extra buttons =====
     jPanelMisc = gui_river([5,4], [2,4,4,0]);
-        gui_component('button', jPanelMisc, [], 'Collect point', [], [], @ManualCollect_Callback);
+        if ~strcmpi(Digitize.Type, 'Revopoint')
+            gui_component('button', jPanelMisc, [], 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
+        end
         jButtonDeletePoint = gui_component('button', jPanelMisc, 'hfill', 'Delete last point', [], [], @DeletePoint_Callback);
         gui_component('Button', jPanelMisc, [], 'Save as...', [], [], @Save_Callback);
     jPanelControl.add(jPanelMisc);
@@ -1016,14 +1018,14 @@ function EEGAutoDetectElectrodes(h, ev)
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
-function ManualCollect_Callback(h, ev)
+function ManualCollect_Callback()
     global Digitize
 
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation: call the callback directly
     if DigitizeOptions.isSimulate
-        BytesAvailable_Callback(h, ev);
+        BytesAvailable_Callback();
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -1284,7 +1286,7 @@ function CreateHeadpointsFigure()
         bstContainer = get(bst_get('Panel',Digitize.Type), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
-        [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)
             set(hFig, 'Position', FigPos);
@@ -1300,10 +1302,10 @@ function CreateHeadpointsFigure()
         % Plot head points
         [hFig, iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
         % Get subject
-        [sSubject, iSubject] = bst_get('Subject', Digitize.SubjectName);
-        iTargetSurface = find(cellfun(@(c)~isempty(strfind(c, 'revopoint')), {sSubject.Surface.Comment})); 
+        sSubject = bst_get('Subject', Digitize.SubjectName);
+        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment})); 
         sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
-        [nRows,nCols] = size(sSurf.Vertices);
+        [nRows,~] = size(sSurf.Vertices);
         sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(nRows,1)]')';
         panel_surface('RemoveSurface', hFig, 1);
         % view the surface
@@ -1317,7 +1319,7 @@ function CreateHeadpointsFigure()
         bstContainer = get(bst_get('Panel', Digitize.Type), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
-        [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)
             set(hFig, 'Position', FigPos);
@@ -1863,7 +1865,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback(h, ev) %#ok<INUSD>
+function BytesAvailable_Callback() 
     global Digitize rawpoints
 
     % Get controls

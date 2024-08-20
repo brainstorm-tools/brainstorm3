@@ -1102,9 +1102,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         % Get Digitize options
                         DigitizeOptions = bst_get('DigitizeOptions');
                         if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-                	        panel_digitize_2024('ManualCollect_Callback', hFig, keyEvent);
+                	        panel_digitize_2024('ManualCollect_Callback');
                         else
-                            panel_digitize('ManualCollect_Callback', hFig, keyEvent);
+                            panel_digitize('ManualCollect_Callback');
                         end
                     end
                 % CTRL+D : Dock figure

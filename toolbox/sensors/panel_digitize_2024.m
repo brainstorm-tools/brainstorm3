@@ -292,7 +292,11 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     % ===== Other buttons =====
     jPanelMisc = gui_river([5,4], [10,4,4,4]);
-        jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
+        if ~strcmpi(Digitize.Type, 'Revopoint') 
+            jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
+        else
+            jButtonCollectPoint = gui_component('label', jPanelMisc, 'hfill', ''); % spacing
+        end
         % Until initial fids are collected and figure displayed, "delete" button is used to "restart".
         jButtonDeletePoint = gui_component('button', jPanelMisc, [], 'Start over', [], [], @(h,ev)bst_call(@ResetDataCollection, 1));
         gui_component('label', jPanelMisc, 'hfill', ''); % spacing 
@@ -666,13 +670,13 @@ end
 
 
 %% ===== MANUAL COLLECT CALLBACK ======
-function ManualCollect_Callback(h, ev)
+function ManualCollect_Callback()
     global Digitize
     ctrl = bst_get('PanelControls', Digitize.Type);
     ctrl.jButtonCollectPoint.setEnabled(0);
     % Simulation: call the callback directly
     if Digitize.Options.isSimulate
-        BytesAvailable_Callback(h, ev);
+        BytesAvailable_Callback();
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -752,7 +756,37 @@ function CreateHeadpointsFigure()
         bstContainer = get(bst_get('Panel', Digitize.Type), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
-        [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
+        if (FigPos(3) > 0) && (FigPos(4) > 0)
+            set(Digitize.hFig, 'Position', FigPos);
+        end
+        % Remove the close handle function
+        set(Digitize.hFig, 'CloseRequestFcn', []);
+    else
+        % Get study
+        sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
+        % Plot head points and save handles in global variable
+        [Digitize.hFig, Digitize.iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
+        % Get subject
+        sSubject = bst_get('Subject', Digitize.SubjectName);
+        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment})); 
+        sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
+        [nRows,~] = size(sSurf.Vertices);
+        sSurf.Vertices = [sSurf.Vertices ones(nRows,1)] * Digitize.Transf';
+        panel_surface('RemoveSurface', Digitize.hFig, 1);
+        % view the surface
+        sSurf = tess_deface(sSurf);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], sSubject.Surface(iTargetSurface(end)).FileName);
+        % Hide head surface
+        if ~strcmpi(Digitize.Type, 'Revopoint')
+            panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 0.8);
+        end
+        % Get Digitizer JFrame
+        bstContainer = get(bst_get('Panel', Digitize.Type), 'container');
+        % Get maximum figure position
+        decorationSize = bst_get('DecorationSize');
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)
             set(Digitize.hFig, 'Position', FigPos);
@@ -827,7 +861,9 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
         figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
     end
     % Hide template head surface
-    panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
+    if ~strcmpi(Digitize.Type, 'Revopoint')
+        panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
+    end
 end
 
 %% ===== SAVE CALLBACK =====
@@ -1154,7 +1190,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback(h, ev) %#ok<INUSD>
+function BytesAvailable_Callback() %#ok<INUSD>
     global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
@@ -1166,13 +1202,13 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
 
         if strcmpi(Digitize.Type, 'Revopoint')
             % Get current 3D figure
-            [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');
-            if isempty(hFig)
+            [Digitize.hFig,~,Digitize.iDS] = bst_figures('GetCurrentFigure', '3D');
+            if isempty(Digitize.hFig)
                 return
             end
             % Get current selected point
-            CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
-            isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+            CoordinatesSelector = getappdata(Digitize.hFig, 'CoordinatesSelector');
+            isSelectingCoordinates = getappdata(Digitize.hFig, 'isSelectingCoordinates');
             if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
                 return;
             else
@@ -1185,8 +1221,6 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                     Digitize.Points(Digitize.iPoint).Loc = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
                 end
             end
-            Digitize.hFig = hFig;
-            Digitize.iDS = iDS;
         else
             
             if Digitize.iPoint > numel(Digitize.Points)
@@ -1252,7 +1286,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     end
 
     % Transform coordinates
-    if ~isempty(Digitize.Transf)
+    if ~isempty(Digitize.Transf) && ~strcmpi(Digitize.Type, 'Revopoint')
         Digitize.Points(Digitize.iPoint).Loc = [Digitize.Points(Digitize.iPoint).Loc 1] * Digitize.Transf';
     end
     % Update coordinates list
@@ -1265,7 +1299,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
             ctrl.jTextFieldExtra.setText(num2str(iCount + 1));
     end
 
-    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
+    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Points(Digitize.iPoint).Type, 'CARDINAL')
         % Add this point to the figure
         % Saves in GlobalData, but NOT in actual channel file
         PlotCoordinate();
