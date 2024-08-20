@@ -1099,7 +1099,13 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case 'c'
                     % for Revopoint
                     if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, 'Revopoint')
-                	    panel_digitize('ManualCollect_Callback', hFig, keyEvent);
+                        % Get Digitize options
+                        DigitizeOptions = bst_get('DigitizeOptions');
+                        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+                	        panel_digitize_2024('ManualCollect_Callback', hFig, keyEvent);
+                        else
+                            panel_digitize('ManualCollect_Callback', hFig, keyEvent);
+                        end
                     end
                 % CTRL+D : Dock figure
                 case 'd'
