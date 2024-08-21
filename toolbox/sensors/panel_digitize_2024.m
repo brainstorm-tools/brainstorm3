@@ -459,7 +459,7 @@ end
 %% ===== EDIT SETTINGS =====
 function isOk = EditSettings()
     global Digitize
-    %Digitize.Options = bst_get('DigitizeOptions');
+    
     isOk = 0;
     % Ask for new options
     if isfield(Digitize.Options, 'Fids') && iscell(Digitize.Options.Fids)
@@ -475,63 +475,106 @@ function isOk = EditSettings()
     else
         ConfigString = '';
     end
-    [res, isCancel] = java_dialog('input', ...
-            {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-             'Unit Type (Fastrak or Patriot):', ...
-             '<HTML>Additional device configuration commands, separated by ";"<BR>(see device documentation, e.g. H1,0,0,-1;H2,0,0,-1):', ...
-             '<HTML><BR><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
-             '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
-             'Distance threshold for repeated measure of fiducial locations (mm):', ...
-             'Beep when collecting point (0=no, 1=yes):'}, ...
-            'Digitizer configuration', [], ...
-            {Digitize.Options.ComPort, ...
-             Digitize.Options.UnitType, ...
-             ConfigString, ...
-             FidsString, ...
-             num2str(Digitize.Options.nFidSets), ...
-             num2str(Digitize.Options.DistThresh * 1000), ... % m to mm
-             num2str(Digitize.Options.isBeep)});         
+
+    % Ask for new options
+    if strcmpi(Digitize.Type, 'Revopoint')
+        [res, isCancel] = java_dialog('input', ...
+                {'<HTML><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
+                 '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
+                 'Distance threshold for repeated measure of fiducial locations (mm):', ...
+                 'Beep when collecting point (0=no, 1=yes):'}, ...
+                'Revopoint configuration', [], ...
+                {FidsString, ...
+                 num2str(Digitize.Options.nFidSets), ...
+                 num2str(Digitize.Options.DistThresh * 1000), ... % m to mm
+                 num2str(Digitize.Options.isBeep)});     
+    else
+        [res, isCancel] = java_dialog('input', ...
+                {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
+                 'Unit Type (Fastrak or Patriot):', ...
+                 '<HTML>Additional device configuration commands, separated by ";"<BR>(see device documentation, e.g. H1,0,0,-1;H2,0,0,-1):', ...
+                 '<HTML><BR><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
+                 '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
+                 'Distance threshold for repeated measure of fiducial locations (mm):', ...
+                 'Beep when collecting point (0=no, 1=yes):'}, ...
+                'Digitizer configuration', [], ...
+                {Digitize.Options.ComPort, ...
+                 Digitize.Options.UnitType, ...
+                 ConfigString, ...
+                 FidsString, ...
+                 num2str(Digitize.Options.nFidSets), ...
+                 num2str(Digitize.Options.DistThresh * 1000), ... % m to mm
+                 num2str(Digitize.Options.isBeep)});
+    end
+
     if isempty(res) || isCancel
         return
     end
+
     % Check values
-    if (length(res) < 6) || isempty(res{1}) || isempty(res{2}) || isnan(str2double(res{5})) || isnan(str2double(res{6})) || ~ismember(str2double(res{7}), [0 1])
-        bst_error('Invalid values.', Digitize.Type, 0);
-        return;
-    end
-    % Get entered values, keep defaults for some if empty
-    Digitize.Options.ComPort  = res{1};
-    Digitize.Options.UnitType = lower(res{2});
-    if ~isempty(res{5})
-        Digitize.Options.nFidSets = str2double(res{5});
-    end
-    if ~isempty(res{6})
-        Digitize.Options.DistThresh = str2double(res{6}) / 1000; % mm to m
-    end
-    if ~isempty(res{7})
-        Digitize.Options.isBeep = str2double(res{7});
-    end
-    % Parse device configuration commands. Remove all spaces, and split at ";"
-    Digitize.Options.ConfigCommands = str_split(strrep(res{3}, ' ', ''), ';', true); % remove empty
-    % Device type
-    if strcmp(Digitize.Options.UnitType,'fastrak')
-        Digitize.Options.ComRate = 9600;
-        Digitize.Options.ComByteCount = 94;
-    elseif strcmp(Digitize.Options.UnitType,'patriot')
-        Digitize.Options.ComRate = 115200;
-        Digitize.Options.ComByteCount = 120;
+    if strcmpi(Digitize.Type, 'Revopoint')
+        if (length(res) < 4) || isnan(str2double(res{2})) || isnan(str2double(res{3})) || ~ismember(str2double(res{4}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+        if ~isempty(res{2})
+            Digitize.Options.nFidSets = str2double(res{2});
+        end
+        if ~isempty(res{3})
+            Digitize.Options.DistThresh = str2double(res{3}) / 1000; % mm to m
+        end
+        if ~isempty(res{4})
+            Digitize.Options.isBeep = str2double(res{4});
+        end
+
+        % Parse and validate fiducials.
+        Digitize.Options.Fids = str_split(res{1}, '()[],;"'' ', true); % remove empty
+        if isempty(Digitize.Options.Fids) || ~iscell(Digitize.Options.Fids) || numel(Digitize.Options.Fids) < 3
+            bst_error('At least 3 anatomy fiducials are required, e.g. NAS, LPA, RPA.', Digitize.Type, 0);
+            Digitize.Options.Fids = {'NAS', 'LPA', 'RPA'};
+            return;
+        end
     else
-        bst_error('Incorrect unit type.', Digitize.Type, 0);
-        return;
+        if (length(res) < 6) || isempty(res{1}) || isempty(res{2}) || isnan(str2double(res{5})) || isnan(str2double(res{6})) || ~ismember(str2double(res{7}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+        % Get entered values, keep defaults for some if empty
+        Digitize.Options.ComPort  = res{1};
+        Digitize.Options.UnitType = lower(res{2});
+        if ~isempty(res{5})
+            Digitize.Options.nFidSets = str2double(res{5});
+        end
+        if ~isempty(res{6})
+            Digitize.Options.DistThresh = str2double(res{6}) / 1000; % mm to m
+        end
+        if ~isempty(res{7})
+            Digitize.Options.isBeep = str2double(res{7});
+        end
+        % Parse device configuration commands. Remove all spaces, and split at ";"
+        Digitize.Options.ConfigCommands = str_split(strrep(res{3}, ' ', ''), ';', true); % remove empty
+        % Device type
+        if strcmp(Digitize.Options.UnitType,'fastrak')
+            Digitize.Options.ComRate = 9600;
+            Digitize.Options.ComByteCount = 94;
+        elseif strcmp(Digitize.Options.UnitType,'patriot')
+            Digitize.Options.ComRate = 115200;
+            Digitize.Options.ComByteCount = 120;
+        else
+            bst_error('Incorrect unit type.', Digitize.Type, 0);
+            return;
+        end
+
+        % Parse and validate fiducials.
+        Digitize.Options.Fids = str_split(res{4}, '()[],;"'' ', true); % remove empty
+        if isempty(Digitize.Options.Fids) || ~iscell(Digitize.Options.Fids) || numel(Digitize.Options.Fids) < 3
+            bst_error('At least 3 anatomy fiducials are required, e.g. NAS, LPA, RPA.', Digitize.Type, 0);
+            Digitize.Options.Fids = {'NAS', 'LPA', 'RPA'};
+            return;
+        end
     end
 
-    % Parse and validate fiducials.
-    Digitize.Options.Fids = str_split(res{4}, '()[],;"'' ', true); % remove empty
-    if isempty(Digitize.Options.Fids) || ~iscell(Digitize.Options.Fids) || numel(Digitize.Options.Fids) < 3
-        bst_error('At least 3 anatomy fiducials are required, e.g. NAS, LPA, RPA.', Digitize.Type, 0);
-        Digitize.Options.Fids = {'NAS', 'LPA', 'RPA'};
-        return;
-    end
+    
     for iFid = 1:numel(Digitize.Options.Fids)
         switch lower(Digitize.Options.Fids{iFid})
             % possible names copied from channel_detect_type
