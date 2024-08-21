@@ -1441,76 +1441,78 @@ function CreateMontageMenu(jMenu)
     % Add new montage / reset list
     jMenu.addSeparator();
 
-    gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
-    gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
-    
-    % Creating montages from EEG cap layout mat files (only for Revopoint)
     if strcmpi(Digitize.Type, 'Revopoint')
-        jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
-    
-        % === USE DEFAULT CHANNEL FILE ===
-        % Get registered Brainstorm EEG defaults
-        bstDefaults = bst_get('EegDefaults');
-        if ~isempty(bstDefaults)
-            % Add a directory per template block available
-            for iDir = 1:length(bstDefaults)
-                jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
-                % Create subfolder for cap manufacturer
-                jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
-                % Add an item per Template available
-                fList = bstDefaults(iDir).contents;
-                % Sort in natural order
-                [tmp,I] = sort_nat({fList.name});
-                fList = fList(I);
-                for iFile = 1:length(fList)
-                    % Define callback function to add montage from mat file
-                    fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
-                    
-                    % Find corresponding submenu
-                    if ~isempty(strfind(fList(iFile).name, 'ANT'))
-                        jMenuType = jMenuAnt;
-                    elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                        jMenuType = jMenuBs;
-                    elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
-                        jMenuType = jMenuBp;
-                    elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
-                        jMenuType = jMenuEgi;
-                    elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
-                        jMenuType = jMenuNs;
-                    else
-                        jMenuType = jMenuOther;
+        jMenuAddMontage = gui_component('Menu', jMenu, [], 'Add EEG montage...', [], [], [], []);
+            gui_component('MenuItem', jMenuAddMontage, [], 'From file...', [], [], @(h,ev)bst_call(@AddMontage), []);
+            % Creating montages from EEG cap layout mat files (only for Revopoint)
+            jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
+        
+            % === USE DEFAULT CHANNEL FILE ===
+            % Get registered Brainstorm EEG defaults
+            bstDefaults = bst_get('EegDefaults');
+            if ~isempty(bstDefaults)
+                % Add a directory per template block available
+                for iDir = 1:length(bstDefaults)
+                    jMenuDir = gui_component('Menu', jMenuEegCaps, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
+                    % Create subfolder for cap manufacturer
+                    jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    % Add an item per Template available
+                    fList = bstDefaults(iDir).contents;
+                    % Sort in natural order
+                    [tmp,I] = sort_nat({fList.name});
+                    fList = fList(I);
+                    for iFile = 1:length(fList)
+                        % Define callback function to add montage from mat file
+                        fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
+                        
+                        % Find corresponding submenu
+                        if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                            jMenuType = jMenuAnt;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                            jMenuType = jMenuBs;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
+                            jMenuType = jMenuBp;
+                        elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
+                            jMenuType = jMenuEgi;
+                        elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
+                            jMenuType = jMenuNs;
+                        else
+                            jMenuType = jMenuOther;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
                     end
-                    % Create item
-                    gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
-                end
-                % Add if not empty
-                if (jMenuOther.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuOther);
-                end
-                if (jMenuAnt.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuAnt);
-                end
-                if (jMenuBs.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuBs);
-                end
-                if (jMenuBp.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuBp);
-                end
-                if (jMenuEgi.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuEgi);
-                end
-                if (jMenuNs.getMenuComponentCount() > 0)
-                    jMenuDir.add(jMenuNs);
+                    % Add if not empty
+                    if (jMenuOther.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuOther);
+                    end
+                    if (jMenuAnt.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuAnt);
+                    end
+                    if (jMenuBs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBs);
+                    end
+                    if (jMenuBp.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBp);
+                    end
+                    if (jMenuEgi.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuEgi);
+                    end
+                    if (jMenuNs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuNs);
+                    end
                 end
             end
-        end
+    else % if not Revopoint
+        gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
+    gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
 end
 
 %% ===== SELECT MONTAGE =====
