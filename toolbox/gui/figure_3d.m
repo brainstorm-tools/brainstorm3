@@ -1682,6 +1682,8 @@ function DisplayFigurePopup(hFig)
         jItem.setSelected(TopoLayoutOptions.ShowLegend);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
         jItem.setSelected(TopoLayoutOptions.FlipYAxis);
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show head lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
+        jItem.setSelected(TopoLayoutOptions.FlipYAxis);
         jPopup.addSeparator();
     end
     
