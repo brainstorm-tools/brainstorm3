@@ -1441,10 +1441,7 @@ function CreateMontageMenu(jMenu)
     % Add new montage / reset list
     jMenu.addSeparator();
 
-    % Adding montage from text files only available for Polhemus Digitizer
-    if ~strcmpi(Digitize.Type, 'Revopoint')
-        gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
-    end
+    gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
     
     % Creating montages from EEG cap layout mat files (only for Revopoint)
