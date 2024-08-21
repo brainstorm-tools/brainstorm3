@@ -124,6 +124,9 @@ end
 
 %% ===== MERGE EVENTS =====
 function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDelete)
+    if isempty(sInput)
+        sInput = '';
+    end
     % No modification
     isModified = 0;
 
@@ -149,6 +152,13 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         bst_report('Error', 'process_evt_merge', sInput, 'You must enter at least one event name to copy.');
         return;
     end
+    % Make sure selected events are all of same type
+    try
+        [events(iEvents).times];
+    catch
+        bst_report('Error', 'process_evt_merge', sInput, 'You cannot merge simple and extended events together.');
+        return;
+    end
 
     % Inialize new event group
     newEvent = events(iEvents(1));
@@ -156,23 +166,58 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     newEvent.times      = [events(iEvents).times];
     newEvent.epochs     = [events(iEvents).epochs];
     % Reaction time, channels, notes: only if all the events have them
-    if all(~cellfun(@isempty, {events(iEvents).channels}))
-        newEvent.channels = [events(iEvents).channels];
-    else
+    if all(cellfun(@isempty, {events(iEvents).channels}))
         newEvent.channels = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).notes}))
-        newEvent.notes = [events(iEvents).notes];
     else
+        % Expand empty channels if needed
+        for ie = 1 : length(iEvents)
+            if isempty(events(iEvents(ie)).channels)
+                events(iEvents(ie)).channels = cell(1, size(events(iEvents(ie)).times, 2));
+            end
+        end
+        newEvent.channels = [events(iEvents).channels];
+    end
+    if all(cellfun(@isempty, {events(iEvents).notes}))
         newEvent.notes = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
-        newEvent.reactTimes = [events(iEvents).reactTimes];
     else
-        newEvent.reactTimes = [];
+        % Expand empty notes if needed
+        for ie = 1 : length(iEvents)
+            if isempty(events(iEvents(ie)).notes)
+                events(iEvents(ie)).notes = cell(1, size(events(iEvents(ie)).notes, 2));
+            end
+        end
+        newEvent.notes = [events(iEvents).notes];
     end
-    % Sort by samples indices, and remove redundant values
-    [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
+    if all(cellfun(@isempty, {events(iEvents).reactTimes}))
+        newEvent.reactTimes = [];
+    else
+        % Expand empty reactTimes if needed
+        for ie = 1 : length(iEvents)
+            if isempty(events(iEvents(ie)).reactTimes)
+                events(iEvents(ie)).reactTimes = zeros(1, size(events(iEvents(ie)).reactTimes, 2));
+            end
+        end
+        newEvent.reactTimes = [events(iEvents).reactTimes];
+    end
+    % Find duplicated events
+    iRemoveDuplicate = [];
+    [~, ics, ias] = unique(bst_round(newEvent.times', 9), 'rows', 'stable');
+    % Check if duplicated times are really duplicated events
+    for ix = 1 : length(ics)
+        ids = find(ias == ix);
+        for iy = 2 : length(ids)
+            id = ids(iy);
+            if (isempty(newEvent.channels)   || isequal(newEvent.channels{ids(1)}, newEvent.channels{id})) && ...
+               (isempty(newEvent.notes)      || isequal(newEvent.notes{ids(1)}, newEvent.notes{id})) && ...
+               (isempty(newEvent.reactTimes) || isequal(newEvent.reactTimes(ids(1)), newEvent(id).reactTimes))
+               iRemoveDuplicate = [iRemoveDuplicate, id];
+            end
+        end
+    end
+    % Sort by samples indices
+    [~, iSort] = sort(bst_round(newEvent.times(1,:), 9));
+    % Remove indices of duplicated events
+    iSort = iSort(~ismember(iSort, iRemoveDuplicate));
     newEvent.times    = newEvent.times(:,iSort);
     newEvent.epochs   = newEvent.epochs(iSort);
     if ~isempty(newEvent.channels)

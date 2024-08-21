@@ -1,6 +1,7 @@
-function sDest = struct_copy_fields(sDest, sSrc, override)
+function sDest = struct_copy_fields(sDest, sSrc, override, deepest)
 % STRUCT_COPY_FIELDS: Copy the fields from sSrc structure to sDest structure
-
+% If override, override the field sDest by the field of sSrc
+% If deepest, try to apply the copy at the deepest level 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -21,9 +22,14 @@ function sDest = struct_copy_fields(sDest, sSrc, override)
 %
 % Authors: Sylvain Baillet, March 2002
 
+if (nargin < 4) || isempty(deepest)
+    deepest = 0;
+end
+
 if (nargin < 3) || isempty(override)
     override = 1;
 end
+
 
 % No fields to add
 if isempty(sSrc)
@@ -35,6 +41,12 @@ elseif isempty(sDest)
 else
     namesSrc = fieldnames(sSrc);
     for i = 1:length(namesSrc)
+        % if subfield are both structure, we do a "deep copy"
+        if deepest && isfield(sDest, namesSrc{i}) && isstruct(sDest.(namesSrc{i})) && isfield(sSrc, namesSrc{i}) && isstruct(sSrc.(namesSrc{i}))
+             sDest.(namesSrc{i})  = struct_copy_fields(sDest.(namesSrc{i}), sSrc.(namesSrc{i}), override);
+             continue;
+        end
+
         if override || ~isfield(sDest, namesSrc{i})
             sDest.(namesSrc{i}) = sSrc.(namesSrc{i});
         end

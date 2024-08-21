@@ -25,8 +25,16 @@ function [sFile, ChannelMat] = in_fopen_oebin(DataFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
+%          Raymundo Cassani, 2024
 
 %% ===== GET FILES =====
+% Install/load npy-matlab Toolbox (https://github.com/kwikteam/npy-matlab) as plugin
+if ~exist('readNPY', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'npy-matlab');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 % Build header and markers files names
 procDir = bst_fileparts(DataFile);
 [contDir, procName] = bst_fileparts(procDir);
@@ -34,23 +42,29 @@ recDir = bst_fileparts(contDir);
 expDir = bst_fileparts(recDir);
 [parentDir, expName] = bst_fileparts(expDir);
 [tmp, parentName] = bst_fileparts(parentDir);
-% Timestamp file
-TimeFile = bst_fullfile(procDir, 'timestamps.npy');
-if ~file_exist(TimeFile)
-    error(['Could not find timestamp file: ' TimeFile]);
-end
 % OEBIN JSON header
 OebinFile = bst_fullfile(recDir, 'structure.oebin');
 if ~file_exist(OebinFile)
     error(['Could not find header file: ' OebinFile]);
 end
-% Event files
-EvtFiles = file_find(bst_fullfile(recDir, 'events'), 'timestamps.npy', 3, 0);
-
-
-%% ===== READ HEADER =====
 % Read JSON file
 hdr = bst_jsondecode(OebinFile);
+% Identify file with sample indices depending on the Open Ephys GUI version
+if bst_plugin('CompareVersions', hdr.GUIVersion, '0.6.0') == -1
+    SampleIndicesFileName = 'timestamps.npy';
+else
+    SampleIndicesFileName = 'sample_numbers.npy';
+end
+% Sample indices file
+SampleIndicesFile = file_find(procDir, SampleIndicesFileName, 1, 1);
+if ~file_exist(SampleIndicesFile)
+    error(['Could not find file with sample indices: ' SampleIndicesFileName]);
+end
+% Event indices files
+EvtIndicesFiles = file_find(bst_fullfile(recDir, 'events'), SampleIndicesFileName, 3, 0);
+
+
+%% ===== PARSE HEADER =====
 % If there are multiple processors in the same recording: find the one corresponding to this .dat file
 if (length(hdr.continuous) > 1)
     iRec = find(strcmpi({hdr.continuous.folder_name}, [procName, '/']));
@@ -68,9 +82,11 @@ else
     error('Recordings do not contain continuous data.');
 end
 hdr.continuous = hdr.continuous(iRec);
-% Read time stamps
-TimeStamps = readNPY(TimeFile);
-
+% Read sample indices
+SampleIndices = readNPY(SampleIndicesFile);
+% Add first and last sample indices to header structure
+hdr.first_samp = double(SampleIndices(1));
+hdr.last_samp  = double(SampleIndices(end));
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -85,7 +101,7 @@ sFile.comment = parentName;
 sFile.condition = parentName;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.continuous.sample_rate;
-sFile.prop.times   = double([TimeStamps(1), TimeStamps(1) + length(TimeStamps) - 1]) ./ sFile.prop.sfreq;
+sFile.prop.times   = double([SampleIndices(1), SampleIndices(1) + length(SampleIndices) - 1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.continuous.num_channels, 1);
@@ -124,8 +140,8 @@ sFile.header = hdr;
 
 
 %% ===== READ EVENTS =====
-for iFile = 1:length(EvtFiles)
-    sFile = import_events(sFile, [], EvtFiles{iFile}, 'OEBIN', [], 0);
+for iFile = 1:length(EvtIndicesFiles)
+    sFile = import_events(sFile, [], EvtIndicesFiles{iFile}, 'OEBIN', [], 0);
 end
 
 

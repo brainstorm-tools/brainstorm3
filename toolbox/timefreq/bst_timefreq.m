@@ -596,14 +596,14 @@ for iData = 1:length(Data)
             end
             % Correct the time step to the closest multiple of the sampling interval to keep the time axis uniform
             mt.timestep = round(fsample * mt.timestep) / fsample;
-            % Time axis
+            % Time-interval of interest
             timeoi = (OPTIONS.TimeVector(1) + mt.timeres/2) : mt.timestep : (OPTIONS.TimeVector(end) - mt.timeres/2 - 1/fsample); 
             % Frequency resolution for each frequency
             freqres = mt.frequencies / mt.freqmod;
             freqres(find(freqres < 1/mt.timeres)) = 1/mt.timeres;
             
             % Call fieldtrip function
-            [TF, ntaper, OPTIONS.Freqs, OPTIONS.TimeVector] = ft_specest_mtmconvol(F, OPTIONS.TimeVector, ...
+            [TF, ntaper, OPTIONS.Freqs, TimeBins] = ft_specest_mtmconvol(F, OPTIONS.TimeVector, ...
                 'taper',     mt.taper, ...
                 'timeoi',    timeoi, ...
                 'freqoi',    mt.frequencies,...
@@ -611,6 +611,14 @@ for iData = 1:length(Data)
                 'tapsmofrq', freqres, ...
                 'pad',       pad, ...
                 'verbose',   0);
+            % TimeBands
+            OPTIONS.TimeBands = cell(length(TimeBins), 3);
+            for iTimeBin = 1 : length(TimeBins)
+                OPTIONS.TimeBands{iTimeBin, 1} = sprintf('t%d', iTimeBin);
+                OPTIONS.TimeBands{iTimeBin, 2} = sprintf('%1.4f, %1.4f', TimeBins(iTimeBin) + [-mt.timeres/2, mt.timeres/2 - 1/fsample]);
+                OPTIONS.TimeBands{iTimeBin, 3} = 'mean';
+            end
+
             % Permute dimensions to get [nChannels x nTime x nFreq x nTapers]
             TF = permute(TF, [2 4 3 1]);
     end
@@ -852,6 +860,8 @@ end
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
             elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') 
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+            elseif strcmpi(OPTIONS.Method, 'mtmconvol') && ~isempty(OPTIONS.TimeBands)
+                FileMat.TimeBands = OPTIONS.TimeBands;
             end
             if isempty(FileMat)
                 if ~isempty(Messages)

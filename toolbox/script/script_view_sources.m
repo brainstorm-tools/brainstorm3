@@ -1,5 +1,5 @@
 function [hFig, iDS, iFig] = script_view_sources(ResultsFile, DisplayMode)
-% SCRIPT_VIEW_SOURCES: Display the sources in a brainstorm figure.
+% SCRIPT_VIEW_SOURCES: Display the sources or timefreq from sources in a brainstorm figure.
 %
 % USAGE:  [hFig, iDS, iFig] = script_view_sources(ResultsFile, DisplayMode)
 %
@@ -26,9 +26,20 @@ function [hFig, iDS, iFig] = script_view_sources(ResultsFile, DisplayMode)
 % =============================================================================@
 %
 % Author: Francois Tadel, 2009-2010
+%         Raymundo Cassani, 2024
 
-% Find results file in database
-[sStudy, iStudy, iResult] = bst_get('ResultsFile', ResultsFile);
+% Find Study for input file in database
+[sStudy, ~, ~, fileType, sItem] = bst_get('AnyFile', ResultsFile);
+% Check file type
+if ~ismember(fileType, {'results', 'timefreq'})
+    error('Input file must contain sources, or be a timefreq file from sources.');
+end
+% TimeFreq must be from sources
+if strcmpi(fileType, 'timefreq')
+    if ~strcmpi(sItem.DataType, 'results')
+        error('Input file must be a timefreq file from sources.');
+    end
+end
 % Find subject in database
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 

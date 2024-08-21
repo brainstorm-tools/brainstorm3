@@ -21,6 +21,7 @@ function hdr = neuralynx_getheader(filename)
 %  
 % Authors:  Robert Oostenveld, 2007, as part of the FieldTrip toolbox
 %           Francois Tadel, 2015, for the Brainstorm integration
+%           Raymundo Cassani, 2024
 
 % ===== CONSTANTS =====
 % Get file extension
@@ -55,34 +56,41 @@ buf = fread(fid, [1 hdr.HeaderSize], 'uint8=>char');
 % Get file size
 fseek(fid, 0, 'eof');
 hdr.FileSize = ftell(fid);
-% NCS: Read first and last timestamps
-if strcmpi(fExt, '.ncs')
-    % Read first time stamp
-    fseek(fid, hdr.HeaderSize, 'bof');
-    hdr.FirstTimeStamp = fread(fid, 1, '*uint64');
-    % Read last time stamp
-    fseek(fid, -hdr.RecordSize, 'eof');
-    hdr.LastTimeStamp = fread(fid, 1, '*uint64');
-% NSE: Read all the time samples
-elseif strcmpi(fExt, '.nse')
-    % Compute number of records
-    hdr.NumSamples = (hdr.RecordSize - 48) / 2;
-    hdr.NumRecords = floor((hdr.FileSize - hdr.HeaderSize) / hdr.RecordSize);
-    % Initialize the variables to read from the header
-    hdr.SpikeTimeStamps = zeros(1, hdr.NumRecords, 'uint64');
-        SpikeScNumber   = zeros(1, hdr.NumRecords, 'int32');
-        SpikeCellNumber = zeros(1, hdr.NumRecords, 'int32');
-    hdr.SpikeParam      = zeros(8, hdr.NumRecords, 'int32');
-    % Loop on the records to get all the timestamps
-    for iRec = 1:hdr.NumRecords
-        % Seek at the beginning of the record
-        fseek(fid, hdr.HeaderSize + (iRec-1) * hdr.RecordSize, 'bof');
-        % Read header of the record
-        hdr.SpikeTimeStamps(iRec) = fread(fid, 1, '*uint64');
-            SpikeScNumber(iRec)   = fread(fid, 1, 'int32');    % Do not save in the header
-            SpikeCellNumber(iRec) = fread(fid, 1, 'int32');    % Do not save in the header
-        hdr.SpikeParam(:,iRec)    = fread(fid, 8, 'int32');
-    end
+switch hdr.FileExtension
+    % NCS: Read first and last timestamps
+    case 'NCS'
+        % Read first time stamp
+        fseek(fid, hdr.HeaderSize, 'bof');
+        hdr.FirstTimeStamp = fread(fid, 1, '*uint64');
+        % Read last time stamp
+        fseek(fid, -hdr.RecordSize, 'eof');
+        hdr.LastTimeStamp = fread(fid, 1, '*uint64');
+
+    % NSE and NTT: Read all the time samples
+    case {'NSE', 'NTT'}
+        % Samples are 2 bytes
+        hdr.NumSamples = (hdr.RecordSize - 48) / 2;
+        % At each time sample there are four samples (one for each channel) in the NTT file
+        if strcmpi(hdr.FileExtension, 'NTT')
+            hdr.NumSamples = hdr.NumSamples / 4;
+        end
+        % Compute number of records
+        hdr.NumRecords = floor((hdr.FileSize - hdr.HeaderSize) / hdr.RecordSize);
+        % Initialize the variables to read from the header
+        hdr.SpikeTimeStamps = zeros(1, hdr.NumRecords, 'uint64');
+            SpikeScNumber   = zeros(1, hdr.NumRecords, 'int32');
+            SpikeCellNumber = zeros(1, hdr.NumRecords, 'int32');
+        hdr.SpikeParam      = zeros(8, hdr.NumRecords, 'int32');
+        % Loop on the records to get all the timestamps
+        for iRec = 1:hdr.NumRecords
+            % Seek at the beginning of the record
+            fseek(fid, hdr.HeaderSize + (iRec-1) * hdr.RecordSize, 'bof');
+            % Read header of the record
+            hdr.SpikeTimeStamps(iRec) = fread(fid, 1, '*uint64');
+                SpikeScNumber(iRec)   = fread(fid, 1, 'int32');    % Do not save in the header
+                SpikeCellNumber(iRec) = fread(fid, 1, 'int32');    % Do not save in the header
+            hdr.SpikeParam(:,iRec)    = fread(fid, 8, 'int32');
+        end
 end
 % Close file
 fclose(fid);
@@ -105,12 +113,8 @@ for i = 1:length(hdrlines)
     elseif (hdrlines{i}(1) == '#')
         continue;
     end
-    % Strip the '-' sign
-    while (hdrlines{i}(1) == '-')
-        hdrlines{i} = hdrlines{i}(2:end);
-    end
-    % Cut into pieces
-    item = textscan(hdrlines{i}, '%s');
+    % Get item ('-Key Value')
+    [~, item] = regexp(hdrlines{i}, '-(\w+) (.*$)', 'match', 'tokens');
     % Ignore line if there are less or more than two items
     if (length(item) ~= 1) || (length(item{1}) ~= 2)
         continue;
@@ -118,13 +122,11 @@ for i = 1:length(hdrlines)
     % Item1=key, Item2=value
     key = item{1}{1};
     val = item{1}{2};
-    if any(val(1) == '-01234567989')
-        % Try to convert to number
-        val = str2num(val);
-        % Revert to the original text
-        if isempty(val)
-            val = item{1}{2};
-        end
+    % Try to convert to number
+    val = str2num(val);
+    % Revert to the original text
+    if isempty(val)
+        val = item{1}{2};
     end
     % Remove unuseable characters from the variable name (key)
     key = key(key ~= ':');

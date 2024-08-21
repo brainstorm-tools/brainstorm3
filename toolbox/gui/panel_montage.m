@@ -1234,8 +1234,9 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Average reference (L -> R)', 'Scalp current density (L -> R)'}) && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
-            % Not EEG or no 3D positions: Skip scalp current density
-            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Scalp current density', 'Scalp current density (L -> R)'}) && ~isempty(FigId.Modality) && (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})))
+            % Not EEG or no 3D positions or less than 4 unique points: Skip scalp current density
+            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Scalp current density', 'Scalp current density (L -> R)'}) && ~isempty(FigId.Modality) && ...
+                    (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})) || size(unique([GlobalData.DataSet(iDS).Channel(iFigChannels).Loc]', 'rows'), 1) < 4)
                 continue;
             end
             % Not CTF-MEG: Skip head motion distance
@@ -1478,6 +1479,11 @@ function sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
     
     % Get surface of electrodes
     pnt = [Channels.Loc]';
+    % Check for at least four unique channel positions
+    if size(unique(pnt, 'rows'), 1) < 4
+        sMontage = [];
+        return;
+    end
     tri = channel_tesselate(pnt);
     % Compute the SCP (surface Laplacian) with FieldTrip function lapcal
     Lscp = lapcal(pnt, tri);

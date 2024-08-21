@@ -186,6 +186,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 OldFileName = file_fullpath(sInputs(i).FileName);
                 [fPath, fBase, fExt] = bst_fileparts(OldFileName);
                 NewFileName = bst_fullfile(fPath, [fBase, fileTag, fExt]);
+                % Ensure uniqueness
+                NewFileName = file_unique(NewFileName);
                 OutputFiles{i} = file_short(NewFileName);
             end
             % Rename file

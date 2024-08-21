@@ -91,7 +91,8 @@ function sProcess = DefineExtractOptions(sProcess)
     sProcess.options.scoutfunc.InputTypes = {'results'};
     
     % === NORM XYZ
-    sProcess.options.isnorm.Comment    = 'Compute absolute values (or norm for unconstrained sources)';
+    sProcess.options.isnorm.Comment    = ['Compute absolute values (or norm for unconstrained sources). <BR>' ...
+                                          '<i>Applied after scout function.</i>'];
     sProcess.options.isnorm.Type       = 'checkbox';
     sProcess.options.isnorm.Value      = 0;
     sProcess.options.isnorm.InputTypes = {'results'};
@@ -394,14 +395,6 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             if ~isempty(OPTIONS.TimeWindow) && (OPTIONS.TimeWindow(1) == OPTIONS.TimeWindow(2))
                 sLoaded.Data = sLoaded.Data(:,1,:,:);
                 sLoaded.Time = OPTIONS.TimeWindow(1);
-            end
-            % Add components labels
-            if (sLoaded.nComponents == 3)
-                sLoaded.RowNames = sLoaded.RowNames(:)';
-                sLoaded.RowNames = [cellfun(@(c)cat(2,c,'.1'), sLoaded.RowNames, 'UniformOutput', 0); ...
-                                    cellfun(@(c)cat(2,c,'.2'), sLoaded.RowNames, 'UniformOutput', 0); ...
-                                    cellfun(@(c)cat(2,c,'.3'), sLoaded.RowNames, 'UniformOutput', 0)];
-                sLoaded.RowNames = sLoaded.RowNames(:);
             end
             % Convert to matrix structure
             FileMat = db_template('matrixmat');

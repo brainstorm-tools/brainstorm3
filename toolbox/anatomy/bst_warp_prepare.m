@@ -156,7 +156,7 @@ if (~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface))
         file_delete(MriFiles, 1);
     end
 end
-% Force subject to us default anatomy
+% Force subject to use default anatomy
 s.UseDefaultAnat = 0;
 s.Anatomy = [];
 s.Surface = [];
@@ -268,10 +268,39 @@ for i = 1:length(dirScout)
     file_copy(bst_fullfile(atlasDir, dirScout(i).name), bst_fullfile(OutputDir, dirScout(i).name))
 end
 
-
 %% ===== UPDATE DATABASE =====
 % Reload subject
 db_reload_subjects(iSubject);
+
+%% ===== SET DEFAULT SURFACES =====
+isUpdate = 0;
+sSubject = bst_get('Subject', iSubject);
+for surfaceCatergory = {'Anatomy' 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
+    if strcmp('Anatomy', surfaceCatergory{1})
+        surfaceGroup = surfaceCatergory{1};
+    else
+        surfaceGroup = 'Surface';
+    end
+    if ~isempty(sDefSubject.(['i', surfaceCatergory{1}]))
+        defDefFilename = sDefSubject.(surfaceGroup)(sDefSubject.(['i', surfaceCatergory{1}])).FileName;
+        [~, filename, ext] = bst_fileparts(defDefFilename);
+        iDef = find(file_compare({sSubject.(surfaceGroup).FileName}, bst_fullfile(fileparts(sSubject.FileName), [filename, OutputTag, ext] )), 1);
+        if ~isempty(iDef)
+            sSubject.(['i', surfaceCatergory{1}]) = iDef;
+            matUpdate.(surfaceCatergory{1}) = bst_fullfile(fileparts(sSubject.FileName), [filename, OutputTag, ext]);
+            isUpdate = 1;
+        end
+    end
+end
+if isUpdate
+    % Update Database
+    bst_set('Subject', iSubject, sSubject);
+    % Update SubjectFile
+    bst_save(file_fullpath(sSubject.FileName), matUpdate, 'v7', 1);
+end
+
+
+%% ===== DISPLAY WARPED HEAD AND CORTEX =====
 % Unload all the surfaces, close all the figures
 bst_memory('UnloadAll', 'Forced');
 % Get subject again

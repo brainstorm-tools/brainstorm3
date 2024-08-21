@@ -185,6 +185,9 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
     MriHead = [];
     for iFile = 1:length(MriFiles)
         bst_progress('text', 'Loading input MRI...');
+        % Check if volume is CT
+        tagFileCt = '_volct';
+        isCt = ~isempty(strfind(MriFiles{iFile}, tagFileCt));
         % Get subject index
         [sSubject, iSubject, iAnatomy] = bst_get('MriFile', MriFiles{iFile});
         % If MRI was already defaced: skip
@@ -306,7 +309,16 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
             bst_memory('UnloadMri', MriFile);
         % Add new file
         else
-            DefacedFiles{end+1} = db_add(iSubject, sMri, 0);
+            tmp = db_add(iSubject, sMri, 0);
+            % Add file tag for CT volume
+            if isCt
+                [fPath, fBase, fExt] = bst_fileparts(file_fullpath(tmp));
+                fBase = [fBase, tagFileCt, fExt];
+                tmpNew = bst_fullfile(fPath, fBase);
+                file_move(file_fullpath(tmp), tmpNew);
+                tmp = file_short(tmpNew);
+            end
+            DefacedFiles{end+1} = tmp;
             iAnatomy = length(sSubject.Anatomy) + 1;
         end
         % Update database registration

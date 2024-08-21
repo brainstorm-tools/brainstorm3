@@ -220,6 +220,10 @@ tic
             return;
         end
         
+        % If not specified, set time window value
+        if isempty(OPTIONS.TimeWindow)
+            OPTIONS.TimeWindow = sInput.Time([1, end]);
+        end
         
         % Get sampling frequency
         sRate = 1 / (sInput.Time(2) - sInput.Time(1));

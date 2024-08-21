@@ -174,6 +174,11 @@ if ~isempty(PlugName)
     % Download statistics
     url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
     str =  bst_webread(url);
+
+    if isempty(str)
+        bst_progress('stop');
+        return;
+    end
     % Process report
     str = str_split(str, char(10));
     nTotal = length(str);

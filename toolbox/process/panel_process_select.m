@@ -1107,7 +1107,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
-                    
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
+                        for f = fieldnames(option.Controller)'
+                            if ~strcmpi(f{1}, option.Value{1}) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value{1}) && isequal(option.Controller.(option.Value{1}), option.Controller.(f{1})))
+                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                            end
+                        end
+                    end
+
                 case 'freqsel'
                     % Load Freq field from the input file
                     if strcmpi(sFiles(1).FileType, 'timefreq')
@@ -1384,13 +1392,35 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         end
                     end
                     % Create controls
-                    gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
+                    jLabel = gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     jText = gui_component('text', jPanelOpt, [], strFiles);
                     jText.setEditable(0);
                     jText.setPreferredSize(java_scaled('dimension', 210, 20));
                     isUpdateTime = strcmpi(option.Type, 'datafile');
-                    gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
-                    
+                    if strcmp(strFunction, 'process_export_file')
+                        if length(sFiles) > 1
+                            % Export multiple files, suggest dir name to export files (filenames from Brainstorm DB)
+                            jLabel.setText('Output dir');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'dirs';
+                            LastUsedDirs = bst_get('LastUsedDirs');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = LastUsedDirs.ExportData;
+                            jText.setText(LastUsedDirs.ExportData);
+                        else
+                            % Export one file, suggest filename for new file from Input file
+                            jLabel.setText('Output file');
+                            GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{7} = 'files';
+                            if isempty(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1}) || strcmp(option.Value{7}, 'dirs')
+                                % Used in SaveFile_Callback() to suggeste name of export file
+                                GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1} = sFiles(1).FileName;
+                            end
+                            jText.setText(GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{1});
+                        end
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)SaveFile_Callback(iProcess, optNames{iOpt}, jText));
+                    else
+                        % Pick file or dir (Open File or Select Dir to Save)
+                        gui_component('button', jPanelOpt, '', '...', [],[], @(h,ev)PickFile_Callback(iProcess, optNames{iOpt}, jText, isUpdateTime));
+                    end
+
                 case 'editpref'
                     gui_component('label',  jPanelOpt, [], ['<HTML>', option.Comment{2}, '&nbsp;&nbsp;&nbsp;']);
                     gui_component('button', jPanelOpt, [], 'Edit...', [],[], @(h,ev)EditProperties_Callback(iProcess, optNames{iOpt}));
@@ -1834,6 +1864,141 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
 
+    %% ===== OPTIONS: SAVE FILE CALLBACK =====
+    function SaveFile_Callback(iProcess, optName, jText)
+        % Get default import directory and formats
+        LastUsedDirs = bst_get('LastUsedDirs');
+        DefaultFormats = bst_get('DefaultFormats');
+        % Get file selection options
+        selectOptions = GlobalData.Processes.Current(iProcess).options.(optName).Value;
+        if (length(selectOptions) == 9)
+            DialogType      = selectOptions{3};
+            WindowTitle     = selectOptions{4};
+            DefaultOutFile  = selectOptions{5};
+            SelectionMode   = selectOptions{6};
+            FilesOrDir      = selectOptions{7};
+            Filters         = selectOptions{8};
+            DefaultFormat   = selectOptions{9};
+            if isfield(DefaultFormats, DefaultFormat) && isempty(selectOptions{2})
+                defaultFilter = DefaultFormats.(DefaultFormat);
+            else
+                defaultFilter = selectOptions{2};
+            end
+        else
+            DialogType       = 'save';
+            WindowTitle      = 'Export file';
+            DefaultOutFile   = '';
+            SelectionMode    = 'single';
+            FilesOrDir       = 'files';
+            Filters          = {{'*'}, 'All files (*.*)', 'ALL'};
+            defaultFilter    = [];
+        end
+
+        % First input file
+        inBstFile = selectOptions{1};
+        % Filters and extension according to file type
+        fileType = file_gettype(inBstFile);
+        isRaw = 0;
+        if strcmp(fileType, 'data') && ~isempty(strfind(inBstFile, '_0raw'))
+            isRaw = 1;
+            fileType = 'raw';
+        end
+        if isempty(Filters)
+            Filters = bst_get('FileFilters', [fileType, 'out']);
+        end
+        % Select only Filter if not provided
+        if isempty(defaultFilter)
+            switch fileType
+                case 'raw'
+                    defaultFilter = 'BST-BIN';
+                case {'data', 'results', 'timefreq', 'matrix'}
+                    defaultFilter = 'BST';
+            end
+        end
+        % Get extension for filter
+        iFilter = find(ismember(Filters(:,3), defaultFilter), 1, 'first');
+        if isempty(iFilter)
+            iFilter = 1;
+        end
+        fExt = Filters{iFilter, 1}{1};
+        % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
+        if strcmp(defaultFilter, 'BST') && isempty(regexp(DefaultOutFile, '\.\w+$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+            fExt = '.mat';
+        end
+
+        % Suggest filename or dir
+        switch FilesOrDir
+            % Suggest filename
+            case 'files'
+                switch(fileType)
+                    case 'data'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_data', '');
+                        fBase = strrep(fBase, 'data_', '');
+                        fBase = strrep(fBase, '0raw_', '');
+    
+                    case {'results', 'link'}
+                        if strcmp(fileType, 'link')
+                            [kernelFile, dataFile] = file_resolve_link(inBstFile);
+                            [~, kBase] = bst_fileparts(kernelFile);
+                            [~, fBase] = bst_fileparts(dataFile);
+                            fBase = [kBase, '_' ,fBase];
+                        else
+                            [~, fBase] = bst_fileparts(inBstFile);
+                        end
+                        fBase = strrep(fBase, '_results', '');
+                        fBase = strrep(fBase, 'results_', '');
+    
+                    case 'timefreq'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_timefreq', '');
+                        fBase = strrep(fBase, 'timefreq_', '');
+    
+                    case 'matrix'
+                        [~, fBase] = bst_fileparts(inBstFile);
+                        fBase = strrep(fBase, '_matrix', '');
+                        fBase = strrep(fBase, 'matrix_', '');
+    
+                    otherwise
+                        % e.g., user set outfile more than once
+                        [~, fBase] = bst_fileparts(inBstFile);
+    
+                end                
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData, [fBase, fExt]);
+
+            % Suggest directory
+            case 'dirs'
+                DefaultOutFile = bst_fullfile(LastUsedDirs.ExportData);
+        end
+
+        % Pick a file
+        [OutputFile, FileFormat] = java_getfile(DialogType, WindowTitle, DefaultOutFile, SelectionMode, FilesOrDir, Filters, defaultFilter);
+        % If nothing selected
+        if isempty(OutputFile)
+            return
+        end
+        % Update ExportData path
+        if strcmp(FilesOrDir, 'dirs')
+            % Remove extension (introduced by the Filters)
+            [fPath, fBase] = bst_fileparts(OutputFile);
+            OutputFile = bst_fullfile(fPath, fBase);
+            LastUsedDirs.ExportData = OutputFile;
+        elseif strcmp(FilesOrDir, 'files')
+            fPath = bst_fileparts(OutputFile);
+            LastUsedDirs.ExportData = fPath;
+        end
+        bst_set('LastUsedDirs', LastUsedDirs);
+
+        % Update the values
+        selectOptions{1} = OutputFile;
+        selectOptions{2} = FileFormat;
+        % Save the new values
+        SetOptionValue(iProcess, optName, selectOptions);
+        % Update the text field
+        jText.setText(OutputFile);
+    end
+
+
     %% ===== OPTIONS: EDIT PROPERTIES CALLBACK =====
     function EditProperties_Callback(iProcess, optName)
         % Get current value: {@panel, sOptions}
@@ -2186,7 +2351,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             opt = GlobalData.Processes.Current(iProcess).options.(optName);
             if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
                 ToggleClass(opt.Controller, value);
-            elseif ismember(optType, {'radio_label', 'radio_linelabel'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+            elseif ismember(optType, {'radio_label', 'radio_linelabel', 'combobox_label'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+                if strcmpi(optType, 'combobox_label')
+                    value = value{1};
+                end
                 for cl = fieldnames(opt.Controller)'
                     % Ignore a disabled class that is associated with 2 options, one selected and one not selected
                     if ~strcmp(cl{1}, value) && isfield(opt.Controller, value) && isequal(opt.Controller.(cl{1}), opt.Controller.(value))
@@ -2917,7 +3085,7 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                     % Radio button: check the index of the selection
                     if ismember(option.Type, {'radio','radio_line'}) && (savedOpt > length(option.Comment))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(savedOpt, option.Comment(2,:))
+                    elseif strcmpi(option.Type, 'radio_label') && ~isnumeric(savedOpt) && ~ismember(savedOpt, option.Comment(2,:))
                         % Error: ignoring previous option
                     elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(savedOpt, option.Comment(2,1:end-1))
                         % Error: ignoring previous option

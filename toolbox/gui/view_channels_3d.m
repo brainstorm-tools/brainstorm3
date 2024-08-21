@@ -1,5 +1,21 @@
-function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails)
+function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, is3DElectrodes, isDetails, hFig)
 % VIEW_CHANNELS_3D: Display channel files on top of subject anatomy.
+%
+% INPUT:
+%     - FileNames   : path to the channel file to display
+%     - Modality    : modality of sensors
+%     - SurfaceType : surface to display sensors on (scalp)
+%     - is3DElectrodes
+%     - isDetails
+%     - hFig : TargetFigure:
+%        |- []      : New figure (default)
+%        |- hFig    : Specify the figure in which to display the channels
+%
+% OUTPUT :
+%     - hFig : Matlab handle to the 3DViz figure that was created or updated
+%     - iDS  : DataSet index in the GlobalData variable
+%     - iFig : Indice of returned figure in the GlobalData(iDS).Figure array
+% If an error occurs : all the returned variables are set to an empty matrix []
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +38,18 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % Authors: Francois Tadel, 2010-2019
 
 global GlobalData;
-% Parse inputs
+
+%% ===== PARSE INPUTS =====
+iDS = [];
+iFig = [];
+if (nargin < 6) || isempty(hFig)
+    hFig = 'NewFigure';
+elseif ishandle(hFig)
+    hFig = bst_figures('GetFigure', hFig);
+else
+    error('Invalid figure handle.');
+end
+
 if (nargin < 5) || isempty(isDetails)
     isDetails = 0;
 end
@@ -35,9 +62,7 @@ end
 if ischar(FileNames)
     FileNames = {FileNames};
 end
-hFig = [];
-iDS = [];
-iFig = [];
+
 % Coils or channel markers?
 isShowCoils = ismember(Modality, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'NIRS-BRS', 'RICOH'});
 
@@ -76,7 +101,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case 'innerskull'
             if ~isempty(sSubject.iInnerSkull) && (sSubject.iInnerSkull <= length(sSubject.Surface))
@@ -88,7 +113,7 @@ if ~isempty(sSubject)
                     case 'ECOG',  SurfAlpha = .2;
                     otherwise,    SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case 'scalp'
             if ~isempty(sSubject.iScalp) && (sSubject.iScalp <= length(sSubject.Surface))
@@ -107,7 +132,7 @@ if ~isempty(sSubject)
                     otherwise
                         SurfAlpha = opaqueAlpha;
                 end
-                hFig = view_surface(SurfaceFile, SurfAlpha, [], 'NewFigure');
+                hFig = view_surface(SurfaceFile, SurfAlpha, [], hFig);
             end
         case {'anatomy', 'subjectimage'}
             if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
@@ -115,12 +140,22 @@ if ~isempty(sSubject)
                     SurfaceFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 end
                 SurfAlpha = .1;
-                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, 'NewFigure');
+                hFig = view_mri_3d(SurfaceFile, [], SurfAlpha, hFig);
+                if strcmpi(Modality, 'SEEG')
+                    % For SEEG, display 3D slices (MRI) + isosurface
+                    panel_ieeg('DisplayIsosurface', sSubject, hFig, FileNames{1}, Modality);
+                end
             end
+        otherwise
+    end
+    if strcmpi(Modality, 'SEEG')
+        % For SEEG, display MRI viewer for all Surface Types
+        panel_ieeg('DisplayChannelsMri', FileNames{1}, Modality, 1, 0);
     end
 end
 % Warning if no surface was found
-if isempty(hFig)
+if isempty(hFig) || strcmp(hFig, 'NewFigure')
+    hFig = [];
     disp('BST> Warning: The anatomy of this subject was not imported properly.');
 end
 

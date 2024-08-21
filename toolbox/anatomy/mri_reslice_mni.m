@@ -74,7 +74,7 @@ if isAtlas
     newCube = interp3(Y1, X1, Z1, sMriMni.Cube, Xgrid2mni, Ygrid2mni, Zgrid2mni, 'nearest', NaN);
 % Cubic interpolation for floating point values
 else
-    newCube = single(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2mni, Ygrid2mni, Zgrid2mni, 'cubic', 0));
+    newCube = single(interp3(Y1, X1, Z1, double(sMriMni.Cube), Xgrid2mni, Ygrid2mni, Zgrid2mni, 'cubic', 0));
 end
 % Replace bad values with 0 (points that do not have MNI coordinates)
 newCube(isnan(newCube)) = 0;
