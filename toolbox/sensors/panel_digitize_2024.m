@@ -954,7 +954,9 @@ end
 
 %% ===== CREATE MONTAGE MENU =====
 function CreateMontageMenu(jMenu)
+    import org.brainstorm.icon.*;
     global Digitize
+
     % Get menu pointer if not in argument
     if (nargin < 1) || isempty(jMenu)
         ctrl = bst_get('PanelControls', Digitize.Type);
@@ -976,7 +978,78 @@ function CreateMontageMenu(jMenu)
     end
     % Add new montage / reset list
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+    
+    if strcmpi(Digitize.Type, 'Revopoint')
+        jMenuAddMontage = gui_component('Menu', jMenu, [], 'Add EEG montage...', [], [], [], []);
+            gui_component('MenuItem', jMenuAddMontage, [], 'From file...', [], [], @(h,ev)bst_call(@AddMontage), []);
+            % Creating montages from EEG cap layout mat files (only for Revopoint)
+            jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
+        
+            % === USE DEFAULT CHANNEL FILE ===
+            % Get registered Brainstorm EEG defaults
+            bstDefaults = bst_get('EegDefaults');
+            if ~isempty(bstDefaults)
+                % Add a directory per template block available
+                for iDir = 1:length(bstDefaults)
+                    jMenuDir = gui_component('Menu', jMenuEegCaps, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
+                    % Create subfolder for cap manufacturer
+                    jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    % Add an item per Template available
+                    fList = bstDefaults(iDir).contents;
+                    % Sort in natural order
+                    [tmp,I] = sort_nat({fList.name});
+                    fList = fList(I);
+                    for iFile = 1:length(fList)
+                        % Define callback function to add montage from mat file
+                        fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
+                        
+                        % Find corresponding submenu
+                        if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                            jMenuType = jMenuAnt;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                            jMenuType = jMenuBs;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
+                            jMenuType = jMenuBp;
+                        elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
+                            jMenuType = jMenuEgi;
+                        elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
+                            jMenuType = jMenuNs;
+                        else
+                            jMenuType = jMenuOther;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
+                    end
+                    % Add if not empty
+                    if (jMenuOther.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuOther);
+                    end
+                    if (jMenuAnt.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuAnt);
+                    end
+                    if (jMenuBs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBs);
+                    end
+                    if (jMenuBp.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBp);
+                    end
+                    if (jMenuEgi.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuEgi);
+                    end
+                    if (jMenuNs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuNs);
+                    end
+                end
+            end
+    else % if not Revopoint
+        gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+    end
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
 end
 
@@ -1029,47 +1102,96 @@ function [curMontage, nEEG] = GetCurrentMontage()
 end
 
 %% ===== ADD EEG MONTAGE =====
-function AddMontage()
+function AddMontage(ChannelFile)
     global Digitize
-    % Get recently used folders
-    LastUsedDirs = bst_get('LastUsedDirs');
-    % Open file
-    MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
-                   {{'*.txt'}, 'Text files', 'TXT'}, 0);
-    if isempty(MontageFile)
-        return;
-    end
-    % Get filename
-    [MontageDir, MontageName] = bst_fileparts(MontageFile);
-    % Intialize new montage
-    newMontage.Name = MontageName;
-    newMontage.Labels = {};
-    
-    % Open file
-    fid = fopen(MontageFile,'r');
-    if (fid == -1)
-        error('Cannot open file.');
-    end
-    % Read file
-    while (1)
-        tline = fgetl(fid);
-        if ~ischar(tline)
-            break;
+    % Add Montage from text file
+    if nargin<1
+        % Get recently used folders
+        LastUsedDirs = bst_get('LastUsedDirs');
+        % Open file
+        MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
+                       {{'*.txt'}, 'Text files', 'TXT'}, 0);
+        if isempty(MontageFile)
+            return;
         end
-        spl = regexp(tline,'\s+','split');
-        if (length(spl) >= 2)
-            newMontage.Labels{end+1} = spl{2};
+        % Get filename
+        [MontageDir, MontageName] = bst_fileparts(MontageFile);
+        % Intialize new montage
+        newMontage.Name = MontageName;
+        newMontage.Labels = {};
+        
+        % Open file
+        fid = fopen(MontageFile,'r');
+        if (fid == -1)
+            error('Cannot open file.');
+        end
+        % Read file
+        while (1)
+            tline = fgetl(fid);
+            if ~ischar(tline)
+                break;
+            end
+            spl = regexp(tline,'\s+','split');
+            if (length(spl) >= 2)
+                newMontage.Labels{end+1} = spl{2};
+            end
+        end
+        % Close file
+        fclose(fid);
+        % If no labels were read: exit
+        if isempty(newMontage.Labels)
+            return
+        end
+        % Save last dir
+        LastUsedDirs.ImportChannel = MontageDir;
+        bst_set('LastUsedDirs', LastUsedDirs);
+    else  % Add Montage from mat file of EEG caps
+        % Load existing file
+        ChannelMat = in_bst_channel(ChannelFile);
+        
+        % Intialize new montage
+        newMontage.Name = ChannelMat.Comment;
+        newMontage.Labels = {};
+        newMontage.ChannelFile = ChannelFile;
+        
+        % Get labels
+        [~,col] = size(ChannelMat.Channel);
+        
+        % if Acticap
+        if ~isempty(regexp(newMontage.Name, 'ActiCap', 'match')) && col==66
+            newMontage.Labels{end+1} = 'Oz';
+            newMontage.Labels{end+1} = 'T8';
+            newMontage.Labels{end+1} = 'GND';
+            newMontage.Labels{end+1} = 'T7';
+            for i=1:col
+                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'GND') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
+                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
+                end
+            end
+        % if Waveguard
+        elseif ~isempty(regexp(newMontage.Name, 'Waveguard', 'match')) && col==65
+            newMontage.Labels{end+1} = 'Oz';
+            newMontage.Labels{end+1} = 'T8';
+            newMontage.Labels{end+1} = 'Fpz';
+            newMontage.Labels{end+1} = 'T7';
+            for i=1:col
+                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'Fpz') &&...
+                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
+                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
+                end
+            end
+        end
+        % If no labels were read: exit
+        if isempty(newMontage.Labels)
+            bst_error('EEG cap configuration not supported', 'Revopoint', 0);
+            return
         end
     end
-    % Close file
-    fclose(fid);
-    % If no labels were read: exit
-    if isempty(newMontage.Labels)
-        return
-    end
-    % Save last dir
-    LastUsedDirs.ImportChannel = MontageDir;
-    bst_set('LastUsedDirs', LastUsedDirs);
     
     % Get existing montage with the same name
     iMontage = find(strcmpi({Digitize.Options.Montages.Name}, newMontage.Name));
@@ -1097,15 +1219,19 @@ function UnloadAllMontages()
     % Remove all montages
     Digitize.Options.Montages = [...
         struct('Name',   'No EEG', ...
-               'Labels', []), ...
+               'Labels', [], ...
+               'ChannelFile', []), ...
         struct('Name',   'Default', ...
-               'Labels', [])];
+               'Labels', [], ...
+               'ChannelFile', [])];
     % Reset to "No EEG"
     Digitize.Options.iMontage = 1;
     % Save Digitize options
     bst_set('DigitizeOptions', Digitize.Options);
     % Reload menu bar
     CreateMontageMenu();
+    % Reset list
+    ResetDataCollection();
 end
 
 
