@@ -484,6 +484,10 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             patchDist(i) = norm(pout{i}' - CameraPosition);
             % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
+                % upper limit cap for the vertex patch index returned from "select3d" 
+                if vi{i} > size(sSurf.VertConn, 1)
+                    vi{i} = size(sSurf.VertConn, 1);
+                end
                 VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
                 vout{i} = mean(sSurf.Vertices(VertexList(:), :)); % SCS of the centroid
                 vi{i} = []; % No surface vertex associated to centroid
