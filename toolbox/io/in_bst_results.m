@@ -70,6 +70,7 @@ else
     if any(ismember({'ImageGridAmp','ImagingKernel'}, FieldsToRead))
         FieldsToRead{end + 1} = 'ImagingKernel';
         FieldsToRead{end + 1} = 'ImageGridAmp';
+        FieldsToRead{end + 1} = 'ImagingPostKernel';
         FieldsToRead{end + 1} = 'GoodChannel';
         FieldsToRead{end + 1} = 'OPTIONS';
         FieldsToRead{end + 1} = 'ZScore';
@@ -260,6 +261,11 @@ if isKernel
             Results.Leff = DataMat.Leff;
         end
     end
+elseif isfield(Results,'ImagingPostKernel') && ~isempty(Results.ImagingPostKernel)
+    % Convert from time-frequency representation to time representation.
+
+    Results.ImageGridAmp  = Results.ImageGridAmp * Results.ImagingPostKernel;
+    Results.ImagingPostKernel = [];
 end
 
 
