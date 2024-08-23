@@ -215,6 +215,9 @@ for i = 0:nPerm
         S = zeros(sizeData);
         % Save statistics for all the permutations
         if (nargout >= 5)
+            % Args to index PS
+            ixP = cell(size(sizeData));
+            ixP(:) = {':'};
             PS = zeros([nPerm, sizeData, 1],'single');
         end
         % Count all good and bad channels for each set
@@ -236,7 +239,7 @@ for i = 0:nPerm
         end
         % Save statistics for all the permutations
         if (nargout >= 5)
-            PS(i,:) = Z;
+            PS(i,ixP{:}) = Z;
         end
     end
 end

@@ -159,10 +159,8 @@ switch (DataType)
         end
         OverlayType = 'Source';
     case {'timefreq', 'ptimefreq'}
-        % Force loading associated sources if displaying on the MRI
-        isLoadResults = strcmpi(SurfaceType, 'Anatomy') || ~isempty(strfind(OverlayFile, '_KERNEL_'));
-        % Load timefreq file
-        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', OverlayFile, 1, isLoadResults);
+        % Load timefreq file with associated sources
+        [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', OverlayFile, 1, 1);
         OverlayType = 'Timefreq';
     case 'headmodel'
         OverlayType = 'HeadModel';
@@ -318,10 +316,16 @@ end
 
 
 %% ===== DISPLAY SCOUTS =====
-% If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
+SurfaceFile = panel_scout('GetScoutSurface', hFig);
 sAtlas = panel_scout('GetAtlas', SurfaceFile);
-if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
-    panel_scout('SetCurrentAtlas', 1);
+if ~isempty(sAtlas)
+    % Check if default atlas matches grid type (surface or volume)
+    isVolumeAtlas = panel_scout('ParseVolumeAtlas', sAtlas.Name);
+    isSameGridType = ~xor(isVolumeAtlas, ismember(lower(SurfaceType), {'anatomy', 'fibers'}));
+    % Switch atlas to "User scouts" when for "Source model" or "Structures" atlases or atlas does not match grid type
+    if ismember(sAtlas.Name, {'Structures', 'Source model'}) || ~isSameGridType
+        panel_scout('SetCurrentAtlas', 1);
+    end
 end
 % If there are some loaded scouts available for this figure
 if ShowScouts && (isResults || isTimefreq)

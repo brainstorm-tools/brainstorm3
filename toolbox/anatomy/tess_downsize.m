@@ -548,17 +548,11 @@ end
 % Resample a surface using iso2mesh/CGAL library
 % Author: Qianqian Fang (fangq<at> nmr.mgh.harvard.edu)
 function NewTessMat = iso2mesh_resample(TessMat, dsFactor)
-    % Check if iso2mesh is installed
-    if ~exist('meshresample', 'file')
-        bst_error(['<HTML>Please install <B>iso2mesh</B> on your computer:<BR><BR>' ...
-               '  1) Visit the website: <A href="http://iso2mesh.sourceforge.net">http://iso2mesh.sourceforge.net</A><BR>' ...
-               '  2) Download the iso2mesh package for your operating system.<BR>' ...
-               '  3) Unzip it on your local hard drive.<BR>' ...
-               '  4) Add the iso2mesh folder to your Matlab path.<BR>' ...
-               '  5) Try again downsampling the surface.<BR><BR>'], 'Install iso2mesh', 0);
-        web('http://sourceforge.net/projects/iso2mesh/files/iso2mesh/1.5.0%20%28iso2mesh%202013%29/', '-browser');
-        NewTessMat = [];
-        return;
+    % Install/load iso2mesh plugin
+    isInteractive = 1;
+    [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+    if ~isInstalled
+        error('Plugin "iso2mesh" not available.');
     end
     % Running iso2mesh routine
     [Vertices,Faces] = meshresample(TessMat.Vertices, TessMat.Faces, dsFactor);

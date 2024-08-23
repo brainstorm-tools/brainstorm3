@@ -698,6 +698,18 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             bst_progress('text', 'Calling external function: EEGLAB''s runica()...');
             % Remove the mean
             F = bst_bsxfun(@minus, F, mean(F,2));
+            rankF = rank(F);
+            isLowRank = rank(F) < size(F,1);
+            if isLowRank
+                % Warning message
+                strWarning = [sprintf('INFOMAX: The rank of your data (%d) is lower than the number of channels (%d) in it.', rankF, size(F,1)), 10 ...
+                                      '         This could be caused because a refrence channel is included, or AVERAGE re-referencing is applied to this data.', 10 ...
+                                      '         Please consider limiting the "Number of ICA components" to the rank of the data.'];
+                % Add to the report
+                bst_report('Warning', sProcess, [], strWarning);
+                % Display on the console
+                disp([10 'WARNING: ' strWarning]);
+            end
             % Run EEGLAB ICA function
             if ~isempty(nIcaComp) && (nIcaComp ~= 0)
                 [icaweights, icasphere] = runica(F, 'pca', nIcaComp, 'lrate', 0.001, 'extended', 1, 'interupt', 'off');

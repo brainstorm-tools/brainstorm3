@@ -189,14 +189,21 @@ switch (lower(ScoutFunction))
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
         Fs = std(F,[],1);
+
     % STDERR : Standard error
     case 'stderr'
         %% This formula was incorrect for standard error (fixed 2023-04). Is it used anywhere?
         Fs = std(F,[],1) ./ sqrt(nRow);
-    % RMS
+
+    % RMS : Root mean square, square root of the average of the square of the all the signals
     case 'rms'
-        Fs = sqrt(sum(F.^2,1)); 
-        
+        if (nComponents == 1)
+            Fs = mean(F.^2, 1);
+        else
+            Fs = mean(sum(F.^2, 3), 1);
+        end
+        Fs = sqrt(Fs);
+
     % MEAN_NORM : Average of the norms of all the vertices each time instant 
     % If only one components: computes mean(abs(F)) => Compatibility with older versions
     case 'mean_norm'

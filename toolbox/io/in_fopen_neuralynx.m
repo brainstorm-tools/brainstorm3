@@ -10,21 +10,31 @@ function [sFile, ChannelMat] = in_fopen_neuralynx(DataFile)
 %       http://www.fieldtriptoolbox.org/getting_started/neuralynx
 %
 %     NCS files structure:  
-%        |- Header ASCII: 16*1044 bytes
+%        |- Header ASCII: 16*1024 bytes
 %        |- Records: nRecords x 1044 bytes
 %             |- TimeStamp    : uint64
 %             |- ChanNumber   : int32
 %             |- SampFreq     : int32
 %             |- NumValidSamp : int32
-%             |- Data         : 512 x int16
+%             |- Data         : 512 samples x int16
+%
 %     NSE files structure:  
-%        |- Header ASCII: 16*1044 bytes
+%        |- Header ASCII: 16*1024 bytes
 %        |- Records: nRecords x 112 bytes
 %             |- TimeStamp    : uint64
 %             |- ScNumber     : int32
 %             |- CellNumber   : int32
 %             |- Param        : 8 x int32
-%             |- Data         : NumSamples x int16
+%             |- Data         : 32 samples x int16
+%
+%     NTT files structure:
+%        |- Header ASCII: 16*1024 bytes
+%        |- Records: nRecords x 304 bytes
+%             |- TimeStamp    : uint64
+%             |- ScNumber     : int32
+%             |- CellNumber   : int32
+%             |- Param        : 8 x int32
+%             |- Data         : 4 channels x 32 samples x int16
         
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -45,13 +55,14 @@ function [sFile, ChannelMat] = in_fopen_neuralynx(DataFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015-2019
+%          Raymundo Cassani, 2024
 
 
 %% ===== GET FILES =====
 % Get base dataset folder
 if isdir(DataFile)
     hdr.BaseFolder = DataFile;
-elseif strcmpi(DataFile(end-3:end), '.ncs') || strcmpi(DataFile(end-3:end), '.nse') || strcmpi(DataFile(end-3:end), '.nev')
+elseif ismember(lower(DataFile(end-3:end)), {'.ncs', '.nse', '.ntt', '.nev'})
     hdr.BaseFolder = bst_fileparts(DataFile);
 else
     error('Invalid Neuralynx folder.');
@@ -62,13 +73,14 @@ if isempty(EventFile) || ~file_exist(EventFile)
     disp(['BST> Warning: Events file not found in folder: ' 10 hdr.BaseFolder]);
     EventFile = [];
 end
-% Recordings (*.ncs; *.nse)
+% Recordings (*.ncs; *.nse; *.ntt)
 NcsFiles = dir(bst_fullfile(hdr.BaseFolder, '*.ncs'));
 NseFiles = dir(bst_fullfile(hdr.BaseFolder, '*.nse'));
+NttFiles = dir(bst_fullfile(hdr.BaseFolder, '*.ntt'));
 if isempty(NcsFiles)
     error(['Could not find any .ncs recordings in folder: ' 10 hdr.BaseFolder]);
 end
-ChanFiles = sort({NcsFiles.name, NseFiles.name});
+ChanFiles = sort({NcsFiles.name, NseFiles.name, NttFiles.name});
 
 
 %% ===== FILE COMMENT =====
@@ -90,7 +102,12 @@ for i = 1:length(ChanFiles)
         error(['Missing fields in the file header of file: ' ChanFiles{i}]);
     end
     % Compute number of records saved in the file
-    nRecordsFile = round((newHeader.FileSize - newHeader.HeaderSize) / newHeader.RecordSize);
+    switch newHeader.FileExtension
+        case {'NCS', 'NSE'}
+            nRecordsFile = round((newHeader.FileSize - newHeader.HeaderSize) / newHeader.RecordSize);
+        case {'NTT'}
+            nRecordsFile = round((newHeader.FileSize - newHeader.HeaderSize) / newHeader.RecordSize);
+    end
     % Check if there are missing timestamps in the file
     if isfield(newHeader, 'LastTimeStamp') && ~isempty(newHeader.LastTimeStamp)
         nRecordsTime = round(double(newHeader.LastTimeStamp - newHeader.FirstTimeStamp) / 1e6 * newHeader.SamplingFrequency / 512) + 1;
@@ -100,11 +117,12 @@ for i = 1:length(ChanFiles)
             nRecordsFile = nRecordsTime;
         end
     end
+
     % Extract information needed for opening the file
     if (i == 1)
         hdr.FirstTimeStamp        = newHeader.FirstTimeStamp;
         hdr.LastTimeStamp         = newHeader.LastTimeStamp;
-        hdr.NumSamples            = nRecordsFile * 512;
+        hdr.NumSamples            = nRecordsFile * 512; % 512 samples per recording in NCS file
         hdr.SamplingFrequency     = newHeader.SamplingFrequency;
         if isfield(newHeader, 'HardwareSubSystemType')
             hdr.HardwareSubSystemType = newHeader.HardwareSubSystemType;
@@ -116,14 +134,31 @@ for i = 1:length(ChanFiles)
     elseif isfield(newHeader, 'LastTimeStamp') && ~isempty(newHeader.LastTimeStamp) && ((hdr.FirstTimeStamp ~= newHeader.FirstTimeStamp) || (hdr.LastTimeStamp ~= newHeader.LastTimeStamp))
         disp(['BST> Warning: Timestamps in "' ChanFiles{i} '" do not match "' ChanFiles{1} '". Skipping file...']);
         continue;
-    % For .nse files: Compute the spike times
-    elseif strcmpi(newHeader.FileExtension, 'NSE')
+    end
+
+    % For spike files: Compute the spike times
+    if strcmpi(newHeader.FileType, 'Spike')
         newHeader.SpikeTimes = double(newHeader.SpikeTimeStamps - hdr.FirstTimeStamp) / 1e6;
     end
-    
-    % Save all file names
-    hdr.chan_headers{end+1} = newHeader;
-    hdr.chan_files{end+1}   = ChanFiles{i};
+    % For .ntt files: Repeat the header 4 times, as there are four electrodes per NTT file
+    if strcmpi(newHeader.FileExtension, 'NTT')
+        nChannelsNtt = newHeader.NumADChannels;
+        newHeaders = repmat(newHeader, 1, nChannelsNtt);
+        for iChannelNtt = 1 : nChannelsNtt
+            newHeaders(iChannelNtt).NttIndexCh   = iChannelNtt;
+            newHeaders(iChannelNtt).AcqEntName   = sprintf('%s_%d', newHeader.AcqEntName, iChannelNtt);
+            newHeaders(iChannelNtt).ADBitVolts   = newHeader.ADBitVolts(iChannelNtt);
+            newHeaders(iChannelNtt).ADChannel    = newHeader.ADChannel(iChannelNtt);
+            newHeaders(iChannelNtt).InputRange   = newHeader.InputRange(iChannelNtt);
+            newHeaders(iChannelNtt).ThreshVal    = newHeader.ThreshVal(iChannelNtt);
+        end
+        newHeader = newHeaders;
+    end
+    % Save all headers for each channel file
+    for iHeader = 1 : length(newHeader)
+        hdr.chan_headers{end+1} = newHeader(iHeader);
+        hdr.chan_files{end+1}   = ChanFiles{i};
+    end
 end
 hdr.NumChannels = length(hdr.chan_files);
 
@@ -156,8 +191,12 @@ ChannelMat.Comment = 'Neuralynx channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.NumChannels]);
 % For each channel
 for i = 1:hdr.NumChannels
-    [fPath,fName,fExt] = bst_fileparts(hdr.chan_files{i});
-    ChannelMat.Channel(i).Name    = fName;
+    if isfield(hdr.chan_headers{i}, 'AcqEntName') && ~isempty(hdr.chan_headers{i}.AcqEntName)
+        channelName = hdr.chan_headers{i}.AcqEntName;
+    else
+        [~, channelName] = bst_fileparts(hdr.chan_files{i});
+    end
+    ChannelMat.Channel(i).Name    = channelName;
     ChannelMat.Channel(i).Loc     = [0; 0; 0];
     ChannelMat.Channel(i).Type    = 'EEG';
     ChannelMat.Channel(i).Orient  = [];

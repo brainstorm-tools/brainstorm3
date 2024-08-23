@@ -608,14 +608,14 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         else
             [rawPathIn, rawBaseIn] = bst_fileparts(sFileIn.filename);
         end
-        % Make sure that there are not weird characters in the folder names
-        rawBaseIn = file_standardize(rawBaseIn);
         % New folder name
         if isfield(sFileIn, 'condition') && ~isempty(sFileIn.condition)
             newCondition = ['@raw', sFileIn.condition, fileTag];
         else
             newCondition = ['@raw', rawBaseIn, fileTag];
         end
+        % Make sure that there are not weird characters in the folder names
+        newCondition = file_standardize(newCondition);
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
         % Output file name derives from the condition name

@@ -498,6 +498,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             errMessage = [errMessage 'The noise covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
             break;
         end
+        % Check that bad channels in noise covariance are the same as bad channels in recordings
+        badChNoiseCov_goodChRecs = intersect(find(and(~any(NoiseCovMat.NoiseCov,1), ~any(NoiseCovMat.NoiseCov,2)')), GoodChannel);
+        if ~isempty(badChNoiseCov_goodChRecs)
+            errMessage = [errMessage 'Bad channels in noise covariance are different from bad channels in recordings.' 10 'Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
+            break;
+        end
 %         % Divide noise covariance by number of trials (DEPRECATED IN THIS VERSION)
 %         if ~isempty(nAvg) && (nAvg > 1)
 %             NoiseCovMat.NoiseCov = NoiseCovMat.NoiseCov ./ nAvg;
@@ -510,6 +516,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             % Check for NaN values in the noise covariance
             if ~isempty(DataCovMat.NoiseCov) && (nnz(isnan(DataCovMat.NoiseCov(GoodChannel, GoodChannel))) > 0)
                 errMessage = [errMessage 'The data covariance contains NaN values. Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
+                break;
+            end
+            badChDataCov_goodChRecs = intersect(find(and(~any(DataCovMat.NoiseCov,1), ~any(DataCovMat.NoiseCov,2)')), GoodChannel);
+            if ~isempty(badChDataCov_goodChRecs)
+                errMessage = [errMessage 'Bad channels in data covariance are different from bad channels in recordings.' 10 'Please re-calculate it after tagging correctly the bad channels in the recordings.' 10];
                 break;
             end
 %             % Divide data covariance by number of trials

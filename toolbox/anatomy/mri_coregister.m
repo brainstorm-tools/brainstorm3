@@ -260,8 +260,14 @@ switch lower(Method)
 
         if isMask
             % Check for BrainSuite Installation
-            [bdp_exe, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
-    
+            [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
+            % Error handling
+            if ~isempty(errMsg)
+                if ~isProgress
+                    bst_progress('stop');
+                end
+                return
+            end
             % Perform BRAIN SURFACE EXTRACTOR (BSE)
             bst_progress('text', 'Brain surface extractor...');
             strCall = [...
@@ -318,7 +324,13 @@ switch lower(Method)
             % Reslice the volume
             bst_progress('text', 'Performing Reslicing...');
             [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
-            
+            % Error handling
+            if isempty(sMriReg) || ~isempty(errMsg)
+                if ~isProgress
+                    bst_progress('stop');
+                end
+                return
+            end
             % Apply the mask to the co-registered CT to get a clean skull stripped CT
             if isMask
                 [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'scs', 'scs', isAtlas);

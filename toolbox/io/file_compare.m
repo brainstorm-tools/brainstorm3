@@ -38,6 +38,11 @@ elseif (isemptycell(f1) || isemptycell(f2))
     return
 end
 
+if iscell(f1) &&  iscell(f2) && length(f1) ~= length(f2)
+    res = 0;
+    return
+end
+
 % Check for empty matrices in cell arrays
 if iscell(f1)
     f1(cellfun(@isempty, f1)) = {''};

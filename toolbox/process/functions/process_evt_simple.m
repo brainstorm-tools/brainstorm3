@@ -44,10 +44,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
-    % Time offset
-    sProcess.options.method.Comment = {'Keep the start of the events', 'Keep the middle of the events', 'Keep the end of the events'};
-    sProcess.options.method.Type    = 'radio';
-    sProcess.options.method.Value   = 1;
+    % Method from extended to simple
+    sProcess.options.method.Comment = {'Keep the start of the events', 'Keep the middle of the events', 'Keep the end of the events', 'Keep all samples of the events'; ...
+                                      'start', 'middle', 'end', 'all'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'start';
+
 end
 
 
@@ -65,9 +67,10 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Time offset
     switch (sProcess.options.method.Value)
-        case 1,  Method = 'start';
-        case 2,  Method = 'middle';
-        case 3,  Method = 'end';
+        case {1, 'start'},  Method = 'start';
+        case {2, 'middle'}, Method = 'middle';
+        case {3, 'end'},    Method = 'end';
+        case {4, 'all'},    Method = 'every_sample';
     end
     % Event names
     EvtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
@@ -115,18 +118,10 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== PROCESS EVENTS =====
-    for i = 1:length(iEvtList)
-        switch Method
-            case 'start'
-                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(1,:);
-            case 'middle'
-                sEvents(iEvtList(i)).times = mean(sEvents(iEvtList(i)).times,1);
-            case 'end'
-                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(2,:);
-        end
-        sEvents(iEvtList(i)).times = round(sEvents(iEvtList(i)).times .* sFreq) / sFreq;
-    end
-        
+    sEventsMod = sEvents(iEvtList);
+    sEventsMod = Compute(sEventsMod, Method, sFreq);
+    sEvents(iEvtList) = sEventsMod;
+
     % ===== SAVE RESULT =====
     % Report results
     if isRaw
@@ -139,5 +134,38 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
 end
 
 
-
-
+%% ===== COMPUTE =====
+function sEvents = Compute(sEvents, modification, sFreq)
+    % Apply modificiation to each event type
+    for i = 1:length(sEvents)
+        switch (modification)
+            case 'start'
+                sEvents(i).times = sEvents(i).times(1,:);
+            case 'middle'
+                sEvents(i).times = mean(sEvents(i).times, 1);
+            case 'end'
+                sEvents(i).times = sEvents(i).times(2,:);
+            case 'every_sample'
+                % Create an event instance for every sample in limits of the extendend event
+                sEventAllOcc = repmat(db_template('Event'), 0);
+                for iOccurExt = 1 : size(sEvents(i).times,2)
+                    nSamples = round(diff(sEvents(i).times(:, iOccurExt)) * sFreq) + 1;
+                    sEventOcc = sEvents(i);
+                    sEventOcc.epochs = repmat(sEvents(i).epochs(iOccurExt), 1, nSamples);
+                    sEventOcc.times  = ([0:nSamples-1] / sFreq) + sEvents(i).times(1,iOccurExt);
+                    if ~isempty(sEvents(i).channels)
+                        sEventOcc.channels = repmat(sEvents(i).channels(iOccurExt), 1, nSamples);
+                    end
+                    if ~isempty(sEvents(i).notes)
+                        sEventOcc.notes = repmat(sEvents(i).notes(iOccurExt), 1, nSamples);
+                    end
+                    % Events for one occurence
+                    sEventOcc.label = sprintf('%s_%05d', sEvents(i).label, iOccurExt);
+                    sEventAllOcc(end+1) = sEventOcc;
+                end
+                % Merge events from all ocurrences
+                sEvents(i) = process_evt_merge('Compute', '', sEventAllOcc, {sEventAllOcc.label}, sEvents(i).label, 1);
+        end
+    end
+    sEvents(i).times = round(sEvents(i).times .* sFreq) / sFreq;
+end

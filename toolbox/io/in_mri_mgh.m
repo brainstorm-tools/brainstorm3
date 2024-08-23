@@ -7,7 +7,7 @@ function [sMri, vox2ras, tReorient] = in_mri_mgh(MriFile, isApplyBst, isApplyVox
 %    - MriFile    : full path to a MRI file, WITH EXTENSION
 %    - isApplyBst : If 1, apply best orientation found to match Brainstorm convention
 %                   considering that the volume is aligned as the standard T1.mgz in the 
-%                   FreeSurfer output folder.
+%                   FreeSurfer output folder from 'recon-all'.
 %    - isApplyVox2ras : Apply additional transformation to the volume
 % OUTPUT:
 %    - sMri      : Standard brainstorm structure for MRI volumes
@@ -142,7 +142,7 @@ end
 if isempty(isApplyBst)
     isApplyBst = java_dialog('confirm', ['Apply the standard transformation FreeSurfer=>Brainstorm?' 10 10 ...
                                          'Answer "yes" if importing transformed volumes such as T1.mgz in the' 10 ...
-                                         'FreeSurfer output folder, or other volumes in the same folder.' 10 10],  'MRI orientation');
+                                         'FreeSurfer output folder from ''recon-call'', or other volumes in the same folder.' 10 10],  'MRI orientation');
 end
 
 % Apply transformation

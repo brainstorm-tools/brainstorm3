@@ -1,3 +1,51 @@
+July 2024
+- Anatomy: Import output from FreeSurfer recon-all-clinical
+- Bugfix: Importing non-Atlas MRI volumes given in MNI space
+- Inverse: Process to apply exclusion zone around sensors for volume grids
+- Artifacts: New process for automatic detection of artifacts on MEG
+- Plugins: Add mTRF-Toolbox and Zeffiro
+- Plugins: OpenMEEG and MCXLAB now support Apple Silicon
+- Distrib: Menu option to retrieve system information
+--------------------------------------------------------------
+June 2024
+- Anatomy: Bugfix, set proper subtype on importing Fibers and FEM
+- Viz: Allow combination of resection options in Fig3D
+- Viz: MRI viewer contactsheets support overlayed Atlases and Volumes
+- Viz: Improved figure positioning for Windows11
+- IO: SNIRF, improve import of Landmarks and Events
+- IO: Intan RHS, bugfix, incorrect block selection
+- IO: Neuralyn, bugfix reading NSE files, add support for NTT files
+- Distrib: Add brain fingerprinting tutorial script and page
+- Distrib: Brainstorm compiled with Matlab 2023a
+--------------------------------------------------------------
+May 2024
+- Anatomy: Bugfix at selecting proper int type when exporting MRI as NIfTI
+- Viz: Improved contactsheets from MRIviewer and 3D slices
+- IO: Updated support for Open Ephys
+- IO: Support double, complex-float and complex-double .fif data
+- Events: Added "Every sample" option for extended2simple conversion
+- Plugins: Remove npy-matlab code from Brainstorm, add it as plugin
+- Plugins: Allow user registering plugins as supported plugins in Brainstorm
+--------------------------------------------------------------
+April 2024
+- Anatomy: Added AAL1 MNI parcellation
+- PSD: Added 2D layout visualization
+- Artifacts: Detect bad channels: peak-to-peak for continuous data
+- Distrib: Update Matlab RunTime path binary in macOS and Linux
+--------------------------------------------------------------
+March 2024
+- SEEG/ECOG: Improved contact localization using 3D figures
+- SEEG/ECOG: Revamped iEEG panel
+- Anatomy: New scout operations (intersect and duplicate)
+- IO: Improved support for ITAB files
+- IO: Bugfix on importing Curry .pom channel files
+- Events: Allow digital mask for events from channel
+--------------------------------------------------------------
+February 2024
+- Database: Integration of CT volumes and their options in database explorer
+- Database: Links to raw files are updated if disk letter or mount point changes
+- IO: Syncronize raw data with common event
+--------------------------------------------------------------
 January 2024
 - IO: Import channel-wise events from BrainVision BrainAmp
 --------------------------------------------------------------

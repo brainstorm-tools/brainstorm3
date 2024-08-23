@@ -22,6 +22,7 @@ function F = in_fread_neuralynx(sFile, SamplesBounds, iChannels)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015-2021
+%          Raymundo Cassani, 2024
 
 % Parse inputs
 if (nargin < 3) || isempty(iChannels)
@@ -68,27 +69,38 @@ for iChan = 1:length(iChannels)
             % Copy values to final matrix
             F(iChan, :) = Ftmp(iSamples);
             
-        % NSE: Spike files, just set the values wherever they are defined
-        case 'NSE'
+        % NSE and NTT: Spike files, just set the values wherever they are defined
+        case {'NSE', 'NTT'}
+            isNtt = strcmpi(hdr.FileExtension, 'NTT');
+            % Number of channels in file
+            if isNtt
+                nChannels = 4;
+            else
+                nChannels = 1;
+            end
             % Compute the spikes samples
             SpikeSamples = round(hdr.SpikeTimes .* sFile.prop.sfreq);
             % Get the spikes happening during the selected segment
             iSpikes = find((SpikeSamples + hdr.NumSamples >= SamplesBounds(1)) & (SpikeSamples <= SamplesBounds(2)));
-            % Size of one record in the file
-            sizeRecHdr = 48 + hdr.NumSamples * 2;
+            % Size the header in each record
+            sizeRecHdr = hdr.RecordSize - hdr.NumSamples * 2 * nChannels;
             % Loop on the spikes that were found
             for i = 1:length(iSpikes)
                 % Seek at the beginning of the spike data
                 offsetStart = hdr.HeaderSize + (iSpikes(i)-1) * hdr.RecordSize + sizeRecHdr;
                 fseek(sfid, offsetStart, 'bof');
                 % Read the spike data
-                dat = fread(sfid, hdr.NumSamples, 'int16');
+                dat = fread(sfid, [nChannels, hdr.NumSamples], 'int16');
                 % Find the samples of this spike in the read segment
                 iSmpSpike = 1:hdr.NumSamples;
                 iSmpFile  = SpikeSamples(iSpikes(i)) - SamplesBounds(1) + iSmpSpike;
                 iGoodSmp = find((iSmpFile >= 1) & (iSmpFile <= nReadSamples));
                 % Set the data in the file
-                F(iChan, iSmpFile(iGoodSmp)) = dat(iSmpSpike(iGoodSmp));
+                if isNtt
+                    F(iChan, iSmpFile(iGoodSmp)) = dat(hdr.NttIndexCh, iSmpSpike(iGoodSmp));
+                else
+                    F(iChan, iSmpFile(iGoodSmp)) = dat(iSmpSpike(iGoodSmp));
+                end
             end
     end
     % Close file

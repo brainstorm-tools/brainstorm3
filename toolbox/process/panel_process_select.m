@@ -1107,7 +1107,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, {cellValues{2,ev.getSource().getSelectedIndex()+1}, option.Value{2}}));
-                    
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
+                        for f = fieldnames(option.Controller)'
+                            if ~strcmpi(f{1}, option.Value{1}) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value{1}) && isequal(option.Controller.(option.Value{1}), option.Controller.(f{1})))
+                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                            end
+                        end
+                    end
+
                 case 'freqsel'
                     % Load Freq field from the input file
                     if strcmpi(sFiles(1).FileType, 'timefreq')
@@ -1852,7 +1860,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         inBstFile = selectOptions{1};
         % Filters and extension according to file type
         fileType = file_gettype(inBstFile);
+        isRaw = 0;
         if strcmp(fileType, 'data') && ~isempty(strfind(inBstFile, '_0raw'))
+            isRaw = 1;
             fileType = 'raw';
         end
         if isempty(Filters)
@@ -1874,8 +1884,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
         fExt = Filters{iFilter, 1}{1};
         % Verify that extension for BST format ends in '.ext' (no 'BST' format for raw data)
-        if strcmp(defaultFilter, 'BST') && isempty(regexp('at', '\.\w*$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
-            fExt = [fExt, '.mat'];
+        if strcmp(defaultFilter, 'BST') && isempty(regexp(DefaultOutFile, '\.\w+$', 'once')) && ~(strcmp(fileType, 'data') && isRaw)
+            fExt = '.mat';
         end
 
         % Suggest filename or dir
@@ -2289,7 +2299,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             opt = GlobalData.Processes.Current(iProcess).options.(optName);
             if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
                 ToggleClass(opt.Controller, value);
-            elseif ismember(optType, {'radio_label', 'radio_linelabel'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+            elseif ismember(optType, {'radio_label', 'radio_linelabel', 'combobox_label'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
+                if strcmpi(optType, 'combobox_label')
+                    value = value{1};
+                end
                 for cl = fieldnames(opt.Controller)'
                     % Ignore a disabled class that is associated with 2 options, one selected and one not selected
                     if ~strcmp(cl{1}, value) && isfield(opt.Controller, value) && isequal(opt.Controller.(cl{1}), opt.Controller.(value))
@@ -3020,7 +3033,7 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                     % Radio button: check the index of the selection
                     if ismember(option.Type, {'radio','radio_line'}) && (savedOpt > length(option.Comment))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(savedOpt, option.Comment(2,:))
+                    elseif strcmpi(option.Type, 'radio_label') && ~isnumeric(savedOpt) && ~ismember(savedOpt, option.Comment(2,:))
                         % Error: ignoring previous option
                     elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(savedOpt, option.Comment(2,1:end-1))
                         % Error: ignoring previous option

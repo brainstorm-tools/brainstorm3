@@ -1,0 +1,65 @@
+# Workflow to perform a minimal startup test of Brainstorm source
+
+# Workflow name
+name: Startup test
+
+# Environment variables
+env:
+  MATLAB_VER: R2021b             # Oldest "b" available (Feb2024)
+  TMP_ERROR_FILE: tmp_error.txt  # Flag file to indicate error
+  MATLAB_SCRIPT_FILE: scripto.m  # Matlab script to handle errors
+
+# Run manually from GitHub Actions tab, it must be in the default branch
+on:
+  workflow_dispatch:
+
+# Name for each run
+run-name: "Startup test: ${{ github.ref_name }}"
+jobs:
+  Run-Ubuntu:
+    name: Run on Linux (Ubuntu 20.04)
+    runs-on: ubuntu-20.04
+    steps:
+      # Get the Brainstorm code to test
+      - name: Checkout 'brainstorm3'
+        uses: actions/checkout@v3
+      # Setting Matlab
+      - name: Set up Matlab
+        uses: matlab-actions/setup-matlab@v1
+        with:
+          release: ${{ env.MATLAB_VER }}
+      # Create error file and Matlab test script
+      - name: Create required files
+        run: |
+             touch $TMP_ERROR_FILE
+             echo "function scripto()" > $MATLAB_SCRIPT_FILE
+             MATLAB_SCRIPT_TEXT="try brainstorm server local; catch ME; disp(getReport(ME)); exit; end; delete('$TMP_ERROR_FILE'); brainstorm stop; exit;"
+             echo $MATLAB_SCRIPT_TEXT >> $MATLAB_SCRIPT_FILE
+             cat $MATLAB_SCRIPT_FILE
+             ls -al
+             pwd
+      # Run test script
+      - name: Run test script
+        uses: matlab-actions/run-command@v1
+        with:
+          command: scripto()
+          startup-options: -nodisplay
+      # Check error file was deleted
+      - id: startuptest
+        name: Check error file
+        continue-on-error: true
+        run: |
+             if [ -f "$TMP_ERROR_FILE" ]; then
+               echo "ERROR: Brainstorm could not start on GitHub runner"
+               exit 1
+             fi
+      # Actions depending of outcome
+      - id: succeeded
+        if: steps.startuptest.outcome == 'success'
+        run: |
+             echo "Success action"
+      - id: failed
+        if: steps.startuptest.outcome == 'failure'
+        run: |
+             echo "Failure action"
+             exit 1

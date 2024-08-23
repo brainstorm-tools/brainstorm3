@@ -161,7 +161,7 @@ if ismember(Modality, {'SEEG', 'ECOG'})
         case {'isosurface', 'mri3d', 'surface'}
             view_channels(ChannelFile, Modality, 1, 0, hFig, 1);
         case 'mriviewer'
-            figure_mri('LoadElectrodes', hFig, ChannelFile, Modality);
+            panel_ieeg('LoadElectrodes', hFig, ChannelFile, Modality);
             gui_brainstorm('ShowToolTab', 'iEEG');
     end
 end

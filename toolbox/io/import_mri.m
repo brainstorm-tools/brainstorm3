@@ -153,9 +153,18 @@ isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
 end
-% MNI / Atlas?
-isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
+% MNI / Atlas / CT ?
+isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
+isCt    = strcmpi(volType, 'CT');
+% Tag for CT volume
+if isCt
+    tagVolType = '_volct';
+    isAtlas = 0;
+else
+    tagVolType = '';
+end
+
 % Load MRI
 isNormalize = 0;
 sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
@@ -179,18 +188,16 @@ end
 
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-if isempty(Labels) && ~iscell(MriFile)
+if isempty(Labels) && ~iscell(MriFile) && ~isCt
     Labels = mri_getlabels(MriFile, sMri, isAtlas);
 end
 % Save labels in the file structure
 if ~isempty(Labels)   % Labels were found in the input folder
     sMri.Labels = Labels;
-    tagAtlas = '_volatlas';
+    tagVolType = '_volatlas';
     isAtlas = 1;
 elseif isAtlas    % Volume was explicitly imported as an atlas
-    tagAtlas = '_volatlas';
-else
-    tagAtlas = '';
+    tagVolType = '_volatlas';
 end
 % Get atlas comment
 if isAtlas && isempty(Comment) && ~iscell(MriFile)
@@ -265,7 +272,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Register with the MNI transformation
             strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
             cellOptions{end+1} = 'MNI';
-            if strcmpi(volType, 'CT')
+            if isCt
                 % Register with the ct2mrireg plugin
                 strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC ct2mrireg plugin.'];
                 cellOptions{end+1} = 'CT2MRI';
@@ -324,7 +331,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     'This operation cleans the CT to exclude any thing outside the skull.' ...
                     '<BR><BR></HTML>'], 'Import CT');
                 % Register the CT to excisting MRI using USC's ct2mrireg plugin
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas, isMask);
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, 0, isMask);
             case 'Ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
@@ -402,7 +409,7 @@ end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
-BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagAtlas '.mat']);
+BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format

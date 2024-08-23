@@ -66,6 +66,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 gui_component('MenuItem', jMenuTs, [], 'FastPCA', [], [], @(h,ev)SetClusterFunction('FastPCA'));
                 gui_component('MenuItem', jMenuTs, [], 'Max',     [], [], @(h,ev)SetClusterFunction('Max'));
                 gui_component('MenuItem', jMenuTs, [], 'Power',   [], [], @(h,ev)SetClusterFunction('Power'));
+                gui_component('MenuItem', jMenuTs, [], 'RMS',   [], [], @(h,ev)SetClusterFunction('RMS'));
                 gui_component('MenuItem', jMenuTs, [], 'All',     [], [], @(h,ev)SetClusterFunction('All'));
             jMenu.addSeparator();
             gui_component('MenuItem', jMenu, [], 'Rename   [Double-click]', IconLoader.ICON_EDIT,    [], @(h,ev)EditClusterLabel);

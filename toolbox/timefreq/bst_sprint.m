@@ -282,8 +282,8 @@ ts(indGood:end) = [];
         SPRiNT = remove_outliers(SPRiNT,peak_function,opt);
     end
     for chan = 1:nChan
-        tp_exponent(chan,:) = [channel(chan).aperiodics(:).exponent];
-        tp_offset(chan,:) = [channel(chan).aperiodics(:).offset];
+        tp_exponent(chan,:) = [SPRiNT.channel(chan).aperiodics(:).exponent];
+        tp_offset(chan,:) = [SPRiNT.channel(chan).aperiodics(:).offset];
     end
     SPRiNT.topography.exponent = tp_exponent;
     SPRiNT.topography.offset = tp_offset;
@@ -363,6 +363,7 @@ function SPRiNT = remove_outliers(SPRiNT,peak_function,opt)
                 SPRiNT.SPRiNT_models(c,t,:) = SPRiNT.channel(c).data(t).fooofed_spectrum;
                 SPRiNT.peak_models(c,t,:) = SPRiNT.channel(c).data(t).peak_fit;
                 SPRiNT.channel(c).aperiodics(t).offset = ap_pars(1);
+                SPRiNT.channel(c).data(t).aperiodic_params = ap_pars;
                 if length(ap_pars)>2 % Legacy FOOOF alters order of parameters
                     SPRiNT.channel(c).aperiodics(t).exponent = ap_pars(3);
                     SPRiNT.channel(c).aperiodics(t).knee_frequency = ap_pars(2);

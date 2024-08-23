@@ -6,12 +6,12 @@ function varargout = process_extract_scout( varargin )
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-%
+% 
 % Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-%
+% 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -55,11 +55,11 @@ function sProcess = GetDescription()
     sProcess.options.flatten.Value      = 1;
     sProcess.options.flatten.InputTypes = {'results'};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Power', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
-                                             'mean', 'power', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Power', 'Max', 'PCA', 'Std', 'RMS', 'All', 'Scout function:'; ...
+                                             'mean', 'power', 'max', 'pca', 'std', 'rms', 'all', ''};
     sProcess.options.scoutfunc.Type       = 'radio_linelabel';
     sProcess.options.scoutfunc.Value      = 'pca';
-    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'power', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca');
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'power', 'notpca', 'max', 'notpca', 'std', 'notpca', 'rms', 'notpca', 'all', 'notpca');
     % === PCA Options
     sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
     sProcess.options.pcaedit.Type    = 'editpref';
@@ -151,6 +151,7 @@ function OutputFiles = Run(sProcess, sInputs)
             case {4, 'std'},    ScoutFunc = 'std';
             case {5, 'all'},    ScoutFunc = 'all';
             case {6, 'power'},  ScoutFunc = 'power';
+            case {7, 'rms'},    ScoutFunc = 'rms';
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
@@ -185,18 +186,15 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Unconstrained orientations
-    % Only allow norm when called without new pca flattening option.
-    if isfield(sProcess.options, 'flatten') && isfield(sProcess.options.flatten, 'Value') 
-        if isequal(sProcess.options.flatten.Value, 1)
-            UnconstrFunc = 'pca';
-        else
-            UnconstrFunc = 'none';
-        end
-    elseif isfield(sProcess.options, 'isnorm') && isfield(sProcess.options.isnorm, 'Value') && isequal(sProcess.options.isnorm.Value, 1)
+    UnconstrFunc = 'none';
+    % Perform norm if requested ('isnorm' may be set to '1' by calling process)
+    if isfield(sProcess.options, 'isnorm') && isfield(sProcess.options.isnorm, 'Value') && isequal(sProcess.options.isnorm.Value, 1)
         UnconstrFunc = 'norm';
-    else
-        UnconstrFunc = 'none';
+    % If norm=0, then check if PCA fattening was requested
+    elseif isfield(sProcess.options, 'flatten') && isfield(sProcess.options.flatten, 'Value') && isequal(sProcess.options.flatten.Value, 1)
+        UnconstrFunc = 'pca';
     end
+
     % Check if there actually are sources with unconstrained orientations
     if ~strcmpi(UnconstrFunc, 'none')
         % Check if there are unconstrained sources. The function only checks the first file. Other files
@@ -300,7 +298,10 @@ function OutputFiles = Run(sProcess, sInputs)
                 bst_progress('set', round(100*(iInput-1)/length(sInputs)));
             end
         end
-        isAbs = ~isempty(strfind(sInputs(iInput).FileName, '_abs'));
+        % Get meaningful tags in the results file name (without folders)
+        TestResFile = file_resolve_link(sInputs(iInput).FileName);
+        [~, TestTags] = bst_fileparts(TestResFile);
+        isAbs = ~isempty(strfind(TestTags, '_abs'));
 
         % === READ FILES ===
         [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs(iInput), TimeWindow);
@@ -356,6 +357,10 @@ function OutputFiles = Run(sProcess, sInputs)
             if isempty(iRows)
                 OutputFiles = {};
                 CleanExit; return; % Error already reported.
+            end
+            % If norm, orientations will be aggregated, keep only one name per scout
+            if strcmpi(UnconstrFunc, 'norm')
+                RowNames = {ScoutName};
             end
             if AddFileComment && ~isempty(fileComment)
                 RowNames = cellfun(@(c) [c ' @ ' fileComment], RowNames, 'UniformOutput', false);
@@ -463,15 +468,17 @@ function OutputFiles = Run(sProcess, sInputs)
                     scoutStd = cat(1, scoutStd, tmpScoutStd);
                 end
                 % Add frequency to row descriptions.
-                if (nFreq > 1) && AddFileComment
+                if isfield(sResults, 'Freqs') && ~isempty(sResults.Freqs) && ((iscell(sResults.Freqs) && size(sResults.Freqs,1) == nFreq) || (~iscell(sResults.Freqs) && length(sResults.Freqs) == nFreq))
                     if iscell(sResults.Freqs)
                         freqComment = [' ' sResults.Freqs{iFreq,1}];
                     else
                         freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
                     end
-                    RowNames = cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false);
+                    RowNamesFreq = cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false);
+                else
+                    RowNamesFreq = RowNames;
                 end
-                Description = cat(1, Description, RowNames);
+                Description = cat(1, Description, RowNamesFreq);
             end
         end
         % If nothing was found

@@ -121,6 +121,7 @@ else
         case '.evl',   FileFormat = 'GRAPH_ALT';
         case '.txt',   FileFormat = 'ARRAY-TIMES';
         case '.csv',   FileFormat = 'CSV-TIME';
+        case '.tsv',   FileFormat = 'BIDS';
     end
 end
 
@@ -148,6 +149,8 @@ switch FileFormat
         out_events_graph(sFile, OutputFile,'alternativeStyle');
     case 'CSV-TIME'
         out_events_csv(sFile, OutputFile);
+   case 'BIDS'
+        out_events_bids(sFile, OutputFile);
     case 'ARRAY-TIMES'
         if (length(sFile.events) > 1)
             error('Cannot export more than one event at a time with this format.');

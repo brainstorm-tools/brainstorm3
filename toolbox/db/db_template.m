@@ -735,7 +735,12 @@ switch lower(structureName)
             'ElecDiameter',    [], ...
             'ElecLength',      [], ...
             'Visible',         1);
-            
+
+    case 'intracontact'
+        template = struct(...
+            'Name', '', ...    % Identification)
+            'Loc',   []);      % [3x1] position for contact
+
     case 'dataset'
         template = struct(...
             'DataFile',    '', ...
@@ -1049,11 +1054,12 @@ switch lower(structureName)
             'SizeThreshold',           1, ...    % Threshold to apply to color coding of data values  
             'DataLimitValue',          [], ...   % Relative limits for colormapping
             'CutsPosition',            [0 0 0], ...   % Position of the three orthogonal MRI slices
-            'Resect',                  'none', ...    % Either [x,y,z] resect values, or {'left', 'right', 'none'}
+            'Resect',                  [], ...       % 2 cells: Resect values [x,y,z] and resect sections {'left', 'right', 'struct', 'none'}
             'MipAnatomy',              [], ...        % 3 cells: Maximum intensity power in each direction (MRI amplitudes)
             'MipFunctional',           [], ...        % 3 cells: Maximum intensity power in each direction (sources amplitudes)
             'StatThreshOver',          [], ...
             'StatThreshUnder',         []);      
+        template.Resect = {[0,0,0], 'none'};
         template.MipAnatomy = cell(3,1);
         template.MipFunctional = cell(3,1);
         
