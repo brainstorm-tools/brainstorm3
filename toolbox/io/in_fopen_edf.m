@@ -120,9 +120,7 @@ for i = 1:hdr.nsignal
         hdr.signal(i).physical_max = hdr.signal(i).digital_max;
     end
     if (hdr.signal(i).physical_min >= hdr.signal(i).physical_max)
-        disp(['EDF> Warning: Physical maximum larger than minimum for channel "' hdr.signal(i).label '".']);
-        hdr.signal(i).physical_min = hdr.signal(i).digital_min;
-        hdr.signal(i).physical_max = hdr.signal(i).digital_max;
+        disp(['EDF> Warning: Physical minimum larger than physical maximum for channel "' hdr.signal(i).label '".']);
     end
     % Calculate and save channel gain
     hdr.signal(i).gain   = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
