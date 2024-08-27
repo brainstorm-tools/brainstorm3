@@ -261,11 +261,16 @@ if isKernel
             Results.Leff = DataMat.Leff;
         end
     end
-elseif isfield(Results,'ImagingPostKernel') && ~isempty(Results.ImagingPostKernel)
-    % Convert from time-frequency representation to time representation.
 
-    Results.ImageGridAmp  = Results.ImageGridAmp * Results.ImagingPostKernel;
-    Results.ImagingPostKernel = [];
+elseif isfield(Results,'ImageGridAmp') && iscell(Results.ImageGridAmp)
+    % Results is saved as factor decomposition: ImageGridAmp =
+    % ImageGridAmp{1} * ImageGridAmp{2} * ... * ImageGridAmp{N}
+
+    tmp = Results.ImageGridAmp{1};
+    for iDecomposition = 2 : length(Results.ImageGridAmp)
+        tmp = tmp * Results.ImageGridAmp{iDecomposition};
+    end
+    Results.ImageGridAmp = full(tmp);
 end
 
 
