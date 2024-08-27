@@ -807,7 +807,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         rVarExp = 1 - (sum(sum(Fdiff.^2, 2)) ./ sum(sum(F.^2, 2)));
         % Variance in original data by each component
         varIcs = rVarExp * varIcs;
-        %TODO Store the ICs explained variance
+        proj.SingVal = varIcs;
     end
     
     % Modality used in the end
