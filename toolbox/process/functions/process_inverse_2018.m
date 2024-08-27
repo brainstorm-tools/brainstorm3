@@ -694,9 +694,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 OPTIONS.FunctionName  = 'mem';
                 % Call the mem solver
                 [Results, OPTIONS] = be_main(HeadModel, OPTIONS);
-                if isfield(Results, 'nComponents')
-                    Results.nComponents = Results.nComponents;
-                else
+                if ~isfield(Results, 'nComponents') || isempty(Results.nComponents)
                     Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
                 end
 
