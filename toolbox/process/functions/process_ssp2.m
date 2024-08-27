@@ -638,6 +638,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             chanmask(iChannels) = 1;
             % Call computation function
             proj = Compute(F, chanmask);
+            proj.Method = Method;
 %             % Select the components with a singular value > threshold
 %             if isempty(ForceSelect)
 %                 singThresh = 0.12;
@@ -676,6 +677,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             proj.CompMask   = 1;
             proj.Status     = 1;
             proj.SingVal    = [];
+            proj.Method     = Method;
             
             
         % === ICA: JADE ===
@@ -771,7 +773,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         proj.Components = Wall;
         proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
         proj.Status     = 1;
-        proj.SingVal    = 'ICA';
+        proj.Method     = Method;
+
         % Apply component selection (if set explicitly)
         if ~isempty(SelectComp)
             proj.CompMask(SelectComp) = 1;
@@ -998,7 +1001,7 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
         if ~ismember(ListProj(i).Status, ProjStatus) || (~isempty(ListProj(i).CompMask) && all(ListProj(i).CompMask == 0))
             iProjDel(end+1) = i;
         % New SSP: Stack selected vectors all together
-        elseif ~isempty(ListProj(i).CompMask) && ~isequal(ListProj(i).SingVal, 'ICA') && ~isequal(ListProj(i).SingVal, 'REF')
+        elseif ~isempty(ListProj(i).CompMask) && ~ismember(ListProj(i).Method(1:3), {'ICA', 'REF'})
             iProjSsp(end+1) = i;
             U = [U, ListProj(i).Components(:,ListProj(i).CompMask == 1)];
         end
@@ -1050,7 +1053,7 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
     % Add the projectors in the order of appearance
     for i = 1:length(ListProj)
         % ICA
-        if isequal(ListProj(i).SingVal, 'ICA')
+        if isequal(ListProj(i).Method(1:3), 'ICA')
             % Get selected channels (find the non-zero channels)
             iChan = find(any(ListProj(i).Components ~= 0, 2));
             % Get selected components
