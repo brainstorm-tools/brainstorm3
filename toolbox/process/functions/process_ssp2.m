@@ -1091,9 +1091,34 @@ function proj = ConvertOldFormat(OldProj)
         proj = [];
     elseif ~isstruct(OldProj)
         proj = db_template('projector');
-        proj.Components = OldProj;
-        proj.Comment    = 'Unnamed';
-        proj.Status     = 1;
+        proj.Components  = OldProj;
+        proj.Comment     = 'Unnamed';
+        proj.Status      = 1;
+        proj.Method      = 'Other';
+    elseif ~isfield(OldProj, 'Method') || isempty(OldProj.Method)
+        proj = db_template('projector');
+        proj = struct_copy_fields(proj, OldProj, 1);
+        % Add projector method
+        if isnumeric(proj.SingVal) && (length(proj.SingVal) == length(proj.CompMask))
+            proj.Method  = 'SSP_pca';
+        elseif isempty(proj.SingVal) && length(proj.CompMask) == 1 && proj.CompMask == 1
+            proj.Method  = 'SSP_mean';
+        elseif ischar(proj.SingVal) && strcmpi(proj.SingVal, 'ICA')
+            proj.Method  = 'ICA';
+            proj.SingVal = [];
+        elseif ischar(proj.SingVal) && strcmpi(proj.SingVal, 'REF')
+            proj.Method  = 'REF';
+            proj.SingVal = [];
+        elseif isempty(proj.SingVal) && isempty(proj.CompMask)
+            proj.Method  = 'Other';
+        end
+        % Try to get ICA method from comment
+        if strcmp(proj.Method, 'ICA')
+            tmp = regexp(proj.Comment, 'ICA_\w*', 'match');
+            if ~isempty(tmp)
+                proj.Method = tmp{1};
+            end
+        end
     else
         proj = OldProj;
     end
