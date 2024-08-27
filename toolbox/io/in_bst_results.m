@@ -70,7 +70,6 @@ else
     if any(ismember({'ImageGridAmp','ImagingKernel'}, FieldsToRead))
         FieldsToRead{end + 1} = 'ImagingKernel';
         FieldsToRead{end + 1} = 'ImageGridAmp';
-        FieldsToRead{end + 1} = 'ImagingPostKernel';
         FieldsToRead{end + 1} = 'GoodChannel';
         FieldsToRead{end + 1} = 'OPTIONS';
         FieldsToRead{end + 1} = 'ZScore';
