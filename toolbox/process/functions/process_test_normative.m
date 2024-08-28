@@ -262,17 +262,20 @@ function [errMsg, iInputErr, nRows, Freqs] = CheckInputs(sInputs)
         if iInput == 1
             % Get reference fields
             refDataType = timefreqMat.DataType;
-            if strcmpi(refDataType, 'results')
-                refHeadModelType = timefreqMat.HeadModelType;
-                switch refHeadModelType
-                    case 'surface'
-                        refCommonSpaceFile = timefreqMat.SurfaceFile;
-                    case 'volume'
-                        refCommonSpaceFile = timefreqMat.HeadModelFile;
-                    otherwise
-                        errMsg = ['HeadModel of type ' refHeadModelType ' is not supported.'];
-                        return
-                end
+            switch refDataType
+                case {'data', 'matrix'}
+                    refCommonSpaceFile = timefreqMat.RowNames;
+                case 'results'
+                    refHeadModelType = timefreqMat.HeadModelType;
+                    switch refHeadModelType
+                        case 'surface'
+                            refCommonSpaceFile = timefreqMat.SurfaceFile;
+                        case 'volume'
+                            refCommonSpaceFile = timefreqMat.HeadModelFile;
+                        otherwise
+                            errMsg = ['HeadModel of type ' refHeadModelType ' is not supported.'];
+                            return
+                    end
             end
             refRowNames = timefreqMat.RowNames;
             nRows = length(refRowNames);
