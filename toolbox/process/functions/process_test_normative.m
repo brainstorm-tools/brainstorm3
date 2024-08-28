@@ -41,6 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Test';
     sProcess.Index       = 110;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/DeviationMaps';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
     sProcess.OutputTypes = {'timefreq'};
