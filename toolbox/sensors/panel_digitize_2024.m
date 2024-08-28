@@ -52,7 +52,7 @@ function Start(DigitizerType)
         'ConditionName',    [], ...
         'iStudy',           [], ...
         'BeepWav',          [], ...
-        'isEditPts',        0, ...
+        'isEditPts',        0, ... % for correcting a wrongly detected point manually
         'Points',           struct(...
             'Label',        [], ...
             'Type',         [], ...
@@ -351,14 +351,14 @@ function [bstPanelNew, panelName] = CreatePanel()
                 [sCoordName, iSelCoord] = GetSelectedCoord();
                 spl = regexp(sCoordName,'\s+','split');
                 nameFinal = spl{1};
-                if (~strcmpi(nameFinal, 'Nasion') &&...
+                if (~strcmpi(nameFinal, 'NAS') &&...
                     ~strcmpi(nameFinal, 'LPA') &&...
                     ~strcmpi(nameFinal, 'RPA'))
                     listModel = ctrl.jListCoord.getModel();
                     listModel.setElementAt(nameFinal, iSelCoord-1);  
-                    RemoveCoordinates('EEG', iSelCoord-3);
+                    Digitize.iPoint = iSelCoord;
                     Digitize.isEditPts = 1;
-                    SwitchToNewMode(7);
+                    DeletePoint_Callback();
                 end
         end
     end
@@ -833,11 +833,10 @@ function DeletePoint_Callback()
         % Delete the point from the list entirely
         Digitize.Points(Digitize.iPoint) = [];
     end
-    Digitize.iPoint = Digitize.iPoint - 1;
+    Digitize.iPoint = Digitize.iPoint - 1; 
 
     % Update coordinates list
     UpdateList();
-    
 end
 
 %% ===== Check fiducials: add set to digitize now =====
@@ -910,8 +909,8 @@ function CreateHeadpointsFigure()
     end 
 end
 
-%% ===== PLOT next point, or remove last =====
-function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
+%% ===== PLOT next point, or remove last or remove selected point =====
+function PlotCoordinate(isAdd)
     if nargin < 1 || isempty(isAdd)
         isAdd = true;
     end
@@ -927,16 +926,33 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
             % Overwrite empty channel created by template.
             iP = 1;
         else
-            iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
+            if Digitize.isEditPts
+                % 'iP' points to the 'GlobalData's Channel' which just contains 
+                % EEG data and not the fiducials so an offset is required
+                % from 'Digitize.iPoint' to exclude the fiducials
+                if isAdd
+                    iP = Digitize.iPoint - 3;
+                else
+                    iP = Digitize.iPoint - 2;
+                end
+            else
+                iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
+            end
         end
-        if isAdd
+
+        if isAdd 
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Name = Digitize.Points(Digitize.iPoint).Label;
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Type = Digitize.Points(Digitize.iPoint).Type; % 'EEG'
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc  = Digitize.Points(Digitize.iPoint).Loc';
-        else % Remove last point
+        else % Remove last point or a selected point
             iP = iP - 1;
             if iP > 0
-                GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
+                if Digitize.isEditPts % remove selected point
+                    % Keep point in list, but remove location 
+                    GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
+                else  % remove last point
+                    GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
+                end
             end
         end
     else % fids or head points
@@ -946,7 +962,6 @@ function PlotCoordinate(isAdd) %(Loc, Label, Type, iPoint)
             GlobalData.DataSet(Digitize.iDS).HeadPoints.Type{iP}  = Digitize.Points(Digitize.iPoint).Type; % 'CARDINAL' or 'EXTRA'
             GlobalData.DataSet(Digitize.iDS).HeadPoints.Loc(:,iP) = Digitize.Points(Digitize.iPoint).Loc';
         else
-            iP = iP - 1;
             if iP > 0
                 GlobalData.DataSet(Digitize.iDS).HeadPoints.Label(iP) = [];
                 GlobalData.DataSet(Digitize.iDS).HeadPoints.Type(iP)  = [];
@@ -1431,7 +1446,7 @@ end
 
 %% ===== BYTES AVAILABLE CALLBACK =====
 function BytesAvailable_Callback() %#ok<INUSD>
-    global Digitize
+    global Digitize GlobalData
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
     
@@ -1466,6 +1481,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
         else
             Digitize.Points(Digitize.iPoint).Loc = rand(1,3) * .15 - .075;
         end
+
     % Else: Get digitized point coordinates
     else
         vals = zeros(1,7); % header, x, y, z, azimuth, elevation, roll
@@ -1527,8 +1543,11 @@ function BytesAvailable_Callback() %#ok<INUSD>
     if ~isempty(Digitize.Transf) && ~strcmpi(Digitize.Type, 'Revopoint')
         Digitize.Points(Digitize.iPoint).Loc = [Digitize.Points(Digitize.iPoint).Loc 1] * Digitize.Transf';
     end
-    % Update coordinates list
-    UpdateList();
+    % Update coordinates list only when there is no updating of selected point
+    % for which the updating happens at the end
+    if ~Digitize.isEditPts
+        UpdateList();
+    end
 
     % Update counters
     switch upper(Digitize.Points(Digitize.iPoint).Type)
@@ -1598,6 +1617,16 @@ function BytesAvailable_Callback() %#ok<INUSD>
         % Change delete button label and callback such that we can delete the last point.
         java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@DeletePoint_Callback));
         ctrl.jButtonDeletePoint.setText('Delete last point');
+    end
+    
+    % update coordinate list after the updating the selected point
+    if Digitize.isEditPts
+        % reset global variable required for updating
+        Digitize.isEditPts = 0;
+        % set the iPoint to point to the last point in the list
+        Digitize.iPoint = numel(Digitize.Points);
+        % update the coordinate list
+        UpdateList();
     end
 end
 
