@@ -776,9 +776,6 @@ function SwitchToNewMode(mode)
         % RPA
         case 6
             SetSelectedButton(6);
-            if strcmpi(Digitize.Type, 'Revopoint')
-                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
-            end
             Digitize.Mode = 6;
             
         % EEG
@@ -796,13 +793,13 @@ function SwitchToNewMode(mode)
             % Else: switch directly to mode 8 (head shape)
             else
                 ctrl.jButtonExtraStart.setEnabled(1);
-                if strcmpi(Digitize.Type, 'Revopoint')
-                    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
-                    ctrl.jButtonRandomHeadPts.setEnabled(0);
-                end
                 ctrl.jTextFieldExtra.setEnabled(1);
                 SetSelectedButton(8);
                 Digitize.Mode = 8;
+            end
+            if strcmpi(Digitize.Type, 'Revopoint')
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+                ctrl.jButtonRandomHeadPts.setEnabled(0);
             end
         % Shape
         case 8
@@ -972,6 +969,14 @@ function EEGAutoDetectElectrodes(h, ev)
 
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
+
+    if size(Digitize.Points.EEG, 1) < 4
+        bst_error('Please set the first 4 initialization points', Digitize.Type, 0);
+        return;
+    end
+
+    % Disable Auto button
+    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
     
     % Get the surface
     hFig = bst_figures('GetCurrentFigure','3D');
@@ -984,7 +989,7 @@ function EEGAutoDetectElectrodes(h, ev)
     [centers_cap, cap_img, sSurf] = findElectrodesEegCap(sSurf);
     DigitizeOptions = bst_get('DigitizeOptions');
     if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
-        bst_error('EEG cap layout not selected. Go to EEG', 'Revopoint', 1);
+        bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
         return;
     else
         ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
@@ -1014,7 +1019,8 @@ function EEGAutoDetectElectrodes(h, ev)
     end
     
     UpdateList();
-    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
+    % Enable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(1);
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
@@ -1040,6 +1046,8 @@ function CollectRandomHeadPts_Callback(h, ev)
     
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
+    % Enable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(0);
 
     hFig = bst_figures('GetCurrentFigure','3D');
     [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
@@ -1566,6 +1574,8 @@ end
 
 %% ===== ADD EEG MONTAGE =====
 function AddMontage(ChannelFile)
+    global Digitize
+
     % Add Montage from text file
     if nargin<1
         % Get recently used folders
@@ -1651,7 +1661,7 @@ function AddMontage(ChannelFile)
         end
         % If no labels were read: exit
         if isempty(newMontage.Labels)
-            bst_error('EEG cap configuration not supported', 'Revopoint', 0);
+            bst_error('EEG cap configuration not supported', Digitize.Type, 0);
             return
         end
     end
@@ -2189,6 +2199,8 @@ end
 
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
 function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surface)
+    global Digitize
+
     % Flatten the 3D mesh to 2D space
     [head_surface.u, head_surface.v] = bst_project_2d(head_surface.Vertices(:,1), head_surface.Vertices(:,2), head_surface.Vertices(:,3), '2dcap');
     
@@ -2210,7 +2222,7 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
         [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
     else % NEED TO WORK ON THIS
-        bst_error('EEG cap not supported', 'Revopoint', 0);
+        bst_error('EEG cap not supported', Digitize.Type, 0);
         return;
     end
 
@@ -2220,6 +2232,8 @@ end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
 function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
+    global Digitize
+
     % hyperparameters for warping and interpolation
     NIT=1000;
     lambda = 100000;
@@ -2273,7 +2287,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     
     % any other cap (NEED TO WORK ON THIS)
     else
-        bst_error('EEG cap not supported', 'Revopoint', 0);
+        bst_error('EEG cap not supported', Digitize.Type, 0);
         return;
     end
     
