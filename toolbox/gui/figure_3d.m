@@ -1097,8 +1097,8 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                 % C : Collect point
                 case 'c'
-                    % for Revopoint
-                    if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, 'Revopoint')
+                    % for 3DScanner
+                    if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, '3DScanner')
                         % Get Digitize options
                         DigitizeOptions = bst_get('DigitizeOptions');
                         if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')

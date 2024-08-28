@@ -69,7 +69,7 @@ end
 ChannelMat = in_bst_channel(ChannelFile);
 
 % View scalp surface if available
-if strcmpi(Digitize.Type, 'revopoint')
+if strcmpi(Digitize.Type, '3DScanner')
     [hFig, iFig, iDS] = bst_figures('GetCurrentFigure', '3D');
 else
     [hFig, iDS, iFig] = view_surface(ScalpFile, .2);

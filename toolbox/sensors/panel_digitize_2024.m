@@ -64,8 +64,8 @@ function Start(DigitizerType)
     if nargin == 0 || isempty(DigitizerType)
         Digitize.Type = 'Digitize';
     elseif nargin == 1
-        if strcmpi(DigitizerType, 'revopoint')
-            Digitize.Type = 'Revopoint';
+        if strcmpi(DigitizerType, '3DScanner')
+            Digitize.Type = '3DScanner';
             % Simulate
             SetSimulate(1);
         else
@@ -92,7 +92,7 @@ function Start(DigitizerType)
     
     % ===== GET SUBJECT =====
     % Save the new SubjectName
-    if strcmpi(Digitize.Type, 'Revopoint')
+    if strcmpi(Digitize.Type, '3DScanner')
         Digitize.SubjectName = [Digitize.Type, '_', Digitize.Options.PatientId];
     else
         Digitize.SubjectName = Digitize.Type;
@@ -102,7 +102,7 @@ function Start(DigitizerType)
     % Create if subject doesnt exist
     if isempty(iSubject)
         % Default anat / one channel file per subject
-        if strcmpi(Digitize.Type, 'Revopoint')
+        if strcmpi(Digitize.Type, '3DScanner')
             [sSubject, iSubject] = db_add_subject(Digitize.SubjectName, iSubject);
             sTemplates = bst_get('AnatomyDefaults');
             db_set_template(iSubject, sTemplates(1), 1);
@@ -147,14 +147,14 @@ function Start(DigitizerType)
     % Reload condition to update the functional nodes
     db_reload_studies(Digitize.iStudy);
 
-    if strcmpi(Digitize.Type, 'Revopoint')
+    if strcmpi(Digitize.Type, '3DScanner')
         % import surface
-        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment}));
+        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment}));
         if(isempty(iTargetSurface))
             [~, OutputSurfacesFiles, ~] = import_surfaces(iSubject);
             sSurf = bst_memory('LoadSurface', OutputSurfacesFiles{end});
             sSubject = bst_get('Subject', Digitize.SubjectName);
-            iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment})); 
+            iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment})); 
         else
             sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
         end
@@ -231,11 +231,11 @@ function [bstPanelNew, panelName] = CreatePanel()
     gui_component('MenuItem', jMenu, [], 'Start over', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@ResetDataCollection, 1), []);
     gui_component('MenuItem', jMenu, [], 'Edit settings...', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
     gui_component('MenuItem', jMenu, [], 'Switch to Digitize "legacy"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
-    if ~strcmpi(Digitize.Type, 'Revopoint')
+    if ~strcmpi(Digitize.Type, '3DScanner')
         gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     end
     jMenu.addSeparator();
-    if exist('bst_headtracking', 'file') && ~strcmpi(Digitize.Type, 'Revopoint')
+    if exist('bst_headtracking', 'file') && ~strcmpi(Digitize.Type, '3DScanner')
         gui_component('MenuItem', jMenu, [], 'Start head tracking', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
@@ -260,7 +260,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jLabelNextPoint = gui_component('label', jPanelNext, [], '', [], [], [], veryLargeFontSize);
         jButtonFids = gui_component('button', jPanelNext, 'br', 'Add fiducials', [], 'Add set of fiducials to digitize', @(h,ev)bst_call(@Fiducials_Callback));
         jButtonFids.setEnabled(0);
-        if strcmpi(Digitize.Type, 'Revopoint')
+        if strcmpi(Digitize.Type, '3DScanner')
             jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelNext, [], 'Auto', [], 'Automatically detect and label electrodes on EEG cap', @(h,ev)bst_call(@EEGAutoDetectElectrodes));
         else
             % Separator
@@ -279,7 +279,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jTextFieldExtra = gui_component('text', jPanelInfo, [], '0', [], 'Head shape points digitized', @(h,ev)bst_call(@ExtraChangePoint_Callback), largeFontSize);
         initSize = jTextFieldExtra.getPreferredSize();
         jTextFieldExtra.setPreferredSize(Dimension(initSize.getWidth()*1.5, initSize.getHeight()*1.5))
-        if strcmpi(Digitize.Type, 'Revopoint')
+        if strcmpi(Digitize.Type, '3DScanner')
             % Add Random 100 points generation button
             jButtonRandomHeadPts = gui_component('button', jPanelInfo, [], 'Random', [], 'Collect 100 random points from head surface', @(h,ev)bst_call(@CollectRandomHeadPts_Callback), largeFontSize);
             jButtonRandomHeadPts.setPreferredSize(Dimension(initSize.getWidth()*2.2, initSize.getHeight()*1.7));
@@ -292,7 +292,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     % ===== Other buttons =====
     jPanelMisc = gui_river([5,4], [10,4,4,4]);
-        if ~strcmpi(Digitize.Type, 'Revopoint') 
+        if ~strcmpi(Digitize.Type, '3DScanner') 
             jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
         else
             jButtonCollectPoint = gui_component('label', jPanelMisc, 'hfill', ''); % spacing
@@ -477,13 +477,13 @@ function isOk = EditSettings()
     end
 
     % Ask for new options
-    if strcmpi(Digitize.Type, 'Revopoint')
+    if strcmpi(Digitize.Type, '3DScanner')
         [res, isCancel] = java_dialog('input', ...
                 {'<HTML><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
                  '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
                  'Distance threshold for repeated measure of fiducial locations (mm):', ...
                  'Beep when collecting point (0=no, 1=yes):'}, ...
-                'Revopoint configuration', [], ...
+                '3DScanner configuration', [], ...
                 {FidsString, ...
                  num2str(Digitize.Options.nFidSets), ...
                  num2str(Digitize.Options.DistThresh * 1000), ... % m to mm
@@ -512,7 +512,7 @@ function isOk = EditSettings()
     end
 
     % Check values
-    if strcmpi(Digitize.Type, 'Revopoint')
+    if strcmpi(Digitize.Type, '3DScanner')
         if (length(res) < 4) || isnan(str2double(res{2})) || isnan(str2double(res{3})) || ~ismember(str2double(res{4}), [0 1])
             bst_error('Invalid values.', Digitize.Type, 0);
             return;
@@ -711,7 +711,7 @@ function UpdateList()
     end
 end
 
-%% ===== REVOPOINT: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
+%% ===== 3DSCANNER: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
 function EEGAutoDetectElectrodes()
     global Digitize GlobalData
     % Get controls
@@ -898,7 +898,7 @@ function CreateHeadpointsFigure()
         [Digitize.hFig, Digitize.iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
         % Get subject
         sSubject = bst_get('Subject', Digitize.SubjectName);
-        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment})); 
+        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment})); 
         sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
         [nRows,~] = size(sSurf.Vertices);
         sSurf.Vertices = [sSurf.Vertices ones(nRows,1)] * Digitize.Transf';
@@ -907,7 +907,7 @@ function CreateHeadpointsFigure()
         sSurf = tess_deface(sSurf);
         view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], sSubject.Surface(iTargetSurface(end)).FileName);
         % Hide head surface
-        if ~strcmpi(Digitize.Type, 'Revopoint')
+        if ~strcmpi(Digitize.Type, '3DScanner')
             panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 0.8);
         end
         % Get Digitizer JFrame
@@ -1005,7 +1005,7 @@ function PlotCoordinate(isAdd)
         figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
     end
     % Hide template head surface
-    if ~strcmpi(Digitize.Type, 'Revopoint')
+    if ~strcmpi(Digitize.Type, '3DScanner')
         panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
     end
 end
@@ -1093,10 +1093,10 @@ function CreateMontageMenu(jMenu)
     % Add new montage / reset list
     jMenu.addSeparator();
     
-    if strcmpi(Digitize.Type, 'Revopoint')
+    if strcmpi(Digitize.Type, '3DScanner')
         jMenuAddMontage = gui_component('Menu', jMenu, [], 'Add EEG montage...', [], [], [], []);
             gui_component('MenuItem', jMenuAddMontage, [], 'From file...', [], [], @(h,ev)bst_call(@AddMontage), []);
-            % Creating montages from EEG cap layout mat files (only for Revopoint)
+            % Creating montages from EEG cap layout mat files (only for 3DScanner)
             jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
         
             % === USE DEFAULT CHANNEL FILE ===
@@ -1161,7 +1161,7 @@ function CreateMontageMenu(jMenu)
                     end
                 end
             end
-    else % if not Revopoint
+    else % if not 3DScanner
         gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
@@ -1472,7 +1472,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
         if Digitize.iPoint > numel(Digitize.Points)
             Digitize.Points(Digitize.iPoint).Type = 'EXTRA';
         end
-        if strcmpi(Digitize.Type, 'Revopoint')
+        if strcmpi(Digitize.Type, '3DScanner')
             % Get current 3D figure
             [Digitize.hFig,~,Digitize.iDS] = bst_figures('GetCurrentFigure', '3D');
             if isempty(Digitize.hFig)
@@ -1486,11 +1486,6 @@ function BytesAvailable_Callback() %#ok<INUSD>
             else
                 if isSelectingCoordinates
                     Digitize.Points(Digitize.iPoint).Loc = CoordinatesSelector.SCS;
-                else
-                    [sSubject, ~] = bst_get('Subject', Digitize.SubjectName);
-                    iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, 'revopoint', 'match')), {sSubject.Surface.Comment}));
-                    [sSurf, ~] = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
-                    Digitize.Points(Digitize.iPoint).Loc = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
                 end
             end
         else
@@ -1555,7 +1550,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
     end
 
     % Transform coordinates
-    if ~isempty(Digitize.Transf) && ~strcmpi(Digitize.Type, 'Revopoint')
+    if ~isempty(Digitize.Transf) && ~strcmpi(Digitize.Type, '3DScanner')
         Digitize.Points(Digitize.iPoint).Loc = [Digitize.Points(Digitize.iPoint).Loc 1] * Digitize.Transf';
     end
     % Update coordinates list only when there is no updating of selected point
@@ -1702,7 +1697,7 @@ function newPT = DoMotionCompensation(sensors)
 end
 
 %% ========================================================================
-%  ======= REVOPOINT AUTOMATION ===========================================
+%  ======= 3DSCANNER AUTOMATION ===========================================
 %  ========================================================================
 
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
@@ -1741,7 +1736,7 @@ end
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
 function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
     global Digitize
-    
+
     % hyperparameters for warping and interpolation
     NIT=1000;
     lambda = 100000;
