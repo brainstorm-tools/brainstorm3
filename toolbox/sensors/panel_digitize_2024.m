@@ -1446,7 +1446,7 @@ end
 
 %% ===== BYTES AVAILABLE CALLBACK =====
 function BytesAvailable_Callback() %#ok<INUSD>
-    global Digitize GlobalData
+    global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
     
