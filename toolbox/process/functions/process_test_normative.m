@@ -340,7 +340,7 @@ end
 %% ===== COMPUTE NORMATIVE DISTRIBUTION =====
 % Compute statistics for normative distribution
 function normDistrib = ComputeNormDistrib(sProcess, norm_values, options)
-    [nSources, nFreqs, ~] = size(norm_values);
+    [nRows, nFreqs, ~] = size(norm_values);
     % Compute the mean and std of the normative values, across subjects
     normDistrib.norm_means = mean(norm_values, 3);
     normDistrib.norm_stds  = std(norm_values, 0, 3);
@@ -352,18 +352,18 @@ function normDistrib = ComputeNormDistrib(sProcess, norm_values, options)
         % Assuming that the residuals are normally distributed
         % We can test the normality of the residuals using the Shapiro-Wilk test
         % Results are displayed in the report
-        p_shapiro   = zeros(nSources, nFreqs);
+        p_shapiro   = zeros(nRows, nFreqs);
         % Compute the Shapiro-Wilk test for normality
-        for iSource = 1:nSources
+        for iRow = 1:nRows
             for iFreq = 1:nFreqs
-                [~, p] = swtest(residuals(iSource, iFreq, :));
-                p_shapiro(iSource, iFreq)   = p;
+                [~, p] = swtest(residuals(iRow, iFreq, :));
+                p_shapiro(iRow, iFreq)   = p;
             end
         end
         % Report the results of normality test
         bst_report('Info', sProcess, [], ['Shapiro-Wilk test for normality of residuals:', 10, ...
-                   sprintf('Significant at p &lt 0.05 : %d/%d', sum(p_shapiro < 0.05, "all"), nSources*nFreqs), 10,...
-                   sprintf('Significant at p &lt 0.1 : %d/%d',  sum(p_shapiro < 0.1,  "all"), nSources*nFreqs)]);
+                   sprintf('Significant at p &lt 0.05 : %d/%d', sum(p_shapiro < 0.05, "all"), nRows*nFreqs), 10,...
+                   sprintf('Significant at p &lt 0.1 : %d/%d',  sum(p_shapiro < 0.1,  "all"), nRows*nFreqs)]);
     end
 
     % Compute the percentiles of the distribution of residuals
