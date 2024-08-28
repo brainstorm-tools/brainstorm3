@@ -713,9 +713,14 @@ end
 
 %% ===== REVOPOINT: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
 function EEGAutoDetectElectrodes()
-    global Digitize
+    global Digitize GlobalData
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
+    
+    if numel(GlobalData.DataSet(Digitize.iDS).Channel) < 4
+        bst_error('Please set the first 4 initialization points', 'Revopoint', 0);
+        return;
+    end
     % Disable Auto button
     ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
 
