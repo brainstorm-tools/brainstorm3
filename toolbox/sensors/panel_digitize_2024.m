@@ -266,7 +266,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             % Separator
             jButtonEEGAutoDetectElectrodes = gui_component('label', jPanelNext, 'hfill', '');
         end
-        % jButtonEEGAutoDetectElectrodes.setEnabled(0);
+        jButtonEEGAutoDetectElectrodes.setEnabled(0);
     jPanelControl.add(jPanelNext, BorderLayout.NORTH);
 
     % ===== Info Panel =====
@@ -287,7 +287,7 @@ function [bstPanelNew, panelName] = CreatePanel()
             % Separator
             jButtonRandomHeadPts = gui_component('label', jPanelInfo, 'hfill', '');
         end
-        % jButtonRandomHeadPts.setEnabled(0);
+        jButtonRandomHeadPts.setEnabled(0);
     jPanelControl.add(jPanelInfo, BorderLayout.CENTER);
     
     % ===== Other buttons =====
@@ -714,6 +714,10 @@ end
 %% ===== REVOPOINT: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
 function EEGAutoDetectElectrodes()
     global Digitize
+    % Get controls
+    ctrl = bst_get('PanelControls', Digitize.Type);
+    % Disable Auto button
+    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
 
     % Get the surface
     hFig = bst_figures('GetCurrentFigure','3D');
@@ -750,7 +754,10 @@ function EEGAutoDetectElectrodes()
         % Add the point to the display (in cm)
         PlotCoordinate();
     end
+
     UpdateList();
+    % Enable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(1);
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
@@ -775,6 +782,8 @@ function CollectRandomHeadPts_Callback()
     global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', Digitize.Type);
+    % Disable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(0);
 
     hFig = bst_figures('GetCurrentFigure','3D');
     [~, TessInfo, ~, ~] = panel_surface('GetSurfaceMri', hFig);
@@ -797,6 +806,7 @@ function CollectRandomHeadPts_Callback()
         iCount = str2double(ctrl.jTextFieldExtra.getText());
         ctrl.jTextFieldExtra.setText(num2str(iCount + 1));
     end
+    
     UpdateList();
 end
 
@@ -1613,6 +1623,8 @@ function BytesAvailable_Callback() %#ok<INUSD>
         CreateHeadpointsFigure();
         % Enable fids button
         ctrl.jButtonFids.setEnabled(1);
+        % Enable Auto button
+        ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
     elseif Digitize.iPoint == numel(Digitize.Options.Fids) * Digitize.Options.nFidSets + 1
         % Change delete button label and callback such that we can delete the last point.
         java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@DeletePoint_Callback));
