@@ -292,16 +292,19 @@ function [errMsg, iInputErr, nRows, Freqs] = CheckInputs(sInputs)
                 case {'data', 'matrix'}
                     if ~isequal(refCommonSpaceFile, timefreqMat.RowNames)
                         errMsg = 'PSD files from sensors (or matrices) must share the same channel names.';
+                        return
                     end
                 case 'results'
                     switch timefreqMat.HeadModelType
                         case 'surface'
                             if ~isequal(refCommonSpaceFile, timefreqMat.SurfaceFile)
                                 errMsg = 'PSD files from surface sources must share the same surface file.';
+                                return
                             end
                         case 'volume'
                             if ~isequal(refCommonSpaceFile, timefreqMat.RowNames)
                                 errMsg = 'PSD files from volume sources must share the head model (volume grid) file.';
+                                return
                             end
                         otherwise
                             errMsg = ['HeadModel of type ' timefreqMat.HeadModelType ' is not supported.'];
