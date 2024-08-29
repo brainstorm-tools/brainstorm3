@@ -2910,7 +2910,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     jMenuStudy = gui_component('Menu', jMenu, [], 'From other studies', IconLoader.ICON_CHANNEL, [], []);
                     for ix = 1 : length(ixDiff)
                         conditionName = sStudies(ixDiff(ix)).Condition{1};
-                        if strcmpi(conditionName(1:4), '@raw')
+                        if length(conditionName) > 4 && strcmpi(conditionName(1:4), '@raw')
                             iconLoader = IconLoader.ICON_RAW_FOLDER_CLOSE;
                             conditionName(1:4) = '';
                         else
