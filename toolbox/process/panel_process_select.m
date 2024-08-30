@@ -1569,10 +1569,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     gui_component('label', jPanelOpt, [], option.Comment{end});
                     % Restore previous selected items
                     gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
-                    if ~isempty(sProcess(iProcess).options.(optNames{iOpt}).Value)
-                        [~, iSelItems] = ismember(sProcess(iProcess).options.(optNames{iOpt}).Value, option.Comment);
+                    if ~isempty(sProcess.options.(optNames{iOpt}).Value)
+                        [~, iSelItems] = ismember(sProcess.options.(optNames{iOpt}).Value, option.Comment);
                         iSelItems(iSelItems==0) = [];
-                        if length(iSelItems) == length(sProcess(iProcess).options.(optNames{iOpt}).Value)
+                        if length(iSelItems) == length(sProcess.options.(optNames{iOpt}).Value)
                             jList.setSelectedIndices(iSelItems-1);
                         end
                     end
