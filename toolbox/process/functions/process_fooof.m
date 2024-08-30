@@ -279,11 +279,8 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
             aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
             guess = peak_pars;
             if ~isempty(guess)
-%                 lb = [guess(1:pk,1)-guess(1:pk,3)*2,zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(1)/2]';
-%                 ub = [guess(1:pk,1)+guess(1:pk,3)*2,inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(2)/2]';
                 lb = [max([ones(size(guess(1:pk,:),1),1).*fs(1) guess(1:pk,1)-guess(1:pk,3)*2],[],2),zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(1)/2]';
                 ub = [min([ones(size(guess(1:pk,:),1),1).*fs(end) guess(1:pk,1)+guess(1:pk,3)*2],[],2),inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(2)/2]';
-
             else
                 lb = [];
                 ub = [];
@@ -371,7 +368,6 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
         fg(chan).AIC                = model(mi).AIC;
         fg(chan).BIC                = model(mi).BIC;
         fg(chan).models             = model;
-        %plot(fs', [fg(chan).ap_fit', fg(chan).peak_fit', fg(chan).fooofed_spectrum'])
     end
 end
 
@@ -438,6 +434,9 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
         fg(chan).peak_fit         = 10.^(model_fit-ap_fit); 
         fg(chan).error            = MSE;
         fg(chan).r_squared        = rsq_tmp(2);
+        if opt.return_spectrum
+            fg(chan).power_spectrum = spec(chan,:);
+        end
     end
 end
 
