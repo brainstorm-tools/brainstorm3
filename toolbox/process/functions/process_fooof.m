@@ -263,7 +263,7 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
         flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
         % estimate valid peaks (and determine max n)
         [est_pars, peak_function] = est_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type);
+            opt.peak_width_limits/2, opt.proximity_threshold, opt.border_threshold, opt.peak_type);
         model = struct();
         for pk = 0:size(est_pars,1)
             params = [];
@@ -926,7 +926,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
             
 end
 
-function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType)
+function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, bordThresh, peakType)
 %       Iteratively fit peaks to flattened spectrum.
 %
 %       Parameters
@@ -1024,7 +1024,7 @@ function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks,
 
             % Check peaks based on edges, and on overlap
             % Drop any that violate requirements.
-            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_cf(guess_params, bordThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
             
         case 'cauchy' % cauchy only
