@@ -307,7 +307,7 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
                 params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
                     lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
             catch
-                % for catching errors
+                error(['Failed to converge during optimization on channel ' num2str(chan)])
             end
             if isempty(params)
                 % TODO: Improve handling of errors at estimating 'params'
