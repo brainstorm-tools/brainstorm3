@@ -94,6 +94,19 @@ else
     Lwin = Lwin - mod(Lwin,2);    % Make sure the number of samples is even
     Nwin = floor((nTime - Loverlap) ./ (Lwin - Loverlap));
 end
+% Finally, handle when aggregate window length exceeds recording when
+% considering averaging across sliding window.
+nAvgChanged = 0; 
+while (Lwin+Loverlap*(opt.nAverage-1) > nTime)
+    nAvgChanged = 1;
+    Messages = ['Time windows included in average exceed recording length, Reducing number of windows by 1' 10];
+    opt.nAverage = opt.nAverage-1;
+end
+if nAvgChanged 
+    disp('Time windows included in average exceed recording length') 
+    disp(['Reduced number of windows used in average to: ' num2str(opt.nAverage)])
+end 
+
 % Next power of 2 from length of signal
 % NFFT = 2^nextpow2(Lwin);      % Function fft() pads the signal with zeros before computing the FT
 NFFT = Lwin;                    % No zero-padding: Nfft = Ntime 
