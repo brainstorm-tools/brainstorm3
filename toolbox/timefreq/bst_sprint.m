@@ -161,7 +161,7 @@ switch opt.optim_obj
     case 'negloglike'
         [TF, OPTIONS] = nll_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct);
 end
-% OPTIONS.SPRiNT = 
+
 end
 
 function [TF, OPTIONS] = lse_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct)
