@@ -1,3 +1,12 @@
+August 2024
+- Anatomy: Improve volume computation, use 'boundary'
+- Coreg: New digitization panel
+- SEEG/ECOG: Improvements and bugfix for IEEG panel
+- IO: EDF+ support negative gains
+- Distrib: Linux and macOS, find Matlab runtime in full Matlab installation
+- Distrib: Add deep-brain-activity script
+- Distrib: Add deviation-maps tutorial
+--------------------------------------------------------------
 July 2024
 - Anatomy: Import output from FreeSurfer recon-all-clinical
 - Bugfix: Importing non-Atlas MRI volumes given in MNI space

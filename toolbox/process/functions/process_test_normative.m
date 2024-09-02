@@ -23,7 +23,7 @@ function varargout = process_test_normative( varargin )
 % MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
 % LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
 %
-% For more information type "brainstorm license" at command prompt. 
+% For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
 % Authors: Pauline Amrouche, 2024
