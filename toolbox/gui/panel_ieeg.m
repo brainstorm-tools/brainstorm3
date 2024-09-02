@@ -309,6 +309,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if (length(sSelElec) == 1)
                 CenterMriOnElectrode(sSelElec);
             end
+            % Unselect all contacts in list
+            SetSelectedContacts(0);
+            % Update contact list
+            UpdateContactList();
         end
     end
 
@@ -329,13 +333,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         if (ev.getClickCount() == 2)
             % Rename selection
             EditElectrodeLabel();
-        end
-
-        if (ev.getClickCount() == 1)
-            % Unselect all contacts in list
-            SetSelectedContacts(0);
-            % Update contact list
-            UpdateContactList();
         end
     end
 
@@ -802,7 +799,7 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
-    sContacts = GetContacts(sSelElec.Name);
+    sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
     end
