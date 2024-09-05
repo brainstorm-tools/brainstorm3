@@ -466,6 +466,9 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
 
     % === CHECK SURFACE TYPE ===
+    if isCentroid
+        SurfacesType = 'Other';
+    end
     % Keep only surfaces that are of the required type
     if ~isempty(SurfacesType)
         iAcceptableTess = find(strcmpi({TessInfo.Name}, SurfacesType));

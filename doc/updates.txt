@@ -1,3 +1,21 @@
+August 2024
+- Anatomy: Improve volume computation, use 'boundary'
+- Coreg: New digitization panel
+- SEEG/ECOG: Improvements and bugfix for IEEG panel
+- IO: EDF+ support negative gains
+- Distrib: Linux and macOS, find Matlab runtime in full Matlab installation
+- Distrib: Add deep-brain-activity script
+- Distrib: Add deviation-maps tutorial
+--------------------------------------------------------------
+July 2024
+- Anatomy: Import output from FreeSurfer recon-all-clinical
+- Bugfix: Importing non-Atlas MRI volumes given in MNI space
+- Inverse: Process to apply exclusion zone around sensors for volume grids
+- Artifacts: New process for automatic detection of artifacts on MEG
+- Plugins: Add mTRF-Toolbox and Zeffiro
+- Plugins: OpenMEEG and MCXLAB now support Apple Silicon
+- Distrib: Menu option to retrieve system information
+--------------------------------------------------------------
 June 2024
 - Anatomy: Bugfix, set proper subtype on importing Fibers and FEM
 - Viz: Allow combination of resection options in Fig3D

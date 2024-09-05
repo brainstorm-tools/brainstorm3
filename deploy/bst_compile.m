@@ -52,9 +52,25 @@ if ~exist('mcc', 'file')
     error('You must install the toolboxes "Matlab Compiler" and "Matlab Compiler SDK" to run this function.');
 end
 % Start brainstorm without the GUI
-isNogui = ~brainstorm('status');
-if isNogui
+wasBstRunning = brainstorm('status');
+if ~wasBstRunning
     brainstorm nogui
+end
+isGUI = bst_get('isGUI');
+% Delete current default anatomy and download it
+templateDir = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'anatomy');
+if exist(templateDir, 'dir')
+    brainstorm stop
+    try
+        rmdir(templateDir, 's');
+    catch
+        disp(['COMPILE> Error: Could not delete folder: ' templateDir]);
+    end
+    if isGUI
+        brainstorm start
+    else
+        brainstorm nogui
+    end
 end
 % Remove .brainstorm from the path
 rmpath(bst_get('UserMexDir'));
