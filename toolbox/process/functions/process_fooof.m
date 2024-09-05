@@ -262,116 +262,116 @@ function [fs, fg, errMsg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
     % Iterate across channels
     bst_progress('text',['Standby: ms-specparam is running in parallel']);
     try
-    parfor chan = 1:nChan
-        bst_progress('set', bst_round(chan / nChan,2) * 100);
-        % Fit aperiodic
-        aperiodic_pars = robust_ap_fit(fs, spec(chan,:), opt.aperiodic_mode);
-        % Remove aperiodic
-        flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
-        % estimate valid peaks (and determine max n)
-        [est_pars, peak_function] = est_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-            opt.peak_width_limits/2, opt.proximity_threshold, opt.border_threshold, opt.peak_type);
-        model = struct();
-        for pk = 0:size(est_pars,1)
-            params = [];
-            aperiodic_pars_tmp = [];
-            peak_pars_tmp = [];
+        parfor chan = 1:nChan
+            bst_progress('set', bst_round(chan / nChan,2) * 100);
+            % Fit aperiodic
+            aperiodic_pars = robust_ap_fit(fs, spec(chan,:), opt.aperiodic_mode);
+            % Remove aperiodic
+            flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
+            % estimate valid peaks (and determine max n)
+            [est_pars, peak_function] = est_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
+                opt.peak_width_limits/2, opt.proximity_threshold, opt.border_threshold, opt.peak_type);
+            model = struct();
+            for pk = 0:size(est_pars,1)
+                params = [];
+                aperiodic_pars_tmp = [];
+                peak_pars_tmp = [];
 
-            peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, opt.peak_width_limits/2, opt.peak_type, opt.guess_weight,hOT);
-            % Refit aperiodic
-            aperiodic = spec(chan,:);
-            for peak = 1:size(peak_pars,1)
-                aperiodic = aperiodic - peak_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
-            end
-            aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
-            guess = peak_pars;
-            if ~isempty(guess)
-                lb = [max([ones(size(guess(1:pk,:),1),1).*fs(1) guess(1:pk,1)-guess(1:pk,3)*2],[],2),zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(1)/2]';
-                ub = [min([ones(size(guess(1:pk,:),1),1).*fs(end) guess(1:pk,1)+guess(1:pk,3)*2],[],2),inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(2)/2]';
-            else
-                lb = [];
-                ub = [];
-            end
-            switch opt.aperiodic_mode
-                case 'fixed'
-                    lb = [-inf; 0; lb(:)];
-                    ub = [inf; inf; ub(:)];
-                case 'knee'
-                    lb = [-inf; 0; 0; lb(:)];
-                    ub = [inf; 100; inf; ub(:)];
-            end
-            if opt.return_spectrum
-                fg(chan).power_spectrum = spec(chan,:);
-            end
-            guess = guess(1:pk,:)';
-            guess = [aperiodic_pars'; guess(:)];
-            options = optimset('Display', 'off', 'TolX', 1e-7, 'TolFun', 1e-9, ...
-                'MaxFunEvals', 5000, 'MaxIter', 5000); % Tuned options 
-            try
-                params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
-                    lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
-            catch
-                error(['Failed to converge during optimization on channel ' num2str(chan)])
-            end
-            switch opt.aperiodic_mode
-                case 'fixed'
-                    aperiodic_pars_tmp = params(1:2);
-                    if length(params) > 3
-                        peak_pars_tmp = reshape(params(3:end),[3 length(params(3:end))./3])';
+                peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, opt.peak_width_limits/2, opt.peak_type, opt.guess_weight,hOT);
+                % Refit aperiodic
+                aperiodic = spec(chan,:);
+                for peak = 1:size(peak_pars,1)
+                    aperiodic = aperiodic - peak_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+                end
+                aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode);
+                guess = peak_pars;
+                if ~isempty(guess)
+                    lb = [max([ones(size(guess(1:pk,:),1),1).*fs(1) guess(1:pk,1)-guess(1:pk,3)*2],[],2),zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(1)/2]';
+                    ub = [min([ones(size(guess(1:pk,:),1),1).*fs(end) guess(1:pk,1)+guess(1:pk,3)*2],[],2),inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*opt.peak_width_limits(2)/2]';
+                else
+                    lb = [];
+                    ub = [];
+                end
+                switch opt.aperiodic_mode
+                    case 'fixed'
+                        lb = [-inf; 0; lb(:)];
+                        ub = [inf; inf; ub(:)];
+                    case 'knee'
+                        lb = [-inf; 0; 0; lb(:)];
+                        ub = [inf; 100; inf; ub(:)];
+                end
+                if opt.return_spectrum
+                    fg(chan).power_spectrum = spec(chan,:);
+                end
+                guess = guess(1:pk,:)';
+                guess = [aperiodic_pars'; guess(:)];
+                options = optimset('Display', 'off', 'TolX', 1e-7, 'TolFun', 1e-9, ...
+                    'MaxFunEvals', 5000, 'MaxIter', 5000); % Tuned options
+                try
+                    params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
+                        lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
+                catch
+                    error(['Failed to converge during optimization on channel ' num2str(chan)])
+                end
+                switch opt.aperiodic_mode
+                    case 'fixed'
+                        aperiodic_pars_tmp = params(1:2);
+                        if length(params) > 3
+                            peak_pars_tmp = reshape(params(3:end),[3 length(params(3:end))./3])';
+                        end
+                    case 'knee'
+                        aperiodic_pars_tmp = params(1:3);
+                        if length(params) > 3
+                            peak_pars_tmp = reshape(params(4:end),[3 length(params(4:end))./3])';
+                        end
+                end
+                % Generate model fit
+                ap_fit = gen_aperiodic(fs, aperiodic_pars_tmp, opt.aperiodic_mode);
+                model_fit = ap_fit;
+                if length(params) > 3
+                    for peak = 1:size(peak_pars_tmp,1)
+                        model_fit = model_fit + peak_function(fs,peak_pars_tmp(peak,1),...
+                            peak_pars_tmp(peak,2),peak_pars_tmp(peak,3));
                     end
-                case 'knee'
-                    aperiodic_pars_tmp = params(1:3);
-                    if length(params) > 3
-                        peak_pars_tmp = reshape(params(4:end),[3 length(params(4:end))./3])';
-                    end
+                else
+                    peak_pars_tmp = [0 0 0];
+                end
+                % Calculate model error
+                MSE = sum((spec(chan,:) - model_fit).^2)/length(model_fit);
+                rsq_tmp = corrcoef(spec(chan,:),model_fit).^2;
+                loglik = -length(model_fit)/2.*(1+log(MSE)+log(2*pi));
+                AIC = 2.*(length(params)-loglik);
+                BIC = length(params).*log(length(model_fit))-2.*loglik;
+                model(pk+1).aperiodic_params = aperiodic_pars_tmp;
+                model(pk+1).peak_params = peak_pars_tmp;
+                model(pk+1).MSE = MSE;
+                model(pk+1).r_squared = rsq_tmp(2);
+                model(pk+1).loglik = loglik;
+                model(pk+1).AIC = AIC;
+                model(pk+1).BIC = BIC;
+                model(pk+1).BF = exp((BIC-model(1).BIC)./2);
             end
-            % Generate model fit
-            ap_fit = gen_aperiodic(fs, aperiodic_pars_tmp, opt.aperiodic_mode);
-            model_fit = ap_fit;
-            if length(params) > 3
-                for peak = 1:size(peak_pars_tmp,1)
-                    model_fit = model_fit + peak_function(fs,peak_pars_tmp(peak,1),...
-                        peak_pars_tmp(peak,2),peak_pars_tmp(peak,3));
-                end  
-            else
-                peak_pars_tmp = [0 0 0];
-            end
-            % Calculate model error
-            MSE = sum((spec(chan,:) - model_fit).^2)/length(model_fit);
-            rsq_tmp = corrcoef(spec(chan,:),model_fit).^2;
-            loglik = -length(model_fit)/2.*(1+log(MSE)+log(2*pi));
-            AIC = 2.*(length(params)-loglik);
-            BIC = length(params).*log(length(model_fit))-2.*loglik;
-            model(pk+1).aperiodic_params = aperiodic_pars_tmp;
-            model(pk+1).peak_params = peak_pars_tmp;
-            model(pk+1).MSE = MSE;
-            model(pk+1).r_squared = rsq_tmp(2);
-            model(pk+1).loglik = loglik;
-            model(pk+1).AIC = AIC;
-            model(pk+1).BIC = BIC;
-            model(pk+1).BF = exp((BIC-model(1).BIC)./2);
+            % insert data from best model
+
+            [~,mi] = min([model.BIC]);
+
+            aperiodic_pars = model(mi).aperiodic_params;
+            peak_pars = model(mi).peak_params;
+            % Return FOOOF results
+            aperiodic_pars(2) = abs(aperiodic_pars(2));
+            fg(chan).aperiodic_params   = aperiodic_pars;
+            fg(chan).peak_params        = peak_pars;
+            fg(chan).peak_types         = func2str(peak_function);
+            fg(chan).ap_fit             = 10.^gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
+            fg(chan).fooofed_spectrum   = 10.^build_model(fs, aperiodic_pars, opt.aperiodic_mode, peak_pars, peak_function);
+            fg(chan).peak_fit           = fg(chan).fooofed_spectrum ./ fg(chan).ap_fit;
+            fg(chan).error              = model(mi).MSE;
+            fg(chan).r_squared          = model(mi).r_squared;
+            fg(chan).loglik             = model(mi).loglik; % log-likelihood
+            fg(chan).AIC                = model(mi).AIC;
+            fg(chan).BIC                = model(mi).BIC;
+            fg(chan).models             = model;
         end
-        % insert data from best model
-        
-        [~,mi] = min([model.BIC]);
-        
-        aperiodic_pars = model(mi).aperiodic_params;
-        peak_pars = model(mi).peak_params;
-        % Return FOOOF results
-        aperiodic_pars(2) = abs(aperiodic_pars(2));
-        fg(chan).aperiodic_params   = aperiodic_pars;
-        fg(chan).peak_params        = peak_pars;
-        fg(chan).peak_types         = func2str(peak_function);
-        fg(chan).ap_fit             = 10.^gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
-        fg(chan).fooofed_spectrum   = 10.^build_model(fs, aperiodic_pars, opt.aperiodic_mode, peak_pars, peak_function);
-        fg(chan).peak_fit           = fg(chan).fooofed_spectrum ./ fg(chan).ap_fit;
-        fg(chan).error              = model(mi).MSE;
-        fg(chan).r_squared          = model(mi).r_squared;
-        fg(chan).loglik             = model(mi).loglik; % log-likelihood
-        fg(chan).AIC                = model(mi).AIC;
-        fg(chan).BIC                = model(mi).BIC;
-        fg(chan).models             = model;
-    end
     catch err
         errMsg = err.message;
     end
