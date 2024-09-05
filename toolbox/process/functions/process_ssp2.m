@@ -968,15 +968,17 @@ end
 %
 % COMMENTS: 
 %    There are 5 categories of projectors:
-%    - SSP_pca:   CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=U
-%    - SSP_mean:  CompMask=1,             SingVal=[],            Components=[Nchan x 1]=U
-%    - ICA:       CompMask=[Ncomp x 1],   SingVal='ICA',         Components=[Nchan x Ncomp]=W'
-%    - REF:       CompMask=[],            SingVal='REF',         Components=[Nchan x Ncomp]=Wmontage
-%    - Other:     CompMask=[],            SingVal=[],            Components=[Nchan x Nchan]=Projector=I-UUt
+%    - SSP_pca:   Method = 'SSP_pca'      CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=U
+%    - SSP_mean:  Method = 'SSP_pca'      CompMask=1,             SingVal=[],            Components=[Nchan x 1]=U
+%    - ICA:       Method = 'ICA_variant'  CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=W'
+%    - REF:       Method = 'REF'          CompMask=[],            SingVal=[],            Components=[Nchan x Ncomp]=Wmontage
+%    - Other:     Method = 'Other'        CompMask=[],            SingVal=[],            Components=[Nchan x Nchan]=Projector=I-UUt
+%
+%  For ICA projectors, 'SingVal' contains the fraction explained variance with respect to the original signal
 %
 %    Description of the notations used here:
-%    - W: Unmixing matrix  [Nelectrodes x Ncomponents]  
-%    - Winv = pinv(W) = [Ncomponents x Nelectrodes]
+%    - W: Unmixing matrix  [Ncomponents x Nelectrodes]
+%    - Winv = pinv(W) = [Nelectrodes x Ncomponents]
 %    - In EEGLAB:  W = icaweights * icasphere;
 %    - Activations_IC = W * Data
 %    - CleanData = Winv(:,iComp) * Activations(iComp,:)
