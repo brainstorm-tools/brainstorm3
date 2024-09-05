@@ -224,7 +224,7 @@ ChannelMatOut = ChannelMat;
 if ~isempty(iAnnot)
     ChannelMatOut.Channel = ChannelMatOut.Channel(iChannelsIn);
     for iProj = 1:length(ChannelMatOut.Projector)
-        if isequal(ChannelMatOut.Projector(iProj).SingVal, 'REF')
+        if strcmpi(ChannelMatOut.Projector(iProj).Method(1:3), 'REF')
             ChannelMatOut.Projector(iProj).Components = ChannelMatOut.Projector(iProj).Components(iChannelsIn, iChannelsIn);
         else
             ChannelMatOut.Projector(iProj).Components = ChannelMatOut.Projector(iProj).Components(iChannelsIn, :);
