@@ -807,6 +807,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         rVarExp = 1 - (sum(sum(Fdiff.^2, 2)) ./ sum(sum(F.^2, 2)));
         % Variance in original data by each component
         varIcs = rVarExp * varIcs;
+        if ~isempty(icaSort)
+            varIcs = varIcs(iSort)
+        end
         proj.SingVal = varIcs;
     end
     
