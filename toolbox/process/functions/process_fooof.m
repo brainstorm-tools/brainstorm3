@@ -179,18 +179,23 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             case 'matlab'   % Matlab standalone FOOOF
                 switch (opt.optim_obj)
                     case 'leastsquare'
-                        [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt, hasOptimTools);
+                        [FOOOF_freqs, FOOOF_data, errMsg] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt, hasOptimTools);
                     case 'negloglike'
-                        [FOOOF_freqs, FOOOF_data] = FOOOF_matlab_nll(PsdMat.TF, PsdMat.Freqs, opt, hasOptimTools);  
+                        [FOOOF_freqs, FOOOF_data, errMsg] = FOOOF_matlab_nll(PsdMat.TF, PsdMat.Freqs, opt, hasOptimTools);
                 end
             case 'python'
                 opt.peak_type = 'gaussian';
                 opt.optim_obj = 'leastsquare';
-                [FOOOF_freqs, FOOOF_data] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
+                [FOOOF_freqs, FOOOF_data, errMsg] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
                 % Remove unnecessary structure level, allowing easy concatenation across channels, e.g. for display.
                 FOOOF_data = [FOOOF_data.FOOOF];
             otherwise
-                error('Invalid implentation.');
+                errMsg = ['Invalid FOOOF implentation: ' implementation];
+        end
+        % Return if error
+        if ~isempty(errMsg)
+            bst_report('Error', sProcess, sInputs(iFile), errMsg);
+            return;
         end
 
         % === FOOOF ANALYSIS ===
@@ -236,7 +241,8 @@ end
 %% ===================================================================================
 %  ===== MATLAB FOOOF ================================================================
 %  ===================================================================================
-function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
+function [fs, fg, errMsg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
+    errMsg = '';
     % Find all frequency values within user limits
     fMask = (round(Freqs.*10)./10 >= opt.freq_range(1)) & (round(Freqs.*10)./10 <= opt.freq_range(2)) & ~mod(sum(abs(round(Freqs.*10)./10-[1;2;3].*str2double(opt.power_line)) >= 2),3);
     fs = Freqs(fMask);
@@ -255,6 +261,7 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
             'r_squared',        []);
     % Iterate across channels
     bst_progress('text',['Standby: ms-specparam is running in parallel']);
+    try
     parfor chan = 1:nChan
         bst_progress('set', bst_round(chan / nChan,2) * 100);
         % Fit aperiodic
@@ -305,10 +312,6 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
                     lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
             catch
                 error(['Failed to converge during optimization on channel ' num2str(chan)])
-            end
-            if isempty(params)
-                % TODO: Improve handling of errors at estimating 'params'
-                params = [0,0,0];
             end
             switch opt.aperiodic_mode
                 case 'fixed'
@@ -369,11 +372,15 @@ function [fs, fg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
         fg(chan).BIC                = model(mi).BIC;
         fg(chan).models             = model;
     end
+    catch err
+        errMsg = err.message;
+    end
 end
 
 
 %% ===== MATLAB STANDALONE FOOOF =====
-function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
+function [fs, fg, errMsg] = FOOOF_matlab(TF, Freqs, opt, hOT)
+    errMsg = '';
     % Find all frequency values within user limits
     fMask = (round(Freqs.*10)./10 >= opt.freq_range(1)) & (round(Freqs.*10)./10 <= opt.freq_range(2)) & ~mod(sum(abs(round(Freqs.*10)./10-[1;2;3].*str2double(opt.power_line)) >= 2),3);
     fs = Freqs(fMask);
