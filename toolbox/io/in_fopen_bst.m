@@ -108,9 +108,9 @@ for i = 1:nproj
         end
     end
     ChannelMat.Projector(i).Status = double(fread(fid, [1 1], 'int8'));            % INT8(1)    : Status
-    % August 2024: Added char array for projector method
+    % September 2024: Added char array for projector method
     if hdr.version >= 53
-        ChannelMat.Projector(i).Method = str_read(fid, 40);                        % CHAR(40)   : Projector method
+        ChannelMat.Projector(i).Method = str_read(fid, 20);                        % CHAR(20)   : Projector method
     end
     % Complete projector method if necesary
     ChannelMat.Projector(i) = process_ssp2('ConvertOldFormat', ChannelMat.Projector(i));
