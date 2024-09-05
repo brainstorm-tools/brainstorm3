@@ -454,8 +454,8 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
             case 'ica'
                 % Explained variance
                 Singular = [];
-                if ~isempty(sCat.SingVal)
-                    Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                if ~isempty(sCat.SingVal) && isnumeric(sCat.SingVal)
+                    Singular = sCat.SingVal;
                 end
                 % Field Components stores the mixing matrix W
                 W = sCat.Components(iChannels,:)';
@@ -717,8 +717,8 @@ function UpdateComp()
                 case 'ica'
                     % Explained variance
                     Singular = [];
-                    if ~isempty(sCat.SingVal)
-                        Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    if ~isempty(sCat.SingVal) && isnumeric(sCat.SingVal)
+                        Singular = sCat.SingVal;
                     end
                     iDispComp = 1:size(sCat.Components,2);
 
