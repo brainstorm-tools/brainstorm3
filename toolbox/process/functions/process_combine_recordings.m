@@ -40,7 +40,10 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
     
-
+    % Option: Condition
+    sProcess.options.condition.Comment = 'Condition name:';
+    sProcess.options.condition.Type    = 'text';
+    sProcess.options.condition.Value   = '';
 end
 
 
@@ -84,8 +87,7 @@ function OutputFiles = Run(sProcess, sInputs)
     % Compute shifiting between file i and first file
     new_times     = sOldTiming{1}.Time;
 
-    newCondition = [sInputs(iInput).Condition '_combined'];
-    iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition);
+    iNewStudy = db_add_condition(sInputs(iInput).SubjectName,  sProcess.options.condition.Value);
     sNewStudy = bst_get('Study', iNewStudy);
 
 
