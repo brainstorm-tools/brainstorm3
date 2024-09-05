@@ -883,7 +883,7 @@ function UpdateProtocolsList()
     end
     % Set current protocol
     iProtocol = GlobalData.DataBase.iProtocol;
-    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
+    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol <= length(GlobalData.DataBase.ProtocolInfo))
         iSel = find(indProtocols == iProtocol);
         ctrl.jComboBoxProtocols.setSelectedIndex(iSel-1);
     end
