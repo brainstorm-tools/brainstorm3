@@ -2,7 +2,7 @@ function varargout = process_segment_brainsuite( varargin )
 % PROCESS_SEGMENT_BRAINSUITE: Run the segmentation of a T1 MRI with BrainSuite.
 %
 % USAGE:     OutputFiles = process_segment_brainsuite('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_segment_brainsuite('Compute', iSubject, iAnatomy=[default], nVertices, isInteractive)
+%         [isOk, errMsg] = process_segment_brainsuite('Compute', iSubject, iAnatomy=[default], nVertices, atlas, isInteractive)
 %                          process_segment_brainsuite('ComputeInteractive', iSubject, iAnatomy)
 
 % @=============================================================================
@@ -55,6 +55,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.nvertices.Comment = 'Number of vertices (cortex): ';
     sProcess.options.nvertices.Type    = 'value';
     sProcess.options.nvertices.Value   = {15000, '', 0};
+    % Option: Select the Atlas
+    sProcess.options.atlas.Comment = 'Select atlas';
+    sProcess.options.atlas.Type    = 'combobox_label';
+    sProcess.options.atlas.Value   = {'USC Brain', {'USC Brain', 'USC Lobes'; ...
+                                                    'USC Brain', 'USC Lobes'}};
 end
 
 
@@ -69,6 +74,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % Number of vertices
     nVertices = sProcess.options.nvertices.Value{1};
+    % Atlas
+    atlas = sProcess.options.atlas.Value{1};
     if isempty(nVertices) || (nVertices < 50)
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
@@ -86,7 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0);
+    [isOk, errMsg] = Compute(iSubject, [], nVertices, atlas, 0);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -99,7 +106,7 @@ end
 
 
 %% ===== COMPUTE BRAINSUITE SEGMENTATION =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, atlas, isInteractive)
     errMsg = '';
     isOk = 0;
 
@@ -205,7 +212,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
 
     % ===== 2. SVREG =====
     bst_progress('text', '<HTML>2/2: SVREG... &nbsp;&nbsp;&nbsp;<FONT COLOR="#707070"><I>(see command window)</I></FONT>');
-    AtlasPath = fullfile(BsDir, 'svreg', 'BrainSuiteAtlas1', 'mri');
+    if strcmpi(atlas, 'USC Lobes')
+        AtlasPath = fullfile(BsDir, 'svreg', 'BCI-DNI_brain_atlas', 'BCI-DNI_brain');
+    else % USC Brain
+        AtlasPath = fullfile(BsDir, 'svreg', 'BrainSuiteAtlas1', 'mri');
+    end
     strCall = ['"' svreg_exe '" "' NiiFile(1:end-4) '" "' AtlasPath '"'];
     disp(['BST> System call: ' strCall]);
     status = system(strCall)
@@ -250,11 +261,16 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
         return
     end
     nVertices = str2double(nVertices);
+    % Ask for the atlas to choose
+    atlas = java_dialog('question', 'Choose the atlas', 'BrainSuite segmentation', [], {'USC Brain', 'USC Lobes'}); 
+    if isempty(atlas)
+        return
+    end
     % Open progress bar
     bst_progress('start', 'BrainSuite', 'BrainSuite MRI segmentation...');
     % Run BrainSuite
     isInteractive = 1;
-    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive);
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, atlas, isInteractive);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'BrainSuite MRI segmentation', 0);
