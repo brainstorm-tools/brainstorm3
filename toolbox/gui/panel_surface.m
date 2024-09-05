@@ -420,7 +420,7 @@ function SliderCallback(hObject, event, target)
                 CtFile = [];
                 MeshFile = [];
                 for i=1:length(sSubject.Anatomy)
-                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
                         CtFile = sSubject.Anatomy(i).FileName;
                     end
                 end
@@ -538,7 +538,7 @@ function isoValue = GetIsoValueMaxRange()
             sSubject = bst_get('Subject', SubjectFile);
             CtFile = [];
             for i=1:length(sSubject.Anatomy)
-                if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
                     CtFile = sSubject.Anatomy(i).FileName;
                 end
             end
