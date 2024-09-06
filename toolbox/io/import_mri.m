@@ -179,6 +179,18 @@ else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
 
+%% save raw CT file (for GARDEL)
+% get the subject subDir
+subjectSubDir = bst_fileparts(sSubject.FileName);
+% Get imported base name
+[tmp__, importedBaseName] = bst_fileparts(MriFile);
+importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+importedBaseName = strrep(importedBaseName, '.nii', '');
+BstRawFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName tagVolType '_raw.nii.gz']);
+if ~exist(BstRawFile, 'file')
+    copyfile(MriFile, BstRawFile);
+end
 
 %% ===== DELETE TEMPORARY FILES =====
 if ~isempty(TmpDir)
@@ -397,17 +409,11 @@ else
             sMri.Comment = [sMri.Comment ' (MNI)'];
         end
     end
-    % Get imported base name
-    [tmp__, importedBaseName] = bst_fileparts(MriFile);
-    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
-    importedBaseName = strrep(importedBaseName, '_subjectimage', '');
-    importedBaseName = strrep(importedBaseName, '.nii', '');
+    
 end
 
 
 %% ===== SAVE FILE =====
-% Get subject subdirectory
-subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
 BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
 % Make this filename unique
