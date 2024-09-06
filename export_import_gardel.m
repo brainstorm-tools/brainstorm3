@@ -75,7 +75,13 @@ bst_progress('start', 'GARDEL', 'Starting GARDEL external tool');
 bst_plugin('SetProgressLogo', 'gardel');
 
 % create temporary folder for GARDEL
-TmpDir = bst_get('BrainstormTmpDir', 0, 'gardel');
+TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
+
+% get the folder for the RAW CT and MRI file
+ProtocolInfo = bst_get('ProtocolInfo');
+sSubject = bst_get('Subject', iSubject);
+subjectSubDir = bst_fileparts(sSubject.FileName);
+RawFilesDir = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir);
 
 % Hide Brainstorm window
 jBstFrame = bst_get('BstFrame');
