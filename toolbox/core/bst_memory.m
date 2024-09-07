@@ -795,9 +795,7 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     GlobalData.DataSet(iDS).DataFile    = file_short(DataFile);
     GlobalData.DataSet(iDS).Measures    = Measures;
     
-    % ===== LOAD CHANNEL FILE =====
-    LoadChannelFile(iDS, ChannelFile);
-    
+
     % ===== Check time window consistency with previously loaded data =====
     if isTimeCheck
         % Update time window
@@ -823,6 +821,9 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             end
         end
     end
+
+    % ===== LOAD CHANNEL FILE =====
+    LoadChannelFile(iDS, ChannelFile);
     
     % ===== UPDATE TOOL TABS =====
     if ~isempty(iDS) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
