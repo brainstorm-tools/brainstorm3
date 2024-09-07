@@ -792,25 +792,25 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         % Variance in recovered data explained by each component
         varIcs = sum(M.^2, 1) .* sum(Y.^2, 2)';
         varIcs = varIcs ./ sum(varIcs);
-        % Sort ICA components
+        % Find sorting order for ICA components
+        iSort = [];
         if ~isempty(icaSort)
             % By correlation with reference channel
             C = bst_corrn(Fref, Y);
-            [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
-            proj.Components = proj.Components(:,iSort);
+            [~, iSort] = sort(max(abs(C),[],1), 'descend');
         elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
-            [varIcs, iSort] = sort(varIcs, 'descend');
-            proj.Components = proj.Components(:,iSort);
+            [~, iSort] = sort(varIcs, 'descend');
         end
         % Explained variance ratio
         Fdiff = (F - M * Y);
         rVarExp = 1 - (sum(sum(Fdiff.^2, 2)) ./ sum(sum(F.^2, 2)));
         % Variance in original data by each component
-        varIcs = rVarExp * varIcs;
-        if ~isempty(icaSort)
-            varIcs = varIcs(iSort)
+        proj.SingVal = rVarExp * varIcs;
+        % Sort components and their variances
+        if ~isempty(iSort)
+            proj.Components = proj.Components(:,iSort);
+            proj.SingVal    = proj.SingVal(iSort);
         end
-        proj.SingVal = varIcs;
     end
     
     % Modality used in the end
