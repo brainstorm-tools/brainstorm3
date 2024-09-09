@@ -311,7 +311,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jListCoord = JList(largeFontSize);
         jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
         % Size
-        jPanelScrollList = JScrollPane();
+        jPanelScrollList = JScrollPane(jListCoord);
         jPanelScrollList.getLayout.getViewport.setView(jListCoord);
         jPanelScrollList.setHorizontalScrollBarPolicy(jPanelScrollList.HORIZONTAL_SCROLLBAR_NEVER);
         jPanelScrollList.setVerticalScrollBarPolicy(jPanelScrollList.VERTICAL_SCROLLBAR_ALWAYS);
@@ -732,12 +732,13 @@ function UpdateList()
     ctrl.jListCoord.setModel(listModel);
     ctrl.jListCoord.repaint();
     drawnow;
-    % Scroll down
+    % Scroll to last collected point (non-empty Loc), +1 if more points listed.
     lastIndex = min(listModel.getSize(), 12 + nRecEEG + nHeadShape);
-    selRect = ctrl.jListCoord.getCellBounds(lastIndex-1, lastIndex-1);
-    %ctrl.jListCoord.scrollRectToVisible(selRect);
-    ctrl.jListCoord.repaint();
-    ctrl.jListCoord.getParent().getParent().repaint();
+    if listModel.getSize() > lastIndex
+        ctrl.jListCoord.ensureIndexIsVisible(lastIndex); % 0-indexed
+    else
+        ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed, -1 works even if 0
+    end
 end
 
 
