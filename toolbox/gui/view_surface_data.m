@@ -168,7 +168,6 @@ switch (DataType)
 end
 
 if isempty(iDS)
-    % Something went wrong before
     return;
 end
 

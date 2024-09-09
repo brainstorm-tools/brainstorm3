@@ -795,7 +795,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     GlobalData.DataSet(iDS).DataFile    = file_short(DataFile);
     GlobalData.DataSet(iDS).Measures    = Measures;
     
-
     % ===== Check time window consistency with previously loaded data =====
     if isTimeCheck
         % Update time window
@@ -1254,7 +1253,7 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
             else
                 iDS = UnloadOtherDs(iDS);
                 if isempty(iDS)
-                    iMatrix = [];
+                    iResult = [];
                     return
                 end
                 % Update time window
@@ -3579,6 +3578,7 @@ end
 
 %% ===== UNLOAD OTHER DS =====
 function iDS = UnloadOtherDs(iDS)
+% Unload Brainstorm datasets except for iDS. It returns the new iDS (iDS=1) for the kept DS
     global GlobalData;
     % Save dataset to keep
     bakDS = GlobalData.DataSet(iDS);
