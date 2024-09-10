@@ -1869,7 +1869,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
         ind(isoutlier) = [];
         vec_atlas_pts(isoutlier) = [];
     
-        [warp,L,LnInv,bendE] = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
+        warp = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
     
         [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     
