@@ -157,6 +157,9 @@ function Start(DigitizerType)
         iSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment}));
         if isempty(iSurface)
             [~, surfaceFiles] = import_surfaces(iSubject);
+            if isempty(surfaceFiles)
+                return
+            end
             surfaceFile = surfaceFiles{end};
         else
             surfaceFile = sSubject.Surface(iSurface(end)).FileName;
