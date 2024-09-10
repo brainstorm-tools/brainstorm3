@@ -260,7 +260,7 @@ function [fs, fg, errMsg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
             'error',            [],...
             'r_squared',        []);
     % Iterate across channels
-    bst_progress('text',['Standby: ms-specparam is running in parallel']);
+    bst_progress('text','Standby: ms-specparam is running in parallel');
     try
         parfor chan = 1:nChan
             bst_progress('set', bst_round(chan / nChan,2) * 100);
@@ -273,7 +273,6 @@ function [fs, fg, errMsg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
                 opt.peak_width_limits/2, opt.proximity_threshold, opt.border_threshold, opt.peak_type);
             model = struct();
             for pk = 0:size(est_pars,1)
-                params = [];
                 aperiodic_pars_tmp = [];
                 peak_pars_tmp = [];
 
@@ -307,12 +306,8 @@ function [fs, fg, errMsg] = FOOOF_matlab_nll(TF, Freqs, opt, hOT)
                 guess = [aperiodic_pars'; guess(:)];
                 options = optimset('Display', 'off', 'TolX', 1e-7, 'TolFun', 1e-9, ...
                     'MaxFunEvals', 5000, 'MaxIter', 5000); % Tuned options
-                try
-                    params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
-                        lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
-                catch
-                    error(['Failed to converge during optimization on channel ' num2str(chan)])
-                end
+                params = fmincon(@err_fm_constr,guess,[],[],[],[], ...
+                    lb,ub,[],options,fs,spec(chan,:),opt.aperiodic_mode,opt.peak_type);
                 switch opt.aperiodic_mode
                     case 'fixed'
                         aperiodic_pars_tmp = params(1:2);
@@ -1036,7 +1031,6 @@ function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks,
         case 'cauchy' % cauchy only
             peak_function = @cauchy; % Identify peaks as cauchy
             guess_params = zeros(max_n_peaks, 3);
-            flat_spec = flat_iter;
             for guess = 1:max_n_peaks
                 max_ind = find(flat_iter == max(flat_iter));
                 max_height = flat_iter(max_ind);
@@ -1361,7 +1355,6 @@ function [ePeaks, eAper, eStats] = FOOOF_analysis(FOOOF_data, ChanNames, TF, max
     % ===== EXTRACT PEAKS =====
     % Organize/extract peak components from FOOOF models
     nChan = numel(ChanNames);
-    maxEnt = nChan * max_peaks;
     switch sort_type
         case 'param'
             % Initialize output struct
