@@ -186,7 +186,7 @@ if ~isempty(GlobalData.Surface)
 end
 % Register in the GUI
 GlobalData.Surface(end + 1).Color = sLoadedSurf.Color;
-GlobalData.Surface(end + 1) = sLoadedSurf;
+GlobalData.Surface(end) = sLoadedSurf;
 
 % ===== Add target surface =====
 % Get figure appdata (surfaces configuration)
