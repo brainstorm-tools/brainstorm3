@@ -60,6 +60,11 @@ function Start(DigitizerType)
         'iPoint',           0, ...
         'Transf',           []);
     
+    % Fix old structure (bef 2024) for Digitize.Options.Montages
+    if length(Digitize.Options.Montages) > 1 && ~isfield(Digitize.Options.Montages, 'ChannelFile')
+        Digitize.Options.Montages(end).ChannelFile = [];
+    end
+
     % ===== PARSE INPUTS =====
     if nargin == 0 || isempty(DigitizerType)
         Digitize.Type = 'Digitize';
