@@ -51,28 +51,28 @@ else
     opts = delimitedTextImportOptions('NumVariables', 10);
 end
 
-opts.Delimiter = {' ', '/'};
+opts.Delimiter     = {' ', '/'};
 opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
 opts.VariableTypes = {'categorical', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double'}; 
 
 % Specify file level properties
 opts.ExtraColumnsRule = 'ignore';
-opts.EmptyLineRule = 'read';
+opts.EmptyLineRule    = 'read';
 
 % Import the data
 objtbl = readtable(TessFile, opts);
 
 obj = struct;
-obj.Vertices = objtbl{objtbl.type=='v',2:4};
-obj.VertexNormals = objtbl{objtbl.type=='vn',2:4};
-obj.Faces = objtbl{objtbl.type=='f',[2,5,8]};
-obj.TextCoords = objtbl{objtbl.type=='vt',2:3};
-obj.TextIndices = objtbl{objtbl.type=='f',[3,6,9]};
+obj.Vertices      = objtbl{objtbl.type=='v',  2:4};
+obj.VertexNormals = objtbl{objtbl.type=='vn', 2:4};
+obj.Faces         = objtbl{objtbl.type=='f', [2,5,8]};
+obj.TextCoords    = objtbl{objtbl.type=='vt', 2:3};
+obj.TextIndices   = objtbl{objtbl.type=='f', [3,6,9]};
 
 %% ===== Refine faces, mesh and generate color matrix =====
-vertices = obj.Vertices;
-faces = obj.Faces;
-texture = obj.TextCoords;
+vertices   = obj.Vertices;
+faces      = obj.Faces;
+texture    = obj.TextCoords;
 textureIdx = obj.TextIndices;
 
 % Check if there exists a .jpg file of 'TessFile'
@@ -96,7 +96,7 @@ end
 
 % Remove the faces with 0's first
 allzeros = sum(faces==0,2)==3;
-faces(allzeros, :)        = [];
+faces(allzeros, :)      = [];
 textureIdx(allzeros, :) = [];
 
 % Check whether all vertices belong to a face. If not, prune the vertices and keep the faces consistent.
@@ -110,6 +110,7 @@ if ~isempty(remove)
     end
 end
 
+color = [];
 if hasimage
     % If true then there is an image/texture with color information
     if texture_per_vert
@@ -165,9 +166,9 @@ vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 %% ===== Convert to Brainstorm structure =====
 % Define the structure
 TessMat = struct( ...
-    'Faces', [], ...
+    'Faces',    [], ...
     'Vertices', [], ...
-    'Color', [], ...
+    'Color',    [], ...
     'Comment', '3dscanner head surface');
 
 % Convert face data
@@ -176,7 +177,5 @@ TessMat.Faces = faces;
 % Convert vertices data
 TessMat.Vertices = vertices ./ 1000;
 
-if hasimage
-    % Convert color data
-    TessMat.Color = color;
-end
+% Convert color data
+TessMat.Color = color;
