@@ -82,7 +82,7 @@ sSubject = bst_get('Subject', iSubject);
 
 % Save reference MRI in .nii format in tmp folder
 MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-sMriRef = in_mri_bst(MriFileRef);
+sMriRef = bst_memory('LoadMri', MriFileRef);
 NiiRefMriFile = bst_fullfile(TmpGardelDir, [sMriRef.Comment '.nii']);
 % NiiRefMriFile is the MRI file of the subject
 out_mri_nii(sMriRef, NiiRefMriFile);
@@ -91,7 +91,7 @@ out_mri_nii(sMriRef, NiiRefMriFile);
 iRawCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName}));
 if ~isempty(iRawCt)
     RawCtFileRef = sSubject.Anatomy(iRawCt(1)).FileName;
-    sMriRawCt = in_mri_bst(RawCtFileRef);
+    sMriRawCt = bst_memory('LoadMri', RawCtFileRef);
     NiiRawCtFile = bst_fullfile(TmpGardelDir, [sMriRawCt.Comment '.nii']);
     % NiiRawCtFile is the unprocessed CT file of the subject
     out_mri_nii(sMriRawCt, NiiRawCtFile);
