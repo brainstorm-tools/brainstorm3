@@ -67,19 +67,20 @@ function Start(DigitizerType) %#ok<DEFNU>
             'headshape',[], ...
             'trans',    []));
     
-    % ===== PARSE INPUTS =====
-    if nargin == 0 || isempty(DigitizerType)
-        Digitize.Type = 'Digitize';
-    elseif nargin == 1
-        if strcmpi(DigitizerType, '3DScanner')
-            Digitize.Type = '3DScanner';
+    % ===== PARSE INPUT =====
+    Digitize.Type = 'Digitize';
+    if nargin > 0 && ~isempty(DigitizerType)
+        Digitize.Type = DigitizerType;
+    end
+    switch DigitizerType
+        case 'Digitize'
+            % Do nothing
+        case '3DScanner'
             % Simulate
             SetSimulate(1);
-        else
-            Digitize.Type = 'Digitize';
-        end
-    else
-        error('Usage : panel_digitize(DigitizerType)');
+        otherwise
+            bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
+            return
     end
 
     % Get Digitize options
