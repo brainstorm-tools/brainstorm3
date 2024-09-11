@@ -1,5 +1,5 @@
-function errorMsg = export_import_gardel(iSubject, BsDir, nVertices, isInteractive, sFid, isVolumeAtlas, isKeepMri)
-% EXPORT_IMPORT_GARDEL: Export/Import GARDEL data.
+function errorMsg = seeg_contactid_gardel(iSubject, BsDir, nVertices, isInteractive, sFid, isVolumeAtlas, isKeepMri)
+% SEEG_CONTACTID_GARDEL: Handle GARDEL data manipulation.
 %
 % USAGE:  errorMsg = export_import_gardel(iSubject, BsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isVolumeAtlas=1, isKeepMri=0)
 %
@@ -77,11 +77,28 @@ bst_plugin('SetProgressLogo', 'gardel');
 % create temporary folder for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
 
-% get the folder for the RAW CT and MRI file
-ProtocolInfo = bst_get('ProtocolInfo');
+% Get current subject
 sSubject = bst_get('Subject', iSubject);
-subjectSubDir = bst_fileparts(sSubject.FileName);
-RawFilesDir = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir);
+
+% Save reference MRI in .nii format in tmp folder
+MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+sMriRef = in_mri_bst(MriFileRef);
+NiiRefMriFile = bst_fullfile(TmpGardelDir, [sMriRef.Comment '.nii']);
+% NiiRefMriFile is the MRI file of the subject
+out_mri_nii(sMriRef, NiiRefMriFile);
+
+% Save the unprocessed CT in .nii format in tmp folder 
+iRawCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName}));
+if ~isempty(iRawCt)
+    RawCtFileRef = sSubject.Anatomy(iRawCt(1)).FileName;
+    sMriRawCt = in_mri_bst(RawCtFileRef);
+    NiiRawCtFile = bst_fullfile(TmpGardelDir, [sMriRawCt.Comment '.nii']);
+    % NiiRawCtFile is the unprocessed CT file of the subject
+    out_mri_nii(sMriRawCt, NiiRawCtFile);
+else
+    bst_error('No Raw unprocessed CT found', 'GARDEL', 0);
+    return;
+end
 
 % Hide Brainstorm window
 jBstFrame = bst_get('BstFrame');

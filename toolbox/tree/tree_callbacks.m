@@ -575,9 +575,10 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
                     if ~isempty(sSubject.Anatomy)
-                        iCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName})); 
+                        % Show GARDEL option in menu only if ther is a Raw unprocessed CT available
+                        iCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
                         if ~isempty(iCt)
-                            gui_component('MenuItem', jPopup, [], 'GARDEL', [], [], @(h,ev)bst_call(@export_import_gardel, iSubject));
+                            gui_component('MenuItem', jPopup, [], 'GARDEL', [], [], @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
                         end
                     end
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
