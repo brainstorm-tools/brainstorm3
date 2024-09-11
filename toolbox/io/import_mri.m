@@ -157,6 +157,8 @@ end
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 isCt    = strcmpi(volType, 'CT');
+isRawCt = 0;
+
 % Tag for CT volume
 if isCt
     tagVolType = '_volct';
@@ -177,19 +179,6 @@ if iscell(MriFile)
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile{1}]);
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
-end
-
-%% save raw CT file (for GARDEL)
-% get the subject subDir
-subjectSubDir = bst_fileparts(sSubject.FileName);
-% Get imported base name
-[tmp__, importedBaseName] = bst_fileparts(MriFile);
-importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
-importedBaseName = strrep(importedBaseName, '_subjectimage', '');
-importedBaseName = strrep(importedBaseName, '.nii', '');
-BstRawFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName tagVolType '_raw.nii.gz']);
-if ~exist(BstRawFile, 'file')
-    copyfile(MriFile, BstRawFile);
 end
 
 %% ===== DELETE TEMPORARY FILES =====
@@ -267,6 +256,12 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         else
             isResliceDisabled = 0;
         end
+        
+        isRawCt = java_dialog('confirm', ' Do you want to store the unprocessed Raw CT (for GARDEL)', ['Import ', volType]);
+        % store unprocessed CT data
+        if isRawCt
+            sCtRaw = sMri;
+        end
 
         % === ASK REGISTRATION METHOD ===
         % Get volumes dimensions
@@ -292,6 +287,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Skip registration
             strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
             cellOptions{end+1} = 'Ignore';
+            % Skip registration
+            strOptions = [strOptions, '<BR>- <U><B>Cancel</B></U>:&nbsp;&nbsp;&nbsp;Cancel the registration process'];
+            cellOptions{end+1} = 'Cancel';
             % Ask user to make a choice
             RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
 
@@ -300,7 +298,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             RegMethod = 'Ignore';
         end
         % User aborted the import
-        if isempty(RegMethod)
+        if isempty(RegMethod) && ~isRawCt
             sMri = [];
             bst_progress('stop');
             return;
@@ -310,7 +308,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
             (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
              isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
-             ~isResliceDisabled))
+             ~isResliceDisabled)) && ~strcmpi(RegMethod, 'Cancel')
             % If the volumes don't have the same size, add a warning
             if ~isSameSize
                 strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
@@ -327,7 +325,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         else
             isReslice = 0;
         end
-
+        
         % === REGISTRATION ===
         switch (RegMethod)
             case 'MNI'
@@ -362,6 +360,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     sMri.SCS = sMriRef.SCS;
                     %sMri.NCS = sMriRef.NCS;
                 end
+            case 'Cancel'
+                sMri = [];
+                errMsg = '';
         end
     end
     % Stop in case of error
@@ -375,30 +376,45 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             error(errMsg);
         end
     end
+elseif (iAnatomy == 1) && isCt
+    % store unprocessed CT data
+    isRawCt = 1;
+    sCtRaw = sMri;
+    sMri = [];
 end
 
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
 % Add a Comment field in MRI structure, if it does not exist yet
 if ~isempty(Comment)
-    sMri.Comment = Comment;
+    if ~isempty(sMri)
+        sMri.Comment = Comment;
+    end
+    if isRawCt
+        sCtRaw.Comment = Comment;
+    end
     importedBaseName = file_standardize(Comment);
 else
-    if ~isfield(sMri, 'Comment') || isempty(sMri.Comment)
+    if (~isfield(sMri, 'Comment') || isempty(sMri.Comment)) && ~isempty(sMri)
         sMri.Comment = 'MRI';
     end
     % Use filename as comment
     if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
         [fPath, fBase, fExt] = bst_fileparts(MriFile);
         fBase = strrep(fBase, '.nii', '');
-        if isMni
-            sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
-        else
-            sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+        if ~isempty(sMri)
+            if isMni 
+                sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
+            else
+                sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+            end
+        end
+        if isRawCt
+            sCtRaw.Comment = [fBase '_raw']; 
         end
     end
     % Add MNI tag
-    if isMni
+    if isMni && ~isempty(sMri)
         if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y_method)
             sMri.Comment = [sMri.Comment ' (MNI-' sMri.NCS.y_method ')'];
         elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y') && isfield(sMri.NCS, 'iy') && ~isempty(sMri.NCS.y) && ~isempty(sMri.NCS.iy)
@@ -409,23 +425,56 @@ else
             sMri.Comment = [sMri.Comment ' (MNI)'];
         end
     end
-    
+    % Get imported base name
+    [tmp__, importedBaseName] = bst_fileparts(MriFile);
+    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+    importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+    importedBaseName = strrep(importedBaseName, '.nii', '');
 end
 
 
 %% ===== SAVE FILE =====
-% Produce a default anatomy filename
-BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
-% Make this filename unique
-BstMriFile = file_unique(BstMriFile);
-% Save new MRI in Brainstorm format
-sMri = out_mri_bst(sMri, BstMriFile);
+% get the subject subdirectory
+subjectSubDir = bst_fileparts(sSubject.FileName);
+
+if ~isempty(sMri)
+    % Produce a default anatomy filename
+    BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
+    % Make this filename unique
+    BstMriFile = file_unique(BstMriFile);
+    % Save new MRI in Brainstorm format
+    sMri = out_mri_bst(sMri, BstMriFile);
+end
+
+if isRawCt
+    % Produce a default anatomy filename
+    BstRawCtFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '_raw.mat']);
+    % Make this filename unique
+    BstRawCtFile = file_unique(BstRawCtFile);
+    % Save new raw CT in Brainstorm format
+    sCtRaw = out_mri_bst(sCtRaw, BstRawCtFile);
+end
 
 %% ===== REFERENCE NEW MRI IN DATABASE ======
-% New anatomy structure
-sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
-sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
-sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
+if ~isempty(sMri)
+    % New anatomy structure
+    sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
+    sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
+end
+if isRawCt
+    if ~isempty(sMri)
+        % New anatomy structure
+        sSubject.Anatomy(iAnatomy+1) = db_template('Anatomy');
+        sSubject.Anatomy(iAnatomy+1).FileName = file_short(BstRawCtFile);
+        sSubject.Anatomy(iAnatomy+1).Comment  = sCtRaw.Comment;
+    else
+        % New anatomy structure
+        sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
+        sSubject.Anatomy(iAnatomy).FileName = file_short(BstRawCtFile);
+        sSubject.Anatomy(iAnatomy).Comment  = sCtRaw.Comment;
+    end
+end
 % Default anatomy: do not change
 if isempty(sSubject.iAnatomy)
     sSubject.iAnatomy = iAnatomy;
@@ -449,22 +498,35 @@ panel_protocols('UpdateNode', 'Subject', iSubject);
 panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 % Save database
 db_save();
-% Unload MRI (if a MRI with the same name was previously loaded)
-bst_memory('UnloadMri', BstMriFile);
+if ~isempty(sMri) 
+    % Unload MRI (if a MRI with the same name was previously loaded)
+    bst_memory('UnloadMri', BstMriFile);
+end
+if isRawCt
+    % Unload Raw CT (if a CT with the same name was previously loaded)
+    bst_memory('UnloadMri', BstRawCtFile);
+end
 
 
 %% ===== MRI VIEWER =====
 if isInteractive
     % First MRI: Edit fiducials
     if (iAnatomy == 1)
-        % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-        hFig = view_mri(BstMriFile, 'EditMri');
+        if ~isempty(sMri)
+            % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
+            hFig = view_mri(BstMriFile, 'EditMri');
+        end
+        if isRawCt
+            % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
+            hFig = view_mri(BstRawCtFile, 'EditMri');
+        end
         drawnow;
         bst_progress('stop');
         % Wait for the MRI Viewer to be closed
         if ishandle(hFig)
             waitfor(hFig);
         end
+        
     % Other volumes: Display registration
     else
         % If volumes are registered
@@ -476,7 +538,11 @@ if isInteractive
                 panel_surface('SetDataThreshold', hFig, 1, 0.3);
             end
         else
-            hFig = view_mri(BstMriFile);
+            if ~isempty(sMri)
+                hFig = view_mri(BstMriFile);
+            elseif isRawCt
+                hFig = view_mri(BstRawCtFile);
+            end
         end
     end
 else
