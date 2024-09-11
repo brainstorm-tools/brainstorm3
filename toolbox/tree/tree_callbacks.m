@@ -216,8 +216,7 @@ switch (lower(action))
                     hFig = view_mri_3d(MriFile, [], 0.3, []);
                     view_surface(filenameRelative, [], [], hFig, []);
                 elseif ~isempty(regexp(filenameRelative, 'textured', 'match'))
-                    sSurf = bst_memory('LoadSurface', filenameRelative);
-                    view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
+                    ViewTexturedSurface(filenameRelative);
                 else
                     view_surface(filenameRelative);
                 end
@@ -1129,7 +1128,11 @@ switch (lower(action))
                 sSubject = bst_get('Subject', iSubject);
                 
                 % === DISPLAY ===
-                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)ViewTexturedSurface(filenameRelative));
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                end
 
                 % === SET SURFACE TYPE ===
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
@@ -3852,4 +3855,11 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
     if isempty(MriFileReg) || ~isempty(errMsg)
         bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
     end
+end
+
+
+%% ===== DISPLAY TEXTURED SURFACE =====
+function ViewTexturedSurface(filenameRelative)
+    sSurf = bst_memory('LoadSurface', filenameRelative);
+    view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
 end
