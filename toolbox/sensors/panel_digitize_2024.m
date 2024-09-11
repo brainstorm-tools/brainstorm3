@@ -730,6 +730,8 @@ function EEGAutoDetectElectrodes()
     end
     % Disable Auto button
     ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
+    % Progress bar
+    bst_progress('start', Digitize.Type, 'Automatic labelling of EEG sensors...');
 
     % Get the surface
     hFig = bst_figures('GetCurrentFigure','3D');
@@ -742,6 +744,7 @@ function EEGAutoDetectElectrodes()
     [centers_cap, cap_img, sSurf] = findElectrodesEegCap(sSurf);
     if isempty(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
+        bst_progress('stop');
         return;
     else
         ChannelMat = in_bst_channel(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
@@ -770,6 +773,8 @@ function EEGAutoDetectElectrodes()
     UpdateList();
     % Enable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(1);
+    bst_progress('stop');
+
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
