@@ -1101,11 +1101,11 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, '3DScanner')
                         % Get Digitize options
                         DigitizeOptions = bst_get('DigitizeOptions');
+                        panel_fun = @panel_digitize;
                         if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-                	        panel_digitize_2024('ManualCollect_Callback');
-                        else
-                            panel_digitize('ManualCollect_Callback');
+                            panel_fun = @panel_digitize_2024;
                         end
+                        panel_fun('ManualCollect_Callback');
                     end
                 % CTRL+D : Dock figure
                 case 'd'
