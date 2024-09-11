@@ -109,3 +109,15 @@ bst_call(@GARDEL);
 
 % Set process logo
 bst_progress('stop');
+
+% find the app 'GARDEL_v2.3.7'
+% TODO: Save data to temporary folder from GARDEL
+appName = 'GARDEL_v2.3.7';
+disp([appName ' app opened !']);
+f = findall(bst_get('groot'),'Type','figure','Name',appName);
+waitfor(f);
+disp([appName ' app closed !']);
+
+% Show Brainstorm GUI
+% TODO: Load data from temp directory back to Brainstorm 
+jBstFrame.setVisible(1);
