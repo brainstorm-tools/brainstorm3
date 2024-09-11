@@ -1098,7 +1098,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % C : Collect point
                 case 'c'
                     % for 3DScanner
-                    if gui_brainstorm('isTabVisible', Digitize.Type) && strcmpi(Digitize.Type, '3DScanner')
+                    if gui_brainstorm('isTabVisible', 'Digitize') && strcmpi(Digitize.Type, '3DScanner')
                         % Get Digitize options
                         DigitizeOptions = bst_get('DigitizeOptions');
                         panel_fun = @panel_digitize;

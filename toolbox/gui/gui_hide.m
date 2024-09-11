@@ -74,7 +74,7 @@ switch (panelName)
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');
         end
-    case {'Digitize', '3DScanner'}
+    case 'Digitize'
         DigitizeOptions = bst_get('DigitizeOptions');
         if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
             isAccepted = panel_digitize_2024('PanelHidingCallback');
