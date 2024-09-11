@@ -207,10 +207,10 @@ for iFile = 1:length(SurfaceFiles)
     NewTess = bst_history('add', NewTess, 'import', ['Import from: ' TessFile]);
     % Produce a default surface filename (surface of volume mesh)
     if isfield(NewTess, 'Faces')
-        if isfield(NewTess, 'Color')
-            BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_textured_' importedBaseName '.mat']);
-        else
+        if isempty(NewTess.Color)
             BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+        else
+            BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_textured_' importedBaseName '.mat']);
         end
     else
         BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_fem_' importedBaseName '.mat']);

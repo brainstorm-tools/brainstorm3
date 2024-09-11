@@ -13,8 +13,8 @@ function [TessMat, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelL
 % OUTPUT:
 %     - TessMat:  Brainstorm tesselation structure with fields:
 %         |- Vertices : {[3 x nbVertices] double}, in millimeters
-%         |- Faces    : {[nbFaces x 3] double}
-%         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional output as not all surfaces have color information) 
+%         |- Faces    : {[nbFaces x 3] double}                         (optional, volume meshes do not have 'Faces')
+%         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional, not all surfaces have color info)
 %         |- Comment  : {information string}
 
 % @=============================================================================
@@ -220,7 +220,6 @@ switch (FileFormat)
         end
     
     case 'WFTOBJ'
-        % Read the OBJ file for the surface mesh structure
         TessMat = in_tess_wftobj(TessFile);
         isConvertScs = 0;
 

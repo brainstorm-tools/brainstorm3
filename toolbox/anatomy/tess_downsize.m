@@ -134,9 +134,7 @@ TessMat = in_tess_bst(TessFile);
 % Prepare variables
 TessMat.Faces    = double(TessMat.Faces);
 TessMat.Vertices = double(TessMat.Vertices);
-if isfield(TessMat, 'Color')
-    TessMat.Color = double(TessMat.Color);
-end
+TessMat.Color    = double(TessMat.Color);
 dsFactor = newNbVertices / size(TessMat.Vertices, 1); 
 
 
@@ -154,7 +152,7 @@ switch (Method)
         % Re-order the vertices so that they are in the same order in the output surface
         [I, iSort] = sort(I);
         NewTessMat.Vertices = TessMat.Vertices(I,:);
-        if isfield(TessMat, 'Color')
+        if ~isempty(TessMat.Color)
             NewTessMat.Color = TessMat.Color(I,:);
         end
         J = J(iSort);
