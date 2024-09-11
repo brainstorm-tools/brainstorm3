@@ -752,10 +752,7 @@ function EEGAutoDetectElectrodes()
 
     % Get and store the EEG points
     iEeg = find(cellfun(@(x)~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}));
-    pointsEEG = [];
-    for i=1:length(iEeg)
-        pointsEEG = [pointsEEG;Digitize.Points(iEeg(i)).Loc];
-    end
+    pointsEEG = cat(1, Digitize.Points(iEeg).Loc);
     
     % ward points from layout to mesh
     capPoints3d = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, pointsEEG);
@@ -1756,15 +1753,10 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     % Grt current montage
     [curMontage, nEEG] = GetCurrentMontage();
 
-    % convert EEG cap manufacturer layout from 3D to 2D 
-    X1 = [];
-    Y1 = [];
-    for i=1:nEEG
-        [X,Y] = bst_project_2d(ChannelRef(i).Loc(1,:), ChannelRef(i).Loc(2,:), ChannelRef(i).Loc(3,:), '2dcap');
-        X1 = [X1 X];
-        Y1 = [Y1 Y];
-    end
-    centerssketch_temp = [X1' Y1'];
+    % convert EEG cap manufacturer layout from 3D to 2D
+    tmp = [ChannelRef.Loc]';
+    [X1, Y1] = bst_project_2d(tmp(:,1), tmp(:,2), tmp(:,3), '2dcap');
+    centerssketch_temp = [X1 Y1];
     centerssketch = [];
 
     %% sort as per the initialization points per EEG Cap 
