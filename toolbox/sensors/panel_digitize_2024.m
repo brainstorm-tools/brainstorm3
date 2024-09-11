@@ -65,19 +65,20 @@ function Start(DigitizerType)
         Digitize.Options.Montages(end).ChannelFile = [];
     end
 
-    % ===== PARSE INPUTS =====
-    if nargin == 0 || isempty(DigitizerType)
-        Digitize.Type = 'Digitize';
-    elseif nargin == 1
-        if strcmpi(DigitizerType, '3DScanner')
-            Digitize.Type = '3DScanner';
+    % ===== PARSE INPUT =====
+    Digitize.Type = 'Digitize';
+    if nargin > 0 && ~isempty(DigitizerType)
+        Digitize.Type = DigitizerType;
+    end
+    switch DigitizerType
+        case 'Digitize'
+            % Do nothing
+        case '3DScanner'
             % Simulate
             SetSimulate(1);
-        else
-            Digitize.Type = 'Digitize';
-        end
-    else
-        error('Usage : panel_digitize_2024(DigitizerType)');
+        otherwise
+            bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
+            return
     end
 
     % ===== PREPARE DATABASE =====
