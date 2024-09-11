@@ -174,19 +174,20 @@ function Start(DigitizerType) %#ok<DEFNU>
     Digitize.ConditionName = ConditionName;
     
     if strcmpi(Digitize.Type, '3DScanner')
-        % import surface
-        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment}));
-        if(isempty(iTargetSurface))
-            [~, OutputSurfacesFiles, ~] = import_surfaces(iSubject);
-            sSurf = bst_memory('LoadSurface', OutputSurfacesFiles{end});
-            sSubject = bst_get('Subject', SubjectName);
-            iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment})); 
+        % Import surface
+        iSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment}));
+        if isempty(iSurface)
+            [~, surfaceFiles] = import_surfaces(iSubject);
+            if isempty(surfaceFiles)
+                return
+            end
+            surfaceFile = surfaceFiles{end};
         else
-            sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
+            surfaceFile = sSubject.Surface(iSurface(end)).FileName;
         end
-        
-        % view the surface
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], sSubject.Surface(iTargetSurface(end)).FileName);
+        sSurf = bst_memory('LoadSurface', surfaceFile);
+        % Display surface
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], surfaceFile);
     end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
