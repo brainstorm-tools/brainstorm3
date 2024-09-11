@@ -192,6 +192,7 @@ function Start(DigitizerType) %#ok<DEFNU>
 
     % ===== DISPLAY DIGITIZE WINDOW =====
     % Display panel
+    % Set window title to Digitize.Type
     panelContainer = gui_show('panel_digitize', 'JavaWindow', Digitize.Type, [], [], [], []);
     % Hide Brainstorm window
     jBstFrame = bst_get('BstFrame');
@@ -221,7 +222,7 @@ end
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global Digitize
     % Constants
-    panelName = Digitize.Type;
+    panelName = 'Digitize';
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -428,7 +429,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
-                ctrl = bst_get('PanelControls', Digitize.Type);
+                ctrl = bst_get('PanelControls', 'Digitize');
                 % if contact list rendering is blank in panel then dont't proceed
                 if ctrl.jListCoord.isSelectionEmpty()
                     return;
@@ -453,7 +454,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function CoordListClick_Callback(h, ev)
         % IF SINGLE CLICK
         if (ev.getClickCount() == 1)
-            ctrl = bst_get('PanelControls', Digitize.Type);
+            ctrl = bst_get('PanelControls', 'Digitize');
             % if contact list rendering is blank in panel then dont't proceed
             if ctrl.jListCoord.isSelectionEmpty()
                 return;
@@ -469,9 +470,8 @@ end
 
 %% ===== GET SELECTED ELECTRODE =====
 function [sCoordName, iSelCoord] = GetSelectedCoord()
-    global Digitize
     % Get panel handles
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     if isempty(ctrl)
         return;
     end
@@ -500,9 +500,7 @@ end
 
 %% ===== CLOSE =====
 function Close_Callback()
-    global Digitize
-
-    gui_hide(Digitize.Type);
+    gui_hide('Digitize');
 end
 
 %% ===== HIDING CALLBACK =====
@@ -652,7 +650,7 @@ function ResetDataCollection(isResetSerial)
         CreateSerialConnection();
     end
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Reset points structure
     Digitize.Points = struct(...
         'nasion',    [], ...
@@ -702,7 +700,7 @@ function SwitchToNewMode(mode)
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Select mode
@@ -822,7 +820,7 @@ function UpdateList()
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Define the model
     listModel = javax.swing.DefaultListModel();
     % Get current montage
@@ -934,10 +932,8 @@ end
 
 %% ===== SET SELECTED BUTTON =====
 function SetSelectedButton(iButton)
-    global Digitize
-
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Create list of buttons
     jButton = javaArray('javax.swing.JToggleButton', 8);
     jButton(1) = ctrl.jButtonhpiN;
@@ -970,7 +966,7 @@ function EEGAutoDetectElectrodes(h, ev)
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
 
     if size(Digitize.Points.EEG, 1) < 4
         bst_error('Please set the first 4 initialization points', Digitize.Type, 0);
@@ -1047,7 +1043,7 @@ function CollectRandomHeadPts_Callback(h, ev)
     global Digitize;
     
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Enable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(0);
 
@@ -1081,7 +1077,7 @@ function DeletePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     DigitizeOptions = bst_get('DigitizeOptions');
     
     % only remove cardinal points when MEG coils are used for the
@@ -1173,7 +1169,7 @@ function ComputeTransform()
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -1293,7 +1289,7 @@ function CreateHeadpointsFigure()
         % Hide head surface
         panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
         % Get Digitizer JFrame
-        bstContainer = get(bst_get('Panel',Digitize.Type), 'container');
+        bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
         [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
@@ -1326,7 +1322,7 @@ function CreateHeadpointsFigure()
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
         end
         % Get Digitizer JFrame
-        bstContainer = get(bst_get('Panel', Digitize.Type), 'container');
+        bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
         [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
@@ -1389,7 +1385,7 @@ function EEGChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Get digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     
@@ -1405,7 +1401,7 @@ function ExtraChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     
     initPoint = str2num(ctrl.jTextFieldExtra.getText()); %#ok<*ST2NM>
     % restrict to a maximum of points collected and minimum of '1'
@@ -1429,7 +1425,7 @@ function CreateMontageMenu(jMenu)
 
     % Get menu pointer if not in argument
     if (nargin < 1) || isempty(jMenu)
-        ctrl = bst_get('PanelControls', Digitize.Type);
+        ctrl = bst_get('PanelControls', 'Digitize');
         jMenu = ctrl.jMenuEeg;
     end
     % Get Digitize options
@@ -1880,7 +1876,7 @@ function BytesAvailable_Callback()
     global Digitize rawpoints
 
     % Get controls
-    ctrl = bst_get('PanelControls', Digitize.Type);
+    ctrl = bst_get('PanelControls', 'Digitize');
     % Get digitizer options
     DigitizeOptions = bst_get('DigitizeOptions');
 
