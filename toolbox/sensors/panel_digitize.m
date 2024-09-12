@@ -90,7 +90,7 @@ function Start(DigitizerType) %#ok<DEFNU>
         if strcmpi(Digitize.Type, '3DScanner')
             bst_call(@panel_digitize_2024, 'Start', '3DScanner');
         else
-            bst_call(@panel_digitize_2024, 'Start', 'Digitize');
+            bst_call(@panel_digitize_2024, 'Start');
         end
         return;
     end
