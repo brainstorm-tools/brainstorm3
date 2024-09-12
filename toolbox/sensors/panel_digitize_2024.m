@@ -38,7 +38,7 @@ end
 %  ========================================================================
 
 %% ===== START =====
-function Start(DigitizerType) 
+function Start(varargin) 
     global Digitize
     % Intialize global variable
     Digitize = struct(...
@@ -66,10 +66,11 @@ function Start(DigitizerType)
     end
 
     % ===== PARSE INPUT =====
-    Digitize.Type = 'Digitize';
-    if nargin > 0 && ~isempty(DigitizerType)
-        Digitize.Type = DigitizerType;
+    DigitizerType = 'Digitize';
+    if nargin > 0 && ~isempty(varargin{1})
+        DigitizerType = varargin{1};
     end
+    Digitize.Type = DigitizerType;
     switch DigitizerType
         case 'Digitize'
             % Do nothing

@@ -40,7 +40,7 @@ end
 %#function icinterface
 
 %% ===== START =====
-function Start(DigitizerType) %#ok<DEFNU>
+function Start(varargin) %#ok<DEFNU>
     global Digitize    
     % ===== INITIALIZE CONNECTION =====
     % Intialize global variable
@@ -68,10 +68,11 @@ function Start(DigitizerType) %#ok<DEFNU>
             'trans',    []));
     
     % ===== PARSE INPUT =====
-    Digitize.Type = 'Digitize';
-    if nargin > 0 && ~isempty(DigitizerType)
-        Digitize.Type = DigitizerType;
+    DigitizerType = 'Digitize';
+    if nargin > 0 && ~isempty(varargin{1})
+        DigitizerType = varargin{1};
     end
+    Digitize.Type = DigitizerType;
     switch DigitizerType
         case 'Digitize'
             % Do nothing
