@@ -175,7 +175,7 @@ TessMat = struct( ...
 TessMat.Faces = faces;
 
 % Convert vertices data
-TessMat.Vertices = vertices ./ 1000;
+TessMat.Vertices = vertices;
 
 % Convert color data
 TessMat.Color = color;
