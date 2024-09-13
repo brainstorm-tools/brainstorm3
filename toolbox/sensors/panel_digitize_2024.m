@@ -755,9 +755,9 @@ function EEGAutoDetectElectrodes()
     iEeg = find(cellfun(@(x)~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}));
     pointsEEG = cat(1, Digitize.Points(iEeg).Loc);
     
-    % ward points from layout to mesh
+    % Warp points from layout to mesh
     capPoints3d = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, pointsEEG);
-    
+
     % Plot the electrodes and their labels
     for i= 1:length(capPoints3d)
         % Increment current point index
@@ -1277,44 +1277,18 @@ function AddMontage(ChannelFile)
         newMontage.Name = ChannelMat.Comment;
         newMontage.Labels = {};
         newMontage.ChannelFile = ChannelFile;
-        
-        % Get labels
-        [~,col] = size(ChannelMat.Channel);
-        
-        % if Acticap
-        if ~isempty(regexp(newMontage.Name, 'ActiCap', 'match')) && col==66
-            newMontage.Labels{end+1} = 'Oz';
-            newMontage.Labels{end+1} = 'T8';
-            newMontage.Labels{end+1} = 'GND';
-            newMontage.Labels{end+1} = 'T7';
-            for i=1:col
-                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'GND') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
-                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
-                end
-            end
-        % if Waveguard
-        elseif ~isempty(regexp(newMontage.Name, 'Waveguard', 'match')) && col==65
-            newMontage.Labels{end+1} = 'Oz';
-            newMontage.Labels{end+1} = 'T8';
-            newMontage.Labels{end+1} = 'Fpz';
-            newMontage.Labels{end+1} = 'T7';
-            for i=1:col
-                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'Fpz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
-                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
-                end
-            end
+
+        % Get cap landmark labels
+        [~, capLandmarkLabels] = getEegCapLandmarkLabels(newMontage.Name);
+        if isempty(capLandmarkLabels)
+            bst_error('EEG cap not supported', Digitize.Type, 0);
+            return;
         end
-        % If no labels were read: exit
-        if isempty(newMontage.Labels)
-            bst_error('EEG cap configuration not supported', Digitize.Type, 0);
-            return
-        end
+        
+        % Sort as per the initialization landmark labels of EEG Cap  
+        nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},capLandmarkLabels));
+        allLabels = {ChannelMat.Channel.Name};
+        newMontage.Labels = cat(2, capLandmarkLabels, allLabels(nonLandmarkLabelsIdx));
     end
     
     % Get existing montage with the same name
@@ -1719,6 +1693,11 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     
     % perform image processing to detect the electrode locations
     grayness = head_surface.Color*[1;1;1]/sqrt(3);
+    
+    % fit image to a 512x512 grid 
+    % #######################################################################
+    % ### NOTE: Should work with any iamge fitting but needs more testing ###
+    % #######################################################################
     ll=linspace(-1,1,512);
     [X,Y]=meshgrid(ll,ll);
     vc_sq = 0*X;
@@ -1747,104 +1726,52 @@ end
 function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
     global Digitize
 
-    % hyperparameters for warping and interpolation
-    NIT=1000;
-    lambda = 100000;
+    % Hyperparameters for warping and interpolation
+    numIters   = 1000;
+    lambda    = 100000;
+    % dimension of the flattened cap from mesh
+    capImgDim = length(cap_img);
+    % ignore pixels threshold
+    ignorePix = 15;
     
-    % Grt current montage
+    
+    % Get current montage
     [curMontage, nEEG] = GetCurrentMontage();
 
-    % convert EEG cap manufacturer layout from 3D to 2D
+    % Convert EEG cap manufacturer layout from 3D to 2D
     tmp = [ChannelRef.Loc]';
     [X1, Y1] = bst_project_2d(tmp(:,1), tmp(:,2), tmp(:,3), '2dcap');
     centerssketch_temp = [X1 Y1];
-    centerssketch = [];
-
-    %% sort as per the initialization points per EEG Cap 
-    % order for 65: Oz, T8, Fpz, T7 (custom cap)
-    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
-
-        for i=1:nEEG
-            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
-               ~strcmpi(ChannelRef(i).Name, 'Fpz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T7')
-                centerssketch = [centerssketch; centerssketch_temp(i, :)];
-            end
-        end
-
-    % order for ActiCap 66: Oz, T8, Fpz, T7 (custom cap)
-    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
-
-        for i=1:nEEG
-            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
-               ~strcmpi(ChannelRef(i).Name, 'GND') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T7')
-                centerssketch = [centerssketch; centerssketch_temp(i, :)];
-            end
-        end
     
-    % any other cap (NEED TO WORK ON THIS)
-    else
-        bst_error('EEG cap not supported', Digitize.Type, 0);
-        return;
+    % Get cap landmark labels
+    [nLandmarkLabels, capLandmarkLabels] = getEegCapLandmarkLabels(curMontage.Name);
+    
+    % Sort as per the initialization landmark points of EEG Cap  
+    landmarkPoints = centerssketch_temp(find(ismember({ChannelRef.Name},capLandmarkLabels)),:);
+    nonLandmarkPoints = centerssketch_temp(find(~ismember({ChannelRef.Name},capLandmarkLabels)),:);
+    centerssketch = cat(1, landmarkPoints, nonLandmarkPoints);
+    
+    %% Warping EEG cap layout electrodes to mesh 
+    % Get 2D projected points of the available 3D layout points in Brainstorm
+    sketch_pts = centerssketch(1:nLandmarkLabels, :);
+    % Get 2D projected points of the 3D points selected by the user on the mesh 
+    [x2, y2] = bst_project_2d(EegPoints(1:nLandmarkLabels,1), EegPoints(1:nLandmarkLabels,2), EegPoints(1:nLandmarkLabels,3), '2dcap');
+    % Reprojection into the space of the flattened mesh dimensions
+    cap_pts = ([x2 y2]+1) * capImgDim/2;
+    for i=1:4
+        DeletePoint_Callback();
     end
-    
-    %% warping EEG cap layout electrodes to mesh 
-    % for Waveguard 65
-    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
-        Oz = centerssketch(1,:);
-        T8 = centerssketch(2,:);
-        Fpz = centerssketch(3,:);
-        T7 = centerssketch(4,:);
-        sketch_pts = [Oz;T8;Fpz;T7];
-    
-        for i=1:4
-            DeletePoint_Callback();
-        end
-    
-        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-        [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-        cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
 
-    % for ActiCap 66
-    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
-        Oz = centerssketch(1,:);
-        T8 = centerssketch(2,:);
-        GND = centerssketch(3,:);
-        T7 = centerssketch(4,:);
-        sketch_pts = [Oz;T8;GND;T7];
-    
-        for i=1:4
-            DeletePoint_Callback();
-        end
-    
-        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-        [GNDx, GNDy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-        cap_pts = ([Ozx,Ozy;T8x,T8y;GNDx,GNDy;T7x,T7y]+1)*256;
-    end
-    
-    %% Do the warping and interpolation
+    % Do the warping and interpolation
     warp = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
     [xsR,ysR] = tpsInterpolate(warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     centerssketch(:,1) = xsR;
     centerssketch(:,2) = ysR;
-    centerssketch = max(min(centerssketch,512-15),15);
+    % 15 is just a hyperparameter. It is because if some point is detected near the border then it is too close to the border, 
+    % it moves it inside. It leaves a margin of 15 pixels around the border
+    centerssketch = max(min(centerssketch,capImgDim-ignorePix),ignorePix);
     
-    for kk=1:NIT
+    for kk=1:numIters
         fprintf('.');
         %tic
         k=dsearchn(centerssketch,centerscap);
@@ -1873,7 +1800,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     
         [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     
-        if kk<NIT/2
+        if kk<numIters/2
             centerssketch(:,1) = 0.9*centerssketch(:,1) + 0.1*xsR;
             centerssketch(:,2) = 0.9*centerssketch(:,2) + 0.1*ysR;
         else
@@ -1884,8 +1811,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
         centerssketch = max(min(centerssketch,512-15),15);
     end
 
-    NPTS = length(cap_img);
-    ll=linspace(-1,1,NPTS);
+    ll=linspace(-1,1,capImgDim);
     [X1,Y1]=meshgrid(ll,ll);
     
     u_sketch = interp2(X1,xsR,ysR);
@@ -1900,4 +1826,20 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     capPoints3d(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),u_sketch,v_sketch);
 end
 
+%% Get landmark labels of EEG CAP
+% for every new variety of cap we need to edit this function
+function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(capName)
+    global Digitize
 
+    eegCapLandmarkLabels = {};
+    switch(capName)
+        case 'ANT Waveguard (65)'
+            eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
+        case 'BrainProducts ActiCap (66)'
+            eegCapLandmarkLabels = {'GND', 'Oz', 'T7', 'T8'};
+        otherwise
+            nLandmarkLabels = 0;
+            return;
+    end
+    nLandmarkLabels = length(eegCapLandmarkLabels);
+end
