@@ -985,7 +985,7 @@ function EEGAutoDetectElectrodes(h, ev)
     sSurf.Color = TessInfo.hPatch.FaceVertexCData;
     
     % call automation functions to get the EEG cap electrodes
-    [centers_cap, cap_img, sSurf] = findElectrodesEegCap(sSurf);
+    [centers_cap, cap_img, sSurf] = auto_3dscanner('findElectrodesEegCap', sSurf);
     DigitizeOptions = bst_get('DigitizeOptions');
     if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
@@ -993,7 +993,7 @@ function EEGAutoDetectElectrodes(h, ev)
     else
         ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
     end
-    capPoints3d = warpLayout2Mesh(centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
+    capPoints3d = auto_3dscanner('warpLayout2Mesh', centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
     
     % Plot the electrodes and their labels
     for i= 1:length(capPoints3d)
@@ -1626,43 +1626,17 @@ function AddMontage(ChannelFile)
         newMontage.Labels = {};
         newMontage.ChannelFile = ChannelFile;
         
-        % Get labels
-        [~,col] = size(ChannelMat.Channel);
+        % Get cap landmark labels
+        [~, capLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', newMontage.Name);
+        if isempty(capLandmarkLabels)
+            bst_error('EEG cap not supported', Digitize.Type, 0);
+            return;
+        end
         
-        % if Acticap
-        if ~isempty(regexp(newMontage.Name, 'ActiCap', 'match')) && col==66
-            newMontage.Labels{end+1} = 'Oz';
-            newMontage.Labels{end+1} = 'T8';
-            newMontage.Labels{end+1} = 'GND';
-            newMontage.Labels{end+1} = 'T7';
-            for i=1:col
-                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'GND') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
-                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
-                end
-            end
-        % if Waveguard
-        elseif ~isempty(regexp(newMontage.Name, 'Waveguard', 'match')) && col==65
-            newMontage.Labels{end+1} = 'Oz';
-            newMontage.Labels{end+1} = 'T8';
-            newMontage.Labels{end+1} = 'Fpz';
-            newMontage.Labels{end+1} = 'T7';
-            for i=1:col
-                if ~strcmpi(ChannelMat.Channel(i).Name, 'Oz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T8') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'Fpz') &&...
-                   ~strcmpi(ChannelMat.Channel(i).Name, 'T7')
-                    newMontage.Labels{end+1} = ChannelMat.Channel(i).Name;
-                end
-            end
-        end
-        % If no labels were read: exit
-        if isempty(newMontage.Labels)
-            bst_error('EEG cap configuration not supported', Digitize.Type, 0);
-            return
-        end
+        % Sort as per the initialization landmark labels of EEG Cap  
+        nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},capLandmarkLabels));
+        allLabels = {ChannelMat.Channel.Name};
+        newMontage.Labels = cat(2, capLandmarkLabels, allLabels(nonLandmarkLabelsIdx));
     end
     
     
@@ -1966,7 +1940,7 @@ function BytesAvailable_Callback()
         end
     end
     % check for change in Mode (click at least 1 meter away from transmitter)
-    if any(abs(pointCoord) > 1.5)
+    if ~strcmpi(Digitize.Type, '3DScanner') && any(abs(pointCoord) > 1.5)
         newMode = Digitize.Mode +1;
         SwitchToNewMode(newMode);
         return;
@@ -2187,195 +2161,3 @@ function newPT = DoMotionCompensation(sensors)
     newPT(3) = pt(1) * rotMat(3, 1) + pt(2) * rotMat(3, 2) + pt(3) * rotMat(3, 3)'+ rotMat(3, 4);
 end
 
-%% ========================================================================
-%  ======= 3DSCANNER AUTOMATION ===========================================
-%  ========================================================================
-
-%% ===== FIND ELECTRODES ON THE EEG CAP =====
-function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surface)
-    global Digitize
-
-    % Flatten the 3D mesh to 2D space
-    [head_surface.u, head_surface.v] = bst_project_2d(head_surface.Vertices(:,1), head_surface.Vertices(:,2), head_surface.Vertices(:,3), '2dcap');
-    
-    % perform image processing to detect the electrode locations
-    grayness = head_surface.Color*[1;1;1]/sqrt(3);
-    ll=linspace(-1,1,512);
-    [X,Y]=meshgrid(ll,ll);
-    vc_sq = 0*X;
-    vc_sq(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
-
-    [curMontage, nEEG] = GetCurrentMontage();
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        vc_sq = imcomplement(vc_sq);
-    end
-
-    % toggle comment depending on cap
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
-    elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
-        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
-    else % NEED TO WORK ON THIS
-        bst_error('EEG cap not supported', Digitize.Type, 0);
-        return;
-    end
-
-    centers_cap = centers; 
-    cap_img = vc_sq;
-end
-
-%% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
-    global Digitize
-
-    % hyperparameters for warping and interpolation
-    NIT=1000;
-    lambda = 100000;
-    
-    % Grt current montage
-    [curMontage, nEEG] = GetCurrentMontage();
-
-    % convert EEG cap manufacturer layout from 3D to 2D 
-    X1 = [];
-    Y1 = [];
-    for i=1:nEEG
-        [X,Y] = bst_project_2d(ChannelRef(i).Loc(1,:), ChannelRef(i).Loc(2,:), ChannelRef(i).Loc(3,:), '2dcap');
-        X1 = [X1 X];
-        Y1 = [Y1 Y];
-    end
-    centerssketch_temp = [X1' Y1'];
-    centerssketch = [];
-
-    %% sort as per the initialization points per EEG Cap 
-    % order for 65: Oz, T8, Fpz, T7 (custom cap)
-    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Fpz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
-
-        for i=1:nEEG
-            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
-               ~strcmpi(ChannelRef(i).Name, 'Fpz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T7')
-                centerssketch = [centerssketch; centerssketch_temp(i, :)];
-            end
-        end
-
-    % order for ActiCap 66: Oz, T8, Fpz, T7 (custom cap)
-    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'Oz'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T8'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'GND'), {ChannelRef.Name})),:)];
-        centerssketch = [centerssketch; centerssketch_temp(find(cellfun(@(c)strcmpi(c, 'T7'), {ChannelRef.Name})),:)];
-
-        for i=1:nEEG
-            if ~strcmpi(ChannelRef(i).Name, 'Oz') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T8') &&...
-               ~strcmpi(ChannelRef(i).Name, 'GND') &&...
-               ~strcmpi(ChannelRef(i).Name, 'T7')
-                centerssketch = [centerssketch; centerssketch_temp(i, :)];
-            end
-        end
-    
-    % any other cap (NEED TO WORK ON THIS)
-    else
-        bst_error('EEG cap not supported', Digitize.Type, 0);
-        return;
-    end
-    
-    %% warping EEG cap layout electrodes to mesh 
-    % for Waveguard 65
-    if ~isempty(regexp(curMontage.Name, 'Waveguard', 'match')) && nEEG==65
-        Oz = centerssketch(1,:);
-        T8 = centerssketch(2,:);
-        Fpz = centerssketch(3,:);
-        T7 = centerssketch(4,:);
-        sketch_pts = [Oz;T8;Fpz;T7];
-    
-        for i=1:4
-            DeletePoint_Callback();
-        end
-    
-        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-        [Fpzx, Fpzy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-        cap_pts = ([Ozx,Ozy;T8x,T8y;Fpzx,Fpzy;T7x,T7y]+1)*256;
-
-    % for ActiCap 66
-    elseif ~isempty(regexp(curMontage.Name, 'ActiCap', 'match')) && nEEG==66
-        Oz = centerssketch(1,:);
-        T8 = centerssketch(2,:);
-        GND = centerssketch(3,:);
-        T7 = centerssketch(4,:);
-        sketch_pts = [Oz;T8;GND;T7];
-    
-        for i=1:4
-            DeletePoint_Callback();
-        end
-    
-        [Ozx, Ozy] = bst_project_2d(EegPoints(1,1), EegPoints(1,2), EegPoints(1,3), '2dcap');
-        [T8x, T8y] = bst_project_2d(EegPoints(2,1), EegPoints(2,2), EegPoints(2,3), '2dcap');
-        [GNDx, GNDy] = bst_project_2d(EegPoints(3,1), EegPoints(3,2), EegPoints(3,3), '2dcap');
-        [T7x, T7y] = bst_project_2d(EegPoints(4,1), EegPoints(4,2), EegPoints(4,3), '2dcap');
-        cap_pts = ([Ozx,Ozy;T8x,T8y;GNDx,GNDy;T7x,T7y]+1)*256;
-    end
-    
-    %% Do the warping and interpolation
-    warp = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
-    [xsR,ysR] = tpsInterpolate(warp, centerssketch(:,1)', centerssketch(:,2)', 0);
-    centerssketch(:,1) = xsR;
-    centerssketch(:,2) = ysR;
-    centerssketch = max(min(centerssketch,512-15),15);
-    
-    for kk=1:NIT
-        fprintf('.');
-        %tic
-        k=dsearchn(centerssketch,centerscap);
-    
-        %k is an index into sketch pts
-        [vec_atlas_pts,ind]=unique(k);
-    
-        vec_atlas2sub=centerscap(ind,:)-centerssketch(vec_atlas_pts,:);
-        dist = sqrt(vec_atlas2sub(:,1).^2+vec_atlas2sub(:,2).^2);
-        
-        % MATLAB >= R2018b has 'rmoutliers'
-        % this function optimizes the matching by removing bad detections 
-        if (bst_get('MatlabVersion') >= 905)
-            [dist2,isoutlier]=rmoutliers(dist);
-            ind(isoutlier) = [];
-            vec_atlas_pts(isoutlier) = [];
-        end
-    
-        [warp,L,LnInv,bendE] = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
-    
-        [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
-    
-        if kk<NIT/2
-            centerssketch(:,1) = 0.9*centerssketch(:,1) + 0.1*xsR;
-            centerssketch(:,2) = 0.9*centerssketch(:,2) + 0.1*ysR;
-        else
-            centerssketch(:,1) = xsR;
-            centerssketch(:,2) = ysR;
-        end
-
-        centerssketch = max(min(centerssketch,512-15),15);
-    end
-
-    NPTS = length(cap_img);
-    ll=linspace(-1,1,NPTS);
-    [X1,Y1]=meshgrid(ll,ll);
-    
-    u_sketch = interp2(X1,xsR,ysR);
-    v_sketch = interp2(Y1,xsR,ysR);
-    
-    u_cap=head_surface.u;
-    v_cap=head_surface.v;
-    
-    % get the desired electrodes on the 3D EEG cap 
-    capPoints3d(:,1)=griddata(u_cap,v_cap,head_surface.Vertices(:,1),u_sketch,v_sketch);
-    capPoints3d(:,2)=griddata(u_cap,v_cap,head_surface.Vertices(:,2),u_sketch,v_sketch);
-    capPoints3d(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),u_sketch,v_sketch);
-end
