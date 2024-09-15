@@ -46,17 +46,23 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     [X,Y]=meshgrid(ll,ll);
     vc_sq = 0*X;
     vc_sq(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
-
-    [curMontage, nEEG] = GetCurrentMontage();
+    
+    % Get Digitize options
+    DigitizeOptions = bst_get('DigitizeOptions');
+    if strcmpi(DigitizeOptions.Version, '2024')
+        curMontage = panel_digitize_2024('GetCurrentMontage');
+    else
+        curMontage = panel_digitize('GetCurrentMontage');
+    end
     if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
         vc_sq = imcomplement(vc_sq);
     end
 
     % toggle comment depending on cap
     if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        [centers, radii, metric] = imfindcircles(vc_sq,[6 55]); % 66 easycap
+        centers = imfindcircles(vc_sq,[6 55]); % 66 easycap
     elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
-        [centers, radii, metric] = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
+        centers = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
     else % NEED TO WORK ON THIS
         bst_error('EEG cap not supported', Digitize.Type, 0);
         return;
@@ -78,9 +84,13 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     % ignore pixels threshold
     ignorePix = 15;
     
-    
     % Get current montage
-    [curMontage, nEEG] = GetCurrentMontage();
+    DigitizeOptions = bst_get('DigitizeOptions');
+    if strcmpi(DigitizeOptions.Version, '2024')
+        curMontage = panel_digitize_2024('GetCurrentMontage');
+    else
+        curMontage = panel_digitize('GetCurrentMontage');
+    end
 
     % Convert EEG cap manufacturer layout from 3D to 2D
     tmp = [ChannelRef.Loc]';
@@ -103,7 +113,11 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     % Reprojection into the space of the flattened mesh dimensions
     cap_pts = ([x2 y2]+1) * capImgDim/2;
     for i=1:4
-        DeletePoint_Callback();
+        if strcmpi(DigitizeOptions.Version, '2024')
+            panel_digitize_2024('DeletePoint_Callback');
+        else
+            panel_digitize('DeletePoint_Callback');
+        end
     end
 
     % Do the warping and interpolation
