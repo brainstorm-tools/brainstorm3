@@ -1359,10 +1359,11 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
-            % SPM12: Ignore if found embedded in ROAST
+            % SPM12: Ignore if found embedded in ROAST or in FieldTrip
             elseif strcmpi(PlugDesc.Name, 'spm12')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                q = which('ft_defaults.m');
+                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
                     TestFilePath = [];
                 end
             % Iso2mesh: Ignore if found embedded in ROAST
