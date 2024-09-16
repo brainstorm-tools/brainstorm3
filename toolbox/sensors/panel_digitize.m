@@ -176,7 +176,7 @@ function Start(varargin) %#ok<DEFNU>
     
     if strcmpi(Digitize.Type, '3DScanner')
         % Import surface
-        iSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment}));
+        iSurface = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
         if isempty(iSurface)
             [~, surfaceFiles] = import_surfaces(iSubject);
             if isempty(surfaceFiles)
@@ -184,7 +184,26 @@ function Start(varargin) %#ok<DEFNU>
             end
             surfaceFile = surfaceFiles{end};
         else
-            surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+            [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
+                                                       'What do you want to do?'], ...
+                                                       'Import surface', [], {'Use existing', 'Replace', 'Cancel'}, 'Use existing');
+            if strcmpi(res, 'cancel') || isCancel
+                return
+            elseif strcmpi(res, 'use existing')
+                surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+            elseif strcmpi(res, 'replace')
+                surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+                % delete old surface
+                file_delete(file_fullpath(surfaceFile), 1);
+                sSubject.Surface(iSurface) = [];
+                bst_set('Subject', iSubject, sSubject);
+                % import new surface
+                [~, surfaceFiles] = import_surfaces(iSubject);
+                if isempty(surfaceFiles)
+                    return
+                end
+                surfaceFile = surfaceFiles{end};
+            end
         end
         sSurf = bst_memory('LoadSurface', surfaceFile);
         % Display surface
