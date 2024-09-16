@@ -3061,6 +3061,13 @@ switch contextName
         else
             argout1 = [.33 .0042 .33 .88 .93];
         end
+
+    case 'ShowHiddenFiles'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowHiddenFiles')
+            argout1 = GlobalData.Preferences.ShowHiddenFiles;
+        else
+            argout1 = 0;
+        end
         
     case 'LastUsedDirs'
         defPref = struct(...

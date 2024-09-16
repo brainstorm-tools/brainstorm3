@@ -140,6 +140,20 @@ jFileChooser = java_call(jBstSelector, 'getJFileChooser');
 % Set dialog callback 
 java_setcb(jFileChooser, 'ActionPerformedCallback', @FileSelectorAction, ...
                          'PropertyChangeCallback',  @FileSelectorPropertyChanged);
+% Add option for show/hide hidden files (starting wiht '.') in jFileChooser popmenu
+compList = jFileChooser.getComponents();
+for i = 1:length(compList)
+    if strcmpi(class(compList(i)), 'sun.swing.FilePane') % This class extends JPanel
+        jFilePane = jFileChooser.getComponent(i-1);
+    end
+end
+jPopup = jFilePane.getComponentPopupMenu;
+jFont  = jPopup.getFont;
+showHiddenFiles = bst_get('ShowHiddenFiles');
+jCheckHidden = gui_component('CheckBoxMenuItem', jPopup, [], 'Show hidden files', [], [], @(h,ev)ToogleHiddenFiles(), jFont);
+jCheckHidden.setSelected(showHiddenFiles);
+jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+
 drawnow;
 % Display file selector
 java_call(jBstSelector, 'showSameThread');
@@ -268,6 +282,14 @@ end
                     DefaultDir = strrep(DefaultDir, char(java_call(ev, 'getOldValue')), char(java_call(ev, 'getNewValue')));
             end
         end
+    end
+
+    function ToogleHiddenFiles()
+        showHiddenFiles = bst_get('ShowHiddenFiles');
+        showHiddenFiles = ~showHiddenFiles;
+        bst_set('ShowHiddenFiles', showHiddenFiles);
+        jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+        jCheckHidden.setSelected(showHiddenFiles);
     end
 end
 
