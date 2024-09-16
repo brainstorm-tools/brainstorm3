@@ -981,7 +981,7 @@ function EEGAutoDetectElectrodes(h, ev)
     sSurf.Color = TessInfo.hPatch.FaceVertexCData;
     
     % call automation functions to get the EEG cap electrodes
-    [centers_cap, cap_img, sSurf] = auto_3dscanner('findElectrodesEegCap', sSurf);
+    [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', sSurf);
     DigitizeOptions = bst_get('DigitizeOptions');
     if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
@@ -989,7 +989,7 @@ function EEGAutoDetectElectrodes(h, ev)
     else
         ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
     end
-    capPoints3d = auto_3dscanner('warpLayout2Mesh', centers_cap, ChannelMat.Channel, cap_img, sSurf, Digitize.Points.EEG);
+    capPoints3d = auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, Digitize.Points.EEG);
     
     % Plot the electrodes and their labels
     for i= 1:length(capPoints3d)

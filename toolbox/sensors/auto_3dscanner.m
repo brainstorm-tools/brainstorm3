@@ -1,9 +1,19 @@
 function varargout = auto_3dscanner(varargin)
-% AUTO_3DSCANNER: Automatic detection and labelling of 3D Scanner acquired mesh
+% AUTO_3DSCANNER: Automatic electrode detection and labelling of 3D Scanner acquired mesh
 % 
-% USAGE: auto_3dscanner('findElectrodesEegCap', head_surface)
-%        auto_3dscanner('warpLayout2Mesh', centerscap, ChannelRef, cap_img, head_surface, EegPoints)
-%        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', capName)
+% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', surface3dscanner)
+%        auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+%        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', eegCapName)
+%
+% PARAMETERS:
+%    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
+%    - surface3dscannerUv   : 'surface3dscanner' above along with the UV texture information of the surface
+%    - capImg2d             : Flattend 2D grayscale image of the mesh
+%    - capCenters2d         : The ceters of the various electrodes detected in the flattened 2D image of the mesh
+%    - channelRef           : The channel file containing all the layout information of the cap
+%    - eegCapName           : Name of the EEG cap
+%    - eegCapLandmarkLabels : The manually chosen list of labels of the electrodes to be used as initilization for automation
+%    - nLandmarkLabels      : The count for the number of chosen electrode labels above
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,26 +39,30 @@ eval(macro_method);
 end
 
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
-function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surface)
-    global Digitize
+function [capCenters2d, capImg2d, surface3dscannerUv] = findElectrodesEegCap(surface3dscanner)
+    % Hyperparameters for circle detection
+    % NOTE: these values can vary for new caps
+    minRadius = 1;
+    maxRadius = 25;
+    
+    % create a copy of the input mesh to add UV texture information to it as well
+    surface3dscannerUv = surface3dscanner;
 
     % Flatten the 3D mesh to 2D space
-    [head_surface.u, head_surface.v] = bst_project_2d(head_surface.Vertices(:,1), head_surface.Vertices(:,2), head_surface.Vertices(:,3), '2dcap');
+    [surface3dscannerUv.u, surface3dscannerUv.v] = bst_project_2d(surface3dscanner.Vertices(:,1), surface3dscanner.Vertices(:,2), surface3dscanner.Vertices(:,3), '2dcap');
     
-    % perform image processing to detect the electrode locations
-    % convert to grayscale
-    grayness = head_surface.Color*[1;1;1]/sqrt(3);
+    % Perform image processing to detect the electrode locations
+    % Convert to grayscale
+    grayness = surface3dscanner.Color*[1;1;1]/sqrt(3);
     
-    % fit image to a 512x512 grid 
-    % ###########################################################################
-    % ### NOTE: Should work with any flattened mesh input; needs more testing ###
-    % ###########################################################################
+    % Interpolate and fit flattended mesh image to a 512x512 grid 
+    % NOTE: Should work with any flattened cap mesh but needs more testing
     ll=linspace(-1,1,512);
     [X,Y]=meshgrid(ll,ll);
-    cap_img = 0*X;
-    cap_img(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
+    capImg2d = 0*X;
+    capImg2d(:) = griddata(surface3dscannerUv.u(1:end),surface3dscannerUv.v(1:end),grayness,X(:),Y(:),'linear');
     
-    % Get Digitize options
+    % Get current montage
     DigitizeOptions = bst_get('DigitizeOptions');
     if strcmpi(DigitizeOptions.Version, '2024')
         curMontage = panel_digitize_2024('GetCurrentMontage');
@@ -56,25 +70,27 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
         curMontage = panel_digitize('GetCurrentMontage');
     end
 
-    % for white caps change the color space
+    % For white caps change the color space by inverting the colors
+    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
     if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        cap_img = imcomplement(cap_img);
+        capImg2d = imcomplement(capImg2d);
     end
     
-    % detect the  centers of the electrodes which appear as circles in the
-    % flattened image whose radii are in the range below (value can vary for new caps and needs some testing)
-    centers_cap = imfindcircles(cap_img, [1 25]);
-
+    % Detect the centers of the electrodes which appear as circles in the flattened image whose radii are in the range below
+    capCenters2d = imfindcircles(capImg2d, [minRadius maxRadius]);
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
+function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints) 
     % Hyperparameters for warping and interpolation
-    numIters   = 1000;
+    % NOTE: these values can vary for new caps
+    % Number of iterations to run warp-interpolation on 
+    numIters  = 1000;
+    % Defines the rigidity of the warping (check the 'tpsGetWarp' function for more details)
     lambda    = 100000;
-    % dimension of the flattened cap from mesh
-    capImgDim = length(cap_img);
-    % ignore pixels threshold
+    % Dimension of the flattened cap from mesh
+    capImgDim = length(capImg2d);
+    % Threshold for ignoring some border pixels that might be bad detections
     ignorePix = 15;
     
     % Get current montage
@@ -86,25 +102,27 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     end
 
     % Convert EEG cap manufacturer layout from 3D to 2D
-    tmp = [ChannelRef.Loc]';
-    [X1, Y1] = bst_project_2d(tmp(:,1), tmp(:,2), tmp(:,3), '2dcap');
-    centerssketch_temp = [X1 Y1];
+    capLayoutPts3d = [channelRef.Loc]';
+    [X1, Y1] = bst_project_2d(capLayoutPts3d(:,1), capLayoutPts3d(:,2), capLayoutPts3d(:,3), '2dcap');
+    capLayoutPts2d = [X1 Y1];
     
-    % Get cap landmark labels
+    % Get EEG cap landmark labels used for initialization
     [nLandmarkLabels, capLandmarkLabels] = getEegCapLandmarkLabels(curMontage.Name);
     
     % Sort as per the initialization landmark points of EEG Cap  
-    landmarkPoints = centerssketch_temp(find(ismember({ChannelRef.Name},capLandmarkLabels)),:);
-    nonLandmarkPoints = centerssketch_temp(find(~ismember({ChannelRef.Name},capLandmarkLabels)),:);
-    centerssketch = cat(1, landmarkPoints, nonLandmarkPoints);
+    landmarkPoints = capLayoutPts2d(find(ismember({channelRef.Name},capLandmarkLabels)),:);
+    nonLandmarkPoints = capLayoutPts2d(find(~ismember({channelRef.Name},capLandmarkLabels)),:);
+    capLayoutPts2dSorted = cat(1, landmarkPoints, nonLandmarkPoints);
     
     %% Warping EEG cap layout electrodes to mesh 
-    % Get 2D projected points of the available 3D layout points in Brainstorm
-    sketch_pts = centerssketch(1:nLandmarkLabels, :);
+    % Get 2D projected landmark points to be used for initialization
+    capLayoutPts2dInit = capLayoutPts2dSorted(1:nLandmarkLabels, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
-    [x2, y2] = bst_project_2d(EegPoints(1:nLandmarkLabels,1), EegPoints(1:nLandmarkLabels,2), EegPoints(1:nLandmarkLabels,3), '2dcap');
+    [x2, y2] = bst_project_2d(eegPoints(1:nLandmarkLabels,1), eegPoints(1:nLandmarkLabels,2), eegPoints(1:nLandmarkLabels,3), '2dcap');
     % Reprojection into the space of the flattened mesh dimensions
-    cap_pts = ([x2 y2]+1) * capImgDim/2;
+    capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
+    
+    % delete the manual electrodes selected in figure to update it with the automatic detected ones
     for i=1:nLandmarkLabels
         if strcmpi(DigitizeOptions.Version, '2024')
             panel_digitize_2024('DeletePoint_Callback');
@@ -114,26 +132,27 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     end
 
     % Do the warping and interpolation
-    warp = tpsGetWarp(10, sketch_pts(:,1)', sketch_pts(:,2)', cap_pts(:,1)', cap_pts(:,2)' );
-    [xsR,ysR] = tpsInterpolate(warp, centerssketch(:,1)', centerssketch(:,2)', 0);
-    centerssketch(:,1) = xsR;
-    centerssketch(:,2) = ysR;
+    warp = tpsGetWarp(10, capLayoutPts2dInit(:,1)', capLayoutPts2dInit(:,2)', capUserSelectPts2d(:,1)', capUserSelectPts2d(:,2)' );
+    [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2dSorted(:,1)', capLayoutPts2dSorted(:,2)', 0);
+    capLayoutPts2dSorted(:,1) = xsR;
+    capLayoutPts2dSorted(:,2) = ysR;
     % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is 
-    % too close to the border, it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
-    centerssketch = max(min(centerssketch,capImgDim-ignorePix),ignorePix);
+    % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
+    capLayoutPts2dSorted = max(min(capLayoutPts2dSorted,capImgDim-ignorePix),ignorePix);
     
-    % warp and interpolate till the points fis the best 
-    for kk=1:numIters
+    % Warp and interpolate to get the best point fitting 
+    for numIter=1:numIters
         fprintf('.');
-        k=dsearchn(centerssketch,centerscap);
-    
-        % k is an index into sketch pts
-        [vec_atlas_pts,ind]=unique(k);
-    
-        vec_atlas2sub=centerscap(ind,:)-centerssketch(vec_atlas_pts,:);
-        dist = sqrt(vec_atlas2sub(:,1).^2+vec_atlas2sub(:,2).^2);
+        % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
+        % 'k' is an index into points from the available layout
+        k = dsearchn(capLayoutPts2dSorted, capCenters2d);
+        [vecLayoutPts,ind] = unique(k);
+            
+        % distance between the layout and detected circle centers from the 2D flattened mesh 
+        vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2dSorted(vecLayoutPts,:);
+        dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
         
-        % Identify outliers with 3*scaled_MAD from median
+        % Identify outliers with 3*scaled_MAD from median and remove them
         % Use 'rmoutliers' for Matlab >= R2018b
         if bst_get('MatlabVersion') >= 905
             [~, isoutlier] = rmoutliers(dist);
@@ -145,44 +164,42 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
             isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
         end
         ind(isoutlier) = [];
-        vec_atlas_pts(isoutlier) = [];
+        vecLayoutPts(isoutlier) = [];
+        
+        % Perform warping and interpolation to fit the points
+        warp = tpsGetWarp(lambda, capLayoutPts2dSorted(vecLayoutPts,1)', capLayoutPts2dSorted(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
+        [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2dSorted(:,1)', capLayoutPts2dSorted(:,2)', 0);
     
-        warp = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
-        [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
-    
-        if kk<numIters/2
-            centerssketch(:,1) = 0.9*centerssketch(:,1) + 0.1*xsR;
-            centerssketch(:,2) = 0.9*centerssketch(:,2) + 0.1*ysR;
+        if numIter<numIters/2
+            capLayoutPts2dSorted(:,1) = 0.9*capLayoutPts2dSorted(:,1) + 0.1*xsR;
+            capLayoutPts2dSorted(:,2) = 0.9*capLayoutPts2dSorted(:,2) + 0.1*ysR;
         else
-            centerssketch(:,1) = xsR;
-            centerssketch(:,2) = ysR;
+            capLayoutPts2dSorted(:,1) = xsR;
+            capLayoutPts2dSorted(:,2) = ysR;
         end
-
-        centerssketch = max(min(centerssketch,capImgDim-ignorePix),ignorePix);
+        
+        % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is 
+        % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
+        capLayoutPts2dSorted = max(min(capLayoutPts2dSorted,capImgDim-ignorePix),ignorePix);
     end
-
+    
+    % Interpolation of the fitted points to the image space of the layout   
     ll=linspace(-1,1,capImgDim);
-    [X1,Y1]=meshgrid(ll,ll);
+    [X1,Y1]=meshgrid(ll,ll);    
+    capLayoutPts2dU = interp2(X1,xsR,ysR);
+    capLayoutPts2dV = interp2(Y1,xsR,ysR);
     
-    u_sketch = interp2(X1,xsR,ysR);
-    v_sketch = interp2(Y1,xsR,ysR);
-    
-    u_cap=head_surface.u;
-    v_cap=head_surface.v;
-    
-    % get the desired electrodes on the 3D EEG cap 
-    capPoints3d(:,1)=griddata(u_cap,v_cap,head_surface.Vertices(:,1),u_sketch,v_sketch);
-    capPoints3d(:,2)=griddata(u_cap,v_cap,head_surface.Vertices(:,2),u_sketch,v_sketch);
-    capPoints3d(:,3)=griddata(u_cap,v_cap,head_surface.Vertices(:,3),u_sketch,v_sketch);
+    % Get the desired electrode locations on the 3D EEG cap 
+    capPoints3d(:,1) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,1), capLayoutPts2dU, capLayoutPts2dV);
+    capPoints3d(:,2) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
+    capPoints3d(:,3) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
 end
 
 %% ===== GET LANDMARK LABELS OF EEG CAP =====
-% for every new variety of cap we need to edit this function
-function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(capName)
-    global Digitize
-
+% For every new variety of cap we need to edit this function
+function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(eegCapName)
     eegCapLandmarkLabels = {};
-    switch(capName)
+    switch(eegCapName)
         case 'ANT Waveguard (65)'
             eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
         case 'BrainProducts ActiCap (66)'
