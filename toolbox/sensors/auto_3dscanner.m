@@ -36,16 +36,17 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     [head_surface.u, head_surface.v] = bst_project_2d(head_surface.Vertices(:,1), head_surface.Vertices(:,2), head_surface.Vertices(:,3), '2dcap');
     
     % perform image processing to detect the electrode locations
+    % convert to grayscale
     grayness = head_surface.Color*[1;1;1]/sqrt(3);
     
     % fit image to a 512x512 grid 
-    % #######################################################################
-    % ### NOTE: Should work with any iamge fitting but needs more testing ###
-    % #######################################################################
+    % ###########################################################################
+    % ### NOTE: Should work with any flattened mesh input; needs more testing ###
+    % ###########################################################################
     ll=linspace(-1,1,512);
     [X,Y]=meshgrid(ll,ll);
-    vc_sq = 0*X;
-    vc_sq(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
+    cap_img = 0*X;
+    cap_img(:) = griddata(head_surface.u(1:end),head_surface.v(1:end),grayness,X(:),Y(:),'linear');
     
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -54,28 +55,20 @@ function [centers_cap, cap_img, head_surface] = findElectrodesEegCap(head_surfac
     else
         curMontage = panel_digitize('GetCurrentMontage');
     end
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        vc_sq = imcomplement(vc_sq);
-    end
 
-    % toggle comment depending on cap
+    % for white caps change the color space
     if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        centers = imfindcircles(vc_sq,[6 55]); % 66 easycap
-    elseif ~isempty(regexp(curMontage.Name, 'Waveguard', 'match'))
-        centers = imfindcircles(vc_sq,[1 25]); % 65 ANT waveguard
-    else % NEED TO WORK ON THIS
-        bst_error('EEG cap not supported', Digitize.Type, 0);
-        return;
+        cap_img = imcomplement(cap_img);
     end
+    
+    % detect the  centers of the electrodes which appear as circles in the
+    % flattened image whose radii are in the range below (value can vary for new caps and needs some testing)
+    centers_cap = imfindcircles(cap_img, [1 25]);
 
-    centers_cap = centers; 
-    cap_img = vc_sq;
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
 function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_surface, EegPoints) 
-    global Digitize
-
     % Hyperparameters for warping and interpolation
     numIters   = 1000;
     lambda    = 100000;
@@ -112,7 +105,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     [x2, y2] = bst_project_2d(EegPoints(1:nLandmarkLabels,1), EegPoints(1:nLandmarkLabels,2), EegPoints(1:nLandmarkLabels,3), '2dcap');
     % Reprojection into the space of the flattened mesh dimensions
     cap_pts = ([x2 y2]+1) * capImgDim/2;
-    for i=1:4
+    for i=1:nLandmarkLabels
         if strcmpi(DigitizeOptions.Version, '2024')
             panel_digitize_2024('DeletePoint_Callback');
         else
@@ -125,16 +118,16 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
     [xsR,ysR] = tpsInterpolate(warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     centerssketch(:,1) = xsR;
     centerssketch(:,2) = ysR;
-    % 15 is just a hyperparameter. It is because if some point is detected near the border then it is too close to the border, 
-    % it moves it inside. It leaves a margin of 15 pixels around the border
+    % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is 
+    % too close to the border, it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
     centerssketch = max(min(centerssketch,capImgDim-ignorePix),ignorePix);
     
+    % warp and interpolate till the points fis the best 
     for kk=1:numIters
         fprintf('.');
-        %tic
         k=dsearchn(centerssketch,centerscap);
     
-        %k is an index into sketch pts
+        % k is an index into sketch pts
         [vec_atlas_pts,ind]=unique(k);
     
         vec_atlas2sub=centerscap(ind,:)-centerssketch(vec_atlas_pts,:);
@@ -155,7 +148,6 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
         vec_atlas_pts(isoutlier) = [];
     
         warp = tpsGetWarp(lambda, centerssketch(vec_atlas_pts,1)', centerssketch(vec_atlas_pts,2)', centerscap(ind,1)', centerscap(ind,2)' );
-    
         [xsR,ysR] = tpsInterpolate( warp, centerssketch(:,1)', centerssketch(:,2)', 0);
     
         if kk<numIters/2
@@ -166,7 +158,7 @@ function capPoints3d = warpLayout2Mesh(centerscap, ChannelRef, cap_img, head_sur
             centerssketch(:,2) = ysR;
         end
 
-        centerssketch = max(min(centerssketch,512-15),15);
+        centerssketch = max(min(centerssketch,capImgDim-ignorePix),ignorePix);
     end
 
     ll=linspace(-1,1,capImgDim);
