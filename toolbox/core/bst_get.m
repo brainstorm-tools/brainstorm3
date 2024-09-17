@@ -569,17 +569,22 @@ switch contextName
         end
         switch osFamily
             case 'win'
-                [~, system_info] = system('systeminfo');
-                osName = regexp(system_info, '(?<=OS Name:)(.*?)(?=\n)', 'match');
-                osName = strtrim(osName{1});
-                osVer = regexp(system_info, '(?<=OS Version:)(.*?)(?=\n)', 'match');
-                osVer = strtrim(osVer{1});
-                argout1 = [osName, ' (', osVer, ')'];
+                [~, system_info] = system('ver');
+                argout1 = strtrim(system_info);
 
             case 'linux'
                 os_release = fileread('/etc/os-release');
                 osName = regexp(os_release, '(?<=PRETTY_NAME=")(.*?)(?=")', 'match');
-                osName = strtrim(osName{1});
+                if ~isempty(osName)
+                    osName = strtrim(osName{1});
+                else
+                    osName = regexp(os_release, '(?<=NAME=")(.*?)(?=")', 'match');
+                    if ~isempty(osName)
+                        osName = strtrim(osName{1});
+                    else
+                        osName = 'Linux unknow distribution';
+                    end
+                end
                 [~, kernelVer] = system('uname -r');
                 kernelVer = strtrim(kernelVer);
                 argout1 = [osName, ' (' kernelVer, ')'];
