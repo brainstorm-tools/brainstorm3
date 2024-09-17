@@ -1345,16 +1345,17 @@ function CreateHeadpointsFigure()
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
         % Plot head points
         [hFig, iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
-        % Get subject
-        sSubject = bst_get('Subject', Digitize.SubjectName);
-        iTargetSurface = find(cellfun(@(x)~isempty(regexp(x, '3dscanner', 'match')), {sSubject.Surface.Comment})); 
-        sSurf = bst_memory('LoadSurface', sSubject.Surface(iTargetSurface(end)).FileName);
+        TessInfo = getappdata(hFig, 'Surface');
+        surfaceFile = split(TessInfo.SurfaceFile, '#');
+        sSurf.Vertices = TessInfo.hPatch.Vertices;
+        sSurf.Faces = TessInfo.hPatch.Faces;
+        sSurf.Color = TessInfo.hPatch.FaceVertexCData;
         [nRows,~] = size(sSurf.Vertices);
         sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(nRows,1)]')';
         panel_surface('RemoveSurface', hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], sSubject.Surface(iTargetSurface(end)).FileName);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], surfaceFile{2});
         % Hide head surface
         if ~strcmpi(Digitize.Type, '3DScanner')
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
