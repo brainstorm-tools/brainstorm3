@@ -684,11 +684,8 @@ function ResetDataCollection(isResetSerial)
         ctrl.jTextFieldExtra.setText(java.lang.String.valueOf(int16(1)));
     end
     % Reset figure
-    if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
-        %close(Digitize.hFig);
-        if ~strcmpi(Digitize.Type, '3DScanner')
-            bst_figures('DeleteFigure', Digitize.hFig, []);
-        end
+    if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Type, '3DScanner')
+        bst_figures('DeleteFigure', Digitize.hFig, []);
     end
     Digitize.iDS = [];
     

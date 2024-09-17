@@ -652,8 +652,7 @@ function ResetDataCollection(isResetSerial)
     Digitize.iPoint = 0;
     Digitize.Transf = [];
     % Reset figure (also unloads in global data)
-    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
-        %close(Digitize.hFig);
+    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Type, '3DScanner')
         bst_figures('DeleteFigure', Digitize.hFig, []);
     end
     Digitize.iDS = [];
