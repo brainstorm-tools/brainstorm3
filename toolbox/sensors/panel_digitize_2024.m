@@ -166,18 +166,22 @@ function Start(varargin)
         else
             [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
                                                        'What do you want to do?'], ...
-                                                       'Import surface', [], {'Use existing', 'Replace', 'Cancel'}, 'Use existing');
+                                                       'Import surface', [], {'Use existing', 'Add new', 'Cancel'}, 'Use existing');
             if strcmpi(res, 'cancel') || isCancel
                 return
             elseif strcmpi(res, 'use existing')
-                surfaceFile = sSubject.Surface(iSurface(end)).FileName;
-            elseif strcmpi(res, 'replace')
-                surfaceFile = sSubject.Surface(iSurface(end)).FileName;
-                % delete old surface
-                file_delete(file_fullpath(surfaceFile), 1);
-                sSubject.Surface(iSurface) = [];
-                bst_set('Subject', iSubject, sSubject);
-                % import new surface
+                % If more than one surface present, user can choose
+                if length(iSurface) > 1
+                    surfaceFile = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).FileName});
+                    if isempty(surfaceFile)
+                        return
+                    end
+                % If only one surface is present, then load it directly
+                else                    
+                    surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+                end
+            elseif strcmpi(res, 'add new')
+                % Import a new textured mesh and append it to the list
                 [~, surfaceFiles] = import_surfaces(iSubject);
                 if isempty(surfaceFiles)
                     return
