@@ -67,8 +67,20 @@ function Start(varargin)
 
     % ===== PARSE INPUT =====
     DigitizerType = 'Digitize';
+    sSubject = [];
+    iSubject = [];
+    surfaceFile = [];
     if nargin > 0 && ~isempty(varargin{1})
         DigitizerType = varargin{1};
+    end
+    if nargin > 1 && ~isempty(varargin{2})
+        sSubject = varargin{2};
+    end
+    if nargin > 2 && ~isempty(varargin{3})
+        iSubject = varargin{3};
+    end
+    if nargin > 3 && ~isempty(varargin{4})
+        surfaceFile = varargin{4};
     end
     Digitize.Type = DigitizerType;
     switch DigitizerType
@@ -90,22 +102,27 @@ function Start(varargin)
     end
 
     % Ask for subject id
-    Digitize.Options.PatientId = java_dialog('input', 'Please, enter subject ID:', Digitize.Type, [], Digitize.Options.PatientId);
-    if isempty(Digitize.Options.PatientId)
-        return;
-    end
-    % Save new ID
-    bst_set('DigitizeOptions', Digitize.Options);
+    if isempty(sSubject)
+        Digitize.Options.PatientId = java_dialog('input', 'Please, enter subject ID:', Digitize.Type, [], Digitize.Options.PatientId);
+        if isempty(Digitize.Options.PatientId)
+            return;
+        end
+        % Save new ID
+        bst_set('DigitizeOptions', Digitize.Options);
+        
+        % ===== GET SUBJECT =====
+        % Save the new SubjectName
+        if strcmpi(Digitize.Type, '3DScanner')
+            Digitize.SubjectName = [Digitize.Type, '_', Digitize.Options.PatientId];
+        else
+            Digitize.SubjectName = Digitize.Type;
+        end
     
-    % ===== GET SUBJECT =====
-    % Save the new SubjectName
-    if strcmpi(Digitize.Type, '3DScanner')
-        Digitize.SubjectName = [Digitize.Type, '_', Digitize.Options.PatientId];
+        [sSubject, iSubject] = bst_get('Subject', Digitize.SubjectName);
     else
-        Digitize.SubjectName = Digitize.Type;
+        Digitize.SubjectName = sSubject.Name;
     end
 
-    [sSubject, iSubject] = bst_get('Subject', Digitize.SubjectName);
     % Create if subject doesnt exist
     if isempty(iSubject)
         % Default anat / one channel file per subject
@@ -155,40 +172,43 @@ function Start(varargin)
     db_reload_studies(Digitize.iStudy);
 
     if strcmpi(Digitize.Type, '3DScanner')
-        % Import surface
-        iSurface = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
-        if isempty(iSurface)
-            [~, surfaceFiles] = import_surfaces(iSubject);
-            if isempty(surfaceFiles)
-                return
-            end
-            surfaceFile = surfaceFiles{end};
-        else
-            [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
-                                                       'What do you want to do?'], ...
-                                                       'Import surface', [], {'Use existing', 'Add new', 'Cancel'}, 'Use existing');
-            if strcmpi(res, 'cancel') || isCancel
-                return
-            elseif strcmpi(res, 'use existing')
-                % If more than one surface present, user can choose
-                if length(iSurface) > 1
-                    surfaceFile = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).FileName});
-                    if isempty(surfaceFile)
-                        return
-                    end
-                % If only one surface is present, then load it directly
-                else                    
-                    surfaceFile = sSubject.Surface(iSurface(end)).FileName;
-                end
-            elseif strcmpi(res, 'add new')
-                % Import a new textured mesh and append it to the list
+        if isempty(surfaceFile)
+            % Import surface
+            iSurface = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
+            if isempty(iSurface)
                 [~, surfaceFiles] = import_surfaces(iSubject);
                 if isempty(surfaceFiles)
                     return
                 end
                 surfaceFile = surfaceFiles{end};
+            else
+                [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
+                                                           'What do you want to do?'], ...
+                                                           'Import surface', [], {'Use existing', 'Add new', 'Cancel'}, 'Use existing');
+                if strcmpi(res, 'cancel') || isCancel
+                    return
+                elseif strcmpi(res, 'use existing')
+                    % If more than one surface present, user can choose
+                    if length(iSurface) > 1
+                        surfaceFile = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).FileName});
+                        if isempty(surfaceFile)
+                            return
+                        end
+                    % If only one surface is present, then load it directly
+                    else                    
+                        surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+                    end
+                elseif strcmpi(res, 'add new')
+                    % Import a new textured mesh and append it to the list
+                    [~, surfaceFiles] = import_surfaces(iSubject);
+                    if isempty(surfaceFiles)
+                        return
+                    end
+                    surfaceFile = surfaceFiles{end};
+                end
             end
         end
+
         sSurf = bst_memory('LoadSurface', surfaceFile);
         % Display surface
         view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], surfaceFile);

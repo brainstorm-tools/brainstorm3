@@ -1128,7 +1128,7 @@ switch (lower(action))
                 sSubject = bst_get('Subject', iSubject);
                 
                 % === DISPLAY ===
-                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'textured', 'match'))
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)ViewTexturedSurface(filenameRelative));
                 else
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
@@ -1158,8 +1158,8 @@ switch (lower(action))
                         case 'other'
                             jItemSetSurfTypeOther.setSelected(1);
                     end
-                end
-                
+                end 
+
                 % SET AS DEFAULT SURFACE
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     iSurface = bstNodes(1).getItemIndex();
@@ -1176,6 +1176,14 @@ switch (lower(action))
                     % Separator
                     AddSeparator(jPopup);
                 end
+
+                % === DIGITIZE (3D SCANNER) OPTION ===
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Digitize (3D scanner)', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner', sSubject, iSubject, filenameRelative));
+                    % Separator
+                    AddSeparator(jPopup);
+                end
+
                 % NUMBER OF SELECTED FILES
                 if (length(bstNodes) >= 2)
                     if ~bst_get('ReadOnly')
