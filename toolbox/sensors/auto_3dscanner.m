@@ -169,7 +169,8 @@ function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
         % Perform warping and interpolation to fit the points
         warp = tpsGetWarp(lambda, capLayoutPts2dSorted(vecLayoutPts,1)', capLayoutPts2dSorted(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
         [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2dSorted(:,1)', capLayoutPts2dSorted(:,2)', 0);
-    
+        
+        % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
         if numIter<numIters/2
             capLayoutPts2dSorted(:,1) = 0.9*capLayoutPts2dSorted(:,1) + 0.1*xsR;
             capLayoutPts2dSorted(:,2) = 0.9*capLayoutPts2dSorted(:,2) + 0.1*ysR;
