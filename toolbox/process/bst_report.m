@@ -931,21 +931,10 @@ function html = PrintToHtml(Reports, isFullReport)
             '<TITLE>Brainstorm process report</TITLE>' 10];
     % Elapsed time
     if ~isempty(iStart) && ~isempty(iStop)
-        % Get time elapsed between start and stop
-        eTime = datevec(datenum(Reports{iStop,5}) - datenum(Reports{iStart,5}));
-        % Format elapsed time
-        strElapsed = [];
-        if (eTime(3) > 0)
-            strElapsed = [strElapsed num2str(eTime(3)) 'd '];
-        end
-        if (eTime(4) > 0)
-            strElapsed = [strElapsed num2str(eTime(4)) 'h '];
-        end
-        if (eTime(5) > 0)
-            strElapsed = [strElapsed num2str(eTime(5)) 'm '];
-        end
+        % Get elapsed time string 'Xd Xh Xm Xs'
+        strElapsed = GetElapsedStr(Reports, iStart, iStop);
         % Time line
-        strElapsed = [strElapsed num2str(eTime(6)) 's</TD></TR>' 10];
+        strElapsed = [strElapsed '</TD></TR>' 10];
         html = [html 'Start: ' Reports{iStart,5} ' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Elapsed: ' strElapsed];
     end
 
@@ -1631,6 +1620,18 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     % Compact report: prepare and send
     if ~isFullReport
         html = '';
+        iStart    = find(strcmpi(Reports(:,1), 'start'), 1);
+        iStop     = find(strcmpi(Reports(:,1), 'stop'), 1);
+        iErrors   = find(strcmpi(Reports(:,1), 'error'));
+        iWarnings = find(strcmpi(Reports(:,1), 'warning'));
+        % Elapsed time
+        if ~isempty(iStart) && ~isempty(iStop)
+            % Get elapsed time string 'Xd Xh Xm Xs'
+            strElapsed = GetElapsedStr(Reports, iStart, iStop);
+            html = [html 'Start: ' Reports{iStart,5} '        Elapsed: ' strElapsed 10 10];
+        end
+        % Errors and warnings
+        html = [html sprintf('%d errors and %d warnings', length(iErrors), length(iWarnings)) 10 10];
         for iEntry = 1:size(Reports,1)
             if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
                 html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
@@ -1655,4 +1656,26 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     isOk = isequal(resp, 'ok');
 end
 
+%% == GET ELAPSED TIME ===
+function strElapsed = GetElapsedStr(Reports, iStart, iStop)
+    strElapsed = '';
+    if nargin < 3 || isempty(Reports) || isempty(iStart) || isempty(iStop)
+        return
+    end
+    % Get time elapsed between start and stop
+    eTime = datevec(datenum(Reports{iStop,5}) - datenum(Reports{iStart,5}));
+    % Format elapsed time
+    strElapsed = [];
+    if (eTime(3) > 0)
+        strElapsed = [strElapsed num2str(eTime(3)) 'd '];
+    end
+    if (eTime(4) > 0)
+        strElapsed = [strElapsed num2str(eTime(4)) 'h '];
+    end
+    if (eTime(5) > 0)
+        strElapsed = [strElapsed num2str(eTime(5)) 'm '];
+    end
+    % Time line
+    strElapsed = [strElapsed num2str(eTime(6)) 's'];
+end
 
