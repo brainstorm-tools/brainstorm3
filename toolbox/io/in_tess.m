@@ -277,6 +277,18 @@ end
 
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
+
+% If there exists a textured surface with the same comment, make it unique
+% Get the current subject
+sSubject = bst_get('Subject');
+iTexSurf = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
+if ~isempty(iTexSurf)
+    iTexSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface(iTexSurf).Comment}));
+    if ~isempty(iTexSurfComment)
+        fileBase = sprintf('%s_%02d', fileBase, length(iTexSurfComment)+1);
+    end
+end
+
 % If various tesselations were loaded from one file
 if (length(TessMat) > 1)
     for iTess = 1:length(TessMat)

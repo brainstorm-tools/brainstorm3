@@ -211,10 +211,12 @@ function Start(varargin) %#ok<DEFNU>
                 elseif strcmpi(res, 'use existing')
                     % If more than one surface present, user can choose
                     if length(iSurface) > 1
-                        surfaceFile = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).FileName});
-                        if isempty(surfaceFile)
+                        texSurfComment = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).Comment});
+                        if isempty(texSurfComment)
                             return
                         end
+                        iSurfFile = find(cellfun(@(x)~isempty(regexp(x, [texSurfComment '.mat'], 'match')), {sSubject.Surface.FileName}));
+                        surfaceFile = sSubject.Surface(iSurfFile).FileName;
                     % If only one surface is present, then load it directly
                     else                    
                         surfaceFile = sSubject.Surface(iSurface(end)).FileName;
