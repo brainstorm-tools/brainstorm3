@@ -64,11 +64,11 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = findElectrodesEegCap(sur
     
     % Get current montage
     DigitizeOptions = bst_get('DigitizeOptions');
-    if strcmpi(DigitizeOptions.Version, '2024')
-        curMontage = panel_digitize_2024('GetCurrentMontage');
-    else
-        curMontage = panel_digitize('GetCurrentMontage');
+    panel_fun = @panel_digitize;
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        panel_fun = @panel_digitize_2024;
     end
+    curMontage = panel_fun('GetCurrentMontage');
 
     % For white caps change the color space by inverting the colors
     % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
@@ -95,11 +95,11 @@ function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
     
     % Get current montage
     DigitizeOptions = bst_get('DigitizeOptions');
-    if strcmpi(DigitizeOptions.Version, '2024')
-        curMontage = panel_digitize_2024('GetCurrentMontage');
-    else
-        curMontage = panel_digitize('GetCurrentMontage');
+    panel_fun = @panel_digitize;
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        panel_fun = @panel_digitize_2024;
     end
+    curMontage = panel_fun('GetCurrentMontage');
 
     % Convert EEG cap manufacturer layout from 3D to 2D
     capLayoutPts3d = [channelRef.Loc]';
