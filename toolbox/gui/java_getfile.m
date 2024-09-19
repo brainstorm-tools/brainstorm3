@@ -140,22 +140,35 @@ jFileChooser = java_call(jBstSelector, 'getJFileChooser');
 % Set dialog callback 
 java_setcb(jFileChooser, 'ActionPerformedCallback', @FileSelectorAction, ...
                          'PropertyChangeCallback',  @FileSelectorPropertyChanged);
-% Add option for show/hide hidden files (starting wiht '.') in jFileChooser popmenu
+% Search for panel to add show/hide hidden menu
+jObjects  = jFileChooser;
 jFilePane = [];
-compList = jFileChooser.getComponents();
-for i = 1:length(compList)
-    if strcmpi(class(compList(i)), 'sun.swing.FilePane') % This class extends JPanel
-        jFilePane = jFileChooser.getComponent(i-1);
+while ~isempty(jObjects)
+    switch class(jObjects(1))
+        case 'sun.swing.FilePane'
+            jFilePane = jObjects(1);
+            break
+        case {'javax.swing.JPanel', 'javax.swing.JFileChooser'}
+            jObjects = [jObjects, jObjects(1).getComponents];
+        otherwise
+            % do nothing
     end
+    jObjects = jObjects(2:end);
 end
+% Linux and Windows have a JFilePane object with a PopupMenu
 if ~isempty(jFilePane)
     jPopup = jFilePane.getComponentPopupMenu;
     jFont  = jPopup.getFont;
-    showHiddenFiles = bst_get('ShowHiddenFiles');
-    jCheckHidden = gui_component('CheckBoxMenuItem', jPopup, [], 'Show hidden files', [], [], @(h,ev)ToogleHiddenFiles(), jFont);
-    jCheckHidden.setSelected(showHiddenFiles);
-    jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+% macOs does not have JFilePane object, add PopupMenu to jFileChooser
+else
+    jPopup = java_create('javax.swing.JPopupMenu');
+    jFont  = [];
+    jFileChooser.setComponentPopupMenu(jPopup);
 end
+jCheckHidden = gui_component('CheckBoxMenuItem', jPopup, [], 'Show hidden files', [], [], @(h,ev)ToogleHiddenFiles(), jFont);
+showHiddenFiles = bst_get('ShowHiddenFiles');
+jCheckHidden.setSelected(showHiddenFiles);
+jFileChooser.setFileHidingEnabled(~showHiddenFiles);
 
 drawnow;
 % Display file selector
