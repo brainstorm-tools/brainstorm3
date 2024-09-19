@@ -946,16 +946,11 @@ function CreateHeadpointsFigure()
         sSurf.Vertices = TessInfo.hPatch.Vertices;
         sSurf.Faces = TessInfo.hPatch.Faces;
         sSurf.Color = TessInfo.hPatch.FaceVertexCData;
-        [nRows,~] = size(sSurf.Vertices);
-        sSurf.Vertices = [sSurf.Vertices ones(nRows,1)] * Digitize.Transf';
+        sSurf.Vertices = [sSurf.Vertices ones(size(sSurf.Vertices,1),1)] * Digitize.Transf';
         panel_surface('RemoveSurface', Digitize.hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
         view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], surfaceFile{2});
-        % Hide head surface
-        if ~strcmpi(Digitize.Type, '3DScanner')
-            panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 0.8);
-        end
         % Get Digitizer JFrame
         bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position

@@ -1352,8 +1352,7 @@ function CreateHeadpointsFigure()
         sSurf.Vertices = TessInfo.hPatch.Vertices;
         sSurf.Faces = TessInfo.hPatch.Faces;
         sSurf.Color = TessInfo.hPatch.FaceVertexCData;
-        [nRows,~] = size(sSurf.Vertices);
-        sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(nRows,1)]')';
+        sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(size(sSurf.Vertices, 1),1)]')';
         panel_surface('RemoveSurface', hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
