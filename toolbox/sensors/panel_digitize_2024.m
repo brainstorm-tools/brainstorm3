@@ -253,6 +253,7 @@ end
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel() 
     global Digitize
+    
     % Constants
     panelName = 'Digitize';
     % Java initializations
@@ -835,19 +836,19 @@ function CollectRandomHeadPts_Callback()
     ctrl.jButtonRandomHeadPts.setEnabled(0);
 
     hFig = bst_figures('GetCurrentFigure','3D');
-    [~, TessInfo, ~, ~] = panel_surface('GetSurfaceMri', hFig);
+    TessInfo = getappdata(hFig, 'Surface');
     TessMat.Vertices = double(TessInfo.hPatch.Vertices);
     TessMat.Faces = double(TessInfo.hPatch.Faces);
     TessMat.Color = TessInfo.hPatch.FaceVertexCData;
-    dsFactor = 100 / size(TessMat.Vertices, 1); 
-    % Reduce number of vertices
-    [NewTessMat.Faces, NewTessMat.Vertices] = reducepatch(TessMat.Faces, TessMat.Vertices, dsFactor);
     
-    for i= 1:100
+    % For 100 points
+    stepFactor = ceil(size(TessMat.Vertices, 1)/100); 
+    
+    for i= 1:stepFactor:size(TessMat.Vertices, 1)
         % Increment current point index
         Digitize.iPoint = Digitize.iPoint + 1;
         % Update the coordinate and Type 
-        Digitize.Points(Digitize.iPoint).Loc = NewTessMat.Vertices(i, :);
+        Digitize.Points(Digitize.iPoint).Loc = TessMat.Vertices(i, :);
         Digitize.Points(Digitize.iPoint).Type = 'EXTRA';
         % Add the point to the display (in cm)
         PlotCoordinate();

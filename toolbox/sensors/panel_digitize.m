@@ -1084,21 +1084,21 @@ function CollectRandomHeadPts_Callback(h, ev)
     
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
-    % Enable Random button
+    % Disable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(0);
 
     hFig = bst_figures('GetCurrentFigure','3D');
-    [sMri, TessInfo, iTess, iMri] = panel_surface('GetSurfaceMri', hFig);
+    TessInfo = getappdata(hFig, 'Surface');
     TessMat.Vertices = double(TessInfo.hPatch.Vertices);
     TessMat.Faces = double(TessInfo.hPatch.Faces);
     TessMat.Color = TessInfo.hPatch.FaceVertexCData;
-    dsFactor = 100 / size(TessMat.Vertices, 1); 
-    % Reduce number of vertices
-    [NewTessMat.Faces, NewTessMat.Vertices] = reducepatch(TessMat.Faces, TessMat.Vertices, dsFactor);
     
-    for i= 1:100
+    % For 100 points
+    stepFactor = ceil(size(TessMat.Vertices, 1)/100); 
+    
+    for i= 1:stepFactor:size(TessMat.Vertices, 1)
         % pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
-        pointCoord = NewTessMat.Vertices(i, :);
+        pointCoord = TessMat.Vertices(i, :);
         % find the index for the current point in the headshape points
         iPoint = str2double(ctrl.jTextFieldExtra.getText());
         % Transformed points_pen from original points_pen
