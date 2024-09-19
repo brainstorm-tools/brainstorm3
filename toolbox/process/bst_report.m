@@ -12,6 +12,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Save',    sInputs,   ReportFile=[])
 %         bst_report('Save',    FileNames, ReportFile=[])
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
+%         bst_report('Reset')
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
 %         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
@@ -66,13 +67,12 @@ end
 
 %% ===== START =====
 function Start(sInputs)
-    global GlobalData;
     % If there were no inputs
     if (nargin < 1) || isempty(sInputs)
         sInputs = [];
     end
     % Reset current report
-    GlobalData.ProcessReports.Reports = {};
+    Reset();
     % Get current protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
     % Add start entry
@@ -89,7 +89,7 @@ function Add(strType, sProcess, sInputs, strMsg)
         return;
     end
     if isempty(GlobalData.ProcessReports.Reports) || ~iscell(GlobalData.ProcessReports.Reports) || (size(GlobalData.ProcessReports.Reports,2) ~= 5)
-        GlobalData.ProcessReports.Reports = {};
+        Reset();
     end
     % No input
     if isempty(strType)
@@ -775,7 +775,7 @@ function ReportFile = Save(sInputs, ReportFile)
     ReportMat.Reports = GlobalData.ProcessReports.Reports;
     bst_save(ReportFile, ReportMat, 'v7');
     % Reset 
-    GlobalData.ProcessReports.Reports = {};
+    Reset();
 end
 
 
@@ -1634,7 +1634,7 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
         html = [html sprintf('%d errors and %d warnings', length(iErrors), length(iWarnings)) 10 10];
         for iEntry = 1:size(Reports,1)
             if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
-                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
+                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}, repmat(' ', 1, 7-length(Reports{iEntry,1}))];
                 if ~isempty(Reports{iEntry,2})
                     if isstruct(Reports{iEntry,2})
                         html = [html, 9, ' - ' func2str(Reports{iEntry,2}.Function)];
@@ -1677,5 +1677,12 @@ function strElapsed = GetElapsedStr(Reports, iStart, iStop)
     end
     % Time line
     strElapsed = [strElapsed num2str(eTime(6)) 's'];
+end
+
+%% ===== RESET CURRENT REPORT =====
+% USAGE:  bst_report('Reset')
+function Reset()
+    global GlobalData;
+    GlobalData.ProcessReports.Reports = {};
 end
 
