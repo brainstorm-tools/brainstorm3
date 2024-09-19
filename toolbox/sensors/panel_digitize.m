@@ -231,10 +231,11 @@ function Start(varargin) %#ok<DEFNU>
                 end
             end
         end
-
-        sSurf = bst_memory('LoadSurface', surfaceFile);
+        
+        Digitize.surfaceFile = surfaceFile;
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
         % Display surface
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], surfaceFile);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
     end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
@@ -713,6 +714,14 @@ function ResetDataCollection(isResetSerial)
     % Reset figure
     if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Type, '3DScanner')
         bst_figures('DeleteFigure', Digitize.hFig, []);
+
+        % For 3D Scanner reload the surface
+        if strcmpi(Digitize.Type, '3DScanner')
+            % load the surface
+            sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+            % Display surface
+            view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
+        end
     end
     Digitize.iDS = [];
     

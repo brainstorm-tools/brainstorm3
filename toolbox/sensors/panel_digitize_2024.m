@@ -211,9 +211,10 @@ function Start(varargin)
             end
         end
 
-        sSurf = bst_memory('LoadSurface', surfaceFile);
+        Digitize.surfaceFile = surfaceFile;
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
         % Display surface
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], surfaceFile);
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
     end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
@@ -679,8 +680,16 @@ function ResetDataCollection(isResetSerial)
     Digitize.iPoint = 0;
     Digitize.Transf = [];
     % Reset figure (also unloads in global data)
-    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Type, '3DScanner')
+    if ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
         bst_figures('DeleteFigure', Digitize.hFig, []);
+
+        % For 3D Scanner reload the surface
+        if strcmpi(Digitize.Type, '3DScanner')
+            % load the surface
+            sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+            % Display surface
+            view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
+        end
     end
     Digitize.iDS = [];
     
@@ -712,6 +721,7 @@ function ResetDataCollection(isResetSerial)
     
     % Display list in text box
     UpdateList();
+
     % Close progress bar
     bst_progress('stop');
 end
