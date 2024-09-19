@@ -1654,8 +1654,9 @@ function BytesAvailable_Callback() %#ok<INUSD>
     if Digitize.isEditPts
         % reset global variable required for updating
         Digitize.isEditPts = 0;
-        % set the iPoint to point to the last point in the list
-        Digitize.iPoint = numel(Digitize.Points);
+        % update the Digitize.iPoint
+        iNotEmptyLoc = find(cellfun(@(x)~isempty(x), {Digitize.Points.Loc}));
+        Digitize.iPoint = length(iNotEmptyLoc);
         % update the coordinate list
         UpdateList();
     end
