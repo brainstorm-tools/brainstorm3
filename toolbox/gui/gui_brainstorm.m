@@ -171,7 +171,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % ==== Menu PLUGINS ====
     jMenuPlugins = gui_component('Menu', jMenuBar, [], 'Plugins', [], [], [], fontSize);
-        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, [], fontSize);
+        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, [], [], fontSize);
         java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenuPlugins, fontSize));
        
     % ==== Menu HELP ====

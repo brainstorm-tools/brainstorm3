@@ -2567,10 +2567,12 @@ end
 
 
 %% ===== MENUS: CREATE =====
-function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
+function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
     import org.brainstorm.icon.*;
     % Get all the supported plugins
-    PlugDesc = GetSupported();
+    if isempty(PlugDesc)
+        PlugDesc = GetSupported();
+    end
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
@@ -2723,10 +2725,14 @@ end
 %% ===== MENUS: UPDATE =====
 function MenuUpdate(jMenu, fontSize)
     import org.brainstorm.icon.*;
-    % Regenerate plugin menu to look for new plugins
     global GlobalData
+    % Get installed and supported plugins
+    [PlugsInstalled, PlugsSupported]= GetInstalled();
+    % Get previous menu entries
     jPlugs = GlobalData.Program.GUI.pluginMenus;
-    jPlugs = MenuCreate(jMenu, jPlugs, fontSize);
+    % Regenerate plugin menu to look for new plugins
+    jPlugs = MenuCreate(jMenu, jPlugs, PlugsSupported, fontSize);
+    % Update menu entries
     GlobalData.Program.GUI.pluginMenus = jPlugs;
     % If compiled: disable most menus
     isCompiled = bst_iscompiled();
@@ -2736,9 +2742,9 @@ function MenuUpdate(jMenu, fontSize)
     for iPlug = 1:length(jPlugs)
         j = jPlugs(iPlug);
         PlugName = j.name;
+        Plug    = PlugsInstalled(ismember({PlugsInstalled.Name}, PlugName));
+        PlugRef = PlugsSupported(ismember({PlugsSupported.Name}, PlugName));
         % Is installed?
-        PlugRef = GetSupported(PlugName);
-        Plug = GetInstalled(PlugName);
         if ~isempty(Plug)
             isInstalled = 1;
         elseif ~isempty(PlugRef)
