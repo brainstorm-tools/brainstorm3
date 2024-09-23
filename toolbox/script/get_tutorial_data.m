@@ -31,7 +31,7 @@ function dataFullFile = get_tutorial_data(dataDir, dataFile, bstUser, bstPwd)
 
 %% ===== PARAMETERS =====
 if nargin < 2
-    error('At least two parameters are needed').
+    error('At least two parameters are needed');
 end
 if nargin <= 3 || isempty(bstUser) || isempty(bstPwd)
     bstUser = '';
