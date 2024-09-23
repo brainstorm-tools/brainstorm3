@@ -6,7 +6,7 @@ Scripts to test Brainstorm releases (Source and Binary)
 
 ## Tutorial scripts
 
-| Tutorial name             | Info  | Report | OS | :octocat: exec time |
+| Tutorial name             | Info  | Report | :octocat:<br>runner | :octocat: <br>exec time |
 |---------------------------|-------|--------|----|---------------------|
 | tutorial_introduction     | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/AllIntroduction)          | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialIntroduction.html) | 🐧🪟🍎 |  90 min |
 | tutorial_connectivity     | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity)             | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialIntroduction.html) | 🐧🪟🍎 |  05 min |
