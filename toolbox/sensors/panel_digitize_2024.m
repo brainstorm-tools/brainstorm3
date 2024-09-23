@@ -952,7 +952,6 @@ function CreateHeadpointsFigure()
         % Plot head points and save handles in global variable
         [Digitize.hFig, Digitize.iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
         TessInfo = getappdata(Digitize.hFig, 'Surface');
-        surfaceFile = split(TessInfo.SurfaceFile, '#');
         sSurf.Vertices = TessInfo.hPatch.Vertices;
         sSurf.Faces = TessInfo.hPatch.Faces;
         sSurf.Color = TessInfo.hPatch.FaceVertexCData;
@@ -960,7 +959,7 @@ function CreateHeadpointsFigure()
         panel_surface('RemoveSurface', Digitize.hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], surfaceFile{2});
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], Digitize.surfaceFile);
         % Get Digitizer JFrame
         bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position
