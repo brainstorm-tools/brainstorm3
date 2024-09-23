@@ -163,6 +163,19 @@ end
 % Centering vertices
 vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 
+% Convert to use fieldtrip's 'ft_convert_units' (uses 'ft_determine_units') to determine 
+% the units of a geometrical object by looking at its size and by relating this to 
+% the approximate size of the human head
+% Check 'ft_determine_units.m' for more details
+% NOTE: Requires spm12 or fieldtrip plugins
+fieldtripHeadSurface = struct( ...
+    'pos', vertices, ...
+    'tri', faces, ...
+    'color', color);
+% For scalability, we determine the vertices' unit and convert them to 'meters' to match the 
+% coordinate space as that of Polhemus as implemented in the 'panel_digitize.m'
+fieldtripHeadSurface = ft_convert_units(fieldtripHeadSurface, 'm');
+
 %% ===== Convert to Brainstorm structure =====
 % Define the structure
 TessMat = struct( ...
@@ -172,10 +185,10 @@ TessMat = struct( ...
     'Comment', '');
 
 % Convert face data
-TessMat.Faces = faces;
+TessMat.Faces = fieldtripHeadSurface.tri;
 
 % Convert vertices data
-TessMat.Vertices = vertices;
+TessMat.Vertices = fieldtripHeadSurface.pos;
 
 % Convert color data
-TessMat.Color = color;
+TessMat.Color = fieldtripHeadSurface.color;
