@@ -156,5 +156,5 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm .\toolbox\script\test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
