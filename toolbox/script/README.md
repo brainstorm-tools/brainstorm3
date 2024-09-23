@@ -4,6 +4,7 @@ This directory contains the scripts to replicate most [Brainstorm tutorials](htt
 
 Scripts to test Brainstorm releases (Source and Binary)
 
+## Tutorial scripts
 
 | Tutorial name             | Info  | Report | OS | :octocat: exec time |
 |---------------------------|-------|--------|----|---------------------|
@@ -29,7 +30,7 @@ Scripts to test Brainstorm releases (Source and Binary)
 | tutorial_simulations      | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Simulations)              | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialIntroduction.html) | 🐧🪟🍎 |  35 min |
 | tutorial_yokogawa         | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Yokogawa)                 | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialIntroduction.html) | 🐧🪟🍎 |  60 min |
 
-\* `N\A` indicates that this tutorial is not run on GitHub runners, see below #LINK_TO_SECTION
+\* `N\A` indicates that this tutorial is not run on GitHub runners, [see below](#1-on-github-runners)
 
 # Script `test_tutorial.m` 
 This scripts allows to tests Brainstorm by running tutorial scripts.
@@ -48,7 +49,7 @@ The GitHub action requires these three parameters:
 * **Brainstorm username**: to send email with report, and to download needed data
 * **Brainstorm password**: to download needed data
 
-:bulb: Some tutorial scripts require large datasets or additional software, these are not run on GitHub runners and are indicated in TABLE X, with the legend `N/A`.
+:bulb: Some tutorial scripts require large datasets or additional software, these are not run on GitHub runners and are indicated in the [Table above](#tutorial-scripts), with the legend `N/A`.
 
 ## 2. Locally
 It is also possible to run the tutorial scripts locally using `test_tutorial.m`, to tests the source and compiled Brainstorm distributions.
