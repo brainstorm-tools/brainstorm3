@@ -65,24 +65,11 @@ jobs:
         uses: matlab-actions/setup-matlab@v1
         with:
           release: ${{ env.MATLAB_VER }}
-      # Get code to do the testing
-      - name: Checkout 'bst-tests' in 'bst-tests'
-        uses: actions/checkout@v3
-        with:
-          repository: rcassani/bst-tests
-          ref: 'main'
-          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
-          # TOKEN was create on rcassani account
-          # token: ${{ secrets.TOKEN_BST_TEST }}
-          path: bst-tests
-      # Keep script at same level as brainstorm.m
-      - name: Create symbolic link for test_tutorial.m
-        run: ln -s $GITHUB_WORKSPACE/bst-tests/test_tutorial.m $GITHUB_WORKSPACE/brainstorm3/test_tutorial.m
       # Run testing
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
 
   # macOS job
@@ -100,24 +87,11 @@ jobs:
         uses: matlab-actions/setup-matlab@v1
         with:
           release: ${{ env.MATLAB_VER }}
-      # Get code to do the testing
-      - name: Checkout 'bst-tests' in 'bst-tests'
-        uses: actions/checkout@v3
-        with:
-          repository: rcassani/bst-tests
-          ref: 'main'
-          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
-          # TOKEN was create on rcassani account
-          # token: ${{ secrets.TOKEN_BST_TEST }}
-          path: bst-tests
-      # Keep script at same level as brainstorm.m
-      - name: Create symbolic link for test_tutorial.m
-        run: ln -s $GITHUB_WORKSPACE/bst-tests/test_tutorial.m $GITHUB_WORKSPACE/brainstorm3/test_tutorial.m
       # Run testing
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
 
   # Windows job
@@ -135,23 +109,6 @@ jobs:
         uses: matlab-actions/setup-matlab@v1
         with:
           release: ${{ env.MATLAB_VER }}
-      # Get code to do the testing
-#      - name: Checkout 'bst-tests' in 'bst-tests'
-#        uses: actions/checkout@v3
-#        with:
-#          repository: rcassani/bst-tests
-#          ref: 'main'
-          # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
-          # TOKEN was create on rcassani account
-          # token: ${{ secrets.TOKEN_BST_TEST }}
-#          path: bst-tests
-      # Keep script at same level as brainstorm.m
-#      - name: Create symbolic link for test_tutorial.m
-#        shell: cmd
-#        run: |
-#             mklink %GITHUB_WORKSPACE%\brainstorm3\test_tutorial.m %GITHUB_WORKSPACE%\bst-tests\test_tutorial.m
-#             pwd
-#             dir
       # Run testing
       - name: Run script
         uses: matlab-actions/run-command@v1
