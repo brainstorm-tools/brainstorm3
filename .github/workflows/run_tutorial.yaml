@@ -17,9 +17,9 @@ on:
   workflow_dispatch:
     # Inputs that appear on GitHub
     inputs:
-      testname:
+      tutorialname:
         type: choice
-        description: Test to run
+        description: Tutorial to run
         options:
         - tutorial_introduction
         - tutorial_connectivity
@@ -41,9 +41,13 @@ on:
         description: Brainstorm username to send email
         required: true
         default: ''
+      bstpassword:
+        description: Brainstorm username password
+        required: false
+        default: ''
 
 # Name for each run
-run-name: "Run: ${{ github.event.inputs.testname }}"
+run-name: "Run: ${{ github.event.inputs.tutorialname }}"
 
 jobs:
   # Ubuntu job
@@ -65,11 +69,11 @@ jobs:
       - name: Checkout 'bst-tests' in 'bst-tests'
         uses: actions/checkout@v3
         with:
-          repository: brainstorm-tools/bst-tests
+          repository: rcassani/bst-tests
           ref: 'main'
           # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
           # TOKEN was create on rcassani account
-          token: ${{ secrets.TOKEN_BST_TEST }}
+          # token: ${{ secrets.TOKEN_BST_TEST }}
           path: bst-tests
       # Keep script at same level as brainstorm.m
       - name: Create symbolic link for test_brainstorm.m
@@ -78,7 +82,7 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
 
   # macOS job
@@ -100,11 +104,11 @@ jobs:
       - name: Checkout 'bst-tests' in 'bst-tests'
         uses: actions/checkout@v3
         with:
-          repository: brainstorm-tools/bst-tests
+          repository: rcassani/bst-tests
           ref: 'main'
           # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
           # TOKEN was create on rcassani account
-          token: ${{ secrets.TOKEN_BST_TEST }}
+          # token: ${{ secrets.TOKEN_BST_TEST }}
           path: bst-tests
       # Keep script at same level as brainstorm.m
       - name: Create symbolic link for test_brainstorm.m
@@ -113,7 +117,7 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
 
   # Windows job
@@ -135,11 +139,11 @@ jobs:
       - name: Checkout 'bst-tests' in 'bst-tests'
         uses: actions/checkout@v3
         with:
-          repository: brainstorm-tools/bst-tests
+          repository: rcassani/bst-tests
           ref: 'main'
           # TOKEN_BST_TEST is a PAT in secrets in brainstorm3
           # TOKEN was create on rcassani account
-          token: ${{ secrets.TOKEN_BST_TEST }}
+          # token: ${{ secrets.TOKEN_BST_TEST }}
           path: bst-tests
       # Keep script at same level as brainstorm.m
       - name: Create symbolic link for test_brainstorm.m
@@ -152,5 +156,5 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.testname }} ${{ github.event.inputs.bstusername }} local
+          command: cd("brainstorm3"), brainstorm test_brainstorm.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
           startup-options: -nodisplay
