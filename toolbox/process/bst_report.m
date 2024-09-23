@@ -1333,6 +1333,9 @@ function ClearHistory(isUserConfirm)
     end
     % Get all the available reports
     ProtocolInfo = bst_get('ProtocolInfo');
+    if isempty(ProtocolInfo)
+        return
+    end
     ProtocolName = file_standardize(ProtocolInfo.Comment);
     reportsDir = bst_get('UserReportsDir');
     % If directory exists
