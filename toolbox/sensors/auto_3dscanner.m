@@ -203,8 +203,8 @@ function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(eegCa
     switch(eegCapName)
         case 'ANT Waveguard (65)'
             eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
-        case 'BrainProducts ActiCap (66)'
-            eegCapLandmarkLabels = {'GND', 'Oz', 'T7', 'T8'};
+        case 'BrainProducts ActiCap (68)'
+            eegCapLandmarkLabels = {'T7', 'T8', 'Oz', 'GND'};
         otherwise
             nLandmarkLabels = 0;
             return;
