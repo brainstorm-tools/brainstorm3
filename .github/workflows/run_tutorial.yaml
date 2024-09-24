@@ -24,10 +24,10 @@ on:
         - tutorial_introduction
         - tutorial_connectivity
         - tutorial_coherence
+        - tutorial_dba
         - tutorial_ephys
         - tutorial_epilepsy
         - tutorial_epileptogenicity
-        - tutorial_fem_tensors
         - tutorial_neuromag
         - tutorial_phantom_ctf
         - tutorial_phantom_elekta
@@ -37,14 +37,6 @@ on:
         - tutorial_simulations
         - tutorial_yokogawa
         required: true
-      bstusername:
-        description: Brainstorm username to send email
-        required: true
-        default: ''
-      bstpassword:
-        description: Brainstorm username password
-        required: false
-        default: ''
 
 # Name for each run
 run-name: "Run: ${{ github.event.inputs.tutorialname }}"
@@ -69,7 +61,7 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
 
   # macOS job
@@ -91,7 +83,7 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
 
   # Windows job
@@ -113,5 +105,5 @@ jobs:
       - name: Run script
         uses: matlab-actions/run-command@v1
         with:
-          command: cd("brainstorm3"), brainstorm .\toolbox\script\test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ github.event.inputs.bstusername }} ${{ github.event.inputs.bstpassword }} local
+          command: cd("brainstorm3"), brainstorm .\toolbox\script\test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
