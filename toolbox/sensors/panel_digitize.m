@@ -212,6 +212,7 @@ function Start(varargin) %#ok<DEFNU>
                     % If more than one surface present, user can choose
                     if length(iSurface) > 1
                         texSurfComment = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).Comment});
+                        texSurfComment = erase(texSurfComment, '_defaced');
                         if isempty(texSurfComment)
                             return
                         end
