@@ -150,7 +150,7 @@ function ExecuteScript(ScriptFile, varargin) %#ok<DEFNU>
                         end
                         strAround = '''';
                         % Interpret string as matrices and cells
-                        if strcmpi('{', varargin{iArg}(1)) || strcmpi('[', varargin{iArg}(1))
+                        if ~isempty(varargin{iArg}) && ismember(varargin{iArg}(1), {'{', '['})
                             strAround = '';
                         end
                         strSetArg = [strSetArg, argNames{iArg}, '=', strAround, varargin{iArg}, strAround, ';'];
