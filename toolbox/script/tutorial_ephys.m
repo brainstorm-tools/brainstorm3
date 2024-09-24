@@ -92,6 +92,7 @@ disp(2.1)
 sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',    SubjectName, ...
     'datafile',       {PlxFile, 'EEG-PLEXON'});
+disp(sFilesRaw);
 disp(2.2)
 % Process: Import from file
 bst_process('CallProcess', 'process_evt_import', sFilesRaw, [], ...
@@ -164,6 +165,7 @@ sFilesLfp = bst_process('CallProcess', 'process_convert_raw_to_lfp', sFilesRaw, 
     'filterbounds', [0.5, 150], ...
     'despikeLFP',   0, ...
     'parallel',     0);
+disp(sFilesLfp);
 disp(3.2)
 % Process: Import MEG/EEG: Events
 sFilesLfpEpochs = bst_process('CallProcess', 'process_import_data_event', sFilesLfp, [], ...
@@ -180,6 +182,8 @@ sFilesLfpEpochs = bst_process('CallProcess', 'process_import_data_event', sFiles
     'freq',          500, ...
     'baseline',      'all', ...
     'blsensortypes', 'SEEG');
+disp(sFilesLfpEpochs);
+
 
 
 %% ===== TUNING CURVES =====
@@ -202,6 +206,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesNoiseCorr, [], ...
     'type',     'timefreq', ...  % Time-frequency maps
     'modality', 6, ...  % SEEG
     'Comment',  'Noise correlation');
+disp(sFilesNoiseCorr);
 
 
 %% ===== SPIKE FIELD COHERENCE =====
@@ -214,12 +219,18 @@ sFilesStim1 = bst_process('CallProcess', 'process_select_files_data', [], [], ..
     'includebad',    0, ...
     'includeintra',  0, ...
     'includecommon', 0);
+disp(sFilesStim1);
+sSubject = bst_get('Subject', SubjectName);
+disp(sSubject);
+sStudies = bst_get('StudyWithSubject', sSubject.FileName);
+disp(sStudies);
 disp(6.2)
 % Process: Spike field coherence
 sFilesSFC = bst_process('CallProcess', 'process_spike_field_coherence', sFilesStim1, [], ...
     'timewindow',  [-0.15, 0.15], ...
     'sensortypes', 'EEG, SEEG', ...
     'parallel',    0);
+disp(sFilesSFC);
 disp(6.3)
 % Process: Snapshot: Time-frequency maps
 hFig = view_timefreq(sFilesSFC.FileName, 'SingleSensor', 'Spikes Channel AD03');
