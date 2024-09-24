@@ -189,8 +189,6 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         end
         return;
     end
-    % Use short file name
-    FileName = file_short(FileName);
     % Get current window layout
     curLayout = bst_get('Layout', 'WindowManager');
     if ~isempty(curLayout)
@@ -225,6 +223,10 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     ScoutsOptions = panel_scout('GetScoutsOptions');
     if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
         panel_scout('SetScoutShowSelection', 'none');
+    end
+    % Use short file name
+    if ~isempty(FileName)
+        FileName = file_short(FileName);
     end
                 
     % Show figures
@@ -680,7 +682,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         strErr = bst_error();
         disp(['BST_REPORT> ERROR:' 10 strErr]);
         % Log error message
-        Error('process_snapshot', FileName, strErr);
+        Error('process_snapshot', ['"' SnapType '" "' FileName '"'], strErr);
         hFig = [];
     end
     % Output images
