@@ -1,7 +1,7 @@
 # Workflow to test Brainstorm source on GitHub-Hosted Linux, Windows and macOS runners
 
 # Workflow name
-name: Run tutorial (on Brainstorm source)
+name: Run tutorial (source)
 
 # Parameters
 env:
@@ -37,6 +37,8 @@ on:
         - tutorial_simulations
         - tutorial_yokogawa
         required: true
+    # In addition to the tutorialname, there are two variables: TEST_TUTORIAL_BSTUSER and TEST_TUTORIAL_BSTPWD 
+    # These variables are created as "secrets" in this repo, and are used to download data and send report by email
 
 # Name for each run
 run-name: "Run: ${{ github.event.inputs.tutorialname }}"
