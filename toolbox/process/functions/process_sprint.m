@@ -91,10 +91,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
     sProcess.options.freqrange.Type    = 'freqrange_static';
     sProcess.options.freqrange.Value   = {[1 40], 'Hz', 1};
-    % Option: Peak type
-    sProcess.options.peaktype.Comment = {'Gaussian', 'Cauchy (experimental)', 'Peak model:'; 'gaussian', 'cauchy', ''};
-    sProcess.options.peaktype.Type    = 'radio_linelabel';
-    sProcess.options.peaktype.Value   = 'gaussian';
+    % Option: Optimization type
+    sProcess.options.optimobj.Comment = {'Default', 'Model selection (experimental)', 'Optimization type:'; 'leastsquare', 'negloglike', ''};
+    sProcess.options.optimobj.Type    = 'radio_linelabel';
+    sProcess.options.optimobj.Value   = 'leastsquare';
     % Option: Peak width limits
     sProcess.options.peakwidth.Comment = 'Peak width limits (default=[0.5-12]): ';
     sProcess.options.peakwidth.Type    = 'freqrange_static';
