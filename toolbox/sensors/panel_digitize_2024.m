@@ -180,7 +180,7 @@ function Start(varargin)
                 if isempty(surfaceFiles)
                     return
                 end
-                surfaceFile = surfaceFiles{end};
+                surfaceFile = file_short(surfaceFiles{end});
             else
                 [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
                                                            'What do you want to do?'], ...
@@ -206,11 +206,11 @@ function Start(varargin)
                     if isempty(surfaceFiles)
                         return
                     end
-                    surfaceFile = surfaceFiles{end};
+                    surfaceFile = file_short(surfaceFiles{end});
                 end
             end
         end
-
+        
         Digitize.surfaceFile = surfaceFile;
         sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
         % Display surface
@@ -951,15 +951,24 @@ function CreateHeadpointsFigure()
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
         % Plot head points and save handles in global variable
         [Digitize.hFig, Digitize.iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
-        TessInfo = getappdata(Digitize.hFig, 'Surface');
-        sSurf.Vertices = TessInfo.hPatch.Vertices;
-        sSurf.Faces = TessInfo.hPatch.Faces;
-        sSurf.Color = TessInfo.hPatch.FaceVertexCData;
+        % Get the surface
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+        % Apply the transformation
         sSurf.Vertices = [sSurf.Vertices ones(size(sSurf.Vertices,1),1)] * Digitize.Transf';
+        % Remove the surface
         panel_surface('RemoveSurface', Digitize.hFig, 1);
-        % view the surface
-        sSurf = tess_deface(sSurf);
+        % Deface the surface
+        if isempty(regexp(sSurf.Comment, 'defaced', 'match'))
+            sSurf = tess_deface(sSurf);
+        end
+        % Display updated surface
         view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], Digitize.surfaceFile);
+        % Save the surface and update the node
+        ProtocolInfo = bst_get('ProtocolInfo');
+        surfaceFile = bst_fullfile(ProtocolInfo.SUBJECTS, Digitize.surfaceFile);
+        bst_save(surfaceFile, sSurf, 'v7');
+        [~, iSubject] = bst_get('Subject', Digitize.SubjectName);
+        db_reload_subjects(iSubject);
         % Get Digitizer JFrame
         bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position
@@ -1641,7 +1650,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
         UpdateList();
         % Update the channel file to save these essential points, and possibly needed for creating figure.
         SaveDigitizeChannelFile();
-        
+
         % Create figure, store hFig & iDS
         CreateHeadpointsFigure();
         % Enable fids button

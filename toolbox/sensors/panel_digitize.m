@@ -201,7 +201,7 @@ function Start(varargin) %#ok<DEFNU>
                 if isempty(surfaceFiles)
                     return
                 end
-                surfaceFile = surfaceFiles{end};
+                surfaceFile = file_short(surfaceFiles{end});
             else
                 [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
                                                            'What do you want to do?'], ...
@@ -227,7 +227,7 @@ function Start(varargin) %#ok<DEFNU>
                     if isempty(surfaceFiles)
                         return
                     end
-                    surfaceFile = surfaceFiles{end};
+                    surfaceFile = file_short(surfaceFiles{end});
                 end
             end
         end
@@ -1356,15 +1356,24 @@ function CreateHeadpointsFigure()
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
         % Plot head points
         [hFig, iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
-        TessInfo = getappdata(hFig, 'Surface');
-        sSurf.Vertices = TessInfo.hPatch.Vertices;
-        sSurf.Faces = TessInfo.hPatch.Faces;
-        sSurf.Color = TessInfo.hPatch.FaceVertexCData;
+        % Get the surface
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+        % Apply the transformation
         sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(size(sSurf.Vertices, 1),1)]')';
+        % Remove the surface
         panel_surface('RemoveSurface', hFig, 1);
-        % view the surface
-        sSurf = tess_deface(sSurf);
+        % Deface the surface
+        if isempty(regexp(sSurf.Comment, 'defaced', 'match'))
+            sSurf = tess_deface(sSurf);
+        end
+        % Display updated surface
         view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], Digitize.surfaceFile);
+        % Save the surface and update the node
+        ProtocolInfo = bst_get('ProtocolInfo');
+        surfaceFile = bst_fullfile(ProtocolInfo.SUBJECTS, Digitize.surfaceFile);
+        bst_save(surfaceFile, sSurf, 'v7');
+        [~, iSubject] = bst_get('Subject', Digitize.SubjectName);
+        db_reload_subjects(iSubject);
         % Hide head surface
         if ~strcmpi(Digitize.Type, '3DScanner')
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
