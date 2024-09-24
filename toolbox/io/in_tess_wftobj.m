@@ -167,13 +167,22 @@ vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 % the units of a geometrical object by looking at its size and by relating this to 
 % the approximate size of the human head
 % Check 'ft_determine_units.m' for more details
-% NOTE: Requires spm12 or fieldtrip plugins
+% NOTE: Requires spm12 plugin
 fieldtripHeadSurface = struct( ...
     'pos', vertices, ...
     'tri', faces, ...
     'color', color);
 % For scalability, we determine the vertices' unit and convert them to 'meters' to match the 
 % coordinate space as that of Polhemus as implemented in the 'panel_digitize.m'
+% Part of spm12/external/fieldtrip
+% Initialize SPM
+isInstalled = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    if ~isProgress
+        bst_progress('stop');
+    end
+    return;
+end
 fieldtripHeadSurface = ft_convert_units(fieldtripHeadSurface, 'm');
 
 %% ===== Convert to Brainstorm structure =====
