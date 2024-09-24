@@ -1,7 +1,7 @@
-function [head_surface_deface] = tess_deface(head_surface)
+function [head_surface] = tess_deface(head_surface)
 % TESS_DEFACE: Removing non-essential vertices (bottom half of the subject's face in mesh) to deface the 3D mesh
 %
-% USAGE:  [head_surface_deface] = tess_deface(head_surface);
+% USAGE:  [head_surface] = tess_deface(head_surface);
 %
 % INPUT:
 %     - head_surface:  Brainstorm tesselation structure with fields:
@@ -10,7 +10,7 @@ function [head_surface_deface] = tess_deface(head_surface)
 %         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional)
 %
 % OUTPUT:
-%     - head_surface_deface:  Brainstorm tesselation structure with fields:
+%     - head_surface:  Brainstorm tesselation structure with fields:
 %         |- Vertices : {[nVertices x 3] double}, in millimeters
 %         |- Faces    : {[nFaces x 3] double}
 %         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional)
@@ -47,16 +47,18 @@ t = (R > 1.1);
 remove = (1:length(t));
 remove = remove(t);
 if ~isempty(remove)
-    [head_surface_deface.Vertices, head_surface_deface.Faces] = tess_remove_vert(head_surface.Vertices, head_surface.Faces, remove);
+    [head_surface.Vertices, head_surface.Faces] = tess_remove_vert(head_surface.Vertices, head_surface.Faces, remove);
     if isfield(head_surface, 'Color')
         head_surface.Color(remove, :) = [];
     end
-else
-    head_surface_deface.Vertices = head_surface.Vertices;
-    head_surface_deface.Faces = head_surface.Faces;
 end
-if isfield(head_surface, 'Color')
-    head_surface_deface.Color = head_surface.Color;
-end
+
+head_surface.VertConn = tess_vertconn(head_surface.Vertices, head_surface.Faces);
+head_surface.VertNormals = tess_normals(head_surface.Vertices, head_surface.Faces, head_surface.VertConn);
+head_surface.Curvature = tess_curvature(head_surface.Vertices, head_surface.VertConn, head_surface.VertNormals, .1);
+[~, head_surface.VertArea] = tess_area(head_surface.Vertices, head_surface.Faces);
+head_surface.SulciMap = tess_sulcimap(head_surface);
+head_surface.Comment = [head_surface.Comment '_defaced'];
+head_surface = bst_history('add', head_surface, 'deface_mesh', 'mesh defaced');
 
 end
