@@ -106,7 +106,7 @@ bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], ...
 
 % Display anatomy and sensors
 hFig = view_channels_3d(sFilesRaw.ChannelFile, 'SEEG', 'scalp', 1);
-hFig = view_surface(CortexFile{1}, 0.8, [1 0 0], hFig);
+%hFig = view_surface(CortexFile{1}, 0.8, [1 0 0], hFig);
 figure_3d('SetStandardView', hFig, 'right');
 bst_report('Snapshot', hFig, [], 'Anatomy');
 % Unload everything
