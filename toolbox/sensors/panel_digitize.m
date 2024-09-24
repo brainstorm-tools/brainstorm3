@@ -1357,7 +1357,6 @@ function CreateHeadpointsFigure()
         % Plot head points
         [hFig, iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
         TessInfo = getappdata(hFig, 'Surface');
-        surfaceFile = split(TessInfo.SurfaceFile, '#');
         sSurf.Vertices = TessInfo.hPatch.Vertices;
         sSurf.Faces = TessInfo.hPatch.Faces;
         sSurf.Color = TessInfo.hPatch.FaceVertexCData;
@@ -1365,7 +1364,7 @@ function CreateHeadpointsFigure()
         panel_surface('RemoveSurface', hFig, 1);
         % view the surface
         sSurf = tess_deface(sSurf);
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], surfaceFile{2});
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], Digitize.surfaceFile);
         % Hide head surface
         if ~strcmpi(Digitize.Type, '3DScanner')
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
