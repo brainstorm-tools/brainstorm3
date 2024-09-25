@@ -80,16 +80,13 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % First Input is the one wiht highest sampling frequency
     [~, im] = max(fs);
+
     sInputs([1, im])    = sInputs([im, 1]);
     sOldTiming([1, im]) = sOldTiming([im, 1]);
-    fs([1, im])         = fs([im, 1]);
-
-    % Compute shifiting between file i and first file
-    new_times     = sOldTiming{1}.Time;
+    new_times           = sOldTiming{1}.Time;
 
     iNewStudy = db_add_condition(sInputs(iInput).SubjectName,  ['@raw' sProcess.options.condition.Value]);
     sNewStudy = bst_get('Study', iNewStudy);
-
 
     % Save channel definition
     bst_progress('text', 'Combining channels files...');
@@ -97,7 +94,7 @@ function OutputFiles = Run(sProcess, sInputs)
     NewChannelMat   = in_bst_channel(sInputs(1).ChannelFile);
     sIdxChAn{1}     = 1:length(NewChannelMat.Channel);
 
-    % Sync videos
+    % Copy videos
     sOldStudy = bst_get('Study', sInputs(1).iStudy);
     if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
         for iOldVideo = 1 : length(sOldStudy.Image)
@@ -113,7 +110,8 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % Save sync data to file
     for iInput = 2:nInputs
-        % Sync videos
+
+        % Copy videos
         sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
         if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
             for iOldVideo = 1 : length(sOldStudy.Image)
@@ -155,23 +153,28 @@ function OutputFiles = Run(sProcess, sInputs)
     bst_progress('inc', nInputs);
     bst_progress('text', 'Saving files...');
 
+    % Read channel flags
+    channelflag = [];
+    for iInput = 1:nInputs
+        sDataRawSync = in_bst_data(sInputs(iInput).FileName, 'ChannelFlag');
+        channelflag = [channelflag; sDataRawSync.ChannelFlag];
+    end
 
     % Set Output sFile structure
     sDataRawSync = in_bst_data(sInputs(1).FileName, 'F');
     sFileIn = sDataRawSync.F;
     sFileIn.header.nsamples = length(new_times);
     sFileIn.prop.times      = [ new_times(1), new_times(end)];
-    sFileIn.channelflag     = ones(1,length(NewChannelMat.Channel));
+    sFileIn.channelflag     = channelflag;
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
 
-    
     sDataSync        = in_bst(sInputs(1).FileName, [], 1, 1, 'no');
     sOutMat          = rmfield(sDataSync, 'F');
     sOutMat.format   = 'BST-BIN';
     sOutMat.DataType = 'raw';
     sOutMat.F        = sFileOut;
-    sOutMat.ChannelFlag = ones(1,length(NewChannelMat.Channel));
-    sOutMat.Comment  = [sDataSync.Comment ' | Combined'];
+    sOutMat.ChannelFlag = channelflag;
+    sOutMat.Comment     = [sDataSync.Comment ' | Combined'];
     
     bst_save(OutputFile, sOutMat, 'v6');
 
