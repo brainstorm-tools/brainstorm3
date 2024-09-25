@@ -151,8 +151,10 @@ function OutputFiles = Run(sProcess, sInput)
     sStudyInput = bst_get('AnyFile', sInput.FileName);
     % New study path
     newStudyPath = file_unique(bst_fullfile(bst_fileparts(bst_fileparts(file_fullpath(sStudyInput.FileName))), [sInput.Condition, '_LFP']));
+    disp(newStudyPath)
     % New folder name
     [tmp, newCondition] = bst_fileparts(newStudyPath);
+    disp(newCondition)
     % Create output folder
     iOutputStudy = db_add_condition(sInput.SubjectName, newCondition, [], sStudyInput.DateOfStudy);
     if isempty(iOutputStudy)
@@ -160,6 +162,7 @@ function OutputFiles = Run(sProcess, sInput)
         return;
     end
     sOutputStudy = bst_get('Study', iOutputStudy);
+    disp(sOutputStudy)
 
     % Get new condition name
     newStudyPath = bst_fileparts(file_fullpath(sOutputStudy.FileName));
