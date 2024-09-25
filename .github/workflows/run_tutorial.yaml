@@ -56,12 +56,12 @@ jobs:
           path: brainstorm3
       # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
       - name: Set up Matlab
-        uses: matlab-actions/setup-matlab@v1
+        uses: matlab-actions/setup-matlab@v2
         with:
           release: ${{ env.MATLAB_VER }}
       # Run testing
       - name: Run script
-        uses: matlab-actions/run-command@v1
+        uses: matlab-actions/run-command@v2
         with:
           command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
@@ -78,12 +78,12 @@ jobs:
           path: brainstorm3
       # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
       - name: Set up Matlab
-        uses: matlab-actions/setup-matlab@v1
+        uses: matlab-actions/setup-matlab@v2
         with:
           release: ${{ env.MATLAB_VER }}
       # Run testing
       - name: Run script
-        uses: matlab-actions/run-command@v1
+        uses: matlab-actions/run-command@v2
         with:
           command: cd("brainstorm3"), brainstorm ./toolbox/script/test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
@@ -100,12 +100,12 @@ jobs:
           path: brainstorm3
       # Setting Matlab, if done after 2nd checkout, Matlab cannot find brainstorm.m
       - name: Set up Matlab
-        uses: matlab-actions/setup-matlab@v1
+        uses: matlab-actions/setup-matlab@v2
         with:
           release: ${{ env.MATLAB_VER }}
       # Run testing
       - name: Run script
-        uses: matlab-actions/run-command@v1
+        uses: matlab-actions/run-command@v2
         with:
           command: cd("brainstorm3"), brainstorm .\toolbox\script\test_tutorial.m ${{ github.event.inputs.tutorialname }} '' '' ${{ secrets.TEST_TUTORIAL_BSTUSER }} ${{ secrets.TEST_TUTORIAL_BSTPWD }} local
           startup-options: -nodisplay
