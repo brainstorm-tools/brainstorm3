@@ -33,8 +33,10 @@ function TessMat = in_tess_wftobj(TessFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
+% inspired from 'https://github.com/fieldtrip/fieldtrip/blob/release/fileio/ft_read_headshape.m
+% 
 % Authors: Yash Shashank Vakilna, 2024
-%          Chinmay Chinara, 2024
+%          Chinmay Chinara      , 2024
 
 %% ===== Parse inputs =====
 % Check inputs
@@ -68,6 +70,12 @@ obj.VertexNormals = objtbl{objtbl.type=='vn', 2:4};
 obj.Faces         = objtbl{objtbl.type=='f', [2,5,8]};
 obj.TextCoords    = objtbl{objtbl.type=='vt', 2:3};
 obj.TextIndices   = objtbl{objtbl.type=='f', [3,6,9]};
+% For some OBJ's exported from 3D softwares like Maya and Blender, when parsed using 
+% 'readtable', the vertex coordinates start from the 3rd column
+if isnan(obj.Vertices(:,1))
+    obj.Vertices  = objtbl{objtbl.type=='v',  3:5};
+end
+
 
 %% ===== Refine faces, mesh and generate color matrix =====
 vertices   = obj.Vertices;
@@ -114,8 +122,6 @@ color = [];
 if hasimage
     % If true then there is an image/texture with color information
     if texture_per_vert
-        % Refines the mesh and textures to increase resolution of the colormapping
-        [vertices, faces, texture] = refine(vertices, faces, 'banks', texture);
         picture = imread(image);
         color   = zeros(size(vertices, 1), 3);
         for i = 1:size(vertices, 1)
