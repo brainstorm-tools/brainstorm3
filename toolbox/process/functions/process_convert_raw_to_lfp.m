@@ -171,6 +171,7 @@ function OutputFiles = Run(sProcess, sInput)
     RawFileFormat = 'BST-BIN';
 
     % Number of time points in output file
+    which('downsample', '-all')
     newTimeVector = downsample(DataMat.Time, round(Fs/LFP_fs));
     nTimeOut = length(newTimeVector);
     % Template structure for the creation of the output raw file
