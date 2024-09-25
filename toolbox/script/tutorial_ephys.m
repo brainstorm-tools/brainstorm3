@@ -201,85 +201,86 @@ disp(5.1)
 % Process: Noise correlation
 sFilesNoiseCorr = bst_process('CallProcess', 'process_noise_correlation', sFilesLfpEpochs, [], ...
     'timewindow', [0, 0.3]);
+disp(sFilesNoiseCorr)
+
 % Process: Snapshot: Time-frequency maps
 bst_process('CallProcess', 'process_snapshot', sFilesNoiseCorr, [], ...
     'type',     'timefreq', ...  % Time-frequency maps
     'modality', 6, ...  % SEEG
     'Comment',  'Noise correlation');
-disp(sFilesNoiseCorr);
-
-
-%% ===== SPIKE FIELD COHERENCE =====
-disp(6.1)
-% Process: Select data files in: Floyd/*/Stim On 1
-sFilesStim1 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
-    'subjectname',   SubjectName, ...
-    'condition',     '', ...
-    'tag',           'Stim On 1', ...
-    'includebad',    0, ...
-    'includeintra',  0, ...
-    'includecommon', 0);
-disp(sFilesStim1);
-sSubject = bst_get('Subject', SubjectName);
-disp(sSubject);
-sStudies = bst_get('StudyWithSubject', sSubject.FileName);
-disp(sStudies);
-disp(6.2)
-% Process: Spike field coherence
-sFilesSFC = bst_process('CallProcess', 'process_spike_field_coherence', sFilesStim1, [], ...
-    'timewindow',  [-0.15, 0.15], ...
-    'sensortypes', 'EEG, SEEG', ...
-    'parallel',    0);
-disp(sFilesSFC);
-disp(6.3)
-% Process: Snapshot: Time-frequency maps
-hFig = view_timefreq(sFilesSFC.FileName, 'SingleSensor', 'Spikes Channel AD03');
-bst_report('Snapshot', hFig, [], 'Spike field coherence');
-close(hFig);
-
-
-%% ===== RASTER PLOT =====
-disp(7.1)
-% Process: Raster plot per neuron
-sFilesRaster = bst_process('CallProcess', 'process_rasterplot_per_neuron', sFilesStim1, []);
-disp(7.2)
-% Process: Snapshot: Time-frequency maps
-disp(7.3)
-hFig = view_timefreq(sFilesRaster.FileName, 'SingleSensor', 'Spikes Channel AD01 |1|');
-disp(7.4)
-panel_time('SetCurrentTime',  0.158);
-disp(7.5)
-bst_report('Snapshot', hFig, [], 'Raster plot per neuron');
-close(hFig);
-
-
-%% ===== SPIKE TRIGGERED AVERAGE =====
-disp(8.1)
-% Process: Spike triggered average
-sFilesAvg = bst_process('CallProcess', 'process_spike_triggered_average', sFilesStim1, [], ...
-    'timewindow', [-0.15, 0.15], ...
-    'parallel',   0);
-disp(8.2)
-% Process: Select data files in: Floyd/*/Stim On 1 (AD01 #1)
-sFilesAvgAD01 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
-    'subjectname',   SubjectName, ...
-    'condition',     '', ...
-    'tag',           'Stim On 1 (AD01 #1)', ...
-    'includebad',    0, ...
-    'includeintra',  0, ...
-    'includecommon', 0);
-disp(8.3)
-% Process: Snapshot: Recordings time series
-bst_process('CallProcess', 'process_snapshot', sFilesAvgAD01, [], ...
-    'type',     'data', ...  % Recordings time series
-    'modality', 6, ...  % SEEG
-    'Comment',  'Spike triggered average: AD01 #1');
-% View 2DLayout
-disp(8.3)
-hFig = view_topography(sFilesAvgAD01.FileName, 'SEEG', '2DLayout');
-disp(8.4)
-bst_report('Snapshot', hFig, [], 'Spike triggered average: AD01 #1');
-close(hFig);
+% 
+% 
+% %% ===== SPIKE FIELD COHERENCE =====
+% disp(6.1)
+% % Process: Select data files in: Floyd/*/Stim On 1
+% sFilesStim1 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
+%     'subjectname',   SubjectName, ...
+%     'condition',     '', ...
+%     'tag',           'Stim On 1', ...
+%     'includebad',    0, ...
+%     'includeintra',  0, ...
+%     'includecommon', 0);
+% disp(sFilesStim1);
+% sSubject = bst_get('Subject', SubjectName);
+% disp(sSubject);
+% sStudies = bst_get('StudyWithSubject', sSubject.FileName);
+% disp(sStudies);
+% disp(6.2)
+% % Process: Spike field coherence
+% sFilesSFC = bst_process('CallProcess', 'process_spike_field_coherence', sFilesStim1, [], ...
+%     'timewindow',  [-0.15, 0.15], ...
+%     'sensortypes', 'EEG, SEEG', ...
+%     'parallel',    0);
+% disp(sFilesSFC);
+% disp(6.3)
+% % Process: Snapshot: Time-frequency maps
+% hFig = view_timefreq(sFilesSFC.FileName, 'SingleSensor', 'Spikes Channel AD03');
+% bst_report('Snapshot', hFig, [], 'Spike field coherence');
+% close(hFig);
+% 
+% 
+% %% ===== RASTER PLOT =====
+% disp(7.1)
+% % Process: Raster plot per neuron
+% sFilesRaster = bst_process('CallProcess', 'process_rasterplot_per_neuron', sFilesStim1, []);
+% disp(7.2)
+% % Process: Snapshot: Time-frequency maps
+% disp(7.3)
+% hFig = view_timefreq(sFilesRaster.FileName, 'SingleSensor', 'Spikes Channel AD01 |1|');
+% disp(7.4)
+% panel_time('SetCurrentTime',  0.158);
+% disp(7.5)
+% bst_report('Snapshot', hFig, [], 'Raster plot per neuron');
+% close(hFig);
+% 
+% 
+% %% ===== SPIKE TRIGGERED AVERAGE =====
+% disp(8.1)
+% % Process: Spike triggered average
+% sFilesAvg = bst_process('CallProcess', 'process_spike_triggered_average', sFilesStim1, [], ...
+%     'timewindow', [-0.15, 0.15], ...
+%     'parallel',   0);
+% disp(8.2)
+% % Process: Select data files in: Floyd/*/Stim On 1 (AD01 #1)
+% sFilesAvgAD01 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
+%     'subjectname',   SubjectName, ...
+%     'condition',     '', ...
+%     'tag',           'Stim On 1 (AD01 #1)', ...
+%     'includebad',    0, ...
+%     'includeintra',  0, ...
+%     'includecommon', 0);
+% disp(8.3)
+% % Process: Snapshot: Recordings time series
+% bst_process('CallProcess', 'process_snapshot', sFilesAvgAD01, [], ...
+%     'type',     'data', ...  % Recordings time series
+%     'modality', 6, ...  % SEEG
+%     'Comment',  'Spike triggered average: AD01 #1');
+% % View 2DLayout
+% disp(8.3)
+% hFig = view_topography(sFilesAvgAD01.FileName, 'SEEG', '2DLayout');
+% disp(8.4)
+% bst_report('Snapshot', hFig, [], 'Spike triggered average: AD01 #1');
+% close(hFig);
 
 % Save and display report
 disp(9.1)
