@@ -87,16 +87,16 @@ function OutputFiles = Run(sProcess, sInputs)
     % Compute shifiting between file i and first file
     new_times     = sOldTiming{1}.Time;
 
-    iNewStudy = db_add_condition(sInputs(iInput).SubjectName,  sProcess.options.condition.Value);
+    iNewStudy = db_add_condition(sInputs(iInput).SubjectName,  ['@raw' sProcess.options.condition.Value]);
     sNewStudy = bst_get('Study', iNewStudy);
 
 
     % Save channel definition
     bst_progress('text', 'Combining channels files...');
 
-    NewChannelMat = in_bst_channel(sInputs(1).ChannelFile);
+    NewChannelMat   = in_bst_channel(sInputs(1).ChannelFile);
+    sIdxChAn{1}     = 1:length(NewChannelMat.Channel);
 
-   sIdxChAn{1} = 1:length(NewChannelMat.Channel);
     % Save sync data to file
     for iInput = 2:nInputs
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
