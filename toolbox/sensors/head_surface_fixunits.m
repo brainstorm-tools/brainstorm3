@@ -1,7 +1,7 @@
 function headPos = head_surface_fixunits(headPos, units, isConfirmFix)
 % HEAD_SURFACE_FIXUNITS: Checks the units of the head surface vertices and ask user if the situation is not clear.
 % 
-% USAGE:  eegLoc = head_surface_fixunits(headPos, units, isConfirmFix=1)
+% USAGE:  headPos = head_surface_fixunits(headPos, units, isConfirmFix=1)
 %
 % INPUTS:
 %    - headPos      : the vertices of the head surface
