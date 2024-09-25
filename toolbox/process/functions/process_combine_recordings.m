@@ -97,8 +97,36 @@ function OutputFiles = Run(sProcess, sInputs)
     NewChannelMat   = in_bst_channel(sInputs(1).ChannelFile);
     sIdxChAn{1}     = 1:length(NewChannelMat.Channel);
 
+    % Sync videos
+    sOldStudy = bst_get('Study', sInputs(1).iStudy);
+    if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
+        for iOldVideo = 1 : length(sOldStudy.Image)
+            sOldVideo = load(file_fullpath(sOldStudy.Image(iOldVideo).FileName));
+            if isempty(sOldVideo.VideoStart)
+                sOldVideo.VideoStart = 0;
+            end
+            iNewVideo = import_video(iNewStudy, sOldVideo.LinkTo);
+            sNewStudy = bst_get('Study', iNewStudy);
+            figure_video('SetVideoStart', file_fullpath(sNewStudy.Image(iNewVideo).FileName), sprintf('%.3f', sOldVideo.VideoStart));
+        end
+    end
+
     % Save sync data to file
     for iInput = 2:nInputs
+        % Sync videos
+        sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
+        if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
+            for iOldVideo = 1 : length(sOldStudy.Image)
+                sOldVideo = load(file_fullpath(sOldStudy.Image(iOldVideo).FileName));
+                if isempty(sOldVideo.VideoStart)
+                    sOldVideo.VideoStart = 0;
+                end
+                iNewVideo = import_video(iNewStudy, sOldVideo.LinkTo);
+                sNewStudy = bst_get('Study', iNewStudy);
+                figure_video('SetVideoStart', file_fullpath(sNewStudy.Image(iNewVideo).FileName), sprintf('%.3f', sOldVideo.VideoStart));
+            end
+        end
+
         ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
         
         sIdxChAn{iInput} = length(NewChannelMat.Channel) +  (1:length(ChannelMat.Channel));
