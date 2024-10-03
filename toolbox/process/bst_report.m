@@ -682,7 +682,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         strErr = bst_error();
         disp(['BST_REPORT> ERROR:' 10 strErr]);
         % Log error message
-        Error('process_snapshot', FileName, strErr);
+        Error('process_snapshot', ['"' SnapType '" "' FileName '"'], strErr);
         hFig = [];
     end
     % Output images
