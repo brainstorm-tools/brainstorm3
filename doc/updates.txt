@@ -1,3 +1,10 @@
+September 2024
+- Artifacts: ICA, display explaned variance for ICs
+- Distrib: Function 'test_tutorial.m' and GitHub workflow 'run_tutorial.yaml'
+- Plugins: Bugfix, interaction between SPM and FieldTrip
+- Plugins: Bugfix, always read FIFF with functions in 'brainstorm3/external'
+- GUI: Show/hide hidden files (Linux, Windows and macOS)
+--------------------------------------------------------------
 August 2024
 - Anatomy: Improve volume computation, use 'boundary'
 - Coreg: New digitization panel
