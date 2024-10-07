@@ -697,8 +697,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 if ~isfield(Results, 'nComponents') || isempty(Results.nComponents)
                     Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
                 end
-
-                Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
+                
                 % Get outputs
                 DataFile = OPTIONS.DataFile; 
                 Time     = OPTIONS.DataTime;
