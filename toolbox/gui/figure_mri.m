@@ -874,7 +874,7 @@ function ButtonView3DHead_Callback(hFig)
         sMri.SCS.RPA = [1, 0.5, 0.5] .* size(sMri.Cube) .* sMri.Voxsize;
         [Transf, sMri] = cs_compute(sMri, 'scs');
         % Generate head surface
-        [Vertices, Faces] = tess_isohead(sMri, 20000, 0, 0, '');
+        [Vertices, Faces] = tess_isohead(sMri, 20000, 0, 0, [], '');
         % Convert coordinates back to MRI (mm) so that the head surface doesn't have
         % to be updated when we move fiducials
         Vertices = cs_convert(sMri, 'scs', 'mri', Vertices) * 1000;

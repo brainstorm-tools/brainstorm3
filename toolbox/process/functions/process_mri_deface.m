@@ -359,7 +359,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
             bst_set('Subject', iSubject, sSubject);
             % Compute new head surface
             sSubject.Anatomy(sSubject.iAnatomy).FileName;
-            tess_isohead(MriHead, 10000, 0, 2, HeadComment);
+            tess_isohead(MriHead, 10000, 0, 2, [], HeadComment);
         end
     end
     
