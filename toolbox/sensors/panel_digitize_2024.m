@@ -1181,6 +1181,7 @@ function CreateMontageMenu(jMenu)
                     jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
                     jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
                     jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuWs  = gui_component('Menu', [], [], 'WearableSensing', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
                     % Add an item per Template available
                     fList = bstDefaults(iDir).contents;
                     % Sort in natural order
@@ -1201,6 +1202,8 @@ function CreateMontageMenu(jMenu)
                             jMenuType = jMenuEgi;
                         elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
                             jMenuType = jMenuNs;
+                        elseif ~isempty(strfind(fList(iFile).name, 'WearableSensing'))
+                            jMenuType = jMenuWs;
                         else
                             jMenuType = jMenuOther;
                         end
@@ -1225,6 +1228,9 @@ function CreateMontageMenu(jMenu)
                     end
                     if (jMenuNs.getMenuComponentCount() > 0)
                         jMenuDir.add(jMenuNs);
+                    end
+                    if (jMenuWs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuWs);
                     end
                 end
             end

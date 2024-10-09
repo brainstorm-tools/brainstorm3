@@ -205,6 +205,8 @@ function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(eegCa
             eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
         case 'BrainProducts ActiCap (68)'
             eegCapLandmarkLabels = {'T7', 'T8', 'Oz', 'GND'};
+        case 'WearableSensing DSI-24 with REF (22)'
+            eegCapLandmarkLabels = {'T4', 'T3', 'Fpz'};
         otherwise
             nLandmarkLabels = 0;
             return;
