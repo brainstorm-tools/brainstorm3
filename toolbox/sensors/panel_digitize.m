@@ -1018,8 +1018,14 @@ function EEGAutoDetectElectrodes(h, ev)
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
 
-    if size(Digitize.Points.EEG, 1) < 4
-        bst_error('Please set the first 4 initialization points', Digitize.Type, 0);
+    % Get current montage
+    curMontage = GetCurrentMontage();
+
+    % Get EEG cap landmark labels used for initialization
+    [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels',curMontage.Name);
+
+    if size(Digitize.Points.EEG, 1) < nLandmarkLabels
+        bst_error(['Please set the first ' num2str(nLandmarkLabels) ' initialization points in order [ ' sprintf('%s ',eegCapLandmarkLabels{:}) ']'], Digitize.Type, 0);
         return;
     end
 
