@@ -107,6 +107,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
         [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions);
+    case {'EEG-EDF-FT'}
+        [sFile, ChannelMat, DataMat]= in_data_edf_ft(DataFile);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
