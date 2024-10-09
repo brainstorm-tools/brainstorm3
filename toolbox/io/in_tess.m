@@ -13,7 +13,8 @@ function [TessMat, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelL
 % OUTPUT:
 %     - TessMat:  Brainstorm tesselation structure with fields:
 %         |- Vertices : {[3 x nbVertices] double}, in millimeters
-%         |- Faces    : {[nbFaces x 3] double}
+%         |- Faces    : {[nbFaces x 3] double}                         (optional, volume meshes do not have 'Faces')
+%         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional, not all surfaces have color info)
 %         |- Comment  : {information string}
 
 % @=============================================================================
@@ -217,7 +218,11 @@ switch (FileFormat)
             T = sMri.Header.info.mat(1:3,4)' - 1;
             TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, T / 1000);            
         end
-        
+    
+    case 'WFTOBJ'
+        TessMat = in_tess_wftobj(TessFile);
+        isConvertScs = 0;
+
     case 'MRI-MASK'
         [TessMat, Labels] = in_tess_mrimask(TessFile, 0, SelLabels);
         
@@ -272,6 +277,21 @@ end
 
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
+
+% If there exists a textured surface with the same comment, make it unique
+% Get the current subject
+if strcmpi(FileFormat, 'WFTOBJ') && ~isempty(sMri)
+    subjectName = split(sMri.FileName, '/');
+    sSubject = bst_get('Subject', subjectName{1});
+    iTexSurf = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
+    if ~isempty(iTexSurf)
+        iTexSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface(iTexSurf).Comment}));
+        if ~isempty(iTexSurfComment)
+            fileBase = sprintf('%s_%02d', fileBase, length(iTexSurfComment)+1);
+        end
+    end
+end
+
 % If various tesselations were loaded from one file
 if (length(TessMat) > 1)
     for iTess = 1:length(TessMat)

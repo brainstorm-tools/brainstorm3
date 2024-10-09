@@ -215,6 +215,8 @@ switch (lower(action))
                     MriFile = sSubject.Anatomy(1).FileName;
                     hFig = view_mri_3d(MriFile, [], 0.3, []);
                     view_surface(filenameRelative, [], [], hFig, []);
+                elseif ~isempty(regexp(filenameRelative, 'textured', 'match'))
+                    ViewTexturedSurface(filenameRelative);
                 else
                     view_surface(filenameRelative);
                 end
@@ -1126,7 +1128,11 @@ switch (lower(action))
                 sSubject = bst_get('Subject', iSubject);
                 
                 % === DISPLAY ===
-                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)ViewTexturedSurface(filenameRelative));
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                end
 
                 % === SET SURFACE TYPE ===
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
@@ -1152,8 +1158,8 @@ switch (lower(action))
                         case 'other'
                             jItemSetSurfTypeOther.setSelected(1);
                     end
-                end
-                
+                end 
+
                 % SET AS DEFAULT SURFACE
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     iSurface = bstNodes(1).getItemIndex();
@@ -1170,6 +1176,14 @@ switch (lower(action))
                     % Separator
                     AddSeparator(jPopup);
                 end
+
+                % === DIGITIZE (3D SCANNER) OPTION ===
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Digitize (3D scanner)', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner', sSubject, iSubject, filenameRelative));
+                    % Separator
+                    AddSeparator(jPopup);
+                end
+
                 % NUMBER OF SELECTED FILES
                 if (length(bstNodes) >= 2)
                     if ~bst_get('ReadOnly')
@@ -2947,6 +2961,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuWs  = gui_component('Menu', [], [], 'WearableSensing', IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Add an item per Template available
             fList = bstDefaults(iDir).contents;
             % Sort in natural order
@@ -2971,6 +2986,8 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     jMenuType = jMenuEgi;
                 elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
                     jMenuType = jMenuNs;
+                elseif ~isempty(strfind(fList(iFile).name, 'WearableSensing'))
+                    jMenuType = jMenuWs;
                 else
                     jMenuType = jMenuOther;
                 end
@@ -2995,6 +3012,9 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             end
             if (jMenuNs.getMenuComponentCount() > 0)
                 jMenuDir.add(jMenuNs);
+            end
+            if (jMenuWs.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuWs);
             end
         end
     end
@@ -3849,4 +3869,11 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
     if isempty(MriFileReg) || ~isempty(errMsg)
         bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
     end
+end
+
+
+%% ===== DISPLAY TEXTURED SURFACE =====
+function ViewTexturedSurface(filenameRelative)
+    sSurf = bst_memory('LoadSurface', filenameRelative);
+    view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
 end
