@@ -952,8 +952,8 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         end
     end
     % Normalize positions for a head of radius 0.85/2 centered at 0.5
-    X = ((0.85/2 * X ) + 0.5) .* (1-plotSize(1)*2) + plotSize(1);
-    Y = ((0.85/2 * Y ) + 0.5) .* (1-plotSize(2)*2) + plotSize(2);
+    X = ((0.85/2 * X ) + 0.5);
+    Y = ((0.85/2 * Y ) + 0.5);
     % Get display factor
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
