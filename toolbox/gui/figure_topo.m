@@ -898,7 +898,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         textColor = .8 * [1 1 1];
     end
     % Plot head
-    PlotNoseEars(hAxes, 1, 0.85/2, [0.5,0.5])
+    PlotNoseEars(hAxes, 1, 0.85/2);
     % If multiple files, get default color table
     if (length(F) > 1)
         % ColorTable = panel_scout('GetScoutsColorTable');
@@ -952,8 +952,10 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         end
     end
     % Normalize positions for a head of radius 0.85/2 centered at 0.5
-    X = ((0.85/2 * X ) + 0.5);
-    Y = ((0.85/2 * Y ) + 0.5);
+    X = X .* 0.85 ./ 2;
+    Y = Y .* 0.85 ./ 2;
+    % Maximum (radius), aka axes limit
+    maxR = max(max(abs([X,Y])) + plotSize./2);
     % Get display factor
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
@@ -1238,7 +1240,10 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     
     % ===== AXES LIMITS =====
     % Set axes limits
-    set(hAxes, 'XLim', [0 1], 'YLim', [0 1]);
+    if maxR < 0.5
+        maxR = 0.5;
+    end
+    set(hAxes, 'XLim', [-maxR, maxR], 'YLim', [-maxR, maxR]);
     
     % ===== FIGURE COLORS =====
     % Set figure background
