@@ -39,14 +39,12 @@ switch (Method)
         [X,Y] = pol2cart(TH,R);
 
     case '2dlayout'
-        % Spherical coordinates
-        z = z - max(z);
-        [TH,PHI,R] = cart2sph(x, y, z);
-        % Remove the too smal values for PHI
-        PHI(PHI < 0.001) = 0.001;
-        % Flat projection
-        R2 = R ./ cos(PHI) .^ .2;
-        [X,Y] = pol2cart(TH,R2);
+        % Lambert azimuthal equal-area projection
+        [az,elev] = cart2sph(x, y, z);
+        elev = -elev; % elevation is negative towards north
+        r = 2.*cos((pi/2-elev)./2) ;
+        t = az;
+        [X,Y] = pol2cart(t, r);
 
     case 'circle'
         %     figure; 
