@@ -1448,14 +1448,21 @@ end
 
 
 %% ===== PLOT NOSE AND EARS =====
-function PlotNoseEars(hAxes, isDisc)
+function PlotNoseEars(hAxes, isDisc, radius, xy_center)
+    if nargin < 4 || isempty(xy_center)
+        xy_center = [0,0];
+    end
+    if nargin < 3 || isempty(radius)
+        radius = 1;
+    end
+
     % Define coordinates
     Z = 0.0005;
-    NoseX = [0.983; 1.15; 0.983];
-    NoseY = [.18;       0;   -.18];
+    NoseX = [0.983;  1.15;  0.983] * radius + xy_center(1);
+    NoseY = [0.18;   0;    -0.18]  * radius + xy_center(2);
     NoseZ = 0*NoseX + Z;
-    EarX  = [.0555 .0775 .0783 .0746  .0555  -.0055 -.0932 -.1313 -.1384 -.1199] * 2;
-    EarY  = ([.973, 1     1.016 1.0398 1.0638  1.06   1.074  1.044, 1      .951 ] + 0.02);
+    EarX  = [.0555 .0775 .0783 .0746  .0555  -.0055 -.0932 -.1313 -.1384 -.1199] * 2 * radius + xy_center(1);
+    EarY  = ([.973, 1     1.016 1.0398 1.0638  1.06   1.074  1.044, 1      .951 ] + 0.02) * radius + xy_center(2);
     EarZ  = 0*EarX + Z;
     % Line properties
     LineWidth = 2;
@@ -1473,7 +1480,8 @@ function PlotNoseEars(hAxes, isDisc)
          'Tag',       'RefTopo', ...
          'Parent',    hAxes);
     % Plot right ear
-    plot3(EarX, -EarY, EarZ, ...
+    EarY = -EarY + 2*xy_center(2);
+    plot3(EarX, EarY, EarZ, ...
          'Color',     LineColor, ...
          'LineWidth', LineWidth, ...
          'Tag',       'RefTopo', ...
@@ -1481,8 +1489,8 @@ function PlotNoseEars(hAxes, isDisc)
      % Plot circle
      if isDisc
         t = 0:pi/50:2*pi;
-        CircX = 1 * cos(t);
-        CircY = 1 * sin(t);
+        CircX = radius * cos(t) + xy_center(1);
+        CircY = radius * sin(t) + xy_center(2);
         CircZ = 0 * t + Z;
         plot3(CircX, CircY, CircZ, ...
              'Color',     LineColor, ...
