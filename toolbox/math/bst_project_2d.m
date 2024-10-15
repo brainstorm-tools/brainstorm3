@@ -41,8 +41,9 @@ switch (Method)
     case '2dlayout'
         % Lambert azimuthal equal-area projection
         [az,elev] = cart2sph(x, y, z);
-        elev = -elev; % elevation is negative towards north
-        r = 2.*cos((pi/2-elev)./2) ;
+        elev = -elev;               % elevation is negative towards +z
+        r = 2.*cos((pi/2-elev)./2);
+        r = r ./ sqrt(2);           % scale so unit cirle is at 0deg
         t = az;
         [X,Y] = pol2cart(t, r);
 
