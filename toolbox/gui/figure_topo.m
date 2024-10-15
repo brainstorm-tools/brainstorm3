@@ -897,6 +897,8 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         refColor  = .4 * [1,1,1];
         textColor = .8 * [1 1 1];
     end
+    % Plot head
+    PlotNoseEars(hAxes, 1, 0.85/2, [0.5,0.5])
     % If multiple files, get default color table
     if (length(F) > 1)
         % ColorTable = panel_scout('GetScoutsColorTable');
@@ -949,9 +951,9 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             plotSize = [0.05, 0.05];
         end
     end
-    % Normalize positions between 0 and 1
-    X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;
-    Y = (Y - min(Y)) ./ (max(Y) - min(Y)) .* (1-plotSize(2)*2) + plotSize(2);
+    % Normalize positions for a head of radius 0.85/2 centered at 0.5
+    X = ((0.85/2 * X ) + 0.5) .* (1-plotSize(1)*2) + plotSize(1);
+    Y = ((0.85/2 * Y ) + 0.5) .* (1-plotSize(2)*2) + plotSize(2);
     % Get display factor
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
