@@ -26,6 +26,7 @@ function varargout = panel_digitize(varargin)
 % =============================================================================@
 %
 % Authors: Elizabeth Bock & Francois Tadel, 2012-2017
+%          Chinmay Chinara, 2024
 
 eval(macro_method);
 end
@@ -39,57 +40,22 @@ end
 %#function icinterface
 
 %% ===== START =====
-function Start() %#ok<DEFNU>
-    % Get Digitize options
-    DigitizeOptions = bst_get('DigitizeOptions');
-    % Check if using new version
-    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-        bst_call(@panel_digitize_2024, 'Start');
-        return;
-    end
-
-    global Digitize;
-    % ===== PREPARE DATABASE =====
-    % If no protocol: exit
-    if (bst_get('iProtocol') <= 0)
-        bst_error('Please create a protocol first.', 'Digitize', 0);
-        return;
-    end
-    % Get subject
-    SubjectName = 'Digitize';
-    [sSubject, iSubject] = bst_get('Subject', SubjectName);
-    % Create if subject doesnt exist
-    if isempty(iSubject)
-        % Default anat / one channel file per subject
-        UseDefaultAnat = 1;
-        UseDefaultChannel = 0;
-        [sSubject, iSubject] = db_add_subject(SubjectName, iSubject, UseDefaultAnat, UseDefaultChannel);
-        % Update tree
-        panel_protocols('UpdateTree');
-    end
-    
-    % ===== PATIENT ID =====
-    % Ask for subject id
-    PatientId = java_dialog('input', 'Please, enter subject ID:', 'Digitize', [], DigitizeOptions.PatientId);
-    if isempty(PatientId)
-        return;
-    end
-    % Save the new default patient id
-    DigitizeOptions.PatientId = PatientId;
-    bst_set('DigitizeOptions', DigitizeOptions);
-    
+function Start(varargin) %#ok<DEFNU>
+    global Digitize    
     % ===== INITIALIZE CONNECTION =====
     % Intialize global variable
     Digitize = struct(...
+        'Type'            , [], ...
         'SerialConnection', [], ...
         'Mode',             0, ...
         'hFig',             [], ...
         'iDS',              [], ...
         'FidSets',          2, ...
         'EEGlabels',        [], ...
-        'SubjectName',      SubjectName, ...
+        'SubjectName',      [], ...
         'ConditionName',    [], ...
         'BeepWav',          [], ...
+        'isEditPts',        0, ...
         'Points',           struct(...
             'nasion',   [], ...
             'LPA',      [], ...
@@ -100,8 +66,101 @@ function Start() %#ok<DEFNU>
             'EEG',      [], ...
             'headshape',[], ...
             'trans',    []));
+    
+    % ===== PARSE INPUT =====
+    DigitizerType = 'Digitize';
+    sSubject = [];
+    iSubject = [];
+    surfaceFile = [];
+    if nargin > 0 && ~isempty(varargin{1})
+        DigitizerType = varargin{1};
+    end
+    if nargin > 1 && ~isempty(varargin{2})
+        sSubject = varargin{2};
+    end
+    if nargin > 2 && ~isempty(varargin{3})
+        iSubject = varargin{3};
+    end
+    if nargin > 3 && ~isempty(varargin{4})
+        surfaceFile = varargin{4};
+    end
+    Digitize.Type = DigitizerType;
+    switch DigitizerType
+        case 'Digitize'
+            % Do nothing
+        case '3DScanner'
+            % Simulate
+            SetSimulate(1);
+        otherwise
+            bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
+            return
+    end
+
+    % Get Digitize options
+    DigitizeOptions = bst_get('DigitizeOptions');
+    % Check if using new version
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        if strcmpi(Digitize.Type, '3DScanner')
+            bst_call(@panel_digitize_2024, 'Start', varargin{:});
+        else
+            bst_call(@panel_digitize_2024, 'Start');
+        end
+        return;
+    end
+
+    % ===== PREPARE DATABASE =====
+    % If no protocol: exit
+    if (bst_get('iProtocol') <= 0)
+        bst_error('Please create a protocol first.', Digitize.Type, 0);
+        return;
+    end
+    
+    % ===== PATIENT ID =====
+    if isempty(sSubject)
+        % Get Digitize options
+        DigitizeOptions = bst_get('DigitizeOptions');
+        % Ask for subject id
+        PatientId = java_dialog('input', 'Please, enter subject ID:', Digitize.Type, [], DigitizeOptions.PatientId);
+        if isempty(PatientId)
+            return;
+        end
+        % Save the new default patient id
+        DigitizeOptions.PatientId = PatientId;
+        bst_set('DigitizeOptions', DigitizeOptions);
+    
+        % ===== GET SUBJECT =====
+        if strcmpi(Digitize.Type, '3DScanner')
+            SubjectName = [Digitize.Type, '_', PatientId];
+        else
+            SubjectName = Digitize.Type;
+        end
+    
+        [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    else
+        SubjectName = sSubject.Name;
+    end
+
+    % Save the new SubjectName
+    Digitize.SubjectName = SubjectName;
+
+    % Create if subject doesnt exist
+    if isempty(iSubject)
+        % Default anat / one channel file per subject
+        if strcmpi(Digitize.Type, '3DScanner')
+            [sSubject, iSubject] = db_add_subject(SubjectName, iSubject);
+            sTemplates = bst_get('AnatomyDefaults');
+            db_set_template(iSubject, sTemplates(1), 1);
+        else
+            UseDefaultAnat = 1;
+            UseDefaultChannel = 0;
+            [sSubject, iSubject] = db_add_subject(SubjectName, iSubject, UseDefaultAnat, UseDefaultChannel);
+        end
+        % Update tree
+        panel_protocols('UpdateTree');
+    end
+    
     % Start Serial Connection
-    if ~CreateSerialConnection();
+    if ~CreateSerialConnection()
         return;
     end
     
@@ -113,7 +172,7 @@ function Start() %#ok<DEFNU>
         % Generate new condition name
         ConditionName = sprintf('%s_%02d%02d%02d_%02d', DigitizeOptions.PatientId, c(1), c(2), c(3), i);
         % Get condition
-        [sStudy, iStudy] = bst_get('StudyWithCondition', [SubjectName '/' ConditionName]);
+        sStudy = bst_get('StudyWithCondition', [SubjectName '/' ConditionName]);
         % If condition doesn't exist: ok, keep this one
         if isempty(sStudy)
             break;
@@ -132,10 +191,58 @@ function Start() %#ok<DEFNU>
     db_reload_studies(iStudy);
     % Save condition name
     Digitize.ConditionName = ConditionName;
+    
+    if strcmpi(Digitize.Type, '3DScanner')
+        if isempty(surfaceFile)
+            % Import surface
+            iSurface = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
+            if isempty(iSurface)
+                [~, surfaceFiles] = import_surfaces(iSubject);
+                if isempty(surfaceFiles)
+                    return
+                end
+                surfaceFile = file_short(surfaceFiles{end});
+            else
+                [res, isCancel] = java_dialog('question', ['There is already scanned mesh available for this subject.' 10 10 ...
+                                                           'What do you want to do?'], ...
+                                                           'Import surface', [], {'Use existing', 'Add new', 'Cancel'}, 'Use existing');
+                if strcmpi(res, 'cancel') || isCancel
+                    return
+                elseif strcmpi(res, 'use existing')
+                    % If more than one surface present, user can choose
+                    if length(iSurface) > 1
+                        texSurfComment = java_dialog('combo', '<HTML>Select the textured surface:<BR><BR>', 'Choose textured surface', [], {sSubject.Surface(iSurface).Comment});
+                        texSurfComment = strrep(texSurfComment, '_defaced', '');
+                        if isempty(texSurfComment)
+                            return
+                        end
+                        iSurfFile = find(cellfun(@(x)~isempty(regexp(x, [texSurfComment '.mat'], 'match')), {sSubject.Surface.FileName}));
+                        surfaceFile = sSubject.Surface(iSurfFile).FileName;
+                    % If only one surface is present, then load it directly
+                    else                    
+                        surfaceFile = sSubject.Surface(iSurface(end)).FileName;
+                    end
+                elseif strcmpi(res, 'add new')
+                    % Import a new textured mesh and append it to the list
+                    [~, surfaceFiles] = import_surfaces(iSubject);
+                    if isempty(surfaceFiles)
+                        return
+                    end
+                    surfaceFile = file_short(surfaceFiles{end});
+                end
+            end
+        end
+        
+        Digitize.surfaceFile = surfaceFile;
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+        % Display surface
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
+    end
 
     % ===== DISPLAY DIGITIZE WINDOW =====
     % Display panel
-    panelContainer = gui_show('panel_digitize', 'JavaWindow', 'Digitize', [], [], [], []);
+    % Set window title to Digitize.Type
+    panelContainer = gui_show('panel_digitize', 'JavaWindow', Digitize.Type, [], [], [], []);
     % Hide Brainstorm window
     jBstFrame = bst_get('BstFrame');
     jBstFrame.setVisible(0);
@@ -162,6 +269,7 @@ end
 
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
+    global Digitize
     % Constants
     panelName = 'Digitize';
     % Java initializations
@@ -195,10 +303,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Edit settings...',    IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
     gui_component('MenuItem', jMenu, [], 'Switch to Digitize "2024"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
-    gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
+    if ~strcmpi(Digitize.Type, '3DScanner')
+        gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
+    end
     jMenu.addSeparator();
-    if exist('bst_headtracking', 'file')
-        gui_component('MenuItem', jMenu, [], 'Start head tracking', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
+    if exist('bst_headtracking', 'file') && ~strcmpi(Digitize.Type, '3DScanner')
+        gui_component('MenuItem', jMenu, [], 'Start head tracking',     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Save and exit', IconLoader.ICON_RESET, [], @(h,ev)bst_call(@Close_Callback), []);
@@ -271,8 +381,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         newButtonSize = Dimension(initButtonSize.getWidth()*1.5, initButtonSize.getHeight()*1.5);
         jButtonEEGStart.setPreferredSize(newButtonSize);
         jButtonEEGStart.setFocusable(0);
-        % Separator
-        gui_component('label', jPanelEEG, 'hfill', '');
+        
+        if strcmpi(Digitize.Type, '3DScanner')
+            % Auto EEG cap electrodes detection button
+            jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelEEG, [], 'Auto', [], 'Automatically detect and label electrodes on EEG cap', @EEGAutoDetectElectrodes, largeFontSize);
+            jButtonEEGAutoDetectElectrodes.setPreferredSize(newButtonSize);
+        else
+            % Separator
+            jButtonEEGAutoDetectElectrodes = gui_component('label', jPanelEEG, 'hfill', '');
+        end
+
         % Number
         jTextFieldEEG = gui_component('text',jPanelEEG, [], '1', [], 'EEG Sensor # to be digitized', @EEGChangePoint_Callback, largeFontSize);
         jTextFieldEEG.setPreferredSize(newButtonSize)
@@ -286,8 +404,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonExtraStart = gui_component('toggle',jPanelExtra, [], 'Shape', {modeButtonGroup}, 'Start/Restart head shape digitization', @(h,ev)SwitchToNewMode(8), largeFontSize);
         jButtonExtraStart.setPreferredSize(newButtonSize);
         jButtonExtraStart.setFocusable(0);
-        % Separator
-        gui_component('label', jPanelExtra, 'hfill', '');
+        
+        if strcmpi(Digitize.Type, '3DScanner')
+            % Add Random 100 points generation button
+            jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
+            jButtonRandomHeadPts.setPreferredSize(newButtonSize);
+        else
+            % Separator
+            jButtonRandomHeadPts = gui_component('label', jPanelExtra, 'hfill', '');
+        end
+
         % Number
         jTextFieldExtra = gui_component('text',jPanelExtra, [], '1',[], 'Head shape point to be digitized', @ExtraChangePoint_Callback, largeFontSize);
         jTextFieldExtra.setPreferredSize(newButtonSize)
@@ -297,7 +423,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== Extra buttons =====
     jPanelMisc = gui_river([5,4], [2,4,4,0]);
-        gui_component('button', jPanelMisc, [], 'Collect point', [], [], @ManualCollect_Callback);
+        if ~strcmpi(Digitize.Type, '3DScanner')
+            gui_component('button', jPanelMisc, [], 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
+        end
         jButtonDeletePoint = gui_component('button', jPanelMisc, 'hfill', 'Delete last point', [], [], @DeletePoint_Callback);
         gui_component('Button', jPanelMisc, [], 'Save as...', [], [], @Save_Callback);
     jPanelControl.add(jPanelMisc);
@@ -310,6 +438,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % List of coordinates
         jListCoord = JList(largeFontSize);
         jListCoord.setCellRenderer(BstStringListRenderer(fontSize));
+        java_setcb(jListCoord, ...
+            'KeyTypedCallback',     @(h,ev)bst_call(@CoordListKeyTyped_Callback,h,ev), ...
+            'MouseClickedCallback', @(h,ev)bst_call(@CoordListClick_Callback,h,ev));
         % Size
         jPanelScrollList = JScrollPane(jListCoord);
         jPanelScrollList.getLayout.getViewport.setView(jListCoord);
@@ -320,24 +451,85 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelNew.add(jPanelDisplay, BorderLayout.CENTER);
 
     % create the controls structure
-    ctrl = struct('jMenuEeg',              jMenuEeg, ...
-                  'jButtonNasion',         jButtonNasion, ...
-                  'jButtonLPA',            jButtonLPA, ...
-                  'jButtonRPA',            jButtonRPA, ...
-                  'jLabelCoilMessage',     jLabelCoilMessage, ...
-                  'jLabelFidMessage',      jLabelFidMessage, ...
-                  'jButtonhpiN',           jButtonhpiN, ...
-                  'jButtonhpiL',           jButtonhpiL, ...
-                  'jButtonhpiR',           jButtonhpiR, ...
-                  'jListCoord',            jListCoord, ...
-                  'jButtonEEGStart',       jButtonEEGStart, ...
-                  'jTextFieldEEG',         jTextFieldEEG, ...
-                  'jButtonExtraStart',     jButtonExtraStart, ...
-                  'jTextFieldExtra',       jTextFieldExtra, ...
-                  'jButtonDeletePoint',    jButtonDeletePoint);
+    ctrl = struct('jMenuEeg',                       jMenuEeg, ...
+                  'jButtonNasion',                  jButtonNasion, ...
+                  'jButtonLPA',                     jButtonLPA, ...
+                  'jButtonRPA',                     jButtonRPA, ...
+                  'jLabelCoilMessage',              jLabelCoilMessage, ...
+                  'jLabelFidMessage',               jLabelFidMessage, ...
+                  'jButtonhpiN',                    jButtonhpiN, ...
+                  'jButtonhpiL',                    jButtonhpiL, ...
+                  'jButtonhpiR',                    jButtonhpiR, ...
+                  'jListCoord',                     jListCoord, ...
+                  'jButtonEEGStart',                jButtonEEGStart, ...
+                  'jButtonEEGAutoDetectElectrodes', jButtonEEGAutoDetectElectrodes, ...
+                  'jTextFieldEEG',                  jTextFieldEEG, ...
+                  'jButtonExtraStart',              jButtonExtraStart, ...
+                  'jButtonRandomHeadPts',           jButtonRandomHeadPts, ...
+                  'jTextFieldExtra',                jTextFieldExtra, ...
+                  'jButtonDeletePoint',             jButtonDeletePoint);
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
+    
+    %% =================================================================================
+    %  === INTERNAL CALLBACKS  =========================================================
+    %  =================================================================================
+    %% ===== COORDINATE LIST KEY TYPED CALLBACK =====
+    function CoordListKeyTyped_Callback(h, ev)
+        switch(uint8(ev.getKeyChar()))
+            % DELETE
+            case {ev.VK_DELETE, ev.VK_BACK_SPACE}
+                ctrl = bst_get('PanelControls', 'Digitize');
+                % if contact list rendering is blank in panel then dont't proceed
+                if ctrl.jListCoord.isSelectionEmpty()
+                    return;
+                end
+
+                [sCoordName, iSelCoord] = GetSelectedCoord();
+                spl = regexp(sCoordName,'\s+','split');
+                nameFinal = spl{1};
+                if (~strcmpi(nameFinal, 'Nasion') &&...
+                    ~strcmpi(nameFinal, 'LPA') &&...
+                    ~strcmpi(nameFinal, 'RPA'))
+                    listModel = ctrl.jListCoord.getModel();
+                    listModel.setElementAt(nameFinal, iSelCoord-1);  
+                    RemoveCoordinates('EEG', iSelCoord-3);
+                    Digitize.isEditPts = 1;
+                    SwitchToNewMode(7);
+                end
+        end
+    end
+    
+    %% ===== COORDINATE LIST CLICK CALLBACK =====
+    function CoordListClick_Callback(h, ev)
+        % IF SINGLE CLICK
+        if (ev.getClickCount() == 1)
+            ctrl = bst_get('PanelControls', 'Digitize');
+            % if contact list rendering is blank in panel then dont't proceed
+            if ctrl.jListCoord.isSelectionEmpty()
+                return;
+            end
+            
+            [sCoordName, ~] = GetSelectedCoord();
+            spl = regexp(sCoordName,'\s+','split');
+            nameFinal = spl{1};
+            bst_figures('SetSelectedRows', nameFinal);
+        end
+    end
 end
 
+%% ===== GET SELECTED ELECTRODE =====
+function [sCoordName, iSelCoord] = GetSelectedCoord()
+    % Get panel handles
+    ctrl = bst_get('PanelControls', 'Digitize');
+    if isempty(ctrl)
+        return;
+    end
+
+    % Get JList selected indices
+    iSelCoord = uint16(ctrl.jListCoord.getSelectedIndices())' + 1;
+    listModel = ctrl.jListCoord.getModel();
+    sCoordName = listModel.getElementAt(iSelCoord-1);
+end
 
 %% ===== SWITCH to 2024 version =====
 function SwitchVersion()
@@ -362,7 +554,8 @@ end
 
 %% ===== HIDING CALLBACK =====
 function isAccepted = PanelHidingCallback() %#ok<DEFNU>
-    global Digitize;
+    global Digitize
+
     % If Brainstorm window was hidden before showing the Digitizer
     if bst_get('isGUI')
         % Get Brainstorm frame
@@ -402,51 +595,76 @@ end
 
 %% ===== EDIT SETTINGS =====
 function isOk = EditSettings()
+    global Digitize
+
     isOk = 0;
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
+    
     % Ask for new options
-    [res, isCancel] = java_dialog('input', ...
-            {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-             'Unit Type (Fastrak or Patriot):', ...
-             '<HTML><BR><B>Collection settings</B><BR><BR>Digitize MEG HPI coils (0=no, 1=yes):', ...
-             '<HTML>How many times do you want to collect<BR>the three fiducials (NAS,LPA,RPA):', ...
-             'Beep when collecting point (0=no, 1=yes):'}, ...
-            'Digitizer configuration', [], ...
-            {DigitizeOptions.ComPort, ...
-             DigitizeOptions.UnitType, ...
-             num2str(DigitizeOptions.isMEG), ...
-             num2str(DigitizeOptions.nFidSets), ...
-             num2str(DigitizeOptions.isBeep)});         
+    options_str = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
+                   'Unit Type (Fastrak or Patriot):', ...
+                   '<HTML><BR><B>Collection settings</B><BR><BR>Digitize MEG HPI coils (0=no, 1=yes):', ...
+                   '<HTML>How many times do you want to collect<BR>the three fiducials (NAS,LPA,RPA):', ...
+                   'Beep when collecting point (0=no, 1=yes):'};
+    options_list = {DigitizeOptions.ComPort, ...
+                    DigitizeOptions.UnitType, ...
+                    num2str(DigitizeOptions.isMEG), ...
+                    num2str(DigitizeOptions.nFidSets), ...
+                    num2str(DigitizeOptions.isBeep)};
+
+    % do not show serial connection options for 3D Scanner 
+    if strcmpi(Digitize.Type, '3DScanner')
+        options_str = options_str(3:5);
+        options_list = options_list(3:5);
+    end
+    
+    % Ask options
+    [res, isCancel] = java_dialog('input', options_str, [Digitize.Type ' configuration'], [], options_list);
+        
     if isempty(res) || isCancel
         return
     end
+
     % Check values
-    if (length(res) < 5) || isempty(res{1}) || isempty(res{2}) || ~ismember(str2double(res{3}), [0 1]) || isnan(str2double(res{4})) || ~ismember(str2double(res{5}), [0 1])
-        bst_error('Invalid values.', 'Digitize', 0);
-        return;
-    end
-    % Get entered values
-    DigitizeOptions.ComPort      = res{1};
-    DigitizeOptions.UnitType     = lower(res{2});
-    DigitizeOptions.isMEG        = str2double(res{3});
-    DigitizeOptions.nFidSets     = str2double(res{4});
-    DigitizeOptions.isBeep       = str2double(res{5});
-    
-    if strcmp(DigitizeOptions.UnitType,'fastrak')
-        DigitizeOptions.ComRate = 9600;
-        DigitizeOptions.ComByteCount = 94;
-    elseif strcmp(DigitizeOptions.UnitType,'patriot')
-        DigitizeOptions.ComRate = 115200;
-        DigitizeOptions.ComByteCount = 120;
+    if strcmpi(Digitize.Type, '3DScanner')
+        if (length(res) < 3) || ~ismember(str2double(res{1}), [0 1]) || isnan(str2double(res{2})) || ~ismember(str2double(res{3}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+
+        % Get entered values
+        DigitizeOptions.isMEG        = str2double(res{1});
+        DigitizeOptions.nFidSets     = str2double(res{2});
+        DigitizeOptions.isBeep       = str2double(res{3});
     else
-        bst_error('Incorrect unit type.', 'Digitize', 0);
-        return;
+        if (length(res) < 5) || isempty(res{1}) || isempty(res{2}) || ~ismember(str2double(res{3}), [0 1]) || isnan(str2double(res{4})) || ~ismember(str2double(res{5}), [0 1])
+            bst_error('Invalid values.', Digitize.Type, 0);
+            return;
+        end
+        % Get entered values
+        DigitizeOptions.ComPort      = res{1};
+        DigitizeOptions.UnitType     = lower(res{2});
+        DigitizeOptions.isMEG        = str2double(res{3});
+        DigitizeOptions.nFidSets     = str2double(res{4});
+        DigitizeOptions.isBeep       = str2double(res{5});
+        
+        if strcmp(DigitizeOptions.UnitType,'fastrak')
+            DigitizeOptions.ComRate = 9600;
+            DigitizeOptions.ComByteCount = 94;
+        elseif strcmp(DigitizeOptions.UnitType,'patriot')
+            DigitizeOptions.ComRate = 115200;
+            DigitizeOptions.ComByteCount = 120;
+        else
+            bst_error('Incorrect unit type.', Digitize.Type, 0);
+            return;
+        end
     end
     
     % Save values
     bst_set('DigitizeOptions', DigitizeOptions);
     %ResetDataCollection();
+    UpdateList();
     isOk = 1;
 end
 
@@ -470,7 +688,8 @@ end
 %% ===== RESET DATA COLLECTION =====
 function ResetDataCollection(isResetSerial)
     global Digitize
-    bst_progress('start', 'Digitize', 'Initializing...');
+
+    bst_progress('start', Digitize.Type, 'Initializing...');
     % Reset serial?
     if (nargin == 1) && isequal(isResetSerial, 1)
         CreateSerialConnection();
@@ -494,9 +713,16 @@ function ResetDataCollection(isResetSerial)
         ctrl.jTextFieldExtra.setText(java.lang.String.valueOf(int16(1)));
     end
     % Reset figure
-    if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig)
-        %close(Digitize.hFig);
+    if isfield(Digitize, 'hFig') && ~isempty(Digitize.hFig) && ishandle(Digitize.hFig) && ~strcmpi(Digitize.Type, '3DScanner')
         bst_figures('DeleteFigure', Digitize.hFig, []);
+
+        % For 3D Scanner reload the surface
+        if strcmpi(Digitize.Type, '3DScanner')
+            % load the surface
+            sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+            % Display surface
+            view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
+        end
     end
     Digitize.iDS = [];
     
@@ -522,6 +748,7 @@ end
 %    - Mode 8 = Headshape
 function SwitchToNewMode(mode)
     global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Get options
@@ -542,6 +769,7 @@ function SwitchToNewMode(mode)
                 ctrl.jButtonLPA.setEnabled(0);
                 ctrl.jButtonRPA.setEnabled(0);
                 ctrl.jButtonDeletePoint.setEnabled(0);
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
                 % always switch to next mode to start with the nasion
                 SwitchToNewMode(1);
             else
@@ -552,6 +780,7 @@ function SwitchToNewMode(mode)
                 ctrl.jButtonLPA.setEnabled(1);
                 ctrl.jButtonRPA.setEnabled(1);
                 ctrl.jButtonDeletePoint.setEnabled(0);
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
                 % always switch to next mode to start with the nasion
                 SwitchToNewMode(4);
             end
@@ -559,6 +788,7 @@ function SwitchToNewMode(mode)
             ctrl.jButtonEEGStart.setEnabled(0);
             ctrl.jTextFieldEEG.setEnabled(0);
             ctrl.jButtonExtraStart.setEnabled(0);
+            ctrl.jButtonRandomHeadPts.setEnabled(0);
             ctrl.jTextFieldExtra.setEnabled(0);
 
             
@@ -617,9 +847,17 @@ function SwitchToNewMode(mode)
                 SetSelectedButton(8);
                 Digitize.Mode = 8;
             end
+            if strcmpi(Digitize.Type, '3DScanner') && ~Digitize.isEditPts
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+                ctrl.jButtonRandomHeadPts.setEnabled(0);
+            end
         % Shape
         case 8
             ctrl.jButtonExtraStart.setEnabled(1);
+            if strcmpi(Digitize.Type, '3DScanner')
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
+                ctrl.jButtonRandomHeadPts.setEnabled(1);
+            end
             ctrl.jTextFieldExtra.setEnabled(1);
             SetSelectedButton(8);
             Digitize.Mode = 8;            
@@ -629,7 +867,8 @@ end
 
 %% ===== UPDATE LIST =====
 function UpdateList()
-    global Digitize;
+    global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Define the model
@@ -773,15 +1012,81 @@ function SetSelectedButton(iButton)
     end
 end
 
+%% 3DSCANNER: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES
+function EEGAutoDetectElectrodes(h, ev)
+    global Digitize
+
+    % Get controls
+    ctrl = bst_get('PanelControls', 'Digitize');
+
+    % Get current montage
+    curMontage = GetCurrentMontage();
+
+    % Get EEG cap landmark labels used for initialization
+    [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels',curMontage.Name);
+
+    if size(Digitize.Points.EEG, 1) < nLandmarkLabels
+        bst_error(['Please set the first ' num2str(nLandmarkLabels) ' initialization points in order [ ' sprintf('%s ',eegCapLandmarkLabels{:}) ']'], Digitize.Type, 0);
+        return;
+    end
+
+    % Disable Auto button
+    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
+    
+    % Get the surface
+    hFig = bst_figures('GetCurrentFigure','3D');
+    [~, TessInfo, ~, ~] = panel_surface('GetSurfaceMri', hFig);
+    sSurf.Vertices = TessInfo.hPatch.Vertices;
+    sSurf.Faces = TessInfo.hPatch.Faces;
+    sSurf.Color = TessInfo.hPatch.FaceVertexCData;
+    
+    % call automation functions to get the EEG cap electrodes
+    [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', sSurf);
+    DigitizeOptions = bst_get('DigitizeOptions');
+    if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
+        bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
+        return;
+    else
+        ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
+    end
+    capPoints3d = auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, Digitize.Points.EEG);
+    
+    % Plot the electrodes and their labels
+    for i= 1:length(capPoints3d)
+        pointCoord = capPoints3d(i, :);
+        % find the index for the current point
+        iPoint = str2double(ctrl.jTextFieldEEG.getText());
+        % Transform coordinate
+        Digitize.Points.EEG(iPoint,:) = pointCoord;
+        % Add the point to the display
+        % Get current montage
+        [curMontage, nEEG] = GetCurrentMontage();
+        PlotCoordinate(Digitize.Points.EEG(iPoint,:), curMontage.Labels{iPoint}, 'EEG', iPoint)
+        % update text field counter to the next point in the list
+        nextPoint = max(size(Digitize.Points.EEG,1)+1, 1);
+        if nextPoint > nEEG
+            % all EEG points have been collected, switch to next mode
+            ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nEEG)));
+            SwitchToNewMode(8);
+        else
+            ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nextPoint)));
+        end
+    end
+    
+    UpdateList();
+    % Enable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(1);
+end
 
 %% ===== MANUAL COLLECT CALLBACK ======
-function ManualCollect_Callback(h, ev)
+function ManualCollect_Callback()
     global Digitize
+
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation: call the callback directly
     if DigitizeOptions.isSimulate
-        BytesAvailable_Callback(h, ev);
+        BytesAvailable_Callback();
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -790,9 +1095,44 @@ function ManualCollect_Callback(h, ev)
     end
 end
 
+%% ===== COLLECT RANDOM HEADPOINTS =====
+function CollectRandomHeadPts_Callback(h, ev)
+    global Digitize;
+    
+    % Get controls
+    ctrl = bst_get('PanelControls', 'Digitize');
+    % Disable Random button
+    ctrl.jButtonRandomHeadPts.setEnabled(0);
+
+    hFig = bst_figures('GetCurrentFigure','3D');
+    TessInfo = getappdata(hFig, 'Surface');
+    TessMat.Vertices = double(TessInfo.hPatch.Vertices);
+    TessMat.Faces = double(TessInfo.hPatch.Faces);
+    TessMat.Color = TessInfo.hPatch.FaceVertexCData;
+    
+    % For 100 points
+    stepFactor = ceil(size(TessMat.Vertices, 1)/100); 
+    
+    for i= 1:stepFactor:size(TessMat.Vertices, 1)
+        % pointCoord = sSurf.Vertices(randi(length(sSurf.Vertices)), :);
+        pointCoord = TessMat.Vertices(i, :);
+        % find the index for the current point in the headshape points
+        iPoint = str2double(ctrl.jTextFieldExtra.getText());
+        % Transformed points_pen from original points_pen
+        Digitize.Points.headshape(iPoint,:) = pointCoord;
+        % add the point to the display (in cm)
+        PlotCoordinate(Digitize.Points.headshape(iPoint,:), 'EXTRA', 'EXTRA', iPoint)
+        % update text field counter to the next point in the list
+        nextPoint = iPoint+1;
+        ctrl.jTextFieldExtra.setText(java.lang.String.valueOf(int16(nextPoint)));
+    end
+    UpdateList();
+end
+
 %% ===== DELETE POINT CALLBACK =====
 function DeletePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -877,16 +1217,14 @@ function DeletePoint_Callback(h, ev) %#ok<INUSD>
             SwitchToNewMode(8)
     end
     
-    
-    
     % Update coordinates list
     UpdateList();   
 end
 
-
 %% ===== COMPUTE TRANFORMATION =====
 function ComputeTransform()
     global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     
@@ -998,7 +1336,8 @@ end
 
 %% ===== CREATE FIGURE =====
 function CreateHeadpointsFigure()
-    global Digitize    
+    global Digitize
+
     if isempty(Digitize.hFig) || ~ishandle(Digitize.hFig) || isempty(Digitize.iDS)
         % Get study
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
@@ -1007,10 +1346,10 @@ function CreateHeadpointsFigure()
         % Hide head surface
         panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
         % Get Digitizer JFrame
-        bstContainer = get(bst_get('Panel','Digitize'), 'container');
+        bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
         % Get maximum figure position
         decorationSize = bst_get('DecorationSize');
-        [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)
             set(hFig, 'Position', FigPos);
@@ -1020,12 +1359,54 @@ function CreateHeadpointsFigure()
         % Save handles in global variable
         Digitize.hFig = hFig;
         Digitize.iDS = iDS;
-    end 
+    else
+        % Get study
+        sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
+        % Plot head points
+        [hFig, iDS] = view_headpoints(file_fullpath(sStudy.Channel.FileName));
+        % Get the surface
+        sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
+        % Apply the transformation
+        sSurf.Vertices = (Digitize.Points.trans * [sSurf.Vertices ones(size(sSurf.Vertices, 1),1)]')';
+        % Remove the surface
+        panel_surface('RemoveSurface', hFig, 1);
+        % Deface the surface
+        if isempty(regexp(sSurf.Comment, 'defaced', 'match'))
+            sSurf = tess_deface(sSurf);
+        end
+        % Display updated surface
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, hFig, [], Digitize.surfaceFile);
+        % Save the surface and update the node
+        ProtocolInfo = bst_get('ProtocolInfo');
+        surfaceFile = bst_fullfile(ProtocolInfo.SUBJECTS, Digitize.surfaceFile);
+        bst_save(surfaceFile, sSurf, 'v7');
+        [~, iSubject] = bst_get('Subject', Digitize.SubjectName);
+        db_reload_subjects(iSubject);
+        % Hide head surface
+        if ~strcmpi(Digitize.Type, '3DScanner')
+            panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
+        end
+        % Get Digitizer JFrame
+        bstContainer = get(bst_get('Panel', 'Digitize'), 'container');
+        % Get maximum figure position
+        decorationSize = bst_get('DecorationSize');
+        [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
+        FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
+        if (FigPos(3) > 0) && (FigPos(4) > 0)
+            set(hFig, 'Position', FigPos);
+        end
+        % Remove the close handle function
+        set(hFig, 'CloseRequestFcn', []);
+        % Save handles in global variable
+        Digitize.hFig = hFig;
+        Digitize.iDS = iDS;
+    end
 end
 
 %% ===== PLOT POINTS =====
 function PlotCoordinate(Loc, Label, Type, iPoint)
     global Digitize GlobalData  
+
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);
     ChannelMat = load(ChannelFile);
@@ -1059,12 +1440,15 @@ function PlotCoordinate(Loc, Label, Type, iPoint)
     figure_3d('ViewHeadPoints', Digitize.hFig, 1);
     figure_3d('ViewSensors',Digitize.hFig, 1, 1, 0,'EEG');
     % Hide head surface
-    panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
+    if ~strcmpi(Digitize.Type, '3DScanner')
+        panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
+    end
 end
 
 %% ===== EEG CHANGE POINT CALLBACK =====
 function EEGChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Get digitize options
@@ -1080,6 +1464,7 @@ end
 %% ===== EXTRA CHANGE POINT CALLBACK =====
 function ExtraChangePoint_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     
@@ -1092,6 +1477,7 @@ end
 %% ===== SAVE CALLBACK =====
 function Save_Callback(h, ev) %#ok<INUSD>
     global Digitize
+
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
     ChannelFile = file_fullpath(sStudy.Channel.FileName);  
     export_channel( ChannelFile );
@@ -1099,6 +1485,9 @@ end
 
 %% ===== CREATE MONTAGE MENU =====
 function CreateMontageMenu(jMenu)
+    import org.brainstorm.icon.*;
+    global Digitize
+
     % Get menu pointer if not in argument
     if (nargin < 1) || isempty(jMenu)
         ctrl = bst_get('PanelControls', 'Digitize');
@@ -1122,10 +1511,86 @@ function CreateMontageMenu(jMenu)
     end
     % Add new montage / reset list
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+
+    if strcmpi(Digitize.Type, '3DScanner')
+        jMenuAddMontage = gui_component('Menu', jMenu, [], 'Add EEG montage...', [], [], [], []);
+            gui_component('MenuItem', jMenuAddMontage, [], 'From file...', [], [], @(h,ev)bst_call(@AddMontage), []);
+            % Creating montages from EEG cap layout mat files (only for 3DScanner)
+            jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
+        
+            % === USE DEFAULT CHANNEL FILE ===
+            % Get registered Brainstorm EEG defaults
+            bstDefaults = bst_get('EegDefaults');
+            if ~isempty(bstDefaults)
+                % Add a directory per template block available
+                for iDir = 1:length(bstDefaults)
+                    jMenuDir = gui_component('Menu', jMenuEegCaps, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
+                    % Create subfolder for cap manufacturer
+                    jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    jMenuWs  = gui_component('Menu', [], [], 'WearableSensing', IconLoader.ICON_FOLDER_CLOSE, [], [], []);
+                    % Add an item per Template available
+                    fList = bstDefaults(iDir).contents;
+                    % Sort in natural order
+                    [tmp,I] = sort_nat({fList.name});
+                    fList = fList(I);
+                    for iFile = 1:length(fList)
+                        % Define callback function to add montage from mat file
+                        fcnCallback = @(h,ev)AddMontage(fList(iFile).fullpath);
+                        
+                        % Find corresponding submenu
+                        if ~isempty(strfind(fList(iFile).name, 'ANT'))
+                            jMenuType = jMenuAnt;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
+                            jMenuType = jMenuBs;
+                        elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
+                            jMenuType = jMenuBp;
+                        elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
+                            jMenuType = jMenuEgi;
+                        elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
+                            jMenuType = jMenuNs;
+                        elseif ~isempty(strfind(fList(iFile).name, 'WearableSensing'))
+                            jMenuType = jMenuWs;
+                        else
+                            jMenuType = jMenuOther;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback, 12);
+                    end
+                    % Add if not empty
+                    if (jMenuOther.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuOther);
+                    end
+                    if (jMenuAnt.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuAnt);
+                    end
+                    if (jMenuBs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBs);
+                    end
+                    if (jMenuBp.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuBp);
+                    end
+                    if (jMenuEgi.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuEgi);
+                    end
+                    if (jMenuNs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuNs);
+                    end
+                    if (jMenuWs.getMenuComponentCount() > 0)
+                        jMenuDir.add(jMenuWs);
+                    end
+                end
+            end
+    else % if not 3DScanner
+        gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
+    end
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
 end
-
 
 %% ===== SELECT MONTAGE =====
 function SelectMontage(iMontage)
@@ -1177,46 +1642,73 @@ function [curMontage, nEEG] = GetCurrentMontage()
 end
 
 %% ===== ADD EEG MONTAGE =====
-function AddMontage()
-    % Get recently used folders
-    LastUsedDirs = bst_get('LastUsedDirs');
-    % Open file
-    MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
-                   {{'*.txt'}, 'Text files', 'TXT'}, 0);
-    if isempty(MontageFile)
-        return;
+function AddMontage(ChannelFile)
+    global Digitize
+
+    % Add Montage from text file
+    if nargin<1
+        % Get recently used folders
+        LastUsedDirs = bst_get('LastUsedDirs');
+        % Open file
+        MontageFile = java_getfile('open', 'Select montage file...', LastUsedDirs.ImportChannel, 'single', 'files', ...
+                       {{'*.txt'}, 'Text files', 'TXT'}, 0);
+        if isempty(MontageFile)
+            return;
+        end
+        % Get filename
+        [MontageDir, MontageName] = bst_fileparts(MontageFile);
+        % Intialize new montage
+        newMontage.Name = MontageName;
+        newMontage.Labels = {};
+        
+        % Open file
+        fid = fopen(MontageFile,'r');
+        if (fid == -1)
+            error('Cannot open file.');
+        end
+        % Read file
+        while (1)
+            tline = fgetl(fid);
+            if ~ischar(tline)
+                break;
+            end
+            spl = regexp(tline,'\s+','split');
+            if (length(spl) >= 2)
+                newMontage.Labels{end+1} = spl{2};
+            end
+        end
+        % Close file
+        fclose(fid);
+        % If no labels were read: exit
+        if isempty(newMontage.Labels)
+            return
+        end
+        % Save last dir
+        LastUsedDirs.ImportChannel = MontageDir;
+        bst_set('LastUsedDirs', LastUsedDirs);
+    % Add Montage from mat file of EEG caps
+    else
+        % Load existing file
+        ChannelMat = in_bst_channel(ChannelFile);
+        
+        % Intialize new montage
+        newMontage.Name = ChannelMat.Comment;
+        newMontage.Labels = {};
+        newMontage.ChannelFile = ChannelFile;
+        
+        % Get cap landmark labels
+        [~, capLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', newMontage.Name);
+        if isempty(capLandmarkLabels)
+            bst_error('EEG cap not supported', Digitize.Type, 0);
+            return;
+        end
+        
+        % Sort as per the initialization landmark labels of EEG Cap  
+        nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},capLandmarkLabels));
+        allLabels = {ChannelMat.Channel.Name};
+        newMontage.Labels = cat(2, capLandmarkLabels, allLabels(nonLandmarkLabelsIdx));
     end
-    % Get filename
-    [MontageDir, MontageName] = bst_fileparts(MontageFile);
-    % Intialize new montage
-    newMontage.Name = MontageName;
-    newMontage.Labels = {};
     
-    % Open file
-    fid = fopen(MontageFile,'r');
-    if (fid == -1)
-        error('Cannot open file.');
-    end
-    % Read file
-    while (1)
-        tline = fgetl(fid);
-        if ~ischar(tline)
-            break;
-        end
-        spl = regexp(tline,'\s+','split');
-        if (length(spl) >= 2)
-            newMontage.Labels{end+1} = spl{2};
-        end
-    end
-    % Close file
-    fclose(fid);
-    % If no labels were read: exit
-    if isempty(newMontage.Labels)
-        return
-    end
-    % Save last dir
-    LastUsedDirs.ImportChannel = MontageDir;
-    bst_set('LastUsedDirs', LastUsedDirs);
     
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -1236,8 +1728,13 @@ function AddMontage()
     bst_set('DigitizeOptions', DigitizeOptions);
     % Reload Menu
     CreateMontageMenu();
-    % Restart acquisition
-    ResetDataCollection();
+    if nargin<1
+        % Restart acquisition
+        ResetDataCollection();
+    else
+        % Update List
+        UpdateList();
+    end
 end
 
 %% ===== UNLOAD ALL MONTAGES =====
@@ -1247,15 +1744,19 @@ function UnloadAllMontages()
     % Remove all montages
     DigitizeOptions.Montages = [...
         struct('Name',   'No EEG', ...
-               'Labels', []), ...
+               'Labels', [], ...
+               'ChannelFile', []), ...
         struct('Name',   'Default', ...
-               'Labels', [])];
+               'Labels', [], ...
+               'ChannelFile', [])];
     % Reset to "No EEG"
     DigitizeOptions.iMontage = 1;
     % Save Digitize options
     bst_set('DigitizeOptions', DigitizeOptions);
     % Reload menu bar
     CreateMontageMenu();
+    % Update List
+    UpdateList();
 end
 
 
@@ -1297,8 +1798,13 @@ function RemoveCoordinates(type, iPoint)
             % find the point in the type and create a mask of points to keep
             % that excludes the specified point
             if strcmp(type, 'EEG')
-                % remove specific EEG channel
-                ChannelMat.Channel(iPoint) = [];
+                if strcmpi(Digitize.Type, '3DScanner')
+                    % remove only location
+                    ChannelMat.Channel(iPoint).Loc = [];
+                else
+                    % remove specific EEG channel
+                    ChannelMat.Channel(iPoint) = [];
+                end
             else
                 %  all other types
                 iType = find(~cellfun(@isempty,regexp([ChannelMat.HeadPoints.Type], type)));
@@ -1348,6 +1854,7 @@ end
 %% ===== CREATE SERIAL COLLECTION =====
 function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
     global Digitize
+
     isOk = 0;
     while ~isOk
         % Get COM port options
@@ -1389,7 +1896,7 @@ function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
                 pause(0.2);
             catch %#ok<CTCH>
                 % If the connection cannot be established: error message
-                bst_error(['Cannot open serial connection.' 10 10 'Please check the serial port configuration.' 10], 'Digitize', 0);
+                bst_error(['Cannot open serial connection.' 10 10 'Please check the serial port configuration.' 10], Digitize.Type, 0);
                 % Ask user to edit the port options
                 isChanged = EditSettings();
                 % If edit was canceled: exit
@@ -1410,8 +1917,9 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback(h, ev) %#ok<INUSD>
+function BytesAvailable_Callback() 
     global Digitize rawpoints
+
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Get digitizer options
@@ -1419,14 +1927,34 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
 
     % Simulate: Generate random points
     if DigitizeOptions.isSimulate
-        switch (Digitize.Mode)
-            case 1,     pointCoord = [.08 0 -.01];
-            case 2,     pointCoord = [-.01 .07 0];
-            case 3,     pointCoord = [-.01 -.07 0];
-            case 4,     pointCoord = [.08 0 0];
-            case 5,     pointCoord = [0  .07 0];
-            case 6,     pointCoord = [0 -.07 0];
-            otherwise,  pointCoord = rand(1,3) * .15 - .075;
+        if strcmpi(Digitize.Type, '3DScanner')
+            % Get current 3D figure
+            [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');
+            if isempty(hFig)
+                return
+            end
+            % Get current selected point
+            CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
+            isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+            if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+                return;
+            else
+                if isSelectingCoordinates
+                    pointCoord = CoordinatesSelector.SCS;
+                end
+            end
+            Digitize.hFig = hFig;
+            Digitize.iDS = iDS;
+        else
+            switch (Digitize.Mode)
+                case 1,     pointCoord = [.08 0 -.01];
+                case 2,     pointCoord = [-.01 .07 0];
+                case 3,     pointCoord = [-.01 -.07 0];
+                case 4,     pointCoord = [.08 0 0];
+                case 5,     pointCoord = [0  .07 0];
+                case 6,     pointCoord = [0 -.07 0];
+                otherwise,  pointCoord = rand(1,3) * .15 - .075;
+            end
         end
     % Else: Get digitized point coordinates
     else
@@ -1482,7 +2010,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         end
     end
     % check for change in Mode (click at least 1 meter away from transmitter)
-    if any(abs(pointCoord) > 1.5)
+    if ~strcmpi(Digitize.Type, '3DScanner') && any(abs(pointCoord) > 1.5)
         newMode = Digitize.Mode +1;
         SwitchToNewMode(newMode);
         return;
@@ -1597,28 +2125,48 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         % === EEG ===
         case 7
             % find the index for the current point
-            iPoint = str2double(ctrl.jTextFieldEEG.getText());
-            % Transform coordinate
-            Digitize.Points.EEG(iPoint,:) = (Digitize.Points.trans * [pointCoord 1]')';
+            % ADD A CONDITION HERE THAT EDITS EXISTING EEG POINTS
+            if Digitize.isEditPts
+                [~, iSelCoord] = GetSelectedCoord(); 
+                iPoint = iSelCoord - 3;
+            else
+                % ELSE DOES THE BELOW OF ADDING NEW POINTS
+                iPoint = str2double(ctrl.jTextFieldEEG.getText());
+            end
+            if strcmpi(Digitize.Type, '3DScanner')
+                Digitize.Points.EEG(iPoint,:) = pointCoord;
+            else
+                % Transform coordinate
+                Digitize.Points.EEG(iPoint,:) = (Digitize.Points.trans * [pointCoord 1]')';
+            end
             % Add the point to the display
             % Get current montage
             [curMontage, nEEG] = GetCurrentMontage();
             PlotCoordinate(Digitize.Points.EEG(iPoint,:), curMontage.Labels{iPoint}, 'EEG', iPoint)
-            % update text field counter to the next point in the list
-            nextPoint = max(size(Digitize.Points.EEG,1)+1, 1);
-            if nextPoint > nEEG
-                % all EEG points have been collected, switch to next mode
-                ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nEEG)));
-                SwitchToNewMode(8);
+            
+            if Digitize.isEditPts
+                Digitize.isEditPts = 0;
             else
-                ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nextPoint)));
+                % update text field counter to the next point in the list
+                nextPoint = max(size(Digitize.Points.EEG,1)+1, 1);
+                if nextPoint > nEEG
+                    % all EEG points have been collected, switch to next mode
+                    ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nEEG)));
+                    SwitchToNewMode(8);
+                else
+                    ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nextPoint)));
+                end
             end
         % === EXTRA ===
         case 8
             % find the index for the current point in the headshape points
             iPoint = str2double(ctrl.jTextFieldExtra.getText());
-            % Transformed points_pen from original points_pen
-            Digitize.Points.headshape(iPoint,:) = (Digitize.Points.trans * [pointCoord 1]')';
+            if strcmpi(Digitize.Type, '3DScanner')
+                Digitize.Points.headshape(iPoint,:) = pointCoord;
+            else
+                % Transformed points_pen from original points_pen
+                Digitize.Points.headshape(iPoint,:) = (Digitize.Points.trans * [pointCoord 1]')';
+            end
             % add the point to the display (in cm)
             PlotCoordinate(Digitize.Points.headshape(iPoint,:), 'EXTRA', 'EXTRA', iPoint)
             % update text field counter to the next point in the list
@@ -1682,7 +2230,4 @@ function newPT = DoMotionCompensation(sensors)
     newPT(2) = pt(1) * rotMat(2, 1) + pt(2) * rotMat(2, 2) + pt(3) * rotMat(2, 3)'+ rotMat(2, 4);
     newPT(3) = pt(1) * rotMat(3, 1) + pt(2) * rotMat(3, 2) + pt(3) * rotMat(3, 3)'+ rotMat(3, 4);
 end
-
-
-
 
