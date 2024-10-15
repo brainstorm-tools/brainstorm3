@@ -74,7 +74,7 @@ if ismember('Projector', FieldsToRead)
         % Old format (I-UUt) => Convert to new format
         if ~isstruct(sMat.Projector)
             sMat.Projector = process_ssp2('ConvertOldFormat', sMat.Projector);
-        elseif ~isfield(sMat.Projector, 'Method')
+        elseif ~isfield(sMat.Projector, 'Method') || any(cellfun(@isempty, {sMat.Projector.Method}))
             tmpProjector = repmat(db_template('projector'), 1, length(sMat.Projector));
             for ix = 1 : length(sMat.Projector)
                 tmpProjector(ix) = process_ssp2('ConvertOldFormat', sMat.Projector(ix));
