@@ -81,51 +81,29 @@ end
 src_pos = scale .* src_pos;
 det_pos = scale .* det_pos;
 
-% Get number of channels
-nChannels = size(jnirs.nirs.data.measurementList, 2);
+% Create channel file structure
+if isfield(jnirs.nirs.data, 'measurementLists')
+    [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
+elseif isfield(jnirs.nirs.data, 'measurementList')
+    [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+else
+    error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
+end
 
+% AUX channels
 if isfield(jnirs.nirs,'aux')
     nAux = length(jnirs.nirs.aux);
 else
     nAux = 0;
 end
 
-% Create channel file structure
-ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'NIRS-BRS channels';
-ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+k_aux       =  1;
+aux_index   = false(1,nAux);
 
-% NIRS channels
-for iChan = 1:nChannels
-    % This assume measure are raw; need to change for Hbo,HbR,HbT
-    channel = jnirs.nirs.data.measurementList(iChan);
-    if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-        [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
-    else
-
-        ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
-                                                             jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                             jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-        ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-
-    end
-    ChannelMat.Channel(iChan).Type = 'NIRS';
-    ChannelMat.Channel(iChan).Weight = 1;
-    if ~isempty(src_pos) && ~isempty(det_pos)
-        ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
-        ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
-        ChannelMat.Channel(iChan).Orient  = [];
-        ChannelMat.Channel(iChan).Comment = [];
-    end
-end
-
-% AUX channels
-k_aux =  1;
-aux_index = false(1,nAux);
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
-        && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
+        && ( length(jnirs.nirs.data.time) ~= length(jnirs.nirs.aux(iAux).time) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
     
         warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
         continue;
@@ -272,6 +250,77 @@ for iEvt = 1:length(jnirs.nirs.stim)
     DataMat.Events(iEvt).notes      = [];
     DataMat.Events(iEvt).reactTimes = [];
 end   
+end
+
+function [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+    % Create channel file structure
+    ChannelMat = db_template('channelmat');
+    ChannelMat.Comment = 'NIRS-BRS channels';
+    ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+    
+    % Get number of channels
+    nChannels = size(jnirs.nirs.data.measurementList, 2);
+    
+    
+    % NIRS channels
+    for iChan = 1:nChannels
+        % This assume measure are raw; need to change for Hbo,HbR,HbT
+        channel = jnirs.nirs.data.measurementList(iChan);
+        if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+        else
+    
+            ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
+                                                                 jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
+                                                                 jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+            ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+    
+        end
+        ChannelMat.Channel(iChan).Type = 'NIRS';
+        ChannelMat.Channel(iChan).Weight = 1;
+        if ~isempty(src_pos) && ~isempty(det_pos)
+            ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
+            ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
+            ChannelMat.Channel(iChan).Orient  = [];
+            ChannelMat.Channel(iChan).Comment = [];
+        end
+    end
+end
+
+function [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
+    % Create channel file structure
+    ChannelMat = db_template('channelmat');
+    ChannelMat.Comment = 'NIRS-BRS channels';
+    ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+    
+    measurementLists = jnirs.nirs.data.measurementLists;
+
+    % Get number of channels
+    nChannels = length(measurementLists.dataType);
+    
+    
+    % NIRS channels
+    for iChan = 1:nChannels
+        % This assume measure are raw; need to change for Hbo,HbR,HbT
+        if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(measurementLists.sourceIndex(iChan), measurementLists.detectorIndex(iChan), jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan))); 
+        else
+    
+            ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(measurementLists.sourceIndex(iChan)), ...
+                                                                 jnirs.nirs.probe.detectorLabels(measurementLists.detectorIndex(iChan)), ...
+                                                                 jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+            ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+    
+        end
+        ChannelMat.Channel(iChan).Type = 'NIRS';
+        ChannelMat.Channel(iChan).Weight = 1;
+        if ~isempty(src_pos) && ~isempty(det_pos)
+            ChannelMat.Channel(iChan).Loc(:,1) = src_pos(measurementLists.sourceIndex(iChan), :);
+            ChannelMat.Channel(iChan).Loc(:,2) = det_pos(measurementLists.detectorIndex(iChan), :);
+            ChannelMat.Channel(iChan).Orient  = [];
+            ChannelMat.Channel(iChan).Comment = [];
+        end
+    end
 end
 
 function vect = toColumn(vect, exp_size)
