@@ -488,7 +488,7 @@ function AutoDetectContacts(method)
                 bst_error('No CT available for this subject.', 'GARDEL', 0);
             end
             % Find CT volumes
-            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
             CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
             sCt = bst_memory('LoadMri', CtFile);
             
@@ -3253,7 +3253,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         bst_error('No MRI available for this subject.', 'Display electrodes', 0);
     end
     % Find CT volumes
-    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
     if ~isempty(iCtVol)
         tmp = iCtVol(1);
         % Prefer a masked CT volume if available

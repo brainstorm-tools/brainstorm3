@@ -125,7 +125,7 @@ jBstFrame.setVisible(1);
 
 % TODO: Load data from temp directory back to Brainstorm 
 %% Check if electrode coordinates txt file was exported 
-electrodes_file_path = [TmpGardelDir '\ElectrodesAllCoordinates.txt'];
+electrodes_file_path = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
 if ~exist(electrodes_file_path, 'file')
     bst_error('Electrode coordinates file not found. Make sure you export before quitting GARDEL !', 'GARDEL', 0);
     % comment this line to keep the temporary folder
@@ -177,6 +177,7 @@ while ischar(tline) && ~contains(tline,'MRI_FS')
     end
     tline = fgets(fid);
 end
+fclose(fid);
 
 % Parse the 'Electrodes' variable and put it in the BST format in the channel file
 for ii=1:length(Electrodes)
@@ -209,4 +210,4 @@ db_reload_studies(iStudy);
 
 % delete temporary folder
 % comment this line to keep the temporary folder
-% file_delete(TmpGardelDir, 1, 1);
+file_delete(TmpGardelDir, 0, 1);
