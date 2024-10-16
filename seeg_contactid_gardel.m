@@ -105,9 +105,9 @@ jBstFrame = bst_get('BstFrame');
 jBstFrame.setVisible(0);
 
 % Call the external GARDEL tool
-bst_call(@GARDEL);
-% bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
-%     'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile);
+% bst_call(@GARDEL);
+bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
+    'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile);
 
 % Set process logo
 bst_progress('stop');
