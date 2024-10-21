@@ -315,6 +315,12 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         else
             isReslice = 0;
         end
+        % Check that reference volume has set fiducials for reslicing
+        if isReslice && (~isfield(sMriRef, 'SCS') || ~isfield(sMriRef.SCS, 'R') || ~isfield(sMriRef.SCS, 'T') || isempty(sMriRef.SCS.R) || isempty(sMriRef.SCS.T))
+            errMsg = 'Reslice: No SCS transformation available for the reference volume. Set the fiducials first.';
+            RegMethod = ''; % Registration will not be performed
+        end
+
 
         % === REGISTRATION ===
         switch (RegMethod)
@@ -350,6 +356,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     sMri.SCS = sMriRef.SCS;
                     %sMri.NCS = sMriRef.NCS;
                 end
+            otherwise
+                % Do nothing
         end
     end
     % Stop in case of error

@@ -68,6 +68,10 @@ mixedStructs = {'Amygdala L'   , 'Deep brain', ''; ... % Deep brain --> Volume ,
 if ~brainstorm('status')
     brainstorm nogui
 end
+% Check Brainstorm mode
+if bst_get('GuiLevel') < 0
+    error('For the moment the tutorial "tutorial_dba" is not supported on Brainstorm server mode.');
+end
 ProtocolName = 'TutorialDba';
 [~, fBase] = bst_fileparts(zip_file);
 if ~strcmpi(fBase, ProtocolName)

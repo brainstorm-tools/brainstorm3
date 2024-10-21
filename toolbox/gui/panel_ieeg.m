@@ -1247,6 +1247,8 @@ function sContacts = GetContacts(selectedElecName)
     end
     % Get the channel data
     ChannelData = GlobalData.DataSet(iDSall).Channel;
+    % Replace empty Group with ''
+    [ChannelData(cellfun('isempty', {ChannelData.Group})).Group] = deal('');
     % Get the contacts for the electrode
     iChannels = find(ismember({ChannelData.Group}, selectedElecName));
     for i = 1:length(iChannels)

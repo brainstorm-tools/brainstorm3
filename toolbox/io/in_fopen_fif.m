@@ -53,6 +53,13 @@ elseif (length(fBase) > 4) && strcmpi(fBase(end-3:end), '-eve')
 end
 
 %% ===== OPEN FIF FILE =====
+% Use MNE functions in brainstorm3/external/mne/matlab
+bst_plugin('Unload', 'fieldtrip');
+bst_plugin('Unload', 'spm12');
+% Reset FIFF
+global FIFF;
+FIFF = fiff_define_constants();
+
 % Open file
 [ fid, tree ] = fiff_open(DataFile);
 if (fid < 0)

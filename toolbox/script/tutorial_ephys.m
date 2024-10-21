@@ -109,7 +109,8 @@ hFig = view_channels_3d(sFilesRaw.ChannelFile, 'SEEG', 'scalp', 1);
 hFig = view_surface(CortexFile{1}, 0.8, [1 0 0], hFig);
 figure_3d('SetStandardView', hFig, 'right');
 bst_report('Snapshot', hFig, [], 'Anatomy');
-close(hFig);
+% Unload everything
+bst_memory('UnloadAll', 'Forced');
 
 
 %% ===== SPIKE SORTING =====
@@ -176,6 +177,7 @@ bst_process('CallProcess', 'process_tuning_curves', sFilesLfp, [], ...
     'eventsel',   {'Stim On 1', 'Stim On 2', 'Stim On 3', 'Stim On 4', 'Stim On 5', 'Stim On 6', 'Stim On 7', 'Stim On 8', 'Stim On 9'}, ...
     'spikesel',   {'Spikes Channel AD06', 'Spikes Channel AD08 |1|'}, ...
     'timewindow', [0.05, 0.12]);
+close(findobj('Type','figure'));
 
 
 %% ===== NOISE CORRELATION =====

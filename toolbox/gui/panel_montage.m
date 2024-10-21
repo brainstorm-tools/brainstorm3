@@ -2389,27 +2389,30 @@ function AddAutoMontagesProj(ChannelMat, isInteractive)
         if (length(sCat.Comment) < 3) || strcmpi(sCat.Comment(1:3), 'EEG')
             continue;
         end
-        % ICA
-        if isequal(sCat.SingVal, 'ICA')
-            % Field Components stores the mixing matrix W
-            W = sCat.Components(iChannels, :)';
-            % Display name
-            strDisplay = 'IC';
-        % SSP
-        else
-            % Field Components stores the spatial components U
-            U = sCat.Components(iChannels, :);
-            % SSP/PCA results
-            if ~isempty(sCat.SingVal) 
-                Singular = sCat.SingVal ./ sum(sCat.SingVal);
-            % SSP/Mean results
-            else
-                Singular = eye(size(U,2));
-            end
-            % Rebuild mixing matrix
-            W = diag(sqrt(Singular)) * pinv(U);
-            % Display name
-            strDisplay = 'SSP';
+        componentType = sCat.Method(1:3);
+        switch lower(componentType)
+            % ICA
+            case 'ica'
+                % Field Components stores the mixing matrix W
+                W = sCat.Components(iChannels, :)';
+                % Display name
+                strDisplay = 'IC';
+            % SSP
+            case 'ssp'
+                % Field Components stores the spatial components U
+                U = sCat.Components(iChannels, :);
+                switch(sCat.Method)
+                    case 'SSP_pca'
+                        % SSP/PCA results
+                        Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    case 'SSP_mean'
+                        % SSP/Mean results
+                        Singular = eye(size(U,2));
+                end
+                % Rebuild mixing matrix
+                W = diag(sqrt(Singular)) * pinv(U);
+                % Display name
+                strDisplay = 'SSP';
         end
         % Create line labels
         LinesLabels = cell(size(W,1), 1);

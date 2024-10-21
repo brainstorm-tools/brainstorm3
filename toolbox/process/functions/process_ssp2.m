@@ -638,6 +638,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             chanmask(iChannels) = 1;
             % Call computation function
             proj = Compute(F, chanmask);
+            proj.Method = Method;
 %             % Select the components with a singular value > threshold
 %             if isempty(ForceSelect)
 %                 singThresh = 0.12;
@@ -676,6 +677,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             proj.CompMask   = 1;
             proj.Status     = 1;
             proj.SingVal    = [];
+            proj.Method     = Method;
             
             
         % === ICA: JADE ===
@@ -771,7 +773,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         proj.Components = Wall;
         proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
         proj.Status     = 1;
-        proj.SingVal    = 'ICA';
+        proj.Method     = Method;
+
         % Apply component selection (if set explicitly)
         if ~isempty(SelectComp)
             proj.CompMask(SelectComp) = 1;
@@ -780,22 +783,33 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         if isempty(Y)
             Y = W * F;
         end
-        % Sort ICA components
+        % Compute mixing matrix
+        if diff(size(W)) == 0
+            M = inv(W);
+        else
+            M = pinv(W);
+        end
+        % Variance in recovered data explained by each component
+        varIcs = sum(M.^2, 1) .* sum(Y.^2, 2)';
+        varIcs = varIcs ./ sum(varIcs);
+        % Find sorting order for ICA components
+        iSort = [];
         if ~isempty(icaSort)
             % By correlation with reference channel
             C = bst_corrn(Fref, Y);
-            [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
-            proj.Components = proj.Components(:,iSort);
+            [~, iSort] = sort(max(abs(C),[],1), 'descend');
         elseif ismember(Method, {'ICA_picard', 'ICA_fastica'})
-            % By explained variance
-            if diff(size(W)) == 0
-                M = inv(W);
-            else
-                M = pinv(W);
-            end
-            var = sum(M.^2, 1) .* sum(Y.^2, 2)';
-            [var, iSort] = sort(var, 'descend');
+            [~, iSort] = sort(varIcs, 'descend');
+        end
+        % Explained variance ratio
+        Fdiff = (F - M * Y);
+        rVarExp = 1 - (sum(sum(Fdiff.^2, 2)) ./ sum(sum(F.^2, 2)));
+        % Variance in original data by each component
+        proj.SingVal = rVarExp * varIcs;
+        % Sort components and their variances
+        if ~isempty(iSort)
             proj.Components = proj.Components(:,iSort);
+            proj.SingVal    = proj.SingVal(iSort);
         end
     end
     
@@ -957,15 +971,17 @@ end
 %
 % COMMENTS: 
 %    There are 5 categories of projectors:
-%    - SSP_pca:   CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=U
-%    - SSP_mean:  CompMask=1,             SingVal=[],            Components=[Nchan x 1]=U
-%    - ICA:       CompMask=[Ncomp x 1],   SingVal='ICA',         Components=[Nchan x Ncomp]=W'
-%    - REF:       CompMask=[],            SingVal='REF',         Components=[Nchan x Ncomp]=Wmontage
-%    - Other:     CompMask=[],            SingVal=[],            Components=[Nchan x Nchan]=Projector=I-UUt
+%    - SSP_pca:   Method = 'SSP_pca'      CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=U
+%    - SSP_mean:  Method = 'SSP_pca'      CompMask=1,             SingVal=[],            Components=[Nchan x 1]=U
+%    - ICA:       Method = 'ICA_variant'  CompMask=[Ncomp x 1],   SingVal=[Ncomp x 1],   Components=[Nchan x Ncomp]=W'
+%    - REF:       Method = 'REF'          CompMask=[],            SingVal=[],            Components=[Nchan x Ncomp]=Wmontage
+%    - Other:     Method = 'Other'        CompMask=[],            SingVal=[],            Components=[Nchan x Nchan]=Projector=I-UUt
+%
+%  For ICA projectors, 'SingVal' contains the fraction explained variance with respect to the original signal
 %
 %    Description of the notations used here:
-%    - W: Unmixing matrix  [Nelectrodes x Ncomponents]  
-%    - Winv = pinv(W) = [Ncomponents x Nelectrodes]
+%    - W: Unmixing matrix  [Ncomponents x Nelectrodes]
+%    - Winv = pinv(W) = [Nelectrodes x Ncomponents]
 %    - In EEGLAB:  W = icaweights * icasphere;
 %    - Activations_IC = W * Data
 %    - CleanData = Winv(:,iComp) * Activations(iComp,:)
@@ -990,7 +1006,7 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
         if ~ismember(ListProj(i).Status, ProjStatus) || (~isempty(ListProj(i).CompMask) && all(ListProj(i).CompMask == 0))
             iProjDel(end+1) = i;
         % New SSP: Stack selected vectors all together
-        elseif ~isempty(ListProj(i).CompMask) && ~isequal(ListProj(i).SingVal, 'ICA') && ~isequal(ListProj(i).SingVal, 'REF')
+        elseif ~isempty(ListProj(i).CompMask) && ~ismember(ListProj(i).Method(1:3), {'ICA', 'REF'})
             iProjSsp(end+1) = i;
             U = [U, ListProj(i).Components(:,ListProj(i).CompMask == 1)];
         end
@@ -1042,7 +1058,7 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
     % Add the projectors in the order of appearance
     for i = 1:length(ListProj)
         % ICA
-        if isequal(ListProj(i).SingVal, 'ICA')
+        if isequal(ListProj(i).Method(1:3), 'ICA')
             % Get selected channels (find the non-zero channels)
             iChan = find(any(ListProj(i).Components ~= 0, 2));
             % Get selected components
@@ -1080,9 +1096,34 @@ function proj = ConvertOldFormat(OldProj)
         proj = [];
     elseif ~isstruct(OldProj)
         proj = db_template('projector');
-        proj.Components = OldProj;
-        proj.Comment    = 'Unnamed';
-        proj.Status     = 1;
+        proj.Components  = OldProj;
+        proj.Comment     = 'Unnamed';
+        proj.Status      = 1;
+        proj.Method      = 'Other';
+    elseif ~isfield(OldProj, 'Method') || isempty(OldProj.Method)
+        proj = db_template('projector');
+        proj = struct_copy_fields(proj, OldProj, 1);
+        % Add projector method
+        if isnumeric(proj.SingVal) && (length(proj.SingVal) == length(proj.CompMask))
+            proj.Method  = 'SSP_pca';
+        elseif isempty(proj.SingVal) && length(proj.CompMask) == 1 && proj.CompMask == 1
+            proj.Method  = 'SSP_mean';
+        elseif ischar(proj.SingVal) && strcmpi(proj.SingVal, 'ICA')
+            proj.Method  = 'ICA';
+            proj.SingVal = [];
+        elseif ischar(proj.SingVal) && strcmpi(proj.SingVal, 'REF')
+            proj.Method  = 'REF';
+            proj.SingVal = [];
+        elseif isempty(proj.SingVal) && isempty(proj.CompMask)
+            proj.Method  = 'Other';
+        end
+        % Try to get ICA method from comment
+        if strcmp(proj.Method, 'ICA')
+            tmp = regexp(proj.Comment, 'ICA_\w*', 'match');
+            if ~isempty(tmp)
+                proj.Method = tmp{1};
+            end
+        end
     else
         proj = OldProj;
     end
