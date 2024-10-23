@@ -1007,6 +1007,8 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuHeadPoints, [], 'Remove all points', IconLoader.ICON_DELETE, [], @(h,ev)ChannelRemoveHeadpoints(filenameRelative));
                         % Remove points below the nasion
                         gui_component('MenuItem', jMenuHeadPoints, [], 'Remove points below nasion', IconLoader.ICON_DELETE, [], @(h,ev)ChannelRemoveHeadpoints(filenameRelative, 0));
+                        % Remove points manually
+                        gui_component('MenuItem', jMenuHeadPoints, [], 'Remove points manually', IconLoader.ICON_DELETE, [], @(h,ev)channel_align_manual(filenameRelative, 'HeadPoints', 1));
                         % WARP
                         AddSeparator(jMenuHeadPoints);
                         jMenuWarp = gui_component('Menu', jMenuHeadPoints, [], 'Warp', IconLoader.ICON_ALIGN_CHANNELS, [], []);

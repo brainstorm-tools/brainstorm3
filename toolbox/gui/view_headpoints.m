@@ -69,7 +69,10 @@ end
 ChannelMat = in_bst_channel(ChannelFile);
 
 % View scalp surface if available
-[hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+[hFig, iFig, iDS] = bst_figures('GetFigureWithSurface', file_short(ScalpFile));
+if isempty(hFig)
+    [hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+end
 figure_3d('SetStandardView', hFig, 'front');
 
 % Extend figure and dataset for this particular channel file
