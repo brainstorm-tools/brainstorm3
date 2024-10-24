@@ -170,6 +170,9 @@ if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     if ~isempty(bst_plugin('GetInstalled', 'cat12'))
         bst_plugin('LinkCatSpm', 0);
     end
+    % Unload FieldTrip and SPM plugins
+    bst_plugin('Unload', 'fieldtrip');
+    bst_plugin('Unload', 'spm12');
     % Extract functions to compile from SPM and Fieldtrip
     bst_spmtrip(SpmDir, FieldTripDir, spmtripDir);
     % Add to Matlab path

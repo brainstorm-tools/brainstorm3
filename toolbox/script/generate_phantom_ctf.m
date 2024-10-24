@@ -113,7 +113,7 @@ db_add(iSubject, sMri);
 
 % ===== GENERATE HEAD SURFACE =====
 % Create surface
-[HeadFile, iSurface] = tess_isohead(iSubject, 10000, 0, 0, 'Phantom head (mask)');
+[HeadFile, iSurface] = tess_isohead(iSubject, 10000, 0, 0, [], 'Phantom head (mask)');
 
 
 

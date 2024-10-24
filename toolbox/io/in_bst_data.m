@@ -136,22 +136,22 @@ if isfield(DataMat, 'F') && isstruct(DataMat.F) && ~isempty(DataMat.F.filename) 
         if ~ispc()
             % Get mountpoint
             [status, dfResult] = system(['df ' DataFile]);
-            if ~status
+            if ~status % no error
                 dfLines = str_split(dfResult, 10);
                 iChar = regexp(dfLines{1}, 'Mounted on');
                 mountpoint = dfLines{2}(iChar:end);
-            end
-            % Update raw link path
-            if ~waspc
-                % Replace mountpoint
-                [mountDir, mountLabel] = bst_fileparts(mountpoint);
-                iCharRelMount = regexp(DataMat.F.filename, mountLabel);
-                newRaw = bst_fullfile(mountDir, DataMat.F.filename(iCharRelMount:end));
-            else
-                % Replace drive letter with mountpoint
-                pathTmp = file_win2unix(DataMat.F.filename);
-                pathTmp = regexprep(pathTmp, '^[A-Z]:/', '');
-                newRaw = bst_fullfile(mountpoint, pathTmp);
+                % Update raw link path
+                if ~waspc
+                    % Replace mountpoint
+                    [mountDir, mountLabel] = bst_fileparts(mountpoint);
+                    iCharRelMount = regexp(DataMat.F.filename, mountLabel);
+                    newRaw = bst_fullfile(mountDir, DataMat.F.filename(iCharRelMount:end));
+                else
+                    % Replace drive letter with mountpoint
+                    pathTmp = file_win2unix(DataMat.F.filename);
+                    pathTmp = regexprep(pathTmp, '^[A-Z]:/', '');
+                    newRaw = bst_fullfile(mountpoint, pathTmp);
+                end
             end
         else
             % Get drive letter

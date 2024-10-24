@@ -201,7 +201,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jToggleResectLeft   = gui_component('toggle', jPanelSurfaceResect, 'br center', 'Left',   {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectLeftToggle_Callback);           
             jToggleResectRight  = gui_component('toggle', jPanelSurfaceResect, '',          'Right',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectRightToggle_Callback);           
             jToggleResectStruct = gui_component('toggle', jPanelSurfaceResect, '',          'Struct', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectStruct_Callback);           
-            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0),  Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
+            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
         jPanelOptions.add(jPanelSurfaceResect);
  
         % ===== SURFACE LABELS =====
@@ -285,7 +285,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderResectX.setValue(0);
         jSliderResectY.setValue(0);
         jSliderResectZ.setValue(0);
-        
+        jToggleResectLeft.setSelected(0);
+        jToggleResectRight.setSelected(0);
+        jToggleResectStruct.setSelected(0);
+
         % Get handle to current 3DViz figure
         hFig = bst_figures('GetCurrentFigure', '3D');
         if isempty(hFig)
@@ -420,7 +423,7 @@ function SliderCallback(hObject, event, target)
                 CtFile = [];
                 MeshFile = [];
                 for i=1:length(sSubject.Anatomy)
-                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
                         CtFile = sSubject.Anatomy(i).FileName;
                     end
                 end
@@ -538,7 +541,7 @@ function isoValue = GetIsoValueMaxRange()
             sSubject = bst_get('Subject', SubjectFile);
             CtFile = [];
             for i=1:length(sSubject.Anatomy)
-                if ~isempty(regexp(sSubject.Anatomy(i).FileName, 'CT', 'match')) 
+                if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
                     CtFile = sSubject.Anatomy(i).FileName;
                 end
             end
