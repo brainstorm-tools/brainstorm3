@@ -172,6 +172,9 @@ for iFile = 1:length(SurfaceFiles)
             if isfield(Tess, 'Faces')   % Volume meshes do not have Faces field
                 NewTess.Faces = Tess(1).Faces;
             end
+            if isfield(Tess, 'Color')   % Not all meshes have color
+                NewTess.Color = Tess(1).Color;
+            end
         % Volume FEM mesh
         else
             NewTess = Tess;
@@ -204,7 +207,11 @@ for iFile = 1:length(SurfaceFiles)
     NewTess = bst_history('add', NewTess, 'import', ['Import from: ' TessFile]);
     % Produce a default surface filename (surface of volume mesh)
     if isfield(NewTess, 'Faces')
-        BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+        if isempty(NewTess.Color)
+            BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+        else
+            BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_textured_' importedBaseName '.mat']);
+        end
     else
         BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_fem_' importedBaseName '.mat']);
     end
