@@ -173,19 +173,8 @@ vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 % coordinate space as that of Polhemus as implemented in the 'panel_digitize.m'
 vertices = channel_fixunits(vertices, 'm', 1, 1);
 
-%% ===== Convert to Brainstorm structure =====
-% Define the structure
-TessMat = struct( ...
-    'Faces',    [], ...
-    'Vertices', [], ...
-    'Color',    [], ...
-    'Comment', '');
-
-% Convert face data
-TessMat.Faces = faces;
-
-% Convert vertices data
-TessMat.Vertices = vertices;
-
-% Convert color data
-TessMat.Color = color;
+%% ===== Brainstorm surface structure =====
+TessMat = struct('Faces',    faces, ...
+                 'Vertices', vertices, ...
+                 'Color',    color, ...
+                 'Comment', '');
