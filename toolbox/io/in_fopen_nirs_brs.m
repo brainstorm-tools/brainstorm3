@@ -259,6 +259,8 @@ else
     else
         ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
     end
+
+    ChannelMat.Nirs.Wavelengths = round(ChannelMat.Nirs.Wavelengths);
 end
 
 %% Channel information
