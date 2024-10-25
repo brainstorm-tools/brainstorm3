@@ -171,7 +171,7 @@ vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 
 % For scalability, we determine the vertices' unit and convert them to 'meters' to match the 
 % coordinate space as that of Polhemus as implemented in the 'panel_digitize.m'
-vertices = head_surface_fixunits(vertices, 'm', 1);
+vertices = channel_fixunits(vertices, 'm', 1, 1);
 
 %% ===== Convert to Brainstorm structure =====
 % Define the structure
