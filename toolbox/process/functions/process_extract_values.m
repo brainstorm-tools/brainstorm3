@@ -674,8 +674,9 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                     tstart = FileMat.Time(1);
                 end
             elseif isfield(FileMat, 'TimeBands') && ~isempty(FileMat.TimeBands)
-                sfreq = 1;
-                tstart = 1;
+                tmpTime = mean(process_tf_bands('GetBounds', FileMat.TimeBands), 2);
+                sfreq = 1/(tmpTime(2) - tmpTime(1));
+                tstart = tmpTime(1);
                 FileMat.TimeBands = [];
             else
                 sfreq = 1/(FileMat.Time(2) - FileMat.Time(1));
