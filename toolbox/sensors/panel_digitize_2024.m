@@ -532,93 +532,86 @@ function isOk = EditSettings()
         ConfigString = '';
     end
     
-    % Ask for new options
-    options_str = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
+    % GUI all potential options: {Description, default values, result}
+    options_all = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
+                    Digitize.Options.ComPort, {};
                    'Unit Type (Fastrak or Patriot):', ...
+                    Digitize.Options.UnitType, {}; ...
                    '<HTML>Additional device configuration commands, separated by ";"<BR>(see device documentation, e.g. H1,0,0,-1;H2,0,0,-1):', ...
+                    ConfigString, {}; ...
                    '<HTML><BR><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
+                    FidsString, {}; ...
                    '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
+                    num2str(Digitize.Options.nFidSets), {}; ...
                    'Distance threshold for repeated measure of fiducial locations (mm):', ...
-                   'Beep when collecting point (0=no, 1=yes):'};
-    options_list = {Digitize.Options.ComPort, ...
-                    Digitize.Options.UnitType, ...
-                    ConfigString, ...
-                    FidsString, ...
-                    num2str(Digitize.Options.nFidSets), ...
-                    num2str(Digitize.Options.DistThresh * 1000), ... % m to mm
-                    num2str(Digitize.Options.isBeep)};
+                    num2str(Digitize.Options.DistThresh * 1000), {}; ... % m to mm
+                   'Beep when collecting point (0=no, 1=yes):', ...;
+                    num2str(Digitize.Options.isBeep), {}};
 
-    % do not show serial connection options for 3D Scanner 
-    if strcmpi(Digitize.Type, '3DScanner')
-        options_str = options_str(4:7);
-        options_list = options_list(4:7);
+    % Options to show for each type
+    switch lower(Digitize.Type)
+        case 'other'
+            iOptionsType = [1:7];
+        case '3dscanner'
+            iOptionsType = [4:7];
     end
     
     % Ask options
-    [res, isCancel] = java_dialog('input', options_str, [Digitize.Type ' configuration'], [], options_list);
-                
-    if isempty(res) || isCancel
+    [resType, isCancel] = java_dialog('input', options_all(iOptionsType,1), [Digitize.Type ' configuration'], [], options_all(iOptionsType,2));                
+    if isempty(resType) || isCancel
         return
     end
 
+    % Results in all options array
+    options_all(iOptionsType, 3) = resType;
+    res = options_all(:,3);
+
     % Check values
-    if strcmpi(Digitize.Type, '3DScanner')
-        if (length(res) < 4) || isnan(str2double(res{2})) || isnan(str2double(res{3})) || ~ismember(str2double(res{4}), [0 1])
-            bst_error('Invalid values.', Digitize.Type, 0);
-            return;
-        end
-        if ~isempty(res{2})
-            Digitize.Options.nFidSets = str2double(res{2});
-        end
-        if ~isempty(res{3})
-            Digitize.Options.DistThresh = str2double(res{3}) / 1000; % mm to m
-        end
-        if ~isempty(res{4})
-            Digitize.Options.isBeep = str2double(res{4});
-        end
-
-        % Parse fiducials.
-        Digitize.Options.Fids = str_split(res{1}, '()[],;"'' ', true); % remove empty
-    else
-        if (length(res) < 6) || isempty(res{1}) || isempty(res{2}) || isnan(str2double(res{5})) || isnan(str2double(res{6})) || ~ismember(str2double(res{7}), [0 1])
-            bst_error('Invalid values.', Digitize.Type, 0);
-            return;
-        end
-        % Get entered values, keep defaults for some if empty
-        Digitize.Options.ComPort  = res{1};
-        Digitize.Options.UnitType = lower(res{2});
-        if ~isempty(res{5})
-            Digitize.Options.nFidSets = str2double(res{5});
-        end
-        if ~isempty(res{6})
-            Digitize.Options.DistThresh = str2double(res{6}) / 1000; % mm to m
-        end
-        if ~isempty(res{7})
-            Digitize.Options.isBeep = str2double(res{7});
-        end
-        % Parse device configuration commands. Remove all spaces, and split at ";"
-        Digitize.Options.ConfigCommands = str_split(strrep(res{3}, ' ', ''), ';', true); % remove empty
-        % Device type
-        if strcmp(Digitize.Options.UnitType,'fastrak')
-            Digitize.Options.ComRate = 9600;
-            Digitize.Options.ComByteCount = 94;
-        elseif strcmp(Digitize.Options.UnitType,'patriot')
-            Digitize.Options.ComRate = 115200;
-            Digitize.Options.ComByteCount = 120;
-        else
-            bst_error('Incorrect unit type.', Digitize.Type, 0);
-            return;
-        end
-
-        % Parse fiducials.
-        Digitize.Options.Fids = str_split(res{4}, '()[],;"'' ', true); % remove empty
+    if length(resType) < length(iOptionsType) ||  (ismember(1, iOptionsType) && isempty(res{1})) || ...
+                                                  (ismember(2, iOptionsType) && isempty(res{2})) || ...
+                                                  (ismember(5, iOptionsType) && isnan(str2double(res{5}))) || ...
+                                                  (ismember(6, iOptionsType) && isnan(str2double(res{6}))) || ...
+                                                  (ismember(7, iOptionsType) && ~ismember(str2double(res{7}), [0 1]))
+            bst_error('Invalid values.', 'Digitize', 0);
+        return;
     end
-    
-    % Validate fiducials.
+    % Digitizer: COM port
+    Digitize.Options.ComPort  = res{1};
+    % Digitizer: Type
+    Digitize.Options.UnitType = lower(res{2});
+    % Digitizer: COM properties
+    if isempty(Digitize.Options.UnitType)
+        % Do nothing
+    elseif strcmp(Digitize.Options.UnitType,'fastrak')
+        Digitize.Options.ComRate = 9600;
+        Digitize.Options.ComByteCount = 94;
+    elseif strcmp(Digitize.Options.UnitType,'patriot')
+        Digitize.Options.ComRate = 115200;
+        Digitize.Options.ComByteCount = 120;
+    else
+        bst_error('Incorrect unit type.', Digitize.Type, 0);
+        return;
+    end
+    % Digitizer: Parse device configuration commands. Remove all spaces, and split at ";"
+    Digitize.Options.ConfigCommands = str_split(strrep(res{3}, ' ', ''), ';', true); % remove empty
+    % Common: Parse fiducials.
+        Digitize.Options.Fids = str_split(res{4}, '()[],;"'' ', true); % remove empty
     if isempty(Digitize.Options.Fids) || ~iscell(Digitize.Options.Fids) || numel(Digitize.Options.Fids) < 3
         bst_error('At least 3 anatomy fiducials are required, e.g. NAS, LPA, RPA.', Digitize.Type, 0);
         Digitize.Options.Fids = {'NAS', 'LPA', 'RPA'};
         return;
+    end
+    % Common: Number of fiducial sets
+    if ~isempty(res{5})
+        Digitize.Options.nFidSets = str2double(res{5});
+    end
+    % Common: Threshold for distance in fiducial sets
+    if ~isempty(res{6})
+        Digitize.Options.DistThresh = str2double(res{6}) / 1000; % mm to m
+    end
+    % Common: Beep
+    if ~isempty(res{7})
+        Digitize.Options.isBeep = str2double(res{7});
     end
 
     for iFid = 1:numel(Digitize.Options.Fids)
