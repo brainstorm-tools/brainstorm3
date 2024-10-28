@@ -211,7 +211,7 @@ function Start(varargin)
                 end
             end
         end
-        
+        bst_progress('start', Digitize.Type, 'Loading surface file...');
         Digitize.surfaceFile = surfaceFile;
         sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
         % Display surface
