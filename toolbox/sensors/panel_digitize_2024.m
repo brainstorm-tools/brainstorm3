@@ -318,7 +318,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jButtonFids = gui_component('button', jPanelNext, 'br', 'Add fiducials', [], 'Add set of fiducials to digitize', @(h,ev)bst_call(@Fiducials_Callback));
         jButtonFids.setEnabled(0);
         if strcmpi(Digitize.Type, '3DScanner')
-            jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelNext, [], 'Auto', [], 'Automatically detect and label electrodes on EEG cap', @(h,ev)bst_call(@EEGAutoDetectElectrodes));
+            jButtonEEGAutoDetectElectrodes = gui_component('button', jPanelNext, [], 'Auto', [], GenerateTooltipTextAuto(), @(h,ev)bst_call(@EEGAutoDetectElectrodes));
         else
             % Separator
             jButtonEEGAutoDetectElectrodes = gui_component('label', jPanelNext, 'hfill', '');
@@ -1270,6 +1270,24 @@ function SelectMontage(iMontage)
     CreateMontageMenu();
     % Restart acquisition
     ResetDataCollection();
+    % Update tooltip text for autobutton
+    if strcmpi(Digitize.Type, '3DScanner')
+        ctrl = bst_get('PanelControls', 'Digitize');
+        ctrl.jButtonEEGAutoDetectElectrodes.setToolTipText(GenerateTooltipTextAuto());
+    end
+end
+
+%% ===== TOOLTIP TEXT FOR AUTO BUTTON =====
+function autoButtonTooltip = GenerateTooltipTextAuto()
+    global Digitize
+    % Get cap landmark labels for selected montage
+    [~, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+    autoButtonTooltip = 'Auto localization of EEG sensor is not suported for this cap.';
+    if ~isempty(eegCapLandmarkLabels)
+        strSensors = sprintf('%s, ',eegCapLandmarkLabels{:});
+        strSensors = strSensors(1:end-2);
+        autoButtonTooltip = ['Set at least sensors: [' strSensors '] to enable.'];
+    end
 end
 
 %% ===== GET CURRENT MONTAGE =====
