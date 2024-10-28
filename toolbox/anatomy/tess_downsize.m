@@ -99,8 +99,9 @@ if isempty(Method)
         %           '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh but possible <U>topological problems</U><BR>' ...
         %           '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']},
 
-    % Show only 'Matlab's reducepatch' method for tess_textured surfaces
-    if ~isempty(regexp(TessFile, 'tess_textured', 'match'))
+    % Identify textured surfaces (color info is present) and show available methods for them
+    VarInfo = whos('-file',file_fullpath(TessFile), 'Color');
+    if all(VarInfo.size ~= 0)
         methods_str = methods_str(1); % Inhomogeneous mesh
     end
     % Ask method
