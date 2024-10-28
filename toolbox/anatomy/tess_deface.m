@@ -41,15 +41,13 @@ function [head_surface] = tess_deface(head_surface)
 [TH,PHI,R] = cart2sph(head_surface.Vertices(:,1), head_surface.Vertices(:,2), head_surface.Vertices(:,3));
 % Flat projection
 R = 1 - PHI ./ pi*2;
-t = (R > 1.1);
 
 % Remove the identified vertices from the surface mesh
-remove = (1:length(t));
-remove = remove(t);
-if ~isempty(remove)
-    [head_surface.Vertices, head_surface.Faces] = tess_remove_vert(head_surface.Vertices, head_surface.Faces, remove);
+iRemoveVert = find(R > 1.1);
+if ~isempty(iRemoveVert)
+    [head_surface.Vertices, head_surface.Faces] = tess_remove_vert(head_surface.Vertices, head_surface.Faces, iRemoveVert);
     if isfield(head_surface, 'Color')
-        head_surface.Color(remove, :) = [];
+        head_surface.Color(iRemoveVert, :) = [];
     end
 end
 
