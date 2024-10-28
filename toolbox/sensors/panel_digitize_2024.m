@@ -768,13 +768,6 @@ function EEGAutoDetectElectrodes()
     % Get current montage
     curMontage = GetCurrentMontage();
 
-    % Get EEG cap landmark labels used for initialization
-    [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels',curMontage.Name);
-
-    if numel(GlobalData.DataSet(Digitize.iDS).Channel) < nLandmarkLabels
-        bst_error(['Please set the first ' num2str(nLandmarkLabels) ' initialization points in order [ ' sprintf('%s ',eegCapLandmarkLabels{:}) ']'], Digitize.Type, 0);
-        return;
-    end
     % Disable Auto button
     ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(0);
     % Progress bar
@@ -1673,8 +1666,6 @@ function BytesAvailable_Callback() %#ok<INUSD>
         CreateHeadpointsFigure();
         % Enable fids button
         ctrl.jButtonFids.setEnabled(1);
-        % Enable Auto button
-        ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
     elseif Digitize.iPoint == numel(Digitize.Options.Fids) * Digitize.Options.nFidSets + 1
         % Change delete button label and callback such that we can delete the last point.
         java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@DeletePoint_Callback));
@@ -1690,6 +1681,16 @@ function BytesAvailable_Callback() %#ok<INUSD>
         Digitize.iPoint = length(iNotEmptyLoc);
         % update the coordinate list
         UpdateList();
+    end
+    % Enable Auto button IFF all landmark fiducials have been acquired
+    if strcmpi(Digitize.Type, '3DScanner')
+        [~, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+        if ~isempty(eegCapLandmarkLabels)
+            acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
+            if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))
+                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+            end
+        end
     end
 end
 
