@@ -122,13 +122,9 @@ function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
     % Reprojection into the space of the flattened mesh dimensions
     capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
     
-    % delete the manual electrodes selected in figure to update it with the automatic detected ones
+    % Delete the manual electrodes selected in figure to update it with the automatic detected ones
     for i=1:nLandmarkLabels
-        if strcmpi(DigitizeOptions.Version, '2024')
-            panel_digitize_2024('DeletePoint_Callback');
-        else
-            panel_digitize('DeletePoint_Callback');
-        end
+        panel_fun('DeletePoint_Callback');
     end
 
     % Do the warping and interpolation
