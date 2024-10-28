@@ -1333,13 +1333,6 @@ function AddMontage(ChannelFile)
         newMontage.Labels = {};
         newMontage.ChannelFile = ChannelFile;
 
-        % Get cap landmark labels
-        [~, capLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', newMontage.Name);
-        if isempty(capLandmarkLabels)
-            bst_error('EEG cap not supported', Digitize.Type, 0);
-            return;
-        end
-        
         % Sort as per the initialization landmark labels of EEG Cap  
         nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},capLandmarkLabels));
         allLabels = {ChannelMat.Channel.Name};
