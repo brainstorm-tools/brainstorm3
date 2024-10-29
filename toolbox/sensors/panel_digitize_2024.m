@@ -237,11 +237,8 @@ function Start(varargin)
     panelContainer.handle{1}.setLocation(loc);
     
     % Load beep sound
-    if bst_iscompiled()
-        wavfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private', 'bst_beep_wav.mat');
-        filemat = load(wavfile, 'wav');
-        Digitize.BeepWav = filemat.wav;
-    end
+    wavfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private', 'bst_beep.wav');
+    [Digitize.BeepWav.data, Digitize.BeepWav.fs] = audioread(wavfile);
 
     % Reset collection
     ResetDataCollection();    
@@ -1591,14 +1588,8 @@ function BytesAvailable_Callback() %#ok<INUSD>
         Digitize.Points(Digitize.iPoint).Loc = DoMotionCompensation(rawpoints) ./100; % cm => meters
     end
     % Beep at each click
-    if Digitize.Options.isBeep 
-        % Beep not working in compiled version, replacing with this:
-        if bst_iscompiled()
-            sound(Digitize.BeepWav(6000:2:16000,1), 22000);
-        else
-            beep on;
-            beep();
-        end
+    if Digitize.Options.isBeep
+        sound(Digitize.BeepWav.data, Digitize.BeepWav.fs);
     end
 
     % Transform coordinates
@@ -1637,14 +1628,8 @@ function BytesAvailable_Callback() %#ok<INUSD>
             ctrl.jLabelWarning.setOpaque(true);
             ctrl.jLabelWarning.setBackground(java.awt.Color.red);
             % Extra beep for large distances
-            % Beep not working in compiled version, replacing with this:
-            if bst_iscompiled()
-                sound(Digitize.BeepWav(6000:2:16000,1), 22000);
-            else
-                beep on;
-                pause(0.25); % maybe to help, sometimes it didn't do this 2nd beep
-                beep();
-            end
+            pause(0.15);
+            sound(Digitize.BeepWav.data, Digitize.BeepWav.fs*.08);
         end
     end
 
