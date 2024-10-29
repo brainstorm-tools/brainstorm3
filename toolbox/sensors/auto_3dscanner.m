@@ -1,12 +1,13 @@
 function varargout = auto_3dscanner(varargin)
 % AUTO_3DSCANNER: Automatic electrode detection and labelling of 3D Scanner acquired mesh
 % 
-% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', surface3dscanner)
+% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
 %        auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
 %        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', eegCapName)
 %
 % PARAMETERS:
 %    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
+%    - isWhiteCap           : Set if the 3D mesh surface correspongs to a white EEG cap
 %    - surface3dscannerUv   : 'surface3dscanner' above along with the UV texture information of the surface
 %    - capImg2d             : Flattend 2D grayscale image of the mesh
 %    - capCenters2d         : The ceters of the various electrodes detected in the flattened 2D image of the mesh
@@ -39,7 +40,7 @@ eval(macro_method);
 end
 
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
-function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(surface3dscanner)
+function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(surface3dscanner, isWhiteCap)
     % Hyperparameters for circle detection
     % NOTE: these values can vary for new caps
     minRadius = 1;
@@ -61,18 +62,9 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
     [X,Y]=meshgrid(ll,ll);
     capImg2d = 0*X;
     capImg2d(:) = griddata(surface3dscannerUv.u(1:end),surface3dscannerUv.v(1:end),grayness,X(:),Y(:),'linear');
-    
-    % Get current montage
-    DigitizeOptions = bst_get('DigitizeOptions');
-    panel_fun = @panel_digitize;
-    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-        panel_fun = @panel_digitize_2024;
-    end
-    curMontage = panel_fun('GetCurrentMontage');
 
-    % For white caps change the color space by inverting the colors
-    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
+    % For white caps
+    if isWhiteCap
         capImg2d = imcomplement(capImg2d);
     end
     
