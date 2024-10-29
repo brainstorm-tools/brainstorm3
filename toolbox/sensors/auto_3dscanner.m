@@ -134,9 +134,14 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
     capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
     
+    bst_progress('start', '3Dscanner', 'Automatic labelling of EEG sensors...', 0, 100);
     % Warp and interpolate to get the best point fitting 
     for numIter=1:numIters
-        fprintf('.');
+        % Show progress
+        progressPrc = round(100 .* numIter ./ numIters);
+        if progressPrc > 0 && ~mod(progressPrc, 5)
+            bst_progress('set', progressPrc);
+        end
         % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
         % 'k' is an index into points from the available layout
         k = dsearchn(capLayoutPts2d, capCenters2d);
