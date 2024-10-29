@@ -73,7 +73,8 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function capPoints3d = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+    capPoints = struct();
     % Hyperparameters for warping and interpolation
     % NOTE: these values can vary for new caps
     % Number of iterations to run warp-interpolation on 
@@ -92,25 +93,34 @@ function capPoints3d = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
         panel_fun = @panel_digitize_2024;
     end
     curMontage = panel_fun('GetCurrentMontage');
+    % Get EEG cap landmark labels used for initialization
+    [~, capLandmarkLabels] = GetEegCapLandmarkLabels(curMontage.Name);
+
+    % Check that all landmarks are acquired
+    if ~all(ismember([capLandmarkLabels], {eegPoints.Label}))
+        bst_error('Not all EEG landmarks are provided', 'Auto electrode location', 1);
+        return
+    end
 
     % Convert EEG cap manufacturer layout from 3D to 2D
     capLayoutPts3d = [channelRef.Loc]';
     [X1, Y1] = bst_project_2d(capLayoutPts3d(:,1), capLayoutPts3d(:,2), capLayoutPts3d(:,3), '2dcap');
     capLayoutPts2d = [X1 Y1];
-    
-    % Get EEG cap landmark labels used for initialization
-    [nLandmarkLabels, capLandmarkLabels] = GetEegCapLandmarkLabels(curMontage.Name);
-    
+
     % Sort as per the initialization landmark points of EEG Cap  
-    landmarkPoints = capLayoutPts2d(find(ismember({channelRef.Name},capLandmarkLabels)),:);
-    nonLandmarkPoints = capLayoutPts2d(find(~ismember({channelRef.Name},capLandmarkLabels)),:);
-    capLayoutPts2dSorted = cat(1, landmarkPoints, nonLandmarkPoints);
+    ix = ismember({channelRef.Name}, capLandmarkLabels);
+    ix = [find(ix), find(~ix)];
+    capLayoutPts2dSorted = capLayoutPts2d(ix, :);
+    capLayoutNamesSorted = {channelRef(ix).Name};
+    % Indices for capLayoutPts2dSorted for points to compute warp
+    [~, iwarp] = ismember({eegPoints.Label}, capLayoutNamesSorted);
     
     %% Warping EEG cap layout electrodes to mesh 
     % Get 2D projected landmark points to be used for initialization
-    capLayoutPts2dInit = capLayoutPts2dSorted(1:nLandmarkLabels, :);
+    capLayoutPts2dInit = capLayoutPts2dSorted(iwarp, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
-    [x2, y2] = bst_project_2d(eegPoints(1:nLandmarkLabels,1), eegPoints(1:nLandmarkLabels,2), eegPoints(1:nLandmarkLabels,3), '2dcap');
+    eegPointsLoc = cat(1, eegPoints.Loc);
+    [x2, y2] = bst_project_2d(eegPointsLoc(:,1), eegPointsLoc(:,2), eegPointsLoc(:,3), '2dcap');
     % Reprojection into the space of the flattened mesh dimensions
     capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
     
@@ -182,6 +192,11 @@ function capPoints3d = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
     capPoints3d(:,1) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,1), capLayoutPts2dU, capLayoutPts2dV);
     capPoints3d(:,2) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
     capPoints3d(:,3) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
+    % Build output
+    for iPoint = 1 : length(capLayoutNamesSorted)
+        capPoints(iPoint).Label = capLayoutNamesSorted(iPoint);
+        capPoints(iPoint).Loc   = capPoints3d(iPoint, :);
+    end
 end
 
 %% ===== GET LANDMARK LABELS OF EEG CAP =====

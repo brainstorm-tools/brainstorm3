@@ -795,18 +795,20 @@ function EEGAutoDetectElectrodes()
         ChannelMat = in_bst_channel(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
     end
 
-    % Get and store the EEG points
-    iEeg = find(cellfun(@(x)~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}));
-    pointsEEG = cat(1, Digitize.Points(iEeg).Loc);
+    % Get acquired EEG points
+    iEeg = and(cellfun(@(x) ~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}), ~cellfun(@isempty, {Digitize.Points.Loc}));
+    pointsEEG = Digitize.Points(iEeg);
     
     % Warp points from layout to mesh
     capPoints3d = auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
 
     % Plot the electrodes and their labels
-    for i= 1:length(capPoints3d)
+    for iPoint= 1:length(capPoints3d)
         % Increment current point index
         Digitize.iPoint = Digitize.iPoint + 1;
-        Digitize.Points(Digitize.iPoint).Loc = capPoints3d(i, :);
+        % Find found point in current montage
+        [~, ix] = ismember(capPoints3d(iPoint).Label, {Digitize.Points.Label});
+        Digitize.Points(ix).Loc = capPoints3d(iPoint).Loc;
         Digitize.Points(Digitize.iPoint).Type = 'EEG';
         % Add the point to the display (in cm)
         PlotCoordinate();
