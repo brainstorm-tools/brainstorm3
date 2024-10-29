@@ -61,7 +61,9 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
     ll=linspace(-1,1,512);
     [X,Y]=meshgrid(ll,ll);
     capImg2d = 0*X;
+    warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     capImg2d(:) = griddata(surface3dscannerUv.u(1:end),surface3dscannerUv.v(1:end),grayness,X(:),Y(:),'linear');
+    warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
 
     % For white caps
     if isWhiteCap
@@ -69,7 +71,9 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
     end
     
     % Detect the centers of the electrodes which appear as circles in the flattened image whose radii are in the range below
+    warning('off','images:imfindcircles:warnForSmallRadius');
     capCenters2d = imfindcircles(capImg2d, [minRadius maxRadius]);
+    warning('on','images:imfindcircles:warnForSmallRadius');
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
@@ -189,10 +193,12 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     capLayoutPts2dU = interp2(X1,xsR,ysR);
     capLayoutPts2dV = interp2(Y1,xsR,ysR);
     
-    % Get the desired electrode locations on the 3D EEG cap 
+    % Get the desired electrode locations on the 3D EEG cap
+    warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     capPoints3d(:,1) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,1), capLayoutPts2dU, capLayoutPts2dV);
     capPoints3d(:,2) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
     capPoints3d(:,3) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
+    warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     % Build output
     for iPoint = 1 : length(capLayoutNames)
         capPoints(iPoint).Label = capLayoutNames(iPoint);
