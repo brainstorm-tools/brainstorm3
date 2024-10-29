@@ -3,7 +3,7 @@ function varargout = auto_3dscanner(varargin)
 % 
 % USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
 %        auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
-%        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', eegCapName)
+%        eegCapLandmarkLabels = auto_3dscanner('GetEegCapLandmarkLabels', eegCapName)
 %
 % PARAMETERS:
 %    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
@@ -98,7 +98,7 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     end
     curMontage = panel_fun('GetCurrentMontage');
     % Get EEG cap landmark labels used for initialization
-    [~, capLandmarkLabels] = GetEegCapLandmarkLabels(curMontage.Name);
+    capLandmarkLabels = GetEegCapLandmarkLabels(curMontage.Name);
 
     % Check that all landmarks are acquired
     if ~all(ismember([capLandmarkLabels], {eegPoints.Label}))
@@ -208,7 +208,7 @@ end
 
 %% ===== GET LANDMARK LABELS OF EEG CAP =====
 % For every new variety of cap we need to edit this function
-function [nLandmarkLabels, eegCapLandmarkLabels] = GetEegCapLandmarkLabels(eegCapName)
+function eegCapLandmarkLabels = GetEegCapLandmarkLabels(eegCapName)
     eegCapLandmarkLabels = {};
     switch(eegCapName)
         case 'ANT Waveguard (65)'
@@ -218,8 +218,6 @@ function [nLandmarkLabels, eegCapLandmarkLabels] = GetEegCapLandmarkLabels(eegCa
         case 'WearableSensing DSI-24 with REF (22)'
             eegCapLandmarkLabels = {'T4', 'T3', 'Fpz'};
         otherwise
-            nLandmarkLabels = 0;
             return;
     end
-    nLandmarkLabels = length(eegCapLandmarkLabels);
 end

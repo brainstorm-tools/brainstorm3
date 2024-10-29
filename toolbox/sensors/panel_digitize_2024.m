@@ -1281,7 +1281,7 @@ end
 function autoButtonTooltip = GenerateTooltipTextAuto()
     global Digitize
     % Get cap landmark labels for selected montage
-    [~, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+    eegCapLandmarkLabels = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
     autoButtonTooltip = 'Auto localization of EEG sensor is not suported for this cap.';
     if ~isempty(eegCapLandmarkLabels)
         strSensors = sprintf('%s, ',eegCapLandmarkLabels{:});
@@ -1691,7 +1691,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
     end
     % Enable Auto button IFF all landmark fiducials have been acquired
     if strcmpi(Digitize.Type, '3DScanner')
-        [~, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+        eegCapLandmarkLabels = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
         if ~isempty(eegCapLandmarkLabels)
             acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
             if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))
