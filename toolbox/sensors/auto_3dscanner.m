@@ -1,9 +1,9 @@
 function varargout = auto_3dscanner(varargin)
 % AUTO_3DSCANNER: Automatic electrode detection and labelling of 3D Scanner acquired mesh
 % 
-% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', surface3dscanner)
-%        auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
-%        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', eegCapName)
+% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', surface3dscanner)
+%        auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+%        [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', eegCapName)
 %
 % PARAMETERS:
 %    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
@@ -39,7 +39,7 @@ eval(macro_method);
 end
 
 %% ===== FIND ELECTRODES ON THE EEG CAP =====
-function [capCenters2d, capImg2d, surface3dscannerUv] = findElectrodesEegCap(surface3dscanner)
+function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(surface3dscanner)
     % Hyperparameters for circle detection
     % NOTE: these values can vary for new caps
     minRadius = 1;
@@ -81,7 +81,7 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = findElectrodesEegCap(sur
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints) 
+function capPoints3d = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
     % Hyperparameters for warping and interpolation
     % NOTE: these values can vary for new caps
     % Number of iterations to run warp-interpolation on 
@@ -107,7 +107,7 @@ function capPoints3d = warpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
     capLayoutPts2d = [X1 Y1];
     
     % Get EEG cap landmark labels used for initialization
-    [nLandmarkLabels, capLandmarkLabels] = getEegCapLandmarkLabels(curMontage.Name);
+    [nLandmarkLabels, capLandmarkLabels] = GetEegCapLandmarkLabels(curMontage.Name);
     
     % Sort as per the initialization landmark points of EEG Cap  
     landmarkPoints = capLayoutPts2d(find(ismember({channelRef.Name},capLandmarkLabels)),:);
@@ -194,7 +194,7 @@ end
 
 %% ===== GET LANDMARK LABELS OF EEG CAP =====
 % For every new variety of cap we need to edit this function
-function [nLandmarkLabels, eegCapLandmarkLabels] = getEegCapLandmarkLabels(eegCapName)
+function [nLandmarkLabels, eegCapLandmarkLabels] = GetEegCapLandmarkLabels(eegCapName)
     eegCapLandmarkLabels = {};
     switch(eegCapName)
         case 'ANT Waveguard (65)'

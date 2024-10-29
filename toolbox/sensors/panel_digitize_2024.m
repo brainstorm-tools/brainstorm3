@@ -781,7 +781,7 @@ function EEGAutoDetectElectrodes()
     sSurf.Color = TessInfo.hPatch.FaceVertexCData;
     
     % call automation functions to get the EEG cap electrodes
-    [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', sSurf);
+    [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', sSurf);
     if isempty(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
         bst_progress('stop');
@@ -795,7 +795,7 @@ function EEGAutoDetectElectrodes()
     pointsEEG = cat(1, Digitize.Points(iEeg).Loc);
     
     % Warp points from layout to mesh
-    capPoints3d = auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
+    capPoints3d = auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
 
     % Plot the electrodes and their labels
     for i= 1:length(capPoints3d)
@@ -1274,7 +1274,7 @@ end
 function autoButtonTooltip = GenerateTooltipTextAuto()
     global Digitize
     % Get cap landmark labels for selected montage
-    [~, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+    [~, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
     autoButtonTooltip = 'Auto localization of EEG sensor is not suported for this cap.';
     if ~isempty(eegCapLandmarkLabels)
         strSensors = sprintf('%s, ',eegCapLandmarkLabels{:});
@@ -1684,7 +1684,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
     end
     % Enable Auto button IFF all landmark fiducials have been acquired
     if strcmpi(Digitize.Type, '3DScanner')
-        [~, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+        [~, eegCapLandmarkLabels] = auto_3dscanner('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
         if ~isempty(eegCapLandmarkLabels)
             acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
             if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))
