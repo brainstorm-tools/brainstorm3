@@ -115,7 +115,7 @@ function capPoints3d = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerU
     capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
     
     % Delete the manual electrodes selected in figure to update it with the automatic detected ones
-    for i=1:nLandmarkLabels
+    for i=1 : length(eegPoints)
         panel_fun('DeletePoint_Callback');
     end
 
