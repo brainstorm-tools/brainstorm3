@@ -948,6 +948,8 @@ function CreateHeadpointsFigure()
         % Remove the close handle function
         set(Digitize.hFig, 'CloseRequestFcn', []);
     else
+        % Hide figure
+        set(Digitize.hFig, 'Visible', 'off');
         % Get study
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
         % Plot head points and save handles in global variable
@@ -962,8 +964,6 @@ function CreateHeadpointsFigure()
         if isempty(regexp(sSurf.Comment, 'defaced', 'match'))
             sSurf = tess_deface(sSurf);
         end
-        % Display updated surface
-        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], Digitize.surfaceFile);
         % Save the surface and update the node
         ProtocolInfo = bst_get('ProtocolInfo');
         surfaceFile = bst_fullfile(ProtocolInfo.SUBJECTS, Digitize.surfaceFile);
@@ -976,6 +976,8 @@ function CreateHeadpointsFigure()
         decorationSize = bst_get('DecorationSize');
         [~, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
+        % Display updated surface
+        view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, Digitize.hFig, [], Digitize.surfaceFile);
         if (FigPos(3) > 0) && (FigPos(4) > 0)
             set(Digitize.hFig, 'Position', FigPos);
         end
