@@ -106,18 +106,14 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     capLayoutPts3d = [channelRef.Loc]';
     [X1, Y1] = bst_project_2d(capLayoutPts3d(:,1), capLayoutPts3d(:,2), capLayoutPts3d(:,3), '2dcap');
     capLayoutPts2d = [X1 Y1];
+    capLayoutNames = {channelRef.Name};
 
-    % Sort as per the initialization landmark points of EEG Cap  
-    ix = ismember({channelRef.Name}, capLandmarkLabels);
-    ix = [find(ix), find(~ix)];
-    capLayoutPts2dSorted = capLayoutPts2d(ix, :);
-    capLayoutNamesSorted = {channelRef(ix).Name};
     % Indices for capLayoutPts2dSorted for points to compute warp
-    [~, iwarp] = ismember({eegPoints.Label}, capLayoutNamesSorted);
+    [~, iwarp] = ismember({eegPoints.Label}, capLayoutNames);
     
     %% Warping EEG cap layout electrodes to mesh 
     % Get 2D projected landmark points to be used for initialization
-    capLayoutPts2dInit = capLayoutPts2dSorted(iwarp, :);
+    capLayoutPts2dInit = capLayoutPts2d(iwarp, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
     eegPointsLoc = cat(1, eegPoints.Loc);
     [x2, y2] = bst_project_2d(eegPointsLoc(:,1), eegPointsLoc(:,2), eegPointsLoc(:,3), '2dcap');
@@ -131,23 +127,23 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
 
     % Do the warping and interpolation
     warp = tpsGetWarp(10, capLayoutPts2dInit(:,1)', capLayoutPts2dInit(:,2)', capUserSelectPts2d(:,1)', capUserSelectPts2d(:,2)' );
-    [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2dSorted(:,1)', capLayoutPts2dSorted(:,2)', 0);
-    capLayoutPts2dSorted(:,1) = xsR;
-    capLayoutPts2dSorted(:,2) = ysR;
+    [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
+    capLayoutPts2d(:,1) = xsR;
+    capLayoutPts2d(:,2) = ysR;
     % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is 
     % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
-    capLayoutPts2dSorted = max(min(capLayoutPts2dSorted,capImgDim-ignorePix),ignorePix);
+    capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
     
     % Warp and interpolate to get the best point fitting 
     for numIter=1:numIters
         fprintf('.');
         % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
         % 'k' is an index into points from the available layout
-        k = dsearchn(capLayoutPts2dSorted, capCenters2d);
+        k = dsearchn(capLayoutPts2d, capCenters2d);
         [vecLayoutPts,ind] = unique(k);
             
         % distance between the layout and detected circle centers from the 2D flattened mesh 
-        vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2dSorted(vecLayoutPts,:);
+        vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2d(vecLayoutPts,:);
         dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
         
         % Identify outliers with 3*scaled_MAD from median and remove them
@@ -165,21 +161,21 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
         vecLayoutPts(isoutlier) = [];
         
         % Perform warping and interpolation to fit the points
-        warp = tpsGetWarp(lambda, capLayoutPts2dSorted(vecLayoutPts,1)', capLayoutPts2dSorted(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
-        [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2dSorted(:,1)', capLayoutPts2dSorted(:,2)', 0);
+        warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
+        [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
         
         % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
         if numIter<numIters/2
-            capLayoutPts2dSorted(:,1) = 0.9*capLayoutPts2dSorted(:,1) + 0.1*xsR;
-            capLayoutPts2dSorted(:,2) = 0.9*capLayoutPts2dSorted(:,2) + 0.1*ysR;
+            capLayoutPts2d(:,1) = 0.9*capLayoutPts2d(:,1) + 0.1*xsR;
+            capLayoutPts2d(:,2) = 0.9*capLayoutPts2d(:,2) + 0.1*ysR;
         else
-            capLayoutPts2dSorted(:,1) = xsR;
-            capLayoutPts2dSorted(:,2) = ysR;
+            capLayoutPts2d(:,1) = xsR;
+            capLayoutPts2d(:,2) = ysR;
         end
         
         % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is 
         % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
-        capLayoutPts2dSorted = max(min(capLayoutPts2dSorted,capImgDim-ignorePix),ignorePix);
+        capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
     end
     
     % Interpolation of the fitted points to the image space of the layout   
@@ -193,8 +189,8 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     capPoints3d(:,2) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
     capPoints3d(:,3) = griddata(surface3dscannerUv.u, surface3dscannerUv.v, surface3dscannerUv.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
     % Build output
-    for iPoint = 1 : length(capLayoutNamesSorted)
-        capPoints(iPoint).Label = capLayoutNamesSorted(iPoint);
+    for iPoint = 1 : length(capLayoutNames)
+        capPoints(iPoint).Label = capLayoutNames(iPoint);
         capPoints(iPoint).Loc   = capPoints3d(iPoint, :);
     end
 end
