@@ -675,18 +675,25 @@ function [TF, OPTIONS] = nll_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, 
             ag = -(spec(1,end)-spec(1,1))./lfdif; % aperiodic guess initialization
             for time = 1:nTimes
                 bst_progress('set', bst_round(time / nTimes,2).*100);
+                est_pars    = [];
+                pk_function = [];
+                MSE         = [];
+                rsq_tmp     = [];
                 % Fit aperiodic 
                 aperiodic_pars = robust_ap_fit(fs, spec(time,:), am, ag);
                 % Remove aperiodic
                 flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, am);
                 try
-                [est_pars, pk_function] = est_peaks(fs, flat_spec, mp, pet, mph, ...
-                pwl, prt, pt);
+                    [est_pars, pk_function] = est_peaks(fs, flat_spec, mp, pet, mph, ...
+                    pwl, prt, pt);
                 catch
                    error(['Failure fitting peaks: channel ' num2str(chan) ', time index ' num2str(time)]) 
                 end
                 model = struct();
                 for pk = 0:size(est_pars,1)
+                    params             = [];
+                    aperiodic_pars_tmp = [];
+                    peak_pars_tmp      = [];
                     peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, pwl, pt, gw, hOT);
                     % Refit aperiodic
                     aperiodic = spec(time,:);
@@ -761,10 +768,10 @@ function [TF, OPTIONS] = nll_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, 
                     model(pk+1).BF = exp((BIC-model(1).BIC)./2);
                 end
 
-            % insert data from best model
-            [~,mi] = min([model.BIC]);
-            aperiodic_pars = model(mi).aperiodic_params;
-            peak_pars = model(mi).peak_params;
+                % Insert data from best model
+                [~,mi] = min([model.BIC]);
+                aperiodic_pars = model(mi).aperiodic_params;
+                peak_pars = model(mi).peak_params;
                 % Return FOOOF results
                 aperiodic_pars(2) = abs(aperiodic_pars(2));
                 channel(chan).data(time).time                = ts(time);
