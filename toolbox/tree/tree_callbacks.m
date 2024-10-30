@@ -2948,78 +2948,8 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@ImportChannelCheck, iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
-    % === USE DEFAULT CHANNEL FILE ===
-    % Get registered Brainstorm EEG defaults
-    bstDefaults = bst_get('EegDefaults');
-    if ~isempty(bstDefaults)
-        % Add a directory per template block available
-        for iDir = 1:length(bstDefaults)
-            jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
-            isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
-            % Create subfolder for cap manufacturer
-            jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuWs  = gui_component('Menu', [], [], 'WearableSensing', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            % Add an item per Template available
-            fList = bstDefaults(iDir).contents;
-            % Sort in natural order
-            [tmp,I] = sort_nat({fList.name});
-            fList = fList(I);
-            % Create an entry for each default
-            for iFile = 1:length(fList)
-                % Define callback function
-                if isAddLoc 
-                    fcnCallback = @(h,ev)channel_add_loc(iAllStudies, fList(iFile).fullpath, 1, isMni);
-                else
-                    fcnCallback = @(h,ev)db_set_channel(iAllStudies, fList(iFile).fullpath, 1, 0);
-                end
-                % Find corresponding submenu
-                if ~isempty(strfind(fList(iFile).name, 'ANT'))
-                    jMenuType = jMenuAnt;
-                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                    jMenuType = jMenuBs;
-                elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
-                    jMenuType = jMenuBp;
-                elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
-                    jMenuType = jMenuEgi;
-                elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
-                    jMenuType = jMenuNs;
-                elseif ~isempty(strfind(fList(iFile).name, 'WearableSensing'))
-                    jMenuType = jMenuWs;
-                else
-                    jMenuType = jMenuOther;
-                end
-                % Create item
-                gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback);
-            end
-            % Add if not empty
-            if (jMenuOther.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuOther);
-            end
-            if (jMenuAnt.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuAnt);
-            end
-            if (jMenuBs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBs);
-            end
-            if (jMenuBp.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBp);
-            end
-            if (jMenuEgi.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuEgi);
-            end
-            if (jMenuNs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuNs);
-            end
-            if (jMenuWs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuWs);
-            end
-        end
-    end
+    % Use default channel file
+    auto_3dscanner('GetDefaultEegCaps', jMenu, isAddLoc, 0, iAllStudies);
 end
 
 %% ===== EDIT NODE =====
