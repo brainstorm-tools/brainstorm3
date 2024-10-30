@@ -5,7 +5,7 @@ function ChannelMat = channel_fixunits(ChannelMat, FileUnits, isConfirmFix, isVe
 %
 % INPUTS:
 %    - ChannelMat   : Brainstorm channel file structure, or [Nx3] locations
-%    - FileUnits    : String, expected units
+%    - FileUnits    : String, expected units in the file being read
 %    - isConfirmFix : If 1, ask for a confirmation of the scaling factor to apply
 %                     If 0, apply automatically the detected scaling factor
 %    - isVertices   : Optional, default=0

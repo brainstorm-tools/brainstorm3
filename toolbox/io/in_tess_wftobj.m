@@ -174,9 +174,8 @@ end
 % Centering vertices
 vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 
-% For scalability, we determine the vertices' unit and convert them to 'meters' to match the 
-% coordinate space as that of Polhemus as implemented in the 'panel_digitize.m'
-vertices = channel_fixunits(vertices, 'm', 1, 1);
+% Convert vertices' unit as locations in Brainstorm are saved in 'meters'
+vertices = channel_fixunits(vertices, 'mm', 1, 1);
 
 %% ===== Brainstorm surface structure =====
 TessMat = struct('Faces',    faces, ...
