@@ -280,7 +280,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     jLabelNews.setOpaque(true);
     jLabelNews.setBackground(java.awt.Color.yellow);
 
-    % File menu
+    % ===== FILE MENU =====
     jMenu = gui_component('Menu', jMenuBar, [], 'File', [], [], [], []);
     gui_component('MenuItem', jMenu, [], 'Start over', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@ResetDataCollection, 1), []);
     gui_component('MenuItem', jMenu, [], 'Edit settings...', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
@@ -295,20 +295,20 @@ function [bstPanelNew, panelName] = CreatePanel()
     end
     gui_component('MenuItem', jMenu, [], 'Save as...', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@Save_Callback), []);
     gui_component('MenuItem', jMenu, [], 'Save in database and exit', IconLoader.ICON_RESET, [], @(h,ev)bst_call(@Close_Callback), []);
-    % EEG Montage menu
+    % ===== EEG MONTAGE MENU =====
     jMenuEeg = gui_component('Menu', jMenuBar, [], 'EEG montage', [], [], [], []);    
     CreateMontageMenu(jMenuEeg);
-    % Help menu
+    % ===== HELP MENU =====
     jMenuHelp = gui_component('Menu', jMenuBar, [], 'Help', [], [], [], []);
     gui_component('MenuItem', jMenuHelp, [], 'Digitize tutorial', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutDigitize', '-browser'), []);
     
     jPanelNew.add(jPanelMenu, BorderLayout.NORTH);
 
-    % ===== Control Panel =====
+    % ===== CONTROL PANEL =====
     jPanelControl = gui_component('panel');
     jPanelControl.setBorder(BorderFactory.createEmptyBorder(0,0,7,0));
 
-    % ===== Next point Panel =====
+    % ===== NECT POINT PANEL =====
     jPanelNext = gui_river([5,4], [4,4,4,4], 'Next point');
         % Next point label
         jLabelNextPoint = gui_component('label', jPanelNext, [], '', [], [], [], veryLargeFontSize);
@@ -323,7 +323,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jButtonEEGAutoDetectElectrodes.setEnabled(0);
     jPanelControl.add(jPanelNext, BorderLayout.NORTH);
 
-    % ===== Info Panel =====
+    % ===== INFO PANEL =====
     jPanelInfo = gui_river([5,4], [10,10,10,10], '');
         % Message label
         jLabelWarning = gui_component('label', jPanelInfo, 'br', ' ', [], [], [], largeFontSize);
@@ -344,7 +344,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jButtonRandomHeadPts.setEnabled(0);
     jPanelControl.add(jPanelInfo, BorderLayout.CENTER);
     
-    % ===== Other buttons =====
+    % ===== OTHER BUTTONS =====
     jPanelMisc = gui_river([5,4], [10,4,4,4]);
         if ~strcmpi(Digitize.Type, '3DScanner') 
             jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
@@ -358,7 +358,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     jPanelControl.add(jPanelMisc, BorderLayout.SOUTH);
     jPanelNew.add(jPanelControl, BorderLayout.WEST);
                                
-    % ===== Coordinate Display Panel =====
+    % ===== COORDINATE DISPLAY PANEL =====
     jPanelDisplay = gui_component('Panel');
     jPanelDisplay.setBorder(java_scaled('titledborder', 'Coordinates (cm)'));
         % List of coordinates
@@ -375,7 +375,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         jPanelDisplay.add(jPanelScrollList, BorderLayout.CENTER);
     jPanelNew.add(jPanelDisplay, BorderLayout.CENTER);
 
-    % create the controls structure
+    % Create the controls structure
     ctrl = struct('jMenuEeg',                       jMenuEeg, ...
                   'jButtonFids',                    jButtonFids, ...
                   'jLabelNextPoint',                jLabelNextPoint, ...
@@ -394,10 +394,10 @@ function [bstPanelNew, panelName] = CreatePanel()
     %% ===== COORDINATE LIST KEY TYPED CALLBACK =====
     function CoordListKeyTyped_Callback(h, ev)
         switch(uint8(ev.getKeyChar()))
-            % DELETE
+            % Delete
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 ctrl = bst_get('PanelControls', 'Digitize');
-                % if contact list rendering is blank in panel then dont't proceed
+                % If contact list rendering is blank in panel then dont't proceed
                 if ctrl.jListCoord.isSelectionEmpty()
                     return;
                 end
@@ -419,7 +419,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     %% ===== COORDINATE LIST CLICK CALLBACK =====
     function CoordListClick_Callback(h, ev)
-        % IF SINGLE CLICK
+        % If single click
         if (ev.getClickCount() == 1)
             ctrl = bst_get('PanelControls', 'Digitize');
             % if contact list rendering is blank in panel then dont't proceed
@@ -450,7 +450,7 @@ function [sCoordName, iSelCoord] = GetSelectedCoord()
     sCoordName = listModel.getElementAt(iSelCoord-1);
 end
 
-%% ===== SWITCH to old version =====
+%% ===== SWITCH TO OLD VERSION =====
 function SwitchVersion()
     % Always confirm this switch.
     if ~java_dialog('confirm', ['<HTML>Switch to legacy version of the Digitize panel?<BR>', ...
@@ -613,7 +613,7 @@ function isOk = EditSettings()
 
     for iFid = 1:numel(Digitize.Options.Fids)
         switch lower(Digitize.Options.Fids{iFid})
-            % possible names copied from channel_detect_type
+            % Possible names copied from channel_detect_type
             case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz', 'n', 'na'}
                 Digitize.Options.Fids{iFid} = 'NAS';
             case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear', 'l'}
@@ -676,7 +676,7 @@ function ResetDataCollection(isResetSerial)
 
         % For 3D Scanner reload the surface
         if strcmpi(Digitize.Type, '3DScanner')
-            % load the surface
+            % Load the surface
             sSurf = bst_memory('LoadSurface', Digitize.surfaceFile);
             % Display surface
             view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], Digitize.surfaceFile);
@@ -718,7 +718,7 @@ function ResetDataCollection(isResetSerial)
 end
 
 
-%% ===== UPDATE LIST of points in text box =====
+%% ===== UPDATE LIST OF POINTS IN TEXT BOX =====
 function UpdateList()
     global Digitize;
     % Get controls
@@ -731,7 +731,7 @@ function UpdateList()
     for iP = 1:numel(Digitize.Points)
         if ~isempty(Digitize.Points(iP).Label)
             listModel.addElement(sprintf('%s     %3.3f   %3.3f   %3.3f', Digitize.Points(iP).Label, Digitize.Points(iP).Loc .* 100));
-        else % head points
+        else % Head points
             iHeadPoints = iHeadPoints + 1;
             listModel.addElement(sprintf('%03d     %3.3f   %3.3f   %3.3f', iHeadPoints, Digitize.Points(iP).Loc .* 100));
         end
@@ -907,7 +907,7 @@ function DeletePoint_Callback()
     UpdateList();
 end
 
-%% ===== Check fiducials: add set to digitize now =====
+%% ===== CHECK FIDUCIALS: ADD SET TO DIGITIZE NOW =====
 function Fiducials_Callback()
     global Digitize
     nRemaining = numel(Digitize.Points) - Digitize.iPoint;
@@ -983,7 +983,7 @@ function CreateHeadpointsFigure()
     end 
 end
 
-%% ===== PLOT next point, or remove last or remove selected point =====
+%% ===== PLOT NEXT POINT, OR REMOVE LAST OR REMOVE SELECTED POINT =====
 function PlotCoordinate(isAdd)
     if nargin < 1 || isempty(isAdd)
         isAdd = true;
@@ -1024,12 +1024,12 @@ function PlotCoordinate(isAdd)
                 if Digitize.isEditPts % remove selected point
                     % Keep point in list, but remove location 
                     GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
-                else  % remove last point
+                else  % Remove last point
                     GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
                 end
             end
         end
-    else % fids or head points
+    else % FIDs or head points
         iP = size(GlobalData.DataSet(Digitize.iDS).HeadPoints.Loc, 2) + 1;
         if isAdd
             GlobalData.DataSet(Digitize.iDS).HeadPoints.Label{iP} = Digitize.Points(Digitize.iPoint).Label;
@@ -1089,7 +1089,7 @@ function Save_Callback(OutFile)
     end
 end
 
-%% ===== Save channel file with contents of points list =====
+%% ===== SAVE CHANNEL FILE WITH CONTENTS OF POINTS LIST =====
 function SaveDigitizeChannelFile()
     global Digitize
     sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
@@ -1115,7 +1115,7 @@ function SaveDigitizeChannelFile()
             ChannelMat.Channel(iChan).Name = Digitize.Points(iP).Label;
             ChannelMat.Channel(iChan).Type = Digitize.Points(iP).Type;
             ChannelMat.Channel(:,iChan).Loc = Digitize.Points(iP).Loc';
-        else % head points, including fiducials
+        else % Head points, including fiducials
             iHead = iHead + 1;
             ChannelMat.HeadPoints.Loc(:,iHead) = Digitize.Points(iP).Loc';
             ChannelMat.HeadPoints.Label{iHead} = Digitize.Points(iP).Label;
@@ -1159,7 +1159,7 @@ function CreateMontageMenu(jMenu)
             jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
             % Use default channel file
             channel_detect_eegcap_auto('GetDefaultEegCaps', jMenuEegCaps, 0, 1, []);
-    else % if not 3DScanner
+    else % If not 3DScanner
         gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
     gui_component('MenuItem', jMenu, [], 'Unload all montages', [], [], @(h,ev)bst_call(@UnloadAllMontages), []);
@@ -1364,7 +1364,7 @@ function isOk = CreateSerialConnection()
                 flush(Digitize.SerialConnection);
             end
 
-            % set up the Bytes Available function
+            % Set up the Bytes Available function
             configureCallback(Digitize.SerialConnection, 'byte', Digitize.Options.ComByteCount, @BytesAvailable_Callback);
             if strcmp(Digitize.Options.UnitType, 'fastrak')
                 %'c' - Disable Continuous Printing
@@ -1419,7 +1419,7 @@ function isOk = CreateSerialConnection()
                     writeline(Digitize.SerialConnection, Digitize.Options.ConfigCommands{iCmd});
                 end
             elseif strcmp(Digitize.Options.UnitType,'patriot')
-                % request input from stylus
+                % Request input from stylus
                 writeline(Digitize.SerialConnection,'L1,1\r');
                 % Set units to centimeters
                 writeline(Digitize.SerialConnection,'U1\r');
@@ -1604,15 +1604,15 @@ function BytesAvailable_Callback() %#ok<INUSD>
     
     % update coordinate list after the updating the selected point
     if Digitize.isEditPts
-        % reset global variable required for updating
+        % Reset global variable required for updating
         Digitize.isEditPts = 0;
-        % update the Digitize.iPoint
+        % Update the Digitize.iPoint
         iNotEmptyLoc = find(cellfun(@(x)~isempty(x), {Digitize.Points.Loc}));
         Digitize.iPoint = length(iNotEmptyLoc);
-        % update the coordinate list
+        % Update the coordinate list
         UpdateList();
     end
-    % Enable Auto button IFF all landmark fiducials have been acquired
+    % Enable 'Auto' button IFF all landmark fiducials have been acquired
     if strcmpi(Digitize.Type, '3DScanner')
         eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
         if ~isempty(eegCapLandmarkLabels)
@@ -1627,8 +1627,8 @@ end
 
 %% ===== MOTION COMPENSATION =====
 function newPT = DoMotionCompensation(sensors)
-    % use sensor one and its orientation vectors as the new coordinate system
-    % Define the origin as the position of sensor attached to the glasses.
+    % Use sensor one and its orientation vectors as the new coordinate system
+    % Define the origin as the position of sensor attached to the glasses
     WAND = 1;
     REMOTE1 = 2;
 
@@ -1652,8 +1652,7 @@ function newPT = DoMotionCompensation(sensors)
     CE = cos(beta);
     CR = cos(gamma);
 
-    % Convert Euler angles to directional cosines
-    % using formulae in Polhemus manual.
+    % Convert Euler angles to directional cosines using formulae in Polhemus manual
     rotMat(1, 1) = CA * CE;
     rotMat(1, 2) = SA * CE;
     rotMat(1, 3) = -SE;
@@ -1668,7 +1667,7 @@ function newPT = DoMotionCompensation(sensors)
 
     rotMat(4, 1:4) = 0;
 
-    %Translate and rotate the WAND into new coordinate system
+    % Translate and rotate the WAND into new coordinate system
     pt(1) = sensors(WAND,2) - C(1);
     pt(2) = sensors(WAND,3) - C(2);
     pt(3) = sensors(WAND,4) - C(3);

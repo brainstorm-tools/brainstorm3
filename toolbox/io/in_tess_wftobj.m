@@ -38,13 +38,13 @@ function TessMat = in_tess_wftobj(TessFile)
 % Authors: Yash Shashank Vakilna, 2024
 %          Chinmay Chinara      , 2024
 
-%% ===== Parse inputs =====
+%% ===== PARSE INPUTS =====
 % Check inputs
 if (nargin < 1) 
     bst_error('Invalid call. Please specify the mesh file to be loaded.', 'Importing tesselation', 1);
 end
 
-%% ===== Parse the OBJ file: Set up import options and import the data =====
+%% ===== PARSE THE OBJ FILE: SET UP IMPORT OPTIONS AND IMPORT THE DATA =====
 % Specify range and delimiter
 % Not supported for < R2016b MATLAB versions
 if bst_get('MatlabVersion') < 901
@@ -82,7 +82,7 @@ if isnan(obj.Vertices(:,1))
 end
 
 
-%% ===== Refine faces, mesh and generate color matrix =====
+%% ===== REFINE FACES, MESH AND GENERATE COLOR MATRIX =====
 vertices   = obj.Vertices;
 faces      = obj.Faces;
 texture    = obj.TextCoords;
@@ -138,18 +138,18 @@ if hasimage
         [sy, sx, sz] = size(picture);
         picture      = reshape(picture, sy*sx, sz);
         
-        % make image 3D if grayscale
+        % Make image 3D if grayscale
         if sz == 1
             picture = repmat(picture, 1, 3);
         end
         [~, ix] = unique(faces);
         textureIdx = textureIdx(ix);
         
-        % get the indices into the image
+        % Get the indices into the image
         x = abs(round(texture(:,1)*(sx-1)))+1;
         y = abs(round(texture(:,2)*(sy-1)))+1;
 
-        % eliminates points out of bounds
+        % Eliminates points out of bounds
         if any(x > sx)
             texture(x > sx,:)   = 1;
             x(x > sx)           = sx;
@@ -177,7 +177,7 @@ vertices = vertices - repmat(mean(vertices,1), [size(vertices, 1),1]);
 % Convert vertices' unit as locations in Brainstorm are saved in 'meters'
 vertices = channel_fixunits(vertices, 'mm', 1, 1);
 
-%% ===== Brainstorm surface structure =====
+%% ===== BRAINSTORM SURFACE STRUCTURE =====
 TessMat = struct('Faces',    faces, ...
                  'Vertices', vertices, ...
                  'Color',    color, ...

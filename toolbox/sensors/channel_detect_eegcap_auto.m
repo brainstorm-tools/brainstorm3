@@ -115,7 +115,7 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     % Indices for capLayoutPts2dSorted for points to compute warp
     [~, iwarp] = ismember({eegPoints.Label}, capLayoutNames);
     
-    %% Warping EEG cap layout electrodes to mesh 
+    % Warping EEG cap layout electrodes to mesh 
     % Get 2D projected landmark points to be used for initialization
     capLayoutPts2dInit = capLayoutPts2d(iwarp, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
