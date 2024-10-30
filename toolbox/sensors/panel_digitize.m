@@ -1023,7 +1023,7 @@ function EEGAutoDetectElectrodes(h, ev)
     curMontage = GetCurrentMontage();
 
     % Get EEG cap landmark labels used for initialization
-    [nLandmarkLabels, eegCapLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels',curMontage.Name);
+    [nLandmarkLabels, eegCapLandmarkLabels] = channel_detect_eegcap_auto('getEegCapLandmarkLabels',curMontage.Name);
 
     if size(Digitize.Points.EEG, 1) < nLandmarkLabels
         bst_error(['Please set the first ' num2str(nLandmarkLabels) ' initialization points in order [ ' sprintf('%s ',eegCapLandmarkLabels{:}) ']'], Digitize.Type, 0);
@@ -1041,7 +1041,7 @@ function EEGAutoDetectElectrodes(h, ev)
     sSurf.Color = TessInfo.hPatch.FaceVertexCData;
     
     % call automation functions to get the EEG cap electrodes
-    [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('findElectrodesEegCap', sSurf);
+    [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('findElectrodesEegCap', sSurf);
     DigitizeOptions = bst_get('DigitizeOptions');
     if isempty(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
@@ -1049,7 +1049,7 @@ function EEGAutoDetectElectrodes(h, ev)
     else
         ChannelMat = in_bst_channel(DigitizeOptions.Montages(DigitizeOptions.iMontage).ChannelFile);
     end
-    capPoints3d = auto_3dscanner('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, Digitize.Points.EEG);
+    capPoints3d = channel_detect_eegcap_auto('warpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, Digitize.Points.EEG);
     
     % Plot the electrodes and their labels
     for i= 1:length(capPoints3d)
@@ -1518,7 +1518,7 @@ function CreateMontageMenu(jMenu)
             % Creating montages from EEG cap layout mat files (only for 3DScanner)
             jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
             % Use default channel file
-            auto_3dscanner('GetDefaultEegCaps', jMenuEegCaps, 0, 1, []);
+            channel_detect_eegcap_auto('GetDefaultEegCaps', jMenuEegCaps, 0, 1, []);
     else % if not 3DScanner
         gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
@@ -1630,7 +1630,7 @@ function AddMontage(ChannelFile)
         newMontage.ChannelFile = ChannelFile;
         
         % Get cap landmark labels
-        [~, capLandmarkLabels] = auto_3dscanner('getEegCapLandmarkLabels', newMontage.Name);
+        [~, capLandmarkLabels] = channel_detect_eegcap_auto('getEegCapLandmarkLabels', newMontage.Name);
         if isempty(capLandmarkLabels)
             bst_error('EEG cap not supported', Digitize.Type, 0);
             return;

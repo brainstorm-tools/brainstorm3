@@ -2950,7 +2950,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
     % Use default channel file
-    auto_3dscanner('GetDefaultEegCaps', jMenu, isAddLoc, 0, iAllStudies);
+    channel_detect_eegcap_auto('GetDefaultEegCaps', jMenu, isAddLoc, 0, iAllStudies);
 end
 
 %% ===== EDIT NODE =====

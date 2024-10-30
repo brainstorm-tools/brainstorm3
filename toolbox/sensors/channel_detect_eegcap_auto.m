@@ -1,9 +1,9 @@
-function varargout = auto_3dscanner(varargin)
-% AUTO_3DSCANNER: Automatic electrode detection and labelling of 3D Scanner acquired mesh
+function varargout = channel_detect_eegcap_auto(varargin)
+% CHANNEL_DETECT_EEGCAP_AUTO: Automatic electrode detection and labelling of 3D Scanner acquired mesh
 % 
-% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = auto_3dscanner('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
-%        auto_3dscanner('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
-%        eegCapLandmarkLabels = auto_3dscanner('GetEegCapLandmarkLabels', eegCapName)
+% USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
+%        channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+%        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', eegCapName)
 %
 % PARAMETERS:
 %    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
