@@ -476,7 +476,7 @@ end
 
 %% ===== HIDING CALLBACK =====
 function isAccepted = PanelHidingCallback() 
-    global Digitize
+    global Digitize;
     % If Brainstorm window was hidden before showing the Digitizer
     if bst_get('isGUI')
         % Get Brainstorm frame

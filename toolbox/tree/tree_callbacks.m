@@ -1160,7 +1160,7 @@ switch (lower(action))
                         case 'other'
                             jItemSetSurfTypeOther.setSelected(1);
                     end
-                end 
+                end
 
                 % SET AS DEFAULT SURFACE
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)

@@ -183,7 +183,7 @@ if ~isempty(GlobalData.Surface)
     sLoadedSurf.FileName = file_unique(sLoadedSurf.FileName, {GlobalData.Surface.FileName});
 end
 % Register in the GUI
-GlobalData.Surface(end+1) = sLoadedSurf;
+GlobalData.Surface(end + 1) = sLoadedSurf;
 
 % ===== Add target surface =====
 % Get figure appdata (surfaces configuration)
