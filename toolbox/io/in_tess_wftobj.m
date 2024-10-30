@@ -46,8 +46,13 @@ end
 
 %% ===== Parse the OBJ file: Set up import options and import the data =====
 % Specify range and delimiter
+% Not supported for < R2016b MATLAB versions
+if bst_get('MatlabVersion') < 901
+    bst_error('Importing Wavefront OBJ not supported in this MATLAB version', 'Import surfaces...', 0);
+    TessMat = [];
+    return
 % MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
-if (bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
+elseif(bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
     opts = matlab.io.text.DelimitedTextImportOptions();
 else 
     opts = delimitedTextImportOptions('NumVariables', 10);

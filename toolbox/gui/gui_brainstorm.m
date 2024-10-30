@@ -149,7 +149,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % === DIGITIZE ===  
         jSubMenu = gui_component('Menu', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL,[],[], fontSize);
             gui_component('MenuItem', jSubMenu, [], 'Digitizer',  IconLoader.ICON_CHANNEL,  [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
-            gui_component('MenuItem', jSubMenu, [], '3D scanner', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner'), fontSize);
+            % Not supported for < R2016b MATLAB versions
+            if bst_get('MatlabVersion') >= 901
+                gui_component('MenuItem', jSubMenu, [], '3D scanner', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner'), fontSize);
+            end
         gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();
         % === QUIT ===

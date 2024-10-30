@@ -1180,7 +1180,8 @@ switch (lower(action))
                 end
 
                 % === DIGITIZE (3D SCANNER) OPTION ===
-                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                % Not supported for < R2016b MATLAB versions
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match')) && bst_get('MatlabVersion') >= 901
                     gui_component('MenuItem', jPopup, [], 'Digitize (3D scanner)', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner', sSubject, iSubject, filenameRelative));
                     % Separator
                     AddSeparator(jPopup);
