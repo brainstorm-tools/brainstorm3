@@ -1,7 +1,8 @@
-function [sFile, ChannelMat, DataMat]= in_data_edf_ft(DataFile)
-% in_data_edf_ft: Read EDF recordings using FieldTrip import function
+function [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
+% in_data_edf_ft: Read entire EDF/EDF+ file using FieldTrip import function
+%                 data is upsampled to the highest sampling rate
 %
-% USAGE: [sFile, ChannelMat, DataMat] = in_data_edf_ft(DataFile)
+% USAGE: [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,21 +23,22 @@ function [sFile, ChannelMat, DataMat]= in_data_edf_ft(DataFile)
 % =============================================================================@
 %
 % Authors: Edouard Delaire 2024
+%          Raymundo Cassani 2024
 
-    sFile = '';
-    [~, filename, ~] = fileparts(DataFile);
-
-    [isInstalled, ~] = bst_plugin('Install', 'fieldtrip', 1);
+%% ===== INSTALL PLUGIN FIELDTRIP =====
+if ~exist('edf2fieldtrip', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
-        error('Plugin "Fieldtrip" not available.');
+        error(errMsg);
     end
-
-    % Load using fieldtrip 
-    data = edf2fieldtrip(DataFile);
-    
-    % save Fieldtrip output
-    save(fullfile(bst_get('BrainstormTmpDir'), [filename '.mat']), 'data');
-
-    % Import in Brainstorm 
-    [DataMat, ChannelMat] = in_data_fieldtrip(fullfile(bst_get('BrainstormTmpDir'), [filename '.mat']));
 end
+
+% Temporary FieldTrip file
+[~, filename] = bst_fileparts(DataFile);
+tmpfilename = bst_fullfile(bst_get('BrainstormTmpDir', 0, 'fieldtrip'), [filename '.mat']);
+% Read EDF using FieldTrip
+data = edf2fieldtrip(DataFile);
+% Save read data
+save(tmpfilename, 'data');
+% Import in Brainstorm
+[DataMat, ChannelMat] = in_data_fieldtrip(tmpfilename);

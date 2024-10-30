@@ -107,8 +107,6 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
         [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions);
-    case {'EEG-EDF-FT'}
-        [sFile, ChannelMat, DataMat]= in_data_edf_ft(DataFile);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
@@ -195,6 +193,8 @@ switch (FileFormat)
         DataMat = in_data_ascii(DataFile);
     case 'EEG-CARTOOL'
         DataMat = in_data_cartool(DataFile);
+    case {'EEG-EDF-FT'}
+        [DataMat, ChannelMat] = in_data_edf_ft(DataFile);
     case 'EEG-ERPCENTER'
         DataMat = in_data_erpcenter(DataFile);
     case 'EEG-ERPLAB'
