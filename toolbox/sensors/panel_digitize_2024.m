@@ -531,7 +531,7 @@ function isOk = EditSettings()
     
     % GUI all potential options: {Description, default values, result}
     options_all = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-                    Digitize.Options.ComPort, {};
+                    num2str(Digitize.Options.ComPort), {};
                    'Unit Type (Fastrak or Patriot):', ...
                     Digitize.Options.UnitType, {}; ...
                    '<HTML>Additional device configuration commands, separated by ";"<BR>(see device documentation, e.g. H1,0,0,-1;H2,0,0,-1):', ...
@@ -546,11 +546,11 @@ function isOk = EditSettings()
                     num2str(Digitize.Options.isBeep), {}};
 
     % Options to show for each type
-    switch lower(Digitize.Type)
-        case 'other'
-            iOptionsType = [1:7];
+    switch lower(Digitize.Type)     
         case '3dscanner'
             iOptionsType = [4:7];
+        otherwise
+            iOptionsType = [1:7];
     end
     
     % Ask options
@@ -564,7 +564,7 @@ function isOk = EditSettings()
     res = options_all(:,3);
 
     % Check values
-    if length(resType) < length(iOptionsType) ||  (ismember(1, iOptionsType) && isempty(res{1})) || ...
+    if length(resType) < length(iOptionsType) ||  (ismember(1, iOptionsType) && isnan(str2double(res{1}))) || ...
                                                   (ismember(2, iOptionsType) && isempty(res{2})) || ...
                                                   (ismember(5, iOptionsType) && isnan(str2double(res{5}))) || ...
                                                   (ismember(6, iOptionsType) && isnan(str2double(res{6}))) || ...
@@ -573,7 +573,7 @@ function isOk = EditSettings()
         return;
     end
     % Digitizer: COM port
-    Digitize.Options.ComPort  = res{1};
+    Digitize.Options.ComPort  = str2double(res{1});
     % Digitizer: Type
     Digitize.Options.UnitType = lower(res{2});
     % Digitizer: COM properties
