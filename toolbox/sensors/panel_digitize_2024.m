@@ -800,12 +800,10 @@ function EEGAutoDetectElectrodes()
     capPoints3d = channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
 
     % Plot the electrodes and their labels
-    for iPoint= 1:length(capPoints3d)
-        % Increment current point index
-        Digitize.iPoint = Digitize.iPoint + 1;
-        % Find found point in current montage
-        [~, ix] = ismember(capPoints3d(iPoint).Label, {Digitize.Points.Label});
-        Digitize.Points(ix).Loc = capPoints3d(iPoint).Loc;
+    for iPoint= 1:length(capPoints3d)        
+        % Find found point in current montage adn set it in global
+        [~, Digitize.iPoint] = ismember(capPoints3d(iPoint).Label, {Digitize.Points.Label});
+        Digitize.Points(Digitize.iPoint).Loc = capPoints3d(iPoint).Loc;
         Digitize.Points(Digitize.iPoint).Type = 'EEG';
         % Add the point to the display (in cm)
         PlotCoordinate();
@@ -1602,7 +1600,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
         ctrl.jButtonDeletePoint.setText('Delete last point');
     end
     
-    % update coordinate list after the updating the selected point
+    % Update coordinate list after the updating the selected point
     if Digitize.isEditPts
         % Reset global variable required for updating
         Digitize.isEditPts = 0;
