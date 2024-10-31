@@ -210,7 +210,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).URLinfo        = 'https://github.com/thuy-n/bst-neuromaps';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).TestFile       = 'process_np_fetch_maps.m';
+    PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
