@@ -93,15 +93,17 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     % Get current montage
     DigitizeOptions = bst_get('DigitizeOptions');
     panel_fun = @panel_digitize;
+    eegPointsLabel = eegPoints.Label;
     if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
         panel_fun = @panel_digitize_2024;
+        eegPointsLabel = {eegPoints.Label};
     end
     curMontage = panel_fun('GetCurrentMontage');
     % Get EEG cap landmark labels used for initialization
     capLandmarkLabels = GetEegCapLandmarkLabels(curMontage.Name);
 
     % Check that all landmarks are acquired
-    if ~all(ismember([capLandmarkLabels], {eegPoints.Label}))
+    if ~all(ismember([capLandmarkLabels], eegPointsLabel))
         bst_error('Not all EEG landmarks are provided', 'Auto electrode location', 1);
         return
     end
@@ -113,13 +115,18 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     capLayoutNames = {channelRef.Name};
 
     % Indices for capLayoutPts2dSorted for points to compute warp
-    [~, iwarp] = ismember({eegPoints.Label}, capLayoutNames);
+    [~, iwarp] = ismember(eegPointsLabel, capLayoutNames);
     
     % Warping EEG cap layout electrodes to mesh 
     % Get 2D projected landmark points to be used for initialization
     capLayoutPts2dInit = capLayoutPts2d(iwarp, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
-    eegPointsLoc = cat(1, eegPoints.Loc);
+    % Check if using new version
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        eegPointsLoc = cat(1, eegPoints.Loc);
+    else
+        eegPointsLoc = cat(1, eegPoints.EEG);
+    end
     [x2, y2] = bst_project_2d(eegPointsLoc(:,1), eegPointsLoc(:,2), eegPointsLoc(:,3), '2dcap');
     % Reprojection into the space of the flattened mesh dimensions
     capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
@@ -201,8 +208,14 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     % Build output
     for iPoint = 1 : length(capLayoutNames)
-        capPoints(iPoint).Label = capLayoutNames(iPoint);
-        capPoints(iPoint).Loc   = capPoints3d(iPoint, :);
+        % Check if using new version
+        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+            capPoints(iPoint).Label  = capLayoutNames(iPoint);
+            capPoints(iPoint).Loc    = capPoints3d(iPoint, :);
+        else
+            capPoints.Label{iPoint}  = capLayoutNames(iPoint);
+            capPoints.EEG(iPoint, :) = capPoints3d(iPoint, :);
+        end
     end
 end
 
