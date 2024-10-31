@@ -308,7 +308,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     jPanelControl = gui_component('panel');
     jPanelControl.setBorder(BorderFactory.createEmptyBorder(0,0,7,0));
 
-    % ===== NECT POINT PANEL =====
+    % ===== NEXT POINT PANEL =====
     jPanelNext = gui_river([5,4], [4,4,4,4], 'Next point');
         % Next point label
         jLabelNextPoint = gui_component('label', jPanelNext, [], '', [], [], [], veryLargeFontSize);
@@ -422,7 +422,7 @@ function [bstPanelNew, panelName] = CreatePanel()
         % If single click
         if (ev.getClickCount() == 1)
             ctrl = bst_get('PanelControls', 'Digitize');
-            % if contact list rendering is blank in panel then dont't proceed
+            % If contact list rendering is blank in panel then dont't proceed
             if ctrl.jListCoord.isSelectionEmpty()
                 return;
             end
@@ -801,7 +801,7 @@ function EEGAutoDetectElectrodes()
 
     % Plot the electrodes and their labels
     for iPoint= 1:length(capPoints3d)        
-        % Find found point in current montage adn set it in global
+        % Find found point in current montage and set it in global
         [~, Digitize.iPoint] = ismember(capPoints3d(iPoint).Label, {Digitize.Points.Label});
         Digitize.Points(Digitize.iPoint).Loc = capPoints3d(iPoint).Loc;
         Digitize.Points(Digitize.iPoint).Type = 'EEG';
