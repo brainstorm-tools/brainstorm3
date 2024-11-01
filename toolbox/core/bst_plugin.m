@@ -3199,5 +3199,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = { 'duneuro', 'mcxlab-cuda', 'xdf'};
+    pluginNames = { 'duneuro', 'mcxlab-cuda'};
 end
