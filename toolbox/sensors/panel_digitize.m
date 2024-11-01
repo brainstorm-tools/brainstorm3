@@ -404,8 +404,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonExtraStart.setFocusable(0);
         
         if strcmpi(Digitize.Type, '3DScanner')
-            % Add Random 100 points generation button
-            jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 100 random points from head surface', @CollectRandomHeadPts_Callback, largeFontSize);
+            % Add 150 random head shape points generation button
+            jButtonRandomHeadPts = gui_component('button', jPanelExtra, [], 'Random', [], 'Collect 150 head shape points from mesh', @CollectRandomHeadPts_Callback, largeFontSize);
             jButtonRandomHeadPts.setPreferredSize(newButtonSize);
         else
             % Separator
@@ -1106,12 +1106,13 @@ end
 
 %% ===== COLLECT RANDOM HEADPOINTS =====
 function CollectRandomHeadPts_Callback(h, ev)
-    global Digitize;
-    
+    global Digitize;    
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Disable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(0);
+    % Progress bar
+    bst_progress('start', Digitize.Type, 'Plotting 150 random head shape points...');
 
     hFig = bst_figures('GetCurrentFigure','3D');
     TessInfo = getappdata(hFig, 'Surface');
@@ -1119,11 +1120,62 @@ function CollectRandomHeadPts_Callback(h, ev)
     TessMat.Faces = double(TessInfo.hPatch.Faces);
     TessMat.Color = TessInfo.hPatch.FaceVertexCData;
     
-    % For 100 points
-    stepFactor = ceil(size(TessMat.Vertices, 1)/100); 
+    % Brainstorm recommends to collect approximately 100-150 points from the head
+    % 5-10 points from the boney part of the nose
+    PlotHeadShapePoints(TessMat.Vertices, 'nose', 10);
+    % 10-20 points across the left eyebrow   
+    PlotHeadShapePoints(TessMat.Vertices, 'leyebrow', 20);
+    % 10-20 points across the right eyebrow
+    PlotHeadShapePoints(TessMat.Vertices, 'reyebrow', 20);
+    % 100 points on the scalp
+    PlotHeadShapePoints(TessMat.Vertices, 'scalp', 100);
     
-    for i= 1:stepFactor:size(TessMat.Vertices, 1)
-        pointCoord = TessMat.Vertices(i, :);
+    UpdateList();
+    bst_progress('stop');
+end
+
+%% ===== PLOT HEAD SHAPE POINTS =====
+function PlotHeadShapePoints(Vertices, plotRegion, nPoints)
+    global Digitize
+    % Get controls
+    ctrl = bst_get('PanelControls', 'Digitize');
+    
+    % Get the plotting parameters based on the region in the head
+    switch plotRegion
+        case 'nose'
+            nosePoint     = Digitize.Points.nasion;
+            % Get 600 nearest points to the 'nosePoint' and choose 'nPoints' from it
+            nearPointsIdx = bst_nearest(Vertices, nosePoint, 600, 0, []);
+            range         = length(nearPointsIdx);
+            stepFactor    = range/nPoints;            
+        case 'leyebrow'
+            lEyebrowPoint = (1.25 * Digitize.Points.nasion) + (0.5 * Digitize.Points.LPA);
+            % Get 400 nearest points to the 'lEyebrowPoint' and choose 'nPoints' from it
+            nearPointsIdx = bst_nearest(Vertices, lEyebrowPoint, 400, 0, []);
+            range         = length(nearPointsIdx);
+            stepFactor    = range/nPoints;
+        case 'reyebrow'
+            rEyebrowPoint = (1.25 * Digitize.Points.nasion) + (0.5 * Digitize.Points.RPA);
+            % Get 400 nearest points to the 'rEyebrowPoint' and choose 'nPoints' from it
+            nearPointsIdx = bst_nearest(Vertices, rEyebrowPoint, 400, 0, []);
+            range         = length(nearPointsIdx);
+            stepFactor    = range/nPoints;
+        case 'scalp'
+            range         = length(Vertices);
+            stepFactor    = ceil(range/nPoints);
+        otherwise
+            bst_error([plotRegion 'is invalid'], 'Plot Head Shape Points', 0);
+            bst_progress(stop);
+            return
+    end
+    
+    % Plot the head shape points
+    for i= 1:stepFactor:range
+        if strcmpi(plotRegion, 'scalp')
+            pointCoord = Vertices(i, :);
+        else
+            pointCoord = Vertices(nearPointsIdx(i), :);
+        end
         % Find the index for the current point in the headshape points
         iPoint = str2double(ctrl.jTextFieldExtra.getText());
         % Transformed points_pen from original points_pen
@@ -1134,7 +1186,6 @@ function CollectRandomHeadPts_Callback(h, ev)
         nextPoint = iPoint+1;
         ctrl.jTextFieldExtra.setText(java.lang.String.valueOf(int16(nextPoint)));
     end
-    UpdateList();
 end
 
 %% ===== DELETE POINT CALLBACK =====
