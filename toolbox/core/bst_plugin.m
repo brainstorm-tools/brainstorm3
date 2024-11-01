@@ -186,7 +186,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-
+    PlugDesc(end).UnloadPlugs    =  {'jsnirfy'};
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -2113,6 +2113,15 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         return;
     end
     
+    % === PROCESS DEPENDENCIES ===
+    % Unload incompatible plugins
+    if ~isempty(PlugDesc.UnloadPlugs)
+        for iPlug = 1:length(PlugDesc.UnloadPlugs)
+            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
+            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
+        end
+    end
+
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
@@ -2185,14 +2194,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('setimage', LogoFile);
     end
     
-    % === PROCESS DEPENDENCIES ===
-    % Unload incompatible plugins
-    if ~isempty(PlugDesc.UnloadPlugs)
-        for iPlug = 1:length(PlugDesc.UnloadPlugs)
-            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
-            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
-        end
-    end
+
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
