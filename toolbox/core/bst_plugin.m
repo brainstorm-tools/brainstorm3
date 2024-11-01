@@ -187,6 +187,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
     PlugDesc(end).UnloadPlugs    =  {'easyh5','jsnirfy'};
+
+    % === ANATOMY: NEUROMAPS ===
+    PlugDesc(end+1)              = GetStruct('neuromaps');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/thuy-n/bst-neuromaps/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/thuy-n/bst-neuromaps';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
+
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
