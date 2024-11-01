@@ -198,6 +198,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
                                     'bin/tetgen1.5.mexglx'};
     PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
                                     'bin/tetgen1.5.exe'};
+
+    % === ANATOMY: NEUROMAPS ===
+    PlugDesc(end+1)              = GetStruct('neuromaps');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/thuy-n/bst-neuromaps/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/thuy-n/bst-neuromaps';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
