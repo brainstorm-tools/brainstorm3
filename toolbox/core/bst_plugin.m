@@ -341,6 +341,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).RequiredPlugs  = {'easyh5'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
