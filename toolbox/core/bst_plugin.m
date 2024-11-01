@@ -177,27 +177,16 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.6';
+    PlugDesc(end).Version        = '1.9.8';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-    PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
-                                    'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
-                                    'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', 'bin/cgalpoly.mexa64', 'bin/cgalpoly.mexmaci64', 'bin/cgalpoly_x86-64.exe', ...   % Removing cgalpoly completely (not used)
-                                    'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
-                                    'bin/cork.exe', ...
-                                    'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
-                                    'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
-                                    'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
-                                    'bin/tetgen1.5.mexglx'};
-    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
-                                    'bin/tetgen1.5.exe'};
+
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -3192,5 +3181,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh','mcxlab-cuda', 'xdf'};
+    pluginNames = { 'duneuro', 'mcxlab-cuda', 'xdf'};
 end
