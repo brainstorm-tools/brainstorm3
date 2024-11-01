@@ -186,7 +186,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-    PlugDesc(end).UnloadPlugs    =  {'jsnirfy'};
+    PlugDesc(end).UnloadPlugs    =  {'easyh5','jsnirfy'};
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -328,6 +328,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
 
     % === I/O: JSNIRF ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
