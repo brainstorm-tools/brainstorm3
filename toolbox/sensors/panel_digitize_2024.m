@@ -549,7 +549,7 @@ function isOk = EditSettings()
     switch lower(Digitize.Type)     
         case '3dscanner'
             iOptionsType = [4:7];
-        otherwise
+        case 'digitize'
             iOptionsType = [1:7];
     end
     

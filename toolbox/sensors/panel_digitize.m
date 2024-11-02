@@ -615,7 +615,7 @@ function isOk = EditSettings()
     switch lower(Digitize.Type)
         case '3dscanner'
             iOptionsType = [3:5];
-        otherwise
+        case 'digitize'
             iOptionsType = [1:5];
     end
     
