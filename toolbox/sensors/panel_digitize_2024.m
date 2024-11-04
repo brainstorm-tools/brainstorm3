@@ -1207,7 +1207,7 @@ function CreateMontageMenu(jMenu)
             % Creating montages from EEG cap layout mat files (only for 3DScanner)
             jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
             % Use default channel file
-            channel_detect_eegcap_auto('GetDefaultEegCaps', jMenuEegCaps, 0, 1, []);
+            menu_default_eegcaps(jMenuEegCaps);
     else % If not 3DScanner
         gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
