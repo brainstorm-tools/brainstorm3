@@ -278,16 +278,16 @@ end
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
 
-% If there exists a textured surface with the same comment, make it unique
-% Get the current subject
-if strcmpi(FileFormat, 'WFTOBJ') && ~isempty(sMri)
+% If there exists a surface with the same comment, make it unique
+if ~isempty(sMri)
+    % Get the current subject
     subjectName = split(sMri.FileName, '/');
     sSubject = bst_get('Subject', subjectName{1});
-    iTexSurf = find(cellfun(@(x)~isempty(regexp(x, 'tess_textured', 'match')), {sSubject.Surface.FileName}));
-    if ~isempty(iTexSurf)
-        iTexSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface(iTexSurf).Comment}));
-        if ~isempty(iTexSurfComment)
-            fileBase = sprintf('%s_%02d', fileBase, length(iTexSurfComment)+1);
+    iSurf = find(cellfun(@(x)~isempty(regexp(x, 'tess_', 'match')), {sSubject.Surface.FileName}));
+    if ~isempty(iSurf)
+        iSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface(iSurf).Comment}));
+        if ~isempty(iSurfComment)
+            fileBase = sprintf('%s_%02d', fileBase, length(iSurfComment)+1);
         end
     end
 end
