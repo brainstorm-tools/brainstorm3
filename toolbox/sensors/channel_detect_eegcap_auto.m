@@ -34,7 +34,9 @@ function varargout = channel_detect_eegcap_auto(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Anand A. Joshi, Chinmay Chinara, 2024
+% Authors: Anand A. Joshi,   2024
+%          Chinmay Chinara,  2024
+%          Raymundo Cassani, 2024
 
 eval(macro_method);
 end

@@ -12,9 +12,7 @@ function TessMat = in_tess_wftobj(TessFile)
 %         |- Faces    : {[nFaces x 3] double}
 %         |- Color    : {[nColors x 3] double}, normalized between 0-1
 %         |- Comment  : {information string}
-% 
-% NOTE: Works for MATLAB >= R2016b
-% 
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -32,11 +30,10 @@ function TessMat = in_tess_wftobj(TessFile)
 %
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
-%
-% inspired from 'https://github.com/fieldtrip/fieldtrip/blob/release/fileio/ft_read_headshape.m
 % 
 % Authors: Yash Shashank Vakilna, 2024
-%          Chinmay Chinara      , 2024
+%          Chinmay Chinara,       2024
+%          Raymundo Cassani,      2024
 
 %% ===== PARSE INPUTS =====
 % Check inputs
@@ -45,49 +42,69 @@ if (nargin < 1)
 end
 
 %% ===== PARSE THE OBJ FILE: SET UP IMPORT OPTIONS AND IMPORT THE DATA =====
-% Specify range and delimiter
-% Not supported for < R2016b MATLAB versions
 if bst_get('MatlabVersion') < 901
-    bst_error('Importing Wavefront OBJ not supported in this MATLAB version', 'Import surfaces...', 0);
-    TessMat = [];
-    return
-% MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
-elseif(bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
-    opts = matlab.io.text.DelimitedTextImportOptions();
-else 
-    opts = delimitedTextImportOptions('NumVariables', 10);
+    % MATLAB < R2016b
+    % Read entire .wobj file
+    fid = fopen('sub1_mesh_tex.obj', 'r');
+        txtStr = fread(fid, '*char')';
+    fclose(fid);
+    % Keep relevant lines from file content
+    allData = regexp(txtStr, '(\w)+ ([^\n])*\n', 'tokens'); % (\w) ignores comments (#)
+    allData = cat(1,allData{:});
+    % Read data for each element type
+    elementTags = {'v', 'vt', 'f'}; % Vertices, Texture, Faces
+    elementData = cell(1, length(elementTags));
+    % Parse element data
+    for iElement = 1: length(elementTags)
+        iLines = strcmp(elementTags{iElement}, allData(:,1));
+        elementTmp = regexp(allData(iLines, 2), '([-\.|\d])*', 'match')';
+        elementTmp = cat(1, elementTmp{:});
+        elementSize = size(elementTmp);
+        elementTmp = sscanf(sprintf(' %s', elementTmp{:}), '%f'); % Faster than str2double
+        elementData{iElement} = reshape(elementTmp, elementSize);
+    end
+    vertices   = elementData{1};
+    texture    = elementData{2};
+    faces      = elementData{3}; % TODO Select the proper columns
+    textureIdx = elementData{3}; % TODO Select the proper columns
+
+else
+    % MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
+    if(bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
+        opts = matlab.io.text.DelimitedTextImportOptions();
+    else
+        opts = delimitedTextImportOptions('NumVariables', 10);
+    end
+
+    opts.Delimiter     = {' ', '/'};
+    opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
+    opts.VariableTypes = {'categorical', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double'}; 
+    
+    % Specify file level properties
+    opts.ExtraColumnsRule = 'ignore';
+    opts.EmptyLineRule    = 'read';
+    
+    % Import the data
+    objtbl = readtable(TessFile, opts);
+    
+    obj = struct;
+    obj.Vertices      = objtbl{objtbl.type=='v',  2:4};
+    obj.VertexNormals = objtbl{objtbl.type=='vn', 2:4};
+    obj.Faces         = objtbl{objtbl.type=='f', [2,5,8]};
+    obj.TextCoords    = objtbl{objtbl.type=='vt', 2:3};
+    obj.TextIndices   = objtbl{objtbl.type=='f', [3,6,9]};
+    % For some OBJ's exported from 3D softwares like Maya and Blender, when parsed using 
+    % 'readtable', the vertex coordinates start from the 3rd column
+    if isnan(obj.Vertices(:,1))
+        obj.Vertices  = objtbl{objtbl.type=='v',  3:5};
+    end        
+    vertices   = obj.Vertices;
+    faces      = obj.Faces;
+    texture    = obj.TextCoords;
+    textureIdx = obj.TextIndices;
 end
-
-opts.Delimiter     = {' ', '/'};
-opts.VariableNames = {'type', 'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'};
-opts.VariableTypes = {'categorical', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double', 'double'}; 
-
-% Specify file level properties
-opts.ExtraColumnsRule = 'ignore';
-opts.EmptyLineRule    = 'read';
-
-% Import the data
-objtbl = readtable(TessFile, opts);
-
-obj = struct;
-obj.Vertices      = objtbl{objtbl.type=='v',  2:4};
-obj.VertexNormals = objtbl{objtbl.type=='vn', 2:4};
-obj.Faces         = objtbl{objtbl.type=='f', [2,5,8]};
-obj.TextCoords    = objtbl{objtbl.type=='vt', 2:3};
-obj.TextIndices   = objtbl{objtbl.type=='f', [3,6,9]};
-% For some OBJ's exported from 3D softwares like Maya and Blender, when parsed using 
-% 'readtable', the vertex coordinates start from the 3rd column
-if isnan(obj.Vertices(:,1))
-    obj.Vertices  = objtbl{objtbl.type=='v',  3:5};
-end
-
 
 %% ===== REFINE FACES, MESH AND GENERATE COLOR MATRIX =====
-vertices   = obj.Vertices;
-faces      = obj.Faces;
-texture    = obj.TextCoords;
-textureIdx = obj.TextIndices;
-
 % Check if there exists a .jpg file of 'TessFile'
 [pathstr, name] = fileparts(TessFile);
 if exist(fullfile(pathstr, [name, '.jpg']), 'file')
