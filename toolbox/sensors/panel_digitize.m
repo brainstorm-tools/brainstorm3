@@ -601,7 +601,7 @@ function isOk = EditSettings()
     
     % Ask for new options
     options_all = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-                    num2str(DigitizeOptions.ComPort), {};
+                    DigitizeOptions.ComPort, {};
                    'Unit Type (Fastrak or Patriot):', ...
                     DigitizeOptions.UnitType, {};
                    '<HTML><BR><B>Collection settings</B><BR><BR>Digitize MEG HPI coils (0=no, 1=yes):', ...
@@ -630,7 +630,7 @@ function isOk = EditSettings()
     res = options_all(:,3);
 
     % Check values
-    if length(resType) < length(iOptionsType) ||  (ismember(1, iOptionsType) && isnan(str2double(res{1}))) || ...
+    if length(resType) < length(iOptionsType) ||  (ismember(1, iOptionsType) && isempty(res{1})) || ...
                                                   (ismember(2, iOptionsType) && isempty(res{2})) || ...
                                                   (ismember(3, iOptionsType) && ~ismember(str2double(res{3}), [0 1])) || ...
                                                   (ismember(4, iOptionsType) && isnan(str2double(res{4}))) || ...
@@ -639,7 +639,7 @@ function isOk = EditSettings()
         return;
     end
     % Digitizer: COM port
-    DigitizeOptions.ComPort  = str2double(res{1});
+    DigitizeOptions.ComPort  = res{1};
     % Digitizer: Type
     DigitizeOptions.UnitType = lower(res{2});
     % Digitizer: COM properties
