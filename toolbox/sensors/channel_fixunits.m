@@ -102,7 +102,7 @@ if (meanNorm > 0.200) || (meanNorm < 0.030)
                 ChannelMat.HeadPoints.Loc = ChannelMat.HeadPoints.Loc .* Factor;
             end
         else
-            ChannelMat = eegLoc .* Factor;
+            ChannelMat = eegLoc' .* Factor;
         end
     end
 end
