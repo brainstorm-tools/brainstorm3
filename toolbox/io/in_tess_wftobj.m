@@ -57,7 +57,7 @@ if bst_get('MatlabVersion') < 901
     % Parse element data
     for iElement = 1: length(elementTags)
         iLines = strcmp(elementTags{iElement}, allData(:,1));
-        elementTmp = regexp(allData(iLines, 2), '([-\.|\d])*', 'match')';
+        elementTmp = regexp(allData(iLines, 2), '([e|\-|\.|\d])*', 'match')';
         elementTmp = cat(1, elementTmp{:});
         elementSize = size(elementTmp);
         elementTmp = sscanf(sprintf(' %s', elementTmp{:}), '%f'); % Faster than str2double
