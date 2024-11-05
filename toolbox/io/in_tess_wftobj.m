@@ -45,7 +45,7 @@ end
 if bst_get('MatlabVersion') < 901
     % MATLAB < R2016b
     % Read entire .wobj file
-    fid = fopen('sub1_mesh_tex.obj', 'r');
+    fid = fopen(TessFile, 'r');
         txtStr = fread(fid, '*char')';
     fclose(fid);
     % Keep relevant lines from file content
@@ -63,11 +63,12 @@ if bst_get('MatlabVersion') < 901
         elementTmp = sscanf(sprintf(' %s', elementTmp{:}), '%f'); % Faster than str2double
         elementData{iElement} = reshape(elementTmp, elementSize);
     end
-    vertices   = elementData{1};
+    % most OBJs just generate 3 values for vertices 'v' but some OBJs generate 
+    % 6 values (use only the first 3)
+    vertices   = [elementData{1, 1}(:,1), elementData{1, 1}(:,2), elementData{1, 1}(:,3)];
     texture    = elementData{2};
-    faces      = elementData{3}; % TODO Select the proper columns
-    textureIdx = elementData{3}; % TODO Select the proper columns
-
+    faces      = [elementData{1, 3}(:,3), elementData{1, 3}(:,6), elementData{1, 3}(:,9)];
+    textureIdx = [elementData{1, 3}(:,2), elementData{1, 3}(:,5), elementData{1, 3}(:,8)];
 else
     % MATLAB R2016b to R2018a had 'DelimitedTextImportOptions'
     if(bst_get('MatlabVersion') >= 901) && (bst_get('MatlabVersion') <= 904)
