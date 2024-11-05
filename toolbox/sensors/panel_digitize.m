@@ -601,22 +601,22 @@ function isOk = EditSettings()
     
     % Ask for new options
     options_all = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-                    DigitizeOptions.ComPort, {};
+                    DigitizeOptions.ComPort;
                    'Unit Type (Fastrak or Patriot):', ...
-                    DigitizeOptions.UnitType, {};
+                    DigitizeOptions.UnitType;
                    '<HTML><BR><B>Collection settings</B><BR><BR>Digitize MEG HPI coils (0=no, 1=yes):', ...
-                    num2str(DigitizeOptions.isMEG), {};
+                    num2str(DigitizeOptions.isMEG);
                    '<HTML>How many times do you want to collect<BR>the three fiducials (NAS,LPA,RPA):', ...
-                    num2str(DigitizeOptions.nFidSets), {};
+                    num2str(DigitizeOptions.nFidSets);
                    'Beep when collecting point (0=no, 1=yes):', ...
-                    num2str(DigitizeOptions.isBeep), {}};
+                    num2str(DigitizeOptions.isBeep)};
 
     % Options to show for each type
     switch lower(Digitize.Type)
-        case '3dscanner'
-            iOptionsType = [3:5];
         case 'digitize'
             iOptionsType = [1:5];
+        case '3dscanner'
+            iOptionsType = [3:5];
     end
     
     % Ask options
@@ -624,9 +624,12 @@ function isOk = EditSettings()
     if isempty(resType) || isCancel
         return
     end
-    
-    % Results in all options array
+
+    % Results from options asked to user
     options_all(iOptionsType, 3) = resType;
+    % Results from options not asked to user
+    iOptionsKeep = setdiff([1:length(options_all)], iOptionsType);
+    options_all(iOptionsKeep, 3) = options_all(iOptionsKeep,2);
     res = options_all(:,3);
 
     % Check values

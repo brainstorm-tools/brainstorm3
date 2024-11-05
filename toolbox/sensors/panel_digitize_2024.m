@@ -529,28 +529,28 @@ function isOk = EditSettings()
         ConfigString = '';
     end
     
-    % GUI all potential options: {Description, default values, result}
+    % GUI all potential options: {Description, default values}
     options_all = {'<HTML><B>Serial connection settings</B><BR><BR>Serial port name (COM1):', ...
-                    Digitize.Options.ComPort, {};
+                    Digitize.Options.ComPort;
                    'Unit Type (Fastrak or Patriot):', ...
-                    Digitize.Options.UnitType, {}; ...
+                    Digitize.Options.UnitType; ...
                    '<HTML>Additional device configuration commands, separated by ";"<BR>(see device documentation, e.g. H1,0,0,-1;H2,0,0,-1):', ...
-                    ConfigString, {}; ...
+                    ConfigString; ...
                    '<HTML><BR><B>Collection settings</B><BR><BR>List anatomy and possibly MEG fiducials, in desired order<BR>(NAS, LPA, RPA, HPI-N, HPI-L, HPI-R, HPI-X):', ...
-                    FidsString, {}; ...
+                    FidsString; ...
                    '<HTML>How many times do you want to localize<BR>these fiducials at the start:', ...
-                    num2str(Digitize.Options.nFidSets), {}; ...
+                    num2str(Digitize.Options.nFidSets); ...
                    'Distance threshold for repeated measure of fiducial locations (mm):', ...
-                    num2str(Digitize.Options.DistThresh * 1000), {}; ... % m to mm
+                    num2str(Digitize.Options.DistThresh * 1000); ... % m to mm
                    'Beep when collecting point (0=no, 1=yes):', ...;
-                    num2str(Digitize.Options.isBeep), {}};
+                    num2str(Digitize.Options.isBeep)};
 
     % Options to show for each type
     switch lower(Digitize.Type)     
-        case '3dscanner'
-            iOptionsType = [4:7];
         case 'digitize'
             iOptionsType = [1:7];
+        case '3dscanner'
+            iOptionsType = [4:7];
     end
     
     % Ask options
@@ -559,8 +559,11 @@ function isOk = EditSettings()
         return
     end
 
-    % Results in all options array
+    % Results from options asked to user
     options_all(iOptionsType, 3) = resType;
+    % Results from options not asked to user
+    iOptionsKeep = setdiff([1:length(options_all)], iOptionsType);
+    options_all(iOptionsKeep, 3) = options_all(iOptionsKeep,2);
     res = options_all(:,3);
 
     % Check values
