@@ -278,15 +278,11 @@ end
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
 
-% If there exists a surface with the same comment, make it unique
 if ~isempty(sMri)
     % Get the current subject
-    subjectName = regexp(sMri.FileName, '/', 'split');
-    sSubject = bst_get('Subject', subjectName{1});
-    iSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface.Comment}));
-    if ~isempty(iSurfComment)
-        fileBase = sprintf('%s_%02d', fileBase, length(iSurfComment)+1);
-    end
+    sSubject = bst_get('MriFile', sMri.FileName);
+    % Unique comment
+    fileBase = file_unique(fileBase, {sSubject.Surface.Comment});
 end
 
 % If various tesselations were loaded from one file
