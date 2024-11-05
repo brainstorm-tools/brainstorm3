@@ -281,14 +281,11 @@ end
 % If there exists a surface with the same comment, make it unique
 if ~isempty(sMri)
     % Get the current subject
-    subjectName = split(sMri.FileName, '/');
+    subjectName = regexp(sMri.FileName, '/', 'split');
     sSubject = bst_get('Subject', subjectName{1});
-    iSurf = find(cellfun(@(x)~isempty(regexp(x, 'tess_', 'match')), {sSubject.Surface.FileName}));
-    if ~isempty(iSurf)
-        iSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface(iSurf).Comment}));
-        if ~isempty(iSurfComment)
-            fileBase = sprintf('%s_%02d', fileBase, length(iSurfComment)+1);
-        end
+    iSurfComment = find(cellfun(@(x)~isempty(regexp(x, fileBase, 'match')), {sSubject.Surface.Comment}));
+    if ~isempty(iSurfComment)
+        fileBase = sprintf('%s_%02d', fileBase, length(iSurfComment)+1);
     end
 end
 
