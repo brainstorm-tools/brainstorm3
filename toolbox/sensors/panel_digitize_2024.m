@@ -146,12 +146,13 @@ function Start(varargin)
     end
     
     % ===== CREATE CONDITION =====
-    % Get current date
-    CurrentDate = char(datetime('now'), 'yyyyMMdd');
+    % Get current date/time
+%     CurrentDate = char(datetime('now'), 'yyyyMMdd');
+    c = clock;
     % Condition name: PatientId_Date_Run
     for i = 1:99
         % Generate new condition name
-        Digitize.ConditionName = sprintf('%s_%s_%02d', Digitize.Options.PatientId, CurrentDate, i);
+        Digitize.ConditionName = sprintf('%s_%02d%02d%02d_%02d', Digitize.Options.PatientId, c(1), c(2), c(3), i);
         % Get condition
         sStudy = bst_get('StudyWithCondition', [Digitize.SubjectName '/' Digitize.ConditionName]);
         % If condition doesn't exist: ok, keep this one
