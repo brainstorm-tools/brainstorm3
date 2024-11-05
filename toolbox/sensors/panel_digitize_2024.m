@@ -781,10 +781,8 @@ function EEGAutoDetectElectrodes()
 
     % Get the cap surface from 3D scanner
     hFig = bst_figures('GetCurrentFigure','3D');
-    [~, TessInfo, ~, ~] = panel_surface('GetSurfaceMri', hFig);
-    sSurf.Vertices = TessInfo.hPatch.Vertices;
-    sSurf.Faces    = TessInfo.hPatch.Faces;
-    sSurf.Color    = TessInfo.hPatch.FaceVertexCData;
+    TessInfo = getappdata(hFig, 'Surface');
+    sSurf = bst_memory('LoadSurface', TessInfo.SurfaceFile);
     
     % Automatically find electrodes locations on EEG cap
     [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf, isWhiteCap);
@@ -849,9 +847,7 @@ function CollectRandomHeadPts_Callback()
 
     hFig = bst_figures('GetCurrentFigure','3D');
     TessInfo = getappdata(hFig, 'Surface');
-    TessMat.Vertices = double(TessInfo.hPatch.Vertices);
-    TessMat.Faces = double(TessInfo.hPatch.Faces);
-    TessMat.Color = TessInfo.hPatch.FaceVertexCData;
+    TessMat = bst_memory('LoadSurface', TessInfo.SurfaceFile);
     
     % Brainstorm recommends to collect approximately 100-150 points from the head
     % 5-10 points from the boney part of the nose
