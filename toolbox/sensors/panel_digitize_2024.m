@@ -762,7 +762,9 @@ end
 %% ===== 3DSCANNER: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
 function EEGAutoDetectElectrodes()
     global Digitize GlobalData
-    
+
+    % Add disclaimer to users that 'Auto' feature is experimental
+    java_dialog('warning', 'This is an experimental feature. Please verify the results carefully.', 'Auto Detect EEG electrodes');
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Disable Auto button
