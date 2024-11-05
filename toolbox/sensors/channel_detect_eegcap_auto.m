@@ -74,8 +74,11 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
     
     % Detect the centers of the electrodes which appear as circles in the flattened image whose radii are in the range below
     warning('off','images:imfindcircles:warnForSmallRadius');
+    warning('off','images:imfindcircles:warnForLargeRadiusRange');
     capCenters2d = imfindcircles(capImg2d, [minRadius maxRadius]);
     warning('on','images:imfindcircles:warnForSmallRadius');
+    warning('on','images:imfindcircles:warnForLargeRadiusRange');
+
 end
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
