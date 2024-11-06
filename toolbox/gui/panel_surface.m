@@ -1278,6 +1278,11 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         TessInfo(iTess).Name      = sSurface.Name;
         TessInfo(iTess).nVertices = size(sSurface.Vertices, 1);
         TessInfo(iTess).nFaces    = size(sSurface.Faces, 1);
+        if isempty(sSurface.Color)
+            sSurface.Color = TessInfo(iTess).AnatomyColor(2,:);
+        else
+            TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
+        end
 
         % === PLOT SURFACE ===
         switch (FigureId.Type)
@@ -1288,7 +1293,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
                 [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotSurface', hFig, ...
                                          sSurface.Faces, ...
                                          sSurface.Vertices, ...
-                                         TessInfo(iTess).AnatomyColor(2,:), ...
+                                         sSurface.Color, ...
                                          TessInfo(iTess).SurfAlpha);
         end
         % Update figure's surfaces list and current surface pointer
