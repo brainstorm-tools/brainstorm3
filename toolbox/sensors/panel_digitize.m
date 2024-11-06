@@ -2187,7 +2187,7 @@ function BytesAvailable_Callback()
     % Update coordinates list
     UpdateList();
     % Enable 'Auto' button IFF all landmark fiducials have been acquired
-    if strcmpi(Digitize.Type, '3DScanner')
+    if strcmpi(Digitize.Type, '3DScanner') && (Digitize.Mode ~= 8)
         curMontage = GetCurrentMontage();
         eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', curMontage.Name);
         if ~isempty(eegCapLandmarkLabels) && ~isempty(Digitize.Points.EEG)
