@@ -1664,7 +1664,7 @@ function BytesAvailable_Callback() %#ok<INUSD>
         UpdateList();
     end
     % Enable 'Auto' button IFF all landmark fiducials have been acquired
-    if strcmpi(Digitize.Type, '3DScanner')
+    if strcmpi(Digitize.Type, '3DScanner') && ~strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EXTRA')
         eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
         if ~isempty(eegCapLandmarkLabels)
             acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
