@@ -769,7 +769,11 @@ function EEGAutoDetectElectrodes()
     global Digitize GlobalData
 
     % Add disclaimer to users that 'Auto' feature is experimental
-    java_dialog('warning', 'This is an experimental feature. Please verify the results carefully.', 'Auto Detect EEG electrodes');
+    if ~java_dialog('confirm', ['<HTML> Automatic detection of EEG sensors is an <B>experimental</B> feature. <BR>' ...
+                                'Please verify the results carefully. <BR><BR>' ...
+                                'Do you want to continue?'], 'Auto detect EEG electrodes')
+        return
+    end
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     % Disable Auto button
