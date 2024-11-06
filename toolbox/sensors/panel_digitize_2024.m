@@ -757,6 +757,11 @@ function UpdateList()
     else
         ctrl.jLabelNextPoint.setText(num2str(iHeadPoints + 1));
     end
+
+    % Update tooltip text for 'Auto' button
+    if strcmpi(Digitize.Type, '3DScanner')
+        ctrl.jButtonEEGAutoDetectElectrodes.setToolTipText(GenerateTooltipTextAuto());
+    end
 end
 
 %% ===== 3DSCANNER: AUTOMATICALLY DETECT AND LABEL EEG CAP ELECTRODES =====
@@ -1253,11 +1258,6 @@ function SelectMontage(iMontage)
     CreateMontageMenu();
     % Restart acquisition
     ResetDataCollection();
-    % Update tooltip text for autobutton
-    if strcmpi(Digitize.Type, '3DScanner')
-        ctrl = bst_get('PanelControls', 'Digitize');
-        ctrl.jButtonEEGAutoDetectElectrodes.setToolTipText(GenerateTooltipTextAuto());
-    end
 end
 
 %% ===== TOOLTIP TEXT FOR AUTO BUTTON =====

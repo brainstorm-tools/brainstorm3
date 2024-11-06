@@ -986,6 +986,11 @@ function UpdateList()
     else
         ctrl.jListCoord.ensureIndexIsVisible(lastIndex-1); % 0-indexed, -1 works even if 0
     end
+
+    % Update tooltip text for 'Auto' button
+    if strcmpi(Digitize.Type, '3DScanner')
+        ctrl.jButtonEEGAutoDetectElectrodes.setToolTipText(GenerateTooltipTextAuto());
+    end
 end
 
 
@@ -1627,11 +1632,6 @@ function SelectMontage(iMontage)
     CreateMontageMenu();
     % Restart acquisition
     ResetDataCollection();
-    % Update tooltip text for autobutton
-    if strcmpi(Digitize.Type, '3DScanner')
-        ctrl = bst_get('PanelControls', 'Digitize');
-        ctrl.jButtonEEGAutoDetectElectrodes.setToolTipText(GenerateTooltipTextAuto());
-    end
 end
 
 %% ===== TOOLTIP TEXT FOR AUTO BUTTON =====
