@@ -2191,8 +2191,8 @@ function BytesAvailable_Callback()
         curMontage = GetCurrentMontage();
         eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', curMontage.Name);
         if ~isempty(eegCapLandmarkLabels) && ~isempty(Digitize.Points.EEG)
-            acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.EEG}));
-            if all(ismember([eegCapLandmarkLabels], acqPoints.Label))
+            acqPointLabels = Digitize.Points.Label(1 : size(Digitize.Points.EEG, 1));
+            if all(ismember([eegCapLandmarkLabels], acqPointLabels))
                 ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
             end
         end
