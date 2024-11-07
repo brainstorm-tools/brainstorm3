@@ -142,7 +142,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
 %    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2019b), 0 otherwise
-%    - bst_get('SystemMemory')          : Amount of memory available, in Mb
+%    - bst_get('SystemMemory')          : Amount of Total and Available physical memory (RAM), in MiB
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
 %    - bst_get('ElectrodeConfig', Modality) : Structure describing the display values for SEEG/ECOG/EEG contacts
@@ -203,6 +203,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
+%    - bst_get('Pipelines')               : Saved Pipelines stored
 %
 % SEE ALSO bst_set
 
@@ -294,20 +295,56 @@ switch contextName
         argout1 = (bst_get('MatlabVersion') <= 906);
         
     case 'SystemMemory'
-        maxvar = [];
-        totalmem = [];
-        if ispc && (bst_get('MatlabVersion') >= 706)
+        % [RamTotal_MiB, RamAvailable_MiB] = bst_get('SystemMemory')
+        RamTotal_MiB     = [];
+        RamAvailable_MiB = [];
+        tmp = regexp(bst_get('OsType'), '^[a-z]+', 'match', 'ignorecase');
+        if ~isempty(tmp)
+            osFamily = tmp{1};
+        end
+        if strcmpi(osFamily, 'win') && (bst_get('MatlabVersion') >= 706)
             try
                 % Get memory info
-                usermem  = memory();
-                maxvar   = round(usermem.MaxPossibleArrayBytes / 1024 / 1024);
-                totalmem = round(usermem.MemAvailableAllArrays / 1024 / 1024);
+                [usermem, systemmem]  = memory();
+                RamTotal_MiB     = round(systemmem.PhysicalMemory.Total / 1024 / 1024);
+                RamAvailable_MiB = round(usermem.MemAvailableAllArrays  / 1024 / 1024);
+            catch
+                % Whatever...
+            end
+
+        elseif strcmpi(osFamily, 'linux')
+            try
+                meminfoRes = fileread('/proc/meminfo');
+                ramTotalkB = regexp(meminfoRes, '(?<=MemTotal:)(.*?)(?=kB)', 'match');
+                ramAvailablekB = regexp(meminfoRes, '(?<=MemAvailable:)(.*?)(?=kB)', 'match');
+                if ~isempty(ramAvailablekB) && ~isempty(ramTotalkB)
+                    ramTotalkB = str2double(strtrim(ramTotalkB{1}));
+                    RamTotal_MiB = round(ramTotalkB /1024);
+                    ramAvailablekB = str2double(strtrim(ramAvailablekB{1}));
+                    RamAvailable_MiB = round(ramAvailablekB /1024);
+                end
+            catch
+                % Whatever...
+            end
+        elseif strcmpi(osFamily, 'mac')
+            try
+                [~, mem_pressure] = system('memory_pressure');
+                if ~isempty(mem_pressure)
+                    ramTotalB = regexp(mem_pressure, '(?<=The system has)(.*?)(?= )', 'match');
+                    prcFree = regexp(mem_pressure, '(?<=System-wide memory free percentage:)(.*?)(?=%)', 'match');
+                    if ~isempty(ramTotalB) && ~isempty(prcFree)
+                        ramTotalB = str2double(ramTotalB{1});
+                        RamTotal_MiB = round(ramTotalB / 1024 / 1024);
+                        ramAvailableB = ramTotalB * str2double(prcFree{1}) / 100;
+                        RamAvailable_MiB = round(ramAvailableB / 1024 / 1024);
+                    end
+                end
             catch
                 % Whatever...
             end
         end
-        argout1 = maxvar;
-        argout2 = totalmem;
+        argout1 = RamTotal_MiB;
+        argout2 = RamAvailable_MiB;
             
     case 'BrainstormHomeDir'
         argout1 = GlobalData.Program.BrainstormHomeDir;
@@ -500,6 +537,69 @@ switch contextName
         
     case 'BrainstormDbFile'
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'brainstorm.mat');
+
+    case 'Pipelines'
+        argout1 = GlobalData.Processes.Pipelines;
+
+    case 'OsType'
+        switch (mexext)
+            case 'mexglx',    argout1 = 'linux32';
+            case 'mexa64',    argout1 = 'linux64';
+            case 'mexmaci',   argout1 = 'mac32';
+            case 'mexmaci64', argout1 = 'mac64';
+            case 'mexmaca64', argout1 = 'mac64arm';
+            case 'mexs64',    argout1 = 'sol64';
+            case 'mexw32',    argout1 = 'win32';
+            case 'mexw64',    argout1 = 'win64';
+            otherwise,        error('Unsupported extension.');
+        end
+        % CALL: bst_get('OsType', isMatlab=0)
+        if (nargin >= 2) && isequal(varargin{2}, 0)
+            if strcmpi(argout1, 'win32') && (~isempty(strfind(java.lang.System.getProperty('java.home'), '(x86)')) || ~isempty(strfind(java.lang.System.getenv('ProgramFiles(x86)'), '(x86)')))
+                argout1 = 'win64';
+            end
+        end
+
+    case 'OsName'
+        argout1 = '';
+        osFamily = [];
+        tmp = regexp(bst_get('OsType'), '^[a-z]+', 'match', 'ignorecase');
+        if ~isempty(tmp)
+            osFamily = tmp{1};
+        end
+        switch osFamily
+            case 'win'
+                [~, system_info] = system('ver');
+                argout1 = strtrim(system_info);
+
+            case 'linux'
+                os_release = fileread('/etc/os-release');
+                osName = regexp(os_release, '(?<=PRETTY_NAME=")(.*?)(?=")', 'match');
+                if ~isempty(osName)
+                    osName = strtrim(osName{1});
+                else
+                    osName = regexp(os_release, '(?<=NAME=")(.*?)(?=")', 'match');
+                    if ~isempty(osName)
+                        osName = strtrim(osName{1});
+                    else
+                        osName = 'Linux unknow distribution';
+                    end
+                end
+                [~, kernelVer] = system('uname -r');
+                kernelVer = strtrim(kernelVer);
+                argout1 = [osName, ' (' kernelVer, ')'];
+
+            case 'mac'
+                [~, sw_vers] = system('sw_vers');
+                osName = regexp(sw_vers, '(?<=ProductName:)(.*?)(?=\n)', 'match');
+                osName = strtrim(osName{1});
+                osVer = regexp(sw_vers, '(?<=ProductVersion:)(.*?)(?=\n)', 'match');
+                osVer = strtrim(osVer{1});
+                [~, osHw] = system('uname -m');
+                osHw = strtrim(osHw);
+                argout1 = [osName, ' ' osVer, ' (', osHw, ')'];
+        end
+
 
 %% ==== PROTOCOL ====
     case 'iProtocol'
@@ -2966,6 +3066,13 @@ switch contextName
         else
             argout1 = [.33 .0042 .33 .88 .93];
         end
+
+    case 'ShowHiddenFiles'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowHiddenFiles')
+            argout1 = GlobalData.Preferences.ShowHiddenFiles;
+        else
+            argout1 = 0;
+        end
         
     case 'LastUsedDirs'
         defPref = struct(...
@@ -3022,25 +3129,6 @@ switch contextName
             'MontageOut',  '', ...
             'FibersIn',    '');
         argout1 = FillMissingFields(contextName, defPref);
-
-    case 'OsType'
-        switch (mexext)
-            case 'mexglx',    argout1 = 'linux32';
-            case 'mexa64',    argout1 = 'linux64';
-            case 'mexmaci',   argout1 = 'mac32';
-            case 'mexmaci64', argout1 = 'mac64';
-            case 'mexmaca64', argout1 = 'mac64arm';
-            case 'mexs64',    argout1 = 'sol64';
-            case 'mexw32',    argout1 = 'win32';
-            case 'mexw64',    argout1 = 'win64';
-            otherwise,        error('Unsupported extension.');
-        end
-        % CALL: bst_get('OsType', isMatlab=0)
-        if (nargin >= 2) && isequal(varargin{2}, 0)
-            if strcmpi(argout1, 'win32') && (~isempty(strfind(java.lang.System.getProperty('java.home'), '(x86)')) || ~isempty(strfind(java.lang.System.getenv('ProgramFiles(x86)'), '(x86)')))
-                argout1 = 'win64';
-            end
-        end
         
     case 'ImportDataOptions'
         defPref = db_template('ImportOptions');
@@ -3372,21 +3460,27 @@ switch contextName
         
     case 'DigitizeOptions'
         defPref = struct(...
+            'PatientId',    'S001', ...
             'ComPort',      'COM1', ...
             'ComRate',      9600, ...
             'ComByteCount', 94, ...  % 47 bytes * 2 receivers
             'UnitType',     'fastrak', ...
-            'PatientId',    'S001', ...
+            'ConfigCommands', [], ... % setup-specific device configuration commands, e.g. hemisphere of operation
             'nFidSets',     2, ...
+            'Fids',         {{'NAS', 'LPA', 'RPA'}}, ... % 3 anat points (required) and any other, e.g. MEG coils, in desired digitization order
+            'DistThresh',   0.005, ... % 5 mm distance threshold between repeated measures of fid positions
             'isBeep',       1, ...
             'isMEG',        1, ...
             'isSimulate',   0, ...
             'Montages',     [...
                 struct('Name',   'No EEG', ...
-                       'Labels', []), ...
+                       'Labels', [], ...
+                       'ChannelFile', []), ...
                 struct('Name',   'Default', ...
-                       'Labels', [])], ...
-            'iMontage',     1);
+                       'Labels', [], ...
+                       'ChannelFile', [])], ...
+            'iMontage',     1, ...
+            'Version',      '2024'); % Version of the Digitize panel: 'legacy' or '2024'
         argout1 = FillMissingFields(contextName, defPref);
     
     case 'PcaOptions'
@@ -3541,6 +3635,7 @@ switch contextName
                     {'.gii'},   'GIfTI / World coordinates (*.gii)', 'GII-WORLD'; ...
                     {'.fif'},   'MNE (*.fif)',             'FIF'; ...
                     {'.obj'},   'MNI OBJ (*.obj)',         'MNIOBJ'; ...
+                    {'.obj'},   'Wavefront OBJ (*.obj)',   'WFTOBJ'; ...
                     {'.msh'},   'SimNIBS3/headreco Gmsh4 (*.msh)', 'SIMNIBS3'; ...
                     {'.msh'},   'SimNIBS4/charm Gmsh4 (*.msh)', 'SIMNIBS4'; ...
                     {'.tri'},   'TRI (*.tri)',             'TRI'; ...
@@ -3593,6 +3688,7 @@ switch contextName
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
+                     {'.edf','.rec'},        'EEG  EDF / EDF+ FieldTrip reader (*.rec;*.edf)', 'EEG-EDF-FT'; ...
                      {'.set'},               'EEG: EEGLAB (*.set)',                  'EEG-EEGLAB'; ...
                      {'.raw'},               'EEG: EGI Netstation RAW (*.raw)',      'EEG-EGI-RAW'; ...
                      {'.mff','.bin'},        'EEG: EGI-Philips (*.mff)',             'EEG-EGI-MFF'; ...
@@ -3656,6 +3752,7 @@ switch contextName
                      {'.dat','.cdt'},        'EEG: Curry (*.dat;*.cdt)',             'EEG-CURRY'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
+                     {'.edf','.rec'},        'EEG  EDF / EDF+ FieldTrip reader (*.rec;*.edf)', 'EEG-EDF-FT'; ...
                      {'.set'},               'EEG: EEGLAB (*.set)',                  'EEG-EEGLAB'; ...
                      {'.raw'},               'EEG: EGI Netstation RAW (*.raw)',      'EEG-EGI-RAW'; ...
                      {'.mff','.bin'},        'EEG: EGI-Philips (*.mff)',             'EEG-EGI-MFF'; ...
