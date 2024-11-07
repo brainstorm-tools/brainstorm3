@@ -1,6 +1,9 @@
 function tutorial_BEst(tutorial_dir, reports_dir)
 % TUTORIAL_BEST: Script that runs all the Brain Entropy in space and time introduction tutorials.
 %
+% CORRESPONDING ONLINE TUTORIAL:
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst
+%
 % INPUTS: 
 %    - tutorial_dir : Directory where the sample_introduction.zip file has been unzipped
 %    - reports_dir  : Directory where to save the execution report (instead of displaying it)
