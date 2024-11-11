@@ -2384,6 +2384,10 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
+        if ~ismember('colin27_4nirs_2024', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://drive.google.com/uc?export=download&id=1kFqz-TxtXMcH-yIfO6GnFl88pAA6tat4';
+            sTemplates(end).Name = 'Colin27_4NIRS_2024';
+        end
         if ~ismember('colin27_brainsuite_2016', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
