@@ -133,7 +133,7 @@ isReconAll         = ~isempty(file_find(FsDir, 'T1.mgz', 2)) && ~isReconAllClini
 mri1File = '';
 if isReconAll
     mri1File = file_find(FsDir, 'T1.mgz', 2);
-    mri2File = file_find(FsDir, 'T2.mgz', 2);
+    mri2File = file_find(FsDir, 'T2.norm.mgz', 2);
     mri1Comment = 'MRI T1';
     mri2Comment = 'MRI T2';
 elseif isReconAllClinical
