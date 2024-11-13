@@ -238,6 +238,11 @@ switch (FileFormat)
         
     case 'NWB'
         TessMat = in_tess_nwb(TessFile);
+
+    case 'BESA-SRF'
+        TessMat = in_tess_besa(TessFile);
+        TessMat.Vertices = TessMat.Vertices .* sMri.Voxsize ./ 1000;
+
 end
 % If an error occurred: return
 if isempty(TessMat)
