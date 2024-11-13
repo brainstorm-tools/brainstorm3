@@ -119,6 +119,8 @@ end
 % ===== LOAD MRI =====
 % Switch between file formats
 switch (FileFormat)   
+    case 'BESA-VMR'
+        MRI = in_mri_besa(MriFile);
     case 'CTF'
         MRI = in_mri_ctf(MriFile);  % Auto-detect file format
     case 'GIS'
