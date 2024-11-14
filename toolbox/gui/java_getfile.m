@@ -258,6 +258,12 @@ end
 
     function FileSelectorPropertyChanged(h, ev)
         import org.brainstorm.file.*;
+        % Release mutex if Dialog was closed
+        propertyName = char(java_call(ev, 'getPropertyName'));
+        if strcmpi(propertyName, 'JFileChooserDialogIsClosingProperty') && isempty(java_call(ev, 'getNewValue'))
+            bst_mutex('release', 'FileSelector');
+            return
+        end
         % Only when saving 
         if (DialogType == BstFileSelector.TYPE_SAVE)
             switch char(java_call(ev, 'getPropertyName'))
