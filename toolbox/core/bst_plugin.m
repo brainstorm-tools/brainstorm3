@@ -1377,6 +1377,12 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
+            % easyh5 and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'easyh5') || strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                    TestFilePath = [];
+                end
             end
         else
             TestFilePath = [];
