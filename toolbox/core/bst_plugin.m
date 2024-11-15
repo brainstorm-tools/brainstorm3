@@ -200,7 +200,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
-
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -2209,7 +2208,6 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('setimage', LogoFile);
     end
     
-
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
