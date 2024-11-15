@@ -112,6 +112,7 @@ if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
         case {'.mgz','.mgh'},         FileFormat = 'MGH';
         case {'.mnc','.mni'},         FileFormat = 'MINC';
         case '.mat',                  FileFormat = 'BST';
+        case '.vmr',                  FileFormat = 'BESA-VMR';
         otherwise,                    error('File format could not be detected, please specify a file format.');
     end
 end

@@ -94,6 +94,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
+        case '.srf'
+            FileFormat = 'BESA-SRF';
     end
 end
 % If format was not detected
