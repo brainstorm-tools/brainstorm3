@@ -1033,6 +1033,9 @@ switch (lower(action))
                         else
                             gui_component('MenuItem', jPopup, [], 'Project to default anatomy', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, 0));
                         end
+
+                        gui_component('MenuItem', jPopup, [], 'Create scout', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_from_channel(filenameRelative));
+
                     end
 
                     % === MENU: EXPORT ===
