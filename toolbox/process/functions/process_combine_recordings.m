@@ -135,9 +135,8 @@ function OutputFiles = Run(sProcess, sInputs)
                 if isempty(sTmpVideo.VideoStart)
                     sTmpVideo.VideoStart = 0;
                 end
-                iNewVideo = import_video(iNewStudy, sOldVideo.LinkTo);
-                sNewStudy = bst_get('Study', iNewStudy);
-                figure_video('SetVideoStart', file_fullpath(sNewStudy.Image(iNewVideo).FileName), sprintf('%.3f', sOldVideo.VideoStart));
+                [~, outVideoFile] = import_video(iNewStudy, sTmpVideo.LinkTo);
+                figure_video('SetVideoStart', outVideoFile, sprintf('%.3f', sTmpVideo.VideoStart));
             end
         end
 
