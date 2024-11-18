@@ -1,11 +1,12 @@
 function OutputFile = bst_scout_from_channel(ChannelFile, radius, isInteractive)
-% BST_PROJECT_CHANNEL: Project a channel file between subjects, using the MNI normalization.
+% bst_scout_from_channel: Convert a channel file to scout on the scalp (all the vertex within a specified radius is included to the scout).
 %
-% USAGE:  OutputFile = bst_project_channel(ChannelFile,  isInteractive=1)
+% USAGE:  OutputFile = bst_project_channel(ChannelFile, radius = 5 mm, isInteractive=1)
 %        OutputFiles = bst_project_channel(ChannelFiles, ...)
 % 
 % INPUT:
 %    - ChannelFile   : Relative path to channel file to project
+%    - radius : Radius used to create the scout on the scalp (in mm)
 %    - isInteractive : If 1, display interactive messages
 
 % @=============================================================================
@@ -32,6 +33,7 @@ function OutputFile = bst_scout_from_channel(ChannelFile, radius, isInteractive)
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 1;
 end
+
 if (nargin < 2) || isempty(radius)
 
     if isInteractive
@@ -58,7 +60,7 @@ isProgress = bst_progress('isVisible');
 bst_progress('start', 'Project channel file', 'Loading MRI files...');
 
 % Get subject
-[sStudy, iStudy] = bst_get('ChannelFile', ChannelFile);
+[sStudy, iStudy]     = bst_get('ChannelFile', ChannelFile);
 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
 
 % Check subjects
@@ -83,10 +85,6 @@ end
 % Load Scalp
 sScalp = in_tess_bst( sSubject.Surface(sSubject.iScalp).FileName);
 
-% Load source MRI
-sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-
-
 % Find closest head vertices (for which we have fluence data)
 % Put everything in mri referential
 head_vertices_mri   = sScalp.Vertices; % cs_convert(sMri, 'scs', 'mri', sScalp.Vertices) * 1000;
@@ -104,7 +102,7 @@ for i = 1:length(ChannelMat.Channel)
             channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc(:,2);
 
         else
-            channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc; %cs_convert(sMri, 'scs', 'mri', ChannelMat.Channel(i).Loc) * 1000;
+            channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc;
         end
     end
 end
@@ -116,7 +114,7 @@ for i = 1:size(channel_locs_mri, 1)
         x = channel_locs_mri(i,:);
         y = head_vertices_mri(j, :);
 
-        Dist = 1000* sum((x-y).^2).^0.5; % mm
+        Dist = 1000 * sum((x-y).^2).^0.5; % mm
         if Dist <= radius 
             sVertex(end+1) = j;
         end
@@ -135,14 +133,7 @@ bst_progress('text', 'Saving results...');
 
 sScalp.Atlas(1).Scouts(end+1) = scout_channel;
 bst_save( file_fullpath(sSubject.Surface(sSubject.iScalp).FileName), sScalp)
-
-% ===== UDPATE DISPLAY =====
-% Select first output study
-panel_protocols('SelectStudyNode', iSubject);
-% Select first output file
-panel_protocols('SelectNode', [], OutputFile);
-% Save database
-db_save();
+OutputFile = {sSubject.Surface(sSubject.iScalp).FileName};
 
 % Close progress bar
 if ~isProgress
