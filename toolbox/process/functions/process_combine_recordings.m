@@ -35,15 +35,15 @@ function sProcess = GetDescription()
     sProcess.SubGroup    = 'Synchronize';
     sProcess.Index       = 682;
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = { 'raw'};
-    sProcess.OutputTypes = { 'raw'};
+    sProcess.InputTypes  = {'raw'};
+    sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
     
     % Option: Condition
     sProcess.options.condition.Comment = 'Condition name:';
     sProcess.options.condition.Type    = 'text';
-    sProcess.options.condition.Value   = '';
+    sProcess.options.condition.Value   = 'Combined';
 end
 
 
@@ -57,67 +57,83 @@ end
 function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {};
 
-    % === Sync event management === %
-    nInputs        = length(sInputs);
-    fs             = zeros(1, nInputs);
-    sOldTiming     = cell(1, nInputs);
-    sIdxChAn       = cell(1, nInputs);
+    nInputs   = length(sInputs);
+    sIdxChNew = cell(1, nInputs); % Channel indices for each input in new channel file
 
-    bst_progress('start', 'Combining files', 'Loading data...', 0, 3*nInputs);
+    % Check for same Subject
+    if length(unique({sInputs.SubjectFile})) > 1
+        bst_report('Error', sProcess, sInputs, 'All raw recordings must belong to the same Subject.');
+        return
+    end
+    % Get comment for new condition
+    NewComment = sProcess.options.condition.Value;
+    if isempty(NewComment)
+        bst_report('Error', sProcess, sInputs, 'Condition name was not defined.');
+        return
+    end
+    NewCondition = file_standardize(NewComment);
 
-    % Get Time vector, events and sampling frequency for each file
-    for iInput = 1:nInputs
-
-        sDataRaw = in_bst_data(sInputs(iInput).FileName, 'Time', 'F');
-        sOldTiming{iInput}.Time   = sDataRaw.Time;
-        sOldTiming{iInput}.Events = sDataRaw.F.events;
-        
-        fs(iInput) = 1/(sOldTiming{iInput}.Time(2) -  sOldTiming{iInput}.Time(1)); % in Hz
+    % ===== GET METADATA FOR RECORDINGS =====
+    bst_progress('start', 'Combining recordings', 'Loading metadata...', 0, 3 * nInputs); % 3 steps per input file
+    % Get Time and F structure
+    for iInput = 1 : nInputs
+        sMetaData(iInput) = in_bst_data(sInputs(iInput).FileName, 'Time', 'F');
+        bst_progress('inc', 1);
+    end
+    % Check that the limits are close enough, same duration, and same start
+    all_times = [arrayfun(@(x) x.F.prop.times(1), sMetaData)', arrayfun(@(x) x.F.prop.times(2), sMetaData)'];
+    max_diffs = max(all_times,[], 1) - min(all_times,[], 1);
+    if any(max_diffs > 1) % Tolerance of 1 second for maximum differences
+        bst_report('Error', sProcess, sInputs, 'Recordings to merge must have the same start and end time.');
+        return
     end
 
-    bst_progress('inc', nInputs);
-    bst_progress('text', 'Synchronizing...');
-
-    % First Input is the one wiht highest sampling frequency
-    [~, im] = max(fs);
-
-    sInputs([1, im])    = sInputs([im, 1]);
-    sOldTiming([1, im]) = sOldTiming([im, 1]);
-    new_times           = sOldTiming{1}.Time;
-
-    iNewStudy = db_add_condition(sInputs(iInput).SubjectName,  ['@raw' sProcess.options.condition.Value]);
+    % ===== COMBINE METADATA =====
+    % Recordings file with higher sampling frequency is used as seed for time
+    bst_progress('text', 'Combining metadata...');
+    [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
+    % New sampling frequency
+    NewFs = sMetaData(iRefRec).F.prop.sfreq;
+    % Study for combined recordings
+    % TODO unique condition
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  ['@raw' NewCondition]);
     sNewStudy = bst_get('Study', iNewStudy);
+    % New time vector
+    % TODO Time is usually, just beginning and end
+    NewTime = sMetaData(iRefRec).Time;
+    % New channel definition
+    NewChannelMat = db_template('ChannelMat');
+    % New channel flag
+    NewChannelFlag = [];
+    % New eventse
+    NewEvents = [];
 
-    % Save channel definition
-    bst_progress('text', 'Combining channels files...');
+    for iInput = 1 : nInputs
+        % Get channel file
+        tmpChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+        % TODO: Assure unique names for channels
 
-    NewChannelMat   = in_bst_channel(sInputs(1).ChannelFile);
-    sIdxChAn{1}     = 1:length(NewChannelMat.Channel);
+        % Concate channels
+        sIdxChNew{iInput} = length(NewChannelMat.Channel) + [1 : length(tmpChannelMat.Channel)];
+        NewChannelMat.Channel = [NewChannelMat.Channel, tmpChannelMat.Channel];
+        % TODO Concat projectors
 
-    % Copy videos
-    sOldStudy = bst_get('Study', sInputs(1).iStudy);
-    if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
-        for iOldVideo = 1 : length(sOldStudy.Image)
-            sOldVideo = load(file_fullpath(sOldStudy.Image(iOldVideo).FileName));
-            if isempty(sOldVideo.VideoStart)
-                sOldVideo.VideoStart = 0;
-            end
-            iNewVideo = import_video(iNewStudy, sOldVideo.LinkTo);
-            sNewStudy = bst_get('Study', iNewStudy);
-            figure_video('SetVideoStart', file_fullpath(sNewStudy.Image(iNewVideo).FileName), sprintf('%.3f', sOldVideo.VideoStart));
-        end
-    end
+        % TODO Concat events
+            % Get events
+            % Add channel info
+            % Update time to closet in new time vector
+            % Concate events
 
-    % Save sync data to file
-    for iInput = 2:nInputs
+        % Concatenate channel flag
+        NewChannelFlag = [NewChannelFlag; sMetaData(iInput).ChannelFlag];
 
         % Copy videos
-        sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
-        if isfield(sOldStudy,'Image') && ~isempty(sOldStudy.Image)
-            for iOldVideo = 1 : length(sOldStudy.Image)
-                sOldVideo = load(file_fullpath(sOldStudy.Image(iOldVideo).FileName));
-                if isempty(sOldVideo.VideoStart)
-                    sOldVideo.VideoStart = 0;
+        tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
+        if isfield(tmpStudy,'Image') && ~isempty(tmpStudy.Image)
+            for iTmpVideo = 1 : length(tmpStudy.Image)
+                sTmpVideo = load(file_fullpath(tmpStudy.Image(iTmpVideo).FileName));
+                if isempty(sTmpVideo.VideoStart)
+                    sTmpVideo.VideoStart = 0;
                 end
                 iNewVideo = import_video(iNewStudy, sOldVideo.LinkTo);
                 sNewStudy = bst_get('Study', iNewStudy);
@@ -125,78 +141,66 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
 
-        ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-        
-        sIdxChAn{iInput} = length(NewChannelMat.Channel) +  (1:length(ChannelMat.Channel));
-        NewChannelMat.Channel = [ NewChannelMat.Channel , ChannelMat.Channel  ];
-
-
-        if isfield(ChannelMat,'Nirs') && isfield(NewChannelMat,'Nirs')
-            NewChannelMat.Nirs = sort( union(ChannelMat.Nirs, NewChannelMat.Nirs));
-        elseif isfield(ChannelMat,'Nirs')  && ~isfield(NewChannelMat,'Nirs')
-            NewChannelMat.Nirs = ChannelMat.Nirs;
+        % Concat NIRS wavelengths
+        if isfield(tmpChannelMat, 'Nirs')
+            if ~isfield(NewChannelMat, 'Nirs')
+                NewChannelMat.Nirs = tmpChannelMat.Nirs;
+            else
+                NewChannelMat.Nirs = sort(union(tmpChannelMat.Nirs, NewChannelMat.Nirs));
+            end
         end
+
+        % Progress
+        bst_progress('inc', 1);
     end
+    % Save channel file
+    db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
-    [~, iChannelStudy] = bst_get('ChannelForStudy', iNewStudy);
-    db_set_channel(iChannelStudy, NewChannelMat, 0, 0);
-    newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
+    % ===== COMBINE DATA =====
+    bst_progress('text', 'Combining data...');
 
-    % Link to raw file
-    OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_combned');
-
-    % Raw file
-    [~, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+    % Link to combined raw file
+    OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_combined');
+    % Combined raw file
+    [rawDirOut, rawBaseOut, rawBaseExt] = bst_fileparts(bst_fileparts(file_fullpath(sNewStudy.FileName)));
     rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
-    RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
+    RawFileOut = bst_fullfile(rawDirOut, [rawBaseOut '.bst']);
 
-    bst_progress('inc', nInputs);
-    bst_progress('text', 'Saving files...');
-
-    % Read channel flags
-    channelflag = [];
-    for iInput = 1:nInputs
-        sDataRawSync = in_bst_data(sInputs(iInput).FileName, 'ChannelFlag');
-        channelflag = [channelflag; sDataRawSync.ChannelFlag];
-    end
-
-    % Set Output sFile structure
-    sDataRawSync = in_bst_data(sInputs(1).FileName, 'F');
-    sFileIn = sDataRawSync.F;
-    sFileIn.header.nsamples = length(new_times);
-    sFileIn.prop.times      = [ new_times(1), new_times(end)];
-    sFileIn.channelflag     = channelflag;
+    % Create a header structure for combined recordings
+    sFileIn = db_template('sfile');
+    sFileIn.header.nsamples = length(NewTime);
+    sFileIn.prop.times      = [NewTime(1), NewTime(end)];
+    sFileIn.prop.sfreq      = NewFs;
+    sFileIn.events          = NewEvents;
+    sFileIn.channelflag     = NewChannelFlag;
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
 
-    sDataSync        = in_bst(sInputs(1).FileName, [], 1, 1, 'no');
-    sOutMat          = rmfield(sDataSync, 'F');
-    sOutMat.format   = 'BST-BIN';
-    sOutMat.DataType = 'raw';
-    sOutMat.F        = sFileOut;
-    sOutMat.ChannelFlag = channelflag;
-    sOutMat.Comment     = [sDataSync.Comment ' | Combined'];
-    
+    % Build output structure for combined recordings
+    sOutMat = db_template('DataMat');
+    sOutMat.Comment     = 'Link to raw file | Combined';
+    sOutMat.F           = sFileOut;
+    sOutMat.format      = 'BST-BIN';
+    sOutMat.DataType    = 'raw';
+    sOutMat.ChannelFlag = NewChannelFlag;
+    sOutMat.Time        = sFileIn.prop.times;
+    sOutMat.Device      = 'Brainstorm';
     bst_save(OutputFile, sOutMat, 'v6');
 
-    % Save sync data to file
-    for iInput = 1:nInputs
+    % Save all data to combined file
+    for iInput = 1 : nInputs
         % Load raw data
-        sDataSync        = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no');
-
-        % Update raw data
-        if iInput > 1
-            sDataSync.F      = interp1(sDataSync.Time, sDataSync.F', new_times)';
+        sDataCombined = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
+        % Update raw data to new time vector
+        if iInput ~= iRefRec
+            sDataCombined.F = interp1(sDataCombined.Time, sDataCombined.F', NewTime)';
         end
-        % Write block
-        out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChAn{iInput}, sDataSync.F);
-
+        % Write these channels
+        out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataCombined.F);
         bst_progress('inc', 1);
     end
     
     % Register in BST database
     db_add_data(iNewStudy, OutputFile, sOutMat);
     OutputFiles{iInput} = OutputFile;
-
     bst_progress('stop');
 end
-
