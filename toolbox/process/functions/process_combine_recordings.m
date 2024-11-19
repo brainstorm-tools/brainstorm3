@@ -216,9 +216,9 @@ function OutputFiles = Run(sProcess, sInputs)
     % Link to combined raw file
     OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_combined');
     % Combined raw file
-    [rawDirOut, rawBaseOut, rawBaseExt] = bst_fileparts(bst_fileparts(file_fullpath(sNewStudy.FileName)));
-    rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
-    RawFileOut = bst_fullfile(rawDirOut, [rawBaseOut '.bst']);
+    [rawDirOut, rawBaseOut] = bst_fileparts(OutputFile);
+    rawBaseOut = regexprep(rawBaseOut, '^data_0raw_', '');
+    RawFileOut = bst_fullfile(rawDirOut, [rawBaseOut, '.bst']);
 
     % Create a header structure for combined recordings
     sFileIn = db_template('sfile');
