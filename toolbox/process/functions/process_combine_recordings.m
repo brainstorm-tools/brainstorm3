@@ -59,6 +59,7 @@ function OutputFiles = Run(sProcess, sInputs)
 
     nInputs   = length(sInputs);
     sIdxChNew = cell(1, nInputs); % Channel indices for each input in new channel file
+    sProjNew  = cell(1, nInputs); % Projectors for each input in new channel file
 
     % Check for same Subject
     if length(unique({sInputs.SubjectFile})) > 1
@@ -127,7 +128,8 @@ function OutputFiles = Run(sProcess, sInputs)
         % Concatenate channel flag
         NewChannelFlag = [NewChannelFlag; sMetaData(iInput).ChannelFlag];
 
-        % TODO Concat projectors
+        % Store projectors to concatenate later
+        sProjNew{iInput} = tmpChannelMat.Projector;
 
         % TODO Concat events
             % Get events
@@ -163,6 +165,30 @@ function OutputFiles = Run(sProcess, sInputs)
         % Progress
         bst_progress('inc', 1);
     end
+
+    % Concatenate Projectors
+    for iInput = 1 : nInputs
+        for iProj = 1 : length(sProjNew{iInput})
+            % Adjust Nchan in Projector
+            sizeComp = size(sProjNew{iInput}(iProj).Components);
+            newSizeComp = sizeComp;
+            ixs = cell(1, length(newSizeComp));
+            for iDim = 1 : length(sizeComp)
+                if sizeComp(iDim) == length(sIdxChNew{iInput})
+                    newSizeComp(iDim) = NewChannelsN;
+                    ixs{iDim} = sIdxChNew{iInput};
+                else
+                    newSizeComp(iDim) = sizeComp(iDim);
+                    ixs{iDim} = 1:sizeComp(iDim);
+                end
+            end
+            newComponents = zeros(newSizeComp);
+            newComponents(ixs{1}, ixs{2}) = sProjNew{iInput}(iProj).Components;
+            sProjNew{iInput}(iProj).Components = newComponents;
+        end
+    end
+    NewChannelMat.Projector = [sProjNew{:}];
+
     % Save channel file
     db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
