@@ -3361,6 +3361,10 @@ function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig, ChannelFile, Modal
     [hFig, iDS, iFig] = view_surface(Subject.Surface(ixIsoSurf(1)).FileName, 0.6, [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        gui_brainstorm('ShowToolTab', 'iEEG'); 
+    end
 end
 
 %% ===== EXPORT CONTACT POSITIONS =====
