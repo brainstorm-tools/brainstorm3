@@ -48,6 +48,16 @@ function sProcess = GetDescription()
     sProcess.options.src.Comment  = 'Sync event name: ';
     sProcess.options.src.Type     = 'text';
     sProcess.options.src.Value    = '';
+
+    sProcess.options.method_title.Comment    = '<BR><B><U>Method for event synchronization:</U></B>:';
+    sProcess.options.method_title.Type       = 'label';
+
+    sProcess.options.method.Comment = {'Mean :  minimize the mean difference between the event timing of the two files', ... 
+                                       'Correlation: maximize the correlation between the event timing of the two files';  ...
+                                       'mean', 'xcorr'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'mean';
+    
  
 end
 
@@ -126,20 +136,18 @@ function OutputFiles = Run(sProcess, sInputs)
     for iInput = 2:nInputs
         isSameNumberEvts = size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2);
         % Same number of sync events
-        if isSameNumberEvts
+        if isSameNumberEvts && strcmp(sProcess.options.method.Value,'mean')
             shifting = sEvtSync(iInput).times - sEvtSync(1).times;
             mean_shifting(iInput) = mean(shifting);
             offsetStd = std(shifting);
-        end
-        % Diff number of sync events OR shift std > 1s
-        if ~isSameNumberEvts || offsetStd > 1
+        else
+
             if ~isSameNumberEvts
-                strWarning = 'Files doesnt have the same number of sync events.';
-            else
-                strWarning = sprintf('Files have the same number of sync events, but large shift std (%.3f s)', offsetStd);
-            end
-            strWarning = [strWarning, 10, 'Using cross-correlation approximation'];
-            bst_report('Warning', sProcess, sInputs, strWarning);
+                strWarning = [ 'Files doesnt have the same number of sync events.', 10, ... 
+                                'Using cross-correlation approximation'];
+                bst_report('Warning', sProcess, sInputs, strWarning);
+            end    
+
             % Cross-correlate trigger signals; need to be at the same sampling frequency
             tmp_fs      = max(fs(iInput), fs(1));
             tmp_time_a  = sOldTiming{iInput}.Time(1):1/tmp_fs:sOldTiming{iInput}.Time(end);
