@@ -65,13 +65,15 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_report('Error', sProcess, sInputs, 'All raw recordings must belong to the same Subject.');
         return
     end
-    % Get comment for new condition
+    % Get unique comment for new condition
     NewComment = sProcess.options.condition.Value;
     if isempty(NewComment)
         bst_report('Error', sProcess, sInputs, 'Condition name was not defined.');
         return
     end
-    NewCondition = file_standardize(NewComment);
+    NewCondition = ['@raw', file_standardize(NewComment)];
+    sStudies = bst_get('StudyWithSubject', sInputs(1).SubjectFile);
+    NewCondition = file_unique(NewCondition, [sStudies.Condition]);
 
     % ===== GET METADATA FOR RECORDINGS =====
     bst_progress('start', 'Combining recordings', 'Loading metadata...', 0, 3 * nInputs); % 3 steps per input file
@@ -95,8 +97,7 @@ function OutputFiles = Run(sProcess, sInputs)
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
     % Study for combined recordings
-    % TODO unique condition
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  ['@raw' NewCondition]);
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     % TODO Time is usually, just beginning and end
