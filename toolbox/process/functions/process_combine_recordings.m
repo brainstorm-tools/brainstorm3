@@ -110,12 +110,13 @@ function OutputFiles = Run(sProcess, sInputs)
     NewChannelMat.Channel = repmat(db_template('channeldesc'), NewChannelsN);
     % New channel flag
     NewChannelFlag = [];
-    % New eventse
-    NewEvents = [];
+    % New events
+    NewEvents = repmat(db_template('event'), 0);
 
     for iInput = 1 : nInputs
         % Get channel file
         tmpChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+        tmpChannelNames = {tmpChannelMat.Channel.Name};
         % Concatenate channels
         % Ensure unique names for channels
         ixChannelDup = find(ismember({tmpChannelMat.Channel.Name}, {NewChannelMat.Channel.Name}));
@@ -131,12 +132,29 @@ function OutputFiles = Run(sProcess, sInputs)
         % Store projectors to concatenate later
         sProjNew{iInput} = tmpChannelMat.Projector;
 
-        % TODO Concat events
-            % Get events
+        % Concatenate events
+        for iEvent = 1 : length(sMetaData(iInput).F.events)
+            tmpEvent = sMetaData(iInput).F.events(iEvent);
             % Add channel info
-            % Update time to closet in new time vector
-            % Concate events
-
+            addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
+            nOccurences = size(tmpEvent.times, 2);
+            % Make a channel-wise event with all channels in Input file
+            if isempty(tmpEvent.channels)
+                tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
+            else
+                for iOccurence = 1 : nOccurences
+                    % Make a channel-wise event with all channels in Input file
+                    if isempty(tmpEvent.channels{iOccurence})
+                        tmpEvent.channels{iOccurence} = addedChannelNames;
+                    % Update channel names to names that were added in combined file
+                    else
+                        [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
+                        tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
+                    end
+                end
+            end
+            NewEvents = [NewEvents, tmpEvent];
+        end
 
         % Copy videos
         tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
