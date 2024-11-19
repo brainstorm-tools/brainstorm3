@@ -64,6 +64,11 @@ for i = 1:length(target)
             
             % Detect the target token
             target_token = regexp(target{i}, '^(S([0-9]+)?)?(D([0-9]+)?)?(WL\d+|HbO|HbR|HbT)?$', 'tokens');
+
+            if isempty(target_token)
+                bst_error(sprintf('Unable to parse %s',target{i}))
+                continue;
+            end 
             target_token = target_token{1};
             
             % Construct regex with target token + default
@@ -80,7 +85,7 @@ for i = 1:length(target)
             % Find the corresponding channels
             tmp = regexp(allNames, sprintf('^%s%s%s$',target_token{1},target_token{2},target_token{3}) , 'tokens');
             iChan = find(cellfun(@(x)~isempty(x), tmp) );
-            
+
         else
             iChan = find(strcmpi(allNames, target{i}));
         end
