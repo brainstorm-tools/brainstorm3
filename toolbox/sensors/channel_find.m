@@ -66,7 +66,6 @@ for i = 1:length(target)
             target_token = regexp(target{i}, '^(S([0-9]+)?)?(D([0-9]+)?)?(WL\d+|HbO|HbR|HbT)?$', 'tokens');
 
             if isempty(target_token)
-                bst_error(sprintf('Unable to parse %s',target{i}))
                 continue;
             end 
             target_token = target_token{1};
