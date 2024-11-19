@@ -109,7 +109,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
-                    'MouseClickedCallback', @(h,ev)bst_call(@ContListClick_Callback,h,ev));
+                    'ValueChangedCallback', @(h,ev)bst_call(@ContListChanged_Callback,h,ev));
                 jPanelScrollContList = JScrollPane();
                 jPanelScrollContList.getLayout.getViewport.setView(jListCont);
                 jPanelScrollContList.setBorder([]);
@@ -309,6 +309,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if (length(sSelElec) == 1)
                 CenterMriOnElectrode(sSelElec);
             end
+            % Unselect all contacts in list
+            SetSelectedContacts(0);
+            % Update contact list
+            UpdateContactList();
         end
     end
 
@@ -330,27 +334,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Rename selection
             EditElectrodeLabel();
         end
-
-        if (ev.getClickCount() == 1)
-            % Update contact list
-            UpdateContactList('SCS');
-        end
     end
 
-    %% ===== CONTACT LIST CLICK CALLBACK =====
-    function ContListClick_Callback(h, ev)
-        % IF SINGLE CLICK
-        if (ev.getClickCount() == 1)
-            ctrl = bst_get('PanelControls', 'iEEG');
-            % if contact list rendering is blank in panel then dont't proceed
-            if ctrl.jListCont.isSelectionEmpty()
-                return;
-            end
-            % highlight the location on MRI Viewer and Surface
-            HighlightLocCont();
-            [sSelCont, sContactName] = GetSelectedContacts();
-            bst_figures('SetSelectedRows', sContactName);
-        end
+    %% ===== CONTACT LIST CHANGED CALLBACK =====
+    function ContListChanged_Callback(h, ev)
+        ctrl = bst_get('PanelControls', 'iEEG');
+        sContacts = GetSelectedContacts();
+        bst_figures('SetSelectedRows', {sContacts.Name});
+        SetMriCrosshair(sContacts);
     end
 end
                    
@@ -465,21 +456,37 @@ function UpdateElecList()
 end
 
 %% ===== UPDATE CONTACT LIST =====
-function UpdateContactList(CoordSpace)
+function UpdateContactList(varargin)
     import org.brainstorm.list.*;
-    % Get current electrodes
-    sElectrodes = GetElectrodes();
+    global GlobalData
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
+    % Get coordinate space from ctrls
+    if nargin < 1 || isempty(varargin{1})
+        CoordSpace = 'scs';
+        if ctrl.jRadioMni.isSelected()
+            CoordSpace = 'mni';
+        elseif ctrl.jRadioMri.isSelected()
+            CoordSpace = 'mri';
+        elseif ctrl.jRadioWorld.isSelected()
+            CoordSpace = 'world';
+        end
+    else
+        CoordSpace = varargin{1};
+    end
 
     % Get selected electrodes
-    iSelElec = ctrl.jListElec.getSelectedIndex() + 1;
-    SelName = char(ctrl.jListElec.getSelectedValue());
-    if (iSelElec == 0) || (iSelElec > length(sElectrodes)) || ~strcmpi(sElectrodes(iSelElec).Name, SelName)
+    [sSelElec, ~, iDS] = GetSelectedElectrodes();
+    if isempty(sSelElec)
         SelName = [];
+        sSelContacts = [];
+    else
+        SelName = sSelElec(end).Name;
+        % Get selected contacts
+        sSelContacts = GetSelectedContacts();
     end
 
     % Create a new empty list
@@ -491,21 +498,20 @@ function UpdateContactList(CoordSpace)
     % Add an item in list for each electrode
     Wmax = 0;
 
-    % Get the contacts and their respective name
-    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(SelName);
+    % Get the contacts for selected electrodes
+    sContacts = GetContacts(SelName);
     if isempty(sContacts)
         ctrl.jListCont.setModel(listModel);
         return;
     end
-    SubjectFile = getappdata(hFig(1), 'SubjectFile');
-    sSubject = bst_get('Subject', SubjectFile);
-    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    sMri = bst_memory('LoadMri', MriFile);
     % Convert contact coodinates
     if ~strcmpi('scs', CoordSpace)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
-        sContactsMm = (cs_convert(sMri, 'scs', lower(CoordSpace), sContacts') * 1000)';
+        sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        sMri = bst_memory('LoadMri', MriFile);
+        contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), [sContacts.Loc]') * 1000;
         switch lower(CoordSpace)
             case 'mni',   ctrl.jRadioMni.setSelected(1);
             case 'mri',   ctrl.jRadioMri.setSelected(1);
@@ -514,24 +520,36 @@ function UpdateContactList(CoordSpace)
         listModel.clear();
         ctrl.jListCont.setModel(listModel);
     else
-        sContactsMm = sContacts * 1000;
+        contacLocsMm = [sContacts.Loc]' * 1000;
         ctrl.jRadioScs.setSelected(1);
     end
-    % Update the list for display
-    for i = 1:length(sContacts)
-        itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', string(sContactsName(i)), sContactsMm(:,i));
-        listModel.addElement(BstListItem('', [], itemText, i));
-        % Get longest string
-        W = tk.getFontMetrics(jFont).stringWidth(itemText);
-        if (W > Wmax)
-            Wmax = W;
+    % Udpate list content
+    if isempty(contacLocsMm)
+        % Requested coordinates system is not available
+        itemText = 'Not available';
+        listModel.addElement(BstListItem('', [], itemText, 1));
+        Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
+    else
+        for i = 1:length(sContacts)
+            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', sContacts(i).Name, contacLocsMm(i,:));
+            listModel.addElement(BstListItem('', [], itemText, i));
+            % Get longest string
+            W = tk.getFontMetrics(jFont).stringWidth(itemText);
+            if (W > Wmax)
+                Wmax = W;
+            end
         end
     end
+
     ctrl.jListCont.setModel(listModel);
     % Update cell rederer based on longest channel name
     ctrl.jListCont.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
     ctrl.jListCont.repaint();
     drawnow;
+    % Seletect previously selected contacts
+    if ~isempty(sSelContacts)
+        SetSelectedContacts({sSelContacts.Name});
+    end
 end
 
 %% ===== UPDATE MODEL LIST =====
@@ -739,25 +757,19 @@ function UpdateElecProperties(isUpdateModelList)
 end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
-% on clicking on the coordinates on the panel, the crosshair on the MRI Viewer gets updated to show the corresponding location 
-function HighlightLocCont() %#ok<DEFNU>
+function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     % Get the handles
     hFig = bst_figures('GetFiguresByType', {'MriViewer'});
-    if isempty(hFig)
+    if isempty(hFig) || isempty(sSelContacts)
         return
-    end 
-    
-    % coordinates in SCS
-    selCoordScs = GetSelectedContacts();
-
-    % ===== FOR MRI =====
-    % update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], selCoordScs);    
+    end
+    % Update the cross-hair position on the MRI
+    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
 end
 
 %% ===== GET SELECTED ELECTRODES =====
 function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
-    sSelElec = [];
+    sSelElec = repmat(db_template('intraelectrode'), 0);
     iSelElec = [];
     iDS = [];
     iFig = [];
@@ -778,27 +790,22 @@ function [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes()
 end
 
 %% ===== GET SELECTED CONTACTS =====
-function [sSelCont, sContactName, iSelCont, iDS, iFig, hFig] = GetSelectedContacts()
-    sSelCont = [];
-    iSelCont = [];
-    iDS = [];
-    iFig = [];
-    hFig = [];
+function sSelContacts = GetSelectedContacts()
+    sSelContacts = repmat(db_template('intracontact'), 0);
     % Get panel handles
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
     % Get all contacts
-    sSelElec = GetSelectedElectrodes();
-    [sContacts, sContactsName, iDS, iFig, hFig] = GetContacts(sSelElec.Name);
+    sSelElec  = GetSelectedElectrodes();
+    sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
     end
     % Get JList selected indices
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
-    sContactName = sContactsName(iSelCont);
-    sSelCont = sContacts(:, iSelCont);
+    sSelContacts = sContacts(iSelCont);
 end
 
 
@@ -861,7 +868,7 @@ function SetSelectedElectrodes(iSelElec)
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields
     UpdateElecProperties();
-    UpdateContactList('SCS');
+    UpdateContactList();
 end
 
 %% ===== SET SELECTED CONTACT =====
@@ -890,10 +897,9 @@ function SetSelectedContacts(iSelCont)
         listModel = ctrl.jListCont.getModel();
         iSelItem = [];
         for i = 1:listModel.getSize()
-            contName = regexp(char(listModel.getElementAt(i-1)), SelContNames, 'match');
-            if strcmpi(contName{1},SelContNames)
+            itemNameParts = str_split(char(listModel.getElementAt(i-1)), ' ');
+            if ismember(itemNameParts{1}, SelContNames)
                 iSelItem(end+1) = i - 1;
-                break;
             end
         end
         if isempty(iSelItem)
@@ -920,7 +926,8 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
-    HighlightLocCont();
+    sContacts = GetSelectedContacts();
+    SetMriCrosshair(sContacts);
 end
 
 %% ===== SHOW CONTACTS MENU =====
@@ -1228,43 +1235,25 @@ function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
 end
 
 %% ===== GET CONTACTS FOR AN ELECTRODE ===== %%
-function [sContacts, sContactsName, iDSall, iFigall, hFigall] = GetContacts(selectedElecName)
+function sContacts = GetContacts(selectedElecName)
     global GlobalData;
+
+    sContacts = repmat(db_template('intracontact'), 0);
     % Get current figure
     [hFigall,iFigall,iDSall] = bst_figures('GetCurrentFigure');
     % Check if there are electrodes defined for this file
-    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile)
-        sContacts = [];
-        sContactsName = [];
+    if isempty(hFigall) || isempty(GlobalData.DataSet(iDSall).IntraElectrodes) || isempty(GlobalData.DataSet(iDSall).ChannelFile) || isempty(selectedElecName)
         return;
     end
-    % Get the channel file
-    ChannelFile = GlobalData.DataSet(iDSall).ChannelFile;
-    % Get all the figures that share this channel file
-    for iDS = 1:length(GlobalData.DataSet)
-        % Skip if not the correct channel file
-        if ~file_compare(GlobalData.DataSet(iDS).ChannelFile, ChannelFile)
-            continue;
-        end
-        % Get all the figures
-        for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
-            if ((iDS ~= iDSall(1)) || (iFig ~= iFigall(1))) && ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
-                iDSall(end+1) = iDS;
-                iFigall(end+1) = iFig;
-                hFigall(end+1) = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-            end
-        end
-    end
-
-    % Get the contacts for the electrode
-    sContacts = [];
-    sContactsName = [];
+    % Get the channel data
     ChannelData = GlobalData.DataSet(iDSall).Channel;
-    for i=1:length(ChannelData)
-        if strcmpi(ChannelData(i).Group, selectedElecName)
-            sContacts = [sContacts, ChannelData(i).Loc];
-            sContactsName = [sContactsName, {ChannelData(i).Name}];
-        end
+    % Replace empty Group with ''
+    [ChannelData(cellfun('isempty', {ChannelData.Group})).Group] = deal('');
+    % Get the contacts for the electrode
+    iChannels = find(ismember({ChannelData.Group}, selectedElecName));
+    for i = 1:length(iChannels)
+        sContacts(i).Name = ChannelData(iChannels(i)).Name;
+        sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
     end
 end
 
@@ -3052,19 +3041,38 @@ function CenterMriOnElectrode(sElec, hFigTarget)
 end
 
 
-%% ===== CREATE NEW IMPLANTATION =====
-function CreateNewImplantation(MriFile) %#ok<DEFNU>
+%% ===== CREATE IMPLANTATION =====
+function CreateImplantation(MriFile) %#ok<DEFNU>
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
-            % Get new folder "Implantation"
-            ProtocolInfo = bst_get('ProtocolInfo');
-            ImplantFolder = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sSubject.Name, 'Implantation'));
-            [tmp, Condition] = bst_fileparts(ImplantFolder);
-            % Create new folder
-            iStudy = db_add_condition(sSubject.Name, Condition, 1);
+            % Get folder "Implantation"
+            conditionName = 'Implantation';
+            [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
+            if ~isempty(sStudy)
+                [res, isCancel] = java_dialog('question', ['Warning: there is already an "Implantation" folder for this Subject.' 10 10 ...
+                                                           'What do you want to do with the existing implantation?'], ...
+                                                           'SEEG/ECOG implantation', [], {'Continue', 'Replace', 'Cancel'}, 'Continue');
+                if strcmpi(res, 'cancel') || isCancel
+                    return
+                elseif strcmpi(res, 'continue')
+                    newCondition = 0;
+                elseif strcmpi(res, 'replace')
+                    % Delete existing Implantation study
+                    db_delete_studies(iStudy);
+                    newCondition = 1;
+                end
+            else
+                newCondition = 1;
+            end
+            % Create new folder if needed
+            if newCondition
+                iStudy = db_add_condition(sSubject.Name, conditionName, 1);
+            end
+            % Get Implantation study
+            sStudy = bst_get('Study', iStudy);
         case 1
             % Use default channel file
             [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
@@ -3077,20 +3085,26 @@ function CreateNewImplantation(MriFile) %#ok<DEFNU>
     end
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
-    % Create empty channel file structure
-    ChannelMat = db_template('channelmat');
-    ChannelMat.Comment = 'SEEG/ECOG';
-    ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 0);
-    % Save new channel in the database
-    ChannelFile = db_set_channel(iStudy, ChannelMat, 0, 0);
+    % Channel file
+    if isempty(sStudy.Channel) || isempty(sStudy.Channel(1).FileName)
+        % Create empty channel file structure
+        ChannelMat = db_template('channelmat');
+        ChannelMat.Comment = 'SEEG/ECOG';
+        ChannelMat.Channel = repmat(db_template('channeldesc'), 1, 0);
+        % Save new channel in the database
+        ChannelFile = db_set_channel(iStudy, ChannelMat, 0, 0);
+    else
+        % Get channel file from existent study
+        ChannelFile = sStudy.Channel(1).FileName;
+    end
     % Switch to functional data
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display channels
-    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Display isosurface
     DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
+    % Display channels
+    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Close progress bar
     bst_progress('stop');
 end

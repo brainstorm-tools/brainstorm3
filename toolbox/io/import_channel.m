@@ -557,7 +557,7 @@ end
 
 
 %% ===== DETECT CHANNEL TYPES =====
-% Remove fiducials (expect for BIDS files)
+% Remove fiducials (except for BIDS files)
 isRemoveFid = isempty(strfind(FileFormat, 'BIDS-'));
 % Detect auxiliary EEG channels + align channel
 ChannelMat = channel_detect_type(ChannelMat, isAlignScs, isRemoveFid);

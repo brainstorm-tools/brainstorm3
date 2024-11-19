@@ -301,13 +301,40 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Else: Compute interpolation matrix grid points => MRI voxels
                     else
                         sMri.FileName = MriFile;
-                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms','t'});
-                        MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
+                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResudltsMat.DisplayUnits, {'s','ms','t'});
+                        switch (ResultsMat.HeadModelType)
+                            case 'volume'
+                                % Compute interpolation
+                                MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
+
+                            case 'mixed'
+                                % Compute the surface interpolation
+                                tess2mri_interp = tess_interp_mri(ResultsMat.SurfaceFile, sMri);
+                                % Initialize returned interpolation matrix
+                                MriInterp = sparse(numel(sMri.Cube(:,:,:,1)), size(ResultsMat.GridAtlas.Grid2Source, 1));
+                                % Process each region separately
+                                ind = 1;
+                                sScouts = ResultsMat.GridAtlas.Scouts;
+                                for i = 1:length(sScouts)
+                                    % Indices in the interpolation matrix
+                                    iGrid = ind + (0:length(sScouts(i).GridRows) - 1);
+                                    ind = ind + length(sScouts(i).GridRows);
+                                    % Interpolation depends on the type of region (volume or surface)
+                                    switch (sScouts(i).Region(2))
+                                        case 'V'
+                                            GridLoc = ResultsMat.GridLoc(sScouts(i).GridRows,:);
+                                            MriInterp(:,iGrid) = grid_interp_mri(GridLoc, sMri, ResultsMat.SurfaceFile, 1, [], [], GridSmooth);
+                                        case 'S'
+                                            MriInterp(:,iGrid) = tess2mri_interp(:, sScouts(i).Vertices);
+                                    end
+                                end
+                        end
                         % Save values for next iteration
                         prevInterp  = MriInterp;
                         prevGridLoc = ResultsMat.GridLoc;
                     end
             end
+
         % Export surface-based files
         else
             MriInterp = [];

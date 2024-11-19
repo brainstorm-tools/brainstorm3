@@ -58,7 +58,8 @@ end
 % Is processing MEG?
 isMeg  = ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'RICOH'});
 isNirs = ismember(Modality, {'NIRS','NIRS-BRS'});
-isEeg  = ~isMeg && ~isNirs;
+isHp   = ismember(Modality, {'HeadPoints'});
+isEeg  = ~isMeg && ~isNirs && ~isHp;
 % Get study
 sStudy = bst_get('ChannelFile', ChannelFile);
 % Get subject
@@ -171,21 +172,32 @@ elseif isNirs
     hSensorsLabels = findobj(hFig, 'Tag', 'NirsCapText');
     hSensorsPatch = findobj(hFig, 'Tag', 'NirsCapPatch');
     hSensorsMarkers = [];
+% Head points
+elseif isHp
+    view_headpoints(ChannelFile, [], 0);
+    hSensorsPatch   = [];
+    hSensorsMarkers = [];
+    hSensorsLabels  = [];
+    SensorsVertices = [];
+    hHelmetPatch    = [];
+    HelmetVertices  = [];
 end
-% Check that it was displayed correctly
-if (isempty(hSensorsPatch) || (~isempty(hSensorsPatch) && ~ishandle(hSensorsPatch(1)))) && ...
-   (isempty(hSensorsMarkers) || (~isempty(hSensorsMarkers) && ~ishandle(hSensorsMarkers(1))))
-    bst_error('Cannot display sensors patch', 'Align electrode contacts', 0);
-    return
-end
-% Get sensors locations from patch
-SensorsVertices = GetSensorsVertices(hSensorsPatch, hSensorsMarkers);
-% Get helmet patch
-hHelmetPatch = findobj(hFig, 'Tag', 'HelmetPatch');
-if isempty(hHelmetPatch)
-    HelmetVertices = [];
-else
-    HelmetVertices = get(hHelmetPatch, 'Vertices');
+if ~isHp
+    % Check that it was displayed correctly
+    if (isempty(hSensorsPatch) || (~isempty(hSensorsPatch) && ~ishandle(hSensorsPatch(1)))) && ...
+       (isempty(hSensorsMarkers) || (~isempty(hSensorsMarkers) && ~ishandle(hSensorsMarkers(1))))
+        bst_error('Cannot display sensors patch', 'Align electrode contacts', 0);
+        return
+    end
+    % Get sensors locations from patch
+    SensorsVertices = GetSensorsVertices(hSensorsPatch, hSensorsMarkers);
+    % Get helmet patch
+    hHelmetPatch = findobj(hFig, 'Tag', 'HelmetPatch');
+    if isempty(hHelmetPatch)
+        HelmetVertices = [];
+    else
+        HelmetVertices = get(hHelmetPatch, 'Vertices');
+    end
 end
 
 
@@ -271,6 +283,7 @@ gChanAlign.Modality        = Modality;
 gChanAlign.isMeg           = isMeg;
 gChanAlign.isNirs          = isNirs;
 gChanAlign.isEeg           = isEeg;
+gChanAlign.isHp            = isHp;
 gChanAlign.FinalTransf     = eye(4);
 gChanAlign.hFig            = hFig;
 gChanAlign.hSurfacePatch   = hSurfacePatch;
@@ -290,6 +303,8 @@ gChanAlign.HeadPointsMarkersLoc = HeadPointsMarkersLoc;
 gChanAlign.HeadPointsLabelsLoc  = HeadPointsLabelsLoc;
 gChanAlign.HeadPointsFidLoc     = HeadPointsFidLoc;
 gChanAlign.HeadPointsHpiLoc     = HeadPointsHpiLoc;
+gChanAlign.HeadPointsMarkersSel  = [];
+gChanAlign.hHeadPointsMarkersSel = [];
 
 % ===== CONFIGURE FIGURE =====
 % Get figure description in GlobalData structure
@@ -349,12 +364,16 @@ elseif gChanAlign.isEeg
     gChanAlign.hButtonLabels    = uitoggletool(hToolbar, 'CData', java_geticon('ICON_LABELS'), 'TooltipString', 'Show/Hide electrodes labels', 'ClickedCallback', @ToggleLabels);
     gChanAlign.hButtonEditLabel = uipushtool(  hToolbar, 'CData', java_geticon('ICON_EDIT'),   'TooltipString', 'Edit selected channel label', 'ClickedCallback', @EditLabel);
 end
-gChanAlign.hButtonTransX   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_X'), 'TooltipString', 'Translation/X: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation, 'separator', 'on');
-gChanAlign.hButtonTransY   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Y'), 'TooltipString', 'Translation/Y: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
-gChanAlign.hButtonTransZ   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Z'), 'TooltipString', 'Translation/Z: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
-gChanAlign.hButtonRotX     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_X'),    'TooltipString', 'Rotation/X: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation, 'separator', 'on');
-gChanAlign.hButtonRotY     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Y'),    'TooltipString', 'Rotation/Y: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
-gChanAlign.hButtonRotZ     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Z'),    'TooltipString', 'Rotation/Z: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
+if gChanAlign.isHp
+    gChanAlign.hButtonDeleteHp = uipushtool(hToolbar, 'CData', java_geticon('ICON_DELETE'), 'TooltipString', 'Remove selected head points', 'ClickedCallback', @RemoveHeadpoints);
+else
+    gChanAlign.hButtonTransX   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_X'), 'TooltipString', 'Translation/X: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation, 'separator', 'on');
+    gChanAlign.hButtonTransY   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Y'), 'TooltipString', 'Translation/Y: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
+    gChanAlign.hButtonTransZ   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Z'), 'TooltipString', 'Translation/Z: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
+    gChanAlign.hButtonRotX     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_X'),    'TooltipString', 'Rotation/X: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation, 'separator', 'on');
+    gChanAlign.hButtonRotY     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Y'),    'TooltipString', 'Rotation/Y: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
+    gChanAlign.hButtonRotZ     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Z'),    'TooltipString', 'Rotation/Z: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
+end
 
 if gChanAlign.isMeg
     gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
@@ -365,7 +384,7 @@ elseif gChanAlign.isNirs
     gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
     gChanAlign.hButtonMoveChan = [];
     gChanAlign.hButtonProject = [];
-else % isEeg
+elseif gChanAlign.isEeg
     gChanAlign.hButtonResizeX  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_X'),      'TooltipString', 'Resize/X: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation, 'separator', 'on');
     gChanAlign.hButtonResizeY  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Y'),      'TooltipString', 'Resize/Y: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
     gChanAlign.hButtonResizeZ  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Z'),      'TooltipString', 'Resize/Z: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
@@ -422,6 +441,10 @@ function AlignButtonDown_Callback(hObject, ev)
     elseif gChanAlign.isEeg && strcmpi(get(gChanAlign.hButtonAdd, 'State'), 'on')
         gChanAlign.mouseClicked = 1;
         AddElectrode();
+    % Left-click on head point, with HeadPoint modality
+    elseif gChanAlign.isHp && ismember(get(get(gChanAlign.hFig,'CurrentObject'), 'Tag'), {'HeadPointsMarkers', 'HeadPointsMarkersSel'})
+        gChanAlign.mouseClicked = 1;
+        SelectHeadpoint();
     else
         % Call the default mouse down handle
         gChanAlign.Figure3DButtonDown_Bak(hObject, ev);
@@ -669,6 +692,17 @@ function UpdatePoints(iSelChan)
             set(gChanAlign.hHeadPointsLabels(i), 'Position', ...
                 [1.05, 1.05, 1.03] .* gChanAlign.HeadPointsLabelsLoc(i,:));
         end
+        % Markers for selected
+        if ~isempty(gChanAlign.hHeadPointsMarkersSel)
+            ix = gChanAlign.HeadPointsMarkersSel;
+            if isempty(ix)
+                % Delete all select markers patch
+                set(gChanAlign.hHeadPointsMarkersSel, 'Vertices', [], 'Faces', []);
+            else
+                % Recreate with selected vetices
+                set(gChanAlign.hHeadPointsMarkersSel, 'Vertices', gChanAlign.HeadPointsMarkersLoc(ix,:), 'Faces', [1:length(ix)]);
+            end
+        end
     end
 end
 
@@ -806,6 +840,11 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
             iHpi = get(gChanAlign.hHeadPointsHpi, 'UserData');
             ChannelMat.HeadPoints.Loc(:,iHpi) = gChanAlign.HeadPointsHpiLoc';
         end
+        % Remove headpoints [NaN, NaN, NaN]
+        iDel = find(all(isnan(ChannelMat.HeadPoints.Loc), 1));
+        ChannelMat.HeadPoints.Loc(:, iDel) = [];
+        ChannelMat.HeadPoints.Label(iDel)  = [];
+        ChannelMat.HeadPoints.Type(iDel)   = [];
     end
 
     % If a TransfMeg field with translations/rotations available
@@ -851,17 +890,25 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
+        % Sensors or headpoints changed
+        strTitle = 'Align sensors';
+        strType  = 'sensor';
+        if gChanAlign.isHp
+            strTitle = 'Head points';
+            strType  = 'head points';
+        end
+
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
             SaveChanged = 1;
         else
-            SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
+            SaveChanged = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
                     'Would you like to save changes? ' 10 10], 'Align sensors');
         end
         % Save changes to channel file and close figure
         if SaveChanged
             % Progress bar
-            bst_progress('start', 'Align sensors', 'Updating channel file...');
+            bst_progress('start', strTitle, 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
@@ -883,7 +930,7 @@ function AlignClose_Callback(varargin)
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
     % Apply to other recordings with same sensor locations in the same subject
-    if SaveChanged
+    if SaveChanged && ~gChanAlign.isHp
         CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
     end
 end
@@ -1350,4 +1397,71 @@ function SetSensorsVertices(hSensorsPatch, hSensorsMarkers, SensorsVertices)
     end
 end
 
+%% ===== SELECT HEADPOINT =====
+function SelectHeadpoint()
+    global gChanAlign;
+    hAxes = findobj(gChanAlign.hFig, '-depth', 1, 'Tag', 'Axes3D');
+    % Get line-of-view for mouse pointer with respect to the axes: [Front; Back]
+    viewClick = get(hAxes, 'CurrentPoint');
+    % Distance of headpoint marker to this line
+    vertices = gChanAlign.HeadPointsMarkersLoc;
+    verticesF  = bsxfun(@minus, vertices, viewClick(1,:));
+    viewClickF = viewClick(2,:) - viewClick(1,:);
+    crossVL = cross(verticesF, repmat(viewClickF, size(verticesF, 1), 1));
+    dViewClick = sqrt(sum(crossVL.^2,2)) ./ sqrt(sum(viewClickF.^2, 2));
+    [~, iSel] = min(dViewClick);
+    % Add or remove from selected head points
+    if ~ismember(iSel, gChanAlign.HeadPointsMarkersSel)
+        gChanAlign.HeadPointsMarkersSel = [gChanAlign.HeadPointsMarkersSel, iSel];
+    else
+        gChanAlign.HeadPointsMarkersSel(gChanAlign.HeadPointsMarkersSel == iSel) = [];
+    end
+    ix = gChanAlign.HeadPointsMarkersSel;
+    % Create or update patch for selected head points
+    if isempty(gChanAlign.hHeadPointsMarkersSel)
+        % Create with selected vertices
+        hNew = patch(vertices(ix,1), vertices(ix,2), vertices(ix,3), 'w', ...
+            'Parent',          hAxes, ...
+            'LineWidth',       2, ...
+            'FaceColor',       'none', ...
+            'EdgeColor',       'none', ...
+            'MarkerFaceColor', [1, 0, 0], ...
+            'MarkerEdgeColor', [1, 0, 0], ...
+            'MarkerSize',      10, ...
+            'Marker',          'x', ...
+            'UserData',        ix, ...
+            'Tag',             'HeadPointsMarkersSel');
+        gChanAlign.hHeadPointsMarkersSel = hNew;
+    else
+        UpdatePoints();
+    end
+end
 
+%% ===== DELETE HEADPOINTS =====
+function RemoveHeadpoints(varargin)
+    global GlobalData gChanAlign;
+    if isempty(gChanAlign.HeadPointsMarkersSel)
+        % Nothing to do
+        return
+    end
+    % Display warning message
+    if gChanAlign.isFirstRmWarning
+        res = java_dialog('confirm', ['You are about to delete the selected headpoints.', 10 10, ...
+                           'Are you sure you want to remove these headpoints ?' 10 10], 'Head points');
+        if ~res
+            return
+        end
+        gChanAlign.isFirstRmWarning = 0;
+    end
+    % Mark as NaN markers to remove
+    gChanAlign.HeadPointsMarkersLoc(gChanAlign.HeadPointsMarkersSel, :) = NaN;
+    % Remove from selected head points
+    gChanAlign.HeadPointsMarkersSel = [];
+    % Update iExtra indices
+    iExtra = get(gChanAlign.hHeadPointsMarkers, 'UserData');
+    iExtra(gChanAlign.HeadPointsMarkersSel)
+    % Update plot
+    UpdatePoints();
+    % Register changes
+    gChanAlign.isChanged = 1;
+end

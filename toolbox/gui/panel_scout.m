@@ -713,6 +713,58 @@ function CreateMenuInverse(jMenu)
 end
 
 
+%% ===== SET LOCATION CONSTRAINT =====
+function SetLocationConstraint(iScout, locationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set location constraint
+    switch lower(locationConstraint)
+        case 'surface'
+            regionArgument = '.S.';
+        case 'volume'
+            regionArgument = '.V.';
+        case 'deep brain'
+            regionArgument = '.D.';
+        case 'exclude'
+            regionArgument = '.X.';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
+end
+
+
+%% ===== SET ORIENTATION CONSTRAINT =====
+function SetOrientationConstraint(iScout, orientationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set orientation constraint
+    switch lower(orientationConstraint)
+        case 'constrained'
+            regionArgument = '..C.';
+        case 'unconstrained'
+            regionArgument = '..U';
+        case 'loose'
+            regionArgument = '..L';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
+end
+
+
 %% ===== UPDATE ATLAS LIST =====
 function UpdateAtlasList(sSurf)
     import org.brainstorm.list.*;
@@ -882,27 +934,39 @@ function UpdateScoutProperties()
         strSize = sprintf('  Vertices: %d', length(allVertices));
         % Volume: Compute the volume enclosed in the scout (cm3)
         if isVolumeAtlas
+            GridLoc = [];
+            if bst_get('MatlabVersion') >=840 % R2014b
+                hFig = bst_figures('GetCurrentFigure', '3D');
+                GridLoc = GetFigureGrid(hFig);
+            end
             totalVol = 0;
             for i = 1:length(sScouts)
-                patchVol = 0;
-                if (length(sScouts(i).Vertices) > 3) && ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
-                    % Get the faces and vertices of the patch
-                    Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
-                    Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
-                    % Compute patch volume
-                    if (size(Faces,1) > 1)
-                        patchVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                scoutVol = 0;
+                if (length(sScouts(i).Vertices) > 3)
+                    % Compute volume using scout vertices (for 3DFig or MRIViewer)
+                    if ~isempty(GridLoc)
+                        [~, scoutVol] = boundary(GridLoc(sScouts(i).Vertices, :));
+                        scoutVol = scoutVol * 1e6;
+                    % Compute volume from scout path (only for 3DFig)
+                    elseif ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
+                        % Get the faces and vertices of the patch
+                        Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
+                        Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
+                        % Compute patch volume
+                        if (size(Faces,1) > 1)
+                            scoutVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                        end
                     end
                 end
-                % Use the maximum of 0.03cm3 and the compute volume of the patch
-                minVol = 0.01 * length(sScouts(i).Vertices);
-                if (minVol > patchVol)
-                    patchVol = minVol;
-                end
                 % Sum with the other scouts
-                totalVol = totalVol + patchVol;
+                totalVol = totalVol + scoutVol;
             end
-            strArea = sprintf('Volume: %1.2f cm3  ', totalVol);
+            % Prepare volume (cm3) string
+            strCm3 = 'Use MRI(3D)';
+            if totalVol ~= 0
+                strCm3 = sprintf('%1.2f cm3  ', totalVol);
+            end
+            strArea = ['Volume: ', strCm3];
             
         % Surface: Compute the total area (cm2)
         else
@@ -4010,7 +4074,7 @@ function ExpandWithCorrelation(varargin)
 end
 
 %% ===== NEW SURFACE: FROM SELECTED SCOUTS =====
-function NewSurface(isKeep)
+function NewTessFile = NewSurface(isKeep)
     % === GET VERTICES TO REMOVE ===
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
@@ -4060,8 +4124,10 @@ function NewSurface(isKeep)
     [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
     % Register this file in Brainstorm database
     db_add_surface(iSubject, NewTessFile, sSurfNew.Comment);
-    % Re-open one to show the modifications
-    view_surface(NewTessFile);
+    if nargout == 0
+        % Re-open one to show the modifications
+        view_surface(NewTessFile);
+    end
 end
 
 %% ===== EXPORT SCOUTS TO MATLAB =====
@@ -5619,6 +5685,9 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
     GridLoc = [];
     HeadModelType = [];
     GridAtlas = [];
+    if isempty(hFig)
+        return
+    end
     % Get source file displayed in the figure
     ResultsFile = getappdata(hFig, 'ResultsFile');
     if ~isempty(ResultsFile)

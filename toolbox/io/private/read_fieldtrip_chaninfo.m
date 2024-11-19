@@ -190,7 +190,7 @@ for i = 1:nChannels
         end
         % Apply units
         if isfield(grad, 'unit') && ~isempty(grad.unit)
-            ChannelMat.Channel(i).Loc(:,1) = bst_units_ui(grad.unit, ChannelMat.Channel(i).Loc(:,1));
+            ChannelMat.Channel(i).Loc = bst_units_ui(grad.unit, ChannelMat.Channel(i).Loc);
         end
         % Get type
         if isempty(ChannelMat.Channel(i).Type)

@@ -127,12 +127,12 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE CAT12 FOLDER =====
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import CAT12 folder', 'Parsing folder...');
-% Find MRI
-T1File = file_find(CatDir, '*.nii', 1, 0);
+% Find MRI (.nii or .nii.gz)
+T1File = file_find(CatDir, '*.nii*', 1, 0);
 if isempty(T1File)
-    errorMsg = [errorMsg 'Original MRI file was not found: *.nii in top folder' 10];
+    errorMsg = [errorMsg 'Original MRI file was not found: *.nii (or *.nii.gz) in top folder' 10];
 elseif (length(T1File) > 1)
-    errorMsg = [errorMsg 'Multiple .nii found in top folder' 10];
+    errorMsg = [errorMsg 'Multiple .nii (or *.nii.gz) found in top folder' 10];
 end
 % Find surfaces
 TessLhFile = file_find(CatDir, 'lh.central.*.gii', 2);

@@ -37,7 +37,8 @@ sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
 sFileOut.header.navg      = sFileOut.prop.nAvg;
 % sFileOut.header.version   = 51;   % April 2019
-sFileOut.header.version   = 52;   % March 2023
+% sFileOut.header.version   = 52;   % March 2023
+sFileOut.header.version   = 53;   % September 2024
 sFileOut.header.nsamples  = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
@@ -108,7 +109,8 @@ for i = 1:length(ChannelMat.Projector)
     if ~isempty(ChannelMat.Projector(i).SingVal)
         fwrite(fid, ChannelMat.Projector(i).SingVal, 'float32');          % FLOAT32(N) : SingVal matrix
     end
-    fwrite(fid, ChannelMat.Projector(i).Status, 'int8');                % INT8(1)    : Status
+    fwrite(fid, ChannelMat.Projector(i).Status, 'int8');                  % INT8(1)    : Status
+    fwrite(fid, str_zeros(ChannelMat.Projector(i).Method, 20), 'char');   % CHAR(20)   : Projector method
 end
 
 % ===== HEAD POINTS =====
