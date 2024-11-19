@@ -100,7 +100,6 @@ function OutputFiles = Run(sProcess, sInputs)
     iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
-    % TODO Time is usually, just beginning and end
     NewTime = sMetaData(iRefRec).Time;
     % New channel definition
     NewChannelMat = db_template('ChannelMat');
