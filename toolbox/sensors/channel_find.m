@@ -59,7 +59,31 @@ for i = 1:length(target)
         iChan = good_channel(Channel, [], target{i});
     % Search by channel name
     else
-        iChan = find(contains(allNames, target{i}));
+        
+        if contains(allTypes, 'NIRS')
+            
+            % Detect the target token
+            target_token = regexp(target{i}, '^(S([0-9]+)?)?(D([0-9]+)?)?(WL\d+|HbO|HbR|HbT)?$', 'tokens');
+            target_token = target_token{1};
+            
+            % Construct regex with target token + default
+            if isempty(target_token{1})
+                target_token{1} = 'S([0-9]+)';
+            end
+            if isempty(target_token{2})
+                target_token{2} = 'D([0-9]+)';
+            end
+            if isempty(target_token{3})
+                target_token{3} = '(WL\d+|HbO|HbR|HbT)';
+            end
+            
+            % Find the corresponding channels
+            tmp = regexp(allNames, sprintf('^%s%s%s$',target_token{1},target_token{2},target_token{3}) , 'tokens');
+            iChan = find(cellfun(@(x)~isempty(x), tmp) );
+            
+        else
+            iChan = find(strcmpi(allNames, target{i}));
+        end
     end
     % Search by indices
     if isempty(iChan)
