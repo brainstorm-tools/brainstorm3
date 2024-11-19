@@ -102,7 +102,9 @@ function OutputFiles = Run(sProcess, sInputs)
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
     % New channel definition
+    NewChannelsN  = 0;
     NewChannelMat = db_template('ChannelMat');
+    NewChannelMat.Channel = repmat(db_template('channeldesc'), NewChannelsN);
     % New channel flag
     NewChannelFlag = [];
     % New eventse
@@ -111,11 +113,18 @@ function OutputFiles = Run(sProcess, sInputs)
     for iInput = 1 : nInputs
         % Get channel file
         tmpChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-        % TODO: Assure unique names for channels
-
-        % Concate channels
-        sIdxChNew{iInput} = length(NewChannelMat.Channel) + [1 : length(tmpChannelMat.Channel)];
+        % Concatenate channels
+        % Ensure unique names for channels
+        ixChannelDup = find(ismember({tmpChannelMat.Channel.Name}, {NewChannelMat.Channel.Name}));
+        for iDup = 1 : length(ixChannelDup)
+            tmpChannelMat.Channel(ixChannelDup(iDup)).Name = file_unique(tmpChannelMat.Channel(ixChannelDup(iDup)).Name, {NewChannelMat.Channel.Name});
+        end
+        sIdxChNew{iInput} =  NewChannelsN + [1 : length(tmpChannelMat.Channel)];
         NewChannelMat.Channel = [NewChannelMat.Channel, tmpChannelMat.Channel];
+
+        % Concatenate channel flag
+        NewChannelFlag = [NewChannelFlag; sMetaData(iInput).ChannelFlag];
+
         % TODO Concat projectors
 
         % TODO Concat events
@@ -124,8 +133,6 @@ function OutputFiles = Run(sProcess, sInputs)
             % Update time to closet in new time vector
             % Concate events
 
-        % Concatenate channel flag
-        NewChannelFlag = [NewChannelFlag; sMetaData(iInput).ChannelFlag];
 
         % Copy videos
         tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
@@ -149,6 +156,8 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
 
+        % New channel count
+        NewChannelsN = length(NewChannelMat.Channel);
         % Progress
         bst_progress('inc', 1);
     end
