@@ -177,27 +177,16 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.6';
+    PlugDesc(end).Version        = '1.9.8';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-    PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
-                                    'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
-                                    'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', 'bin/cgalpoly.mexa64', 'bin/cgalpoly.mexmaci64', 'bin/cgalpoly_x86-64.exe', ...   % Removing cgalpoly completely (not used)
-                                    'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
-                                    'bin/cork.exe', ...
-                                    'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
-                                    'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
-                                    'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
-                                    'bin/tetgen1.5.mexglx'};
-    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
-                                    'bin/tetgen1.5.exe'};
+    PlugDesc(end).UnloadPlugs    =  {'easyh5','jsnirfy'};
 
     % === ANATOMY: NEUROMAPS ===
     PlugDesc(end+1)              = GetStruct('neuromaps');
@@ -352,6 +341,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
 
     % === I/O: JSNIRF ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
@@ -365,6 +355,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).RequiredPlugs  = {'easyh5'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
@@ -1386,6 +1377,12 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
+            % easyh5 and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'easyh5') || strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                    TestFilePath = [];
+                end
             end
         else
             TestFilePath = [];
@@ -2136,6 +2133,15 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         return;
     end
     
+    % === PROCESS DEPENDENCIES ===
+    % Unload incompatible plugins
+    if ~isempty(PlugDesc.UnloadPlugs)
+        for iPlug = 1:length(PlugDesc.UnloadPlugs)
+            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
+            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
+        end
+    end
+
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
@@ -2208,14 +2214,6 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('setimage', LogoFile);
     end
     
-    % === PROCESS DEPENDENCIES ===
-    % Unload incompatible plugins
-    if ~isempty(PlugDesc.UnloadPlugs)
-        for iPlug = 1:length(PlugDesc.UnloadPlugs)
-            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
-            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
-        end
-    end
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
@@ -3205,5 +3203,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh','mcxlab-cuda', 'xdf'};
+    pluginNames = { 'duneuro', 'mcxlab-cuda'};
 end
