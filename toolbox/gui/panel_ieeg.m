@@ -3042,9 +3042,12 @@ end
 
 
 %% ===== CREATE IMPLANTATION =====
-function CreateImplantation(MriFile) %#ok<DEFNU>
+% 
+function CreateImplantation(MriFile, isAsk) %#ok<DEFNU>
+    % 
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
+    
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
@@ -3083,6 +3086,16 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         case 2
             error('The subject uses a shared channel file, it should not be edited in this way.');
     end
+
+    % Ask which volume to proceeed with
+    VolMat = struct([]);
+    if isAsk
+        VolMat = AskImplantationVolume(sSubject);
+        if ~VolMat.isMri && ~VolMat.isCt && ~VolMat.isIsosurface
+            return
+        end
+    end
+
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
     % Channel file
@@ -3101,12 +3114,70 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display isosurface
-    DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
     % Display channels
-    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
+    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy, 0, VolMat);
+    if isAsk && VolMat.isIsosurface
+        % Display isosurface
+        DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
+    end
     % Close progress bar
     bst_progress('stop');
+end
+
+%% ===== SEEG IMPLANTATION: ASK FOR IMPLANTATION VOLUME ===== %%
+function VolMat = AskImplantationVolume(sSubject)
+    % Set defaults
+    VolMat = struct('isMri',        0, ...
+                    'isCt',         0, ...
+                    'isIsosurface', 0);
+    
+    % Locate indices for CT volumes and Isosurfaces
+    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+    iIsosurface = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+    
+    % Determine available options for modalities
+    % MRI not available, CT volume(s) available
+    if ~isempty(iCtVol) && iCtVol(1)==1
+        % If only CT, Isosurface is available and MRI not available
+        if ~isempty(iIsosurface)
+            options = {'CT', 'CT+Isosurface', 'Cancel'};
+        % If only CT is available and MRI, Isosurface  not available
+        else
+            options = {'CT', 'Cancel'};
+        end
+    % Case-1: If MRI is available and CT,IsoSurface not available
+    % Case-2: With MRI present, if user deleted the CT(s) but not the Isosurface
+    elseif isempty(iCtVol)
+        options = {'MRI', 'Cancel'};
+    % If MRI, CT is available and IsoSurface not available
+    elseif ~isempty(iCtVol) && isempty(iIsosurface)
+        options = {'MRI', 'CT', 'MRI+CT', 'Cancel'};
+    % If MRI, CT, Isosurface are all available
+    else
+        options = {'MRI', 'CT', 'MRI+CT', 'MRI+CT+Isosurface', 'Cancel'};
+    end
+    [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
+                                                   'How do you want to continue with the existing implantation?'], ...
+                                                   'SEEG/ECOG implantation', [], options, 'Cancel');
+    if strcmpi(res, 'cancel') || isCancel
+        return
+    end
+    switch lower(res)
+        case 'mri'
+            VolMat.isMri = 1;
+        case 'ct'
+            VolMat.isCt = 1;
+        case 'mri+ct'
+            VolMat.isMri = 1;
+            VolMat.isCt = 1;
+        case 'ct+isosurface'
+            VolMat.isCt = 1;
+            VolMat.isIsosurface = 1;
+        case 'mri+ct+isosurface'
+            VolMat.isMri = 1;
+            VolMat.isCt = 1;
+            VolMat.isIsosurface = 1;
+    end
 end
 
 %% ===== LOAD ELECTRODES =====
@@ -3152,67 +3223,82 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
 end
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
-% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
+% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0, VolMat=struct([]))
 %         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
-function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit, VolMat)
     % Parse inputs
+    if (nargin < 5) || isempty(VolMat)
+        VolMat = struct([]);
+    end
     if (nargin < 4) || isempty(isEdit)
         isEdit = 0;
     end
     
-    % ==== check if the subject has just MRI or both MRI+CT =====
-    % Get study
-    sStudy = bst_get('ChannelFile', ChannelFile);
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    if isempty(sSubject) || isempty(sSubject.Anatomy)
-        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
-    end
-    % Find CT volumes
-    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
-    if ~isempty(iCtVol)
-        tmp = iCtVol(1);
-        % Prefer a masked CT volume if available
-        if length(iCtVol) > 1
-            iMask = find(cellfun(@(x) ~isempty(regexp(x, 'masked', 'match')), {sSubject.Anatomy(iCtVol).FileName}));
-            if ~isempty(iMask)
-                tmp = iCtVol(iMask(1));
-            end
-        end
-        iCtVol = tmp;
-    end
-    
-    % Set the MRI Viewer to display
+    % Get MRI to display
     if ischar(iAnatomy)
-        % if implantation starts from CT then definitely MRI exists
-        if ~isempty(regexp(iAnatomy, 'CT', 'match'))
-            MriFile = sSubject.Anatomy(1).FileName;
-            CtFile = iAnatomy;
-        % if implantation starts from MRI then CT may or maynot exist
-        else
-            % if CT exists
-            if iCtVol
-                MriFile = iAnatomy;
-                CtFile = sSubject.Anatomy(iCtVol).FileName;
-            else
-                MriFile = iAnatomy;
-                CtFile = [];
+         MriFile = iAnatomy;
+    else
+        % Get study
+        sStudy = bst_get('ChannelFile', ChannelFile);
+        % Get subject
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        if isempty(sSubject) || isempty(sSubject.Anatomy)
+            bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+        end
+        % MRI volume
+        MriFile = sSubject.Anatomy(iAnatomy).FileName;
+    end
+    % Load the MRI
+    sMri = bst_memory('LoadMri', MriFile);
+    % Initialize empty CT volume
+    CtFile = [];
+
+    % Check if 'VolMat' structure is valid and contains CT data
+    if ~isempty(VolMat) && VolMat.isCt
+        % First find 'CtFile' based on IsoSurface history
+        if VolMat.isIsosurface
+            ProtocolInfo = bst_get('ProtocolInfo');
+            iIsosurface = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+            sSurf = load(bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iIsosurface).FileName));
+            if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+                % Search for CT threshold in history
+                ctEntry = regexp([sSurf.History{:, 3}], 'Thresholded CT:\s*(\S+)', 'tokens', 'once');
+                if ~isempty(ctEntry)
+                    % Locate corresponding CT volume in Anatomy
+                    iCtFile = find(cellfun(@(x) ~isempty(regexp(x, ctEntry{1}, 'match')), {sSubject.Anatomy.FileName}));
+                    if ~isempty(iCtFile)
+                        CtFile = sSubject.Anatomy(iCtFile).FileName;
+                    end
+                end
             end
         end
-    else
-        % if implantation starts from CT then definitely MRI exists
-        if ~isempty(regexp(sSubject.Anatomy(iAnatomy).FileName, 'CT', 'match'))
-            MriFile = sSubject.Anatomy(1).FileName;
-            CtFile = sSubject.Anatomy(iAnatomy).FileName;
-        % if implantation starts from MRI then CT may or maynot exist
-        else
-            % if CT exists
-            if iCtVol
-                MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = sSubject.Anatomy(iCtVol).FileName;
+        % If 'CtFile' still not found then give option to user
+        if isempty(CtFile)
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+            % For overlay, clean CT list eliminating ones with unmatching dimensions
+            if VolMat.isMri
+                iCtClean = iCtVol(arrayfun(@(iCt) isequal(size(sMri.Cube(:,:,:,1)), ...
+                               size(bst_memory('LoadMri', sSubject.Anatomy(iCt).FileName).Cube(:,:,:,1))), iCtVol));
             else
-                MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = [];
+                iCtClean = iCtVol;
+            end
+            if ~isempty(iCtClean)
+                if length(iCtClean) > 1
+                    % Prompt for the CT file selection
+                    texCtComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtClean).Comment});
+                    if isempty(texCtComment)
+                        return
+                    end
+                    % Find the corresponding CT file
+                    iCtFile = find(cellfun(@(x) ~isempty(regexp(x, [texCtComment '_volct.mat'], 'match')), {sSubject.Anatomy.FileName}));
+                else
+                    % Only one CT volume, no need to prompt
+                    iCtFile = iCtClean;
+                end        
+                % Extract the CT file name if available
+                if ~isempty(iCtFile)
+                    CtFile = sSubject.Anatomy(iCtFile).FileName;
+                end
             end
         end
     end
@@ -3222,11 +3308,25 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if ~isempty(hFig)
         return
     end
-    % Display the MRI Viewer
-    [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
+
+    % == DISPLAY THE MRI VIEWER
+    % User directly right clicks on the Anatomy volume (MriFile = MRI/CT)
+    if isempty(VolMat)
+        [hFig, iDS, iFig] = view_mri(MriFile, [], [], 2);
+    % (VolMat.isCt && ~VolMat.isMri): user right clicks on subject, chooses 'CT' and it has CT but no MRI
+    % Also say user creates isoSurface from a CT whose dimensions do not match to MRI, just show the CT file for implantation 
+    elseif ~isempty(CtFile) && ((VolMat.isCt && ~VolMat.isMri) || ~isequal(size(sMri.Cube(:,:,:,1)), size(bst_memory('LoadMri', CtFile).Cube(:,:,:,1))))
+        [hFig, iDS, iFig] = view_mri(CtFile, [], [], 2);
+    % Case-1: User right clicks on subject, chooses 'CT+MRI' or 'CT+MRI+Isosurface' then always overlay CT on MRI
+    % Case-2: User right clicks on subject and it has MRI but no CT ('CtFile' = []). Only MRI opens.
+    % Case-3: User right clicks on subject, with MRI present, if user deleted the CT(s) ('CtFile' = []) but not the Isosurface. Only MRI opens.
+    else
+        [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
+    end
     if isempty(hFig)
         return;
     end
+
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"

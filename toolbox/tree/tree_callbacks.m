@@ -702,6 +702,11 @@ switch (lower(action))
                     % fcnPopupProjectSources(0);
                 end
                 fcnPopupScoutTimeSeries(jPopup);
+                AddSeparator(jPopup);
+                % === SEEG IMPLANTATION ===
+                if ~isempty(sSubject.Anatomy)
+                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject.Anatomy(sSubject.iAnatomy).FileName, 1));
+                end
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export subject', IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
                 
@@ -922,10 +927,6 @@ switch (lower(action))
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG','NIRS'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
-                end
-                % === SEEG IMPLANTATION ===
-                if (length(bstNodes) == 1) && ((isempty(AllMod) && strcmpi(sStudy.Name, 'implantation')) || any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod)))
-                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)DisplayChannels(bstNodes, 'SEEG', 'anatomy', 1, 0));
                 end
                 % === SEEG CONTACT LABELLING ===
                 if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
@@ -3161,8 +3162,12 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
             gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
         end
         % === SEEG/ECOG ===
-        if (length(iAnatomy) <= 1) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
+        % Right click on the subject only
+        if isempty(iAnatomy)
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile, 1));
+        % Right click on a desired volume (MRI/CT) in a subject
+        elseif (length(iAnatomy) == 1) && iSubject ~=0
+                gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile, 0));
         end
           
     % === TISSUE SEGMENTATION ===
