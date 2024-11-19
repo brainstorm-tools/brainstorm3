@@ -190,6 +190,16 @@ switch (lower(nodeType{1}))
                 % Get indices
                 iSubject = uniqueSubject(i);
                 iSurfaces = iSubItem(iItem == iSubject);
+                % Current default surfaces
+                saveDefSurf = struct();
+                SurfTypes = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'};
+                for ix = 1 : length(SurfTypes)
+                    if (iSubject == 0)
+                        saveDefSurf.(['i' SurfTypes{ix}]) = ['', ProtocolSubjects.DefaultSubject.Surface(ProtocolSubjects.DefaultSubject.(['i' SurfTypes{ix}])).FileName];
+                    else
+                        saveDefSurf.(['i' SurfTypes{ix}]) = ['', ProtocolSubjects.Subject(iSubject).Surface(ProtocolSubjects.Subject(iSubject).(['i' SurfTypes{ix}])).FileName];
+                    end
+                end
                 % Delete surface
                 if (iSubject == 0)
                     ProtocolSubjects.DefaultSubject.Surface(iSurfaces) = [];
@@ -198,8 +208,14 @@ switch (lower(nodeType{1}))
                 end
                 % Update default surfaces
                 bst_set('ProtocolSubjects', ProtocolSubjects);
-                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
-                    db_surface_default(iSubject, SurfType{1}, [], 0);
+                for ix = 1 : length(SurfTypes)
+                    if (iSubject == 0)
+                        iSurf = find(ismember({ProtocolSubjects.DefaultSubject.Surface.FileName}, saveDefSurf.(['i' SurfTypes{ix}])));
+                    else
+                        iSurf = find(ismember({ProtocolSubjects.Subject(iSubject).Surface.FileName}, saveDefSurf.(['i' SurfTypes{ix}])));
+                    end
+                    % Find in current surfaces
+                    db_surface_default(iSubject, SurfTypes{ix}, iSurf, 0);
                 end
                 drawnow;
                 ProtocolSubjects = bst_get('ProtocolSubjects');

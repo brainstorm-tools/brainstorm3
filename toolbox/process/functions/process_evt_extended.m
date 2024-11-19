@@ -80,10 +80,12 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         DataMat = in_bst_data(sInput.FileName, 'F');
         sEvents = DataMat.F.events;
         sFreq = DataMat.F.prop.sfreq;
+        FullTimeWindow = DataMat.F.prop.times;
     else
         DataMat = in_bst_data(sInput.FileName, 'Events', 'Time');
         sEvents = DataMat.Events;
         sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+        FullTimeWindow = [DataMat.Time(1), DataMat.Time(end)];
     end
     % If no markers are present in this file
     if isempty(sEvents)
@@ -111,11 +113,9 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== PROCESS EVENTS =====
-    for i = 1:length(iEvtList)
-        sEvents(iEvtList(i)).times = round([...
-            sEvents(iEvtList(i)).times + TimeWindow(1);
-            sEvents(iEvtList(i)).times + TimeWindow(2)] .* sFreq) ./ sFreq;
-    end
+    sEventsMod = sEvents(iEvtList);
+    sEventsMod = Compute(sEventsMod, TimeWindow, FullTimeWindow, sFreq);
+    sEvents(iEvtList) = sEventsMod;
         
     % ===== SAVE RESULT =====
     % Report results
@@ -129,5 +129,11 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
 end
 
 
-
-
+%% ===== COMPUTE =====
+function sEvents = Compute(sEvents, EventTimeWindow, FullTimeWindow, sFreq)
+    for i = 1:length(sEvents)
+        sEvents(i).times = round([...
+            max(FullTimeWindow(1), sEvents(i).times(1,:) + EventTimeWindow(1));
+            min(FullTimeWindow(2), sEvents(i).times(1,:) + EventTimeWindow(2))] .* sFreq) ./ sFreq;
+    end
+end

@@ -448,35 +448,42 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
         % Get sensors for this topography
         iChannels = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, allMod{iMod});
         % Type of components
-        isICA = isequal(sCat.SingVal, 'ICA');
-        % ICA: Get the topography to display
-        if isICA
-            % Field Components stores the mixing matrix W
-            W = sCat.Components(iChannels,:)';
-            Topo = pinv(W);
-            % Display name
-            strDisplay = 'IC';
-        % SSP: Limit the maximum number of components to display
-        else
-            % Field Components stores the spatial components U
-            U = sCat.Components(iChannels, :);
-            Topo = U;
-            % SSP/PCA results
-            if ~isempty(sCat.SingVal) 
-                Singular = sCat.SingVal ./ sum(sCat.SingVal);
-            % SSP/Mean results
-            else
-                Singular = eye(size(U,2));
-            end
-            % Rebuild mixing matrix
-            if isPlotTs
-                % W = pinv(U);
-                W = diag(sqrt(Singular)) * pinv(U);
-            end
-            % Select only the first 20 components
-            iComp = intersect(iComp, 1:20);
-            % Display name
-            strDisplay = 'SSP';
+        componentType = sCat.Method(1:3);
+        switch lower(componentType)
+            % ICA: Get the topography to display
+            case 'ica'
+                % Explained variance
+                Singular = [];
+                if ~isempty(sCat.SingVal) && isnumeric(sCat.SingVal)
+                    Singular = sCat.SingVal;
+                end
+                % Field Components stores the mixing matrix W
+                W = sCat.Components(iChannels,:)';
+                Topo = pinv(W);
+                % Display name
+                strDisplay = 'IC';
+            % SSP: Limit the maximum number of components to display
+            case 'ssp'
+                % Field Components stores the spatial components U
+                U = sCat.Components(iChannels, :);
+                Topo = U;
+                switch(sCat.Method)
+                    case 'SSP_pca'
+                        % SSP/PCA results
+                        Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    case 'SSP_mean'
+                        % SSP/Mean results
+                        Singular = eye(size(U,2));
+                end
+                % Rebuild mixing matrix
+                if isPlotTs
+                    % W = pinv(U);
+                    W = diag(sqrt(Singular)) * pinv(U);
+                end
+                % Select only the first 20 components
+                iComp = intersect(iComp, 1:20);
+                % Display name
+                strDisplay = 'SSP';
         end
         % Keep only the requested components
         Topo = Topo(:,iComp);
@@ -531,7 +538,7 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
                     setappdata(hFig, 'TopoInfo', TopoInfo);
                     bst_figures('ReloadFigures', hFig, 1);
                     % Capture image
-                    if isICA
+                    if isempty(Singular)
                         strLegend = sprintf('%s%d', strDisplay, iComp(i));
                     else
                         strLegend = sprintf('%s%d (%d%%)', strDisplay, iComp(i), round(100*Singular(iComp(i))));
@@ -562,11 +569,7 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
             end
             % Create new montage on the fly
             sMontage = db_template('Montage');
-            if isICA
-                sMontage.Name = 'ICA components[tmp]';
-            else
-                sMontage.Name = 'SSP components[tmp]';
-            end
+            sMontage.Name = sprintf('%s components[tmp]', componentType);
             sMontage.Type      = 'matrix';
             sMontage.ChanNames = {GlobalData.DataSet(iDS).Channel(iChannels).Name};
             sMontage.DispNames = LinesLabels;
@@ -707,24 +710,31 @@ function UpdateComp()
     [sCat, iCat] = GetSelectedCat();
     % If there is something selected: Add components
     if ~isempty(sCat)
-        isICA = isequal(sCat.SingVal, 'ICA');
         if (length(sCat.CompMask) > 1)
-            % ICA: Show all components
-            if isICA
-                iDispComp = 1:size(sCat.Components,2);
-            % PCA: Get only the components that grab 95% of the signal
-            else
-                Singular = sCat.SingVal ./ sum(sCat.SingVal);
-                iDispComp = union(1, find(cumsum(Singular)<=.95));
-                % Keep only the first components
-                iDispComp = intersect(iDispComp, 1:20);
-                % Always show at least the 10 first components
-                iDispComp = union(iDispComp, 1:min(10,length(Singular)));
+            componentType = sCat.Method(1:3);
+            switch lower(componentType)
+                % ICA: Show all components
+                case 'ica'
+                    % Explained variance
+                    Singular = [];
+                    if ~isempty(sCat.SingVal) && isnumeric(sCat.SingVal)
+                        Singular = sCat.SingVal;
+                    end
+                    iDispComp = 1:size(sCat.Components,2);
+
+                % PCA: Get only the components that grab 95% of the signal
+                case 'ssp'
+                    Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    iDispComp = union(1, find(cumsum(Singular)<=.95));
+                    % Keep only the first components
+                    iDispComp = intersect(iDispComp, 1:20);
+                    % Always show at least the 10 first components
+                    iDispComp = union(iDispComp, 1:min(10,length(Singular)));
             end
             % Add all the components
             for i = iDispComp
                 strComp = sprintf('Component #%d', i);
-                if ~isempty(sCat.SingVal) && ~isICA
+                if ~isempty(Singular)
                     strComp = [strComp, sprintf(' [%d%%]', round(100 * Singular(i)))];
                 end
                 listModel.addElement(BstListItem('', '', strComp, int32(sCat.CompMask(i))));

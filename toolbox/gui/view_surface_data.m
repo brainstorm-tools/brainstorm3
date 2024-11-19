@@ -167,6 +167,9 @@ switch (DataType)
         iDS = bst_memory('GetDataSetSubject', sSubject.FileName, 1);
 end
 
+if isempty(iDS)
+    return;
+end
 
 %% ===== MODALITY =====
 if isempty(Modality)
@@ -316,10 +319,16 @@ end
 
 
 %% ===== DISPLAY SCOUTS =====
-% If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
+SurfaceFile = panel_scout('GetScoutSurface', hFig);
 sAtlas = panel_scout('GetAtlas', SurfaceFile);
-if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
-    panel_scout('SetCurrentAtlas', 1);
+if ~isempty(sAtlas)
+    % Check if default atlas matches grid type (surface or volume)
+    isVolumeAtlas = panel_scout('ParseVolumeAtlas', sAtlas.Name);
+    isSameGridType = ~xor(isVolumeAtlas, ismember(lower(SurfaceType), {'anatomy', 'fibers'}));
+    % Switch atlas to "User scouts" when for "Source model" or "Structures" atlases or atlas does not match grid type
+    if ismember(sAtlas.Name, {'Structures', 'Source model'}) || ~isSameGridType
+        panel_scout('SetCurrentAtlas', 1);
+    end
 end
 % If there are some loaded scouts available for this figure
 if ShowScouts && (isResults || isTimefreq)

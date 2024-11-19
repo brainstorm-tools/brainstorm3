@@ -51,17 +51,17 @@ end
 hdr = bst_jsondecode(OebinFile);
 % Identify file with sample indices depending on the Open Ephys GUI version
 if bst_plugin('CompareVersions', hdr.GUIVersion, '0.6.0') == -1
-    SampleIndicesFile = 'timestamps.npy';
+    SampleIndicesFileName = 'timestamps.npy';
 else
-    SampleIndicesFile = 'sample_numbers.npy';
+    SampleIndicesFileName = 'sample_numbers.npy';
 end
 % Sample indices file
-SampleIndicesFile = bst_fullfile(procDir, SampleIndicesFile);
+SampleIndicesFile = file_find(procDir, SampleIndicesFileName, 1, 1);
 if ~file_exist(SampleIndicesFile)
-    error(['Could not find file with sample indices: ' SampleIndicesFile]);
+    error(['Could not find file with sample indices: ' SampleIndicesFileName]);
 end
 % Event indices files
-EvtIndicesFiles = file_find(bst_fullfile(recDir, 'events'), SampleIndicesFile, 3, 0);
+EvtIndicesFiles = file_find(bst_fullfile(recDir, 'events'), SampleIndicesFileName, 3, 0);
 
 
 %% ===== PARSE HEADER =====

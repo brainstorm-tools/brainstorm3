@@ -1,8 +1,8 @@
-function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment)
+function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, bgLevel, Comment)
 % TESS_GENERATE: Reconstruct a head surface based on the MRI, based on an isosurface
 %
-% USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
-%         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
+% USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, bgLevel=GuessFromHistorgram, Comment)
+%         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, bgLevel=GuessFromHistorgram, Comment)
 %         [Vertices, Faces]    = tess_isohead(sMri,     nVertices=10000, erodeFactor=0, fillFactor=2)
 %
 % If input is loaded MRI structure, no surface file is created and the surface vertices and faces are returned instead.
@@ -33,13 +33,26 @@ HeadFile = [];
 iSurface = [];
 isSave = true;
 % Parse inputs
-if (nargin < 5) || isempty(Comment)
-    Comment = [];
+if (nargin < 6)
+    if nargin == 5
+        % Handle legacy call: tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment)
+        if ischar(bgLevel)
+            Comment = bgLevel;
+            bgLevel = [];
+        % Parameter 'bgLevel' is provided: tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, bgLevel)
+        else
+            Comment = [];
+        end
+    % Call tess_isohead(iSubject, nVertices, erodeFactor, fillFactor)
+    else
+        bgLevel = [];
+        Comment = [];
+    end
 end
 % MriFile instead of subject index
 sMri = [];
 if ischar(iSubject)
-    MriFile = iSubject;
+    MriFile = file_short(iSubject);
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
 elseif isnumeric(iSubject)
     % Get subject
@@ -81,11 +94,15 @@ if ~isfield(sMri, 'Histogram') || isempty(sMri.Histogram) || isempty(sMri.SCS) |
     bst_error('You need to set the fiducial points in the MRI first.', 'Head surface', 0);
     return
 end
+% Guess background level
+if isempty(bgLevel)
+    bgLevel = sMri.Histogram.bgLevel;
+end
 
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
-    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
+    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(bgLevel)});
     % If user cancelled: return
     if isempty(res)
         return
@@ -98,8 +115,6 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
     if isempty(bgLevel)
         bgLevel = sMri.Histogram.bgLevel;
     end
-else
-    bgLevel = sMri.Histogram.bgLevel;
 end
 % Check parameters values
 if isempty(nVertices) || (nVertices < 50) || (nVertices ~= round(nVertices)) || isempty(erodeFactor) || ~ismember(erodeFactor,[0,1,2,3]) || isempty(fillFactor) || ~ismember(fillFactor,[0,1,2,3])

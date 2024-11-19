@@ -215,6 +215,8 @@ switch (lower(action))
                     MriFile = sSubject.Anatomy(1).FileName;
                     hFig = view_mri_3d(MriFile, [], 0.3, []);
                     view_surface(filenameRelative, [], [], hFig, []);
+                elseif ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    ViewTexturedSurface(filenameRelative);
                 else
                     view_surface(filenameRelative);
                 end
@@ -583,11 +585,12 @@ switch (lower(action))
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
                     % Create menus
-                    jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefaults   = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefMni     = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefUsc     = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefFs      = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
                     jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefOthers  = gui_component('Menu', jMenuDefaults, [], 'Others', IconLoader.ICON_ANATOMY, [], []);
                     % Add an item per Template available
                     for i = 1:length(sTemplates)
                         % Local or download?
@@ -605,6 +608,8 @@ switch (lower(action))
                             jParent = jMenuDefFs;
                         elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
                             jParent = jMenuDefInfants;
+                        else
+                            jParent = jMenuDefOthers;
                         end
                         % Create item
                         gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
@@ -896,7 +901,7 @@ switch (lower(action))
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
-                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)',    IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0));
+                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0));
                             gui_component('MenuItem', jMenuDisplay, [], 'NIRS (pairs)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 1));
                         else
                             gui_component('MenuItem', jMenuDisplay, [], channelTypeDisplay, IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'scalp'));
@@ -908,7 +913,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Edit channel file', IconLoader.ICON_EDIT, [], @(h,ev)gui_edit_channel(filenameRelative));
                 end
                 % === RENAME CHANNELS BIOSEMI ===
-                if ~isempty(regexp(char(bstNodes(1).getComment()), 'BDF'))
+                if ~isempty(regexp(lower(char(bstNodes(1).getComment())), 'bdf')) || ~isempty(regexp(lower(char(bstNodes(1).getComment())), 'biosemi'))
                     gui_component('MenuItem', jPopup, [], 'BioSemi channels names to 10-10 system', IconLoader.ICON_EDIT, [], @(h,ev)process_channel_biosemi('ComputeInteractive', filenameRelative));
                 end
   
@@ -918,13 +923,17 @@ switch (lower(action))
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG','NIRS'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
                 end
+                % === SEEG IMPLANTATION ===
+                if (length(bstNodes) == 1) && ((isempty(AllMod) && strcmpi(sStudy.Name, 'implantation')) || any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod)))
+                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)DisplayChannels(bstNodes, 'SEEG', 'anatomy', 1, 0));
+                end
                 % === SEEG CONTACT LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
                 end
                 
                 % === NIRS CHANNEL LABELLING ===
-                if (length(bstNodes) == 1) && any(ismember({'NIRS'}, AllMod))
+                if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'NIRS'}, AllMod))
                     gui_component('MenuItem', jPopup, [], 'NIRS atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_nirs_atlas, filenameRelative));
                 end
                 
@@ -1000,6 +1009,8 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuHeadPoints, [], 'Remove all points', IconLoader.ICON_DELETE, [], @(h,ev)ChannelRemoveHeadpoints(filenameRelative));
                         % Remove points below the nasion
                         gui_component('MenuItem', jMenuHeadPoints, [], 'Remove points below nasion', IconLoader.ICON_DELETE, [], @(h,ev)ChannelRemoveHeadpoints(filenameRelative, 0));
+                        % Remove points manually
+                        gui_component('MenuItem', jMenuHeadPoints, [], 'Remove points manually', IconLoader.ICON_DELETE, [], @(h,ev)channel_align_manual(filenameRelative, 'HeadPoints', 1));
                         % WARP
                         AddSeparator(jMenuHeadPoints);
                         jMenuWarp = gui_component('Menu', jMenuHeadPoints, [], 'Warp', IconLoader.ICON_ALIGN_CHANNELS, [], []);
@@ -1015,7 +1026,7 @@ switch (lower(action))
                     end
 
                     % ===== PROJECT SENSORS =====
-                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
                         AddSeparator(jPopup);
                         if (iSubject == 0) || sSubject.UseDefaultAnat
                             gui_component('MenuItem', jPopup, [], 'Project to subject...', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, []));
@@ -1119,7 +1130,11 @@ switch (lower(action))
                 sSubject = bst_get('Subject', iSubject);
                 
                 % === DISPLAY ===
-                gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)ViewTexturedSurface(filenameRelative));
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
+                end
 
                 % === SET SURFACE TYPE ===
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
@@ -1146,7 +1161,7 @@ switch (lower(action))
                             jItemSetSurfTypeOther.setSelected(1);
                     end
                 end
-                
+
                 % SET AS DEFAULT SURFACE
                 if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     iSurface = bstNodes(1).getItemIndex();
@@ -1163,6 +1178,14 @@ switch (lower(action))
                     % Separator
                     AddSeparator(jPopup);
                 end
+
+                % === DIGITIZE (3D SCANNER) OPTION ===
+                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                    gui_component('MenuItem', jPopup, [], 'Digitize (3D scanner)', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner', sSubject, iSubject, filenameRelative));
+                    % Separator
+                    AddSeparator(jPopup);
+                end
+
                 % NUMBER OF SELECTED FILES
                 if (length(bstNodes) >= 2)
                     if ~bst_get('ReadOnly')
@@ -1358,6 +1381,8 @@ switch (lower(action))
                             end
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Mri3D'));
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'MriViewer'));
+                            AddSeparator(jPopup);
+                            gui_component('MenuItem', jPopup, [], ['Apply ' mod{1} ' leadfield exclusion zone'], IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, mod{1}, iStudy));
                         elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
@@ -2883,6 +2908,36 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         jMenu = gui_component('Menu', jMenu, [], 'Add EEG positions', IconLoader.ICON_CHANNEL, [], []);
         % Import from file
         gui_component('MenuItem', jMenu, [], 'Import from file', IconLoader.ICON_CHANNEL, [], @(h,ev)channel_add_loc(iAllStudies, [], 1));
+        % From other Studies within same Subject
+        sStudies = bst_get('Study', iAllStudies);
+        % If adding locations to multiple channel files, they must be from the same subject
+        if length(unique({sStudies.BrainStormSubject})) == 1
+            sSubject = bst_get('Subject', sStudies(1).BrainStormSubject);
+            if sSubject.UseDefaultChannel == 0
+                % Only consider Studies with ChannelFile
+                [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+                iChStudies = ~cellfun(@isempty, {sStudies.Channel});
+                sStudies = sStudies(iChStudies);
+                iStudies = iStudies(iChStudies);
+                [~, ixDiff] = setdiff(iStudies, iAllStudies);
+                if ~isempty(ixDiff)
+                    % Create menu and entries
+                    AddSeparator(jMenu);
+                    jMenuStudy = gui_component('Menu', jMenu, [], 'From other studies', IconLoader.ICON_CHANNEL, [], []);
+                    for ix = 1 : length(ixDiff)
+                        conditionName = sStudies(ixDiff(ix)).Condition{1};
+                        if length(conditionName) > 4 && strcmpi(conditionName(1:4), '@raw')
+                            iconLoader = IconLoader.ICON_RAW_FOLDER_CLOSE;
+                            conditionName(1:4) = '';
+                        else
+                            iconLoader = IconLoader.ICON_FOLDER_CLOSE;
+                        end
+                        % Menu entry
+                        gui_component('MenuItem', jMenuStudy, [], conditionName, iconLoader, [], @(h,ev)channel_add_loc(iAllStudies, sStudies(ixDiff(ix)).Channel.FileName, 1));
+                    end
+                end
+            end
+        end
         % If only SEEG/ECOG, stop here (we do not want to offer the standard EEG caps, it doesn't make sense)
         if (isAddLoc < 2)
             return;
@@ -2893,72 +2948,8 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@ImportChannelCheck, iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
-    % === USE DEFAULT CHANNEL FILE ===
-    % Get registered Brainstorm EEG defaults
-    bstDefaults = bst_get('EegDefaults');
-    if ~isempty(bstDefaults)
-        % Add a directory per template block available
-        for iDir = 1:length(bstDefaults)
-            jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
-            isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
-            % Create subfolder for cap manufacturer
-            jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            % Add an item per Template available
-            fList = bstDefaults(iDir).contents;
-            % Sort in natural order
-            [tmp,I] = sort_nat({fList.name});
-            fList = fList(I);
-            % Create an entry for each default
-            for iFile = 1:length(fList)
-                % Define callback function
-                if isAddLoc 
-                    fcnCallback = @(h,ev)channel_add_loc(iAllStudies, fList(iFile).fullpath, 1, isMni);
-                else
-                    fcnCallback = @(h,ev)db_set_channel(iAllStudies, fList(iFile).fullpath, 1, 0);
-                end
-                % Find corresponding submenu
-                if ~isempty(strfind(fList(iFile).name, 'ANT'))
-                    jMenuType = jMenuAnt;
-                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                    jMenuType = jMenuBs;
-                elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
-                    jMenuType = jMenuBp;
-                elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
-                    jMenuType = jMenuEgi;
-                elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
-                    jMenuType = jMenuNs;
-                else
-                    jMenuType = jMenuOther;
-                end
-                % Create item
-                gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback);
-            end
-            % Add if not empty
-            if (jMenuOther.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuOther);
-            end
-            if (jMenuAnt.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuAnt);
-            end
-            if (jMenuBs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBs);
-            end
-            if (jMenuBp.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuBp);
-            end
-            if (jMenuEgi.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuEgi);
-            end
-            if (jMenuNs.getMenuComponentCount() > 0)
-                jMenuDir.add(jMenuNs);
-            end
-        end
-    end
+    % Use default channel file
+    menu_default_eegcaps(jMenu, iAllStudies, isAddLoc);
 end
 
 %% ===== EDIT NODE =====
@@ -3171,7 +3162,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         end
         % === SEEG/ECOG ===
         if (length(iAnatomy) <= 1) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', MriFile));
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
         end
           
     % === TISSUE SEGMENTATION ===
@@ -3813,4 +3804,8 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
 end
 
 
-    
+%% ===== DISPLAY TEXTURED SURFACE =====
+function ViewTexturedSurface(filenameRelative)
+    sSurf = bst_memory('LoadSurface', filenameRelative);
+    view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
+end

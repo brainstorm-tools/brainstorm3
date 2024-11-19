@@ -135,8 +135,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
-        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in Mb (default: 100Mb): ', [], [], []);
-        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in megabytes.<BR>Ensure this does not exceed the available RAM in your computer.';
+        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in MiB (default: 100 MiB): ', [], [], []);
+        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in Mebibytes.<BR>Ensure this does not exceed the available RAM in your computer.';
         jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
         jBlockSizeLabel.setToolTipText(blockSizeTooltip);
         jBlockSize.setToolTipText(blockSizeTooltip);
@@ -156,11 +156,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelBottom = gui_river();
     jPanelNew.add('br hfill', jPanelBottom);
     % MEMORY
-    [MaxVar, TotalMem] = bst_get('SystemMemory');
-    if ~isempty(MaxVar) && ~isempty(TotalMem)
+    [TotalMem, AvailableMem] = bst_get('SystemMemory');
+    if ~isempty(AvailableMem) && ~isempty(TotalMem)
         % Display memory info
         jPanelMem = gui_river([0 0], [0 15 8 15]);
-        labelBottom = sprintf('Max variable size: %d Mb       Memory available: %d Mb', MaxVar, TotalMem);
+        labelBottom = sprintf('Memory total: %d MiB       Memory available: %d MiB', TotalMem, AvailableMem);
         jPanelLeft.add('br hfill', jPanelMem);
     else
         labelBottom = '';

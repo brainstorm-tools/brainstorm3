@@ -117,8 +117,12 @@ end
 %% ===== GET SUPPORTED PLUGINS =====
 % USAGE:  PlugDesc = bst_plugin('GetSupported')                      % List all the plugins supported by Brainstorm
 %         PlugDesc = bst_plugin('GetSupported', PlugName/PlugDesc)   % Get only one specific supported plugin
-function PlugDesc = GetSupported(SelPlug)
+%         PlugDesc = bst_plugin('GetSupported', ..., UserDefVerbose) % Print info on user-defined plugins
+function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     % Parse inputs
+    if (nargin < 2) || isempty(UserDefVerbose)
+        UserDefVerbose = 0;
+    end
     if (nargin < 1) || isempty(SelPlug)
         SelPlug = [];
     end
@@ -173,27 +177,29 @@ function PlugDesc = GetSupported(SelPlug)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.6';
+    PlugDesc(end).Version        = '1.9.8';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-    PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
-                                    'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
-                                    'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', 'bin/cgalpoly.mexa64', 'bin/cgalpoly.mexmaci64', 'bin/cgalpoly_x86-64.exe', ...   % Removing cgalpoly completely (not used)
-                                    'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
-                                    'bin/cork.exe', ...
-                                    'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
-                                    'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
-                                    'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
-                                    'bin/tetgen1.5.mexglx'};
-    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
-                                    'bin/tetgen1.5.exe'};
+    PlugDesc(end).UnloadPlugs    =  {'easyh5','jsnirfy'};
+
+    % === ANATOMY: NEUROMAPS ===
+    PlugDesc(end+1)              = GetStruct('neuromaps');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/thuy-n/bst-neuromaps/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/thuy-n/bst-neuromaps';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -208,6 +214,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
 
+    % === ANATOMY: ZEFFIRO ===
+    PlugDesc(end+1)              = GetStruct('zeffiro');
+    PlugDesc(end).Version        = 'github-main_development_branch';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/sampsapursiainen/zeffiro_interface/archive/main_development_branch.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/sampsapursiainen/zeffiro_interface';
+    PlugDesc(end).TestFile       = 'zeffiro_downloader.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.gitignore'};
+
 
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
@@ -220,6 +239,10 @@ function PlugDesc = GetSupported(SelPlug)
             PlugDesc(end).TestFile = 'libOpenMEEG.so';
         case 'mac64'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+            PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
+        case 'mac64arm'
+            PlugDesc(end).Version  = '2.5.8';
+            PlugDesc(end).URLzip   = ['https://github.com/openmeeg/openmeeg/releases/download/', PlugDesc(end).Version, '/OpenMEEG-', PlugDesc(end).Version, '-', 'macOS_M1.tar.gz'];
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
             PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
@@ -318,6 +341,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
 
     % === I/O: JSNIRF ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
@@ -331,6 +355,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).RequiredPlugs  = {'easyh5'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
@@ -470,6 +495,18 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
+    % === STATISTICS: mTRF ===
+    PlugDesc(end+1)              = GetStruct('mtrf');
+    PlugDesc(end).Version        = '2.4';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/mickcrosse/mTRF-Toolbox/archive/refs/tags/v2.4.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/mickcrosse/mTRF-Toolbox';
+    PlugDesc(end).TestFile       = 'mTRFtrain.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'mtrf'};
+    PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
+
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
     PlugDesc(end).Version        = 'github-master';
@@ -572,24 +609,24 @@ function PlugDesc = GetSupported(SelPlug)
     
     % === fNIRS: MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
-    PlugDesc(end).Version        = '2021.12.04';
+    PlugDesc(end).Version        = '2024.07.23';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlab-allinone-x86_64-v2020.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlab-allinone-git20240723.zip';
     PlugDesc(end).TestFile       = 'mcxlab.m';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
     % === fNIRS: MCXLAB CL ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
-    PlugDesc(end).Version        = '2020';
+    PlugDesc(end).Version        = '2024.07.23';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlabcl-allinone-x86_64-v2020.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlabcl-allinone-git20240723.zip';
     PlugDesc(end).TestFile       = 'mcxlabcl.m';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
@@ -623,6 +660,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'ft_version';
     PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
                                     'ft_default = []; ' ...
+                                    'clear ft_defaults; ' ...
                                     'if exist(''filtfilt'', ''file''), ft_default.toolbox.signal=''matlab''; end; ' ...
                                     'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
                                     'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
@@ -650,10 +688,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
 
     % === USER DEFINED PLUGINS ===
-    plugJsonFiles = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    plugJsonFiles    = dir(fullfile(bst_get('UserPluginsDir'), 'plugin_*.json'));
+    badJsonFiles     = {};
+    plugUserDefNames = {};
     for ix = 1:length(plugJsonFiles)
         plugJsonText = fileread(fullfile(plugJsonFiles(ix).folder, plugJsonFiles(ix).name));
-        PlugUserDesc = bst_jsondecode(plugJsonText);
+        try
+            PlugUserDesc = bst_jsondecode(plugJsonText);
+        catch
+            badJsonFiles{end+1} = plugJsonFiles(ix).name;
+            continue
+        end
         % Reshape fields "ExtraMenus"
         if isfield(PlugUserDesc, 'ExtraMenus') && ~isempty(PlugUserDesc.ExtraMenus) && iscell(PlugUserDesc.ExtraMenus{1})
             PlugUserDesc.ExtraMenus = cat(2, PlugUserDesc.ExtraMenus{:})';
@@ -662,7 +707,20 @@ function PlugDesc = GetSupported(SelPlug)
         if isfield(PlugUserDesc, 'RequiredPlugs') && ~isempty(PlugUserDesc.RequiredPlugs) && iscell(PlugUserDesc.RequiredPlugs{1})
             PlugUserDesc.RequiredPlugs = cat(2, PlugUserDesc.RequiredPlugs{:})';
         end
-        PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+        % Check for uniqueness for user-defined plugin
+        if ~ismember(PlugUserDesc.Name, {PlugDesc.Name})
+            plugUserDefNames{end+1} = PlugUserDesc.Name;
+            PlugDesc(end+1) = struct_copy_fields(GetStruct(PlugUserDesc.Name), PlugUserDesc);
+        end
+    end
+    % Print info on user-defined plugins
+    if UserDefVerbose
+        if ~isempty(plugUserDefNames)
+            fprintf(['BST> User-defined plugins... ' strjoin(plugUserDefNames, ' ') '\n']);
+        end
+        for iBad = 1 : length(badJsonFiles)
+            fprintf(['BST> User-defined plugins, error reading .json file... ' badJsonFiles{iBad} '\n']);
+        end
     end
 
     % ================================================================================================================
@@ -759,7 +817,7 @@ function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
                                          ['<HTML>URL for information<BR>' ...
                                           '<I><FONT color="#707070">EXAMPLE: https://github.com/brainstorm-tools/bst-users</FONT></I>']}, ...
                                        'User defined plugin', [], {'', '', '', ''});
-            if isempty(res)
+            if isempty(res) || any(cellfun(@isempty,res))
                 return
             end
             PlugDesc.Name    = lower(res{1});
@@ -1306,15 +1364,22 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
-            % SPM12: Ignore if found embedded in ROAST
+            % SPM12: Ignore if found embedded in ROAST or in FieldTrip
             elseif strcmpi(PlugDesc.Name, 'spm12')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                q = which('ft_defaults.m');
+                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
                     TestFilePath = [];
                 end
             % Iso2mesh: Ignore if found embedded in ROAST
             elseif strcmpi(PlugDesc.Name, 'iso2mesh')
                 p = which('roast.m');
+                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                    TestFilePath = [];
+                end
+            % easyh5 and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'easyh5') || strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
@@ -2068,6 +2133,15 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         return;
     end
     
+    % === PROCESS DEPENDENCIES ===
+    % Unload incompatible plugins
+    if ~isempty(PlugDesc.UnloadPlugs)
+        for iPlug = 1:length(PlugDesc.UnloadPlugs)
+            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
+            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
+        end
+    end
+
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
@@ -2140,14 +2214,6 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('setimage', LogoFile);
     end
     
-    % === PROCESS DEPENDENCIES ===
-    % Unload incompatible plugins
-    if ~isempty(PlugDesc.UnloadPlugs)
-        for iPlug = 1:length(PlugDesc.UnloadPlugs)
-            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
-            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
-        end
-    end
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
@@ -2512,10 +2578,12 @@ end
 
 
 %% ===== MENUS: CREATE =====
-function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
+function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
     import org.brainstorm.icon.*;
     % Get all the supported plugins
-    PlugDesc = GetSupported();
+    if isempty(PlugDesc)
+        PlugDesc = GetSupported();
+    end
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
@@ -2668,10 +2736,14 @@ end
 %% ===== MENUS: UPDATE =====
 function MenuUpdate(jMenu, fontSize)
     import org.brainstorm.icon.*;
-    % Regenerate plugin menu to look for new plugins
     global GlobalData
+    % Get installed and supported plugins
+    [PlugsInstalled, PlugsSupported]= GetInstalled();
+    % Get previous menu entries
     jPlugs = GlobalData.Program.GUI.pluginMenus;
-    jPlugs = MenuCreate(jMenu, jPlugs, fontSize);
+    % Regenerate plugin menu to look for new plugins
+    jPlugs = MenuCreate(jMenu, jPlugs, PlugsSupported, fontSize);
+    % Update menu entries
     GlobalData.Program.GUI.pluginMenus = jPlugs;
     % If compiled: disable most menus
     isCompiled = bst_iscompiled();
@@ -2681,9 +2753,9 @@ function MenuUpdate(jMenu, fontSize)
     for iPlug = 1:length(jPlugs)
         j = jPlugs(iPlug);
         PlugName = j.name;
+        Plug    = PlugsInstalled(ismember({PlugsInstalled.Name}, PlugName));
+        PlugRef = PlugsSupported(ismember({PlugsSupported.Name}, PlugName));
         % Is installed?
-        PlugRef = GetSupported(PlugName);
-        Plug = GetInstalled(PlugName);
         if ~isempty(Plug)
             isInstalled = 1;
         elseif ~isempty(PlugRef)
@@ -3131,6 +3203,5 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh', 'mcxlab-cl', 'mcxlab-cuda', ...
-                   'openmeeg', 'xdf'};
+    pluginNames = { 'duneuro', 'mcxlab-cuda'};
 end

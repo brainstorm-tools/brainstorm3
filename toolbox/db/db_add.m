@@ -91,8 +91,8 @@ if isstruct(InputFile)
     end
     % Surfaces subtypes
     if ismember(fileType, {'fibers', 'fem'})
-        fileType = 'tess';
         fileSubType = [fileType, '_'];
+        fileType = 'tess';
     end
     isAnatomy = ismember(fileType, {'subjectimage', 'tess'});
     % Spikes: file tag is data

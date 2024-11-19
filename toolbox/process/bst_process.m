@@ -401,7 +401,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         sInput.Measure = [];
     end
     % Do not allow Time Bands
-    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'}) 
+    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ~strcmpi(sMat.Method, 'mtmconvol') && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'})
         bst_report('Error', sProcess, sInput, 'Cannot process values averaged by time bands.');
         return;
     end

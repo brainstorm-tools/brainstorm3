@@ -514,6 +514,8 @@ function FigureMouseMoveCallback(hFig, varargin)
                         posXYZ = [NaN, NaN, NaN];
                         posXYZ(moveAxis) = newPos;
                         panel_surface('PlotMri', hFig, posXYZ, 1);
+                        % Update sliders in surface panel
+                        panel_surface('UpdateSurfaceProperties');
                     end
                 end
             end
@@ -971,7 +973,7 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)   
-    global GlobalData TimeSliderMutex;
+    global GlobalData TimeSliderMutex Digitize;
     % Prevent multiple executions
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     set([hFig hAxes], 'BusyAction', 'cancel');
@@ -1092,7 +1094,19 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case 'a'
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
-                    end 
+                    end
+                % C : Collect point
+                case 'c'
+                    % for 3DScanner
+                    if gui_brainstorm('isTabVisible', 'Digitize') && strcmpi(Digitize.Type, '3DScanner')
+                        % Get Digitize options
+                        DigitizeOptions = bst_get('DigitizeOptions');
+                        panel_fun = @panel_digitize;
+                        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+                            panel_fun = @panel_digitize_2024;
+                        end
+                        panel_fun('ManualCollect_Callback');
+                    end
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
@@ -1993,8 +2007,8 @@ function DisplayFigurePopup(hFig)
         DefaultOutputDir = LastUsedDirs.ExportImage;
         % Is there a time window defined
         isTime = ~isempty(GlobalData) && ~isempty(GlobalData.UserTimeWindow.CurrentTime) && ~isempty(GlobalData.UserTimeWindow.Time) ...
-                 && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile));
-        isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile);
+                 && (~isempty(DataFile) || ~isempty(ResultsFile) || ~isempty(Dipoles) || ~isempty(TfFile)) && ~getappdata(hFig, 'isStatic');
+        isFreq = ~isempty(GlobalData) && ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && ~isempty(TfFile) && ~getappdata(hFig, 'isStaticFreq');
         % === SAVE AS IMAGE ===
         jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)out_figure_image(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
@@ -2067,6 +2081,12 @@ function DisplayFigurePopup(hFig)
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'y', DefaultOutputDir));
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'x', DefaultOutputDir));
                 gui_component('MenuItem', jMenuSave, [], 'Time contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'time', 'z', DefaultOutputDir));
+            end
+            if isFreq
+                jMenuSave.addSeparator();
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'y', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Sagittal', IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'x', DefaultOutputDir));
+                gui_component('MenuItem', jMenuSave, [], 'Frequency contact sheet: Axial',    IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'freq', 'z', DefaultOutputDir));
             end
             jMenuSave.addSeparator();
             gui_component('MenuItem', jMenuSave, [], 'Volume contact sheet: Coronal',  IconLoader.ICON_CONTACTSHEET, [], @(h,ev)view_contactsheet(hFig, 'volume', 'y', DefaultOutputDir));
@@ -2800,12 +2820,17 @@ function UpdateSurfaceColor(hFig, iTess)
             SulciMap = zeros(TessInfo(iTess).nVertices, 1);
         end
         % Compute RGB values
-        FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
-                                           TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
-                                           DataSurf, ...                                  % Data: values map
-                                           TessInfo(iTess).DataLimitValue, ...            % Data: limit value
-                                           TessInfo(iTess).DataAlpha,...                  % Data: transparency
-                                           sColormap);                                    % Colormap
+        if ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_textured', 'match'))
+            FaceVertexCdata = TessInfo(iTess).AnatomyColor(TessInfo(iTess).nVertices+1:end, :);
+        else
+            FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
+                                               TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
+                                               DataSurf, ...                                  % Data: values map
+                                               TessInfo(iTess).DataLimitValue, ...            % Data: limit value
+                                               TessInfo(iTess).DataAlpha,...                  % Data: transparency
+                                               sColormap);                                    % Colormap
+        end
+
         % Edge display : on/off
         if ~TessInfo(iTess).SurfShowEdges
             EdgeColor = 'none';
@@ -3382,7 +3407,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     % Apply current smoothing
     SmoothSurface(hFig, iTess, Surface.SurfSmoothValue);
     % Apply structures selection
-    if isequal(Surface.Resect, 'struct')
+    if isequal(Surface.Resect{2}, 'struct')
         SetStructLayout(hFig, iTess);
     end
     % Get surfaces vertices
@@ -3398,7 +3423,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     FaceVertexAlphaData = ones(length(sSurf.Faces),1) * (1-Surface.SurfAlpha);
     
     % ===== HEMISPHERE SELECTION (CHAR) =====
-    if ischar(Surface.Resect) && ~strcmpi(Surface.Resect, 'none')
+    if ischar(Surface.Resect{2}) && ~strcmpi(Surface.Resect{2}, 'none')
         % Detect hemispheres
         if strcmpi(Surface.Name, 'FEM')
             isConnected = 1;
@@ -3408,13 +3433,15 @@ function UpdateSurfaceAlpha(hFig, iTess)
         % If there is no separation between  left and right: use the numeric split
         if isConnected
             iHideVert = [];
-            switch (Surface.Resect)
-                case 'right', Surface.Resect = [0  0.0000001 0];
-                case 'left',  Surface.Resect = [0 -0.0000001 0];
+            switch (Surface.Resect{2})
+                case 'right'
+                    Surface.Resect{1}(2) = max( 0.0000001, Surface.Resect{1}(2));
+                case 'left'
+                    Surface.Resect{1}(2) = min(-0.0000001, Surface.Resect{1}(2));
             end
         % If there is a structural separation between left and right: usr
         else
-            switch (Surface.Resect)
+            switch (Surface.Resect{2})
                 case 'right', iHideVert = lH;
                 case 'left',  iHideVert = rH;
                 otherwise,    iHideVert = [];
@@ -3428,7 +3455,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     end
         
     % ===== RESECT (DOUBLE) =====
-    if isnumeric(Surface.Resect) && (length(Surface.Resect) == 3) && (~all(Surface.Resect == 0) || strcmpi(Surface.Name, 'FEM'))
+    if isnumeric(Surface.Resect{1}) && (length(Surface.Resect{1}) == 3) && (~all(Surface.Resect{1} == 0) || strcmpi(Surface.Name, 'FEM'))
         % Regular triangular surface
         if ~strcmpi(Surface.Name, 'FEM')
             iNoModif = [];
@@ -3436,12 +3463,12 @@ function UpdateSurfaceAlpha(hFig, iTess)
             meanVertx = mean(Vertices, 1);
             maxVertx  = max(abs(Vertices), [], 1);
             % Limit values
-            resectVal = Surface.Resect .* maxVertx + meanVertx;
+            resectVal = Surface.Resect{1} .* maxVertx + meanVertx;
             % Get vertices that are kept in all the cuts
             for iCoord = 1:3
-                if Surface.Resect(iCoord) > 0
+                if Surface.Resect{1}(iCoord) > 0
                     iNoModif = union(iNoModif, find(Vertices(:,iCoord) < resectVal(iCoord)));
-                elseif Surface.Resect(iCoord) < 0
+                elseif Surface.Resect{1}(iCoord) < 0
                     iNoModif = union(iNoModif, find(Vertices(:,iCoord) > resectVal(iCoord)));
                 end
             end
@@ -3466,7 +3493,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
                 % For the projected vertices: get the distance from each cut
                 distToCut = abs(Vertices(iVerticesToProject, :) - repmat(resectVal, [length(iVerticesToProject), 1]));
                 % Set the distance to the cuts that are not required to infinite
-                distToCut(:,(Surface.Resect == 0)) = Inf;
+                distToCut(:,(Surface.Resect{1} == 0)) = Inf;
                 % Get the closest cut
                 [minDist, closestCut] = min(distToCut, [], 2);
 
@@ -3495,7 +3522,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
         else
             % Create a surface for the outside surface of this tissue
             Elements = get(Surface.hPatch, 'UserData');
-            Faces = tess_voledge(Vertices, Elements, Surface.Resect);
+            Faces = tess_voledge(Vertices, Elements, Surface.Resect{1});
             % Update patch
             set(Surface.hPatch, 'Faces', Faces);
         end

@@ -211,14 +211,13 @@ end
 if ~is3D
     sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
     overlayFile = '';
-    if ~getappdata(hFig, 'isStatic')
-        overlayFile = getappdata(hFig, 'ResultsFile');
-    elseif ~getappdata(hFig, 'isStaticFreq')
-        tmp = getappdata(hFig, 'Timefreq');
-        overlayFile = tmp.FileName;
+    isAnatomy = 1;
+    if isfield(TessInfo(iTess), 'DataSource') && ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
+        overlayFile = TessInfo(iTess).DataSource.FileName;
+        [~, ~, isAnatomy] = file_fullpath(overlayFile);
     end
-    if isempty(overlayFile)
-        hFig3d = view_mri_3d(sMri.FileName);
+    if isAnatomy
+        hFig3d = view_mri_3d(sMri.FileName, overlayFile);
     else
         hFig3d = view_surface_data(sMri.FileName, overlayFile);
     end
@@ -380,47 +379,6 @@ for iSample = 1:nImages
     i = floor((iSample-1) / nbCols);
     j = mod(iSample-1, nbCols);
     ImgSheet(i*H+1:(i+1)*H, j*W+1:(j+1)*W, :) = ImgBuffer(:,:,:,iSample);
-end
-
-
-%% ===== RE-INTERPOLATE IMAGE =====
-% If the MRI image is non-isotropic, re-interpolate it according to the voxel size
-if (dim ~= 0)
-    % Get subject MRI
-    sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
-    % Get image pixel size
-    pixSize = sMri.Voxsize;
-    pixSize(dim) = [];
-    % If image is non-isotropic
-    if (pixSize(1) ~= pixSize(2))
-        % Expand width: Permute dimensions and expand height
-        isPermute = (pixSize(1) > pixSize(2));
-        if isPermute
-            ImgSheet = permute(ImgSheet, [2 1 3]);
-            pixSize = fliplr(pixSize);
-        end
-        
-        % === Expand height ===
-        % Get new image size
-        ratio = pixSize(2) ./ pixSize(1);
-        initHeight = size(ImgSheet,1);
-        finalHeight = round(initHeight .* ratio);
-        X  = linspace(1, finalHeight, initHeight);
-        Xi = 1:finalHeight;
-        % Build upsampled image
-        ImgSheet_rsmp = zeros(finalHeight, size(ImgSheet,2), 3);
-        for j = 1:size(ImgSheet,2)
-            for k = 1:size(ImgSheet,3)
-                ImgSheet_rsmp(:,j,k) = interp1(X, ImgSheet(:,j,k), Xi);
-            end
-        end
-        ImgSheet = ImgSheet_rsmp;
-        
-        % Re-permute
-        if isPermute
-            ImgSheet = permute(ImgSheet, [2 1 3]);
-        end
-    end
 end
 
 

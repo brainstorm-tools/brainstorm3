@@ -1,7 +1,7 @@
 function [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS)
 % BST_SPRiNT: Compute time-resolved specparam models for a set of signals using
 % an STFT approach.
-% REFERENCE: Please cite the preprint for the SPRiNT algorithm:
+% REFERENCE: Please cite the article for the SPRiNT algorithm:
 %    Wilson, L. E., da Silva Castanheira, J., & Baillet, S. (2022). 
 %    Time-resolved parameterization of aperiodic and periodic brain 
 %    activity. eLife, 11, e77348. doi:10.7554/eLife.77348
@@ -25,7 +25,7 @@ function [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Luc Wilson (2021)
+% Authors: Luc Wilson (2021-2024)
 
 % Fetch user settings
 opt = struct();
@@ -38,10 +38,11 @@ opt.max_peaks           = OPTIONS.SPRiNTopts.maxpeaks.Value{1};
 opt.min_peak_height     = OPTIONS.SPRiNTopts.minpeakheight.Value{1} / 10; % convert from dB to B
 opt.aperiodic_mode      = OPTIONS.SPRiNTopts.apermode.Value;
 opt.peak_threshold      = 2;   % 2 std dev: parameter for interface simplification
-opt.peak_type           = OPTIONS.SPRiNTopts.peaktype.Value;
+opt.peak_type           = 'gaussian'; % 'cauchy', for interface simplification
 opt.proximity_threshold = OPTIONS.SPRiNTopts.proxthresh.Value{1};
 opt.guess_weight        = OPTIONS.SPRiNTopts.guessweight.Value;
 opt.hOT = 0;
+opt.optim_obj           = OPTIONS.SPRiNTopts.optimobj.Value;
 opt.thresh_after        = true;
 opt.rmoutliers          = OPTIONS.SPRiNTopts.rmoutliers.Value;
 opt.maxfreq             = OPTIONS.SPRiNTopts.maxfreq.Value{1};
@@ -58,6 +59,13 @@ end
 if license('test','optimization_toolbox') % check for optimization toolbox
     opt.hOT = 1;
     disp('Using constrained optimization, Guess Weight ignored.')
+end
+
+dct = 0;
+if size(F,1) > 1 & license('test','distrib_computing_toolbox') % use distributed computing if more than 1 channel
+    dct = 1; % dct = 0; to force disable 
+    % to force disable parallel processing, set above to 0;
+    disp('Using parallel processing.')
 end
 
 % Get sampling frequency
@@ -86,6 +94,19 @@ else
     Lwin = Lwin - mod(Lwin,2);    % Make sure the number of samples is even
     Nwin = floor((nTime - Loverlap) ./ (Lwin - Loverlap));
 end
+% Finally, handle when aggregate window length exceeds recording when
+% considering averaging across sliding window.
+nAvgChanged = 0; 
+while (Lwin+Loverlap*(opt.nAverage-1) > nTime)
+    nAvgChanged = 1;
+    Messages = ['Time windows included in average exceed recording length, Reducing number of windows by 1' 10];
+    opt.nAverage = opt.nAverage-1;
+end
+if nAvgChanged 
+    disp('Time windows included in average exceed recording length') 
+    disp(['Reduced number of windows used in average to: ' num2str(opt.nAverage)])
+end 
+
 % Next power of 2 from length of signal
 % NFFT = 2^nextpow2(Lwin);      % Function fft() pads the signal with zeros before computing the FT
 NFFT = Lwin;                    % No zero-padding: Nfft = Ntime 
@@ -147,6 +168,16 @@ end
 TF(:,indGood:end,:) = [];
 ts(indGood:end) = [];
 
+switch opt.optim_obj
+    case 'leastsquare'  % no knee
+        [TF, OPTIONS] = lse_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct);
+    case 'negloglike'
+        [TF, OPTIONS] = nll_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct);
+end
+
+end
+
+function [TF, OPTIONS] = lse_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct)
 % ===== GENERATE SPECPARAM MODELS FOR EACH WINDOW =====
 % Find all frequency values within user limits
     fMask = (round(FreqVector.*10)./10 >= round(opt.freq_range(1).*10)./10) & (round(FreqVector.*10)./10 <= round(opt.freq_range(2).*10)./10);
@@ -168,110 +199,623 @@ ts(indGood:end) = [];
     if isa(RowNames,'double')
         RowNames = cellstr(num2str(RowNames'));
     end
-    for chan = 1:nChan
-        channel(chan).name = RowNames{chan};
-        bst_progress('text',['Standby: SPRiNTing sensor ' num2str(chan) ' of ' num2str(nChan)]);
-        channel(chan).data(nTimes) = struct(...
-            'time',             [],...
-            'aperiodic_params', [],...
-            'peak_params',      [],...
-            'peak_types',       '',...
-            'ap_fit',           [],...
-            'fooofed_spectrum', [],...
-            'power_spectrum',   [],...
-            'peak_fit',         [],...
-            'error',            [],...
-            'r_squared',        []);
-        channel(chan).peaks(nTimes*opt.max_peaks) = struct(...
-            'time',             [],...
-            'center_frequency', [],...
-            'amplitude',        [],...
-            'st_dev',           []);
-        channel(chan).aperiodics(nTimes) = struct(...
-            'time',             [],...
-            'offset',           [],...
-            'exponent',         []);
-        channel(chan).stats(nTimes) = struct(...
-            'MSE',              [],...
-            'r_squared',        [],...
-            'frequency_wise_error', []);
-        spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
-        % Iterate across time
-        i = 1; % For peak extraction
-        ag = -(spec(1,end)-spec(1,1))./log10(fs(end)./fs(1)); % aperiodic guess initialization
-        for time = 1:nTimes
-            bst_progress('set', bst_round(time / nTimes,2).*100);
-            % Fit aperiodic 
-            aperiodic_pars = robust_ap_fit(fs, spec(time,:), opt.aperiodic_mode, ag);
-            % Remove aperiodic
-            flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, opt.aperiodic_mode);
-            % Fit peaks
-            [peak_pars, peak_function] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-                opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,opt.hOT);
-            if opt.thresh_after && ~opt.hOT  % Check thresholding requirements are met for unbounded optimization
-                peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
-                peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
-                peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
-                peak_pars = drop_peak_cf(peak_pars, opt.proximity_threshold, opt.freq_range); % remove peaks outside frequency limits
-                peak_pars(peak_pars(:,1) < 0,:) = []; % remove peaks with a centre frequency less than zero (bypass drop_peak_cf)
-                peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
-            end
-            % Refit aperiodic
-            aperiodic = spec(time,:);
-            for peak = 1:size(peak_pars,1)
-                aperiodic = aperiodic - peak_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
-            end
-            aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode, aperiodic_pars(end));
-            ag = aperiodic_pars(end); % save aperiodic estimate for next iteration
-            % Generate model fit
-            ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
-            model_fit = ap_fit;
-            for peak = 1:size(peak_pars,1)
-                model_fit = model_fit + peak_function(fs,peak_pars(peak,1),...
-                    peak_pars(peak,2),peak_pars(peak,3));
-            end
-            % Calculate model error
-            MSE = sum((spec(time,:) - model_fit).^2)/length(model_fit);
-            rsq_tmp = corrcoef(spec(time,:),model_fit).^2;
-            % Return FOOOF results
-            aperiodic_pars(2) = abs(aperiodic_pars(2));
-            channel(chan).data(time).time                = ts(time);
-            channel(chan).data(time).aperiodic_params    = aperiodic_pars;
-            channel(chan).data(time).peak_params         = peak_pars;
-            channel(chan).data(time).peak_types          = func2str(peak_function);
-            channel(chan).data(time).ap_fit              = 10.^ap_fit;
-            aperiodic_models(chan,time,:)                = 10.^ap_fit;
-            channel(chan).data(time).fooofed_spectrum    = 10.^model_fit;
-            SPRiNT_models(chan,time,:)                   = 10.^model_fit;
-            channel(chan).data(time).power_spectrum   	 = 10.^spec(time,:);
-            channel(chan).data(time).peak_fit            = 10.^(model_fit-ap_fit); 
-            peak_models(chan,time,:)                     = 10.^(model_fit-ap_fit); 
-            channel(chan).data(time).error               = MSE;
-            channel(chan).data(time).r_squared           = rsq_tmp(2);
-            % Extract peaks
-            if ~isempty(peak_pars) & any(peak_pars)
-                for p = 1:size(peak_pars,1)
-                    channel(chan).peaks(i).time = ts(time);
-                    channel(chan).peaks(i).center_frequency = peak_pars(p,1);
-                    channel(chan).peaks(i).amplitude = peak_pars(p,2);
-                    channel(chan).peaks(i).st_dev = peak_pars(p,3);
-                    i = i +1;
+    if ~dct
+        for chan = 1:nChan
+            channel(chan).name = RowNames{chan};
+            bst_progress('text',['Standby: SPRiNTing sensor ' num2str(chan) ' of ' num2str(nChan)]);
+            channel(chan).data(nTimes) = struct(...
+                'time',             [],...
+                'aperiodic_params', [],...
+                'peak_params',      [],...
+                'peak_types',       '',...
+                'ap_fit',           [],...
+                'fooofed_spectrum', [],...
+                'power_spectrum',   [],...
+                'peak_fit',         [],...
+                'error',            [],...
+                'r_squared',        []);
+            channel(chan).peaks(nTimes*opt.max_peaks) = struct(...
+                'time',             [],...
+                'center_frequency', [],...
+                'amplitude',        [],...
+                'st_dev',           []);
+            channel(chan).aperiodics(nTimes) = struct(...
+                'time',             [],...
+                'offset',           [],...
+                'exponent',         []);
+            channel(chan).stats(nTimes) = struct(...
+                'MSE',              [],...
+                'r_squared',        [],...
+                'frequency_wise_error', []);
+            spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
+            % Iterate across time
+            i = 1; % For peak extraction
+            ag = -(spec(1,end)-spec(1,1))./log10(fs(end)./fs(1)); % aperiodic guess initialization
+            for time = 1:nTimes
+                bst_progress('set', bst_round(time / nTimes,2).*100);
+                % Fit aperiodic 
+                aperiodic_pars = robust_ap_fit(fs, spec(time,:), opt.aperiodic_mode, ag);
+                % Remove aperiodic
+                flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, opt.aperiodic_mode);
+                % Fit peaks
+                [peak_pars, pk_function] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
+                    opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,opt.hOT);
+                if opt.thresh_after && ~opt.hOT  % Check thresholding requirements are met for unbounded optimization
+                    peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
+                    peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
+                    peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
+                    peak_pars = drop_peak_cf(peak_pars, opt.proximity_threshold, opt.freq_range); % remove peaks outside frequency limits
+                    peak_pars(peak_pars(:,1) < 0,:) = []; % remove peaks with a centre frequency less than zero (bypass drop_peak_cf)
+                    peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
                 end
+                % Refit aperiodic
+                aperiodic = spec(time,:);
+                for peak = 1:size(peak_pars,1)
+                    aperiodic = aperiodic - pk_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+                end
+                aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode, aperiodic_pars(end));
+                ag = aperiodic_pars(end); % save aperiodic estimate for next iteration
+                % Generate model fit
+                ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
+                model_fit = ap_fit;
+                for peak = 1:size(peak_pars,1)
+                    model_fit = model_fit + pk_function(fs,peak_pars(peak,1),...
+                        peak_pars(peak,2),peak_pars(peak,3));
+                end
+                % Calculate model error
+                MSE = sum((spec(time,:) - model_fit).^2)/length(model_fit);
+                rsq_tmp = corrcoef(spec(time,:),model_fit).^2;
+                % Return FOOOF results
+                aperiodic_pars(2) = abs(aperiodic_pars(2));
+                channel(chan).data(time).time                = ts(time);
+                channel(chan).data(time).aperiodic_params    = aperiodic_pars;
+                channel(chan).data(time).peak_params         = peak_pars;
+                channel(chan).data(time).peak_types          = func2str(pk_function);
+                channel(chan).data(time).ap_fit              = 10.^ap_fit;
+                aperiodic_models(chan,time,:)                = 10.^ap_fit;
+                channel(chan).data(time).fooofed_spectrum    = 10.^model_fit;
+                SPRiNT_models(chan,time,:)                   = 10.^model_fit;
+                channel(chan).data(time).power_spectrum   	 = 10.^spec(time,:);
+                channel(chan).data(time).peak_fit            = 10.^(model_fit-ap_fit); 
+                peak_models(chan,time,:)                     = 10.^(model_fit-ap_fit); 
+                channel(chan).data(time).error               = MSE;
+                channel(chan).data(time).r_squared           = rsq_tmp(2);
+                % Extract peaks
+                if ~isempty(peak_pars) & any(peak_pars)
+                    for p = 1:size(peak_pars,1)
+                        channel(chan).peaks(i).time = ts(time);
+                        channel(chan).peaks(i).center_frequency = peak_pars(p,1);
+                        channel(chan).peaks(i).amplitude = peak_pars(p,2);
+                        channel(chan).peaks(i).st_dev = peak_pars(p,3);
+                        i = i +1;
+                    end
+                end
+                % Extract aperiodic
+                channel(chan).aperiodics(time).time = ts(time);
+                channel(chan).aperiodics(time).offset = aperiodic_pars(1);
+                if length(aperiodic_pars)>2 % Legacy FOOOF alters order of parameters
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(3);
+                    channel(chan).aperiodics(time).knee_frequency = aperiodic_pars(2);
+                else
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(2);
+                end
+                channel(chan).stats(time).MSE = MSE;
+                channel(chan).stats(time).r_squared = rsq_tmp(2);
+                channel(chan).stats(time).frequency_wise_error = abs(spec(time,:)-model_fit);
             end
-            % Extract aperiodic
-            channel(chan).aperiodics(time).time = ts(time);
-            channel(chan).aperiodics(time).offset = aperiodic_pars(1);
-            if length(aperiodic_pars)>2 % Legacy FOOOF alters order of parameters
-                channel(chan).aperiodics(time).exponent = aperiodic_pars(3);
-                channel(chan).aperiodics(time).knee_frequency = aperiodic_pars(2);
-            else
-                channel(chan).aperiodics(time).exponent = aperiodic_pars(2);
-            end
-            channel(chan).stats(time).MSE = MSE;
-            channel(chan).stats(time).r_squared = rsq_tmp(2);
-            channel(chan).stats(time).frequency_wise_error = abs(spec(time,:)-model_fit);
+            channel(chan).peaks(i:end) = [];
         end
-        channel(chan).peaks(i:end) = [];
+    else
+        bst_progress('text','Standby: Parallel SPRiNTing channels');
+        parfor chan = 1:nChan
+            channel(chan).name = RowNames{chan};
+            channel(chan).data(nTimes) = struct(...
+                'time',             [],...
+                'aperiodic_params', [],...
+                'peak_params',      [],...
+                'peak_types',       '',...
+                'ap_fit',           [],...
+                'fooofed_spectrum', [],...
+                'power_spectrum',   [],...
+                'peak_fit',         [],...
+                'error',            [],...
+                'r_squared',        []);
+            channel(chan).peaks(nTimes*opt.max_peaks) = struct(...
+                'time',             [],...
+                'center_frequency', [],...
+                'amplitude',        [],...
+                'st_dev',           []);
+            channel(chan).aperiodics(nTimes) = struct(...
+                'time',             [],...
+                'offset',           [],...
+                'exponent',         []);
+            channel(chan).stats(nTimes) = struct(...
+                'MSE',              [],...
+                'r_squared',        [],...
+                'frequency_wise_error', []);
+            spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
+            % Iterate across time
+            i = 1; % For peak extraction
+            ag = -(spec(1,end)-spec(1,1))./log10(fs(end)./fs(1)); % aperiodic guess initialization
+            for time = 1:nTimes
+                % Fit aperiodic 
+                aperiodic_pars = robust_ap_fit(fs, spec(time,:), opt.aperiodic_mode, ag);
+                % Remove aperiodic
+                flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, opt.aperiodic_mode);
+                % Fit peaks
+                [peak_pars, pk_function] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
+                    opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,opt.hOT);
+                if opt.thresh_after && ~opt.hOT  % Check thresholding requirements are met for unbounded optimization
+                    peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
+                    peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
+                    peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
+                    peak_pars = drop_peak_cf(peak_pars, opt.proximity_threshold, opt.freq_range); % remove peaks outside frequency limits
+                    peak_pars(peak_pars(:,1) < 0,:) = []; % remove peaks with a centre frequency less than zero (bypass drop_peak_cf)
+                    peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
+                end
+                % Refit aperiodic
+                aperiodic = spec(time,:);
+                for peak = 1:size(peak_pars,1)
+                    aperiodic = aperiodic - pk_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+                end
+                aperiodic_pars = simple_ap_fit(fs, aperiodic, opt.aperiodic_mode, aperiodic_pars(end));
+                ag = aperiodic_pars(end); % save aperiodic estimate for next iteration
+                % Generate model fit
+                ap_fit = gen_aperiodic(fs, aperiodic_pars, opt.aperiodic_mode);
+                model_fit = ap_fit;
+                for peak = 1:size(peak_pars,1)
+                    model_fit = model_fit + pk_function(fs,peak_pars(peak,1),...
+                        peak_pars(peak,2),peak_pars(peak,3));
+                end
+                % Calculate model error
+                MSE = sum((spec(time,:) - model_fit).^2)/length(model_fit);
+                rsq_tmp = corrcoef(spec(time,:),model_fit).^2;
+                % Return FOOOF results
+                aperiodic_pars(2) = abs(aperiodic_pars(2));
+                channel(chan).data(time).time                = ts(time);
+                channel(chan).data(time).aperiodic_params    = aperiodic_pars;
+                channel(chan).data(time).peak_params         = peak_pars;
+                channel(chan).data(time).peak_types          = func2str(pk_function);
+                channel(chan).data(time).ap_fit              = 10.^ap_fit;
+                aperiodic_models(chan,time,:)                = 10.^ap_fit;
+                channel(chan).data(time).fooofed_spectrum    = 10.^model_fit;
+                SPRiNT_models(chan,time,:)                   = 10.^model_fit;
+                channel(chan).data(time).power_spectrum   	 = 10.^spec(time,:);
+                channel(chan).data(time).peak_fit            = 10.^(model_fit-ap_fit); 
+                peak_models(chan,time,:)                     = 10.^(model_fit-ap_fit); 
+                channel(chan).data(time).error               = MSE;
+                channel(chan).data(time).r_squared           = rsq_tmp(2);
+                % Extract peaks
+                if ~isempty(peak_pars) & any(peak_pars)
+                    for p = 1:size(peak_pars,1)
+                        channel(chan).peaks(i).time = ts(time);
+                        channel(chan).peaks(i).center_frequency = peak_pars(p,1);
+                        channel(chan).peaks(i).amplitude = peak_pars(p,2);
+                        channel(chan).peaks(i).st_dev = peak_pars(p,3);
+                        i = i +1;
+                    end
+                end
+                % Extract aperiodic
+                channel(chan).aperiodics(time).time = ts(time);
+                channel(chan).aperiodics(time).offset = aperiodic_pars(1);
+                if length(aperiodic_pars)>2 % Legacy FOOOF alters order of parameters
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(3);
+                    channel(chan).aperiodics(time).knee_frequency = aperiodic_pars(2);
+                else
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(2);
+                end
+                channel(chan).stats(time).MSE = MSE;
+                channel(chan).stats(time).r_squared = rsq_tmp(2);
+                channel(chan).stats(time).frequency_wise_error = abs(spec(time,:)-model_fit);
+            end
+            channel(chan).peaks(i:end) = [];
+        end
+    end
+    SPRiNT.channel = channel;
+    SPRiNT.aperiodic_models = aperiodic_models;
+    SPRiNT.SPRiNT_models = SPRiNT_models;
+    SPRiNT.peak_models = peak_models;
+    if strcmp(opt.rmoutliers,'yes')
+        bst_progress('text','Standby: Removing outlier peaks');
+        SPRiNT = remove_outliers(SPRiNT,@gaussian,opt);
+    end
+    for chan = 1:nChan
+        tp_exponent(chan,:) = [SPRiNT.channel(chan).aperiodics(:).exponent];
+        tp_offset(chan,:) = [SPRiNT.channel(chan).aperiodics(:).offset];
+    end
+    SPRiNT.topography.exponent = tp_exponent;
+    SPRiNT.topography.offset = tp_offset;
+    bst_progress('text','Standby: Clustering modelled peaks');
+    SPRiNT = cluster_peaks_dynamic(SPRiNT); % Cluster peaks
+    OPTIONS.TimeVector = ts'; % Reassign times by windows used
+    TF = sqrt(TF); % remove power transformation
+    OPTIONS.SPRiNT = SPRiNT;
+
+end
+
+function [TF, OPTIONS] = nll_sprint(TF, FreqVector, ts, opt, OPTIONS, RowNames, dct)
+
+% ===== GENERATE SPECPARAM MODELS FOR EACH WINDOW =====
+% Find all frequency values within user limits
+    fMask = (round(FreqVector.*10)./10 >= round(opt.freq_range(1).*10)./10) & (round(FreqVector.*10)./10 <= round(opt.freq_range(2).*10)./10);
+    fs = FreqVector(fMask);
+    lfdif = log10(fs(end)./fs(1));
+    mp = opt.max_peaks;
+    am = opt.aperiodic_mode;
+    pet = opt.peak_threshold; 
+    mph = opt.min_peak_height;
+    pwl = opt.peak_width_limits./2;
+    prt = opt.proximity_threshold;
+    pt = opt.peak_type;
+    gw = opt.guess_weight;
+    hOT = opt.hOT;
+    OPTIONS.Freqs = fs;
+    nChan = size(TF,1);
+    nTimes = size(TF,2);
+    % Adjust TF plots to only include modelled frequencies
+    TF = TF(:,:,fMask);
+    % Initalize FOOOF structs
+    channel(nChan) = struct('name',[]);
+    SPRiNT = struct('options',opt,'freqs',fs,'channel',channel,'SPRiNT_models',nan(size(TF)),'peak_models',nan(size(TF)),'aperiodic_models',nan(size(TF)));
+    % Iterate across channels
+    aperiodic_models = nan(nChan,nTimes,length(fs));
+    peak_models = nan(nChan,nTimes,length(fs));
+    SPRiNT_models = nan(nChan,nTimes,length(fs));
+    tp_exponent = nan(nChan,nTimes);
+    tp_offset = nan(nChan,nTimes);
+    if isa(RowNames,'double')
+        RowNames = cellstr(num2str(RowNames'));
+    end
+    switch opt.peak_type 
+        case 'gaussian' % gaussian only
+            peak_function = @gaussian;
+        case 'cauchy'
+            peak_function = @cauchy;
+    end
+    if ~dct
+        for chan = 1:nChan
+            channel(chan).name = RowNames{chan};
+            bst_progress('text',['Standby: ms-SPRiNTing sensor ' num2str(chan) ' of ' num2str(nChan)]);
+            channel(chan).data(nTimes) = struct(...
+                'time',             [],...
+                'aperiodic_params', [],...
+                'peak_params',      [],...
+                'peak_types',       '',...
+                'ap_fit',           [],...
+                'fooofed_spectrum', [],...
+                'power_spectrum',   [],...
+                'peak_fit',         [],...
+                'error',            [],...
+                'r_squared',        []);
+            channel(chan).peaks(nTimes*mp) = struct(...
+                'time',             [],...
+                'center_frequency', [],...
+                'amplitude',        [],...
+                'st_dev',           []);
+            channel(chan).aperiodics(nTimes) = struct(...
+                'time',             [],...
+                'offset',           [],...
+                'exponent',         []);
+            channel(chan).stats(nTimes) = struct(...
+                'MSE',              [],...
+                'r_squared',        [],...
+                'frequency_wise_error', []);
+            spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
+            % Iterate across time
+            i = 1; % For peak extraction
+            ag = -(spec(1,end)-spec(1,1))./lfdif; % aperiodic guess initialization
+            for time = 1:nTimes
+                bst_progress('set', bst_round(time / nTimes,2).*100);
+                % Fit aperiodic 
+                aperiodic_pars = robust_ap_fit(fs, spec(time,:), am, ag);
+                % Remove aperiodic
+                flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, am);
+                try
+                [est_pars, pk_function] = est_peaks(fs, flat_spec, mp, pet, mph, ...
+                pwl, prt, pt);
+                catch
+                   error(['Failure fitting peaks: channel ' num2str(chan) ', time index ' num2str(time)]) 
+                end
+                model = struct();
+                for pk = 0:size(est_pars,1)
+                    peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, pwl, pt, gw, hOT);
+                    % Refit aperiodic
+                    aperiodic = spec(time,:);
+                    for peak = 1:size(peak_pars,1)
+                        aperiodic = aperiodic - pk_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+                    end
+                    aperiodic_pars = simple_ap_fit(fs, aperiodic, am, aperiodic_pars(2));
+                    guess = peak_pars;
+                    if ~isempty(guess)
+                        lb = [max([ones(size(guess(1:pk,:),1),1).*fs(1) guess(1:pk,1)-guess(1:pk,3)*2],[],2),zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*pwl(1)]';
+                        ub = [min([ones(size(guess(1:pk,:),1),1).*fs(end) guess(1:pk,1)+guess(1:pk,3)*2],[],2),inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*pwl(2)]';
+
+                    else
+                        lb = [];
+                        ub = [];
+                    end
+                    switch am
+                        case 'fixed'
+                            lb = [-inf; 0; lb(:)];
+                            ub = [inf; inf; ub(:)];
+                        case 'knee'
+                            lb = [-inf; 0; 0; lb(:)];
+                            ub = [inf; 100; inf; ub(:)];
+                    end
+
+                    guess = guess(1:pk,:)';
+                    guess = [aperiodic_pars'; guess(:)];
+                    options = optimset('Display', 'off', 'TolX', 1e-7, 'TolFun', 1e-9, ...
+                        'MaxFunEvals', 5000, 'MaxIter', 5000); % Tuned options 
+                    try
+                        params = fmincon(@err_fm_constr, guess, [], [], [], [], ...
+                            lb, ub, [], options, fs, spec(time,:), am, pt);
+                    catch
+                        error(['Optimization failed to converge: channel ' num2str(chan) ', time index ' num2str(time)]);
+                    end
+                    switch am
+                        case 'fixed'
+                            aperiodic_pars_tmp = params(1:2);
+                            if length(params) > 3
+                                peak_pars_tmp = reshape(params(3:end),[3 length(params(3:end))./3])';
+                            end
+                        case 'knee'
+                            aperiodic_pars_tmp = params(1:3);
+                            if length(params) > 3
+                                peak_pars_tmp = reshape(params(4:end),[3 length(params(4:end))./3])';
+                            end
+                    end
+                    % Generate model fit
+                    ap_fit = gen_aperiodic(fs, aperiodic_pars_tmp, am);
+                    model_fit = ap_fit;
+                    if length(params) > 3
+                        for peak = 1:size(peak_pars_tmp,1)
+                            model_fit = model_fit + peak_function(fs,peak_pars_tmp(peak,1),...
+                                peak_pars_tmp(peak,2),peak_pars_tmp(peak,3));
+                        end  
+                    else
+                        peak_pars_tmp = [0 0 0];
+                    end
+                    % Calculate model error
+                    MSE = sum((spec(time,:) - model_fit).^2)/length(model_fit);
+                    rsq_tmp = corrcoef(spec(time,:),model_fit).^2;
+                    loglik = -length(model_fit)/2.*(1+log(MSE)+log(2*pi));
+                    AIC = 2.*(length(params)-loglik);
+                    BIC = length(params).*log(length(model_fit))-2.*loglik;
+                    model(pk+1).aperiodic_params = aperiodic_pars_tmp;
+                    model(pk+1).peak_params = peak_pars_tmp;
+                    model(pk+1).MSE = MSE;
+                    model(pk+1).r_squared = rsq_tmp(2);
+                    model(pk+1).loglik = loglik;
+                    model(pk+1).AIC = AIC;
+                    model(pk+1).BIC = BIC;
+                    model(pk+1).BF = exp((BIC-model(1).BIC)./2);
+                end
+
+            % insert data from best model
+            [~,mi] = min([model.BIC]);
+            aperiodic_pars = model(mi).aperiodic_params;
+            peak_pars = model(mi).peak_params;
+                % Return FOOOF results
+                aperiodic_pars(2) = abs(aperiodic_pars(2));
+                channel(chan).data(time).time                = ts(time);
+                channel(chan).data(time).aperiodic_params    = aperiodic_pars;
+                channel(chan).data(time).peak_params         = peak_pars;
+                channel(chan).data(time).peak_types          = func2str(peak_function);
+                channel(chan).data(time).ap_fit              = 10.^gen_aperiodic(fs, aperiodic_pars, am);
+                aperiodic_models(chan,time,:)                = channel(chan).data(time).ap_fit;
+                channel(chan).data(time).fooofed_spectrum    = 10.^build_model(fs, aperiodic_pars, opt.aperiodic_mode, peak_pars, peak_function);
+                SPRiNT_models(chan,time,:)                   = channel(chan).data(time).fooofed_spectrum;
+                channel(chan).data(time).power_spectrum   	 = 10.^spec(time,:);
+                channel(chan).data(time).peak_fit            = 10.^(SPRiNT_models(chan,time,:)-aperiodic_models(chan,time,:)); 
+                peak_models(chan,time,:)                     = 10.^(SPRiNT_models(chan,time,:)-aperiodic_models(chan,time,:)); 
+                channel(chan).data(time).error               = model(mi).MSE;
+                channel(chan).data(time).r_squared           = model(mi).r_squared;
+                channel(chan).data(time).loglik              = model(mi).loglik; % log-likelihood
+                channel(chan).data(time).AIC                 = model(mi).AIC;
+                channel(chan).data(time).BIC                 = model(mi).BIC;
+                channel(chan).data(time).models              = model;
+                % Extract peaks
+                if ~isempty(peak_pars) & any(peak_pars)
+                    for p = 1:size(peak_pars,1)
+                        channel(chan).peaks(i).time = ts(time);
+                        channel(chan).peaks(i).center_frequency = peak_pars(p,1);
+                        channel(chan).peaks(i).amplitude = peak_pars(p,2);
+                        channel(chan).peaks(i).st_dev = peak_pars(p,3);
+                        i = i +1;
+                    end
+                end
+                % Extract aperiodic
+                channel(chan).aperiodics(time).time = ts(time);
+                channel(chan).aperiodics(time).offset = aperiodic_pars(1);
+                if length(aperiodic_pars)>2 % Legacy FOOOF alters order of parameters
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(3);
+                    channel(chan).aperiodics(time).knee_frequency = aperiodic_pars(2);
+                else
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(2);
+                end
+                channel(chan).stats(time).MSE = MSE;
+                channel(chan).stats(time).r_squared = rsq_tmp(2);
+                channel(chan).stats(time).frequency_wise_error = abs(spec(time,:)-log10(channel(chan).data(time).fooofed_spectrum));
+            end
+            channel(chan).peaks(i:end) = [];
+        end
+    else
+        bst_progress('text','Standby: Parallel ms-SPRiNTing channels');
+        parfor chan = 1:nChan
+            channel(chan).name = RowNames{chan};
+            bst_progress('text',['Standby: ms-SPRiNTing sensor ' num2str(chan) ' of ' num2str(nChan)]);
+            channel(chan).data(nTimes) = struct(...
+                'time',             [],...
+                'aperiodic_params', [],...
+                'peak_params',      [],...
+                'peak_types',       '',...
+                'ap_fit',           [],...
+                'fooofed_spectrum', [],...
+                'power_spectrum',   [],...
+                'peak_fit',         [],...
+                'error',            [],...
+                'r_squared',        []);
+            channel(chan).peaks(nTimes*mp) = struct(...
+                'time',             [],...
+                'center_frequency', [],...
+                'amplitude',        [],...
+                'st_dev',           []);
+            channel(chan).aperiodics(nTimes) = struct(...
+                'time',             [],...
+                'offset',           [],...
+                'exponent',         []);
+            channel(chan).stats(nTimes) = struct(...
+                'MSE',              [],...
+                'r_squared',        [],...
+                'frequency_wise_error', []);
+            spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
+            % Iterate across time
+            i = 1; % For peak extraction
+            ag = -(spec(1,end)-spec(1,1))./lfdif; % aperiodic guess initialization
+            for time = 1:nTimes
+                bst_progress('set', bst_round(time / nTimes,2).*100);
+                est_pars    = [];
+                pk_function = [];
+                MSE         = [];
+                rsq_tmp     = [];
+                % Fit aperiodic 
+                aperiodic_pars = robust_ap_fit(fs, spec(time,:), am, ag);
+                % Remove aperiodic
+                flat_spec = flatten_spectrum(fs, spec(time,:), aperiodic_pars, am);
+                try
+                    [est_pars, pk_function] = est_peaks(fs, flat_spec, mp, pet, mph, ...
+                    pwl, prt, pt);
+                catch
+                   error(['Failure fitting peaks: channel ' num2str(chan) ', time index ' num2str(time)]) 
+                end
+                model = struct();
+                for pk = 0:size(est_pars,1)
+                    params             = [];
+                    aperiodic_pars_tmp = [];
+                    peak_pars_tmp      = [];
+                    peak_pars = est_fit(est_pars(1:pk,:), fs, flat_spec, pwl, pt, gw, hOT);
+                    % Refit aperiodic
+                    aperiodic = spec(time,:);
+                    for peak = 1:size(peak_pars,1)
+                        aperiodic = aperiodic - pk_function(fs,peak_pars(peak,1), peak_pars(peak,2), peak_pars(peak,3));
+                    end
+                    aperiodic_pars = simple_ap_fit(fs, aperiodic, am, aperiodic_pars(2));
+                    guess = peak_pars;
+                    if ~isempty(guess)
+                        lb = [max([ones(size(guess(1:pk,:),1),1).*fs(1) guess(1:pk,1)-guess(1:pk,3)*2],[],2),zeros(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*pwl(1)]';
+                        ub = [min([ones(size(guess(1:pk,:),1),1).*fs(end) guess(1:pk,1)+guess(1:pk,3)*2],[],2),inf(size(guess(1:pk,2))),ones(size(guess(1:pk,3)))*pwl(2)]';
+
+                    else
+                        lb = [];
+                        ub = [];
+                    end
+                    switch am
+                        case 'fixed'
+                            lb = [-inf; 0; lb(:)];
+                            ub = [inf; inf; ub(:)];
+                        case 'knee'
+                            lb = [-inf; 0; 0; lb(:)];
+                            ub = [inf; 100; inf; ub(:)];
+                    end
+
+                    guess = guess(1:pk,:)';
+                    guess = [aperiodic_pars'; guess(:)];
+                    options = optimset('Display', 'off', 'TolX', 1e-7, 'TolFun', 1e-9, ...
+                        'MaxFunEvals', 5000, 'MaxIter', 5000); % Tuned options 
+                    try
+                        params = fmincon(@err_fm_constr, guess, [], [], [], [], ...
+                            lb, ub, [], options, fs, spec(time,:), am, pt);
+                    catch
+                        error(['Optimization failed to converge: channel ' num2str(chan) ', time index ' num2str(time)]);
+                    end
+                    switch am
+                        case 'fixed'
+                            aperiodic_pars_tmp = params(1:2);
+                            if length(params) > 3
+                                peak_pars_tmp = reshape(params(3:end),[3 length(params(3:end))./3])';
+                            end
+                        case 'knee'
+                            aperiodic_pars_tmp = params(1:3);
+                            if length(params) > 3
+                                peak_pars_tmp = reshape(params(4:end),[3 length(params(4:end))./3])';
+                            end
+                    end
+                    % Generate model fit
+                    ap_fit = gen_aperiodic(fs, aperiodic_pars_tmp, am);
+                    model_fit = ap_fit;
+                    if length(params) > 3
+                        for peak = 1:size(peak_pars_tmp,1)
+                            model_fit = model_fit + peak_function(fs,peak_pars_tmp(peak,1),...
+                                peak_pars_tmp(peak,2),peak_pars_tmp(peak,3));
+                        end  
+                    else
+                        peak_pars_tmp = [0 0 0];
+                    end
+                    % Calculate model error
+                    MSE = sum((spec(time,:) - model_fit).^2)/length(model_fit);
+                    rsq_tmp = corrcoef(spec(time,:),model_fit).^2;
+                    loglik = -length(model_fit)/2.*(1+log(MSE)+log(2*pi));
+                    AIC = 2.*(length(params)-loglik);
+                    BIC = length(params).*log(length(model_fit))-2.*loglik;
+                    model(pk+1).aperiodic_params = aperiodic_pars_tmp;
+                    model(pk+1).peak_params = peak_pars_tmp;
+                    model(pk+1).MSE = MSE;
+                    model(pk+1).r_squared = rsq_tmp(2);
+                    model(pk+1).loglik = loglik;
+                    model(pk+1).AIC = AIC;
+                    model(pk+1).BIC = BIC;
+                    model(pk+1).BF = exp((BIC-model(1).BIC)./2);
+                end
+
+                % Insert data from best model
+                [~,mi] = min([model.BIC]);
+                aperiodic_pars = model(mi).aperiodic_params;
+                peak_pars = model(mi).peak_params;
+                % Return FOOOF results
+                aperiodic_pars(2) = abs(aperiodic_pars(2));
+                channel(chan).data(time).time                = ts(time);
+                channel(chan).data(time).aperiodic_params    = aperiodic_pars;
+                channel(chan).data(time).peak_params         = peak_pars;
+                channel(chan).data(time).peak_types          = func2str(peak_function);
+                channel(chan).data(time).ap_fit              = 10.^gen_aperiodic(fs, aperiodic_pars, am);
+                aperiodic_models(chan,time,:)                = channel(chan).data(time).ap_fit;
+                channel(chan).data(time).fooofed_spectrum    = 10.^build_model(fs, aperiodic_pars, opt.aperiodic_mode, peak_pars, peak_function);
+                SPRiNT_models(chan,time,:)                   = channel(chan).data(time).fooofed_spectrum;
+                channel(chan).data(time).power_spectrum   	 = 10.^spec(time,:);
+                channel(chan).data(time).peak_fit            = 10.^(SPRiNT_models(chan,time,:)-aperiodic_models(chan,time,:)); 
+                peak_models(chan,time,:)                     = 10.^(SPRiNT_models(chan,time,:)-aperiodic_models(chan,time,:)); 
+                channel(chan).data(time).error               = model(mi).MSE;
+                channel(chan).data(time).r_squared           = model(mi).r_squared;
+                channel(chan).data(time).loglik              = model(mi).loglik; % log-likelihood
+                channel(chan).data(time).AIC                 = model(mi).AIC;
+                channel(chan).data(time).BIC                 = model(mi).BIC;
+                channel(chan).data(time).models              = model;
+                % Extract peaks
+                if ~isempty(peak_pars) & any(peak_pars)
+                    for p = 1:size(peak_pars,1)
+                        channel(chan).peaks(i).time = ts(time);
+                        channel(chan).peaks(i).center_frequency = peak_pars(p,1);
+                        channel(chan).peaks(i).amplitude = peak_pars(p,2);
+                        channel(chan).peaks(i).st_dev = peak_pars(p,3);
+                        i = i +1;
+                    end
+                end
+                % Extract aperiodic
+                channel(chan).aperiodics(time).time = ts(time);
+                channel(chan).aperiodics(time).offset = aperiodic_pars(1);
+                if length(aperiodic_pars)>2 % Legacy FOOOF alters order of parameters
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(3);
+                    channel(chan).aperiodics(time).knee_frequency = aperiodic_pars(2);
+                else
+                    channel(chan).aperiodics(time).exponent = aperiodic_pars(2);
+                end
+                channel(chan).stats(time).MSE = MSE;
+                channel(chan).stats(time).r_squared = rsq_tmp(2);
+                channel(chan).stats(time).frequency_wise_error = abs(spec(time,:)-log10(channel(chan).data(time).fooofed_spectrum));
+            end
+            channel(chan).peaks(i:end) = [];
+        end
     end
     SPRiNT.channel = channel;
     SPRiNT.aperiodic_models = aperiodic_models;
@@ -315,96 +859,105 @@ function SPRiNT = remove_outliers(SPRiNT,peak_function,opt)
 
     timeRange = opt.maxtime.*opt.winLen.*(1-opt.Ovrlp./100);
     nC = length(SPRiNT.channel);
+    channel = SPRiNT.channel;
+    freqs = SPRiNT.freqs;
+    aperiodic_models = SPRiNT.aperiodic_models;
+    SPRiNT_models = SPRiNT.SPRiNT_models;
+    peak_models = SPRiNT.peak_models;
     for c = 1:nC
         bst_progress('set', bst_round(c / nC,2).*100);
-        ts = [SPRiNT.channel(c).data.time];
+        ts = [channel(c).data.time];
         remove = 1;
         while any(remove) 
-            remove = zeros(length([SPRiNT.channel(c).peaks]),1);
-            for p = 1:length([SPRiNT.channel(c).peaks])
-                if sum((abs([SPRiNT.channel(c).peaks.time] - SPRiNT.channel(c).peaks(p).time) <= timeRange) &...
-                        (abs([SPRiNT.channel(c).peaks.center_frequency] - SPRiNT.channel(c).peaks(p).center_frequency) <= opt.maxfreq)) < opt.minnear +1 % includes current peak
+            remove = zeros(length([channel(c).peaks]),1);
+            for p = 1:length([channel(c).peaks])
+                if sum((abs([channel(c).peaks.time] - channel(c).peaks(p).time) <= timeRange) &...
+                        (abs([channel(c).peaks.center_frequency] - channel(c).peaks(p).center_frequency) <= opt.maxfreq)) < opt.minnear +1 % includes current peak
                     remove(p) = 1;
                 end
             end
-            SPRiNT.channel(c).peaks(logical(remove)) = [];
+            channel(c).peaks(logical(remove)) = [];
         end
         
         for t = 1:length(ts)
             
-            if SPRiNT.channel(c).data(t).peak_params(1) == 0
+            if channel(c).data(t).peak_params(1) == 0
                 continue % never any peaks to begin with
             end
-            p = [SPRiNT.channel(c).peaks.time] == ts(t);
-            if sum(p) == size(SPRiNT.channel(c).data(t).peak_params,1)
+            p = [channel(c).peaks.time] == ts(t);
+            if sum(p) == size(channel(c).data(t).peak_params,1)
                 continue % number of peaks has not changed
             end
-            peak_fit = zeros(size(SPRiNT.freqs));
+            peak_fit = zeros(size(freqs));
             if any(p)
-                SPRiNT.channel(c).data(t).peak_params = [[SPRiNT.channel(c).peaks(p).center_frequency]' [SPRiNT.channel(c).peaks(p).amplitude]' [SPRiNT.channel(c).peaks(p).st_dev]'];
-                peak_pars = SPRiNT.channel(c).data(t).peak_params;
+                channel(c).data(t).peak_params = [[channel(c).peaks(p).center_frequency]' [channel(c).peaks(p).amplitude]' [channel(c).peaks(p).st_dev]'];
+                peak_pars = channel(c).data(t).peak_params;
                 for peak = 1:size(peak_pars,1)
-                    peak_fit = peak_fit + peak_function(SPRiNT.freqs,peak_pars(peak,1),...
+                    peak_fit = peak_fit + peak_function(freqs,peak_pars(peak,1),...
                         peak_pars(peak,2),peak_pars(peak,3));
                 end
-                ap_spec = log10(SPRiNT.channel(c).data(t).power_spectrum) - peak_fit;
-                ap_pars = simple_ap_fit(SPRiNT.freqs, ap_spec, opt.aperiodic_mode, SPRiNT.channel(c).data(t).aperiodic_params(end));
-                ap_fit = gen_aperiodic(SPRiNT.freqs, ap_pars, opt.aperiodic_mode);
-                MSE = sum((ap_spec - ap_fit).^2)/length(SPRiNT.freqs);
+                ap_spec = log10(channel(c).data(t).power_spectrum) - peak_fit;
+                ap_pars = simple_ap_fit(freqs, ap_spec, opt.aperiodic_mode, channel(c).data(t).aperiodic_params(end));
+                ap_fit = gen_aperiodic(freqs, ap_pars, opt.aperiodic_mode);
+                MSE = sum((ap_spec - ap_fit).^2)/length(freqs);
                 rsq_tmp = corrcoef(ap_spec+peak_fit,ap_fit+peak_fit).^2;
                 % Return FOOOF results
                 ap_pars(2) = abs(ap_pars(2));
-                SPRiNT.channel(c).data(t).ap_fit = 10.^(ap_fit);
-                SPRiNT.channel(c).data(t).fooofed_spectrum = 10.^(ap_fit+peak_fit);
-                SPRiNT.channel(c).data(t).peak_fit = 10.^(peak_fit);
-                SPRiNT.channel(c).data(t).error = MSE;
-                SPRiNT.channel(c).data(t).r_squared = rsq_tmp(2);
-                SPRiNT.aperiodic_models(c,t,:) = SPRiNT.channel(c).data(t).ap_fit;
-                SPRiNT.SPRiNT_models(c,t,:) = SPRiNT.channel(c).data(t).fooofed_spectrum;
-                SPRiNT.peak_models(c,t,:) = SPRiNT.channel(c).data(t).peak_fit;
-                SPRiNT.channel(c).aperiodics(t).offset = ap_pars(1);
-                SPRiNT.channel(c).data(t).aperiodic_params = ap_pars;
+                channel(c).data(t).ap_fit = 10.^(ap_fit);
+                channel(c).data(t).fooofed_spectrum = 10.^(ap_fit+peak_fit);
+                channel(c).data(t).peak_fit = 10.^(peak_fit);
+                channel(c).data(t).error = MSE;
+                channel(c).data(t).r_squared = rsq_tmp(2);
+                aperiodic_models(c,t,:) = channel(c).data(t).ap_fit;
+                SPRiNT_models(c,t,:) = channel(c).data(t).fooofed_spectrum;
+                peak_models(c,t,:) = channel(c).data(t).peak_fit;
+                channel(c).aperiodics(t).offset = ap_pars(1);
+                channel(c).data(t).aperiodic_params = ap_pars;
                 if length(ap_pars)>2 % Legacy FOOOF alters order of parameters
-                    SPRiNT.channel(c).aperiodics(t).exponent = ap_pars(3);
-                    SPRiNT.channel(c).aperiodics(t).knee_frequency = ap_pars(2);
+                    channel(c).aperiodics(t).exponent = ap_pars(3);
+                    channel(c).aperiodics(t).knee_frequency = ap_pars(2);
                 else
-                    SPRiNT.channel(c).aperiodics(t).exponent = ap_pars(2);
+                    channel(c).aperiodics(t).exponent = ap_pars(2);
                 end
-                SPRiNT.channel(c).stats(t).MSE = MSE;
-                SPRiNT.channel(c).stats(t).r_squared = rsq_tmp(2);
-                SPRiNT.channel(c).stats(t).frequency_wise_error = abs(ap_spec-ap_fit);
+                channel(c).stats(t).MSE = MSE;
+                channel(c).stats(t).r_squared = rsq_tmp(2);
+                channel(c).stats(t).frequency_wise_error = abs(ap_spec-ap_fit);
                 
             else
-                SPRiNT.channel(c).data(t).peak_params = [0 0 0];
-                ap_spec = log10(SPRiNT.channel(c).data(t).power_spectrum) - peak_fit;
-                ap_pars = simple_ap_fit(SPRiNT.freqs, ap_spec, opt.aperiodic_mode, SPRiNT.channel(c).data(t).aperiodic_params(end));
-                ap_fit = gen_aperiodic(SPRiNT.freqs, ap_pars, opt.aperiodic_mode);
-                MSE = sum((ap_spec - ap_fit).^2)/length(SPRiNT.freqs);
+                channel(c).data(t).peak_params = [0 0 0];
+                ap_spec = log10(channel(c).data(t).power_spectrum) - peak_fit;
+                ap_pars = simple_ap_fit(freqs, ap_spec, opt.aperiodic_mode, channel(c).data(t).aperiodic_params(end));
+                ap_fit = gen_aperiodic(freqs, ap_pars, opt.aperiodic_mode);
+                MSE = sum((ap_spec - ap_fit).^2)/length(freqs);
                 rsq_tmp = corrcoef(ap_spec+peak_fit,ap_fit+peak_fit).^2;
                 % Return FOOOF results
                 ap_pars(2) = abs(ap_pars(2));
-                SPRiNT.channel(c).data(t).ap_fit = 10.^(ap_fit);
-                SPRiNT.channel(c).data(t).fooofed_spectrum = 10.^(ap_fit+peak_fit);
-                SPRiNT.channel(c).data(t).peak_fit = 10.^(peak_fit);
-                SPRiNT.aperiodic_models(c,t,:) = SPRiNT.channel(c).data(t).ap_fit;
-                SPRiNT.SPRiNT_models(c,t,:) = SPRiNT.channel(c).data(t).fooofed_spectrum;
-                SPRiNT.peak_models(c,t,:) = SPRiNT.channel(c).data(t).peak_fit;
-                SPRiNT.channel(c).aperiodics(t).offset = ap_pars(1);
+                channel(c).data(t).ap_fit = 10.^(ap_fit);
+                channel(c).data(t).fooofed_spectrum = 10.^(ap_fit+peak_fit);
+                channel(c).data(t).peak_fit = 10.^(peak_fit);
+                aperiodic_models(c,t,:) = channel(c).data(t).ap_fit;
+                SPRiNT_models(c,t,:) = channel(c).data(t).fooofed_spectrum;
+                peak_models(c,t,:) = channel(c).data(t).peak_fit;
+                channel(c).aperiodics(t).offset = ap_pars(1);
                 if length(ap_pars)>2 % Legacy FOOOF alters order of parameters
-                    SPRiNT.channel(c).aperiodics(t).exponent = ap_pars(3);
-                    SPRiNT.channel(c).aperiodics(t).knee_frequency = ap_pars(2);
+                    channel(c).aperiodics(t).exponent = ap_pars(3);
+                    channel(c).aperiodics(t).knee_frequency = ap_pars(2);
                 else
-                    SPRiNT.channel(c).aperiodics(t).exponent = ap_pars(2);
+                    channel(c).aperiodics(t).exponent = ap_pars(2);
                 end
-                SPRiNT.channel(c).stats(t).MSE = MSE;
-                SPRiNT.channel(c).stats(t).r_squared = rsq_tmp(2);
-                SPRiNT.channel(c).stats(t).frequency_wise_error = abs(ap_spec-ap_fit);
+                channel(c).stats(t).MSE = MSE;
+                channel(c).stats(t).r_squared = rsq_tmp(2);
+                channel(c).stats(t).frequency_wise_error = abs(ap_spec-ap_fit);
             end
         end
     end
+    SPRiNT.channel = channel;
+    SPRiNT.aperiodic_models = aperiodic_models;
+    SPRiNT.SPRiNT_models = SPRiNT_models;
+    SPRiNT.peak_models = peak_models;
 end
 
-function oS = cluster_peaks_dynamic(oS)
+function SPRiNT = cluster_peaks_dynamic(SPRiNT)
 %       Helper function to cluster peaks within sensors across time.
 %
 %       Parameters
@@ -419,21 +972,22 @@ function oS = cluster_peaks_dynamic(oS)
 %
 % Author: Luc Wilson
 
-    pthr = oS.options.proximity_threshold;
-    for chan = 1:length(oS.channel)
+    pthr = SPRiNT.options.proximity_threshold;
+    channel = SPRiNT.channel;
+    for chan = 1:length(channel)
         clustLead = [];
         nCl = 0;
-        oS.channel(chan).clustered_peaks = struct();
-        times = unique([oS.channel(chan).peaks.time]);
-        all_peaks = oS.channel(chan).peaks;
+        channel(chan).clustered_peaks = struct();
+        times = unique([channel(chan).peaks.time]);
+        all_peaks = channel(chan).peaks;
         for time = 1:length(times)
             time_peaks = all_peaks([all_peaks.time] == times(time));
             % Initialize first clusters
             if time == 1
                 nCl = length(time_peaks);
                 for Cl = 1:nCl
-                    oS.channel(chan).clustered_peaks(Cl).cluster = Cl;
-                    oS.channel(chan).clustered_peaks(Cl).peaks(Cl) = time_peaks(Cl);
+                    channel(chan).clustered_peaks(Cl).cluster = Cl;
+                    channel(chan).clustered_peaks(Cl).peaks(Cl) = time_peaks(Cl);
                     clustLead(Cl,1) = time_peaks(Cl).time;
                     clustLead(Cl,2) = time_peaks(Cl).center_frequency;
                     clustLead(Cl,3) = time_peaks(Cl).amplitude;
@@ -454,7 +1008,7 @@ function oS = cluster_peaks_dynamic(oS)
                     [tmp,idx] = min(([time_peaks(match).center_frequency] - clustLead(Cl,2)).^2 +...
                             ([time_peaks(match).amplitude] - clustLead(Cl,3)).^2 +...
                             ([time_peaks(match).st_dev] - clustLead(Cl,4)).^2);
-                    oS.channel(chan).clustered_peaks(clustLead(Cl,5)).peaks(length(oS.channel(chan).clustered_peaks(clustLead(Cl,5)).peaks)+1) = time_peaks(idx_tmp(idx)); 
+                    channel(chan).clustered_peaks(clustLead(Cl,5)).peaks(length(channel(chan).clustered_peaks(clustLead(Cl,5)).peaks)+1) = time_peaks(idx_tmp(idx)); 
                     clustLead(Cl,1) = time_peaks(idx_tmp(idx)).time;
                     clustLead(Cl,2) = time_peaks(idx_tmp(idx)).center_frequency;
                     clustLead(Cl,3) = time_peaks(idx_tmp(idx)).amplitude;
@@ -473,14 +1027,15 @@ function oS = cluster_peaks_dynamic(oS)
                     clustLead(Cl,3) = time_peaks(peak).amplitude;
                     clustLead(Cl,4) = time_peaks(peak).st_dev;
                     clustLead(Cl,5) = Cl;
-                    oS.channel(chan).clustered_peaks(Cl).cluster = Cl;
-                    oS.channel(chan).clustered_peaks(Cl).peaks(length(oS.channel(chan).clustered_peaks(clustLead(Cl,5)).peaks)+1) = time_peaks(peak); 
+                    channel(chan).clustered_peaks(Cl).cluster = Cl;
+                    channel(chan).clustered_peaks(Cl).peaks(length(channel(chan).clustered_peaks(clustLead(Cl,5)).peaks)+1) = time_peaks(peak); 
                 end
             end     
             % Sort clusters based on most recent
             clustLead = sortrows(clustLead,1,'descend');
         end
     end
+    SPRiNT.channel =  channel;
 end
 
 %% ===== GENERATE APERIODIC =====
@@ -595,10 +1150,38 @@ end
 
 function ys = expo_fl_function(freqs, params)
 
-    ys = log10(f.^(params(1)) * 10^(params(2)) + params(3));
+    ys = log10(freqs.^(params(1)) * 10^(params(2)) + params(3));
 
 end
 
+function model_fit = build_model(freqs, ap_pars, ap_type, pk_pars, peak_function)
+%     Builds a full spectral model from parameters.
+%
+%     Parameters
+%     ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       ap_pars : 1xm array
+%           Parameter estimates for aperiodic fit.
+%       pk_pars : kx3 array, where k = No. of peaks.
+%           Guess parameters for peak fits.
+%       pk_type : {'gaussian', 'cauchy', 'best'}
+%           Which types of peaks are being fitted.
+%
+%       Returns
+%       -------
+%       model_fit : 1xn array
+%           Model power spectrum, in log10-space
+
+    ap_fit = gen_aperiodic(freqs, ap_pars, ap_type);
+    model_fit = ap_fit;
+    if length(pk_pars) > 1
+        for peak = 1:size(pk_pars,1)
+            model_fit = model_fit + peak_function(freqs,pk_pars(peak,1),...
+                pk_pars(peak,2),pk_pars(peak,3));
+        end  
+    end
+end
 
 %% ===== FITTING ALGORITHM =====
 function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode, aperiodic_guess)
@@ -708,6 +1291,208 @@ function spectrum_flat = flatten_spectrum(freqs, power_spectrum, robust_aperiodi
 
 spectrum_flat = power_spectrum - gen_aperiodic(freqs,robust_aperiodic_params,aperiodic_mode);
 
+end
+
+function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType)
+%       Iteratively fit peaks to flattened spectrum.
+%
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       flat_iter : 1xn array
+%           Flattened (aperiodic removed) power spectrum.
+%       max_n_peaks : double
+%           Maximum number of gaussians to fit within the spectrum.
+%       peak_threshold : double
+%           Threshold (in standard deviations of noise floor) to detect a peak.
+%       min_peak_height : double
+%           Minimum height of a peak (in log10).
+%       gauss_std_limits : 1x2 double
+%           Limits to gaussian (cauchy) standard deviation (gamma) when detecting a peak.
+%       proxThresh : double
+%           Minimum distance between two peaks, in st. dev. (gamma) of peaks.
+%       peakType : {'gaussian', 'cauchy', 'both'}
+%           Which types of peaks are being fitted
+%       guess_weight : {'none', 'weak', 'strong'}
+%           Parameter to weigh initial estimates during optimization (None, Weak, or Strong)
+%       hOT : 0 or 1
+%           Defines whether to use constrained optimization, fmincon, or
+%           basic simplex, fminsearch.
+%
+%       Returns
+%       -------
+%       guess_params : mx3 array, where m = No. of peaks.
+%           Parameters that define the peak fit(s). Each row is a peak, as [mean, height, st. dev. (gamma)].
+
+    switch peakType 
+        case 'gaussian' % gaussian only
+            peak_function = @gaussian; % Identify peaks as gaussian
+            % Initialize matrix of guess parameters for gaussian fitting.
+            guess_params = zeros(max_n_peaks, 3);
+            % Find peak: Loop through, finding a candidate peak, and fitting with a guess gaussian.
+            % Stopping procedure based on either the limit on # of peaks,
+            % or the relative or absolute height thresholds.
+            for guess = 1:max_n_peaks
+                % Find candidate peak - the maximum point of the flattened spectrum.
+                max_ind = find(flat_iter == max(flat_iter));
+                max_height = flat_iter(max_ind);
+
+                % Stop searching for peaks once max_height drops below height threshold.
+                if max_height <= peak_threshold * std(flat_iter)
+                    break
+                end
+
+                % Set the guess parameters for gaussian fitting - mean and height.
+                guess_freq = freqs(max_ind);
+                guess_height = max_height;
+
+                % Halt fitting process if candidate peak drops below minimum height.
+                if guess_height <= min_peak_height
+                    break
+                end
+
+                % Data-driven first guess at standard deviation
+                % Find half height index on each side of the center frequency.
+                half_height = 0.5 * max_height;
+
+                le_ind = sum(flat_iter(1:max_ind) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
+
+                % Keep bandwidth estimation from the shortest side.
+                % We grab shortest to avoid estimating very large std from overalapping peaks.
+                % Grab the shortest side, ignoring a side if the half max was not found.
+                % Note: will fail if both le & ri ind's end up as None (probably shouldn't happen).
+                short_side = min(abs([le_ind,ri_ind]-max_ind));
+
+                % Estimate std from FWHM. Calculate FWHM, converting to Hz, get guess std from FWHM
+                fwhm = short_side * 2 * (freqs(2)-freqs(1));
+                guess_std = fwhm / (2 * sqrt(2 * log(2)));
+
+                % Check that guess std isn't outside preset std limits; restrict if so.
+                % Note: without this, curve_fitting fails if given guess > or < bounds.
+                if guess_std < gauss_std_limits(1)
+                    guess_std = gauss_std_limits(1);
+                end
+                if guess_std > gauss_std_limits(2)
+                    guess_std = gauss_std_limits(2);
+                end
+
+                % Collect guess parameters.
+                guess_params(guess,:) = [guess_freq, guess_height, guess_std];
+
+                % Subtract best-guess gaussian.
+                peak_gauss = gaussian(freqs, guess_freq, guess_height, guess_std);
+                flat_iter = flat_iter - peak_gauss;
+
+            end
+            % Remove unused guesses
+            guess_params(guess_params(:,1) == 0,:) = [];
+
+            % Check peaks based on edges, and on overlap
+            % Drop any that violate requirements.
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_overlap(guess_params, proxThresh);
+            
+        case 'cauchy' % cauchy only
+            peak_function = @cauchy; % Identify peaks as cauchy
+            guess_params = zeros(max_n_peaks, 3);
+            flat_spec = flat_iter;
+            for guess = 1:max_n_peaks
+                max_ind = find(flat_iter == max(flat_iter));
+                max_height = flat_iter(max_ind);
+                if max_height <= peak_threshold * std(flat_iter)
+                    break
+                end
+                guess_freq = freqs(max_ind);
+                guess_height = max_height;
+                if guess_height <= min_peak_height
+                    break
+                end
+                half_height = 0.5 * max_height;
+                le_ind = sum(flat_iter(1:max_ind) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                short_side = min(abs([le_ind,ri_ind]-max_ind));
+
+                % Estimate gamma from FWHM. Calculate FWHM, converting to Hz, get guess gamma from FWHM
+                fwhm = short_side * 2 * (freqs(2)-freqs(1));
+                guess_gamma = fwhm/2;
+                % Check that guess gamma isn't outside preset limits; restrict if so.
+                % Note: without this, curve_fitting fails if given guess > or < bounds.
+                if guess_gamma < gauss_std_limits(1)
+                    guess_gamma = gauss_std_limits(1);
+                end
+                if guess_gamma > gauss_std_limits(2)
+                    guess_gamma = gauss_std_limits(2);
+                end
+
+                % Collect guess parameters.
+                guess_params(guess,:) = [guess_freq(1), guess_height, guess_gamma];
+
+                % Subtract best-guess cauchy.
+                peak_cauchy = cauchy(freqs, guess_freq(1), guess_height, guess_gamma);
+                flat_iter = flat_iter - peak_cauchy;
+
+            end
+            guess_params(guess_params(:,1) == 0,:) = [];
+            guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
+            guess_params = drop_peak_overlap(guess_params, proxThresh);
+            
+    end
+end
+
+function model_params = est_fit(guess_params, freqs, flat_spec, gauss_std_limits, peakType, guess_weight,hOT)
+%       Iteratively fit peaks to flattened spectrum.
+%
+%       Parameters
+%       ----------
+%       freqs : 1xn array
+%           Frequency values for the power spectrum, in linear scale.
+%       flat_iter : 1xn array
+%           Flattened (aperiodic removed) power spectrum.
+%       max_n_peaks : double
+%           Maximum number of gaussians to fit within the spectrum.
+%       peak_threshold : double
+%           Threshold (in standard deviations of noise floor) to detect a peak.
+%       min_peak_height : double
+%           Minimum height of a peak (in log10).
+%       gauss_std_limits : 1x2 double
+%           Limits to gaussian (cauchy) standard deviation (gamma) when detecting a peak.
+%       proxThresh : double
+%           Minimum distance between two peaks, in st. dev. (gamma) of peaks.
+%       peakType : {'gaussian', 'cauchy', 'both'}
+%           Which types of peaks are being fitted
+%       guess_weight : {'none', 'weak', 'strong'}
+%           Parameter to weigh initial estimates during optimization (None, Weak, or Strong)
+%       hOT : 0 or 1
+%           Defines whether to use constrained optimization, fmincon, or
+%           basic simplex, fminsearch.
+%
+%       Returns
+%       -------
+%       guess_params : mx3 array, where m = No. of peaks.
+%           Parameters that define the peak fit(s). Each row is a peak, as [mean, height, st. dev. (gamma)].
+
+    switch peakType 
+        case 'gaussian' % gaussian only
+
+            % If there are peak guesses, fit the peaks, and sort results.
+            if ~isempty(guess_params)
+                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight, gauss_std_limits,hOT);
+            else
+                model_params = [];
+            end
+            
+        case 'cauchy' % cauchy only
+
+           % If there are peak guesses, fit the peaks, and sort results.
+            if ~isempty(guess_params)
+                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight, gauss_std_limits,hOT);
+            else
+                model_params = [];
+            end
+            
+    end
 end
 
 function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType, guess_weight,hOT)
@@ -1035,6 +1820,26 @@ function err = error_model_constr(params, xVals, yVals, peak_type)
                 fitted_vals = fitted_vals + gaussian(xVals, params(set,1), params(set,2), params(set,3));
             case 2 % Cauchy
                 fitted_vals = fitted_vals + cauchy(xVals, params(set,1), params(set,2), params(set,3));
+        end
+    end
+    err = sum((yVals - fitted_vals).^2);
+end
+
+function err = err_fm_constr(params, xVals, yVals, aperiodic_mode, peak_type)
+    switch (aperiodic_mode)
+        case 'fixed'  % no knee
+        npk = (length(params)-2)/3;
+        fitted_vals = -log10(xVals.^params(2)) + params(1);
+        case 'knee'
+        npk = (length(params)-3)/3;
+        fitted_vals = params(1) - log10(abs(params(2)) +xVals.^params(3));
+    end
+    for set = 1:npk
+        switch peak_type 
+            case 'gaussian' % gaussian only
+                fitted_vals = fitted_vals + gaussian(xVals, params(3.*set), params(3*set+1), params(3*set+2));
+            case 'cauchy' % Cauchy
+                fitted_vals = fitted_vals + cauchy(xVals, params(3.*set), params(3*set+1), params(3*set+2));
         end
     end
     err = sum((yVals - fitted_vals).^2);

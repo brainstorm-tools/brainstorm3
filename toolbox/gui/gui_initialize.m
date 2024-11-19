@@ -49,9 +49,7 @@ gui_show('panel_freq', 'BrainstormPanel', 'freq');
 gui_show('panel_record', 'BrainstormTab', 'tools');
 gui_show('panel_filter', 'BrainstormTab', 'tools');
 gui_show('panel_surface', 'BrainstormTab', 'tools');
-if (GlobalData.Program.GuiLevel == 1)
-    gui_show('panel_scout', 'BrainstormTab', 'tools');
-end
+gui_show('panel_scout', 'BrainstormTab', 'tools');
 % gui_show('panel_cluster', 'BrainstormTab', 'tools');
 % gui_show('panel_dipoles', 'BrainstormTab', 'tools');
 

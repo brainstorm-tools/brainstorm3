@@ -93,7 +93,7 @@ end
 % Create channel file structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
-ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
 
 % NIRS channels
 for iChan = 1:nChannels
@@ -105,8 +105,8 @@ for iChan = 1:nChannels
 
         ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                              jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                             jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-        ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                                                       round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+        ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
 
     end
     ChannelMat.Channel(iChan).Type = 'NIRS';
@@ -165,11 +165,11 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
         name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
+        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
 
         % Fiducials NAS/LPA/RPA
         switch lower(name)
-            case {'nasion','nas'}
+            case {'nasion','nas','nz'}
                 ChannelMat.SCS.NAS = coord;
                 ltype = 'CARDINAL';
             case {'leftear', 'lpa'}
@@ -250,11 +250,14 @@ for iEvt = 1:length(jnirs.nirs.stim)
         continue
     end    
     % Get timing
-    
-    if size(jnirs.nirs.stim(iEvt).data,2) >  size(jnirs.nirs.stim(iEvt).data,1)
+    nStimDataCols = 3; % [starttime duration value]
+    if isfield(jnirs.nirs.stim(iEvt), 'dataLabels')
+        nStimDataCols = length(jnirs.nirs.stim(iEvt).dataLabels);
+    end
+    % Transpose to match number of columns
+    if size(jnirs.nirs.stim(iEvt).data, 1) == nStimDataCols && diff(size(jnirs.nirs.stim(iEvt).data)) ~= 0
         jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
     end    
-    
     isExtended = ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
     if isExtended
         evtTime = [jnirs.nirs.stim(iEvt).data(:,1) ,  ...

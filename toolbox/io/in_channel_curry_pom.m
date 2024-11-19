@@ -68,7 +68,7 @@ while 1
             case 'pos'
                 xyz = sscanf(read_line, '%f %f %f') / 1000;
                 ChannelMat.Channel(iChannel).Type    = 'EEG';
-                ChannelMat.Channel(iChannel).Loc     = [xyz(2); -xyz(1); xyz(3)];
+                ChannelMat.Channel(iChannel).Loc     = [-xyz(2); xyz(1); xyz(3)];
                 ChannelMat.Channel(iChannel).Orient  = [];
                 ChannelMat.Channel(iChannel).Comment = '';
                 ChannelMat.Channel(iChannel).Weight  = 1;

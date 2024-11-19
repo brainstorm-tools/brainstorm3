@@ -11,7 +11,7 @@
 #         Raymundo Cassani, 2024
 
 # Configuration
-VER_YEAR_VERSION="2022b"
+VER_YEAR_VERSION="2023a"
 VER_NAME="R$VER_YEAR_VERSION"
 MDIR="$HOME/.brainstorm"
 MFILE="$MDIR/MATLABROOT_$VER_NAME.txt"
@@ -52,16 +52,18 @@ if [ "$1" ]; then
 # Read the folder from the file
 elif [ -f $MFILE ]; then
     MATLABROOT=$(<$MFILE)
+# macOS: Try the default installation folder for Matlab
+elif [ $SYST == "maci64" ] && [ -d "/Applications/MATLAB_$VER_NAME.app" ]; then
+    MATLABROOT="/Applications/MATLAB_$VER_NAME.app"
 # macOS: Try the default installation folder for Matlab Runtime
 elif [ $SYST == "maci64" ] && [ -d "/Applications/MATLAB/MATLAB_Runtime/$VER_NAME" ]; then
     MATLABROOT="/Applications/MATLAB/MATLAB_Runtime/$VER_NAME"
-    echo "MATLAB Runtime library was found in folder:"
-    echo "$MATLABROOT"
+# Linux: Try the default installation folder for Matlab
+elif ([ $SYST == "glnx86" ] || [ $SYST == "glnxa64" ]) && [ -d "/usr/local/MATLAB/$VER_NAME" ]; then
+    MATLABROOT="/usr/local/MATLAB/$VER_NAME"
 # Linux: Try the default installation folder for Matlab Runtime
 elif ([ $SYST == "glnx86" ] || [ $SYST == "glnxa64" ]) && [ -d "/usr/local/MATLAB/MATLAB_Runtime/$VER_NAME" ]; then
     MATLABROOT="/usr/local/MATLAB/MATLAB_Runtime/$VER_NAME"
-    echo "MATLAB Runtime library was found in folder:"
-    echo "$MATLABROOT"
 # Run the java file selector
 else
     java -classpath "$JAR_FILE" org.brainstorm.file.SelectMcr$VER_YEAR_VERSION
@@ -83,7 +85,7 @@ if [ -z "$MATLABROOT" ]; then
     echo "run executables compiled with Matlab $VER_NAME."
     echo " "
     echo "Default Matlab Runtime installation folders:"
-    echo "    Linux:  /usr/local/MATLAB_Runtime/$VER_NAME"
+    echo "    Linux: /usr/local/MATLAB_Runtime/$VER_NAME"
     echo "    macOS: /Applications/MATLAB/MATLAB_Runtime/v$VER_NAME"
     echo " "
     echo "MATLABROOT has to be specified only at the first call,"
@@ -114,6 +116,9 @@ fi
 if [ ! -d "$MDIR" ]; then
     mkdir $MDIR
 fi
+# Matlab path found
+echo "Matlab $VER_NAME found:"
+echo "$MATLABROOT"
 # Save Matlab path in user folder
 echo "$MATLABROOT" > $MFILE
 
