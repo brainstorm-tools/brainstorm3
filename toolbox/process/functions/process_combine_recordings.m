@@ -75,6 +75,7 @@ function OutputFiles = Run(sProcess, sInputs)
     sStudies = bst_get('StudyWithSubject', sInputs(1).SubjectFile);
     NewCondition = file_unique(NewCondition, [sStudies.Condition]);
 
+
     % ===== GET METADATA FOR RECORDINGS =====
     bst_progress('start', 'Combining recordings', 'Loading metadata...', 0, 3 * nInputs); % 3 steps per input file
     % Get Time and F structure
@@ -90,9 +91,10 @@ function OutputFiles = Run(sProcess, sInputs)
         return
     end
 
+
     % ===== COMBINE METADATA =====
-    % Recordings file with higher sampling frequency is used as seed for time
     bst_progress('text', 'Combining metadata...');
+    % Recordings file with higher sampling frequency is used as seed for time
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
@@ -164,9 +166,9 @@ function OutputFiles = Run(sProcess, sInputs)
     % Save channel file
     db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
+
     % ===== COMBINE DATA =====
     bst_progress('text', 'Combining data...');
-
     % Link to combined raw file
     OutputFile = bst_process('GetNewFilename', bst_fileparts(sNewStudy.FileName), 'data_0raw_combined');
     % Combined raw file
@@ -197,13 +199,13 @@ function OutputFiles = Run(sProcess, sInputs)
     % Save all data to combined file
     for iInput = 1 : nInputs
         % Load raw data
-        sDataCombined = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
+        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
-            sDataCombined.F = interp1(sDataCombined.Time, sDataCombined.F', NewTime)';
+            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';
         end
         % Write these channels
-        out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataCombined.F);
+        out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataToCombine.F);
         bst_progress('inc', 1);
     end
     
