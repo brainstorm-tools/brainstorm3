@@ -3042,9 +3042,7 @@ end
 
 
 %% ===== CREATE IMPLANTATION =====
-% 
 function CreateImplantation(MriFile, isAsk) %#ok<DEFNU>
-    % 
     % Find subject
     [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     
