@@ -3042,9 +3042,9 @@ end
 
 
 %% ===== CREATE IMPLANTATION =====
-function CreateImplantation(MriFile) %#ok<DEFNU>
 % USAGE: CreateImplantation(MriFile)   % Implantation on given Volume file
 %        CreateImplantation(sSubject)  % Ask user for Volume and Surface files for implantation
+function CreateImplantation(MriFile) %#ok<DEFNU>
     % Parse input
     if isstruct(MriFile)
         sSubject = MriFile;
