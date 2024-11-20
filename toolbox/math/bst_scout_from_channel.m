@@ -1,5 +1,6 @@
 function OutputFile = bst_scout_from_channel(ChannelFile, radius, isInteractive)
 % bst_scout_from_channel: Convert a channel file to scout on the scalp (all the vertex within a specified radius is included to the scout).
+% If the radius is 0, then return the closed point on the head for each sensor
 %
 % USAGE:  OutputFile = bst_project_channel(ChannelFile, radius = 5 mm, isInteractive=1)
 %        OutputFiles = bst_project_channel(ChannelFiles, ...)
