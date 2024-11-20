@@ -3151,7 +3151,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             sSurf = load(file_fullpath(sSubject.Surface(iSrf).FileName), 'History');
             if isfield(sSurf, 'History') && ~isempty(sSurf.History)
                 % Search for CT threshold in history
-                ctEntry = regexp([sSurf.History{:, 3}], '^Thresholded CT:\s*(\S+)', 'tokens', 'once');
+                ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)$', 'tokens', 'once');
                 % Return intersection of the found and the, update iCTVol
                 if ~isempty(ctEntry)
                     [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
