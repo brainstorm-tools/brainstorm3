@@ -3165,7 +3165,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 end
             end
         end
-        if length(iCtVol) > 1
+        if ~strcmpi(res, 'mri') && length(iCtVol) > 1
             % Prompt for the CT file selection
             ctComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtVol).Comment});
             if isempty(ctComment)
