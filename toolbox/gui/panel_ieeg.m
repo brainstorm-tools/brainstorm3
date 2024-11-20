@@ -3091,12 +3091,59 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             error('The subject uses a shared channel file, it should not be edited in this way.');
     end
 
-    % Ask which volume to proceeed with
-    VolMat = struct([]);
-    if isAsk
-        VolMat = AskImplantationVolume(sSubject);
-        if ~VolMat.isMri && ~VolMat.isCt && ~VolMat.isIsosurface
+    % Ask user about implantation volume and surface files
+    if isempty(MriFile)
+        if isempty(sSubject.Anatomy)
             return
+        end
+        iMriVol = sSubject.iAnatomy;
+        iCtVol  = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+        iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+        iMriVol = setdiff(iMriVol, iCtVol);
+        impOptions = {};
+        if ~isempty(iMriVol)
+            impOptions = [impOptions, {'MRI'}];
+        end
+        if ~isempty(iCtVol)
+            impOptions = [impOptions, {'CT'}];
+        end
+        if ~isempty(iMriVol) && ~isempty(iCtVol)
+            impOptions = [impOptions, {'MRI+CT'}];
+        end
+        if ~isempty(iCtVol) && ~isempty(iIsoSrf)
+            tmpOption = 'CT+IsoSurf';
+            if ~isempty(iMriVol)
+                tmpOption = ['MRI+' tmpOption];
+            end
+            impOptions = [impOptions, {tmpOption}];
+        end
+        impOptions = [impOptions, {'Cancel'}];
+        % User dialog
+        [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
+                                                   'How do you want to continue with the existing implantation?'], ...
+                                                   'SEEG/ECOG implantation', [], impOptions, 'Cancel');
+        if strcmpi(res, 'cancel') || isCancel
+            return
+        end
+        vol1 = [];
+        vol2 = [];
+        srf1 = [];
+        switch lower(res)
+            case 'mri'
+                vol1 = sSubject.Anatomy(iMriVol).FileName;
+            case 'ct'
+                vol1 = sSubject.Anatomy(iCtVol).FileName;
+            case 'mri+ct'
+                vol1 = sSubject.Anatomy(iMriVol).FileName;
+                vol2 = sSubject.Anatomy(iCtVol).FileName;
+            case 'mri+ct+isosurf'
+                vol1 = sSubject.Anatomy(iMriVol).FileName;
+                vol2 = sSubject.Anatomy(iCtVol).FileName;
+                srf1 = sSubject.Surface(iIsoSrf).FileName;
+            case 'ct+isosurf'
+                vol1 = sSubject.Anatomy(iMriVol).FileName;
+                vol2 = [];
+                srf1 = sSubject.Surface(iIsoSrf).FileName;
         end
     end
 
@@ -3118,8 +3165,8 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display channels
-    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy, 0, VolMat);
+    % Display channels on MRI viewer
+    DisplayChannelsMri(ChannelFile, 'SEEG', MriFile, 0);
     if isAsk && VolMat.isIsosurface
         % Display isosurface
         DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
@@ -3128,61 +3175,6 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     bst_progress('stop');
 end
 
-%% ===== SEEG IMPLANTATION: ASK FOR IMPLANTATION VOLUME ===== %%
-function VolMat = AskImplantationVolume(sSubject)
-    % Set defaults
-    VolMat = struct('isMri',        0, ...
-                    'isCt',         0, ...
-                    'isIsosurface', 0);
-    
-    % Locate indices for CT volumes and Isosurfaces
-    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
-    iIsosurface = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
-    
-    % Determine available options for modalities
-    % MRI not available, CT volume(s) available
-    if ~isempty(iCtVol) && iCtVol(1)==1
-        % If only CT, Isosurface is available and MRI not available
-        if ~isempty(iIsosurface)
-            options = {'CT', 'CT+Isosurface', 'Cancel'};
-        % If only CT is available and MRI, Isosurface  not available
-        else
-            options = {'CT', 'Cancel'};
-        end
-    % Case-1: If MRI is available and CT,IsoSurface not available
-    % Case-2: With MRI present, if user deleted the CT(s) but not the Isosurface
-    elseif isempty(iCtVol)
-        options = {'MRI', 'Cancel'};
-    % If MRI, CT is available and IsoSurface not available
-    elseif ~isempty(iCtVol) && isempty(iIsosurface)
-        options = {'MRI', 'CT', 'MRI+CT', 'Cancel'};
-    % If MRI, CT, Isosurface are all available
-    else
-        options = {'MRI', 'CT', 'MRI+CT', 'MRI+CT+Isosurface', 'Cancel'};
-    end
-    [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
-                                                   'How do you want to continue with the existing implantation?'], ...
-                                                   'SEEG/ECOG implantation', [], options, 'Cancel');
-    if strcmpi(res, 'cancel') || isCancel
-        return
-    end
-    switch lower(res)
-        case 'mri'
-            VolMat.isMri = 1;
-        case 'ct'
-            VolMat.isCt = 1;
-        case 'mri+ct'
-            VolMat.isMri = 1;
-            VolMat.isCt = 1;
-        case 'ct+isosurface'
-            VolMat.isCt = 1;
-            VolMat.isIsosurface = 1;
-        case 'mri+ct+isosurface'
-            VolMat.isMri = 1;
-            VolMat.isCt = 1;
-            VolMat.isIsosurface = 1;
-    end
-end
 
 %% ===== LOAD ELECTRODES =====
 function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
