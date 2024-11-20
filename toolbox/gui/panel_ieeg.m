@@ -3042,10 +3042,16 @@ end
 
 
 %% ===== CREATE IMPLANTATION =====
-function CreateImplantation(MriFile, isAsk) %#ok<DEFNU>
-    % Find subject
-    [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
-    
+function CreateImplantation(MriFile) %#ok<DEFNU>
+% USAGE: CreateImplantation(MriFile)   % Implantation on given Volume file
+%        CreateImplantation(sSubject)  % Ask user for Volume and Surface files for implantation
+    % Parse input
+    if isstruct(MriFile)
+        sSubject = MriFile;
+        MriFile  = [];
+    else
+        sSubject = bst_get('MriFile', MriFile);
+    end
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
@@ -3076,7 +3082,7 @@ function CreateImplantation(MriFile, isAsk) %#ok<DEFNU>
             sStudy = bst_get('Study', iStudy);
         case 1
             % Use default channel file
-            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
+            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', sSubject.Name);
             % The @intra study must not contain an existing channel file
             if ~isempty(sStudy.Channel) && ~isempty(sStudy.Channel(1).FileName)
                 error(['There is already a channel file for this subject:' 10 sStudy.Channel(1).FileName]);
