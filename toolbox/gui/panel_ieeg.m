@@ -3155,7 +3155,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 % Return intersection of the found and then update iCtVol
                 if ~isempty(ctEntry)
                     [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
-                    if ~isempty(iCtIso)
+                    if iCtIso
                         iCtVol = intersect(iCtIso, iCtVol);
                     else
                         bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
