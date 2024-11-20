@@ -704,7 +704,7 @@ switch (lower(action))
                 fcnPopupScoutTimeSeries(jPopup);
                 AddSeparator(jPopup);
                 % === SEEG IMPLANTATION ===
-                if ~isempty(sSubject.Anatomy)
+                if ~isempty(sSubject.Anatomy) && ~strcmpi(sSubject.Name, bst_get('NormalizedSubjectName'))
                     gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
                 end
                 % Export menu (added later)
@@ -3163,7 +3163,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         end
         % === SEEG/ECOG ===
         % Right click on the subject only
-        if isempty(iAnatomy)
+        if isempty(iAnatomy) && iSubject ~=0
             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
         % Right click on a desired volume (MRI/CT) in a subject
         elseif (length(iAnatomy) == 1) && iSubject ~=0

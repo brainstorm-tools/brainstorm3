@@ -3304,7 +3304,6 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if isempty(hFig)
         return;
     end
-
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"
