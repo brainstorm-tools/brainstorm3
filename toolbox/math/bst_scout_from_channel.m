@@ -107,24 +107,30 @@ for i = 1:length(ChannelMat.Channel)
     end
 end
 
-sVertex = [];
+Vertices = [];
 for i = 1:size(channel_locs_mri, 1)
+    
+    distances = zeros(1, size(head_vertices_mri, 1));
 
     for j = 1:size(head_vertices_mri, 1)
         x = channel_locs_mri(i,:);
         y = head_vertices_mri(j, :);
 
-        Dist = 1000 * sum((x-y).^2).^0.5; % mm
-        if Dist <= radius 
-            sVertex(end+1) = j;
-        end
+        distances(j) = 1000 * sum((x-y).^2).^0.5; % mm
     end
+    if radius > 0
+        idx = find(distances <= radius);
+    else
+        [~, idx] = min(distances);
+    end
+    
+    Vertices = [Vertices  idx];
 end
 
 scout_channel = db_template('Scout'); 
 scout_channel.Label = sprintf('Scout from %s ( %d mm)', ChannelMat.Comment, radius)  ;
-scout_channel.Vertices = sVertex;
-scout_channel.Seed = sVertex(1);
+scout_channel.Vertices = Vertices;
+scout_channel.Seed = Vertices(1);
 scout_channel.Handles = [];
 scout_channel.Color = [1 0 0];
 
