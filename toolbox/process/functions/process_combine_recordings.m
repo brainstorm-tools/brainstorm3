@@ -129,43 +129,21 @@ function OutputFiles = Run(sProcess, sInputs)
                 end
             end
             pool_event = [ pool_event tmpEvent];
+            pool_event_file(end+1) = iInput;
         end
     end
-    
+    NewEvents = pool_event;
+    isDuplicate = false(1,length(NewEvents));
+
     % If there is any duplicate, we make them channel specific
-    if length(unique({pool_event.label})) < length(pool_event) 
-         for iInput = 1 : nInputs
-            tmpChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-            tmpChannelNames = {tmpChannelMat.Channel.Name};
+    if length(unique({NewEvents.label})) < length(NewEvents) 
+        events_names = unique({NewEvents.label});
 
-            for iEvent = 1 : length(sMetaData(iInput).F.events)
-
-    
-                tmpEvent = sMetaData(iInput).F.events(iEvent);
-                
-                % Add channel info
-                addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
-                nOccurences = size(tmpEvent.times, 2);
-                % Make a channel-wise event with all channels in Input file
-                if isempty(tmpEvent.channels)
-                    tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
-                else
-                    for iOccurence = 1 : nOccurences
-                        % Make a channel-wise event with all channels in Input file
-                        if isempty(tmpEvent.channels{iOccurence})
-                            tmpEvent.channels{iOccurence} = addedChannelNames;
-                        % Update channel names to names that were added in combined file
-                        else
-                            [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
-                            tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
-                        end
-                    end
-                end
-                NewEvents = [NewEvents, tmpEvent];
+        for iEvent = 1:length(events_names)
+            if sum(strcmp({NewEvents.label}, events_names{iEvent})) > 1
+               isDuplicate(strcmp({NewEvents.label}, events_names{iEvent})) = true;
             end
-         end
-    else
-        NewEvents = pool_event;
+        end
     end
 
     for iInput = 1 : nInputs
@@ -186,6 +164,33 @@ function OutputFiles = Run(sProcess, sInputs)
 
         % Store projectors to concatenate later
         sProjNew{iInput} = tmpChannelMat.Projector;
+        
+        idx_duplicate = find(pool_event_file == iInput & isDuplicate);
+        % Concatenate events
+        for iEvent = 1 : length(idx_duplicate)
+            tmpEvent = NewEvents(idx_duplicate(iEvent));
+
+            % Add channel info
+            addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
+            nOccurences = size(tmpEvent.times, 2);
+            % Make a channel-wise event with all channels in Input file
+            if isempty(tmpEvent.channels)
+                tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
+            else
+                for iOccurence = 1 : nOccurences
+                    % Make a channel-wise event with all channels in Input file
+                    if isempty(tmpEvent.channels{iOccurence})
+                        tmpEvent.channels{iOccurence} = addedChannelNames;
+                    % Update channel names to names that were added in combined file
+                    else
+                        [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
+                        tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
+                    end
+                end
+            end
+            NewEvents(idx_duplicate(iEvent)) =  tmpEvent;
+        end
+
 
         % Copy videos
         tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
