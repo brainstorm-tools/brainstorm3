@@ -48,17 +48,13 @@ function sProcess = GetDescription()
     sProcess.options.src.Comment  = 'Sync event name: ';
     sProcess.options.src.Type     = 'text';
     sProcess.options.src.Value    = '';
-
-    sProcess.options.method_title.Comment    = '<BR><B><U>Method for event synchronization:</U></B>:';
-    sProcess.options.method_title.Type       = 'label';
-
-    sProcess.options.method.Comment = {'Mean :  minimize the mean difference between the event timing of the two files', ... 
-                                       'Correlation: maximize the correlation between the event timing of the two files';  ...
-                                       'mean', 'xcorr'};
+    % Sync method
+    sProcess.options.method_title.Comment = '<BR><B><U>Method for event synchronization:</U></B>:';
+    sProcess.options.method_title.Type    = 'label';
+    sProcess.options.method.Comment = {'<B>xcorr</B> : maximize the correlation between the event timing of the two files',  ...                                       '<B>Mean</B> :  minimize the mean difference between the event timing of the two files'; ...
+                                       'xcorr', 'mean'};
     sProcess.options.method.Type    = 'radio_label';
-    sProcess.options.method.Value   = 'mean';
-    
- 
+    sProcess.options.method.Value   = 'xcorr';
 end
 
 
