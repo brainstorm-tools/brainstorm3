@@ -154,8 +154,8 @@ function OutputFiles = Run(sProcess, sInputs)
             offsetStd = 0;
         end    
         new_times{iInput} = sOldTiming{iInput}.Time - mean_shifting(iInput);
-        disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)', ...
-            sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000));
+        fprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms) \n', ...
+                sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000);
     end    
     
     % New start and new end
