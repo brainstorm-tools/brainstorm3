@@ -165,7 +165,7 @@ function OutputFiles = Run(sProcess, sInputs)
                     sTmpVideo.VideoStart = 0;
                 end
                 [~, outVideoFile] = import_video(iNewStudy, sTmpVideo.LinkTo);
-                figure_video('SetVideoStart', outVideoFile, sprintf('%.3f', sTmpVideo.VideoStart));
+                figure_video('SetVideoStart', outVideoFile{1}, sprintf('%.3f', sTmpVideo.VideoStart));
             end
         end
 
