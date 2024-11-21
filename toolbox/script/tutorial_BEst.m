@@ -61,7 +61,15 @@ else
 end
 
 
-% === GET DEVIANT AVERAGE RUN01 ===
+%% ===== REQUIRED PLUGIN =====
+% Install and Load Brain Entropy plugin
+[isInstalled, errMsg] = bst_plugin('Install', 'brainentropy');
+if ~isInstalled
+    error(errMsg);
+end
+
+
+%% ===== FIND FILES =====
 % Process: Select recordings in: Subject01/S01_AEF_20131218_01_600Hz_notch
 sFiles01 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname', SubjectName, ...
