@@ -110,8 +110,63 @@ function OutputFiles = Run(sProcess, sInputs)
     NewChannelMat.Channel = repmat(db_template('channeldesc'), NewChannelsN);
     % New channel flag
     NewChannelFlag = [];
+
     % New events
     NewEvents = repmat(db_template('event'), 0);
+
+    pool_event = [];
+    pool_event_file = []; %keep track of which file is associated with the event
+
+    for iInput = 1 : nInputs
+        for iEvent = 1 : length(sMetaData(iInput).F.events)
+            tmpEvent = sMetaData(iInput).F.events(iEvent);
+
+            if  ~isempty(pool_event) && any(strcmp({pool_event.label},tmpEvent.label))
+                other_event = pool_event(strcmp({pool_event.label},tmpEvent.label));
+
+                if length(other_event) == 1 && isempty(tmpEvent.channels) && isequal(other_event.times, tmpEvent.times)
+                    continue;
+                end
+            end
+            pool_event = [ pool_event tmpEvent];
+        end
+    end
+    
+    % If there is any duplicate, we make them channel specific
+    if length(unique({pool_event.label})) < length(pool_event) 
+         for iInput = 1 : nInputs
+            tmpChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
+            tmpChannelNames = {tmpChannelMat.Channel.Name};
+
+            for iEvent = 1 : length(sMetaData(iInput).F.events)
+
+    
+                tmpEvent = sMetaData(iInput).F.events(iEvent);
+                
+                % Add channel info
+                addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
+                nOccurences = size(tmpEvent.times, 2);
+                % Make a channel-wise event with all channels in Input file
+                if isempty(tmpEvent.channels)
+                    tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
+                else
+                    for iOccurence = 1 : nOccurences
+                        % Make a channel-wise event with all channels in Input file
+                        if isempty(tmpEvent.channels{iOccurence})
+                            tmpEvent.channels{iOccurence} = addedChannelNames;
+                        % Update channel names to names that were added in combined file
+                        else
+                            [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
+                            tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
+                        end
+                    end
+                end
+                NewEvents = [NewEvents, tmpEvent];
+            end
+         end
+    else
+        NewEvents = pool_event;
+    end
 
     for iInput = 1 : nInputs
         % Get channel file
@@ -131,30 +186,6 @@ function OutputFiles = Run(sProcess, sInputs)
 
         % Store projectors to concatenate later
         sProjNew{iInput} = tmpChannelMat.Projector;
-
-        % Concatenate events
-        for iEvent = 1 : length(sMetaData(iInput).F.events)
-            tmpEvent = sMetaData(iInput).F.events(iEvent);
-            % Add channel info
-            addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
-            nOccurences = size(tmpEvent.times, 2);
-            % Make a channel-wise event with all channels in Input file
-            if isempty(tmpEvent.channels)
-                tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
-            else
-                for iOccurence = 1 : nOccurences
-                    % Make a channel-wise event with all channels in Input file
-                    if isempty(tmpEvent.channels{iOccurence})
-                        tmpEvent.channels{iOccurence} = addedChannelNames;
-                    % Update channel names to names that were added in combined file
-                    else
-                        [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
-                        tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
-                    end
-                end
-            end
-            NewEvents = [NewEvents, tmpEvent];
-        end
 
         % Copy videos
         tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
