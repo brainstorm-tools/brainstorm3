@@ -168,6 +168,11 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('text',['Standby: FOOOFing spectrum ' num2str(iFile) ' of ' num2str(length(sInputs))]);
         % Load input file
         PsdMat = in_bst_timefreq(sInputs(iFile).FileName);
+        % Check for frequency definition
+        if iscell(PsdMat.Freqs)
+            bst_report('Error', sProcess, sInputs, 'FOOOF cannot be computed with PSD using frequency bands.');
+            return;
+        end
         % Exclude 0Hz from the computation
         if (opt.freq_range(1) == 0) && (PsdMat.Freqs(1) == 0) && (length(PsdMat.Freqs) >= 2)
             opt.freq_range(1) = PsdMat.Freqs(2);
