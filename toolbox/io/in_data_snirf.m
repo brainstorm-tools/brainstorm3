@@ -93,7 +93,7 @@ end
 % Create channel file structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
-ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
 
 % NIRS channels
 for iChan = 1:nChannels
@@ -105,8 +105,8 @@ for iChan = 1:nChannels
 
         ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                              jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                             jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-        ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                                                       round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+        ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
 
     end
     ChannelMat.Channel(iChan).Type = 'NIRS';

@@ -60,6 +60,36 @@ for i = 1:length(target)
     % Search by channel name
     else
         iChan = find(strcmpi(allNames, target{i}));
+        % Search for NIRS channels using Source, Detector or Wavelength
+        if ismember('NIRS', allTypes)
+            % Find tokens in provided target
+            % Token 1: Source,               e.g. 'S1'
+            % Token 2: Detector,             e.g. 'D1'
+            % Token 1: Wavelength or Metric, e.g. 'WL830'
+            target_tokens = regexp(target{i}, '^(S([0-9]+)?)?(D([0-9]+)?)?(WL\d+|HbO|HbR|HbT)?$', 'tokens');
+            if isempty(target_tokens)
+                continue;
+            end 
+            target_tokens = target_tokens{1};
+            
+            % If token not found, replace with wildcard for that token
+            if isempty(target_tokens{1})
+                target_tokens{1} = 'S([0-9]+)';
+            end
+            if isempty(target_tokens{2})
+                target_tokens{2} = 'D([0-9]+)';
+            end
+            if isempty(target_tokens{3})
+                target_tokens{3} = '(WL\d+|HbO|HbR|HbT)';
+            end
+            % Find matching NIRS channels
+            iAllChanNirs = good_channel(Channel, [], 'NIRS');
+            tmp = regexp(allNames, sprintf('^%s%s%s$',target_tokens{1},target_tokens{2},target_tokens{3}), 'tokens');
+            iChanNirs = find(cellfun(@(x)~isempty(x), tmp));
+            iChanNirs = intersect(iChanNirs, iAllChanNirs);
+            % Add NIRS channels to already selected channels
+            iChan = union(iChan, iChanNirs);
+        end
     end
     % Search by indices
     if isempty(iChan)

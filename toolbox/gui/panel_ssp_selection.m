@@ -710,8 +710,8 @@ function UpdateComp()
     [sCat, iCat] = GetSelectedCat();
     % If there is something selected: Add components
     if ~isempty(sCat)
-        componentType = sCat.Method(1:3);
         if (length(sCat.CompMask) > 1)
+            componentType = sCat.Method(1:3);
             switch lower(componentType)
                 % ICA: Show all components
                 case 'ica'

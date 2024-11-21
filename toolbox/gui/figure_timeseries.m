@@ -3373,10 +3373,11 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         iLinesGroup = find(strcmpi(LinesLabels{1}, LinesLabels));
         % Get montage
         sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+        [~, ~, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {GlobalData.DataSet(iDS).Channel.Name}, GlobalData.DataSet(iDS).Measures.sFile.channelflag);
         % Get groups in which each sensor belongs, to map group and color
         GroupNames = {};
         for i = 1:length(iLinesGroup)
-            ChanName = sMontage.ChanNames{find(sMontage.Matrix(iLinesGroup(i),:), 1)};
+            ChanName = sMontage.ChanNames{find(sMontage.Matrix(iMatrixDisp(iLinesGroup(i)),:), 1)};
             GroupNames{i} = GlobalData.DataSet(iDS).Channel(strcmpi(ChanName, {GlobalData.DataSet(iDS).Channel.Name})).Group;
         end
         % Create legend
