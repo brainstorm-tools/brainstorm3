@@ -131,19 +131,18 @@ function OutputFiles = Run(sProcess, sInputs)
     mean_shifting = zeros(1, nInputs);
     for iInput = 2:nInputs
         isSameNumberEvts = size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2);
-        % Same number of sync events
-        if isSameNumberEvts && strcmp(sProcess.options.method.Value,'mean')
+        % Require same number of events
+        if ~isSameNumberEvts
+            bst_report('Error', sProcess, sInputs, 'Files doesnt have the same number of sync events.');
+            return
+        end
+        % Sync
+        if strcmpi(sProcess.options.method.Value, 'mean')
+            % Mean difference
             shifting = sEvtSync(iInput).times - sEvtSync(1).times;
             mean_shifting(iInput) = mean(shifting);
             offsetStd = std(shifting);
-        else
-
-            if ~isSameNumberEvts
-                strWarning = [ 'Files doesnt have the same number of sync events.', 10, ... 
-                                'Using cross-correlation approximation'];
-                bst_report('Warning', sProcess, sInputs, strWarning);
-            end    
-
+        elseif strcmpi(sProcess.options.method.Value, 'xcorr')
             % Cross-correlate trigger signals; need to be at the same sampling frequency
             tmp_fs      = max(fs(iInput), fs(1));
             tmp_time_a  = sOldTiming{iInput}.Time(1):1/tmp_fs:sOldTiming{iInput}.Time(end);
@@ -168,8 +167,8 @@ function OutputFiles = Run(sProcess, sInputs)
             offsetStd = 0;
         end    
         new_times{iInput} = sOldTiming{iInput}.Time - mean_shifting(iInput);
-        disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)', ...
-            sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000));
+        fprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)', ...
+                sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000);
     end    
     
     % New start and new end
