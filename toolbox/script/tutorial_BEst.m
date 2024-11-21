@@ -26,7 +26,8 @@ function tutorial_BEst(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2017, Edouard Delaire 2024
+% Author: Edouard Delaire,  2024
+%         Raymundo Cassani, 2024
 
 
 % ===== FILES TO IMPORT =====
@@ -34,13 +35,10 @@ function tutorial_BEst(tutorial_dir, reports_dir)
 if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
     reports_dir = [];
 end
-% You have to specify the folder in which the tutorial dataset is unzipped
+% Folder in which the Introduction tutorial dataset is unzipped (if needed)
 if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
-    error('The first argument must be the full path to the dataset folder.');
+    tutorial_dir = [];
 end
-
-ProtocolName    = 'TutorialIntroduction';
-SubjectName     = 'Subject01';
 
 % Re-inialize random number generator
 if (bst_get('MatlabVersion') >= 712)
@@ -49,12 +47,13 @@ end
 
 
 %% ===== VERIFY REQUIRED PROTOCOL =====
-% Check Protocol that it exists
+ProtocolName    = 'TutorialIntroduction';
+SubjectName     = 'Subject01';
 
 iProtocolIntroduction = bst_get('Protocol', ProtocolName);
 if isempty(iProtocolIntroduction)
+    % Produce the Introduction protocol
     tutorial_introduction(tutorial_dir, reports_dir)
-    %error(['Unknown protocol: ' ProtocolName]);
 else
     % Select input protocol
     gui_brainstorm('SetCurrentProtocol', iProtocolIntroduction);
@@ -75,7 +74,6 @@ sFiles01 = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname', SubjectName, ...
     'condition',   'S01_AEF_20131218_01_600Hz_notch', ...
     'includebad',  0);
-
 % Process: Select file comments with tag: deviant
 sFilesAvgDeviant01 = bst_process('CallProcess', 'process_select_tag', sFiles01, [], ...
     'tag',    'Avg: deviant', ...
@@ -83,9 +81,8 @@ sFilesAvgDeviant01 = bst_process('CallProcess', 'process_select_tag', sFiles01, 
     'select', 1);     % Select only the files with the tag
 
 
-%% ===== TUTORIAL #20: HEAD MODEL ====================================================
-%  ===================================================================================
-disp([10 'DEMO> Tutorial #20: Head model' 10]);
+%% ===== HEAD MODEL =====
+disp([10 'BST> Head model' 10]);
 
 % Process: Generate BEM surfaces
 bst_process('CallProcess', 'process_generate_bem', [], [], ...
@@ -95,7 +92,6 @@ bst_process('CallProcess', 'process_generate_bem', [], [], ...
     'ninner',      1922, ...
     'thickness',   4, ...
     'method',      'brainstorm');
-
 % Process: Compute head model
 bst_process('CallProcess', 'process_headmodel', sFilesAvgDeviant01, [], ...
     'sourcespace', 1, ...  % Cortex surface
@@ -111,16 +107,11 @@ bst_process('CallProcess', 'process_headmodel', sFilesAvgDeviant01, [], ...
          'SplitLength',  4000));
 
 
-
-%% ===== TUTORIAL #22: SOURCE ESTIMATION =============================================
-%  ===================================================================================
-
+%% ===== SOURCE ESTIMATION =====
 % coherent Maximum Entropy on the Mean (cMEM)
-disp([10 'DEMO> Tutorial #22: Source estimation using cMEM' 10]);
+disp([10 'BST> Source estimation using cMEM' 10]);
 
 % Process: Compute sources: BEst
-
-
 mem_option = be_pipelineoptions(be_main, 'cMEM');
 mem_option.optional = struct_copy_fields(mem_option.optional, ...
                      struct(...
@@ -131,13 +122,10 @@ mem_option.optional = struct_copy_fields(mem_option.optional, ...
                              'BaselineSegment', [-0.1, 0], ...
                              'groupAnalysis',   0, ...
                              'display',         0));
-
-
 sAvgSrcMEM = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
     'comment', 'MEM', ...
     'mem', struct('MEMpaneloptions', mem_option), ...
     'sensortypes', 'MEG');
-
 % Process: Snapshot: Sources (one time)
 bst_process('CallProcess', 'process_snapshot', sAvgSrcMEM, [], ...
     'target',    8, ...  % Sources (one time)
@@ -149,8 +137,9 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrcMEM, [], ...
 
 
 % wavelet Maximum Entropy on the Mean (wMEM)
-disp([10 'DEMO> Tutorial #22: Source estimation using wMEM' 10]);
+disp([10 'BST> Source estimation using WMEM' 10]);
 
+% Process: Compute sources: BEst
 wMEM_options = be_pipelineoptions(be_main, 'wMEM');
 wMEM_options.optional = struct_copy_fields(wMEM_options.optional, ...
                          struct(...
@@ -162,16 +151,12 @@ wMEM_options.optional = struct_copy_fields(wMEM_options.optional, ...
                                  'groupAnalysis',   0, ...
                                  'display',         0));
 
-% Process: Compute sources: BEst
-
 % 1. Localizing only scale 4: 
 wMEM_options.wavelet.selected_scales    = [4];
-
 sAvgSrwMEM_scale4 = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
     'comment',     'MEM', ...
     'mem',         struct( 'MEMpaneloptions', wMEM_options), ...
     'sensortypes', 'MEG');
-
 % Process: Snapshot: Sources (one time)
 bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scale4, [], ...
     'target',    8, ...  % Sources (one time)
@@ -183,12 +168,10 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scale4, [], ...
 
 % 2. Localizing only scale 5: 
 wMEM_options.wavelet.selected_scales    = [5];
-
 sAvgSrwMEM_scale5 = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
     'comment',     'MEM', ...
     'mem',         struct( 'MEMpaneloptions', wMEM_options), ...
     'sensortypes', 'MEG');
-
 % Process: Snapshot: Sources (one time)
 bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scale5, [], ...
     'target',    8, ...  % Sources (one time)
@@ -200,12 +183,10 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scale5, [], ...
 
 % 3. Localizing all scales: 
 wMEM_options.wavelet.selected_scales    = [1,2,3,4,5];
-
 sAvgSrwMEM_scaleAll = bst_process('CallProcess', 'process_inverse_mem', sFilesAvgDeviant01, [], ...
     'comment',     'MEM', ...
     'mem',         struct( 'MEMpaneloptions', wMEM_options), ...
     'sensortypes', 'MEG');
-
 % Process: Snapshot: Sources (one time)
 bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scaleAll, [], ...
     'target',    8, ...  % Sources (one time)
@@ -214,6 +195,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrwMEM_scaleAll, [], ...
     'time',      83.3*1e-3, ...
     'threshold', 0, ...
     'Comment',   'Average Deviant (wMEM - all scale)');
+
 
 %% ===== SAVE REPORT =====
 % Save and display report
@@ -224,4 +206,4 @@ else
     bst_report('Open', ReportFile);
 end
 
-disp([10 'DEMO> Done.' 10]);
+disp([10 'BST> tutorial_BEst: Done.' 10]);
