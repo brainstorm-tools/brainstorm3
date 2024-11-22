@@ -169,6 +169,7 @@ function OutputFiles = Run(sProcess, sInputs)
         % Concatenate events
         for iEvent = 1 : length(idx_duplicate)
             tmpEvent = NewEvents(idx_duplicate(iEvent));
+            tmpEvent.label = file_unique(tmpEvent.label, {NewEvents.label});
 
             % Add channel info
             addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
