@@ -243,59 +243,6 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     NewChannelMat.Projector = [sProjNew{:}];
 
-    
-    % Concatenate Events with same name
-    for iEvent = 1:length(NewEvents)
-        if iEvent > length(NewEvents) || sum(strcmp({NewEvents.label}, NewEvents(iEvent).label)) == 1
-            continue;
-        end
-        
-        idx_duplicate = find(strcmp({NewEvents.label}, NewEvents(iEvent).label));
-
-         % Inialize new event group
-        tmpEvent = NewEvents(idx_duplicate(1));
-        tmpEvent.times    = [NewEvents(idx_duplicate).times];
-        tmpEvent.epochs   = [NewEvents(idx_duplicate).epochs];
-
-        % Reaction time, notes, channels: only if all the events have them
-        if all(~cellfun(@isempty, {NewEvents(idx_duplicate).channels}))
-            tmpEvent.channels = [NewEvents(idx_duplicate).channels];
-        else
-            tmpEvent.channels = [];
-        end
-        if all(~cellfun(@isempty, {NewEvents(idx_duplicate).notes}))
-            tmpEvent.notes = [NewEvents(idx_duplicate).notes];
-        else
-            tmpEvent.notes = [];
-        end
-        if all(~cellfun(@isempty, {NewEvents(idx_duplicate).reactTimes}))
-            tmpEvent.reactTimes = [NewEvents(idx_duplicate).reactTimes];
-        else
-            tmpEvent.reactTimes = [];
-        end
-
-        % Sort by samples indices, and remove redundant values
-        [tmp__, iSort] = unique(bst_round(tmpEvent.times(1,:), 9));
-        tmpEvent.times    = tmpEvent.times(:,iSort);
-        tmpEvent.epochs   = tmpEvent.epochs(iSort);
-        if ~isempty(tmpEvent.channels)
-            tmpEvent.channels = tmpEvent.channels(iSort);
-        end
-        if ~isempty(tmpEvent.notes)
-            tmpEvent.notes = tmpEvent.notes(iSort);
-        end
-        if ~isempty(tmpEvent.reactTimes)
-            tmpEvent.reactTimes = tmpEvent.reactTimes(iSort);
-        end
-    
-        % Remove merged events
-        NewEvents(idx_duplicate) = [];
-        % Add new event
-        NewEvents(end + 1) = tmpEvent;
-    end
-
-
-
     % Save channel file
     db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
