@@ -111,37 +111,32 @@ function OutputFiles = Run(sProcess, sInputs)
     % New channel flag
     NewChannelFlag = [];
 
-    % New events
-    NewEvents = repmat(db_template('event'), 0);
-
-    pool_event = [];
-    pool_event_file = []; %keep track of which file is associated with the event
-
+    % Events to be merged in combined raw file
+    poolEvents   = repmat(db_template('event'), 0);
+    poolEventsIx = [];        % Index of file associated with the event
     for iInput = 1 : nInputs
         for iEvent = 1 : length(sMetaData(iInput).F.events)
             tmpEvent = sMetaData(iInput).F.events(iEvent);
-
-            if  ~isempty(pool_event) && any(strcmp({pool_event.label},tmpEvent.label))
-                other_event = pool_event(strcmp({pool_event.label},tmpEvent.label));
-
+            % If all files have the same event with same occurrences and it is not channel-wise, keep one copy of event
+            if ~isempty(poolEvents) && any(strcmp({poolEvents.label}, tmpEvent.label))
+                other_event = poolEvents(strcmp({poolEvents.label}, tmpEvent.label));
                 if length(other_event) == 1 && isempty(tmpEvent.channels) && isequal(other_event.times, tmpEvent.times)
                     continue;
                 end
             end
-            pool_event = [ pool_event tmpEvent];
-            pool_event_file(end+1) = iInput;
+            poolEvents(end+1)   = tmpEvent;
+            poolEventsIx(end+1) = iInput;
         end
     end
-    NewEvents = pool_event;
+    NewEvents = poolEvents;
     isDuplicate = false(1,length(NewEvents));
 
-    % If there is any duplicate, we make them channel specific
+    % Flag events with duplicated names, to make them channel specific
     if length(unique({NewEvents.label})) < length(NewEvents) 
-        events_names = unique({NewEvents.label});
-
-        for iEvent = 1:length(events_names)
-            if sum(strcmp({NewEvents.label}, events_names{iEvent})) > 1
-               isDuplicate(strcmp({NewEvents.label}, events_names{iEvent})) = true;
+        eventsNames = unique({NewEvents.label});
+        for iEvent = 1:length(eventsNames)
+            if sum(strcmp({NewEvents.label}, eventsNames{iEvent})) > 1
+               isDuplicate(strcmp({NewEvents.label}, eventsNames{iEvent})) = true;
             end
         end
     end
@@ -164,13 +159,12 @@ function OutputFiles = Run(sProcess, sInputs)
 
         % Store projectors to concatenate later
         sProjNew{iInput} = tmpChannelMat.Projector;
-        
-        idx_duplicate = find(pool_event_file == iInput & isDuplicate);
-        % Concatenate events
-        for iEvent = 1 : length(idx_duplicate)
-            tmpEvent = NewEvents(idx_duplicate(iEvent));
-            tmpEvent.label = file_unique(tmpEvent.label, {NewEvents.label});
 
+        % Add channel information on duplicated events
+        ixDuplicate = find(poolEventsIx == iInput & isDuplicate);
+        for iEvent = 1 : length(ixDuplicate)
+            tmpEvent = poolEvents(ixDuplicate(iEvent));
+            tmpEvent.label = file_unique(tmpEvent.label, {NewEvents.label});
             % Add channel info
             addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
             nOccurences = size(tmpEvent.times, 2);
@@ -189,9 +183,8 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                 end
             end
-            NewEvents(idx_duplicate(iEvent)) =  tmpEvent;
+            NewEvents(ixDuplicate(iEvent)) = tmpEvent;
         end
-
 
         % Copy videos
         tmpStudy = bst_get('Study', sInputs(iInput).iStudy);
