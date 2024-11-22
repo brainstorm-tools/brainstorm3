@@ -165,7 +165,7 @@ if isSave
     
     % Save isosurface
     sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
-    sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
+    sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue)]);
     bst_save(MeshFile, sMesh, 'v7');
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
