@@ -110,36 +110,43 @@ function OutputFiles = Run(sProcess, sInputs)
     NewChannelMat.Channel = repmat(db_template('channeldesc'), NewChannelsN);
     % New channel flag
     NewChannelFlag = [];
+    % New events
+    NewEvents = repmat(db_template('event'), 0);
 
     % Events to be merged in combined raw file
-    poolEvents   = repmat(db_template('event'), 0);
+    poolEvents   = NewEvents; % Empty sEvents
     poolEventsIx = [];        % Index of file associated with the event
+    poolEventsFx = [];        % Fixing channel-wise data is needed
     for iInput = 1 : nInputs
-        for iEvent = 1 : length(sMetaData(iInput).F.events)
-            tmpEvent = sMetaData(iInput).F.events(iEvent);
-            % If all files have the same event with same occurrences and it is not channel-wise, keep one copy of event
-            if ~isempty(poolEvents) && any(strcmp({poolEvents.label}, tmpEvent.label))
-                other_event = poolEvents(strcmp({poolEvents.label}, tmpEvent.label));
-                if length(other_event) == 1 && isempty(tmpEvent.channels) && isequal(other_event.times, tmpEvent.times)
-                    continue;
-                end
+        poolEvents   = [poolEvents, sMetaData(iInput).F.events];
+        poolEventsIx = [poolEventsIx, repmat(iInput, 1, length(sMetaData(iInput).F.events))];
+        poolEventsFx = [poolEventsFx, ones(1, length(sMetaData(iInput).F.events))];
+    end
+    % Handle duplicated names and identify events do not need their channel field updated
+    [uniqueLabels, ~, iUnique] = unique({poolEvents.label});
+    iDel = [];
+    for iu = 1 : length(uniqueLabels)
+        % Instances of unique events
+        ixUnique = find(iUnique == iu)';
+        % Do nothing if event is not duplicated
+        if length(ixUnique) == 1
+            continue
+        % Keep only one copy, set to not be channel-wise fixed
+        elseif all(cellfun(@isempty, {poolEvents(ixUnique).channels})) && isequal(poolEvents(ixUnique).times)
+            poolEventsFx(ixUnique) = 0;
+            iDel = [iDel, ixUnique(2:end)];
+        % Create unique names
+        else
+            baseLabel = poolEvents(ixUnique(1)).label;
+            for id = 1 : length(ixUnique)
+                % Update their names to make unique
+                poolEvents(ixUnique(id)).label = sprintf([baseLabel '_%02d'], id);
             end
-            poolEvents(end+1)   = tmpEvent;
-            poolEventsIx(end+1) = iInput;
         end
     end
-    NewEvents = poolEvents;
-    isDuplicate = false(1,length(NewEvents));
-
-    % Flag events with duplicated names, to make them channel specific
-    if length(unique({NewEvents.label})) < length(NewEvents) 
-        eventsNames = unique({NewEvents.label});
-        for iEvent = 1:length(eventsNames)
-            if sum(strcmp({NewEvents.label}, eventsNames{iEvent})) > 1
-               isDuplicate(strcmp({NewEvents.label}, eventsNames{iEvent})) = true;
-            end
-        end
-    end
+    poolEvents(iDel) = [];
+    poolEventsIx(iDel) = [];
+    poolEventsFx(iDel) = [];
 
     for iInput = 1 : nInputs
         % Get channel file
@@ -160,30 +167,31 @@ function OutputFiles = Run(sProcess, sInputs)
         % Store projectors to concatenate later
         sProjNew{iInput} = tmpChannelMat.Projector;
 
-        % Add channel information on duplicated events
-        ixDuplicate = find(poolEventsIx == iInput & isDuplicate);
-        for iEvent = 1 : length(ixDuplicate)
-            tmpEvent = poolEvents(ixDuplicate(iEvent));
-            tmpEvent.label = file_unique(tmpEvent.label, {NewEvents.label});
-            % Add channel info
-            addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
-            nOccurences = size(tmpEvent.times, 2);
-            % Make a channel-wise event with all channels in Input file
-            if isempty(tmpEvent.channels)
-                tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
-            else
-                for iOccurence = 1 : nOccurences
-                    % Make a channel-wise event with all channels in Input file
-                    if isempty(tmpEvent.channels{iOccurence})
-                        tmpEvent.channels{iOccurence} = addedChannelNames;
-                    % Update channel names to names that were added in combined file
-                    else
-                        [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
-                        tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
+        % Add channel information if needed
+        tmpEvents = poolEvents(poolEventsIx == iInput);
+        for iEvent = 1 : length(tmpEvents)
+            tmpEvent = tmpEvents(iEvent);
+            if poolEventsFx(iEvent)
+                % Add channel info
+                addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
+                nOccurences = size(tmpEvent.times, 2);
+                % Make a channel-wise event with all channels in Input file
+                if isempty(tmpEvent.channels)
+                    tmpEvent.channels = repmat({addedChannelNames}, 1, nOccurences);
+                else
+                    for iOccurence = 1 : nOccurences
+                        % Make a channel-wise event with all channels in Input file
+                        if isempty(tmpEvent.channels{iOccurence})
+                            tmpEvent.channels{iOccurence} = addedChannelNames;
+                        % Update channel names to names that were added in combined file
+                        else
+                            [~, iLoc] = ismember(tmpEvent.channels{iOccurence}, tmpChannelNames);
+                            tmpEvent.channels{iOccurence} = addedChannelNames(iLoc);
+                        end
                     end
                 end
             end
-            NewEvents(ixDuplicate(iEvent)) = tmpEvent;
+            NewEvents = [NewEvents, tmpEvent];
         end
 
         % Copy videos
