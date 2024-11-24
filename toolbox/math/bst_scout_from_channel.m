@@ -87,7 +87,7 @@ end
 sScalp = in_tess_bst( sSubject.Surface(sSubject.iScalp).FileName);
 
 % Head vertices location (in SCS)
-head_vertices   = sScalp.Vertices; % cs_convert(sMri, 'scs', 'mri', sScalp.Vertices) * 1000;
+head_vertices   = sScalp.Vertices; 
 
 % ===== PROJECT CHANNEL FILE =====
 
