@@ -86,36 +86,37 @@ end
 % Load Scalp
 sScalp = in_tess_bst( sSubject.Surface(sSubject.iScalp).FileName);
 
-% Find closest head vertices (for which we have fluence data)
-% Put everything in mri referential
-head_vertices_mri   = sScalp.Vertices; % cs_convert(sMri, 'scs', 'mri', sScalp.Vertices) * 1000;
+% Head vertices location (in SCS)
+head_vertices   = sScalp.Vertices; % cs_convert(sMri, 'scs', 'mri', sScalp.Vertices) * 1000;
 
 % ===== PROJECT CHANNEL FILE =====
 
-channel_locs_mri = [];
+% channel location (in SCS)
+channel_locs = [];
 
 % Project sensors
 ChannelMat = in_bst_channel(ChannelFile);
 for i = 1:length(ChannelMat.Channel)
     if ~isempty(ChannelMat.Channel(i).Loc)
         if size(ChannelMat.Channel(i).Loc,2) == 2
-            channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc(:,1);  
-            channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc(:,2);
+            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc(:,1);  
+            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc(:,2);
 
         else
-            channel_locs_mri(end+1, :) = ChannelMat.Channel(i).Loc;
+            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc;
         end
     end
 end
 
+% Find all the vertices on the head within a radius of the channels
 Vertices = [];
-for i = 1:size(channel_locs_mri, 1)
+for i = 1:size(channel_locs, 1)
     
-    distances = zeros(1, size(head_vertices_mri, 1));
+    distances = zeros(1, size(head_vertices, 1));
 
-    for j = 1:size(head_vertices_mri, 1)
-        x = channel_locs_mri(i,:);
-        y = head_vertices_mri(j, :);
+    for j = 1:size(head_vertices, 1)
+        x = channel_locs(i,:);
+        y = head_vertices(j, :);
 
         distances(j) = 1000 * sum((x-y).^2).^0.5; % mm
     end
@@ -128,6 +129,7 @@ for i = 1:size(channel_locs_mri, 1)
     Vertices = [Vertices  idx];
 end
 
+% Create scout
 scout_channel = db_template('Scout'); 
 scout_channel.Label = sprintf('Scout from %s ( %d mm)', ChannelMat.Comment, radius)  ;
 scout_channel.Vertices = Vertices;
