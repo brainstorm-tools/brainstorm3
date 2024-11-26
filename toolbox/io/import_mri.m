@@ -320,7 +320,22 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             errMsg = 'Reslice: No SCS transformation available for the reference volume. Set the fiducials first.';
             RegMethod = ''; % Registration will not be performed
         end
-
+        
+        % === ASK SKULL STRIPPING ===
+        if isInteractive && isCt && (strcmpi(RegMethod, 'SPM') || strcmpi(RegMethod, 'CT2MRI'))
+            % Ask if the user wants to mask out region outside skull in CT
+            [MaskMethod, isSkip] = java_dialog('question', ['<HTML><B>Do skull stripping to clean the CT volume?</B><BR><BR>' ...
+                                                            'This operation cleans the CT to exclude any thing outside the skull.<BR><BR>' ...
+                                                            'Which method do you want to proceed with?<BR><BR></HTML>'], ...
+                                                            'Import CT', [], {'BrainSuite', 'SPM', 'Skip'}, 'Skip'); 
+            % Skip skull stripping
+            if strcmpi(MaskMethod, 'skip') || isSkip
+                MaskMethod = [];
+            end 
+        else
+            % In non-interactive mode: never do skull stripping
+            MaskMethod = [];
+        end
 
         % === REGISTRATION ===
         switch (RegMethod)
@@ -328,16 +343,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice, isAtlas);
             case 'SPM'
-                % Register the new MRI on the existing one using SPM + RESLICE
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
+                % Register the new MRI on the existing one using SPM + RESLICE + SKULL STRIPPING
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas, MaskMethod);
             case 'CT2MRI'
-                % Ask if the user wants to mask out region outside skull in CT
-                isMask = java_dialog('confirm', [...
-                    '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
-                    'This operation cleans the CT to exclude any thing outside the skull.' ...
-                    '<BR><BR></HTML>'], 'Import CT');
-                % Register the CT to excisting MRI using USC's ct2mrireg plugin
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, 0, isMask);
+                % Register the CT to excisting MRI using USC's ct2mrireg plugin + RESLICE + SKULL STRIPPING
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas, MaskMethod);
             case 'Ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)

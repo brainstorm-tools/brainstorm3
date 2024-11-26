@@ -1,4 +1,4 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas, isMask)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas, MaskMethod)
 % MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
@@ -12,7 +12,8 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras', 'ct2mri'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
 %    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
-%    - isMask     : If 1, mask out regions outside the skull using BrainSuite skull stripping (CT2MRI registration only)
+%    - MaskMethod : 'BrainSuite': mask out regions outside the skull using BrainSuite skull stripping
+%                   'SPM': mask out regions outside the skull using SPM segmentation of tissues 
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -43,6 +44,9 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 
 % ===== LOAD INPUTS =====
 % Parse inputs
+if (nargin < 6) || isempty(MaskMethod)
+    MaskMethod = [];
+end
 if (nargin < 5) || isempty(isAtlas)
     isAtlas = 0;
 end
@@ -136,6 +140,7 @@ switch lower(Method)
         % Create coregistration batch
         if isReslice
             % Coreg: Estimate and reslice
+            bst_progress('text', 'Calling SPM batch...(Coreg: Estimate & Reslice)');
             matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
@@ -146,6 +151,7 @@ switch lower(Method)
             NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
             % Coreg: Estimate
+            bst_progress('text', 'Calling SPM batch...(Coreg: Estimate)');
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
@@ -167,6 +173,12 @@ switch lower(Method)
             end
             return;
         end
+
+        % Get the skull mask by doing skull stripping
+        if ~isempty(MaskMethod)
+            [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMethod);
+        end
+
         % Delete the temporary files
         file_delete(TmpDir, 1, 1);
         % Output file tag
@@ -179,10 +191,24 @@ switch lower(Method)
             % Use the reference SCS coordinates
             if isfield(sMriRef, 'SCS')
                 sMriReg.SCS = sMriRef.SCS;
+                if ~isempty(MaskMethod) && ~isempty(sMriMask)
+                    sMriMask.SCS = sMriRef.SCS;
+                end
             end
             % Use the reference NCS coordinates
             if isfield(sMriRef, 'NCS')
                 sMriReg.NCS = sMriRef.NCS;
+                if ~isempty(MaskMethod) && ~isempty(sMriMask)
+                    sMriMask.NCS = sMriRef.NCS;
+                end
+            end
+            % Apply mask to the co-registered CT to get skull stripped CT
+            if ~isempty(MaskMethod) && ~isempty(sMriMask)
+                bst_progress('text', 'Applying Mask...');
+                % Cast mask to the same datatype as registered and resliced CT 
+                sMriMask.Cube = cast(sMriMask.Cube, class(sMriReg.Cube));
+                sMriReg.Cube = sMriReg.Cube.*(sMriMask.Cube);
+                fileTag = [fileTag, MaskTag];
             end
         else
             isUpdateScs = 1;
@@ -257,39 +283,6 @@ switch lower(Method)
         % Save reference MRI in .nii format
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
-
-        if isMask
-            % Check for BrainSuite Installation
-            [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
-            % Error handling
-            if ~isempty(errMsg)
-                if ~isProgress
-                    bst_progress('stop');
-                end
-                return
-            end
-            % Perform BRAIN SURFACE EXTRACTOR (BSE)
-            bst_progress('text', 'Brain surface extractor...');
-            strCall = [...
-                'bse -i "' NiiRefFile '" --auto' ...
-                ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
-                ' --trim --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
-                ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
-                ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
-            disp(['BST> System call: ' strCall]);
-            status = system(strCall);
-            % Error handling
-            if (status ~= 0)
-                errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
-                return    
-            end
-
-            % Get the mask
-            NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
-            sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
-            sMriMask.Cube = sMriMask.Cube/255;
-            sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3); % erode
-        end
         
         % Perform the co-registration of the unmasked CT to MRI
         NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
@@ -298,6 +291,11 @@ switch lower(Method)
 
         % Read output volume
         sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
+        
+        % Get the skull mask by doing skull stripping
+        if ~isempty(MaskMethod)
+            [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMethod);
+        end
 
         % Delete the temporary files
         file_delete(TmpDir, 1, 1);
@@ -309,14 +307,14 @@ switch lower(Method)
             % Use the reference SCS coordinates
             if isfield(sMriRef, 'SCS')
                 sMriReg.SCS = sMriRef.SCS;
-                if isMask
+                if ~isempty(MaskMethod) && ~isempty(sMriMask)
                     sMriMask.SCS = sMriRef.SCS;
                 end
             end
             % Use the reference NCS coordinates
             if isfield(sMriRef, 'NCS')
                 sMriReg.NCS = sMriRef.NCS;
-                if isMask
+                if ~isempty(MaskMethod) && ~isempty(sMriMask)
                     sMriMask.NCS = sMriRef.NCS;
                 end
             end
@@ -332,11 +330,11 @@ switch lower(Method)
                 return
             end
             % Apply the mask to the co-registered CT to get a clean skull stripped CT
-            if isMask
+            if ~isempty(MaskMethod) && ~isempty(sMriMask)
                 [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'scs', 'scs', isAtlas);
                 bst_progress('text', 'Applying Mask...');
                 sMriReg.Cube = sMriReg.Cube.*(sMriMask.Cube);
-                fileTag = [fileTag, '_masked'];
+                fileTag = [fileTag, MaskTag];
             end
         else
             isUpdateScs = 1;
@@ -470,3 +468,82 @@ if ~isProgress
     bst_progress('stop');
 end
 
+%% ===== GENERATE SKULL MASK BY SKULL STRIPPING =====
+function [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMethod)
+    % Initialize outputs
+    sMriMask = [];
+    MaskTag = '';
+    switch lower(MaskMethod)
+        case 'brainsuite'
+            bst_plugin('SetProgressLogo', []);
+            % Check for BrainSuite Installation
+            [~, errMsgBs] = process_dwi2dti('CheckBrainSuiteInstall');            
+            if ~isempty(errMsgBs)
+                java_dialog('warning', 'Skipping skull stripping. Please install BrainSuite.', 'Skull Stripping');
+                bst_progress('text', 'Skipping skull stripping. BrainSuite not installed.');
+                return
+            end
+            % Perform skull stripping using Brain Surface Extractor (BSE)
+            bst_progress('text', 'Skull Stripping: BrainSuite Brain Surface Extractor...');
+            strCall = [...
+                'bse -i "' NiiRefFile '" --auto' ...
+                ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
+                ' --trim --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
+                ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
+                ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
+            disp(['BST> System call: ' strCall]);
+            status = system(strCall);
+            % Error handling
+            if (status ~= 0)
+                errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
+                return    
+            end
+            % Get the brain mask
+            NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
+            sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
+            % Make it a binary mask
+            sMriMask.Cube = sMriMask.Cube/255;
+            % Some erosion to reduce any artefacts
+            sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3);
+            % Set the mask method tag as BrainsSuite
+            MaskTag = '_masked_bs';
+        
+        case 'spm'
+            % Check for SPM12 installation
+            isInstalledSpm = bst_plugin('Install', 'spm12');  
+            if ~isInstalledSpm
+                java_dialog('warning', 'Skipping skull stripping. Please install SPM.', 'Skull Stripping');
+                bst_progress('text', 'Skipping skull stripping. SPM not installed.');
+                return;
+            end
+            bst_plugin('SetProgressLogo', 'spm12');           
+            bst_progress('text', 'Skull Stripping: SPM Segment...');
+            % Reset matlabbatch to start fresh
+            clear matlabbatch;
+            % Get the TPM atlas
+            TpmFile = bst_get('SpmTpmAtlas', 'SPM');
+            % Read the reference MRI
+            sMri = in_mri_nii(NiiRefFile, 0, 0, 0);
+            % Get the SPM tissue segments
+            [~, TpmFiles] = mri_normalize_segment(sMri, TpmFile);
+            % Gray Matter (GM)
+            sGm =  in_mri_nii(TpmFiles{2}, 0, 0, 0);
+            % White Matter (WM)
+            sWm =  in_mri_nii(TpmFiles{1}, 0, 0, 0);
+            % CSF
+            sCsf = in_mri_nii(TpmFiles{3}, 0, 0, 0);
+            % Intialize the output mask structure
+            sMriMask = sCsf;
+            % Brain mask = GM + WM + CSF
+            sMriMask.Cube = sGm.Cube + sWm.Cube + sCsf.Cube;
+            % Make it a binary mask
+            sMriMask.Cube = sMriMask.Cube/255;
+            % Reset matlabbatch
+            clear matlabbatch;
+            % Reset SPM logo
+            bst_plugin('SetProgressLogo', []);
+            % Set the mask method tag as SPM
+            MaskTag = '_masked_spm';      
+    end
+end
+end
