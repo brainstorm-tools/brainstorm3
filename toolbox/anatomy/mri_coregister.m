@@ -475,6 +475,7 @@ function [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMetho
     MaskTag = '';
     switch lower(MaskMethod)
         case 'brainsuite'
+            % Reset any previous logo
             bst_plugin('SetProgressLogo', []);
             % Check for BrainSuite Installation
             [~, errMsgBs] = process_dwi2dti('CheckBrainSuiteInstall');            
@@ -483,6 +484,8 @@ function [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMetho
                 bst_progress('text', 'Skipping skull stripping. BrainSuite not installed.');
                 return
             end
+            % Set the BrainSuite logo
+            bst_progress('setimage', bst_fullfile(bst_get('BrainstormDocDir'), 'plugins', 'brainsuite_logo.png'));
             % Perform skull stripping using Brain Surface Extractor (BSE)
             bst_progress('text', 'Skull Stripping: BrainSuite Brain Surface Extractor...');
             strCall = [...
@@ -505,10 +508,14 @@ function [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMetho
             sMriMask.Cube = sMriMask.Cube/255;
             % Some erosion to reduce any artefacts
             sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3);
+            % Reset BrainSuite logo
+            bst_progress('removeimage');
             % Set the mask method tag as BrainsSuite
             MaskTag = '_masked_bs';
         
         case 'spm'
+            % Reset any previous logo
+            bst_plugin('SetProgressLogo', []);
             % Check for SPM12 installation
             isInstalledSpm = bst_plugin('Install', 'spm12');  
             if ~isInstalledSpm
@@ -516,7 +523,9 @@ function [sMriMask, MaskTag] = generate_skull_mask(NiiRefFile, TmpDir, MaskMetho
                 bst_progress('text', 'Skipping skull stripping. SPM not installed.');
                 return;
             end
-            bst_plugin('SetProgressLogo', 'spm12');           
+            % Set the SPM logo
+            bst_plugin('SetProgressLogo', 'spm12');
+            % Perform skull stripping using SPM Tissue Segmentation
             bst_progress('text', 'Skull Stripping: SPM Segment...');
             % Reset matlabbatch to start fresh
             clear matlabbatch;
