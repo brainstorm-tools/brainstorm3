@@ -963,7 +963,17 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     % Output time vector
     if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
-        % Time bands: Do not update time vector
+        if isTimeChange
+            % Find time bands related to new time vector (obtained from time bands)
+            timeVectorBands = mean(process_tf_bands('GetBounds', sMat.TimeBands), 2);
+            ixTimeBandKeep = (timeVectorBands >= OutTime(1)) & (timeVectorBands <= OutTime(end));
+            sMat.TimeBands = sMat.TimeBands(ixTimeBandKeep, :);
+            % Update original time vector to match new time vector range
+            ixTimeDel = (sMat.Time < OutTime(1)) | (sMat.Time > OutTime(end));
+            sMat.Time(ixTimeDel) = [];
+        else
+            % Time bands: Do not update time vector
+        end
     else
         sMat.Time = OutTime;
     end
