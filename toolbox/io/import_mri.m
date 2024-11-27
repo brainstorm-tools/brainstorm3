@@ -325,7 +325,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             errMsg = 'Reslice: No SCS transformation available for the reference volume. Set the fiducials first.';
             RegMethod = ''; % Registration will not be performed
         end
-        
+
         % === ASK SKULL STRIPPING ===
         if isInteractive && isCt && (strcmpi(RegMethod, 'SPM') || strcmpi(RegMethod, 'CT2MRI'))
             % Ask if the user wants to mask out region outside skull in CT
@@ -355,7 +355,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
             case 'CT2MRI'
-                % Register the CT to excisting MRI using USC's ct2mrireg plugin + RESLICE
+                % Register the CT to existing MRI using USC's ct2mrireg plugin + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
             case 'Ignore'
                 if isReslice
@@ -390,7 +390,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             error(errMsg);
         end
     end
-    % === SKULL STRIPING ===
+    % === SKULL STRIPPING ===
     switch lower(MaskMethod)
         case 'spm'
             [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'spm');

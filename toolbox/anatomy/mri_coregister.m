@@ -42,7 +42,6 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 
 % ===== LOAD INPUTS =====
 % Parse inputs
-
 if (nargin < 5) || isempty(isAtlas)
     isAtlas = 0;
 end
@@ -135,7 +134,7 @@ switch lower(Method)
         
         % Create coregistration batch
         if isReslice
-            % Coreg: Estimate and reslice
+            % Coregister: Estimate and reslice
             bst_progress('text', 'Calling SPM batch...(Coregister: Estimate & Reslice)');
             matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
@@ -146,7 +145,7 @@ switch lower(Method)
             % Output file
             NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
-            % Coreg: Estimate
+            % Coregister: Estimate
             bst_progress('text', 'Calling SPM batch...(Coregister: Estimate)');
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
@@ -169,7 +168,6 @@ switch lower(Method)
             end
             return;
         end
-
         % Delete the temporary files
         file_delete(TmpDir, 1, 1);
         % Output file tag
@@ -261,7 +259,7 @@ switch lower(Method)
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
         
-        % Perform the co-registration of the unmasked CT to MRI
+        % Perform the coregistration of the CT to MRI
         NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
         bst_progress('text', 'Performing co-registration using ct2mrireg plugin...');
         NiiRegFile = ct2mrireg(NiiSrcFile, NiiRefFile, NiiRegFile);
@@ -426,4 +424,4 @@ end
 if ~isProgress
     bst_progress('stop');
 end
-end
+

@@ -74,15 +74,13 @@ else
     end
 end
 
-% === SKULL STRIPING ===
+% === SKULL STRIPPING ===
 bst_plugin('SetProgressLogo', []);
 switch Method
     case 'brainsuite'
         % Check for BrainSuite Installation
-        [~, errMsgBs] = process_dwi2dti('CheckBrainSuiteInstall');
-        %TODO more informative message, append error + that it was not performed
-        if ~isempty(errMsgBs)
-            java_dialog('warning', 'Skipping skull stripping. Please install BrainSuite.', 'Skull Stripping');
+        [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
+        if ~isempty(errMsg)
             bst_progress('text', 'Skipping skull stripping. BrainSuite not installed.');
             return
         end

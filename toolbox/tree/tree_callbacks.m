@@ -3127,8 +3127,8 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         jMenu = gui_component('Menu', jPopup, [], [volType, ' segmentation'], IconLoader.(volIcon));
         % === MESH FROM THRESHOLD CT ===
         if (length(iAnatomy) <= 1) && isCt
-            gui_component('MenuItem', jMenu, [], 'SPM: Skull striping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, [], 'SPM'));
-            gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull striping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, [], 'BrainSuite'));
+            gui_component('MenuItem', jMenu, [], 'SPM: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, [], 'SPM'));
+            gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, [], 'BrainSuite'));
             gui_component('MenuItem', jMenu, [], 'Generate threshold mesh from CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isosurface(MriFile));
         end
         % === GENERATE HEAD/BEM ===
@@ -3817,7 +3817,7 @@ end
 function MriSkullStrip(MriFileSrc, MriFileRef, Method)
     [MriFileMask, errMsg] = bst_call(@mri_skullstrip, MriFileSrc, MriFileRef, Method);
     if isempty(MriFileMask) || ~isempty(errMsg)
-        bst_error(['Could not perform skull stripping.', 10, 10, errMsg], 'MRI skull striping', 0);
+        bst_error(['Could not perform skull stripping.', 10, 10, errMsg], 'MRI skull stripping', 0);
     end
 end
 
