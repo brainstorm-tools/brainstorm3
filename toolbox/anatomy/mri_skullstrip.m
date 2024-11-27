@@ -12,6 +12,7 @@ function [MriFileMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(MriFileSr
 %
 % OUTPUTS:
 %    - MriFileMask  : Relative path to the skull stripped MRI/CT file (containing the structure sMriMask)
+%    - sMriMask     : Brainstorm MRI structure with the skull stripped volume
 %    - errMsg       : Error messages if any
 %    - fileTag      : Tag added to the comment/filename
 %    - binBrainMask : Volumetric binary mask of the skull stripped 'MriFileRef' reference MRI
