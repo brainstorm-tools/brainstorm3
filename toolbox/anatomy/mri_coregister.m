@@ -136,7 +136,7 @@ switch lower(Method)
         % Create coregistration batch
         if isReslice
             % Coreg: Estimate and reslice
-            bst_progress('text', 'Calling SPM batch...(Coreg: Estimate & Reslice)');
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate & Reslice)');
             matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
@@ -147,7 +147,7 @@ switch lower(Method)
             NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
             % Coreg: Estimate
-            bst_progress('text', 'Calling SPM batch...(Coreg: Estimate)');
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate)');
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
