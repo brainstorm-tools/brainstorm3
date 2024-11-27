@@ -335,7 +335,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                                                             '- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;SPM Tissue Segmentation (uses SPM plugin)<BR>' ...
                                                             '- <U><B>BrainSuite</B></U>:&nbsp;&nbsp;&nbsp;Brain Surface Extractor (requires BrainSuite installed)<BR>' ...
                                                             '- <U><B>Skip</B></U>:&nbsp;&nbsp;&nbsp;Proceed without skull stripping<BR><BR></HTML>'], ...
-                                                            'Import CT', [], {'BrainSuite', 'SPM', 'Skip'}, ''); 
+                                                            'Import CT', [], {'SPM', 'BrainSuite', 'Skip'}, '');
             % User aborted the process
             if isCancel
                 bst_progress('stop');
@@ -346,17 +346,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             MaskMethod = 'Skip';
         end
 
-        % === REGISTRATION ===
+        % === REGISTRATION AND RESLICING ===
         switch (RegMethod)
             case 'MNI'
                 % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice, isAtlas);
             case 'SPM'
-                % Register the new MRI on the existing one using SPM + RESLICE + SKULL STRIPPING
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas, MaskMethod);
+                % Register the new MRI on the existing one using SPM + RESLICE
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
             case 'CT2MRI'
-                % Register the CT to excisting MRI using USC's ct2mrireg plugin + RESLICE + SKULL STRIPPING
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas, MaskMethod);
+                % Register the CT to excisting MRI using USC's ct2mrireg plugin + RESLICE
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
             case 'Ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
@@ -383,6 +383,28 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     if ~isempty(errMsg)
         if isInteractive
             bst_error(errMsg, [RegMethod ' MRI'], 0);
+            sMri = [];
+            bst_progress('stop');
+            return;
+        else
+            error(errMsg);
+        end
+    end
+    % === SKULL STRIPING ===
+    switch lower(MaskMethod)
+        case 'spm'
+            [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'spm');
+        case 'brainsuite'
+            [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'brainsuite');
+        case 'skip'
+            % Do nothing
+            maskFileTag = '';
+    end
+    fileTag = [fileTag, maskFileTag];
+    % Stop in case of error
+    if ~isempty(errMsg)
+        if isInteractive
+            bst_error(errMsg, [MaskMethod ' brain mask MRI'], 0);
             sMri = [];
             bst_progress('stop');
             return;
