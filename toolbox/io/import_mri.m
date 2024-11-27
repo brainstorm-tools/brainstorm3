@@ -332,8 +332,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             [MaskMethod, isCancel] = java_dialog('question', ['<HTML><B>Do skull stripping to clean the CT volume?</B><BR>' ...
                                                             'This operation cleans the CT to exclude any thing outside the skull.<BR><BR>' ...
                                                             'Which method do you want to proceed with?<BR><BR>' ...
+                                                            '- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;SPM Tissue Segmentation (uses SPM plugin)<BR>' ...
                                                             '- <U><B>BrainSuite</B></U>:&nbsp;&nbsp;&nbsp;Brain Surface Extractor (requires BrainSuite installed)<BR>' ...
-                                                            '- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;SPM Tissue Segmentation (requires SPM toolbox)<BR>' ...
                                                             '- <U><B>Skip</B></U>:&nbsp;&nbsp;&nbsp;Proceed without skull stripping<BR><BR></HTML>'], ...
                                                             'Import CT', [], {'BrainSuite', 'SPM', 'Skip'}, ''); 
             % User aborted the process
@@ -341,13 +341,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 bst_progress('stop');
                 return;
             end
-            % User skipped skull stripping
-            if strcmpi(MaskMethod, 'skip')
-                MaskMethod = [];
-            end 
         else
             % In non-interactive mode: never do skull stripping
-            MaskMethod = [];
+            MaskMethod = 'Skip';
         end
 
         % === REGISTRATION ===
