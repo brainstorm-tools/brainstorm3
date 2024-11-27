@@ -355,7 +355,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
             case 'CT2MRI'
-                % Register the CT to existing MRI using USC's ct2mrireg plugin + RESLICE
+                % Register the CT to existing MRI using USC's CT2MRI plugin + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
             case 'Ignore'
                 if isReslice

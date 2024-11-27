@@ -145,10 +145,10 @@ switch Method
         binBrainMask = (sGm.Cube + sWm.Cube + sCsf.Cube) > 0;
         filesDel = TpmFiles;
 end
-% Reset BrainSuite logo
+% Reset logo
 bst_progress('removeimage');
 
-% Apply bran mask
+% Apply brain mask
 sMriMask = sMriSrc;
 sMriMask.Cube(~binBrainMask) = 0;
 % File tag
