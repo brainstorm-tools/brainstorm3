@@ -117,6 +117,8 @@ switch Method
         sMriBrainMask.Cube = sMriBrainMask.Cube & ~mri_dilate(~sMriBrainMask.Cube, 3);
         % Logic brain mask cube
         binBrainMask = sMriBrainMask.Cube > 0;
+        % Temporary files to delete
+        filesDel = TmpDir;
 
     case 'spm'
         % Reset any previous logo
@@ -143,15 +145,16 @@ switch Method
         sWm =  in_mri_nii(TpmFiles{1}, 0, 0, 0);
         sCsf = in_mri_nii(TpmFiles{3}, 0, 0, 0);
         binBrainMask = (sGm.Cube + sWm.Cube + sCsf.Cube) > 0;
+        filesDel = TpmFiles;
 end
+% Reset BrainSuite logo
+bst_progress('removeimage');
 
-fileTag = sprintf('_masked_%s', Method);
 % Apply bran mask
 sMriMask = sMriSrc;
 sMriMask.Cube(~binBrainMask) = 0;
-
-% Reset BrainSuite logo
-bst_progress('removeimage');
+% File tag
+fileTag = sprintf('_masked_%s', Method);
 
 % ===== SAVE NEW FILE =====
 % Add file tag
@@ -187,6 +190,9 @@ else
     % Return output structure
     MriFileMask = sMriMask;
 end
+
+% Delete the temporary files
+file_delete(filesDel, 1, 1);
 % Close progress bar
 if ~isProgress
     bst_progress('stop');
