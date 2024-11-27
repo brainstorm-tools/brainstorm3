@@ -1,8 +1,20 @@
 function [MriFileMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(MriFileSrc, MriFileRef, Method)
 % MRI_SKULLSTRIP: Skull stripping on 'MriFileSrc' using 'MriFileRef' as reference MRI.
 %
-% USAGE:  [MriFileMask, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, Method)
-%            [sMriMask, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef,    Method)
+% USAGE:  [MriFileMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(MriFileSrc, MriFileRef, Method)
+%            [sMriMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(sMriSrc,    sMriRef,    Method)
+%
+% INPUTS:
+%    - MriFileSrc   : Relative path to the Brainstorm MRI/CT file to apply skull stripping on
+%    - MriFileRef   : Relative path to the Brainstorm MRI file used as a reference
+%    - Method       : If 'BrainSuite', use BrainSuite's Brain Surface Extractor (BSE)
+%                     If 'SPM', use SPM Tissue Segmentation
+%
+% OUTPUTS:
+%    - MriFileMask  : Relative path to the skull stripped MRI/CT file (containing the structure sMriMask)
+%    - errMsg       : Error messages if any
+%    - fileTag      : Tag added to the comment/filename
+%    - binBrainMask : Volumetric binary mask of the skull stripped 'MriFileRef' reference MRI
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
