@@ -306,11 +306,16 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 strSizeWarn = [];
             end
             % Ask to reslice
-            isReslice = java_dialog('confirm', [...
+            [isReslice, isCancel]= java_dialog('confirm', [...
                 '<HTML><B>Reslice the volume?</B><BR><BR>' ...
                 ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
                 strSizeWarn ...
                 '<BR><BR></HTML>'], ['Import ', volType]);
+            % User aborted the process
+            if isCancel
+                bst_progress('stop');
+                return;
+            end
         % In non-interactive mode: never reslice
         else
             isReslice = 0;
