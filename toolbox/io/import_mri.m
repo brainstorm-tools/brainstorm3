@@ -267,16 +267,16 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
             cellOptions = {};
             % Register with the SPM
-            strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (requires SPM toolbox).'];
+            strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (uses SPM plugin).'];
             cellOptions{end+1} = 'SPM';
+            if isCt
+                % Register with the ct2mrireg plugin
+                strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC CT2MRI plugin.'];
+                cellOptions{end+1} = 'CT2MRI';
+            end
             % Register with the MNI transformation
             strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
             cellOptions{end+1} = 'MNI';
-            if isCt
-                % Register with the ct2mrireg plugin
-                strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC ct2mrireg plugin.'];
-                cellOptions{end+1} = 'CT2MRI';
-            end
             % Skip registration
             strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
             cellOptions{end+1} = 'Ignore';
