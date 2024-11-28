@@ -470,7 +470,7 @@ sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
-if isempty(sSubject.iAnatomy)
+if isempty(sSubject.iAnatomy) && ~isCt && ~isAtlas
     sSubject.iAnatomy = iAnatomy;
 end
 % Default subject
@@ -482,7 +482,7 @@ else
 end
 bst_set('ProtocolSubjects', ProtocolSubjects);
 % Save first MRI as permanent default
-if (iAnatomy == 1)
+if (iAnatomy == 1) && ~isCt && ~isAtlas
     db_surface_default(iSubject, 'Anatomy', iAnatomy, 0);
 end
 

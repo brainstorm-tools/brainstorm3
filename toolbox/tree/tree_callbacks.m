@@ -1066,7 +1066,7 @@ switch (lower(action))
                         end
                         AddSeparator(jMenuDisplay);
                         % Display as overlay
-                        if ~bstNodes(1).isMarked()
+                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
                             % Get subject structure
                             sSubject = bst_get('MriFile', filenameRelative);
                             MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -1103,7 +1103,7 @@ switch (lower(action))
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
-                        if ~bstNodes(1).isMarked()
+                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 0));
@@ -3387,7 +3387,7 @@ function SurfaceFillHoles_Callback(TessFile)
     sHead = in_tess_bst(TessFile, 0);
     % Get subject
     [sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
-    if isempty(sSubject.Anatomy)
+    if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
         bst_error('No MRI available.', 'Remove surface holes');
         return;
     end
