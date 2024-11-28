@@ -154,7 +154,8 @@ switch Method
         sWm =  in_mri_nii(TpmFiles{1}, 0, 0, 0);
         sCsf = in_mri_nii(TpmFiles{3}, 0, 0, 0);
         binBrainMask = (sGm.Cube + sWm.Cube + sCsf.Cube) > 0;
-        filesDel = TpmFiles;
+        % Temporary files to delete
+        filesDel = bst_fileparts(TpmFiles{1});
 end
 % Reset logo
 bst_progress('removeimage');
