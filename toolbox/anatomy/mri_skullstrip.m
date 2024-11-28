@@ -134,7 +134,7 @@ switch Method
 
     case 'spm'
         % Check for SPM12 installation
-        isInstalledSpm = bst_plugin('Install', 'spm12');
+        [isInstalledSpm, errMsg] = bst_plugin('Install', 'spm12');
         if ~isInstalledSpm
             bst_progress('text', 'Skipping skull stripping. SPM not installed.');
             return;
