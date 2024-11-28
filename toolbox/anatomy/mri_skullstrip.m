@@ -159,6 +159,10 @@ switch Method
         binBrainMask = (sGm.Cube + sWm.Cube + sCsf.Cube) > 0;
         % Temporary files to delete
         filesDel = bst_fileparts(TpmFiles{1});
+
+    otherwise
+        errMsg = ['Invalid skull stripping method: ' Method];
+        return
 end
 % Reset logo
 bst_progress('removeimage');
