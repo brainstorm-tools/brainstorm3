@@ -5378,10 +5378,14 @@ end
 %  ===============================================================================
 
 %% ===== LOAD SCOUT =====
-% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1) : Files to import
-%         LoadScouts()                         : Ask the user for the files to read
-function LoadScouts(ScoutFiles, isNewAtlas)
+% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1, FileFormat) : Files to import
+%         LoadScouts()                                     : Ask the user for the files to read
+function LoadScouts(ScoutFiles, isNewAtlas, FileFormat)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3)
+        FileFormat = [];
+    end
     % Parse inputs
     if (nargin < 2) || isempty(isNewAtlas)
         isNewAtlas = 1;
@@ -5426,7 +5430,7 @@ function LoadScouts(ScoutFiles, isNewAtlas)
     end   
     
     % Load all files selected by user
-    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc);
+    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc, FileFormat);
     % Display error messages
     if ~isempty(Messages)
         java_dialog('error', Messages, 'Load atlas');
