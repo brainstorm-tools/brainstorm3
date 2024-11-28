@@ -1,20 +1,21 @@
 function [MriFileMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(MriFileSrc, MriFileRef, Method)
 % MRI_SKULLSTRIP: Skull stripping on 'MriFileSrc' using 'MriFileRef' as reference MRI.
+%                 Both volumes must have the same Cube and Voxel size
 %
 % USAGE:  [MriFileMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(MriFileSrc, MriFileRef, Method)
 %            [sMriMask, errMsg, fileTag, binBrainMask] = mri_skullstrip(sMriSrc,    sMriRef,    Method)
 %
 % INPUTS:
-%    - MriFileSrc   : Relative path to the Brainstorm MRI/CT file to apply skull stripping on
-%    - MriFileRef   : Relative path to the Brainstorm MRI file used as a reference
+%    - MriFileSrc   : MRI structure or MRI file to apply skull stripping on
+%    - MriFileRef   : MRI structure or MRI file to find brain masking for skull stripping
+%                     If empty, the Default MRI for that Subject with 'MriFileSrc' is used
 %    - Method       : If 'BrainSuite', use BrainSuite's Brain Surface Extractor (BSE)
 %                     If 'SPM', use SPM Tissue Segmentation
 %
 % OUTPUTS:
-%    - MriFileMask  : Relative path to the skull stripped MRI/CT file (containing the structure sMriMask)
-%    - sMriMask     : Brainstorm MRI structure with the skull stripped volume
-%    - errMsg       : Error messages if any
-%    - fileTag      : Tag added to the comment/filename
+%    - MriFileMask  : MRI structure or MRI file after skull stripping
+%    - errMsg       : Error message. Empty if no error
+%    - fileTag      : Tag added to the comment and filename
 %    - binBrainMask : Volumetric binary mask of the skull stripped 'MriFileRef' reference MRI
 %
 % @=============================================================================
