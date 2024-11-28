@@ -49,6 +49,13 @@ MriFileMask  = [];
 errMsg       = '';
 fileTag      = '';
 binBrainMask = [];
+
+% Return if invalid Method
+Method = lower(Method);
+if isempty(Method) || strcmpi(Method, 'Skip')
+    return;
+end
+
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -74,17 +81,12 @@ else
     error('Invalid call.');
 end
 
-Method = lower(Method);
-if isempty(Method) || strcmpi(Method, 'Skip')
-    return;
-else
-    % Check that same size
-    refSize = size(sMriRef.Cube(:,:,:,1));
-    srcSize = size(sMriSrc.Cube(:,:,:,1));
-    if ~all(refSize == srcSize) || ~all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMriSrc.Voxsize(1:3) .* 1000))
-        errMsg = 'Skull stripping cannot be performed if the reference MRI has different size';
-        return
-    end
+% Check that same size
+refSize = size(sMriRef.Cube(:,:,:,1));
+srcSize = size(sMriSrc.Cube(:,:,:,1));
+if ~all(refSize == srcSize) || ~all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMriSrc.Voxsize(1:3) .* 1000))
+    errMsg = 'Skull stripping cannot be performed if the reference MRI has different size';
+    return
 end
 
 % === SKULL STRIPPING ===
