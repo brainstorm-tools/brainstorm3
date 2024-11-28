@@ -136,7 +136,6 @@ switch Method
         % Check for SPM12 installation
         isInstalledSpm = bst_plugin('Install', 'spm12');
         if ~isInstalledSpm
-            java_dialog('warning', 'Skipping skull stripping. Please install SPM.', 'Skull Stripping');
             bst_progress('text', 'Skipping skull stripping. SPM not installed.');
             return;
         end
