@@ -88,6 +88,7 @@ else
 end
 
 % === SKULL STRIPPING ===
+% Reset any previous logo
 bst_plugin('SetProgressLogo', []);
 switch Method
     case 'brainsuite'
@@ -132,8 +133,6 @@ switch Method
         filesDel = TmpDir;
 
     case 'spm'
-        % Reset any previous logo
-        bst_plugin('SetProgressLogo', []);
         % Check for SPM12 installation
         isInstalledSpm = bst_plugin('Install', 'spm12');
         if ~isInstalledSpm
