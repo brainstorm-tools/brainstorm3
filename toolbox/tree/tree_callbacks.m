@@ -702,6 +702,11 @@ switch (lower(action))
                     % fcnPopupProjectSources(0);
                 end
                 fcnPopupScoutTimeSeries(jPopup);
+                AddSeparator(jPopup);
+                % === SEEG IMPLANTATION ===
+                if ~isempty(sSubject.Anatomy) && ~strcmpi(sSubject.Name, bst_get('NormalizedSubjectName'))
+                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
+                end
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export subject', IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
                 
@@ -901,8 +906,8 @@ switch (lower(action))
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
-                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 0));
-                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (pairs)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, Device, 'scalp', 0, 1));
+                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (scalp)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, 'NIRS-BRS', 'scalp', 0, 0));
+                            gui_component('MenuItem', jMenuDisplay, [], 'NIRS (pairs)', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, 'NIRS-BRS', 'scalp', 0, 1));
                         else
                             gui_component('MenuItem', jMenuDisplay, [], channelTypeDisplay, IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'scalp'));
                         end
@@ -922,10 +927,6 @@ switch (lower(action))
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG','NIRS'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
-                end
-                % === SEEG IMPLANTATION ===
-                if (length(bstNodes) == 1) && ((isempty(AllMod) && strcmpi(sStudy.Name, 'implantation')) || any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod)))
-                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)DisplayChannels(bstNodes, 'SEEG', 'anatomy', 1, 0));
                 end
                 % === SEEG CONTACT LABELLING ===
                 if (length(bstNodes) == 1) && ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
@@ -1065,7 +1066,7 @@ switch (lower(action))
                         end
                         AddSeparator(jMenuDisplay);
                         % Display as overlay
-                        if ~bstNodes(1).isMarked()
+                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
                             % Get subject structure
                             sSubject = bst_get('MriFile', filenameRelative);
                             MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -1102,10 +1103,14 @@ switch (lower(action))
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
-                        if ~bstNodes(1).isMarked()
+                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 0));
+                            if isCt
+                                gui_component('MenuItem', jMenuRegister, [], 'CT2MRI: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'ct2mri', 1));
+                                gui_component('MenuItem', jMenuRegister, [], 'CT2MRI: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'ct2mri', 0));
+                            end
                             AddSeparator(jMenuRegister);
                             gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'ncs', 'ncs'));
                             gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'scs', 'scs'));
@@ -3122,6 +3127,10 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         jMenu = gui_component('Menu', jPopup, [], [volType, ' segmentation'], IconLoader.(volIcon));
         % === MESH FROM THRESHOLD CT ===
         if (length(iAnatomy) <= 1) && isCt
+            if ~isempty(sSubject.iAnatomy)
+                gui_component('MenuItem', jMenu, [], 'SPM: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(iAnatomy).FileName, 'SPM'));
+                gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(iAnatomy).FileName, 'BrainSuite'));
+            end
             gui_component('MenuItem', jMenu, [], 'Generate threshold mesh from CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isosurface(MriFile));
         end
         % === GENERATE HEAD/BEM ===
@@ -3161,8 +3170,12 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
             gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
         end
         % === SEEG/ECOG ===
-        if (length(iAnatomy) <= 1) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
+        % Right click on the subject only
+        if isempty(iAnatomy) && iSubject ~=0
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
+        % Right click on a desired volume (MRI/CT) in a subject
+        elseif (length(iAnatomy) == 1) && iSubject ~=0
+                gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
         end
           
     % === TISSUE SEGMENTATION ===
@@ -3376,7 +3389,7 @@ function SurfaceFillHoles_Callback(TessFile)
     sHead = in_tess_bst(TessFile, 0);
     % Get subject
     [sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
-    if isempty(sSubject.Anatomy)
+    if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
         bst_error('No MRI available.', 'Remove surface holes');
         return;
     end
@@ -3800,6 +3813,13 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
     [MriFileReg, errMsg] = bst_call(@mri_reslice, MriFileSrc, MriFileRef, TransfSrc, TransfRef);
     if isempty(MriFileReg) || ~isempty(errMsg)
         bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
+    end
+end
+
+function MriSkullStrip(MriFileSrc, MriFileRef, Method)
+    [MriFileMask, errMsg] = bst_call(@mri_skullstrip, MriFileSrc, MriFileRef, Method);
+    if isempty(MriFileMask) || ~isempty(errMsg)
+        bst_error(['Could not perform skull stripping.', 10, 10, errMsg], 'MRI skull stripping', 0);
     end
 end
 

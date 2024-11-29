@@ -80,7 +80,7 @@ if (nargin < 7) || isempty(SurfaceFile)
 end
 
 % ===== If surface file is defined =====
-if ~isempty(SurfaceFile)
+if ~isempty(SurfaceFile) && ~isFem
     % Get Subject that holds this surface
     sSubject = bst_get('SurfaceFile', SurfaceFile);
     % If this surface does not belong to any subject
@@ -133,7 +133,7 @@ else
     isNewFig = 0;
 end
 
-if ~isempty(SurfaceFile)
+if ~isempty(SurfaceFile) && ~isFem
     % Set application data
     setappdata(hFig, 'SubjectFile',  SubjectFile);
 end

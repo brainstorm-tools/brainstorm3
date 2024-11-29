@@ -968,7 +968,7 @@ switch contextName
     % Usage: [sAnalStudy, iAnalStudy] = bst_get('AnalysisIntraStudy', iSubject) 
     case 'AnalysisIntraStudy'
         % Parse inputs
-        if (nargin == 2) && isnumeric(varargin{2})
+        if (nargin == 2)
             iSubject = varargin{2};
         else
             error('Invalid call to bst_get()');

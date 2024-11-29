@@ -192,6 +192,11 @@ if isfield(DataMat, 'Time') && (size(DataMat.Time,1) > 1)
     DataMat.Time = DataMat.Time';
 end
 
+% ===== FIX TRANSPOSED CHANNEL FLAG =====
+if isfield(DataMat, 'ChannelFlag') && (size(DataMat.ChannelFlag,2) > 1)
+    DataMat.ChannelFlag = DataMat.ChannelFlag';
+end
+
 % ===== FIX EVENTS STRUCTURES =====
 % Imported file
 if isfield(DataMat, 'Events') && ~isempty(DataMat.Events)
