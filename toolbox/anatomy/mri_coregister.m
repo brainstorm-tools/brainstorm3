@@ -398,6 +398,10 @@ if ~isempty(MriFileSrc)
     % Add history entry
     sMriReg.History = sMriSrc.History;
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file (' Method '): ' MriFileRef]);
+    % Add history entry (reslice)
+    if isReslice
+        sMriReg = bst_history('add', sMriReg, 'resample', ['MRI resliced to default file: ' MriFileRef]);
+    end
     % Save new file
     MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
     MriFileReg = file_short(MriFileRegFull);

@@ -231,6 +231,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         errMsg = '';
     % Regular coregistration options between volumes
     else
+        % Backup history (import)
+        tmpHistory.History = sMri.History;
+        sMri.History = [];
         % If some transformation where made to the intial volume: apply them to the new one ?
         if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), {'permute', 'flipdim'}))
             isApplyTransformation = java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], ['Import ', volType]);
@@ -378,39 +381,54 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             otherwise
                 % Do nothing
         end
-    end
-    % Stop in case of error
-    if ~isempty(errMsg)
-        if isInteractive
-            bst_error(errMsg, [RegMethod ' MRI'], 0);
-            sMri = [];
-            bst_progress('stop');
-            return;
-        else
-            error(errMsg);
+        % Stop in case of error
+        if ~isempty(errMsg)
+            if isInteractive
+                bst_error(errMsg, [RegMethod ' MRI'], 0);
+                sMri = [];
+                bst_progress('stop');
+                return;
+            else
+                error(errMsg);
+            end
         end
-    end
-    % === SKULL STRIPPING ===
-    switch lower(MaskMethod)
-        case 'spm'
-            [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'spm');
-        case 'brainsuite'
-            [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'brainsuite');
-        case 'skip'
-            % Do nothing
-            maskFileTag = '';
-    end
-    fileTag = [fileTag, maskFileTag];
-    % Stop in case of error
-    if ~isempty(errMsg)
-        if isInteractive
-            bst_error(errMsg, [MaskMethod ' brain mask MRI'], 0);
-            sMri = [];
-            bst_progress('stop');
-            return;
-        else
-            error(errMsg);
+        % === SKULL STRIPPING ===
+        switch lower(MaskMethod)
+            case 'spm'
+                [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'spm');
+            case 'brainsuite'
+                [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'brainsuite');
+            case 'skip'
+                % Do nothing
+                maskFileTag = '';
         end
+        fileTag = [fileTag, maskFileTag];
+        % Stop in case of error
+        if ~isempty(errMsg)
+            if isInteractive
+                bst_error(errMsg, [MaskMethod ' brain mask MRI'], 0);
+                sMri = [];
+                bst_progress('stop');
+                return;
+            else
+                error(errMsg);
+            end
+        end
+        % Add history entry (co-registration)
+        if ~isempty(RegMethod) && ~strcmpi(RegMethod, 'Ignore')
+            % Co-registration
+            sMri = bst_history('add', sMri, 'resample', ['MRI co-registered on default file (' RegMethod '): ' refMriFile]);
+        end
+        % Add history entry (reslice)
+        if isReslice || isMni
+            sMri = bst_history('add', sMri, 'resample', ['MRI resliced to default file: ' refMriFile]);
+        end
+        % Add history entry (skull stripping)
+        if ~isempty(maskFileTag)
+            sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
+        end
+        % Add back history entry (import)
+        sMri.History = [tmpHistory.History; sMri.History];
     end
 end
 

@@ -52,7 +52,6 @@ fileTag      = '';
 binBrainMask = [];
 
 % Return if invalid Method
-Method = lower(Method);
 if isempty(Method) || strcmpi(Method, 'Skip')
     return;
 end
@@ -93,7 +92,7 @@ end
 % === SKULL STRIPPING ===
 % Reset any previous logo
 bst_plugin('SetProgressLogo', []);
-switch Method
+switch lower(Method)
     case 'brainsuite'
         % Check for BrainSuite Installation
         [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
@@ -171,7 +170,7 @@ bst_progress('removeimage');
 sMriMask = sMriSrc;
 sMriMask.Cube(~binBrainMask) = 0;
 % File tag
-fileTag = sprintf('_masked_%s', Method);
+fileTag = sprintf('_masked_%s', lower(Method));
 
 % ===== SAVE NEW FILE =====
 % Add file tag
