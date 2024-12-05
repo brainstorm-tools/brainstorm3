@@ -996,6 +996,10 @@ switch (lower(action))
                     if ~bst_get('ReadOnly')
                         gui_component('MenuItem', jMenuAlign, [], 'Refine using head points', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_auto(filenameRelative, [], 1, 0));
                     end
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
+                        AddSeparator(jMenuAlign);
+                        gui_component('MenuItem', jMenuAlign, [], 'Create scouts from sensors', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_from_channel(filenameRelative, 'Scalp', 'EEG'));
+                    end
                     
                     % === MENU: EXTRA HEAD POINTS ===
                     jMenuHeadPoints = gui_component('Menu', jPopup, [], 'Digitized head points', IconLoader.ICON_CHANNEL, [], []);
@@ -1033,9 +1037,6 @@ switch (lower(action))
                         else
                             gui_component('MenuItem', jPopup, [], 'Project to default anatomy', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, 0));
                         end
-
-                        gui_component('MenuItem', jPopup, [], 'Convert to scout', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_from_channel(filenameRelative));
-
                     end
 
                     % === MENU: EXPORT ===
