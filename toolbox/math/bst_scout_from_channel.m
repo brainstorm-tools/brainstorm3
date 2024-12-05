@@ -131,19 +131,31 @@ end
 
 % Create scout
 scout_channel = db_template('Scout'); 
-scout_channel.Label = sprintf('Scout from %s ( %d mm)', ChannelMat.Comment, radius)  ;
-scout_channel.Vertices = Vertices;
-scout_channel.Seed = Vertices(1);
-scout_channel.Handles = [];
-scout_channel.Color = [1 0 0];
+scout_channel.Label    = sprintf('%s | %s (%d mm)', sStudy.Condition{1}, strjoin(modalityTarget, ' '), radiusTarget);
+scout_channel.Vertices = scoutVertices;
+scout_channel.Seed     = scoutVertices(1);
+scout_channel.Handles  = [];
+scout_channel.Color    = [1 0 0];
 
-% ===== SAVE NEW FILE =====
-bst_progress('text', 'Saving results...');
-
-sScalp.Atlas(1).Scouts(end+1) = scout_channel;
-bst_save( file_fullpath(sSubject.Surface(sSubject.iScalp).FileName), sScalp)
-OutputFile = {sSubject.Surface(sSubject.iScalp).FileName};
-
+% ===== SAVE SCOUT =====
+bst_progress('text', 'Saving scouts...');
+atlasName = 'Scout from sensors';
+s.Atlas = sSurf.Atlas;
+if ~isempty(s.Atlas) && ismember(atlasName, {s.Atlas.Name})
+    [~, iAtlas] = ismember(atlasName, {s.Atlas.Name});
+else
+    s.Atlas(end+1).Name = 'Scout from sensors';
+    iAtlas = length(s.Atlas);
+end
+if ~isempty(s.Atlas(iAtlas).Scouts) && ismember(scout_channel.Label, {s.Atlas(iAtlas).Scouts.Label})
+    [~, iScout] = ismember(scout_channel.Label, {s.Atlas(iAtlas).Scouts.Label});
+else
+    s.Atlas(iAtlas).Scouts(end+1) = scout_channel;
+    iScout = length(s.Atlas(iAtlas).Scouts);
+end
+s.Atlas(iAtlas).Scouts(iScout) = scout_channel;
+bst_save(file_fullpath(surfaceTarget), s, [], 1);
+OutputFile = surfaceTarget;
 % Close progress bar
 if ~isProgress
     bst_progress('stop');
