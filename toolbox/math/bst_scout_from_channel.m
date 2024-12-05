@@ -1,4 +1,4 @@
-function OutputFile = bst_scout_from_channel(ChannelFile, radius, isInteractive)
+function OutputFile = bst_scout_from_channel(ChannelFile, SurfaceFile, Modality, Radius)
 % bst_scout_from_channel: Convert a channel file to scout on the scalp (all the vertex within a specified radius is included to the scout).
 % If the radius is 0, then return the closed point on the head for each sensor
 %
@@ -29,47 +29,115 @@ function OutputFile = bst_scout_from_channel(ChannelFile, radius, isInteractive)
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2024
+%          Raymundo Cassani, 2024
 
 % ===== PARSE INPUTS ======
-if (nargin < 3) || isempty(isInteractive)
-    isInteractive = 1;
-end
-
-if (nargin < 2) || isempty(radius)
-
-    if isInteractive
-        radius = str2double(java_dialog('input', 'Enter the redius to consider around each electrodes (in mm):', '', [] , '5'));
-    else
-        radius = 5;
+if (nargin < 4)
+    Radius = [];
+    if (nargin < 3)
+        Modality = [];
+        if (nargin < 2)
+            SurfaceFile = [];
+        end
     end
 end
+errMsg     = [];
+OutputFile = SurfaceFile;
 
-% Calling recursively on multiple channel files
-if iscell(ChannelFile)
-    OutputFile = cell(size(ChannelFile));
-    for i = 1:length(ChannelFile)
-        OutputFile{i} = bst_scout_from_channel(ChannelFile{i}, radius, isInteractive);
-    end
-    return;
-end
-OutputFile = [];
-
-% ===== GET INPUT DATA =====
-
-% Progress bar
-isProgress = bst_progress('isVisible');
-bst_progress('start', 'Project channel file', 'Loading MRI files...');
-
-% Get subject
-[sStudy, iStudy]     = bst_get('ChannelFile', ChannelFile);
+% Get Subject info
+sStudy = bst_get('ChannelFile', file_short(ChannelFile));
 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
-
-% Check subjects
-errMsg = [];
+% Subjects must be either the default anatomy, or must have individual anatomy
 if (sSubject.UseDefaultChannel && (iSubject ~= 0))
     errMsg = 'Subject is using the default anatomy.';
-elseif isempty(sSubject.Anatomy)
-    errMsg = 'Subject do not have any anatomical MRI.';
+    return
+end
+
+% Modality options (options with Location)
+[~, modalityOptions] = bst_get('ChannelModalities', ChannelFile);
+% Surface options
+surfaceOptions = {};
+if ~isempty(sSubject.iScalp)
+    surfaceOptions{end+1} = 'Scalp';
+end
+if ~isempty(sSubject.iOuterSkull)
+    surfaceOptions{end+1} = 'OuterSkull';
+end
+if ~isempty(sSubject.iInnerSkull)
+    surfaceOptions{end+1} = 'InnerSkull';
+end
+if ~isempty(sSubject.iCortex)
+    surfaceOptions{end+1} = 'Cortex';
+end
+
+% Get and validate Modality, SurfaceFile and Radius
+surfaceTarget  = [];
+modalityTarget = [];
+radiusTarget   = [];
+
+% Modality
+if isempty(errMsg) && ~isempty(Modality)
+    if ~iscell(Modality)
+        Modality = {Modality};
+    end
+    if all(ismember(Modality, modalityOptions))
+        modalityTarget = Modality;
+    else
+        modalityMiss = setdiff(Modality, modalityOptions);
+        errMsg = ['Requested modality: "', strjoin(modalityMiss, ', '), '" not found in Channel file.'];
+
+    end
+elseif isempty(errMsg) && isempty(Modality)
+    [modalityTarget, isCancel] = java_dialog('checkbox', 'Which sensor modality or modalities will be used to create surface scouts?', ...
+                                             'Scouts from sensors', [], modalityOptions);
+    if isempty(modalityTarget) || isCancel
+        return
+    end
+end
+
+% Surface
+if isempty(errMsg) && ~isempty(SurfaceFile)
+    % Surface is a filename
+    if ~strcmpi(file_gettype(SurfaceFile), 'unknown') && file_exist(file_fullpath(SurfaceFile))
+        [~, iSubjectSurf] = bst_get('SurfaceFile', SurfaceFile);
+        if iSubject == iSubjectSurf
+            surfaceTarget = SurfaceFile;
+            surfaceType = file_gettype(SurfaceFile);
+        else
+            errMsg = 'Subjects for channel File and for Surface files are not the same.';
+        end
+    % Surface is Type
+    else
+        if ismember(SurfaceFile, surfaceOptions)
+            surfaceType = SurfaceFile;
+            surfaceTarget = sSubject.Surface(sSubject.(['i' surfaceType])).FileName;
+        else
+            errMsg = ['Subject does not have default surface of type ' SurfaceFile  '.'];
+        end
+    end
+elseif isempty(errMsg) && isempty(SurfaceFile)
+    [surfaceType, isCancel] = java_dialog('question', sprintf('Surface to create scouts from [%s] sensors:', strjoin(modalityTarget, ', ')), ...
+                                          'Scouts from sensors', [], surfaceOptions);
+    if isempty(surfaceType) || isCancel
+        return
+    end
+    surfaceTarget = sSubject.Surface(sSubject.(['i' surfaceType])).FileName;
+end
+
+% Radius
+if isempty(errMsg) && ~isempty(Radius)
+    radiusTarget = Radius;
+elseif isempty(errMsg) && isempty(Radius)
+    [res, isCancel] = java_dialog('input', sprintf('Radius (in mm) for scouts on [%s] surface for sensors [%s]:', ...
+                                                    surfaceType, strjoin(modalityTarget, ', ')), ...
+                                  'Scouts from sensors', [], '5');
+    if isempty(res) || isCancel
+        return
+    end
+    radiusTarget = str2double(res);
+end
+if radiusTarget < 0
+    errMsg = 'Radius must be larger than 0 mm.';
 end
 
 % Error handling
@@ -82,12 +150,10 @@ if ~isempty(errMsg)
     return;
 end
 
-
-% Load Scalp
-sScalp = in_tess_bst( sSubject.Surface(sSubject.iScalp).FileName);
-
-% Head vertices location (in SCS)
-head_vertices   = sScalp.Vertices; 
+% ===== GET INPUT DATA =====
+% Progress bar
+isProgress = bst_progress('isVisible');
+bst_progress('start', 'Scouts from sensors', 'Loading surface file...');
 
 % Load surface
 sSurf = in_tess_bst(surfaceTarget);
