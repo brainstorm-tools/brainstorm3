@@ -89,44 +89,27 @@ sScalp = in_tess_bst( sSubject.Surface(sSubject.iScalp).FileName);
 % Head vertices location (in SCS)
 head_vertices   = sScalp.Vertices; 
 
-% ===== PROJECT CHANNEL FILE =====
+% Load surface
+sSurf = in_tess_bst(surfaceTarget);
+surfVertices = sSurf.Vertices;
 
-% channel location (in SCS)
-channel_locs = [];
+% ===== SCOUTS FROM CHANNEL FILE =====
+bst_progress('start', 'Scouts from sensors', 'Loading surface file...');
+ChannelMat = in_bst_channel(ChannelFile);
+iChannels = channel_find(ChannelMat.Channel, modalityTarget);
+
+%TODO check that sensors are on the selected surface, if not, return error
 
 % Project sensors
-ChannelMat = in_bst_channel(ChannelFile);
-for i = 1:length(ChannelMat.Channel)
-    if ~isempty(ChannelMat.Channel(i).Loc)
-        if size(ChannelMat.Channel(i).Loc,2) == 2
-            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc(:,1);  
-            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc(:,2);
-
-        else
-            channel_locs(end+1, :) = ChannelMat.Channel(i).Loc;
-        end
+scoutVertices = [];
+for ix = 1 : length(iChannels)
+    if isempty(ChannelMat.Channel(iChannels(ix)).Loc)
+        continue
     end
-end
-
-% Find all the vertices on the head within a radius of the channels
-Vertices = [];
-for i = 1:size(channel_locs, 1)
-    
-    distances = zeros(1, size(head_vertices, 1));
-
-    for j = 1:size(head_vertices, 1)
-        x = channel_locs(i,:);
-        y = head_vertices(j, :);
-
-        distances(j) = 1000 * sum((x-y).^2).^0.5; % mm
+    for iLoc = 1 : size(ChannelMat.Channel(iChannels(ix)).Loc, 2)
+        distances = sqrt(sum((surfVertices - ChannelMat.Channel(iChannels(ix)).Loc(:, iLoc)').^2, 2));
+        scoutVertices = [scoutVertices, find(distances < radiusTarget./1000)'];
     end
-    if radius > 0
-        idx = find(distances <= radius);
-    else
-        [~, idx] = min(distances);
-    end
-    
-    Vertices = [Vertices  idx];
 end
 
 % Create scout
