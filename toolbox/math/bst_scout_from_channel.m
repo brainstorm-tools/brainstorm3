@@ -50,6 +50,7 @@ sStudy = bst_get('ChannelFile', file_short(ChannelFile));
 % Subjects must be either the default anatomy, or must have individual anatomy
 if (sSubject.UseDefaultChannel && (iSubject ~= 0))
     errMsg = 'Subject is using the default anatomy.';
+    bst_error(errMsg);
     return
 end
 
@@ -85,7 +86,6 @@ if isempty(errMsg) && ~isempty(Modality)
     else
         modalityMiss = setdiff(Modality, modalityOptions);
         errMsg = ['Requested modality: "', strjoin(modalityMiss, ', '), '" not found in Channel file.'];
-
     end
 elseif isempty(errMsg) && isempty(Modality)
     [modalityTarget, isCancel] = java_dialog('checkbox', 'Which sensor modality or modalities will be used to create surface scouts?', ...
