@@ -187,7 +187,7 @@ end
 % Create scout
 scout_channel = db_template('Scout'); 
 scout_channel.Label    = sprintf('%s | %s (%d mm)', sStudy.Condition{1}, strjoin(modalityTarget, ' '), radiusTarget);
-scout_channel.Vertices = scoutVertices;
+scout_channel.Vertices = unique(scoutVertices);
 scout_channel.Seed     = scoutVertices(1);
 scout_channel.Handles  = [];
 scout_channel.Color    = [1 0 0];
