@@ -998,7 +998,7 @@ switch (lower(action))
                     end
                     if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'})) && ismember('NIRS', DisplayMod)
                         AddSeparator(jMenuAlign);
-                        gui_component('MenuItem', jMenuAlign, [], 'Scalp scouts from scalp sensors', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_from_channel(filenameRelative, 'Scalp', {'EEG', 'NIRS'}));
+                        gui_component('MenuItem', jMenuAlign, [], 'Scalp scouts from scalp sensors', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_channels(filenameRelative, 'Scalp', {'EEG', 'NIRS'}));
                     end
                     
                     % === MENU: EXTRA HEAD POINTS ===
