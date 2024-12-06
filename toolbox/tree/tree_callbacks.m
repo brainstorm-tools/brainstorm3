@@ -997,6 +997,10 @@ switch (lower(action))
                     if ~bst_get('ReadOnly')
                         gui_component('MenuItem', jMenuAlign, [], 'Refine using head points', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_auto(filenameRelative, [], 1, 0));
                     end
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'})) && ismember('NIRS', DisplayMod)
+                        AddSeparator(jMenuAlign);
+                        gui_component('MenuItem', jMenuAlign, [], 'Scalp scouts from scalp sensors', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_channels(filenameRelative, 'Scalp', {'EEG', 'NIRS'}));
+                    end
                     
                     % === MENU: EXTRA HEAD POINTS ===
                     jMenuHeadPoints = gui_component('Menu', jPopup, [], 'Digitized head points', IconLoader.ICON_CHANNEL, [], []);
@@ -1022,7 +1026,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Load SSP projectors', IconLoader.ICON_CONDITION, [], @(h,ev)LoadSSP(filenameFull));
                     end
                     % === COMPUTE HEAD MODEL ===
-                    if ~bst_get('ReadOnly')
+                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'NIRS'}))
                         fcnPopupComputeHeadmodel();
                     end
 
