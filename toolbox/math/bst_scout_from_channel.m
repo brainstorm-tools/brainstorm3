@@ -142,7 +142,7 @@ end
 
 % Error handling
 if ~isempty(errMsg)
-    bst_report('Error', 'bst_scout_from_channel', [], errMsg);
+    bst_error(errMsg);
     return;
 end
 
