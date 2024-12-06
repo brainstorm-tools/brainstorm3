@@ -136,8 +136,8 @@ elseif isempty(errMsg) && isempty(Radius)
     end
     radiusTarget = str2double(res);
 end
-if radiusTarget < 0
-    errMsg = 'Radius must be larger than 0 mm.';
+if isnan(radiusTarget) || radiusTarget < 0 
+    errMsg = 'Radius must be a number larger than 0 mm.';
 end
 
 % Error handling
