@@ -79,11 +79,11 @@ if isempty(errMsg) && ~isempty(Modality)
     if ~iscell(Modality)
         Modality = {Modality};
     end
-    if all(ismember(Modality, modalityOptions))
+    if any(ismember(Modality, modalityOptions))
         modalityTarget = Modality;
     else
         modalityMiss = setdiff(Modality, modalityOptions);
-        errMsg = ['Requested modality: "', strjoin(modalityMiss, ', '), '" not found in Channel file.'];
+        errMsg = ['No channel for modality: "', strjoin(modalityMiss, ', '), '" was found in Channel file.'];
     end
 elseif isempty(errMsg) && isempty(Modality)
     [modalityTarget, isCancel] = java_dialog('checkbox', 'Which sensor modality or modalities will be used to create surface scouts?', ...
