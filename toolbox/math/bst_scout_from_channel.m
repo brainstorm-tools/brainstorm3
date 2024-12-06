@@ -2,13 +2,15 @@ function OutputFile = bst_scout_from_channel(ChannelFile, SurfaceFile, Modality,
 % bst_scout_from_channel: Convert a channel file to scout on the scalp (all the vertex within a specified radius is included to the scout).
 % If the radius is 0, then return the closed point on the head for each sensor
 %
-% USAGE:  OutputFile = bst_project_channel(ChannelFile, radius = 5 mm, isInteractive=1)
-%        OutputFiles = bst_project_channel(ChannelFiles, ...)
+% USAGE:  OutputFile = bst_scout_channels(ChannelFile, SurfaceFile, Modality, Radius)
+%         OutputFile = bst_scout_channels(ChannelFiles, ...)
 % 
 % INPUT:
-%    - ChannelFile   : Relative path to channel file to project
-%    - radius : Radius used to create the scout on the scalp (in mm)
-%    - isInteractive : If 1, display interactive messages
+%    - ChannelFile   : Path to channel file with sensors
+%    - SurfaceFile   : Path to surface file to create the scouts, or
+%                      Type of surface, it will use the default surface for tha type
+%    - Modality      : Modality to indicate the sensors to be used in scout creation
+%    - Radius        : Radius around sensor to create scout on surface (in mm)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
