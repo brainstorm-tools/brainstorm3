@@ -161,8 +161,8 @@ ChannelMat = in_bst_channel(ChannelFile);
 iChannels = channel_find(ChannelMat.Channel, modalityTarget);
 
 ChanLocOrg = [ChannelMat.Channel(iChannels).Loc]';
-ChanLocPrj = channel_project_scalp(surfVertices, ChanLoc);
-if any(sqrt(sum( (ChanLocPrj - ChanLoc).^2, 2)) > 0.001)
+ChanLocPrj = channel_project_scalp(surfVertices, ChanLocOrg);
+if any(sqrt(sum( (ChanLocPrj - ChanLocOrg).^2, 2)) > 0.001)
     bst_error(['One or more sensors are not placed on the surface.' 10 ...
                'Project the sensors to the target surface before generating the scouts.']);
     return
