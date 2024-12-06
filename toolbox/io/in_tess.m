@@ -94,6 +94,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
+        case '.srf'
+            FileFormat = 'BESA-SRF';
     end
 end
 % If format was not detected
@@ -238,6 +240,11 @@ switch (FileFormat)
         
     case 'NWB'
         TessMat = in_tess_nwb(TessFile);
+
+    case 'BESA-SRF'
+        TessMat = in_tess_besa(TessFile);
+        TessMat.Vertices = TessMat.Vertices .* sMri.Voxsize ./ 1000;
+
 end
 % If an error occurred: return
 if isempty(TessMat)
