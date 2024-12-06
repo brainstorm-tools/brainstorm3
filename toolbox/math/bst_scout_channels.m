@@ -10,6 +10,7 @@ function OutputFile = bst_scout_channels(ChannelFile, SurfaceFile, Modality, Rad
 %                      Type of surface, it will use the default surface for tha type
 %    - Modality      : Modality to indicate the sensors to be used in scout creation
 %    - Radius        : Radius around sensor to create scout on surface (in mm)
+%                      If Radius == 0, the closest vertex is selected
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -175,7 +176,12 @@ for ix = 1 : length(iChannels)
     end
     for iLoc = 1 : size(ChannelMat.Channel(iChannels(ix)).Loc, 2)
         distances = sqrt(sum((surfVertices - ChannelMat.Channel(iChannels(ix)).Loc(:, iLoc)').^2, 2));
-        scoutVertices = [scoutVertices, find(distances < radiusTarget./1000)'];
+        if radiusTarget == 0
+            [~, iMinDist] = min(distances);
+            scoutVertices = [scoutVertices, iMinDist];
+        else
+            scoutVertices = [scoutVertices, find(distances < radiusTarget./1000)'];
+        end
     end
 end
 
