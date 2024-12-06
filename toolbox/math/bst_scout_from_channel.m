@@ -142,11 +142,7 @@ end
 
 % Error handling
 if ~isempty(errMsg)
-    if isInteractive
-        bst_error(errMsg, 'Project channel file', 0);
-    else
-        bst_report('Error', 'bst_project_channel', [], errMsg);
-    end
+    bst_report('Error', 'bst_scout_from_channel', [], errMsg);
     return;
 end
 
