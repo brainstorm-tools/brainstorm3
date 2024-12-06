@@ -174,6 +174,11 @@ for ix = 1 : length(iChannels)
     end
 end
 
+if isempty(scoutVertices)
+    bst_error(['No vertex found on the surface. '...
+               'Check that the sensors are projected on the target surface']);
+    return;
+end
 % Create scout
 scout_channel = db_template('Scout'); 
 scout_channel.Label    = sprintf('%s | %s (%d mm)', sStudy.Condition{1}, strjoin(modalityTarget, ' '), radiusTarget);
