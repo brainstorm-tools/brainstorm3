@@ -252,13 +252,13 @@ if iscell(nirs.SD.Lambda) % Hb measures
     measure_type = 'Hb';
     ChannelMat.Nirs.Hb = nirs.SD.Lambda;
 else
-    
     measure_type = 'WL';
     if( size(nirs.SD.Lambda,1) > 1) % Wavelengths have to be stored as a line vector
         ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda';
     else
         ChannelMat.Nirs.Wavelengths = nirs.SD.Lambda;
     end
+    ChannelMat.Nirs.Wavelengths = round(ChannelMat.Nirs.Wavelengths);
 end
 
 %% Channel information
@@ -276,7 +276,7 @@ for iChan = 1:nb_channels
     if strcmp(measure_type, 'Hb')
         measure_tag =  ChannelMat.Nirs.Hb{idx_measure};
     else
-        measure_tag = sprintf('WL%d', round(ChannelMat.Nirs.Wavelengths(idx_measure)));
+        measure_tag = sprintf('WL%d', ChannelMat.Nirs.Wavelengths(idx_measure));
     end
     Channel(iChan).Name    = sprintf('S%dD%d%s', idx_src, idx_det, ...
                                      measure_tag);

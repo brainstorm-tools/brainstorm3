@@ -97,6 +97,7 @@ else
     nAux = 0;
 end
 
+
 k_aux       =  1;
 aux_index   = false(1,nAux);
 

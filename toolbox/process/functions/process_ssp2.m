@@ -1002,6 +1002,7 @@ function Projector = BuildProjector(ListProj, ProjStatus) %#ok<*DEFNU>
     iProjSsp = [];
     U = [];
     for i = 1:length(ListProj)
+        ListProj(i) = ConvertOldFormat(ListProj(i));
         % Is entry not selected: skip
         if ~ismember(ListProj(i).Status, ProjStatus) || (~isempty(ListProj(i).CompMask) && all(ListProj(i).CompMask == 0))
             iProjDel(end+1) = i;

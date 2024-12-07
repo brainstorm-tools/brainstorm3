@@ -45,7 +45,7 @@ DataMat.F = MatrixMat.Value;
 DataMat.Comment = MatrixMat.Comment;
 DataMat.Time = MatrixMat.Time;
 DataMat.Events = MatrixMat.Events;
-DataMat.ChannelFlag = ones(1, nSignals);
+DataMat.ChannelFlag = ones(nSignals, 1);
 % Generate ChannelMat structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nSignals);

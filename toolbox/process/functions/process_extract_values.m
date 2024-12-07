@@ -674,8 +674,18 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                     tstart = FileMat.Time(1);
                 end
             elseif isfield(FileMat, 'TimeBands') && ~isempty(FileMat.TimeBands)
-                sfreq = 1;
-                tstart = 1;
+                timeBounds = process_tf_bands('GetBounds', FileMat.TimeBands);
+                durationBands = diff(timeBounds, 1, 2);
+                stepBands = diff(timeBounds(:,1));      % Empty if only one timeband
+                % Generate time vector if time bands are periodic
+                if (~isempty(stepBands)) && (std(stepBands) / mean(stepBands) < 0.01) && (std(durationBands) / mean(durationBands) < 0.01)
+                    tmpTime = mean(timeBounds, 2);
+                    sfreq = 1/(tmpTime(2) - tmpTime(1));
+                    tstart = tmpTime(1);
+                else
+                    sfreq  = 1;
+                    tstart = 1 ;
+                end
                 FileMat.TimeBands = [];
             else
                 sfreq = 1/(FileMat.Time(2) - FileMat.Time(1));

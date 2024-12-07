@@ -201,7 +201,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jToggleResectLeft   = gui_component('toggle', jPanelSurfaceResect, 'br center', 'Left',   {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectLeftToggle_Callback);           
             jToggleResectRight  = gui_component('toggle', jPanelSurfaceResect, '',          'Right',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectRightToggle_Callback);           
             jToggleResectStruct = gui_component('toggle', jPanelSurfaceResect, '',          'Struct', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectStruct_Callback);           
-            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0),  Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
+            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
         jPanelOptions.add(jPanelSurfaceResect);
  
         % ===== SURFACE LABELS =====
@@ -285,7 +285,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderResectX.setValue(0);
         jSliderResectY.setValue(0);
         jSliderResectZ.setValue(0);
-        
+        jToggleResectLeft.setSelected(0);
+        jToggleResectRight.setSelected(0);
+        jToggleResectStruct.setSelected(0);
+
         % Get handle to current 3DViz figure
         hFig = bst_figures('GetCurrentFigure', '3D');
         if isempty(hFig)
@@ -1275,6 +1278,11 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         TessInfo(iTess).Name      = sSurface.Name;
         TessInfo(iTess).nVertices = size(sSurface.Vertices, 1);
         TessInfo(iTess).nFaces    = size(sSurface.Faces, 1);
+        if isempty(sSurface.Color)
+            sSurface.Color = TessInfo(iTess).AnatomyColor(2,:);
+        else
+            TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
+        end
 
         % === PLOT SURFACE ===
         switch (FigureId.Type)
@@ -1285,7 +1293,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
                 [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotSurface', hFig, ...
                                          sSurface.Faces, ...
                                          sSurface.Vertices, ...
-                                         TessInfo(iTess).AnatomyColor(2,:), ...
+                                         sSurface.Color, ...
                                          TessInfo(iTess).SurfAlpha);
         end
         % Update figure's surfaces list and current surface pointer

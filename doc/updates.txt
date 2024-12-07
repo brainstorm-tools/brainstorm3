@@ -1,3 +1,22 @@
+November 2024
+- SEEG/ECOG: Allow iEEG implantation using MRI and/or CT and/or IsoSurface
+- Registration: Manual and auto localization of EEG sensors with 3D scanner mesh
+- Registration: Project EEG sensors for default caps in Colin27 def anat
+- Anatomy: Add skull stripping in Brainstorm (uses SPM or BrainSuite)
+- Anatomy: Add template 'Colin27 4NIRS' (2024)
+- IO: Process to merge (channel-wise) raw continue recordings
+- Distrib: Update script for epilepsy tutorial, add source estimation with MEM
+- Distrib: Script to run the BEst (Brain Entropy in space and time) tutorial
+- Plugins: iso2mesh, brain2mesh and xdf now support Apple Silicon
+--------------------------------------------------------------
+October 2024
+- Anatomy: Spatial correlations and brain annotations: 'bst-neuromaps' plugin
+- Anatomy: Support exporting mixed sources as NIfTI
+- Registration: Allow selecting and deleting head points
+- TimeFreq: Add model selection to FOOOF and SPRiNT
+- IO: Support of EDF files with multiple sampling rates (using FielTrip plugin)
+- Bugfix: Importing MEG sensor locations from FieldTrip data
+--------------------------------------------------------------
 September 2024
 - Artifacts: ICA, display explaned variance for ICs
 - Distrib: Function 'test_tutorial.m' and GitHub workflow 'run_tutorial.yaml'
