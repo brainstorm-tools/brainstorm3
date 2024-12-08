@@ -1,7 +1,7 @@
-function Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors, excludeParam, expDistance)
+function Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors, excludeParam, expDistance, isInteractive)
 % BST_SHEPARDS: 3D nearest-neighbor interpolation using Shepard's weighting.
 %
-% USAGE:  Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors=8, excludeParam=0, expDistance=2)
+% USAGE:  Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors=8, excludeParam=0, expDistance=2, isInteractive=1)
 %
 % INPUT:
 %    - srcLoc       : Nx3 array of original locations, or tesselation structure (Faces,Vertices,VertConn)
@@ -12,6 +12,7 @@ function Wmat = bst_shepards(destLoc, srcLoc, nbNeighbors, excludeParam, expDist
 %                     where minDist represents the minimal distance between each source point and the destination surface
 %                     If < 0, exclude the vertices that are further from the absolute distance excludeParam  (in millimeters)
 %    - expDistance  : Distance exponent (if higher, influence of a value decreases faster)
+%    - isInteractive: If 1, show a progress bar
 %    
 % OUTPUT:
 %    - Wmat : Interpolation matrix
@@ -57,6 +58,11 @@ end
 if (nargin < 5) || isempty(expDistance)
     expDistance = 2;
 end
+% Argument: isInteractive
+if (nargin < 6) || isempty(isInteractive)
+    isInteractive = 1;
+end
+
 
 %% ===== SHEPARDS INTERPOLATION =====
 % Allocate interpolation matrix
@@ -68,7 +74,7 @@ if (nbNeighbors > nSrc)
 end
 
 % Find nearest neighbors
-[I,dist] = bst_nearest(srcLoc, destLoc, nbNeighbors, 1);
+[I,dist] = bst_nearest(srcLoc, destLoc, nbNeighbors, isInteractive);
 % Square the distance matrix
 dist = dist .^ 2;
 % Eliminate zeros in distance matrix for stability

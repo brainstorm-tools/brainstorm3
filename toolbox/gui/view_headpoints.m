@@ -30,7 +30,7 @@ function [hFig, iDS, iFig] = view_headpoints(ChannelFile, ScalpFile, isInterp, i
 %
 % Authors: Francois Tadel, 2010-2022
 
-global GlobalData;
+global GlobalData Digitize
 
 % Default: no color for the distance between the scalp and the points
 if (nargin < 4) || isempty(isColorDist)
@@ -68,8 +68,16 @@ end
 % Load full channel file
 ChannelMat = in_bst_channel(ChannelFile);
 
-% View scalp surface if available
-[hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+% Head points for digitizer
+if gui_brainstorm('isTabVisible', 'Digitize') && strcmpi(Digitize.Type, '3DScanner')
+    [hFig, iFig, iDS] = bst_figures('GetCurrentFigure', '3D');
+else
+    % View on figure with scalp surface if available
+    [hFig, iFig, iDS] = bst_figures('GetFigureWithSurface', file_short(ScalpFile));
+    if isempty(hFig)
+        [hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+    end
+end
 figure_3d('SetStandardView', hFig, 'front');
 
 % Extend figure and dataset for this particular channel file

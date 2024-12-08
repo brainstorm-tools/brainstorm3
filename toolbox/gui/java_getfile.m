@@ -140,6 +140,36 @@ jFileChooser = java_call(jBstSelector, 'getJFileChooser');
 % Set dialog callback 
 java_setcb(jFileChooser, 'ActionPerformedCallback', @FileSelectorAction, ...
                          'PropertyChangeCallback',  @FileSelectorPropertyChanged);
+% Search for panel to add show/hide hidden menu
+jObjects  = jFileChooser;
+jFilePane = [];
+while ~isempty(jObjects)
+    switch class(jObjects(1))
+        case 'sun.swing.FilePane'
+            jFilePane = jObjects(1);
+            break
+        case {'javax.swing.JPanel', 'javax.swing.JFileChooser'}
+            jObjects = [jObjects, jObjects(1).getComponents];
+        otherwise
+            % do nothing
+    end
+    jObjects = jObjects(2:end);
+end
+% Linux and Windows have a JFilePane object with a PopupMenu
+if ~isempty(jFilePane)
+    jPopup = jFilePane.getComponentPopupMenu;
+    jFont  = jPopup.getFont;
+% macOs does not have JFilePane object, add PopupMenu to jFileChooser
+else
+    jPopup = java_create('javax.swing.JPopupMenu');
+    jFont  = [];
+    jFileChooser.setComponentPopupMenu(jPopup);
+end
+jCheckHidden = gui_component('CheckBoxMenuItem', jPopup, [], 'Show hidden files', [], [], @(h,ev)ToogleHiddenFiles(), jFont);
+showHiddenFiles = bst_get('ShowHiddenFiles');
+jCheckHidden.setSelected(showHiddenFiles);
+jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+
 drawnow;
 % Display file selector
 java_call(jBstSelector, 'showSameThread');
@@ -228,6 +258,12 @@ end
 
     function FileSelectorPropertyChanged(h, ev)
         import org.brainstorm.file.*;
+        % Release mutex if Dialog was closed
+        propertyName = char(java_call(ev, 'getPropertyName'));
+        if strcmpi(propertyName, 'JFileChooserDialogIsClosingProperty') && isempty(java_call(ev, 'getNewValue'))
+            bst_mutex('release', 'FileSelector');
+            return
+        end
         % Only when saving 
         if (DialogType == BstFileSelector.TYPE_SAVE)
             switch char(java_call(ev, 'getPropertyName'))
@@ -268,6 +304,14 @@ end
                     DefaultDir = strrep(DefaultDir, char(java_call(ev, 'getOldValue')), char(java_call(ev, 'getNewValue')));
             end
         end
+    end
+
+    function ToogleHiddenFiles()
+        showHiddenFiles = bst_get('ShowHiddenFiles');
+        showHiddenFiles = ~showHiddenFiles;
+        bst_set('ShowHiddenFiles', showHiddenFiles);
+        jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+        jCheckHidden.setSelected(showHiddenFiles);
     end
 end
 

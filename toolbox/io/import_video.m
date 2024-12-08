@@ -1,7 +1,7 @@
-function iNewFiles = import_video(iStudy, VideoFiles)
+function [iNewFiles, OutputVideoFiles] = import_video(iStudy, VideoFiles)
 % IMPORT_VIDEO Link video files to the database.
 % 
-% USAGE:  iNewFiles = import_dipoles(iStudy, VideoFiles=[ask])
+% USAGE:  [iNewFiles, OutputVideoFiles] = import_dipoles(iStudy, VideoFiles=[ask])
 %
 % INPUT:
 %    - iStudy       : Index of the study where to import the DipolesFiles
@@ -35,6 +35,7 @@ elseif ~iscell(VideoFiles)
 end
 % Returned variables
 iNewFiles = [];
+OutputVideoFiles = {};
 
 
 %% ===== SELECT FILES =====
@@ -145,6 +146,7 @@ for iFile = 1:length(VideoFiles)
     iImage = length(sStudy.Image) + 1;
     sStudy.Image(iImage) = sImage;
     iNewFiles = [iNewFiles, iImage];
+    OutputVideoFiles{end+1} = OutputFile;
 end
 
 % Save study

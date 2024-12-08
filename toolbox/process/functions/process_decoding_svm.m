@@ -46,6 +46,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'MEG';
+    % === ignore bad channels
+    sProcess.options.ignorebad.Comment    = 'Ignore bad channels';
+    sProcess.options.ignorebad.Type       = 'checkbox';
+    sProcess.options.ignorebad.Value      = 0;
+    sProcess.options.ignorebad.InputTypes = {'data'};
     % === lowpass filtering
     sProcess.options.lowpass.Comment = 'Low-pass cutoff frequency (0=disabled): ';
     sProcess.options.lowpass.Type    = 'value';
@@ -94,6 +99,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     model           = sProcess.options.model.Value;
     methods         = {'pairwise', 'temporalgen', 'multiclass'};
     method          = methods{sProcess.options.method.Value};
+    if isfield(sProcess.options, 'ignorebad') && isfield(sProcess.options.ignorebad, 'Value') && ~isempty(sProcess.options.ignorebad.Value)
+        IgnoreBad = sProcess.options.ignorebad.Value;
+    else
+        IgnoreBad = 0;
+    end
     
     % Ensure we are including the LibSVM folder in the Matlab path
     if strcmpi(model, 'svm')
@@ -141,6 +151,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Decoding using the ' method ' method is not yet supported.']);
         return;
     end
+    % Channel files for all inputs  must have the same list of channels
+    uniqueChannelFiles = unique({sInputs.ChannelFile});
+    if length(uniqueChannelFiles) > 1
+        channelMatRef = in_bst_channel(uniqueChannelFiles{1});
+        channelNamesRef = {channelMatRef.Channel.Name};
+        for iChannelFile = 2 : length(uniqueChannelFiles)
+            channelMatTest = in_bst_channel(uniqueChannelFiles{iChannelFile});
+            channelNamesCond = {channelMatTest.Channel.Name};
+            if ~isequal(channelNamesRef, channelNamesCond)
+                bst_report('Error', sProcess, [], 'Input files have different lists of channels.');
+                return
+            end
+        end
+    end
     
     % Summarize trials and conditions to process
     fprintf('BST> Found %d different conditions across %d trials:%c', numConditions, length(sInputs), char(10));
@@ -150,7 +174,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % Load trials
-    [trial,Time] = load_trials_bs(sInputs, LowPass, SensorTypes);
+    [trial, Time, iChannels, errMsg] = load_trials_bs(sInputs, LowPass, SensorTypes, IgnoreBad);
+    if ~isempty(errMsg)
+        bst_report('Error', sProcess, [], errMsg);
+        return
+    end
+    varNames = {channelMatRef.Channel(iChannels).Name};
+    strVars = cellfun(@(x) ['"', x, '", '], varNames, 'UniformOutput', false);
+    strVars = [strVars{:}];
+    strVars = regexprep(strVars, ', $', '');
     % Run SVM decoding
     if strcmpi(model, 'maxcorr')
         % Run max-correlation decoding
@@ -185,6 +217,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     FileMat.Description = Description;
     FileMat.Time        = Time;
     FileMat.CondLabels  = uniqueConditions;
+    FileMat = bst_history('add',  FileMat,  'SVM', ['Channels: ' strVars]);
 
     % ===== OUTPUT CONDITION =====
     % Default condition name
@@ -215,8 +248,10 @@ end
 %    - sInputs      : Trial files to load
 %    - SensorTypes  : List of channel types or names separated with commas
 %    - LowPass      : Low pass frequency for data filtering
+%    - IgnoreBad    : 1 = bad channels are ignored, 0 = use all channels
 % Authors: Dimitrios Pantazis, Seyed-Mahdi Khaligh-Razavi, Martin Cousineau
-function [trial, Time] = load_trials_bs(sInputs, LowPass, SensorTypes)
+function [trial, Time, iChannels, errMsg] = load_trials_bs(sInputs, LowPass, SensorTypes, IgnoreBad)
+    errMsg    = [];
     % Load channel file
     ChannelMat = in_bst_channel(sInputs(1).ChannelFile);
     % Parse inputs
@@ -232,16 +267,25 @@ function [trial, Time] = load_trials_bs(sInputs, LowPass, SensorTypes)
         % Make sure channels are unique and sorted
         iChannels = unique(iChannels);
     end
+    if nargin < 4 || isempty(IgnoreBad)
+        % Use all channels
+        IgnoreBad = 0;
+    end
     
     % Initialize output matrix (numChannels x numSamples x numObservations)
     nInputs = length(sInputs);
     DataMat  = in_bst_data(sInputs(1).FileName);
+    if IgnoreBad
+        channelFlagRef = (DataMat.ChannelFlag == 1);
+        iChannels = iChannels(channelFlagRef);
+    end
     trial = zeros(length(iChannels), length(DataMat.Time), nInputs);
+    Time = DataMat.Time;
 
     % Low-pass filtering
     if LowPass > 0
         % Design low pass filter
-        order = max(100,round(size(DataMat.F(iChannels,:),2)/10)); %keep one 10th of the timepoints as model order
+        order = max(100,round(size(DataMat.F,2)/10)); %keep one 10th of the timepoints as model order
         Fs    = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         h     = filter_design('lowpass', LowPass, order, Fs, 0);
     end
@@ -251,6 +295,14 @@ function [trial, Time] = load_trials_bs(sInputs, LowPass, SensorTypes)
     for f = 1:nInputs
         bst_progress('inc',1);
         DataMat = in_bst_data(sInputs(f).FileName);
+         % Check for same channel number
+        if IgnoreBad && (f > 1)
+            % Check channel flag for this data
+            if ~isequal(channelFlagRef, (DataMat.ChannelFlag == 1))
+                errMsg = 'Input files have different lists of bad channels.';
+                return
+            end
+        end
 
         if LowPass > 0 % do low-pass filtering
             trial(:,:,f) = filter_apply(DataMat.F(iChannels,:),h); %smooth over time
@@ -259,7 +311,6 @@ function [trial, Time] = load_trials_bs(sInputs, LowPass, SensorTypes)
         end
     end
     bst_progress('stop');
-    Time = DataMat.Time;
 end
 
 

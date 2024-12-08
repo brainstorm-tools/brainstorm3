@@ -1,4 +1,4 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas, isMask)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
 % MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
@@ -12,7 +12,6 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras', 'ct2mri'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
 %    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
-%    - isMask     : If 1, mask out regions outside the skull using BrainSuite skull stripping (CT2MRI registration only)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -135,7 +134,8 @@ switch lower(Method)
         
         % Create coregistration batch
         if isReslice
-            % Coreg: Estimate and reslice
+            % Coregister: Estimate and reslice
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate & Reslice)');
             matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
@@ -145,7 +145,8 @@ switch lower(Method)
             % Output file
             NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
-            % Coreg: Estimate
+            % Coregister: Estimate
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate)');
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
@@ -257,41 +258,8 @@ switch lower(Method)
         % Save reference MRI in .nii format
         NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
-
-        if isMask
-            % Check for BrainSuite Installation
-            [~, errMsg] = process_dwi2dti('CheckBrainSuiteInstall');
-            % Error handling
-            if ~isempty(errMsg)
-                if ~isProgress
-                    bst_progress('stop');
-                end
-                return
-            end
-            % Perform BRAIN SURFACE EXTRACTOR (BSE)
-            bst_progress('text', 'Brain surface extractor...');
-            strCall = [...
-                'bse -i "' NiiRefFile '" --auto' ...
-                ' -o "' fullfile(TmpDir, 'skull_stripped_mri.nii.gz"') ...
-                ' --trim --mask "' fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz"') ...
-                ' --hires "' fullfile(TmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
-                ' --cortex "' fullfile(TmpDir, 'bse_cortex_file.nii.gz"')];
-            disp(['BST> System call: ' strCall]);
-            status = system(strCall);
-            % Error handling
-            if (status ~= 0)
-                errMsg = ['BrainSuite failed at step BSE.', 10, 'Check the Matlab command window for more information.'];
-                return    
-            end
-
-            % Get the mask
-            NiiMaskFile = bst_fullfile(TmpDir, 'bse_smooth_brain.mask.nii.gz');
-            sMriMask = in_mri(NiiMaskFile, 'ALL', 0, 0);
-            sMriMask.Cube = sMriMask.Cube/255;
-            sMriMask.Cube = sMriMask.Cube & ~mri_dilate(~sMriMask.Cube, 3); % erode
-        end
         
-        % Perform the co-registration of the unmasked CT to MRI
+        % Perform the coregistration of the CT to MRI
         NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
         bst_progress('text', 'Performing co-registration using ct2mrireg plugin...');
         NiiRegFile = ct2mrireg(NiiSrcFile, NiiRefFile, NiiRegFile);
@@ -309,16 +277,10 @@ switch lower(Method)
             % Use the reference SCS coordinates
             if isfield(sMriRef, 'SCS')
                 sMriReg.SCS = sMriRef.SCS;
-                if isMask
-                    sMriMask.SCS = sMriRef.SCS;
-                end
             end
             % Use the reference NCS coordinates
             if isfield(sMriRef, 'NCS')
                 sMriReg.NCS = sMriRef.NCS;
-                if isMask
-                    sMriMask.NCS = sMriRef.NCS;
-                end
             end
 
             % Reslice the volume
@@ -330,13 +292,6 @@ switch lower(Method)
                     bst_progress('stop');
                 end
                 return
-            end
-            % Apply the mask to the co-registered CT to get a clean skull stripped CT
-            if isMask
-                [sMriMask, errMsg] = mri_reslice(sMriMask, sMriRef, 'scs', 'scs', isAtlas);
-                bst_progress('text', 'Applying Mask...');
-                sMriReg.Cube = sMriReg.Cube.*(sMriMask.Cube);
-                fileTag = [fileTag, '_masked'];
             end
         else
             isUpdateScs = 1;
@@ -443,6 +398,10 @@ if ~isempty(MriFileSrc)
     % Add history entry
     sMriReg.History = sMriSrc.History;
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file (' Method '): ' MriFileRef]);
+    % Add history entry (reslice)
+    if isReslice
+        sMriReg = bst_history('add', sMriReg, 'resample', ['MRI resliced to default file: ' MriFileRef]);
+    end
     % Save new file
     MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
     MriFileReg = file_short(MriFileRegFull);

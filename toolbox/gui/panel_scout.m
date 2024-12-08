@@ -306,6 +306,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 EditScoutsSize('Shrink1');
             case ev.VK_ESCAPE
                 SetSelectedScouts(0);
+            case 3 % CTRL+C
+                if ev.getModifiers == 2
+                    CopyScouts();
+                end
+            case 22 % CTRL+V
+                if ev.getModifiers == 2
+                    PasteScouts()
+                end
         end
     end
 
@@ -490,6 +498,11 @@ function UpdateMenus(sAtlas, sSurf)
         gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
     end
+    gui_component('MenuItem', jMenu, [], 'Copy', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CopyScouts));
+    if ~isReadOnly
+        gui_component('MenuItem', jMenu, [], 'Paste', IconLoader.ICON_PASTE, [], @(h,ev)bst_call(@PasteScouts));
+    end
+    jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab));
@@ -934,27 +947,39 @@ function UpdateScoutProperties()
         strSize = sprintf('  Vertices: %d', length(allVertices));
         % Volume: Compute the volume enclosed in the scout (cm3)
         if isVolumeAtlas
+            GridLoc = [];
+            if bst_get('MatlabVersion') >=840 % R2014b
+                hFig = bst_figures('GetCurrentFigure', '3D');
+                GridLoc = GetFigureGrid(hFig);
+            end
             totalVol = 0;
             for i = 1:length(sScouts)
-                patchVol = 0;
-                if (length(sScouts(i).Vertices) > 3) && ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
-                    % Get the faces and vertices of the patch
-                    Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
-                    Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
-                    % Compute patch volume
-                    if (size(Faces,1) > 1)
-                        patchVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                scoutVol = 0;
+                if (length(sScouts(i).Vertices) > 3)
+                    % Compute volume using scout vertices (for 3DFig or MRIViewer)
+                    if ~isempty(GridLoc)
+                        [~, scoutVol] = boundary(GridLoc(sScouts(i).Vertices, :));
+                        scoutVol = scoutVol * 1e6;
+                    % Compute volume from scout path (only for 3DFig)
+                    elseif ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
+                        % Get the faces and vertices of the patch
+                        Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
+                        Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
+                        % Compute patch volume
+                        if (size(Faces,1) > 1)
+                            scoutVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                        end
                     end
                 end
-                % Use the maximum of 0.03cm3 and the compute volume of the patch
-                minVol = 0.01 * length(sScouts(i).Vertices);
-                if (minVol > patchVol)
-                    patchVol = minVol;
-                end
                 % Sum with the other scouts
-                totalVol = totalVol + patchVol;
+                totalVol = totalVol + scoutVol;
             end
-            strArea = sprintf('Volume: %1.2f cm3  ', totalVol);
+            % Prepare volume (cm3) string
+            strCm3 = 'Use MRI(3D)';
+            if totalVol ~= 0
+                strCm3 = sprintf('%1.2f cm3  ', totalVol);
+            end
+            strArea = ['Volume: ', strCm3];
             
         % Surface: Compute the total area (cm2)
         else
@@ -1031,11 +1056,11 @@ end
 function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     global GlobalData;
     % Parse inputs
-    if (nargin < 1) || isempty(isInteractive)
+    if (nargin < 2) || isempty(isInteractive)
         isInteractive = 1;
     end
     % Get current atlas
-    if (nargin < 2) || isempty(sAtlas)
+    if (nargin < 1) || isempty(sAtlas)
         % Get current surface
         sSurf = bst_memory('GetSurface', GlobalData.CurrentScoutsSurface);
         % If there are no surface, or atlases: return
@@ -4118,6 +4143,80 @@ function NewTessFile = NewSurface(isKeep)
     end
 end
 
+%% ===== COPY SCOUTS =====
+function CopyScouts()
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    % If nothing selected, exit
+    if isempty(sScouts)
+        return;
+    end
+    % Remove the graphic Handles
+    if isfield(sScouts, 'Handles')
+        [sScouts.Handles] = deal([]);
+    end
+    % Get current surface
+    [sAtlas, ~, sSurf] = GetAtlas();
+    [isVolumeAtlas, nGrid] = ParseVolumeAtlas(sAtlas.Name);
+    % Prepare data for copy to clipboard
+    sClipboardScout.surfFileName  = sSurf.FileName;
+    sClipboardScout.isVolumeAtlas = isVolumeAtlas;
+    sClipboardScout.nGrid         = nGrid;
+    sClipboardScout.sScouts       = sScouts;
+    clipboard('copy', bst_jsonencode(sClipboardScout));
+end
+
+%% ===== PASTE SCOUTS =====
+function PasteScouts()
+    % Get copied scouts
+    strClipboard = clipboard('paste');
+    if isempty(strClipboard)
+        return
+    end
+    sClip = bst_jsondecode(strClipboard);
+    if isempty(sClip) || ~isstruct(sClip) || ~all(ismember({'surfFileName', 'isVolumeAtlas', 'nGrid', 'sScouts'} ,fieldnames(sClip)))
+        return
+    end
+    % Get current surface
+    [sAtlas, ~, sSurf] = GetAtlas();
+    [isVolumeAtlas, nGrid] = ParseVolumeAtlas(sAtlas.Name);
+    % Checks to allow copy-paste
+    if isAtlasReadOnly(sAtlas, 1)
+        return
+    end
+    if ~strcmpi(sSurf.FileName, sClip.surfFileName)
+        disp('BST> Cannot copy-paste scouts to a different surface.');
+        return
+    end
+    if sClip.isVolumeAtlas && ~isVolumeAtlas
+        disp('BST> Cannot copy-paste scouts from a Volume atlas to a Surface atlas.');
+        return
+    elseif ~sClip.isVolumeAtlas && isVolumeAtlas
+        disp('BST> Cannot copy-paste scouts from a Surface atlas to a Volume atlas.');
+        return
+    elseif sClip.isVolumeAtlas && isVolumeAtlas
+        if (nGrid ~= sClip.nGrid)
+            disp('BST> Cannot copy-paste scouts between volume grids of different size.');
+            return
+        end
+    end
+    % All 1D vectors are JSON are column vectors, change to row vectors when needed
+    sScouts = sClip.sScouts';
+    sTemplate = db_template('scout');
+    for i = 1:length(sScouts)
+        sScouts(i).Vertices = sScouts(i).Vertices';
+        sScouts(i).Handles = sTemplate.Handles;
+    end
+    % Add new scouts
+    iNewScout = SetScouts([], 'Add', sScouts);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
+
 %% ===== EXPORT SCOUTS TO MATLAB =====
 function ExportScoutsToMatlab()
     % Get selected scouts
@@ -5366,10 +5465,14 @@ end
 %  ===============================================================================
 
 %% ===== LOAD SCOUT =====
-% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1) : Files to import
-%         LoadScouts()                         : Ask the user for the files to read
-function LoadScouts(ScoutFiles, isNewAtlas)
+% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1, FileFormat) : Files to import
+%         LoadScouts()                                     : Ask the user for the files to read
+function LoadScouts(ScoutFiles, isNewAtlas, FileFormat)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3)
+        FileFormat = [];
+    end
     % Parse inputs
     if (nargin < 2) || isempty(isNewAtlas)
         isNewAtlas = 1;
@@ -5414,7 +5517,7 @@ function LoadScouts(ScoutFiles, isNewAtlas)
     end   
     
     % Load all files selected by user
-    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc);
+    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc, FileFormat);
     % Display error messages
     if ~isempty(Messages)
         java_dialog('error', Messages, 'Load atlas');
@@ -5673,6 +5776,9 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
     GridLoc = [];
     HeadModelType = [];
     GridAtlas = [];
+    if isempty(hFig)
+        return
+    end
     % Get source file displayed in the figure
     ResultsFile = getappdata(hFig, 'ResultsFile');
     if ~isempty(ResultsFile)

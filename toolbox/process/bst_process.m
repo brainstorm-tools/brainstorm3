@@ -401,7 +401,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         sInput.Measure = [];
     end
     % Do not allow Time Bands
-    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'}) 
+    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ~strcmpi(sMat.Method, 'mtmconvol') && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'})
         bst_report('Error', sProcess, sInput, 'Cannot process values averaged by time bands.');
         return;
     end
@@ -963,7 +963,17 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     % Output time vector
     if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
-        % Time bands: Do not update time vector
+        if isTimeChange
+            % Find time bands related to new time vector (obtained from time bands)
+            timeVectorBands = mean(process_tf_bands('GetBounds', sMat.TimeBands), 2);
+            ixTimeBandKeep = (timeVectorBands >= OutTime(1)) & (timeVectorBands <= OutTime(end));
+            sMat.TimeBands = sMat.TimeBands(ixTimeBandKeep, :);
+            % Update original time vector to match new time vector range
+            ixTimeDel = (sMat.Time < OutTime(1)) | (sMat.Time > OutTime(end));
+            sMat.Time(ixTimeDel) = [];
+        else
+            % Time bands: Do not update time vector
+        end
     else
         sMat.Time = OutTime;
     end
@@ -1145,7 +1155,7 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
         sInputB.Measure = [];
     end
     % Do not allow TimeBands
-    if ((isfield(sMatA, 'TimeBands') && ~isempty(sMatA.TimeBands)) || (isfield(sMatB, 'TimeBands') && ~isempty(sMatB.TimeBands))) ...
+    if ((isfield(sMatA, 'TimeBands') && ~isempty(sMatA.TimeBands)) && ~strcmpi(sMatA.Method, 'mtmconvol') || (isfield(sMatB, 'TimeBands') && ~isempty(sMatB.TimeBands))) && ~strcmpi(sMatB.Method, 'mtmconvol') ...
             && ismember(func2str(sProcess.Function), {'process_baseline_ab', 'process_zscore_ab', 'process_baseline_norm2'}) 
         bst_report('Error', sProcess, [sInputA, sInputB], 'Cannot process values averaged by time bands.');
         OutputFile = [];

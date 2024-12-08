@@ -40,9 +40,12 @@ function [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2019
+%          Chinmay Chinara, 2024
 
 %% ===== PARSE INPUTS =====
-global GlobalData;
+global GlobalData
+
+iDS  = [];
 % If full surface structure is passed
 if isstruct(Vertices)
     sSurf = Vertices;
@@ -76,14 +79,44 @@ if (nargin < 7) || isempty(SurfaceFile)
     SurfaceFile = [];
 end
 
+% ===== If surface file is defined =====
+if ~isempty(SurfaceFile) && ~isFem
+    % Get Subject that holds this surface
+    sSubject = bst_get('SurfaceFile', SurfaceFile);
+    % If this surface does not belong to any subject
+    if isempty(iDS)
+        if isempty(sSubject)
+            % Check that the SurfaceFile really exist as an absolute file path
+            if ~file_exist(SurfaceFile)
+                bst_error(['File not found : "', SurfaceFile, '"'], 'Display surface');
+                return
+            end
+            % Create an empty DataSet
+            SubjectFile = '';
+            iDS = bst_memory('GetDataSetEmpty');
+        else
+            % Get GlobalData DataSet associated with subjectfile (create if does not exist)
+            SubjectFile = sSubject.FileName;
+            iDS = bst_memory('GetDataSetSubject', SubjectFile, 1);
+        end
+        iDS = iDS(1);
+    else
+        SubjectFile = sSubject.FileName;
+    end
+end
+
+
 % ===== Create new 3DViz figure =====
 isProgress = ~bst_progress('isVisible');
 if isProgress
     bst_progress('start', 'View surface', 'Loading surface file...');
 end
+
 if isempty(hFig)
-    % Create a new empty DataSet
-    iDS = bst_memory('GetDataSetEmpty');
+    if isempty(SurfaceFile)
+        % Create a new empty DataSet
+        iDS = bst_memory('GetDataSetEmpty');
+    end
     % Prepare FigureId structure
     FigureId = db_template('FigureId');
     FigureId.Type     = '3DViz';
@@ -99,6 +132,12 @@ else
     [iDS, iFig] = bst_figures('GetFigure', hFig);
     isNewFig = 0;
 end
+
+if ~isempty(SurfaceFile) && ~isFem
+    % Set application data
+    setappdata(hFig, 'SubjectFile',  SubjectFile);
+end
+
 
 % ===== Create a pseudo-surface =====
 % Surface type
@@ -117,6 +156,9 @@ sLoadedSurf.Name        = SurfType;
 sLoadedSurf.Comment     = 'User_surface';
 sLoadedSurf.Vertices    = Vertices;
 sLoadedSurf.Faces       = Faces;
+if ~isempty(SurfColor)
+    sLoadedSurf.Color = SurfColor;
+end
 if ~isempty(sSurf)
     sLoadedSurf.VertConn    = sSurf.VertConn;
     sLoadedSurf.VertNormals = sSurf.VertNormals;
@@ -142,7 +184,7 @@ if ~isempty(GlobalData.Surface)
 end
 % Register in the GUI
 GlobalData.Surface(end + 1) = sLoadedSurf;
-    
+
 % ===== Add target surface =====
 % Get figure appdata (surfaces configuration)
 TessInfo = getappdata(hFig, 'Surface');
@@ -208,6 +250,5 @@ panel_surface('UpdatePanel');
 if isNewFig
     gui_brainstorm('SetSelectedTab', 'Surface');
 end
-
 
 end
