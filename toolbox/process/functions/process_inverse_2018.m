@@ -536,7 +536,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             break;
         end
         % Shrinkage: Require the FourthMoment matrix
-        if ~strcmpi(OPTIONS.InverseMethod, 'mem') && strcmpi(OPTIONS.NoiseMethod, 'shrink') && ...
+        if strcmpi(OPTIONS.NoiseMethod, 'shrink') && ...
                 ((~isempty(DataCovMat)  && (~isfield(DataCovMat, 'FourthMoment')  || isempty(DataCovMat.FourthMoment))) || ...
                  (~isempty(NoiseCovMat) && (~isfield(NoiseCovMat, 'FourthMoment') || isempty(NoiseCovMat.FourthMoment))))
             errMessage = [errMessage 'Please recalculate the noise and data covariance matrices for using the "automatic shrinkage" option.' 10];
@@ -694,10 +694,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 OPTIONS.FunctionName  = 'mem';
                 % Call the mem solver
                 [Results, OPTIONS] = be_main(HeadModel, OPTIONS);
-                if ~isfield(Results, 'nComponents') || isempty(Results.nComponents)
-                    Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
-                end
-
+                Results.nComponents = round(max(size(Results.ImageGridAmp,1),size(Results.ImagingKernel,1)) / nSources);
                 % Get outputs
                 DataFile = OPTIONS.DataFile; 
                 Time     = OPTIONS.DataTime;

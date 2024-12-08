@@ -147,9 +147,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuFile.addSeparator();
         end
         % === DIGITIZE ===  
-        jSubMenu = gui_component('Menu', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL,[],[], fontSize);
-            gui_component('MenuItem', jSubMenu, [], 'Digitizer',  IconLoader.ICON_CHANNEL,  [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
-            gui_component('MenuItem', jSubMenu, [], '3D scanner', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner'), fontSize);
+        gui_component('MenuItem', jMenuFile, [], 'Digitize', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@panel_digitize, 'Start'), fontSize);
         gui_component('MenuItem', jMenuFile, [], 'Batch MRI fiducials', IconLoader.ICON_LOBE, [], @(h,ev)bst_call(@bst_batch_fiducials), fontSize);
         jMenuFile.addSeparator();
         % === QUIT ===
@@ -173,7 +171,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     
     % ==== Menu PLUGINS ====
     jMenuPlugins = gui_component('Menu', jMenuBar, [], 'Plugins', [], [], [], fontSize);
-        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, [], [], fontSize);
+        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, [], fontSize);
         java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenuPlugins, fontSize));
        
     % ==== Menu HELP ====
@@ -885,7 +883,7 @@ function UpdateProtocolsList()
     end
     % Set current protocol
     iProtocol = GlobalData.DataBase.iProtocol;
-    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol <= length(GlobalData.DataBase.ProtocolInfo))
+    if ~isempty(iProtocol) && isnumeric(iProtocol) && (iProtocol > 0) && (iProtocol < length(GlobalData.DataBase.ProtocolInfo))
         iSel = find(indProtocols == iProtocol);
         ctrl.jComboBoxProtocols.setSelectedIndex(iSel-1);
     end

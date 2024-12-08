@@ -120,7 +120,9 @@ for i = 1:hdr.nsignal
         hdr.signal(i).physical_max = hdr.signal(i).digital_max;
     end
     if (hdr.signal(i).physical_min >= hdr.signal(i).physical_max)
-        disp(['EDF> Warning: Physical minimum larger than physical maximum for channel "' hdr.signal(i).label '".']);
+        disp(['EDF> Warning: Physical maximum larger than minimum for channel "' hdr.signal(i).label '".']);
+        hdr.signal(i).physical_min = hdr.signal(i).digital_min;
+        hdr.signal(i).physical_max = hdr.signal(i).digital_max;
     end
     % Calculate and save channel gain
     hdr.signal(i).gain   = unit_gain ./ (hdr.signal(i).physical_max - hdr.signal(i).physical_min) .* (hdr.signal(i).digital_max - hdr.signal(i).digital_min);
@@ -341,7 +343,6 @@ iChanWrongRate = intersect(iChanWrongRate, iOtherChan);
 if ~isempty(iChanWrongRate)
     sFile.channelflag(iChanWrongRate) = -1;
     disp([sprintf('EDF> WARNING: Excluding channels with sampling rates other than %.3f Hz : ', hdr.signal(iChanFreqRef).sfreq), sprintf('%s ', ChannelMat.Channel(iChanWrongRate).Name)]);
-    disp(         '              To uniform sampling rates import EDF file as "EEG  EDF / EDF+ FieldTrip reader".');
 end
 
 % Consider that the sampling rate of the file is the sampling rate of the first signal

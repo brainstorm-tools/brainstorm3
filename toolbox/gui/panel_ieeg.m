@@ -26,11 +26,10 @@ function varargout = panel_ieeg(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2017-2022
-%          Chinmay Chinara, 2024
+%          Chinmay Chinara, Raymundo Cassani, 2024
 
 eval(macro_method);
 end
-
 
 %% ===== CREATE PANEL =====
 function bstPanelNew = CreatePanel() %#ok<DEFNU>
@@ -42,10 +41,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
+    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
+    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',25,25);
     
-    % ===== TOOLBAR =====
+    % ===== TOP TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
         jToolbar.setPreferredSize(TB_DIM);
@@ -69,6 +70,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Menu: Contacts
         jToolbar.addSeparator();
         jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+    
+    % ===== BOTTOM TOOLBAR =====
+    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
+        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
+        jToolbarBottom.setPreferredSize(TB_DIM);
+        jToolbarBottom.setOpaque(0);
+        % Add GARDEL
+        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'Auto detect contacts using GARDEL', @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
+        jToolbarBottom.addSeparator();
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -213,6 +223,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
+                                  'jToolbarBottom',      jToolbarBottom, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonShow',         jButtonShow, ...
@@ -309,10 +320,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if (length(sSelElec) == 1)
                 CenterMriOnElectrode(sSelElec);
             end
-            % Unselect all contacts in list
-            SetSelectedContacts(0);
-            % Update contact list
-            UpdateContactList();
         end
     end
 
@@ -334,6 +341,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Rename selection
             EditElectrodeLabel();
         end
+
+        if (ev.getClickCount() == 1)
+            % Unselect all contacts in list
+            SetSelectedContacts(0);
+            % Update contact list
+            UpdateContactList();
+        end
     end
 
     %% ===== CONTACT LIST CHANGED CALLBACK =====
@@ -346,10 +360,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 end
                    
 
-
 %% =================================================================================
 %  === EXTERNAL PANEL CALLBACKS  ===================================================
 %  =================================================================================
+
 %% ===== CURRENT FIGURE CHANGED =====
 function CurrentFigureChanged_Callback(hFig) %#ok<DEFNU>
     UpdatePanel();
@@ -366,12 +380,12 @@ function UpdatePanel()
     hFig = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -389,7 +403,6 @@ function UpdatePanel()
     UpdateElecList();
     UpdateContactList('SCS');
 end
-
 
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()
@@ -453,6 +466,92 @@ function UpdateElecList()
     % Restore callback
     drawnow;
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', callbackBak);
+end
+
+%% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
+function AutoDetectContacts(method)
+    global GlobalData
+
+    switch(method)
+        case 'gardel'
+            disp('Calling GARDEL !');
+            
+            % get subject
+            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
+            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+            % Channels = GlobalData.DataSet(iDS).Channel;
+            % Get study
+            sStudy = bst_get('ChannelFile', ChannelFile);
+            % Get subject
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            if isempty(sSubject) || isempty(sSubject.Anatomy)
+                bst_error('No CT available for this subject.', 'GARDEL', 0);
+            end
+            % Find CT volumes
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
+            CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            sCt = bst_memory('LoadMri', CtFile);
+            
+            %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
+            %  Handle CT slice dimensions (to match with GARDEL segmentation function)
+            if size(sCt.Cube,1)==size(sCt.Cube,3)
+                CT_image = permute(sCt.Cube, [1,3,2]);
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);  
+            else
+                CT_image = sCt.Cube;
+                CT_info.pixdim = sCt.Voxsize;
+            end
+            
+            % get isoValue from isoSurface
+            iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
+            isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
+            
+            % Set process logo
+            bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
+            bst_plugin('SetProgressLogo', 'gardel');
+
+            % use GARDEL magic button routine
+            New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
+            
+            % parse the coordinates for electrodes and contacts
+            contDetectedCnt=0; % to keep a count of valid contact detection
+            for elec=1:size(New_Centroids_vox,1) % electrodes
+                % add only if minimum 2 contacts found per electrode
+                if size(New_Centroids_vox{elec},1)>2
+                    AddElectrode(char('A'+contDetectedCnt));
+                    contDetectedCnt = contDetectedCnt+1;
+                    
+                    % Get selected electrodes
+                    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+                    
+                    % Get selected electrode
+                    for cont=1:size(New_Centroids_vox{elec},1) % contacts   
+                        % Set electrode position (covert from GARDEL to Brainstorm coordinates)
+                        if size(sCt.Cube,1)==size(sCt.Cube,3)
+                            x(1) = New_Centroids_vox{elec}(cont,1);
+                            x(2) = New_Centroids_vox{elec}(cont,3);
+                            x(3) = New_Centroids_vox{elec}(cont,2);
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
+                        else
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                        end
+                    end
+
+                    sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
+
+                    % Save electrode modification
+                    SetElectrodes(iSelElec, sSelElec);
+
+                    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
+                end
+            end
+            
+            % Stop process box
+            bst_progress('stop');
+
+        otherwise
+            disp('Not defined !')
+    end
 end
 
 %% ===== UPDATE CONTACT LIST =====
@@ -588,7 +687,6 @@ function UpdateModelList(elecType)
     % Restore callback
     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
 end
-
 
 %% ===== UPDATE ELECTRODE PROPERTIES =====
 function UpdateElecProperties(isUpdateModelList)
@@ -799,7 +897,7 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
-    sContacts = GetContacts(sSelElec(end).Name);
+    sContacts = GetContacts(sSelElec.Name);
     if isempty(sContacts)
         return
     end
@@ -807,7 +905,6 @@ function sSelContacts = GetSelectedContacts()
     iSelCont = uint16(ctrl.jListCont.getSelectedIndices())' + 1;
     sSelContacts = sContacts(iSelCont);
 end
-
 
 %% ===== SET SELECTED ELECTRODES =====
 % USAGE:  SetSelectedElectrodes(iSelElec)      % array of indices
@@ -941,7 +1038,10 @@ function ShowContactsMenu(jButton)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
+    % Menu: Auto Detect Contacts
+    gui_component('MenuItem', jMenu, [], 'Auto detect contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
     % Menu: Default positions
+    jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
     % Menu: Export select atlas
     if strcmpi(sSelElec(1).Type, 'ECOG')
@@ -962,8 +1062,6 @@ function ShowContactsMenu(jButton)
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
 
-
-
 %% ===== GET COLOR TABLE =====
 function ColorTable = GetElectrodeColorTable()
     ColorTable = [0    .8    0   ;
@@ -976,7 +1074,6 @@ function ColorTable = GetElectrodeColorTable()
                   0    .4    0   ;
                   1    .843  0   ];
 end
-
 
 %% ===== EDIT ELECTRODE LABEL =====
 % Rename one selected electrode
@@ -1047,7 +1144,6 @@ function EditElectrodeLabel(varargin)
     UpdateFigures();
 end
 
-
 %% ===== EDIT ELECTRODE COLOR =====
 function EditElectrodeColor(newColor)
     % Get selected electrode
@@ -1079,7 +1175,6 @@ function EditElectrodeColor(newColor)
     % Update figures
     UpdateFigures();
 end
-
 
 %% ===== VALIDATE OPTIONS =====
 function ValidateOptions(optName, jControl)
@@ -1170,7 +1265,6 @@ function ValidateOptions(optName, jControl)
     end
 end
     
-
 %% ===== SHOW/HIDE ELECTRODE =====
 function SetElectrodeVisible(isVisible)
     % Get selected electrode
@@ -1202,7 +1296,6 @@ function SetElectrodeVisible(isVisible)
     UpdateFigures();
 end
     
-
 %% ===== GET ELECTRODES =====
 function [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes()
     global GlobalData;
@@ -1247,8 +1340,6 @@ function sContacts = GetContacts(selectedElecName)
     end
     % Get the channel data
     ChannelData = GlobalData.DataSet(iDSall).Channel;
-    % Replace empty Group with ''
-    [ChannelData(cellfun('isempty', {ChannelData.Group})).Group] = deal('');
     % Get the contacts for the electrode
     iChannels = find(ismember({ChannelData.Group}, selectedElecName));
     for i = 1:length(iChannels)
@@ -1256,7 +1347,6 @@ function sContacts = GetContacts(selectedElecName)
         sContacts(i).Loc  = ChannelData(iChannels(i)).Loc;
     end
 end
-
 
 %% ===== SET ELECTRODES =====
 % USAGE:  iElec = SetElectrodes(iElec=[], sElect)
@@ -1313,7 +1403,13 @@ end
 
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(varargin) 
+    if nargin<1
+        elecName = [];
+    else
+        elecName = varargin{1};
+    end
+
     global GlobalData;
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
@@ -1324,9 +1420,13 @@ function AddElectrode()
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
+    if isempty(elecName)
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    else
+        newLabel = char(elecName);
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -1466,7 +1566,6 @@ function RemoveElectrode()
     % Update figure
     UpdateFigures();
 end
-
 
 %% ===== GET ELECTRODE MODELS =====
 function sModels = GetElectrodeModels()
@@ -1612,7 +1711,6 @@ function sModels = GetElectrodeModels()
     end
 end
 
-
 %% ===== GET SELECTED MODEL =====
 function [iModel, sModels] = GetSelectedModel()
     % Get figure controls
@@ -1630,7 +1728,6 @@ function [iModel, sModels] = GetSelectedModel()
         iModel = find(strcmpi({sModels.Model}, ModelName));
     end
 end
-
 
 %% ===== SET SELECTED MODEL =====
 function SetSelectedModel(selModel)
@@ -1743,7 +1840,6 @@ function AddElectrodeModel(sNewModel)
     UpdateElecProperties();
 end
 
-
 %% ===== REMOVE ELECTRODE MODEL =====
 function RemoveElectrodeModel()
     global GlobalData;
@@ -1767,7 +1863,6 @@ function RemoveElectrodeModel()
     % Update list of models
     UpdateElecProperties();
 end
-
 
 %% ===== SAVE ELECTRODE MODEL =====
 function SaveElectrodeModel()
@@ -1807,7 +1902,6 @@ function SaveElectrodeModel()
     end
 end
 
-
 %% ===== LOAD ELECTRODE MODEL =====
 function LoadElectrodeModel()
     % Get panel controls
@@ -1843,7 +1937,6 @@ function LoadElectrodeModel()
     end
 end
 
-
 %% ===== EXPORT ELECTRODE MODEL =====
 function ExportElectrodeModel()
     % Get panel controls
@@ -1859,7 +1952,6 @@ function ExportElectrodeModel()
     % Export to the base workspace
     export_matlab(sModels(iModel), []);
 end
-
 
 %% ===== IMPORT ELECTRODE MODEL =====
 function ImportElectrodeModel()
@@ -1878,7 +1970,6 @@ function ImportElectrodeModel()
     AddElectrodeModel(sModel);
     fprintf(1, 'Intracranial electrode model "%s" was imported\n', sModel.Model);
 end
-
 
 %% ===== UPDATE FIGURE TYPE =====
 function UpdateFigureModality(iDS, iFig)
@@ -1917,7 +2008,6 @@ function UpdateFigureModality(iDS, iFig)
         end
     end
 end
-
 
 %% ===== UPDATE FIGURES =====
 function UpdateFigures(hFigTarget)
@@ -1973,7 +2063,6 @@ function UpdateFigures(hFigTarget)
     end
 end
 
-
 %% ===== SET DISPLAY MODE =====
 function SetDisplayMode(DisplayMode)
     % Get current figure
@@ -1988,7 +2077,6 @@ function SetDisplayMode(DisplayMode)
     % Update figures
     UpdateFigures(hFig(1));
 end
-
 
 %% ===== DETECT ELECTRODES =====
 function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Modality, AllInd, isUpdate) %#ok<DEFNU>
@@ -2107,9 +2195,7 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         ChannelMat.IntraElectrodes(iNewElec) = newElec;
     end
 end
-
-    
-                              
+                             
 %% =================================================================================
 %  === DISPLAY ELECTRODES  =========================================================
 %  =================================================================================
@@ -2440,7 +2526,6 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
     end
 end
 
-
 %% ===== GET CHANNEL NORMALS =====
 % USAGE: GetChannelNormal(sSubject, ChanLoc, Modality)
 %        GetChannelNormal(sSubject, ChanLoc, SurfaceType)   % SurfaceType={'scalp','innerskull','cortex','cortexhull','cortexmask'}
@@ -2539,7 +2624,6 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
 %     ChanLocProj = channel_project_scalp(fvh.vertices, ChanLoc);
 
 end
-
 
 %% ===== ALIGN CONTACTS =====
 function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
@@ -2648,6 +2732,9 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+                    case 'auto'
+                        % Project the existing contact on the depth electrode
+                        Channels(iChan(i)).Loc = sElectrodes(iElec).Loc(:,i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
@@ -2829,7 +2916,6 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
     end
 end
 
-
 %% ===== PROJECT CONTACTS ON SURFACE =====
 function ProjectContacts(iDS, iFig, SurfaceType)
     global GlobalData;
@@ -2993,7 +3079,6 @@ function SetElectrodeLoc(iLoc, jButton)
     end
 end
 
-
 %% ===== CENTER MRI ON ELECTRODE =====
 function CenterMriOnElectrode(sElec, hFigTarget)
     global GlobalData;
@@ -3040,19 +3125,10 @@ function CenterMriOnElectrode(sElec, hFigTarget)
     end
 end
 
-
 %% ===== CREATE IMPLANTATION =====
-% USAGE: CreateImplantation(MriFile)   % Implantation on given Volume file
-%        CreateImplantation(sSubject)  % Ask user for Volume and Surface files for implantation
 function CreateImplantation(MriFile) %#ok<DEFNU>
-    % Parse input
-    if isstruct(MriFile)
-        sSubject = MriFile;
-        MriFiles = [];
-    else
-        sSubject = bst_get('MriFile', MriFile);
-        MriFiles = {MriFile};
-    end
+    % Find subject
+    [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
@@ -3083,7 +3159,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             sStudy = bst_get('Study', iStudy);
         case 1
             % Use default channel file
-            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', sSubject.Name);
+            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
             % The @intra study must not contain an existing channel file
             if ~isempty(sStudy.Channel) && ~isempty(sStudy.Channel(1).FileName)
                 error(['There is already a channel file for this subject:' 10 sStudy.Channel(1).FileName]);
@@ -3091,105 +3167,6 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         case 2
             error('The subject uses a shared channel file, it should not be edited in this way.');
     end
-
-    % Ask user about implantation volume and surface files
-    iVol1 = [];
-    iVol2 = [];
-    iSrf  = [];
-    if isempty(MriFiles)
-        if isempty(sSubject.Anatomy)
-            return
-        end
-        iMriVol = sSubject.iAnatomy;
-        iCtVol  = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
-        iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
-        iMriVol = setdiff(iMriVol, iCtVol);
-        impOptions = {};
-        if ~isempty(iMriVol)
-            impOptions = [impOptions, {'MRI'}];
-        end
-        if ~isempty(iCtVol)
-            impOptions = [impOptions, {'CT'}];
-        end
-        if ~isempty(iMriVol) && ~isempty(iCtVol)
-            impOptions = [impOptions, {'MRI+CT'}];
-        end
-        if ~isempty(iCtVol) && ~isempty(iIsoSrf)
-            tmpOption = 'CT+IsoSurf';
-            if ~isempty(iMriVol)
-                tmpOption = ['MRI+' tmpOption];
-            end
-            impOptions = [impOptions, {tmpOption}];
-        end
-        impOptions = [impOptions, {'Cancel'}];
-        % User dialog
-        [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
-                                                   'How do you want to continue with the existing implantation?'], ...
-                                                   'SEEG/ECOG implantation', [], impOptions, 'Cancel');
-        if strcmpi(res, 'cancel') || isCancel
-            return
-        end
-        switch lower(res)
-            case 'mri'
-                iVol1 = iMriVol;
-            case 'ct'
-                iVol1 = iCtVol;
-            case 'mri+ct'
-                iVol1 = iMriVol;
-                iVol2 = iCtVol;
-            case 'mri+ct+isosurf'
-                iVol1 = iMriVol;
-                iVol2 = iCtVol;
-                iSrf  = iIsoSrf;
-            case 'ct+isosurf'
-                iVol1 = iCtVol;
-                iVol2 = [];
-                iSrf  = iIsoSrf;
-        end
-        % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
-        if ~isempty(iSrf)
-            sSurf = load(file_fullpath(sSubject.Surface(iSrf).FileName), 'History');
-            if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-                % Search for CT threshold in history
-                ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
-                % Return intersection of the found and then update iCtVol
-                if ~isempty(ctEntry)
-                    [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
-                    if iCtIso
-                        iCtVol = intersect(iCtIso, iCtVol);
-                    else
-                        bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
-                                           'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
-                        return
-                    end
-                end
-            end
-        end
-        if ~strcmpi(res, 'mri') && length(iCtVol) > 1
-            % Prompt for the CT file selection
-            ctComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtVol).Comment});
-            if isempty(ctComment)
-                return
-            end
-            [~, ix] = ismember(ctComment, {sSubject.Anatomy(iCtVol).Comment});
-            iCtVol = iCtVol(ix);
-        end
-        % Update vol1 or vol2 to have single CT
-        switch lower(res)
-            case {'mri+ct', 'mri+ct+isosurf'}
-                iVol2 = iCtVol;
-            case {'ct', 'ct+isosurf'}
-                iVol1 = iCtVol;
-        end
-        % Get Volume filenames
-        if ~isempty(iVol1)
-            MriFiles{1} = sSubject.Anatomy(iVol1).FileName;
-        end
-        if ~isempty(iVol2)
-            MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
-        end
-    end
-
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
     % Channel file
@@ -3208,16 +3185,13 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display channels on MRI viewer
-    DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
-    if ~isempty(iSrf)
-        % Display isosurface
-        DisplayIsosurface(sSubject, iSrf, [], ChannelFile, 'SEEG');
-    end
+    % Display isosurface
+    DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
+    % Display channels
+    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
     % Close progress bar
     bst_progress('stop');
 end
-
 
 %% ===== LOAD ELECTRODES =====
 function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
@@ -3261,32 +3235,70 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     bst_figures('UpdateFigureName', hFig);
 end
 
-
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
 % USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
 %         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
-%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, {MriFiles}, isEdit=0)
 function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
     % Parse inputs
     if (nargin < 4) || isempty(isEdit)
         isEdit = 0;
     end
-
-    % Get MRI files
-    if iscell(iAnatomy)
-        MriFiles = iAnatomy;
-    elseif ischar(iAnatomy)
-        MriFiles = {iAnatomy};
-    else
-        % Get study
-        sStudy = bst_get('ChannelFile', ChannelFile);
-        % Get subject
-        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-        if isempty(sSubject) || isempty(sSubject.Anatomy)
-            bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+    
+    % ==== check if the subject has just MRI or both MRI+CT =====
+    % Get study
+    sStudy = bst_get('ChannelFile', ChannelFile);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    if isempty(sSubject) || isempty(sSubject.Anatomy)
+        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
+    end
+    % Find CT volumes
+    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
+    if ~isempty(iCtVol)
+        tmp = iCtVol(1);
+        % Prefer a masked CT volume if available
+        if length(iCtVol) > 1
+            iMask = find(cellfun(@(x) ~isempty(regexp(x, 'masked', 'match')), {sSubject.Anatomy(iCtVol).FileName}));
+            if ~isempty(iMask)
+                tmp = iCtVol(iMask(1));
+            end
         end
-        % MRI volumes
-        MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
+        iCtVol = tmp;
+    end
+    
+    % Set the MRI Viewer to display
+    if ischar(iAnatomy)
+        % if implantation starts from CT then definitely MRI exists
+        if ~isempty(regexp(iAnatomy, 'CT', 'match'))
+            MriFile = sSubject.Anatomy(1).FileName;
+            CtFile = iAnatomy;
+        % if implantation starts from MRI then CT may or maynot exist
+        else
+            % if CT exists
+            if iCtVol
+                MriFile = iAnatomy;
+                CtFile = sSubject.Anatomy(iCtVol).FileName;
+            else
+                MriFile = iAnatomy;
+                CtFile = [];
+            end
+        end
+    else
+        % if implantation starts from CT then definitely MRI exists
+        if ~isempty(regexp(sSubject.Anatomy(iAnatomy).FileName, 'CT', 'match'))
+            MriFile = sSubject.Anatomy(1).FileName;
+            CtFile = sSubject.Anatomy(iAnatomy).FileName;
+        % if implantation starts from MRI then CT may or maynot exist
+        else
+            % if CT exists
+            if iCtVol
+                MriFile = sSubject.Anatomy(iAnatomy).FileName;
+                CtFile = sSubject.Anatomy(iCtVol).FileName;
+            else
+                MriFile = sSubject.Anatomy(iAnatomy).FileName;
+                CtFile = [];
+            end
+        end
     end
 
     % If MRI Viewer is open don't open another one
@@ -3294,13 +3306,8 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if ~isempty(hFig)
         return
     end
-
-    % == DISPLAY THE MRI VIEWER
-    if length(MriFiles) == 1
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, [], [], 2);
-    else
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2);
-    end
+    % Display the MRI Viewer
+    [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
     if isempty(hFig)
         return;
     end
@@ -3317,21 +3324,27 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, ChannelFile, Modality)
+function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig, ChannelFile, Modality)
     % Parse inputs
-    if (nargin < 3) || isempty(hFig)
+    if (nargin < 2) || isempty(hFig)
         hFig = [];
     end 
-    if isempty(hFig)
-        hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
+    % Check that Subject exists and has surfaces
+    if  isempty(Subject) || isempty(Subject.Surface)
+        return;
     end
-    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, 0.6, [], hFig, []);
+    % Find isosurface
+    ixIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {Subject.Surface.FileName}));
+    % Return if not isosurfaces
+    if isempty(ixIsoSurf)
+        return
+    end
+    if isempty(hFig)
+        hFig = view_mri_3d(Subject.Anatomy(1).FileName, [], 0.3, []);
+    end
+    [hFig, iDS, iFig] = view_surface(Subject.Surface(ixIsoSurf(1)).FileName, 0.6, [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
-    % SEEG and ECOG: Open tab "iEEG"
-    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
-        gui_brainstorm('ShowToolTab', 'iEEG'); 
-    end
 end
 
 %% ===== EXPORT CONTACT POSITIONS =====

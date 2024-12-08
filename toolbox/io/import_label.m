@@ -44,7 +44,6 @@ if (nargin < 2) || isempty(LabelFiles)
     LabelFiles = [];
 end
 
-isInteractiveMriVols = 1;
 % CALL: import_label(SurfaceFile)
 if isempty(LabelFiles)
     % Get last used folder
@@ -100,9 +99,6 @@ else
                 end
             otherwise,  Messages = 'Unknown file extension.'; return;
         end
-    % Import MRI volumes in non-interactive way if Files and FileFormat are input args
-    elseif length(FileFormat) > 3 && strcmpi(FileFormat(1:3), 'mri')
-        isInteractiveMriVols = 0;
     end
 end
 
@@ -356,9 +352,9 @@ for iFile = 1:length(LabelFiles)
                 sMriMask = in_mri_bst(LabelFiles{iFile});
                 sAtlas.Name = [sAtlas.Name, str_remove_parenth(sMriMask.Comment)];
             elseif isMni
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', isInteractiveMriVols, 0);
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
             else
-                sMriMask = in_mri(LabelFiles{iFile}, 'ALL', isInteractiveMriVols, 0);
+                sMriMask = in_mri(LabelFiles{iFile}, 'ALL', [], 0);
             end
             if isempty(sMriMask)
                 return;

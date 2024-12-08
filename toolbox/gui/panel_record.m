@@ -1085,9 +1085,6 @@ function ReloadRecordings(isForced)
         end
         % Get epoch indice
         iEpoch = ctrl.jSpinnerEpoch.getValue();
-        if iEpoch <= 0
-            return
-        end
         Time = GlobalData.FullTimeWindow.Epochs(iEpoch).Time;
         % Get new time window
         iStart = double(ctrl.jSliderStart.getValue());

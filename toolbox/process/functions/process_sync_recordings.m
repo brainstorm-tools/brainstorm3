@@ -48,14 +48,7 @@ function sProcess = GetDescription()
     sProcess.options.src.Comment  = 'Sync event name: ';
     sProcess.options.src.Type     = 'text';
     sProcess.options.src.Value    = '';
-    % Sync method
-    sProcess.options.method_title.Comment = '<BR><B><U>Method for event synchronization:</U></B>:';
-    sProcess.options.method_title.Type    = 'label';
-    sProcess.options.method.Comment = {'<B>xcorr</B> : maximize the correlation between the event timing of the two files',  ...
-                                       '<B>mean</B> :  minimize the mean difference between the event timing of the two files'; ...
-                                       'xcorr', 'mean'};
-    sProcess.options.method.Type    = 'radio_label';
-    sProcess.options.method.Value   = 'xcorr';
+ 
 end
 
 
@@ -131,19 +124,12 @@ function OutputFiles = Run(sProcess, sInputs)
     new_times{1}  = sOldTiming{1}.Time;
     mean_shifting = zeros(1, nInputs);
     for iInput = 2:nInputs
-        isSameNumberEvts = size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2);
-        % Require same number of events
-        if ~isSameNumberEvts
-            bst_report('Error', sProcess, sInputs, 'Files doesnt have the same number of sync events.');
-            return
-        end
-        % Sync
-        if strcmpi(sProcess.options.method.Value, 'mean')
-            % Mean difference
+        if size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2)
             shifting = sEvtSync(iInput).times - sEvtSync(1).times;
             mean_shifting(iInput) = mean(shifting);
             offsetStd = std(shifting);
-        elseif strcmpi(sProcess.options.method.Value, 'xcorr')
+        else
+            bst_report('Warning', sProcess, sInputs, 'Files doesnt have the same number of sync events. Using approximation');
             % Cross-correlate trigger signals; need to be at the same sampling frequency
             tmp_fs      = max(fs(iInput), fs(1));
             tmp_time_a  = sOldTiming{iInput}.Time(1):1/tmp_fs:sOldTiming{iInput}.Time(end);
@@ -168,9 +154,8 @@ function OutputFiles = Run(sProcess, sInputs)
             offsetStd = 0;
         end    
         new_times{iInput} = sOldTiming{iInput}.Time - mean_shifting(iInput);
-
-        fprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms) \n', ...
-                sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000);
+        disp(sprintf('Lag difference between %s and %s : %.2f ms (std: %.2f ms)', ...
+            sInputs(1).Condition, sInputs(iInput).Condition, mean_shifting(iInput)*1000, offsetStd*1000));
     end    
     
     % New start and new end

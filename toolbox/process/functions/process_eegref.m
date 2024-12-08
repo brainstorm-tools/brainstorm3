@@ -153,12 +153,11 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         proj.Components = W;
         proj.CompMask   = [];
         proj.Status     = 1;
-        proj.SingVal    = [];
-        proj.Method     = 'REF';
+        proj.SingVal    = 'REF';
                
         % === SAVE PROJECTOR ===
         % Check for existing re-referencing projector
-        if ~isempty(ChannelMat.Projector) && any(cellfun(@(c)isequal(c,'REF'), {ChannelMat.Projector.Method}))
+        if ~isempty(ChannelMat.Projector) && any(cellfun(@(c)isequal(c,'REF'), {ChannelMat.Projector.SingVal}))
             %bst_report('Warning', sProcess, [], 'There was already a re-referencing projector.');
             disp('BST> EEGREF: There was already a re-referencing projector.');
         end
