@@ -26,8 +26,7 @@ end
 
 
 %% ===== PYTHON FOOOF =====
-function [fs, fg, errMsg] = FOOOF_python(TF, Freqs, opt)
-    errMsg = '';
+function [fs, fg] = FOOOF_python(TF, Freqs, opt)
     % Import python modules
     modules = py.sys.modules;
     modules = string(cell(py.list(modules.keys())));

@@ -53,12 +53,10 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 
 % ===== SPM STANDALONE =====
 if ~exist(fullfile(SpmDir, 'Contents.txt'), 'file') || ~exist(fullfile(fileparts(SpmDir), 'standalone'), 'file')
-    bst_plugin('Load', 'spm12');
     disp('SPMTRIP> Compiling SPM...');
     spm eeg;
     spm quit;
     spm_make_standalone();
-    bst_plugin('Unload', 'spm12');
 end
 
 % ===== REQUIRED FUNCTIONS =====
@@ -260,7 +258,7 @@ warning off
 rmpath(genpath(OutputDir));
 warning on
 % Initalize FieldTrip
-bst_plugin('Load', 'fieldtrip');
+addpath(FieldTripDir);
 ft_defaults;
 if ~exist('contains', 'builtin')
     addpath(fullfile(FieldTripDir, 'compat', 'matlablt2016b'));

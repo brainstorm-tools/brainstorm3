@@ -65,7 +65,6 @@ if strcmpi(file_gettype(MatFile), 'pmatrix')
     % Add tag in the figure appdata
     StatInfo.StatFile    = MatFile;
     StatInfo.DisplayMode = DisplayMode;
-    Modality = 'stat';
 
 % Regular matrix file
 else
@@ -78,13 +77,6 @@ else
         Value = bst_memory('FilterLoadedData', Value, sfreq);
     end
     StatInfo = [];
-    Modality = [];
-end
-% Colormap type
-if isfield(sMat, 'ColormapType') && ~isempty(sMat.ColormapType)
-    ColormapType = sMat.ColormapType;
-else
-    ColormapType = [];
 end
 % Display units
 if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
@@ -112,7 +104,7 @@ switch lower(DisplayMode)
             AxesLabels = sMat.Comment;
             LinesLabels = sMat.Description;
         end
-        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], Modality, AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
+        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
         
     case 'image'
         % Load file
@@ -144,7 +136,8 @@ switch lower(DisplayMode)
         end
         % Create the image volume: [N1 x N2 x Ntime x Nfreq]
         M = reshape(Value, size(Value,1), 1, size(Value,2), 1);
-        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], DimLabels, MatFile, hFig, ColormapType, 1, '$freq', DisplayUnits);
+        % Show the image
+        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], DimLabels, MatFile, hFig, [], 1, '$freq');
         % Add stat info in the file
         if ~isempty(StatInfo)
             setappdata(hFig, 'StatInfo', StatInfo);

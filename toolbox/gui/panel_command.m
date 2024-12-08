@@ -148,12 +148,7 @@ function ExecuteScript(ScriptFile, varargin) %#ok<DEFNU>
                         if ~ischar(varargin{iArg})
                             error('All arguments passed in command line must be strings.');
                         end
-                        strAround = '''';
-                        % Interpret string as matrices and cells
-                        if ~isempty(varargin{iArg}) && ismember(varargin{iArg}(1), {'{', '['})
-                            strAround = '';
-                        end
-                        strSetArg = [strSetArg, argNames{iArg}, '=', strAround, varargin{iArg}, strAround, ';'];
+                        strSetArg = [strSetArg, argNames{iArg}, '=''', varargin{iArg}, ''';'];
                     end
                     cellLines{i} = strSetArg;
                 end

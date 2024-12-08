@@ -468,17 +468,15 @@ function OutputFiles = Run(sProcess, sInputs)
                     scoutStd = cat(1, scoutStd, tmpScoutStd);
                 end
                 % Add frequency to row descriptions.
-                if isfield(sResults, 'Freqs') && ~isempty(sResults.Freqs) && ((iscell(sResults.Freqs) && size(sResults.Freqs,1) == nFreq) || (~iscell(sResults.Freqs) && length(sResults.Freqs) == nFreq))
+                if (nFreq > 1) && AddFileComment
                     if iscell(sResults.Freqs)
                         freqComment = [' ' sResults.Freqs{iFreq,1}];
                     else
                         freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
                     end
-                    RowNamesFreq = cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false);
-                else
-                    RowNamesFreq = RowNames;
+                    RowNames = cellfun(@(c) [c freqComment], RowNames, 'UniformOutput', false);
                 end
-                Description = cat(1, Description, RowNamesFreq);
+                Description = cat(1, Description, RowNames);
             end
         end
         % If nothing was found

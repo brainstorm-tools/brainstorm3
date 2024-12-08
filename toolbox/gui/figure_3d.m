@@ -973,7 +973,7 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)   
-    global GlobalData TimeSliderMutex Digitize;
+    global GlobalData TimeSliderMutex;
     % Prevent multiple executions
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     set([hFig hAxes], 'BusyAction', 'cancel');
@@ -1094,19 +1094,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case 'a'
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
-                    end
-                % C : Collect point
-                case 'c'
-                    % for 3DScanner
-                    if gui_brainstorm('isTabVisible', 'Digitize') && strcmpi(Digitize.Type, '3DScanner')
-                        % Get Digitize options
-                        DigitizeOptions = bst_get('DigitizeOptions');
-                        panel_fun = @panel_digitize;
-                        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-                            panel_fun = @panel_digitize_2024;
-                        end
-                        panel_fun('ManualCollect_Callback');
-                    end
+                    end 
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
@@ -2820,17 +2808,12 @@ function UpdateSurfaceColor(hFig, iTess)
             SulciMap = zeros(TessInfo(iTess).nVertices, 1);
         end
         % Compute RGB values
-        if ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_textured', 'match'))
-            FaceVertexCdata = TessInfo(iTess).AnatomyColor(TessInfo(iTess).nVertices+1:end, :);
-        else
-            FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
-                                               TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
-                                               DataSurf, ...                                  % Data: values map
-                                               TessInfo(iTess).DataLimitValue, ...            % Data: limit value
-                                               TessInfo(iTess).DataAlpha,...                  % Data: transparency
-                                               sColormap);                                    % Colormap
-        end
-
+        FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
+                                           TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
+                                           DataSurf, ...                                  % Data: values map
+                                           TessInfo(iTess).DataLimitValue, ...            % Data: limit value
+                                           TessInfo(iTess).DataAlpha,...                  % Data: transparency
+                                           sColormap);                                    % Colormap
         % Edge display : on/off
         if ~TessInfo(iTess).SurfShowEdges
             EdgeColor = 'none';

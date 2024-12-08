@@ -167,9 +167,6 @@ switch (DataType)
         iDS = bst_memory('GetDataSetSubject', sSubject.FileName, 1);
 end
 
-if isempty(iDS)
-    return;
-end
 
 %% ===== MODALITY =====
 if isempty(Modality)
