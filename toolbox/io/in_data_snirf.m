@@ -257,7 +257,7 @@ function [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
-    ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+    ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
     
     % Get number of channels
     nChannels = size(jnirs.nirs.data.measurementList, 2);
@@ -268,13 +268,13 @@ function [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,
         % This assume measure are raw; need to change for Hbo,HbR,HbT
         channel = jnirs.nirs.data.measurementList(iChan);
         if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex))); 
         else
     
             ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                                  jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                                 jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
-            ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                                                                 round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+            ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
     
         end
         ChannelMat.Channel(iChan).Type = 'NIRS';
@@ -292,7 +292,7 @@ function [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
-    ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+    ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
     
     measurementLists = jnirs.nirs.data.measurementLists;
 
@@ -304,13 +304,13 @@ function [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos
     for iChan = 1:nChannels
         % This assume measure are raw; need to change for Hbo,HbR,HbT
         if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(measurementLists.sourceIndex(iChan), measurementLists.detectorIndex(iChan), jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan))); 
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(measurementLists.sourceIndex(iChan), measurementLists.detectorIndex(iChan), round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)))); 
         else
     
             ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(measurementLists.sourceIndex(iChan)), ...
                                                                  jnirs.nirs.probe.detectorLabels(measurementLists.detectorIndex(iChan)), ...
-                                                                 jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
-            ChannelMat.Channel(iChan).Group = sprintf('WL%d', jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+                                                                 round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan))));
+            ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan))));
     
         end
         ChannelMat.Channel(iChan).Type = 'NIRS';
