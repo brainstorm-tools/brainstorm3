@@ -350,7 +350,8 @@ function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_
 
     % Get number of channels
     nChannels = length(measurementLists.dataType);
-    
+    good_channel = true(1,nChannels);
+
     
     % NIRS channels
     for iChan = 1:nChannels
