@@ -83,12 +83,17 @@ det_pos = scale .* det_pos;
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
-    [ChannelMat,good_channel, nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
+    [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
 elseif isfield(jnirs.nirs.data, 'measurementList')
-    [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+    [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
 else
     error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
 end
+
+% Select the good channels 
+nChannels           = sum(good_channel);
+ChannelMat.Channel  = ChannelMat.Channel(good_channel);
+
 
 % AUX channels
 if isfield(jnirs.nirs,'aux')
@@ -178,16 +183,16 @@ DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = 'Unknown';
 
-if(size(jnirs.nirs.data.dataTimeSeries,1) == nChannels)
+if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
     DataMat.F = jnirs.nirs.data.dataTimeSeries;
 else
-   DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
+    DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
 end   
-
+DataMat.F   = DataMat.F(good_channel, :);
 
 for i_aux= 1:length(aux_index)
     if aux_index(i_aux)
-        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1)==1
+        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
             DataMat.F = [DataMat.F ; ...
                      jnirs.nirs.aux(i_aux).dataTimeSeries]; 
         else
@@ -253,7 +258,7 @@ for iEvt = 1:length(jnirs.nirs.stim)
 end   
 end
 
-function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
     ChannelMat = db_template('channelmat');
@@ -332,7 +337,7 @@ function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList
 
 end
 
-function [ChannelMat,good_channel, nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
+function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
