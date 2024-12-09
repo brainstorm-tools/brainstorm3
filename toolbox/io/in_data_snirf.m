@@ -254,11 +254,15 @@ end
 end
 
 function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+    
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
-    ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
-    
+
+    if isfield(jnirs.nirs.probe, 'wavelengths') && ~isempty(jnirs.nirs.probe.wavelengths)
+        ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
+    end
+
     % Get number of channels
     nChannels    = size(jnirs.nirs.data.measurementList, 2);
     good_channel = true(1,nChannels);
@@ -269,7 +273,10 @@ function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList
         channel = jnirs.nirs.data.measurementList(iChan);
 
         % Check data type for the channel 
-        if channel.dataType > 1 &&  channel.dataType < 99999
+        if channel.dataType == 1
+            measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+            measure_label = sprintf('WL%d', measure);
+        elseif channel.dataType > 1 &&  channel.dataType < 99999
             warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
             good_channel(iChan) = false;
             continue;
@@ -282,22 +289,39 @@ function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList
                 warning('%s is not yet supported by NIRSTORM.', channel.dataTypeLabel)
                 good_channel(iChan) = false;
                 continue;
+            else
+                switch(channel.dataTypeLabel)
+                    case {'dOD','HRF dOD'}
+                        measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                        measure_label = sprintf('WL%d', measure);
+                    case {'HbO','HRF HbO'}
+                        measure = 'HbO';
+                        measure_label = measure;
+                    case {'HbR','HRF HbR'}
+                        measure = 'HbR';
+                        measure_label  = measure;
+                    case {'HbT','HRF HbT'}
+                        measure = 'HbT';
+                        measure_label  = measure;
+                end
             end
         end
 
 
         if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex))); 
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, measure); 
         else
     
-            ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
-                                                                 jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                                 round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
-            ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+            ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
+                                                               jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
+                                                               measure_label);
+            ChannelMat.Channel(iChan).Group = measure_label;
     
         end
+
         ChannelMat.Channel(iChan).Type = 'NIRS';
         ChannelMat.Channel(iChan).Weight = 1;
+
         if ~isempty(src_pos) && ~isempty(det_pos)
             ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
             ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
