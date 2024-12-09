@@ -8,3 +8,5 @@ defaults/anatomy/*
 bin/*/brainstorm3.jar
 # macOS desktop service store files
 .DS_Store
+
+*.log
