@@ -37,7 +37,11 @@ end
 jnirs = loadsnirf(DataFile);
 
 if isempty(jnirs) || ~isfield(jnirs, 'nirs')
-    error('The file doesnt seems to be a valid SNIRF file')
+    error('The file doesnt seems to be a valid SNIRF file');
+end
+
+if length(jnirs.nirs) > 1 ||  length(jnirs.nirs.data) > 1
+    error('Brainstorm doesnt support SNIRF file with multiple data block');
 end
 
 if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
