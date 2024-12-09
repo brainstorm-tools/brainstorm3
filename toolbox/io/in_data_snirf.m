@@ -113,22 +113,24 @@ aux_index   = false(1,nAux);
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
-        && ( length(jnirs.nirs.data.time) ~= length(jnirs.nirs.aux(iAux).time) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
+        && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
+        && isequal(jnirs.nirs.data.time, jnirs.nirs.aux(iAux).time) ...
+        && ( ~isfield(jnirs.nirs.aux(iAux), timeOffset) ||  jnirs.nirs.aux(iAux).timeOffset == 0)
+        
+            channel = jnirs.nirs.aux(iAux);
+            ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
+            ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
+            
+            aux_index(iAux) = true;
+            k_aux = k_aux + 1;
+
+     else 
     
         warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
         continue;
 
-        % If needed, following code should work :) 
-        % interp1(jnirs.nirs.aux(iAux).time, jnirs.nirs.aux(iAux).dataTimeSeries, jnirs.nirs.data.time); 
-        
      end
      
-    channel = jnirs.nirs.aux(iAux);
-    ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
-    ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
-    
-    aux_index(iAux) = true;
-    k_aux = k_aux + 1;
 end
 nAux = k_aux - 1;
 
