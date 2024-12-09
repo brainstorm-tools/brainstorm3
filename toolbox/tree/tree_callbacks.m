@@ -1025,7 +1025,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Load SSP projectors', IconLoader.ICON_CONDITION, [], @(h,ev)LoadSSP(filenameFull));
                     end
                     % === COMPUTE HEAD MODEL ===
-                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'NIRS'}))
+                    if ~bst_get('ReadOnly')
                         fcnPopupComputeHeadmodel();
                     end
 
