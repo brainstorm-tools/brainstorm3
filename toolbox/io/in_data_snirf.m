@@ -358,7 +358,7 @@ function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_
 
         % Check data type for the channel 
         if measurementLists.dataType(iChan) == 1
-            measure = round(nirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+            measure = round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
             measure_label = sprintf('WL%d', measure);
         elseif measurementLists.dataType(iChan) > 1 &&  measurementLists.dataType(iChan) < 99999
             warning('Unsuported channel %d (channel type %d)', iChan, measurementLists.dataType(iChan))
