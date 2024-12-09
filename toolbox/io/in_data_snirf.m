@@ -203,10 +203,7 @@ end
 % Select supported channels
 DataMat.F   = DataMat.F(good_channel, :);
 
-
-
-
-
+% Add auxilary data
 for i_aux= 1:length(aux_index)
     if aux_index(i_aux)
         if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
@@ -219,14 +216,10 @@ for i_aux= 1:length(aux_index)
     end
 end
 
-
-
 DataMat.Time        = jnirs.nirs.data.time;
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
-
 %% ===== EVENTS =====
-
 % Read events (SNIRF created by Homer3)
 if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
     nirs_fields = fieldnames(jnirs.nirs);
