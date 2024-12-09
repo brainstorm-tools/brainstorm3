@@ -188,7 +188,20 @@ if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
 else
     DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
 end   
+
+% Add offset to the data 
+if isfield(jnirs.nirs.data,'dataOffset') && ~isempty(jnirs.nirs.data.dataOffset) && length(jnirs.nirs.data.dataOffset) ==  length(good_channel)
+    for iChan = 1:length(good_channel)
+        DataMat.F(iChan,:) = DataMat.F(iChan,:) + jnirs.nirs.data.dataOffset(iChan);
+    end
+end
+
+% Select supported channels
 DataMat.F   = DataMat.F(good_channel, :);
+
+
+
+
 
 for i_aux= 1:length(aux_index)
     if aux_index(i_aux)
