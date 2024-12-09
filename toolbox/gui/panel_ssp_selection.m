@@ -798,7 +798,8 @@ function SaveFigureAsSsp(hFig, UseDirectly) %#ok<DEFNU>
     Components = Components ./ sqrt(sum(Components .^2));
     % Build projector structure
     sProj = db_template('projector');
-    sProj.Comment    = sprintf( '%s: %s (%0.3fs)', Modality, FileName, GlobalData.UserTimeWindow.CurrentTime);
+    sProj.Method     = 'SSP_pca';
+    sProj.Comment    = sprintf( 'SSP_pca: %s: %s (%0.3fs)', Modality, FileName, GlobalData.UserTimeWindow.CurrentTime);
     sProj.Components = Components;
     sProj.CompMask   = 1;
     sProj.Status     = 1;
