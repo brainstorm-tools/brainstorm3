@@ -85,7 +85,7 @@ det_pos = scale .* det_pos;
 if isfield(jnirs.nirs.data, 'measurementLists')
     [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
 elseif isfield(jnirs.nirs.data, 'measurementList')
-    [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+    [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
 else
     error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
 end
@@ -253,20 +253,39 @@ for iEvt = 1:length(jnirs.nirs.stim)
 end   
 end
 
-function [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+function [ChannelMat, good_channel, nChannels] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
     ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
     
     % Get number of channels
-    nChannels = size(jnirs.nirs.data.measurementList, 2);
-    
+    nChannels    = size(jnirs.nirs.data.measurementList, 2);
+    good_channel = true(1,nChannels);
     
     % NIRS channels
     for iChan = 1:nChannels
         % This assume measure are raw; need to change for Hbo,HbR,HbT
         channel = jnirs.nirs.data.measurementList(iChan);
+
+        % Check data type for the channel 
+        if channel.dataType > 1 &&  channel.dataType < 99999
+            warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
+            good_channel(iChan) = false;
+            continue;
+        elseif channel.dataType  == 99999
+            if ~isfield(channel,'dataTypeLabel')
+                warning('Missing dataTypeLabel for channel %d')
+                good_channel(iChan) = false;
+                continue;
+            elseif ~any(strcmp(channel.dataTypeLabel, {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
+                warning('%s is not yet supported by NIRSTORM.', channel.dataTypeLabel)
+                good_channel(iChan) = false;
+                continue;
+            end
+        end
+
+
         if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
             [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex))); 
         else
@@ -286,6 +305,7 @@ function [ChannelMat,nChannels] = channelMat_from_measurementList(jnirs,src_pos,
             ChannelMat.Channel(iChan).Comment = [];
         end
     end
+
 end
 
 function [ChannelMat,nChannels] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
