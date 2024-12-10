@@ -235,54 +235,8 @@ end
 
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
+DataMat.Events      = readEvents(jnirs);
 
-%% ===== EVENTS =====
-% Read events (SNIRF created by Homer3)
-if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
-    nirs_fields = fieldnames(jnirs.nirs);
-    sim_key = nirs_fields(contains(fieldnames(jnirs.nirs),'stim'));
-    jnirs.nirs.stim  = jnirs.nirs.( sim_key{1});
-    for iStim = 2:length(sim_key)
-        jnirs.nirs.stim(iStim)  = jnirs.nirs.( sim_key{iStim});
-    end
-end
-
-DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
-for iEvt = 1:length(jnirs.nirs.stim)
-    
-    if iscell(jnirs.nirs.stim(iEvt))
-        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim{iEvt}.name)));
-    else
-        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
-    end
-    if ~isfield(jnirs.nirs.stim(iEvt), 'data') || isempty(jnirs.nirs.stim(iEvt).data) 
-            % Events structure
-        warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
-        continue
-    end    
-    % Get timing
-    nStimDataCols = 3; % [starttime duration value]
-    if isfield(jnirs.nirs.stim(iEvt), 'dataLabels')
-        nStimDataCols = length(jnirs.nirs.stim(iEvt).dataLabels);
-    end
-    % Transpose to match number of columns
-    if size(jnirs.nirs.stim(iEvt).data, 1) == nStimDataCols && diff(size(jnirs.nirs.stim(iEvt).data)) ~= 0
-        jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
-    end    
-    isExtended = ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
-    if isExtended
-        evtTime = [jnirs.nirs.stim(iEvt).data(:,1) ,  ...
-                   jnirs.nirs.stim(iEvt).data(:,1) + jnirs.nirs.stim(iEvt).data(:,2)]';
-    else
-        evtTime = jnirs.nirs.stim(iEvt).data(:,1)';
-    end
-
-    DataMat.Events(iEvt).times      = evtTime;
-    DataMat.Events(iEvt).epochs     = ones(1, size(evtTime,2));
-    DataMat.Events(iEvt).channels   = [];
-    DataMat.Events(iEvt).notes      = [];
-    DataMat.Events(iEvt).reactTimes = [];
-end   
 end
 
 function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
@@ -487,4 +441,58 @@ function timeVect = expendTime(time, nSample)
         timeVect = time;
     end
 
+end
+
+function Events = readEvents(jnirs)
+%% Read events from the nirs structure
+% Read events (SNIRF created by Homer3)
+
+    if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
+        nirs_fields = fieldnames(jnirs.nirs);
+        sim_key = nirs_fields(contains(fieldnames(jnirs.nirs),'stim'));
+        jnirs.nirs.stim  = jnirs.nirs.( sim_key{1});
+        for iStim = 2:length(sim_key)
+            jnirs.nirs.stim(iStim)  = jnirs.nirs.( sim_key{iStim});
+        end
+    end
+
+    Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
+    for iEvt = 1:length(jnirs.nirs.stim)
+        
+        if iscell(jnirs.nirs.stim(iEvt))
+            Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim{iEvt}.name)));
+        else
+            Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
+        end
+
+        if ~isfield(jnirs.nirs.stim(iEvt), 'data') || isempty(jnirs.nirs.stim(iEvt).data) 
+            % Events structure
+            warning(sprintf('No data found for event: %s',Events(iEvt).label))
+            continue
+        end    
+
+        % Get timing
+        nStimDataCols = 3; % [starttime duration value]
+        if isfield(jnirs.nirs.stim(iEvt), 'dataLabels')
+            nStimDataCols = length(jnirs.nirs.stim(iEvt).dataLabels);
+        end
+        % Transpose to match number of columns
+        if size(jnirs.nirs.stim(iEvt).data, 1) == nStimDataCols && diff(size(jnirs.nirs.stim(iEvt).data)) ~= 0
+            jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
+        end    
+
+        isExtended = ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
+        if isExtended
+            evtTime = [jnirs.nirs.stim(iEvt).data(:,1) ,  ...
+                       jnirs.nirs.stim(iEvt).data(:,1) + jnirs.nirs.stim(iEvt).data(:,2)]';
+        else
+            evtTime = jnirs.nirs.stim(iEvt).data(:,1)';
+        end
+        
+        Events(iEvt).times      = evtTime;
+        Events(iEvt).epochs     = ones(1, size(evtTime,2));
+        Events(iEvt).channels   = [];
+        Events(iEvt).notes      = [];
+        Events(iEvt).reactTimes = [];
+    end   
 end
