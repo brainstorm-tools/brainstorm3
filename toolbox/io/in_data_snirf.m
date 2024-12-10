@@ -51,39 +51,12 @@ if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detec
 end
 
 %% ===== CHANNEL FILE ====
-% Get scaling units
+
+% Get length scaling units
 scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
-% Get 3D positions
-if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
-    
-    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
-    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
 
-elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
-    
-    src_pos = toColumn(jnirs.nirs.probe.sourcePos, jnirs.nirs.probe.sourceLabels);  
-    det_pos = toColumn(jnirs.nirs.probe.detectorPos, jnirs.nirs.probe.detectorLabels);
-
-    % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
-    if ~isempty(src_pos) && all(src_pos(:,3)==0) && all(det_pos(:,3)==0)
-        src_pos(:,3) = 1;
-        det_pos(:,3) = 1;
-    end
-elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
-    
-    src_pos = toColumn(jnirs.nirs.probe.sourcePos2D, jnirs.nirs.probe.sourceLabels); 
-    det_pos = toColumn(jnirs.nirs.probe.detectorPos2D, jnirs.nirs.probe.detectorLabels);
-    
-    src_pos(:,3) = 1;
-    det_pos(:,3) = 1;
-else
-    src_pos = [];
-    det_pos = [];
-end
-
-% Apply units
-src_pos = scale .* src_pos;
-det_pos = scale .* det_pos;
+% Read optodes positions
+[src_pos, det_pos] = getOptodesPosition(jnirs, scale);
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
@@ -161,38 +134,8 @@ for iChan = 1:length(ChannelMat.Channel)
     ChannelMat.Channel(iChan).Name = file_unique(ChannelMat.Channel(iChan).Name, {ChannelMat.Channel(iOther).Name});
 end
 
-% Anatomical landmarks
-if isfield(jnirs.nirs.probe, 'landmarkLabels')
-    if isfield(jnirs.nirs.probe, 'landmarkPos') && ~isfield(jnirs.nirs.probe, 'landmarkPos3D')
-        jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos;
-    end
-
-    jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
-
-    for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
-        name = clean_str(jnirs.nirs.probe.landmarkLabels{iLandmark});
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
-
-        % Fiducials NAS/LPA/RPA
-        switch lower(name)
-            case {'nasion','nas','nz'}
-                ChannelMat.SCS.NAS = coord;
-                ltype = 'CARDINAL';
-            case {'leftear', 'lpa'}
-                ChannelMat.SCS.LPA = coord;
-                ltype = 'CARDINAL';
-            case {'rightear','rpa'}
-                ChannelMat.SCS.RPA = coord;
-                ltype = 'CARDINAL';
-            otherwise
-                ltype = 'EXTRA';
-        end
-        % Add head point
-        ChannelMat.HeadPoints.Loc(:, end+1) = coord';
-        ChannelMat.HeadPoints.Label{end+1}  = name;
-        ChannelMat.HeadPoints.Type{end+1}   = ltype;
-    end           
-end    
+% Add fiducials and head point to ChannelMat
+ChannelMat = updateLandmark(jnirs, scale, ChannelMat);
 
 
 %% ===== DATA =====
@@ -265,8 +208,8 @@ function Device      = readDeviceName(metaDataTags)
     else
         Device = 'Unknown';
     end
-
 end
+
 function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
     
     DateOfStudy = [];
@@ -573,4 +516,75 @@ end
 
 function str = clean_str(str)
     str = strtrim(str_remove_spec_chars(toLine(str)));
+end
+
+function [jnirs, ChannelMat] = updateLandmark(jnirs, scale, ChannelMat)
+% Anatomical landmarks
+    if isfield(jnirs.nirs.probe, 'landmarkLabels')
+        if isfield(jnirs.nirs.probe, 'landmarkPos') && ~isfield(jnirs.nirs.probe, 'landmarkPos3D')
+            jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos;
+        end
+        
+        jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
+        
+        for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
+            name = clean_str(jnirs.nirs.probe.landmarkLabels{iLandmark});
+            coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
+            
+            % Fiducials NAS/LPA/RPA
+            switch lower(name)
+                case {'nasion','nas','nz'}
+                    ChannelMat.SCS.NAS = coord;
+                    ltype = 'CARDINAL';
+                case {'leftear', 'lpa'}
+                    ChannelMat.SCS.LPA = coord;
+                    ltype = 'CARDINAL';
+                case {'rightear','rpa'}
+                    ChannelMat.SCS.RPA = coord;
+                    ltype = 'CARDINAL';
+                otherwise
+                    ltype = 'EXTRA';
+            end
+
+            % Add head point
+            ChannelMat.HeadPoints.Loc(:, end+1) = coord';
+            ChannelMat.HeadPoints.Label{end+1}  = name;
+            ChannelMat.HeadPoints.Type{end+1}   = ltype;
+        end           
+    end    
+end
+
+function [src_pos, det_pos] = getOptodesPosition(jnirs, scale)
+
+    % Get 3D positions
+    if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
+        
+        src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
+        det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
+        
+    elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
+        
+        src_pos = toColumn(jnirs.nirs.probe.sourcePos, jnirs.nirs.probe.sourceLabels);  
+        det_pos = toColumn(jnirs.nirs.probe.detectorPos, jnirs.nirs.probe.detectorLabels);
+        
+        % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
+        if ~isempty(src_pos) && all(src_pos(:,3)==0) && all(det_pos(:,3)==0)
+            src_pos(:,3) = 1;
+            det_pos(:,3) = 1;
+        end
+    elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
+        
+        src_pos = toColumn(jnirs.nirs.probe.sourcePos2D, jnirs.nirs.probe.sourceLabels); 
+        det_pos = toColumn(jnirs.nirs.probe.detectorPos2D, jnirs.nirs.probe.detectorLabels);
+        
+        src_pos(:,3) = 1;
+        det_pos(:,3) = 1;
+    else
+        src_pos = [];
+        det_pos = [];
+    end
+    
+    % Apply units
+    src_pos = scale .* src_pos;
+    det_pos = scale .* det_pos;
 end
