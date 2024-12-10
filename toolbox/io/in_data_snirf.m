@@ -351,6 +351,7 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
             ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                                jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
                                                                measure_label);
+            ChannelMat.Channel(iChan).Name = TxRxtoSD(ChannelMat.Channel(iChan).Name);
             ChannelMat.Channel(iChan).Group = measure_label;
     
         end
@@ -443,6 +444,8 @@ function [ChannelMat,good_channel,channel_type, factor] = channelMat_from_measur
             ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(measurementLists.sourceIndex(iChan)), ...
                                                                jnirs.nirs.probe.detectorLabels(measurementLists.detectorIndex(iChan)), ...
                                                                measure_label);
+
+            ChannelMat.Channel(iChan).Name = TxRxtoSD(ChannelMat.Channel(iChan).Name);
             ChannelMat.Channel(iChan).Group = measure_label;
     
         end
@@ -478,6 +481,12 @@ function vect = toLine(vect)
     if size(vect,1) >= size(vect,2)
         vect = vect';
     end
+end
+
+function channel_name = TxRxtoSD(channel_name)
+% Convert channel names from Tx1Rx1WL760 to S1D1WL760
+    channel_name = strrep(channel_name, 'Tx','S');
+    channel_name = strrep(channel_name, 'Rx','D');
 end
 
 
