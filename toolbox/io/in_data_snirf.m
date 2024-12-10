@@ -37,7 +37,11 @@ end
 jnirs = loadsnirf(DataFile);
 
 if isempty(jnirs) || ~isfield(jnirs, 'nirs')
-    error('The file doesnt seems to be a valid SNIRF file')
+    error('The file doesnt seems to be a valid SNIRF file');
+end
+
+if length(jnirs.nirs) > 1 ||  length(jnirs.nirs.data) > 1
+    error('Brainstorm doesnt support SNIRF file with multiple data block');
 end
 
 if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
@@ -81,66 +85,59 @@ end
 src_pos = scale .* src_pos;
 det_pos = scale .* det_pos;
 
-% Get number of channels
-nChannels = size(jnirs.nirs.data.measurementList, 2);
+% Create channel file structure
+if isfield(jnirs.nirs.data, 'measurementLists')
+    [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
+elseif isfield(jnirs.nirs.data, 'measurementList')
+    [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+else
+    error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
+end
 
+% Select the good channels 
+nChannels           = sum(good_channel);
+ChannelMat.Channel  = ChannelMat.Channel(good_channel);
+
+% Determine the number of time sample
+if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
+    nSample = size(jnirs.nirs.data.dataTimeSeries,2);
+else
+    nSample = size(jnirs.nirs.data.dataTimeSeries,1);
+end   
+
+
+% AUX channels
 if isfield(jnirs.nirs,'aux')
     nAux = length(jnirs.nirs.aux);
 else
     nAux = 0;
 end
 
-% Create channel file structure
-ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'NIRS-BRS channels';
-ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
 
-% NIRS channels
-for iChan = 1:nChannels
-    % This assume measure are raw; need to change for Hbo,HbR,HbT
-    channel = jnirs.nirs.data.measurementList(iChan);
-    if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-        [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
-    else
+k_aux       =  1;
+aux_index   = false(1,nAux);
 
-        ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
-                                                             jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
-                                                       round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
-        ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
-
-    end
-    ChannelMat.Channel(iChan).Type = 'NIRS';
-    ChannelMat.Channel(iChan).Weight = 1;
-    if ~isempty(src_pos) && ~isempty(det_pos)
-        ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
-        ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
-        ChannelMat.Channel(iChan).Orient  = [];
-        ChannelMat.Channel(iChan).Comment = [];
-    end
-end
-
-% AUX channels
-k_aux =  1;
-aux_index = false(1,nAux);
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
-        && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
+        && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
+        && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
+        && ( ~isfield(jnirs.nirs.aux(iAux), timeOffset) ||  jnirs.nirs.aux(iAux).timeOffset == 0)
+        
+            channel = jnirs.nirs.aux(iAux);
+            ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
+            ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
+            
+            aux_index(iAux) = true;
+            k_aux = k_aux + 1;
+
+     else 
     
         warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
         continue;
 
-        % If needed, following code should work :) 
-        % interp1(jnirs.nirs.aux(iAux).time, jnirs.nirs.aux(iAux).dataTimeSeries, jnirs.nirs.data.time); 
-        
      end
      
-    channel = jnirs.nirs.aux(iAux);
-    ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
-    ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
-    
-    aux_index(iAux) = true;
-    k_aux = k_aux + 1;
 end
 nAux = k_aux - 1;
 
@@ -199,16 +196,26 @@ DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = 'Unknown';
 
-if(size(jnirs.nirs.data.dataTimeSeries,1) == nChannels)
+if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
     DataMat.F = jnirs.nirs.data.dataTimeSeries;
 else
-   DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
+    DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
 end   
 
+% Add offset to the data 
+if isfield(jnirs.nirs.data,'dataOffset') && ~isempty(jnirs.nirs.data.dataOffset) && length(jnirs.nirs.data.dataOffset) ==  length(good_channel)
+    for iChan = 1:length(good_channel)
+        DataMat.F(iChan,:) = DataMat.F(iChan,:) + jnirs.nirs.data.dataOffset(iChan);
+    end
+end
 
+% Select supported channels
+DataMat.F   = DataMat.F(good_channel, :);
+
+% Add auxilary data
 for i_aux= 1:length(aux_index)
     if aux_index(i_aux)
-        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1)==1
+        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
             DataMat.F = [DataMat.F ; ...
                      jnirs.nirs.aux(i_aux).dataTimeSeries]; 
         else
@@ -218,14 +225,10 @@ for i_aux= 1:length(aux_index)
     end
 end
 
-
-
-DataMat.Time        = jnirs.nirs.data.time;
+DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
-
 %% ===== EVENTS =====
-
 % Read events (SNIRF created by Homer3)
 if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
     nirs_fields = fieldnames(jnirs.nirs);
@@ -274,6 +277,163 @@ for iEvt = 1:length(jnirs.nirs.stim)
 end   
 end
 
+function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+    
+    % Create channel file structure
+    ChannelMat = db_template('channelmat');
+    ChannelMat.Comment = 'NIRS-BRS channels';
+
+    if isfield(jnirs.nirs.probe, 'wavelengths') && ~isempty(jnirs.nirs.probe.wavelengths)
+        ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
+    end
+
+    % Get number of channels
+    nChannels    = size(jnirs.nirs.data.measurementList, 2);
+    good_channel = true(1,nChannels);
+    
+    % NIRS channels
+    for iChan = 1:nChannels
+        % This assume measure are raw; need to change for Hbo,HbR,HbT
+        channel = jnirs.nirs.data.measurementList(iChan);
+
+        % Check data type for the channel 
+        if channel.dataType == 1
+            measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+            measure_label = sprintf('WL%d', measure);
+        elseif channel.dataType > 1 &&  channel.dataType < 99999
+            warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
+            good_channel(iChan) = false;
+            continue;
+        elseif channel.dataType  == 99999
+            if ~isfield(channel,'dataTypeLabel')
+                warning('Missing dataTypeLabel for channel %d')
+                good_channel(iChan) = false;
+                continue;
+            elseif ~any(strcmp(channel.dataTypeLabel, {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
+                warning('%s is not yet supported by NIRSTORM.', channel.dataTypeLabel)
+                good_channel(iChan) = false;
+                continue;
+            else
+                switch(channel.dataTypeLabel)
+                    case {'dOD','HRF dOD'}
+                        measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                        measure_label = sprintf('WL%d', measure);
+                    case {'HbO','HRF HbO'}
+                        measure = 'HbO';
+                        measure_label = measure;
+                    case {'HbR','HRF HbR'}
+                        measure = 'HbR';
+                        measure_label  = measure;
+                    case {'HbT','HRF HbT'}
+                        measure = 'HbT';
+                        measure_label  = measure;
+                end
+            end
+        end
+
+
+        if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, measure); 
+        else
+    
+            ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
+                                                               jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
+                                                               measure_label);
+            ChannelMat.Channel(iChan).Group = measure_label;
+    
+        end
+
+        ChannelMat.Channel(iChan).Type = 'NIRS';
+        ChannelMat.Channel(iChan).Weight = 1;
+
+        if ~isempty(src_pos) && ~isempty(det_pos)
+            ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
+            ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
+            ChannelMat.Channel(iChan).Orient  = [];
+            ChannelMat.Channel(iChan).Comment = [];
+        end
+    end
+
+end
+
+function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
+    % Create channel file structure
+    ChannelMat = db_template('channelmat');
+    ChannelMat.Comment = 'NIRS-BRS channels';
+    
+    if isfield(jnirs.nirs.probe, 'wavelengths') && ~isempty(jnirs.nirs.probe.wavelengths)
+        ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
+    end
+
+    measurementLists = jnirs.nirs.data.measurementLists;
+
+    % Get number of channels
+    nChannels = length(measurementLists.dataType);
+    good_channel = true(1,nChannels);
+
+    
+    % NIRS channels
+    for iChan = 1:nChannels
+
+        % Check data type for the channel 
+        if measurementLists.dataType(iChan) == 1
+            measure = round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+            measure_label = sprintf('WL%d', measure);
+        elseif measurementLists.dataType(iChan) > 1 &&  measurementLists.dataType(iChan) < 99999
+            warning('Unsuported channel %d (channel type %d)', iChan, measurementLists.dataType(iChan))
+            good_channel(iChan) = false;
+            continue;
+        elseif measurementLists.dataType(iChan)  == 99999
+            if ~isfield(channel,'dataTypeLabel')
+                warning('Missing dataTypeLabel for channel %d')
+                good_channel(iChan) = false;
+                continue;
+            elseif ~any(strcmp(measurementLists.dataTypeLabel(iChan), {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
+                warning('%s is not yet supported by NIRSTORM.', measurementLists.dataTypeLabel(iChan))
+                good_channel(iChan) = false;
+                continue;
+            else
+                switch(measurementLists.dataTypeLabel(iChan))
+                    case {'dOD','HRF dOD'}
+                        measure = round(nirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
+                        measure_label = sprintf('WL%d', measure);
+                    case {'HbO','HRF HbO'}
+                        measure = 'HbO';
+                        measure_label = measure;
+                    case {'HbR','HRF HbR'}
+                        measure = 'HbR';
+                        measure_label  = measure;
+                    case {'HbT','HRF HbT'}
+                        measure = 'HbT';
+                        measure_label  = measure;
+                end
+            end
+        end
+
+
+        % This assume measure are raw; need to change for Hbo,HbR,HbT
+        if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(measurementLists.sourceIndex(iChan), measurementLists.detectorIndex(iChan), measure); 
+        else
+    
+            ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(measurementLists.sourceIndex(iChan)), ...
+                                                               jnirs.nirs.probe.detectorLabels(measurementLists.detectorIndex(iChan)), ...
+                                                               measure_label);
+            ChannelMat.Channel(iChan).Group = measure_label;
+    
+        end
+
+        ChannelMat.Channel(iChan).Type = 'NIRS';
+        ChannelMat.Channel(iChan).Weight = 1;
+        if ~isempty(src_pos) && ~isempty(det_pos)
+            ChannelMat.Channel(iChan).Loc(:,1) = src_pos(measurementLists.sourceIndex(iChan), :);
+            ChannelMat.Channel(iChan).Loc(:,2) = det_pos(measurementLists.detectorIndex(iChan), :);
+            ChannelMat.Channel(iChan).Orient  = [];
+            ChannelMat.Channel(iChan).Comment = [];
+        end
+    end
+end
+
 function vect = toColumn(vect, exp_size)
     if ~isempty(exp_size)
         if size(vect,1) ~= length(exp_size)
@@ -290,4 +450,20 @@ function vect = toLine(vect)
     if size(vect,1) >= size(vect,2)
         vect = vect';
     end
+end
+
+
+function timeVect = expendTime(time, nSample)
+% Expand the time vector. 
+% If length(time) == 2, time contains the start and step size
+% Otherwise, it contains the full time definition
+% The case where nSample = 2 is a bit weird and is considererd to be 
+% start + step size
+
+    if length(time) == 2
+        timeVect = time(1):time(2):(nSample-1)*time(2);
+    else
+        timeVect = time;
+    end
+
 end
