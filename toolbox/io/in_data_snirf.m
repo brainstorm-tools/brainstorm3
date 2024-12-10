@@ -95,11 +95,12 @@ else
 end
 
 
-if ~any(good_channel) == 0 
+if ~any(good_channel) 
     error('No supported channel found in the file')
 elseif length(unique(channel_type(good_channel))) >= 2  
     error('Multiple data type detected in the same file (%s)', strjoin(unique(channel_type(good_channel)), ', '))
-
+else
+    channel_type = unique(channel_type(good_channel));
 end
 
 % Select the good channels 
@@ -237,8 +238,13 @@ DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 DataMat.Events      = readEvents(jnirs);
 
+if strcmp(channel_type,'dOD')
+    DataMat.DisplayUnits = 'delta OD';
+elseif strcmp(channel_type,'dHb')
+    DataMat.DisplayUnits = 'mol.l-1';
 end
 
+end
 function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
