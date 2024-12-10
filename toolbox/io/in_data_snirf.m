@@ -87,9 +87,9 @@ det_pos = scale .* det_pos;
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
-    [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
+    [ChannelMat,good_channel,channel_type, data_scale] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
 elseif isfield(jnirs.nirs.data, 'measurementList')
-    [ChannelMat, good_channel,channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+    [ChannelMat, good_channel,channel_type, data_scale] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
 else
     error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
 end
@@ -218,6 +218,11 @@ if isfield(jnirs.nirs.data,'dataOffset') && ~isempty(jnirs.nirs.data.dataOffset)
     end
 end
 
+% Apply data unit
+for iChan = 1:length(good_channel)
+    DataMat.F(iChan,:) = data_scale(iChan) * DataMat.F(iChan,:);
+end
+
 % Select supported channels
 DataMat.F   = DataMat.F(good_channel, :);
 
@@ -245,7 +250,7 @@ elseif strcmp(channel_type,'dHb')
 end
 
 end
-function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
     ChannelMat = db_template('channelmat');
@@ -259,6 +264,7 @@ function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementL
     nChannels    = size(jnirs.nirs.data.measurementList, 2);
     good_channel = true(1,nChannels);
     channel_type = cell(1,nChannels);
+    factor       = ones(1, nChannels);
 
     % NIRS channels
     for iChan = 1:nChannels
@@ -327,11 +333,16 @@ function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementL
             ChannelMat.Channel(iChan).Orient  = [];
             ChannelMat.Channel(iChan).Comment = [];
         end
+
+        if isfield(channel, 'dataUnit') && ~isempty(channel.dataUnit)
+            factor(iChan) = findFactorFromUnit(channel.dataUnit,channel_type{iChan});
+        end
+       
     end
 
 end
 
-function [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
+function [ChannelMat,good_channel,channel_type, factor] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
@@ -346,6 +357,7 @@ function [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLis
     nChannels = length(measurementLists.dataType);
     good_channel = true(1,nChannels);
     channel_type = cell(1,nChannels);
+    factor       = ones(1, nChannels);
 
     
     % NIRS channels
@@ -411,6 +423,10 @@ function [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLis
             ChannelMat.Channel(iChan).Loc(:,2) = det_pos(measurementLists.detectorIndex(iChan), :);
             ChannelMat.Channel(iChan).Orient  = [];
             ChannelMat.Channel(iChan).Comment = [];
+        end
+
+        if isfield(measurementLists, 'dataUnit') && ~isempty(measurementLists.dataUnit(iChan))
+            factor(iChan) = findFactorFromUnit(measurementLists.dataUnit(iChan),channel_type{iChan});
         end
     end
 end
@@ -501,4 +517,11 @@ function Events = readEvents(jnirs)
         Events(iEvt).notes      = [];
         Events(iEvt).reactTimes = [];
     end   
+end
+
+function factor = findFactorFromUnit(dataUnit,channel_type)
+    factor = 1;
+
+    warning('TODO: %s is not supported yet', dataUnit)
+
 end
