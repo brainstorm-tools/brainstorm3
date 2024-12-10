@@ -131,7 +131,7 @@ for iAux = 1:nAux
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
         && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
         && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
-        && ( ~isfield(jnirs.nirs.aux(iAux), timeOffset) ||  jnirs.nirs.aux(iAux).timeOffset == 0)
+        && ( ~isfield(jnirs.nirs.aux(iAux), 'timeOffset') ||  jnirs.nirs.aux(iAux).timeOffset == 0)
         
             channel = jnirs.nirs.aux(iAux);
             ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
@@ -277,7 +277,7 @@ function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
     end
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
-        TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime),'InputFormat','hh:mm:ss');
+        TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
     end
 
 end 
@@ -500,12 +500,17 @@ function Events = readEvents(jnirs)
 %% Read events from the nirs structure
 % Read events (SNIRF created by Homer3)
 
-    if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
-        nirs_fields = fieldnames(jnirs.nirs);
-        sim_key = nirs_fields(contains(fieldnames(jnirs.nirs),'stim'));
-        jnirs.nirs.stim  = jnirs.nirs.( sim_key{1});
-        for iStim = 2:length(sim_key)
-            jnirs.nirs.stim(iStim)  = jnirs.nirs.( sim_key{iStim});
+    if ~isfield(jnirs.nirs,'stim')
+        if any(contains(fieldnames(jnirs.nirs),'stim'))
+            nirs_fields = fieldnames(jnirs.nirs);
+            sim_key = nirs_fields(contains(fieldnames(jnirs.nirs),'stim'));
+            jnirs.nirs.stim  = jnirs.nirs.( sim_key{1});
+            for iStim = 2:length(sim_key)
+                jnirs.nirs.stim(iStim)  = jnirs.nirs.( sim_key{iStim});
+            end
+        else
+            Events = repmat(db_template('event'), 1, 0);
+            return
         end
     end
 
