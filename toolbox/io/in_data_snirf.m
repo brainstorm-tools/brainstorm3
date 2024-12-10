@@ -98,6 +98,13 @@ end
 nChannels           = sum(good_channel);
 ChannelMat.Channel  = ChannelMat.Channel(good_channel);
 
+% Determine the number of time sample
+if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
+    nSample = size(jnirs.nirs.data.dataTimeSeries,2);
+else
+    nSample = size(jnirs.nirs.data.dataTimeSeries,1);
+end   
+
 
 % AUX channels
 if isfield(jnirs.nirs,'aux')
@@ -114,7 +121,7 @@ for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
         && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
-        && isequal(jnirs.nirs.data.time, jnirs.nirs.aux(iAux).time) ...
+        && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
         && ( ~isfield(jnirs.nirs.aux(iAux), timeOffset) ||  jnirs.nirs.aux(iAux).timeOffset == 0)
         
             channel = jnirs.nirs.aux(iAux);
@@ -218,7 +225,7 @@ for i_aux= 1:length(aux_index)
     end
 end
 
-DataMat.Time        = jnirs.nirs.data.time;
+DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
 %% ===== EVENTS =====
@@ -443,4 +450,20 @@ function vect = toLine(vect)
     if size(vect,1) >= size(vect,2)
         vect = vect';
     end
+end
+
+
+function timeVect = expendTime(time, nSample)
+% Expand the time vector. 
+% If length(time) == 2, time contains the start and step size
+% Otherwise, it contains the full time definition
+% The case where nSample = 2 is a bit weird and is considererd to be 
+% start + step size
+
+    if length(time) == 2
+        timeVect = time(1):time(2):(nSample-1)*time(2);
+    else
+        timeVect = time;
+    end
+
 end
