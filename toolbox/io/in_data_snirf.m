@@ -135,7 +135,7 @@ for iAux = 1:nAux
         
             channel = jnirs.nirs.aux(iAux);
             ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
-            ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
+            ChannelMat.Channel(nChannels+k_aux).Name = clean_str(channel.name);
             
             aux_index(iAux) = true;
             k_aux = k_aux + 1;
@@ -170,7 +170,7 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
     jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
-        name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
+        name = clean_str(jnirs.nirs.probe.landmarkLabels{iLandmark});
         coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
 
         % Fiducials NAS/LPA/RPA
@@ -317,12 +317,12 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
                 warning('Missing dataTypeLabel for channel %d')
                 good_channel(iChan) = false;
                 continue;
-            elseif ~any(strcmp(channel.dataTypeLabel, {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
-                warning('%s is not yet supported by NIRSTORM.', channel.dataTypeLabel)
+            elseif ~any(strcmp(clean_str(channel.dataTypeLabel), {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
+                warning('%s is not yet supported by NIRSTORM.', clean_str(channel.dataTypeLabel))
                 good_channel(iChan) = false;
                 continue;
             else
-                switch(channel.dataTypeLabel)
+                switch(clean_str(channel.dataTypeLabel))
                     case {'dOD','HRF dOD'}
                         measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
                         measure_label = sprintf('WL%d', measure);
@@ -408,12 +408,12 @@ function [ChannelMat,good_channel,channel_type, factor] = channelMat_from_measur
                 warning('Missing dataTypeLabel for channel %d')
                 good_channel(iChan) = false;
                 continue;
-            elseif ~any(strcmp(measurementLists.dataTypeLabel(iChan), {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
-                warning('%s is not yet supported by NIRSTORM.', measurementLists.dataTypeLabel(iChan))
+            elseif ~any(strcmp(clean_str(measurementLists.dataTypeLabel(iChan)), {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
+                warning('%s is not yet supported by NIRSTORM.', clean_str(measurementLists.dataTypeLabel(iChan)))
                 good_channel(iChan) = false;
                 continue;
             else
-                switch(measurementLists.dataTypeLabel(iChan))
+                switch(clean_str(measurementLists.dataTypeLabel(iChan)))
                     case {'dOD','HRF dOD'}
                         measure = round(nirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
                         measure_label = sprintf('WL%d', measure);
@@ -513,9 +513,9 @@ function Events = readEvents(jnirs)
     for iEvt = 1:length(jnirs.nirs.stim)
         
         if iscell(jnirs.nirs.stim(iEvt))
-            Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim{iEvt}.name)));
+            Events(iEvt).label      = clean_str(jnirs.nirs.stim{iEvt}.name);
         else
-            Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
+            Events(iEvt).label      = clean_str(jnirs.nirs.stim(iEvt).name);
         end
 
         if ~isfield(jnirs.nirs.stim(iEvt), 'data') || isempty(jnirs.nirs.stim(iEvt).data) 
@@ -555,4 +555,8 @@ function factor = findFactorFromUnit(dataUnit,channel_type)
 
     warning('TODO: %s is not supported yet', dataUnit)
 
+end
+
+function str = clean_str(str)
+    str = strtrim(str_remove_spec_chars(toLine(str)));
 end
