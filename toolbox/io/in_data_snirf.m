@@ -273,11 +273,11 @@ function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
     TimeOfStudy = [];
 
     if isfield(metaDataTags,'MeasurementDate') && ~isempty(metaDataTags.MeasurementDate)
-        DateOfStudy = datetime(metaDataTags.MeasurementDate,'InputFormat','yyyy-MM-dd');
+        DateOfStudy = datetime(toLine(metaDataTags.MeasurementDate),'InputFormat','yyyy-MM-dd');
     end
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
-        TimeOfStudy = duration(metaDataTags.MeasurementTime,'InputFormat','hh:mm:ss');
+        TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime),'InputFormat','hh:mm:ss');
     end
 
 end 
