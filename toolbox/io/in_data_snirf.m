@@ -87,11 +87,19 @@ det_pos = scale .* det_pos;
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
-    [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
+    [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
 elseif isfield(jnirs.nirs.data, 'measurementList')
-    [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
+    [ChannelMat, good_channel,channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
 else
     error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
+end
+
+
+if ~any(good_channel) == 0 
+    error('No supported channel found in the file')
+elseif length(unique(channel_type(good_channel))) >= 2  
+    error('Multiple data type detected in the same file (%s)', strjoin(unique(channel_type(good_channel)), ', '))
+
 end
 
 % Select the good channels 
@@ -277,7 +285,7 @@ for iEvt = 1:length(jnirs.nirs.stim)
 end   
 end
 
-function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
+function [ChannelMat, good_channel, channel_type] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
     ChannelMat = db_template('channelmat');
@@ -290,7 +298,8 @@ function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_
     % Get number of channels
     nChannels    = size(jnirs.nirs.data.measurementList, 2);
     good_channel = true(1,nChannels);
-    
+    channel_type = cell(1,nChannels);
+
     % NIRS channels
     for iChan = 1:nChannels
         % This assume measure are raw; need to change for Hbo,HbR,HbT
@@ -300,6 +309,8 @@ function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_
         if channel.dataType == 1
             measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
             measure_label = sprintf('WL%d', measure);
+            channel_type{iChan} = 'raw'; 
+
         elseif channel.dataType > 1 &&  channel.dataType < 99999
             warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
             good_channel(iChan) = false;
@@ -318,15 +329,19 @@ function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_
                     case {'dOD','HRF dOD'}
                         measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
                         measure_label = sprintf('WL%d', measure);
+                        channel_type{iChan} = 'dOD'; 
                     case {'HbO','HRF HbO'}
                         measure = 'HbO';
                         measure_label = measure;
+                        channel_type{iChan} = 'dHb'; 
                     case {'HbR','HRF HbR'}
                         measure = 'HbR';
                         measure_label  = measure;
+                        channel_type{iChan} = 'dHb'; 
                     case {'HbT','HRF HbT'}
                         measure = 'HbT';
                         measure_label  = measure;
+                        channel_type{iChan} = 'dHb'; 
                 end
             end
         end
@@ -356,7 +371,7 @@ function [ChannelMat, good_channel] = channelMat_from_measurementList(jnirs,src_
 
 end
 
-function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
+function [ChannelMat,good_channel,channel_type] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
     % Create channel file structure
     ChannelMat = db_template('channelmat');
     ChannelMat.Comment = 'NIRS-BRS channels';
@@ -370,6 +385,7 @@ function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_
     % Get number of channels
     nChannels = length(measurementLists.dataType);
     good_channel = true(1,nChannels);
+    channel_type = cell(1,nChannels);
 
     
     % NIRS channels
@@ -379,6 +395,7 @@ function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_
         if measurementLists.dataType(iChan) == 1
             measure = round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
             measure_label = sprintf('WL%d', measure);
+            channel_type{iChan} = 'raw'; 
         elseif measurementLists.dataType(iChan) > 1 &&  measurementLists.dataType(iChan) < 99999
             warning('Unsuported channel %d (channel type %d)', iChan, measurementLists.dataType(iChan))
             good_channel(iChan) = false;
@@ -397,15 +414,19 @@ function [ChannelMat,good_channel] = channelMat_from_measurementLists(jnirs,src_
                     case {'dOD','HRF dOD'}
                         measure = round(nirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
                         measure_label = sprintf('WL%d', measure);
+                        channel_type{iChan} = 'dOD'; 
                     case {'HbO','HRF HbO'}
                         measure = 'HbO';
                         measure_label = measure;
+                        channel_type{iChan} = 'dHb'; 
                     case {'HbR','HRF HbR'}
                         measure = 'HbR';
                         measure_label  = measure;
+                        channel_type{iChan} = 'dHb'; 
                     case {'HbT','HRF HbT'}
                         measure = 'HbT';
                         measure_label  = measure;
+                        channel_type{iChan} = 'dHb'; 
                 end
             end
         end
