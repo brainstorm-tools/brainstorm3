@@ -205,6 +205,11 @@ DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = readDeviceName(jnirs.nirs.metaDataTags);
 
+[DateOfStudy, TimeOfStudy] = readDateOfStudy(jnirs.nirs.metaDataTags);
+if ~isempty(DateOfStudy)
+    DataMat.DateOfStudy = DateOfStudy;
+end
+
 if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
     DataMat.F = jnirs.nirs.data.dataTimeSeries;
 else
@@ -262,7 +267,20 @@ function Device      = readDeviceName(metaDataTags)
     end
 
 end
+function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
+    
+    DateOfStudy = [];
+    TimeOfStudy = [];
 
+    if isfield(metaDataTags,'MeasurementDate') && ~isempty(metaDataTags.MeasurementDate)
+        DateOfStudy = datetime(metaDataTags.MeasurementDate,'InputFormat','yyyy-MM-dd');
+    end
+
+    if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
+        TimeOfStudy = duration(metaDataTags.MeasurementTime,'InputFormat','hh:mm:ss');
+    end
+
+end 
 function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
