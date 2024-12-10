@@ -203,7 +203,7 @@ DataMat = db_template('DataMat');
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
-DataMat.Device      = 'Unknown';
+DataMat.Device      = readDeviceName(jnirs.nirs.metaDataTags);
 
 if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
     DataMat.F = jnirs.nirs.data.dataTimeSeries;
@@ -250,6 +250,19 @@ elseif strcmp(channel_type,'dHb')
 end
 
 end
+
+function Device      = readDeviceName(metaDataTags)
+    
+    if isfield(metaDataTags, 'Model') && isfield(metaDataTags, 'ManufacturerName') 
+        Device = sprintf('%s (%s)',metaDataTags.Model, metaDataTags.ManufacturerName);
+    elseif isfield(metaDataTags, 'Model') 
+        Device = sprintf('%s',metaDataTags.Model);
+    else
+        Device = 'Unknown';
+    end
+
+end
+
 function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
     % Create channel file structure
