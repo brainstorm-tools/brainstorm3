@@ -95,54 +95,17 @@ ChannelMat              = updateLandmark(jnirs, scale, ChannelMat);
 
 
 %% ===== DATA =====
+
 % Initialize returned file structure                    
-DataMat = db_template('DataMat');
+DataMat             = db_template('DataMat');
 
 % Add information read from header
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = readDeviceName(jnirs.nirs.metaDataTags);
-
-[DateOfStudy, TimeOfStudy] = readDateOfStudy(jnirs.nirs.metaDataTags);
-if ~isempty(DateOfStudy)
-    DataMat.DateOfStudy = DateOfStudy;
-end
-
-if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
-    DataMat.F = jnirs.nirs.data.dataTimeSeries;
-else
-    DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
-end   
-
-% Add offset to the data 
-if isfield(jnirs.nirs.data,'dataOffset') && ~isempty(jnirs.nirs.data.dataOffset) && length(jnirs.nirs.data.dataOffset) ==  length(good_channel)
-    for iChan = 1:length(good_channel)
-        DataMat.F(iChan,:) = DataMat.F(iChan,:) + jnirs.nirs.data.dataOffset(iChan);
-    end
-end
-
-% Apply data unit
-for iChan = 1:length(good_channel)
-    DataMat.F(iChan,:) = data_scale(iChan) * DataMat.F(iChan,:);
-end
-
-% Select supported channels
-DataMat.F   = DataMat.F(good_channel, :);
-
-% Add auxilary data
-for i_aux = 1:length(good_aux)
-    if ~good_aux(i_aux)
-        continue;
-    end
-
-    if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
-        DataMat.F = [DataMat.F ; jnirs.nirs.aux(i_aux).dataTimeSeries]; 
-    else
-        DataMat.F = [DataMat.F ; jnirs.nirs.aux(i_aux).dataTimeSeries']; 
-    end    
-end
-
+[DataMat.DateOfStudy, TimeOfStudy] = readDateOfStudy(jnirs.nirs.metaDataTags);
+DataMat.F           = readData(jnirs, data_scale, good_channel, good_aux);
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 DataMat.Events      = readEvents(jnirs);
@@ -587,4 +550,42 @@ function ChannelMat = fixChannelNames(ChannelMat)
         iOther = setdiff(1:length(ChannelMat.Channel), iChan);
         ChannelMat.Channel(iChan).Name = file_unique(ChannelMat.Channel(iChan).Name, {ChannelMat.Channel(iOther).Name});
     end
+end
+
+function data = readData(jnirs, data_scale, good_channel, good_aux)
+
+    if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
+        data = jnirs.nirs.data.dataTimeSeries;
+    else
+        data  = jnirs.nirs.data.dataTimeSeries'; 
+    end   
+    
+    % Add offset to the data 
+    if isfield(jnirs.nirs.data,'dataOffset') && ~isempty(jnirs.nirs.data.dataOffset) && length(jnirs.nirs.data.dataOffset) ==  length(good_channel)
+        for iChan = 1:length(good_channel)
+            data(iChan,:) = data(iChan,:) + jnirs.nirs.data.dataOffset(iChan);
+        end
+    end
+    
+    % Apply data unit
+    for iChan = 1:length(good_channel)
+        data(iChan,:) = data_scale(iChan) * data(iChan,:);
+    end
+    
+    % Select supported channels
+    data   = data(good_channel, :);
+    
+    % Add auxilary data
+    for i_aux = 1:length(good_aux)
+        if ~good_aux(i_aux)
+            continue;
+        end
+        
+        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
+            data = [data ; jnirs.nirs.aux(i_aux).dataTimeSeries]; 
+        else
+            data = [data ; jnirs.nirs.aux(i_aux).dataTimeSeries']; 
+        end    
+    end
+
 end
