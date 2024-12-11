@@ -56,7 +56,7 @@ end
 scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 
 % Read optodes positions
-[src_pos, det_pos] = getOptodesPosition(jnirs, scale);
+[src_pos, det_pos, has3Dposition] = getOptodesPosition(jnirs, scale);
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
@@ -91,11 +91,16 @@ ChannelMat.Channel      = [ChannelMat.Channel(good_channel) ,  ChannelAux(good_a
 ChannelMat              = fixChannelNames(ChannelMat);
 
 % Add fiducials and head point to ChannelMat
-ChannelMat              = updateLandmark(jnirs, scale, ChannelMat);
+[ChannelMat, hasLandmark] = updateLandmark(jnirs, scale, ChannelMat);
 
 % Read coordinate system
-if isfield(jnirs.nirs.probe, 'coordinateSystem') && ~isempty(jnirs.nirs.probe.coordinateSystem)
+hasCoordinateSystem = isfield(jnirs.nirs.probe, 'coordinateSystem') && ~isempty(jnirs.nirs.probe.coordinateSystem);
+if hasCoordinateSystem
     warning('Todo: apply coordinate system');
+end
+
+if has3Dposition && ~( hasLandmark || hasCoordinateSystem)
+    warning('The file doesnt contains fiducial or information about the coordinate system used. Expect the localization of the montage to be wrong');
 end
 
 
@@ -447,7 +452,9 @@ function str = clean_str(str)
     str = strtrim(str_remove_spec_chars(toLine(str)));
 end
 
-function ChannelMat = updateLandmark(jnirs, scale, ChannelMat)
+function [ChannelMat, hasLandmark] = updateLandmark(jnirs, scale, ChannelMat)
+    
+    hasLandmark = false;
 
     % Anatomical landmarks
     if isfield(jnirs.nirs.probe, 'landmarkLabels')
@@ -480,18 +487,21 @@ function ChannelMat = updateLandmark(jnirs, scale, ChannelMat)
             ChannelMat.HeadPoints.Loc(:, end+1) = coord';
             ChannelMat.HeadPoints.Label{end+1}  = name;
             ChannelMat.HeadPoints.Type{end+1}   = ltype;
-        end           
-    end    
+        end   
+
+        hasLandmark = true;
+    end  
 end
 
-function [src_pos, det_pos] = getOptodesPosition(jnirs, scale)
+function [src_pos, det_pos, has3Dposition] = getOptodesPosition(jnirs, scale)
 
+    has3Dposition = false;
     % Get 3D positions
     if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
         
         src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
         det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
-        
+        has3Dposition = true;
     elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
         
         src_pos = toColumn(jnirs.nirs.probe.sourcePos, jnirs.nirs.probe.sourceLabels);  
@@ -501,6 +511,8 @@ function [src_pos, det_pos] = getOptodesPosition(jnirs, scale)
         if ~isempty(src_pos) && all(src_pos(:,3)==0) && all(det_pos(:,3)==0)
             src_pos(:,3) = 1;
             det_pos(:,3) = 1;
+        else
+            has3Dposition = true;
         end
     elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
         
