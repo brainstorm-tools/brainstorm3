@@ -76,10 +76,6 @@ else
     channel_type = unique(channel_type(good_channel));
 end
 
-% Select the good channels 
-nChannels           = sum(good_channel);
-ChannelMat.Channel  = ChannelMat.Channel(good_channel);
-
 % Determine the number of time sample
 if(size(jnirs.nirs.data.dataTimeSeries,1) == length(good_channel))
     nSample = size(jnirs.nirs.data.dataTimeSeries,2);
@@ -87,55 +83,15 @@ else
     nSample = size(jnirs.nirs.data.dataTimeSeries,1);
 end   
 
+% Read auxilary channels
+[ChannelAux, good_aux]  = readAuxChannels(jnirs, nSample);
+ChannelMat.Channel      = [ChannelMat.Channel(good_channel) ,  ChannelAux(good_aux) ];
 
-% AUX channels
-if isfield(jnirs.nirs,'aux')
-    nAux = length(jnirs.nirs.aux);
-else
-    nAux = 0;
-end
-
-
-k_aux       =  1;
-aux_index   = false(1,nAux);
-
-for iAux = 1:nAux
-    
-     if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
-        && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
-        && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
-        && ( ~isfield(jnirs.nirs.aux(iAux), 'timeOffset') ||  jnirs.nirs.aux(iAux).timeOffset == 0)
-        
-            channel = jnirs.nirs.aux(iAux);
-            ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
-            ChannelMat.Channel(nChannels+k_aux).Name = clean_str(channel.name);
-            
-            aux_index(iAux) = true;
-            k_aux = k_aux + 1;
-
-     else 
-    
-        warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
-        continue;
-
-     end
-     
-end
-nAux = k_aux - 1;
-
-ChannelMat.Channel = ChannelMat.Channel(1:(nChannels+nAux));
-% Check channel names
-for iChan = 1:length(ChannelMat.Channel)
-    % If empty channel name: fill with index
-    if isempty(ChannelMat.Channel(iChan).Name)
-        ChannelMat.Channel(iChan).Name = sprintf('N%d', iChan);
-    end
-    iOther = setdiff(1:length(ChannelMat.Channel), iChan);
-    ChannelMat.Channel(iChan).Name = file_unique(ChannelMat.Channel(iChan).Name, {ChannelMat.Channel(iOther).Name});
-end
+% Fix channels names: remove channel with empty names
+ChannelMat              = fixChannelNames(ChannelMat);
 
 % Add fiducials and head point to ChannelMat
-ChannelMat = updateLandmark(jnirs, scale, ChannelMat);
+ChannelMat              = updateLandmark(jnirs, scale, ChannelMat);
 
 
 %% ===== DATA =====
@@ -175,16 +131,16 @@ end
 DataMat.F   = DataMat.F(good_channel, :);
 
 % Add auxilary data
-for i_aux= 1:length(aux_index)
-    if aux_index(i_aux)
-        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
-            DataMat.F = [DataMat.F ; ...
-                     jnirs.nirs.aux(i_aux).dataTimeSeries]; 
-        else
-            DataMat.F = [DataMat.F ; ...
-                     jnirs.nirs.aux(i_aux).dataTimeSeries']; 
-        end    
+for i_aux = 1:length(good_aux)
+    if ~good_aux(i_aux)
+        continue;
     end
+
+    if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1) == 1
+        DataMat.F = [DataMat.F ; jnirs.nirs.aux(i_aux).dataTimeSeries]; 
+    else
+        DataMat.F = [DataMat.F ; jnirs.nirs.aux(i_aux).dataTimeSeries']; 
+    end    
 end
 
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
@@ -518,8 +474,9 @@ function str = clean_str(str)
     str = strtrim(str_remove_spec_chars(toLine(str)));
 end
 
-function [jnirs, ChannelMat] = updateLandmark(jnirs, scale, ChannelMat)
-% Anatomical landmarks
+function ChannelMat = updateLandmark(jnirs, scale, ChannelMat)
+
+    % Anatomical landmarks
     if isfield(jnirs.nirs.probe, 'landmarkLabels')
         if isfield(jnirs.nirs.probe, 'landmarkPos') && ~isfield(jnirs.nirs.probe, 'landmarkPos3D')
             jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos;
@@ -587,4 +544,47 @@ function [src_pos, det_pos] = getOptodesPosition(jnirs, scale)
     % Apply units
     src_pos = scale .* src_pos;
     det_pos = scale .* det_pos;
+end
+
+function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
+    
+    if isfield(jnirs.nirs,'aux')
+        nAux = length(jnirs.nirs.aux);
+    else
+        nAux = 0;
+    end
+   
+    Channel     = repmat( struct('Name','','Group','', 'Type' ,'','Weight',1, 'Loc',[], 'Orient', [],'Comment',[]), 1, nAux);
+    good_aux    = false(1,nAux);
+
+    for iAux = 1:nAux
+        
+        if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
+                && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
+                && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
+                && ( ~isfield(jnirs.nirs.aux(iAux), 'timeOffset') ||  jnirs.nirs.aux(iAux).timeOffset == 0)
+            
+            aux = jnirs.nirs.aux(iAux);
+
+            Channel(iAux).Type  = 'NIRS_AUX';
+            Channel(iAux).Name  = clean_str(aux.name);
+            good_aux(iAux)      = true;            
+        else 
+            
+            warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
+            continue;
+        end
+    end
+end
+
+function ChannelMat = fixChannelNames(ChannelMat)
+    % Check channel names
+    for iChan = 1:length(ChannelMat.Channel)
+        % If empty channel name: fill with index
+        if isempty(ChannelMat.Channel(iChan).Name)
+            ChannelMat.Channel(iChan).Name = sprintf('N%d', iChan);
+        end
+        iOther = setdiff(1:length(ChannelMat.Channel), iChan);
+        ChannelMat.Channel(iChan).Name = file_unique(ChannelMat.Channel(iChan).Name, {ChannelMat.Channel(iOther).Name});
+    end
 end
