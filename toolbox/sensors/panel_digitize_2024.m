@@ -1620,8 +1620,8 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
             ctrl.jLabelWarning.setOpaque(true);
             ctrl.jLabelWarning.setBackground(java.awt.Color.red);
             % Extra beep for large distances
-            pause(0.15);
-            sound(Digitize.BeepWav.data, Digitize.BeepWav.fs*.08);
+            pause(0.25);
+            sound(Digitize.BeepWav.data, Digitize.BeepWav.fs);
         end
     end
 
