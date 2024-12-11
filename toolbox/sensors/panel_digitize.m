@@ -1107,7 +1107,7 @@ function ManualCollect_Callback()
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation: call the callback directly
     if DigitizeOptions.isSimulate
-        BytesAvailable_Callback();
+        BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -1933,7 +1933,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback() 
+function BytesAvailable_Callback(h, ev)
     global Digitize rawpoints
 
     % Get controls

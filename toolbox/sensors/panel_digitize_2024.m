@@ -836,7 +836,7 @@ function ManualCollect_Callback()
     ctrl.jButtonCollectPoint.setEnabled(0);
     % Simulation: call the callback directly
     if Digitize.Options.isSimulate
-        BytesAvailable_Callback();
+        BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -1500,7 +1500,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback() %#ok<INUSD>
+function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     global Digitize
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
