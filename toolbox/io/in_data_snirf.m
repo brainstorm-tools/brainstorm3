@@ -427,8 +427,20 @@ end
 function factor = findFactorFromUnit(dataUnit,channel_type)
     factor = 1;
 
-    warning('TODO: %s is not supported yet', dataUnit)
-
+    if strcmp(channel_type,'dHb')
+       switch lower(dataUnit)
+           case {'mol.l-1', 'mol/l', 'mole/l'}
+                factor = 1;
+           case {'mmol.l-1', 'mmol/l', 'mmole/l'}
+                factor = 1e-3;
+           case {'\mumol.l-1', '\mumol/l', '\mumole/l'}
+                factor = 1e-6;
+           otherwise
+                warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
+       end
+    else
+        warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
+    end
 end
 
 function str = clean_str(str)
