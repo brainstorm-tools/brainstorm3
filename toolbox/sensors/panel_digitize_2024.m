@@ -1096,6 +1096,7 @@ function PlotCoordinate(isAdd)
             GlobalData.DataSet(Digitize.iDS).HeadPoints.Type{iP}  = Digitize.Points(Digitize.iPoint).Type; % 'CARDINAL' or 'EXTRA'
             GlobalData.DataSet(Digitize.iDS).HeadPoints.Loc(:,iP) = Digitize.Points(Digitize.iPoint).Loc';
         else
+            iP = iP - 1;
             if iP > 0
                 GlobalData.DataSet(Digitize.iDS).HeadPoints.Label(iP) = [];
                 GlobalData.DataSet(Digitize.iDS).HeadPoints.Type(iP)  = [];
