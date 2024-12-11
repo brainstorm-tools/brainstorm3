@@ -93,8 +93,11 @@ ChannelMat              = fixChannelNames(ChannelMat);
 % Add fiducials and head point to ChannelMat
 ChannelMat              = updateLandmark(jnirs, scale, ChannelMat);
 
+% Read coordinate system
+if isfield(jnirs.nirs.probe, 'coordinateSystem') && ~isempty(jnirs.nirs.probe.coordinateSystem)
+    warning('Todo: apply coordinate system');
+end
 
-%% ===== DATA =====
 
 % Initialize returned file structure                    
 DataMat             = db_template('DataMat');
@@ -109,12 +112,7 @@ DataMat.F           = readData(jnirs, data_scale, good_channel, good_aux);
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 DataMat.Events      = readEvents(jnirs);
-
-if strcmp(channel_type,'dOD')
-    DataMat.DisplayUnits = 'delta OD';
-elseif strcmp(channel_type,'dHb')
-    DataMat.DisplayUnits = 'mol.l-1';
-end
+DataMat.DisplayUnits = getDisplayUnits(channel_type);
 
 end
 
@@ -588,4 +586,14 @@ function data = readData(jnirs, data_scale, good_channel, good_aux)
         end    
     end
 
+end
+
+function DisplayUnits = getDisplayUnits(channel_type)
+    if strcmp(channel_type,'dOD')
+        DisplayUnits = 'delta OD';
+    elseif strcmp(channel_type,'dHb')
+        DisplayUnits = 'mol.l-1';
+    else
+        DisplayUnits = '';
+    end
 end
