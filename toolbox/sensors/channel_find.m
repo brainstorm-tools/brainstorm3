@@ -67,7 +67,7 @@ for i = 1:length(target)
             % Token 2: Detector,             e.g. 'D1'
             % Token 1: Wavelength or Metric, e.g. 'WL830'
             target_tokens = regexp(target{i}, '^(S([0-9]+)?)?(D([0-9]+)?)?(WL\d+|HbO|HbR|HbT)?$', 'tokens');
-            if isempty(target_tokens) 
+            if isempty(target_tokens)
                 continue;
             end 
             target_tokens = target_tokens{1};
