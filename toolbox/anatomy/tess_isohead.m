@@ -27,6 +27,9 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 %
 % Authors: Francois Tadel, 2012-2022
 
+% Work in progress: Marc Lalancette 2022-2025 
+% modified quite a bit, erode and fill factors no longer used. See my notes in OneNote
+
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
 HeadFile = [];

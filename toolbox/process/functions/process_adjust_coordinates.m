@@ -1,5 +1,5 @@
 function varargout = process_adjust_coordinates(varargin)
-% PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
+% PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations, primarily for CTF MEG datasets.
 % 
 % Native coordinates are based on system fiducials (e.g. MEG head coils), whereas Brainstorm's SCS
 % coordinates are based on the anatomical fiducial points. After alignment between MRI and
@@ -90,7 +90,7 @@ end
 
 
 function OutputFiles = Run(sProcess, sInputs)
-    
+    OutputFiles = {};
     isDisplay = sProcess.options.display.Value;
     nInFiles = length(sInputs);
     
@@ -101,16 +101,50 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_memory('UnloadAll', 'Forced'); % Close all the existing figures.
     end
     
-    [UniqueChan, iUniqFiles, iUniqInputs] = unique({sInputs.ChannelFile});
+    [~, iUniqFiles, iUniqInputs] = unique({sInputs.ChannelFile});
     nFiles = numel(iUniqFiles);
     
-    if ~sProcess.options.remove.Value && sProcess.options.head.Value && ...
-            nFiles < nInFiles
+    % Special cases when replacing MRI fids: don't allow resetting or refining with head points,
+    % probably a user mistake. Still possible if done in two separate calls. Adjusting head position
+    % ignored with a warning only (would be lost anyway).
+    % Also only a single channel file per subject is allowed.
+    if ~sProcess.options.remove.Value && sProcess.options.scs.Value 
+        % TODO: how to go back to process panel, like for missing TF options in some processes?
+        if sProcess.options.reset.Value
+            bst_report('Error', sProcess, sInputs, ...
+                ['Incompatible options: "Reset coordinates" would be applied first and remove coregistration adjustments.' 10, ...
+                '"Replace MRI landmarks" automatically resets all channel files for selected subject(s) after MRI update.']);
+            return;
+        end
+        if sProcess.options.points.Value
+            bst_report('Error', sProcess, sInputs, ...
+                ['Incompatible options: "Refine with head points" not currently allowed in same call as' 10, ...
+                '"Replace MRI landmarks" to avoid user error and possibly loosing manual coregistration adjustments.' 10, ...
+                'If you really want to do this, run this process separately for each operation.']);
+            return;
+        end
+        if sProcess.options.head.Value
+            bst_report('Warning', sProcess, sInputs, ...
+                ['Incompatible options: "Adjust head position" ignored since it would be lost after MRI update.' 10, ...
+                '"Replace MRI landmarks" automatically resets all channel files for selected subject(s) after MRI update.']);
+            sProcess.options.head.Value = 0;
+        end
+
+        % Check for multiple channel files per subject.
+        UniqueSubs = unique({sInputs(iUniqFiles).SubjectFile});
+        if numel(UniqueSubs) < nFiles
+            bst_report('Error', sProcess, sInputs, ...
+                '"Replace MRI landmarks" can only be run with a single channel file per subject.');
+            return;
+        end
+    end
+
+    if ~sProcess.options.remove.Value && sProcess.options.head.Value && nFiles < nInFiles
         bst_report('Info', sProcess, sInputs, ...
             'Multiple inputs were found for a single channel file. They will be concatenated for adjusting the head position.');
     end
-    bst_progress('start', 'Adjust coordinate system', ...
-        ' ', 0, nFiles);
+
+    bst_progress('start', 'Adjust coordinate system', ' ', 0, nFiles);
     % If resetting, in case the original data moved, and because the same channel file may appear in
     % many places for processed data, keep track of user file selections.
     NewChannelFiles = cell(0, 2);
@@ -118,7 +152,7 @@ function OutputFiles = Run(sProcess, sInputs)
         
         ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         % Get the leading modality
-        [tmp, DispMod] = channel_get_modalities(ChannelMat.Channel);
+        [~, DispMod] = channel_get_modalities(ChannelMat.Channel);
         % 'MEG' is added when 'MEG GRAD' or 'MEG MAG'.
         ModPriority = {'MEG', 'EEG', 'SEEG', 'ECOG', 'NIRS'};
         iMod = find(ismember(ModPriority, DispMod), 1, 'first');
@@ -219,7 +253,7 @@ function OutputFiles = Run(sProcess, sInputs)
                 isWarning = false;
                 Tolerance = sProcess.options.tolerance.Value{1} / 100;
             end
-            [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(sInputs(iFile).ChannelFile, ...
+            [ChannelMat, ~, ~, isSkip, isUserCancel, strReport] = channel_align_auto(sInputs(iFile).ChannelFile, ...
                 ChannelMat, isWarning, 0, Tolerance); % No confirmation
             % ChannelFile needed to find subject and scalp surface, but not used otherwise when
             % ChannelMat is provided.
@@ -229,27 +263,39 @@ function OutputFiles = Run(sProcess, sInputs)
                 bst_report('Warning', sProcess, sInputs(iFile), ...
                     'Refine registration using head points, failed finding a better fit.');
                 continue;
+            elseif isUserCancel
+                bst_report('Info', sProcess, sInputs(iFile), 'User cancelled registration with head points.');
+                continue
             end
             
         end % refine registration with head points
         
         % ----------------------------------------------------------------
+        % Save channel file. 
+        % Before potiential MRI update since that function takes ChannelFile, not ChannelMat.
+        bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
+        
+        % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.scs.Value
-            % TODO Maybe make this a separate process, since it should only run on one channel file
-            % per subject. Possibly have hidden option for no interactive warnings.
-
-            [~, isCancel] = channel_align_scs(ChannelFile, eye(4), true, false); % interactive warnings but no confirmation
-            if isCancel
+            % This is now a subfunction in this process
+            [~, isCancel, isError] = channel_align_scs(sInputs(iFile).ChannelFile, eye(4), ...
+                true, false, sInputs(iFile), sProcess); % interactive warnings but no confirmation
+            % Head surface was unloaded from memory, in case we want to display "after" figure.
+            % TODO Maybe modify like channel_align_auto to take in and return ChannelMat.
+            if isError
+                return;
+            elseif isCancel 
                 continue;
             end
+            % If something happened and channel files were not reset, there was a pop-up error and
+            % we'll just let the user deal with it for now (i.e. try again to reset the channel file).
+             
             % TODO Verify
         end
 
         % ----------------------------------------------------------------
-        % Save channel file.
-        bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
         isFileOk(iFile) = true;
-        
+
         if isDisplay && ~isempty(Modality)
             % Display "after" results, besides the "before" figure.
             hFigAfter = channel_align_manual(sInputs(iFile).ChannelFile, Modality, 0);
@@ -317,8 +363,11 @@ function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, N
     % pairs {old, new} in NewChannelFiles for potential reuse (e.g. same original data at multiple
     % pre-processing steps).
     % This function does not save the file, but only returns the updated structure.
-    if nargin < 4
+    if nargin < 4 || isempty(sProcess)
         sProcess = [];
+        isReport = false;
+    else
+        isReport = true;
     end
     if nargin < 3
         sInput = [];
@@ -351,15 +400,23 @@ function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, N
         if NewFound
             ChannelFile = NewChannelFiles{iNew, 2};
             NotFound = false;
-            bst_report('Info', sProcess, sInput, ...
-                sprintf('Using channel file in new location: %s.', ChannelFile));
+            if isReport
+                bst_report('Info', sProcess, sInput, ...
+                    sprintf('Using channel file in new location: %s.', ChannelFile));
+            end
         end
     end
-    FileFormatsChan = bst_get('FileFilters', 'channel');
-    FileFormat = FileFormatsChan{sProcess.options.format.Value{1}, 3};
+    if isfield(sProcess, 'options') && isfield(sProcess.options, 'format')
+        FileFormatsChan = bst_get('FileFilters', 'channel');
+        FileFormat = FileFormatsChan{sProcess.options.format.Value{1}, 3};
+    else
+        FileFormat = [];
+    end
     if NotFound
-        bst_report('Info', sProcess, sInput, ...
-            sprintf('Could not find original channel file: %s.', ChannelFile));
+        if isReport
+            bst_report('Info', sProcess, sInput, ...
+                sprintf('Could not find original channel file: %s.', ChannelFile));
+        end
         % import_channel will prompt the user, but they would not know which file to pick!  And
         % prompt is modal for Matlab, so likely can't look at command window (e.g. if Brainstorm is
         % in front). So add another pop-up with the needed info.
@@ -370,9 +427,11 @@ function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, N
         movegui(MsgFig, 'north');
         figure(MsgFig); % bring it to front.
         % Adjust default format to the one selected.
-        DefaultFormats = bst_get('DefaultFormats');
-        DefaultFormats.ChannelIn = FileFormat;
-        bst_set('DefaultFormats',  DefaultFormats);
+        if ~isempty(FileFormat)
+            DefaultFormats = bst_get('DefaultFormats');
+            DefaultFormats.ChannelIn = FileFormat;
+            bst_set('DefaultFormats',  DefaultFormats);
+        end
         
         [NewChannelMat, NewChannelFile] = import_channel(sInput.iStudy, '', FileFormat, 0, 0, 0, [], []);
     else
@@ -387,16 +446,28 @@ function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, N
     
     % See if it worked.
     if isempty(NewChannelFile)
-        bst_report('Error', sProcess, sInput, 'No file channel file selected.');
+        if isReport
+            bst_report('Error', sProcess, sInput, 'No channel file selected.');
+        else
+            bst_error('No channel file selected.');
+        end
         isError = true;
         return;
     elseif isempty(NewChannelMat)
-        bst_report('Error', sProcess, sInput, sprintf('Unable to import channel file: %s', NewChannelFile));
+        if isReport
+            bst_report('Error', sProcess, sInput, sprintf('Unable to import channel file: %s', NewChannelFile));
+        else
+            bst_error(sprintf('Unable to import channel file: %s', NewChannelFile));
+        end
         isError = true;
         return;
     elseif numel(NewChannelMat.Channel) ~= numel(ChannelMat.Channel)
-        bst_report('Error', sProcess, sInput, ...
-            'Original channel file has different channels than current one, aborting.');
+        if isReport
+            bst_report('Error', sProcess, sInput, ...
+                'Original channel file has different channels than current one, aborting.');
+        else
+            bst_error('Original channel file has different channels than current one, aborting.');
+        end
         isError = true;
         return;
     elseif NotFound && ~isempty(ChannelFile)
@@ -553,7 +624,7 @@ function [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, sInputs, sProces
                 iHeadSamples = 1 + ((1:(nHeadSamples*nEpochs)) - 1) * HeadSamplePeriod; % first is 1
                 iBad = [];
                 for iSeg = 1:size(BadSegments, 2)
-                    iBad = [iBad, nSamplesPerEpoch * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; 
+                    iBad = [iBad, nSamplesPerEpoch * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; %#ok<AGROW>
                     % iBad = [iBad, find((DataMat.Time >= badTimes(1,iSeg)) & (DataMat.Time <= badTimes(2,iSeg)))];
                 end
                 % Exclude bad samples.
@@ -635,7 +706,7 @@ function [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, sInputs, sProces
     DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
     fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
     bst_report('Info', sProcess, sInputs, ...
-        sprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3));
+        sprintf('Head position adjusted by %1.1f mm.', DistanceAdjusted * 1e3));
 end % AdjustHeadPosition
 
 
@@ -1079,11 +1150,326 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         ChannelMat.Native.NAS = mean(ChannelMat.HeadPoints.Loc(:,iHpiN)', 1);
         ChannelMat.Native.LPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiL)', 1);
         ChannelMat.Native.RPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiR)', 1);
+        % Get "current" SCS to Native transformation.
+        TmpChanMat = ChannelMat;
+        TmpChanMat.SCS = ChannelMat.Native;
+        % cs_compute doesn't change coordinates, only adds the R,T,Origin fields
+        [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
+        ChannelMat.Native = TmpChanMat.SCS;
+    else
+        % Missing digitized MEG head coils, probably the anatomical points are actually coils.
+        disp('BST> Missing digitized MEG head coils, NAS/LPA/RPA are likely head coils.');
+        ChannelMat.Native = ChannelMat.SCS;
     end
-    % Get "current" SCS to Native transformation.
-    TmpChanMat = ChannelMat;
-    TmpChanMat.SCS = ChannelMat.Native;
-    % cs_compute doesn't change coordinates, only adds the R,T,Origin fields
-    [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
-    ChannelMat.Native = TmpChanMat.SCS;
 end
+
+
+% Decided to bring this back as subfunction of this process, as it is the only place to run it from for now.
+function [Transform, isCancel, isError] = channel_align_scs(ChannelFile, Transform, isInteractive, isConfirm, sInput, sProcess)
+% CHANNEL_ALIGN_SCS: Saves new MRI anatomical points after manual or auto registration adjustment.
+%
+% USAGE:  Transform = channel_align_scs(ChannelFile, Transform=eye(4), isInteractive=1, isConfirm=1)
+%
+% DESCRIPTION: 
+%       After modifying registration between digitized head points and MRI (with "refine with head
+%       points" or manually), this function allows saving the change in the MRI fiducials so that
+%       they exactly match the digitized anatomical points (nasion and ears). This would replace
+%       having to save a registration adjustment transformation for each functional dataset sharing
+%       this set of digitized points. This affects all files registered to the MRI and should
+%       therefore be done as one of the first steps after importing, and with only one set of
+%       digitized points (one session). Surfaces are adjusted to maintain alignment with the MRI.
+%       Additional sessions for the same subject, with separate digitized points, will still need
+%       the usual "per dataset" registration adjustment to align with the same MRI.
+%
+%       This function will not modify an MRI that it changed previously without user confirmation
+%       (if both isInteractive and isConfirm are false). In that case, the Transform is returned unaltered.
+%
+% INPUTS:
+%     - ChannelFile : Channel file to align with its anatomy
+%     - Transform   : Transformation matrix from digitized SCS coordinates to MRI SCS coordinates, 
+%                     after some alignment is made (auto or manual) and the two no longer match.
+%                     This transform should not already be saved in the ChannelFile, though the
+%                     file may already contain similar adjustments, in which case Transform would be
+%                     an additional adjustment to add.
+%     - isInteractive : If true, display dialog in case of errors, or if this was already done 
+%                     previously for this MRI. 
+%     - isConfirm   : If true, ask the user for confirmation before proceeding.
+%
+% OUTPUTS:
+%     - Transform   : If the MRI fiducial points and coordinate system are updated, the transform 
+%                     becomes the identity. If the MRI was not updated, the input Transform is
+%                     returned. The idea is that the returned Transform applied to the *reset*
+%                     channels would maintain the registration. If channel files were not reset
+%                     (error or cancellation in this function), this will no longer be true and the
+%                     user should verify the registration of all affected studies.
+%     - isCancel    : If true, nothing was changed nor saved.
+%     - isError     : An error occurred that can affect registration of MRI and functional studies,
+%                     e.g. the MRI was updated, but some channel files of that subject were not
+%                     reset.
+
+% The Transform output is currently unused. It was changed (below is the previous behavior) since it
+% depended on CTF MEG specific transform labels.
+%     - Transform   : If the MRI fiducial points and coordinate system are updated, and the channel 
+%                     file is reset, the transform becomes the identity. If the channel file is not
+%                     reset, Transform will be the inverse of all previous manual or automatic
+%                     adjustments. If the MRI was not updated, the input Transform is returned. The
+%                     idea is that the returned Transform applied to the channels would maintain the
+%                     registration.
+
+% Authors: Marc Lalancette 2022-2025
+
+if nargin < 6 || isempty(sProcess)
+    isReport = false;
+else
+    isReport = true;
+end
+if nargin < 4 || isempty(isConfirm)
+    isConfirm = true;
+end
+if nargin < 3 || isempty(isInteractive)
+    isInteractive = true;
+end
+if nargin < 2 || isempty(Transform)
+    Transform = eye(4);
+end
+if nargin < 1 || isempty(ChannelFile)
+    bst_error('ChannelFile argument required.');
+end
+
+isError = false;
+isCancel = false;
+% Get study
+sStudy = bst_get('ChannelFile', ChannelFile);
+% Get subject
+sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+% Check if default anatomy.
+if sSubject.UseDefaultAnat
+    Message = 'Digitized nasion and ear points cannot be applied to default anatomy.';
+    if isReport
+        bst_report('Error', sProcess, sInput, Message);
+    elseif isInteractive
+        bst_error(Message, 'Apply digitized anatomical fiducials to MRI', 0);
+    else
+        disp(['BST> ' Message]);
+    end
+    isCancel = true;
+    return;
+end
+% Get Channels
+ChannelMat = in_bst_channel(ChannelFile);
+
+% Check if digitized anat points present, saved in ChannelMat.SCS.
+% Note that these coordinates are NOT currently updated when doing refine with head points (below).
+% They are in "initial SCS" coordinates, updated in channel_detect_type.
+if ~all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) || ~(length(ChannelMat.SCS.NAS) == 3) || ~(length(ChannelMat.SCS.LPA) == 3) || ~(length(ChannelMat.SCS.RPA) == 3)
+    Message = 'Digitized nasion and ear points not found.';
+    if isReport
+        bst_report('Error', sProcess, sInput, Message);
+    elseif isInteractive
+        bst_error(Message, 'Apply digitized anatomical fiducials to MRI', 0);
+    else
+        disp(['BST> ' Message]);
+    end
+    isCancel = true;
+    return;
+end
+
+% Check if already adjusted
+sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+% This Check function also updates ChannelMat.SCS with the saved (possibly previously adjusted) head
+% points. (We don't consider isMriMatch here because we still have to apply the provided
+% Transformation.)
+[~, isMriUpdated, ~, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMriOld);
+% Get user confirmation
+if isMriUpdated
+    % Already done previously.
+    if isInteractive || isConfirm
+        % Request confirmation.
+        [Proceed, isCancel] = java_dialog('confirm', ['The MRI fiducial points NAS/LPA/RPA were previously updated from a set of' 10 ...
+            'aligned digitized points. Updating them again will break any previous alignment' 10 ...
+            'with other sets of digitized points and associated functional datasets.' 10 10 ...
+            'Proceed and overwrite previous alignment?' 10], 'Head points/anatomy registration');
+        if ~Proceed || isCancel
+            isCancel = true;
+            return;
+        end
+    else
+        % Do not proceed.
+        Message = 'Digitized nasion and ear points previously applied to this MRI. Not applying again.';
+        if isReport
+            bst_report('Warning', sProcess, sInput, Message);
+        else
+            disp(['BST> ' Message]);
+        end
+        isCancel = true;
+        return;
+    end
+elseif isConfirm
+    % Request confirmation.
+    [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA to match a set of' 10 ...
+        'aligned digitized points is mainly used for exporting registration to a BIDS dataset.' 10 ...
+        'It will break any previous alignment of this subject with all other functional datasets!' 10 10 ...
+        'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+    if ~Proceed || isCancel
+        isCancel = true;
+        return;
+    end
+end
+% If EEG, warn that only linear transformation would be saved this way.
+if ~isempty([good_channel(ChannelMat.Channel, [], 'EEG'), good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')])
+    [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will only save' 10 ...
+        'global rotations and translations. Any other changes to EEG channels will be lost.' 10 10 ...
+        'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+    if ~Proceed || isCancel
+        isCancel = true;
+        return;
+    end
+end
+
+% Convert digitized fids to MRI SCS coordinates.
+% Here, ChannelMat.SCS already may contain some auto/manual adjustment, and we're adding a new one (possibly identity).
+% Apply the transformation provided.
+sMri = sMriOld;
+% Intermediate step, these are not valid coordinates for sMri.
+sMri.SCS.NAS = (Transform(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
+sMri.SCS.LPA = (Transform(1:3,:) * [ChannelMat.SCS.LPA'; 1])';
+sMri.SCS.RPA = (Transform(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
+% Then convert to MRI coordinates (mm), this is how sMri.SCS is saved.
+% cs_convert mri is in meters
+sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
+sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
+sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;
+% Re-compute transformation in this struct, which goes from MRI to SCS (but the fids stay in MRI coords in this struct).
+[~, sMri] = cs_compute(sMri, 'scs');
+
+% Compare with existing MRI fids, replace if changed (> 1um), and update surfaces.
+sMri.FileName = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+figure_mri('SaveMri', sMri);
+% At minimum, we must unload surfaces that have been modified, but we want to avoid closing figures
+% for when we show "before" and "after" figures.
+bst_memory('UnloadAll'); % not 'forced' so won't close figures, but won't unload what we want most likely.
+bst_memory('UnloadSurface'); % this unloads the head surface as we want.
+% Now that MRI is saved, update Transform to identity.
+Transform = eye(4);
+
+% MRI SCS now matches digitized-points-defined SCS (defined from same points), but registration is
+% now broken with all channel files that were adjusted! Reset channel file, and all others for this
+% anatomy.
+isError = ResetChannelFiles(ChannelMat, sSubject, isConfirm, sInput, sProcess);
+
+% Removed this output Transform for now as GetTransform only works on CTF MEG data and the rest of
+% this function can work more generally.
+% if isError
+%     % Get the equivalent overall registration adjustment transformation previously saved.
+%     [~, ~, TransfAfter] = GetTransforms(ChannelMat);
+%     % Return its inverse as it's now part of the MRI and should be removed from the channel file.
+%     Transform = inverse(TransfAfter);
+% else
+%     Transform = eye(4);
+% end
+
+end % main function
+
+% (This function was based on channel_align_manual CopyToOtherFolders).
+function [isError, Message] = ResetChannelFiles(ChannelMatSrc, sSubject, isConfirm, sInput, sProcess)
+    if nargin < 5 || isempty(sProcess)
+        sProcess = [];
+        isReport = false;
+    else
+        isReport = true;
+    end
+    % Confirmation: ask the first time 
+    if nargin < 3 || isempty(isConfirm)
+        isConfirm = true;
+    end
+
+    NewChannelFiles = cell(0,2);
+    % First, always reset the "source" channel file.
+    [ChannelMatSrc, NewChannelFiles, isError] = ResetChannelFile(ChannelMatSrc, NewChannelFiles, sInput, sProcess);
+    if isError
+        Message = sprintf(['Unable to reset channel file for subject: %s\n' ...
+            'MRI registration for all their functional studies should be verified!'], sSubject.Name);
+        if isReport
+            bst_report('Error', sProcess, sInput, Message);
+        end
+        % This is very important so always show it interactively.
+        java_dialog('msgbox', Message);
+        return;
+    end
+    bst_save(file_fullpath(sInput.ChannelFile), ChannelMatSrc, 'v7');
+
+    % If the subject is configured to share its channel files, nothing to do
+    if (sSubject.UseDefaultChannel >= 1)
+        return;
+    end
+    % Get all the dependent studies
+    sStudies = bst_get('StudyWithSubject', sSubject.FileName);
+    % List of channel files to update
+    ChannelFiles = {};
+    % Loop on the other folders
+    for i = 1:length(sStudies)
+        % Skip studies without channel files
+        if isempty(sStudies(i).Channel) || isempty(sStudies(i).Channel(1).FileName)
+            continue;
+        end
+        % Add channel file to list of files to process
+        ChannelFiles{end+1} = sStudies(i).Channel(1).FileName; %#ok<AGROW>
+    end
+    % Unique files and skip "source".
+    ChannelFiles = setdiff(unique(ChannelFiles), sInput.ChannelFile);
+    if ~isempty(ChannelFiles)
+        % Ask confirmation to the user
+        if isConfirm
+            Proceed = java_dialog('confirm', ...
+                sprintf('Reset all %d other channel files for this subject (typically recommended)?', numel(ChannelFiles)), 'Reset channel files');
+            if ~Proceed
+                Message = sprintf(['User cancelled resetting %d other channel files for subject: %s\n' ...
+                    'MRI registration for all functional studies should be verified!'], numel(ChannelFiles), sSubject.Name);
+                if isReport
+                    bst_report('Warning', sProcess, sInput, Message);
+                else
+                    java_dialog('msgbox', Message);
+                end
+                return;
+            end
+        end
+        % Progress bar
+        bst_progress('start', 'Reset channel files', 'Updating other studies...');
+        strMsg = '';
+        strErr = '';
+        for iChan = 1:numel(ChannelFiles)
+            ChannelFile = ChannelFiles{iChan};
+            % Load channel file
+            ChannelMat = in_bst_channel(ChannelFile);
+            % Reset & save
+            [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, NewChannelFiles, sInput, sProcess);
+            if isError
+                strErr = [strErr, ChannelFile, 10]; %#ok<AGROW>
+            else
+                strMsg = [strMsg, ChannelFile, 10]; %#ok<AGROW>
+                bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+            end
+        end
+        bst_progress('stop');
+        % Give report to the user
+        if ~isempty(strErr)
+                Message = sprintf(['Unable to reset channel file(s) for subject %s:\n%s\n' ...
+                    'MRI registration should be verified for these studies!'], sSubject.Name, strErr);
+                if isReport
+                    bst_report('Error', sProcess, sInput, Message);
+                end
+                % This is very important so always show it interactively.
+                java_dialog('msgbox', Message);
+                return;
+        end
+        Message = sprintf('%d channel files reset for subject %s:\n%s', numel(ChannelFiles)+1, sSubject.Name, strMsg);
+        if isReport
+            bst_report('Info', sProcess, sInput, Message);
+        elseif isConfirm
+            java_dialog('msgbox', Message);
+        else
+            disp(Message);
+        end
+    end
+end
+

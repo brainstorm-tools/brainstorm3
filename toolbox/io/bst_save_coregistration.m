@@ -49,7 +49,7 @@ for iOutSub = 1:nSub
     sStudies = bst_get('StudyWithSubject', sSubjects.Subject(iSub).FileName);
     if isBids
         if isempty(BidsRoot)
-            BidsRoot = bst_fileparts(bst_fileparts(bst_fileparts(ImportedFile)));
+            BidsRoot = bst_fileparts(bst_fileparts(ImportedFile)); % go back through "anat" and subject folders at least (session not mandatory).
             while ~exist(fullfile(BidsRoot, 'dataset_description.json'), 'file')
                 if isempty(BidsRoot) || ~exist(BidsRoot, 'dir')
                     error('Cannot find BIDS root folder and dataset_description.json file; subject %s.', sSubjects.Subject(iSub).Name);
@@ -76,6 +76,17 @@ for iOutSub = 1:nSub
         end
         sMriJson = bst_jsondecode(MriJsonFile, false);
         BstFids = {'NAS', 'LPA', 'RPA', 'AC', 'PC', 'IH'};
+        % We need to go to original Nifti voxel coordinates, but Brainstorm may have
+        % flipped/permuted dimensions to bring voxels to RAS orientation.  If it did, it modified
+        % all sMRI fields, including under .Header, accordingly, and it saved the transformation
+        % under .InitTransf 'reorient'
+        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'reorient'));
+        if ~isempty(iTransf)
+            tReorient = sMri.InitTransf{iTransf(1),2};  % Voxel 0-based transformation, from original to Brainstorm
+            tReorientInv = inv(tReorient);
+            tReorientInv(4,:) = [];
+        end
+
         isLandmarksFound = true;
         for iFid = 1:numel(BstFids)
             if iFid < 4
@@ -84,11 +95,17 @@ for iOutSub = 1:nSub
                 CS = 'NCS';
             end
             Fid = BstFids{iFid};
-            % Voxel coordinates (Nifti: RAS and 0-indexed)
+            % Voxel coordinates (Nifti: 0-indexed, but orientation not standardized, world coords are RAS) 
             % Bst MRI coordinates are in mm and voxels are 1-indexed, so subtract 1 voxel after going from mm to voxels.
             if isfield(sMri, CS) && isfield(sMri.(CS), Fid) && ~isempty(sMri.(CS).(Fid)) && any(sMri.(CS).(Fid))
                 % Round to 0.001 voxel.
-                sMriJson.AnatomicalLandmarkCoordinates.(Fid) = round(1000 * (sMri.(CS).(Fid)./sMri.Voxsize - 1)) / 1000;
+                FidCoord = round(1000 * (sMri.(CS).(Fid)./sMri.Voxsize - 1)) / 1000;
+                if ~isempty(iTransf)
+                    % Go from Brainstorm RAS-oriented voxels, back to original Nifti voxel orientation.
+                    % Both are 0-indexed in this transform.
+                    FidCoord = [FidCoord, 1] * tReorientInv';
+                end
+                sMriJson.AnatomicalLandmarkCoordinates.(Fid) = FidCoord;
             else
                 isLandmarksFound = false;
                 break;
@@ -111,7 +128,7 @@ for iOutSub = 1:nSub
             % cs_convert mri is in meters
             sMriScs.SCS.(Fid) = cs_convert(sMri, 'mri', 'scs', sMri.SCS.(Fid) ./ 1000);
         end
-        sMriNative = sMriScs;
+        sMriNative = sMriScs; % transformed below
 
         for iStudy = 1:numel(sStudies)
             % Is it a link to raw file?

@@ -66,8 +66,9 @@ EdgesV(:,:,1) = Vertices(Faces(:,2),:) - Vertices(Faces(:,1),:);
 EdgesV(:,:,2) = Vertices(Faces(:,3),:) - Vertices(Faces(:,2),:);
 EdgesV(:,:,3) = Vertices(Faces(:,1),:) - Vertices(Faces(:,3),:);
 % First edge to second edge: counter clockwise = up
-FaceNormals = normr(cross(EdgesV(:,:,1), EdgesV(:,:,2)));
-%FaceArea = sqrt(sum(FaceNormalsA.^2, 2));
+FaceNormals = cross(EdgesV(:,:,1), EdgesV(:,:,2));
+FaceNormals = bsxfun(@rdivide, FaceNormals, sqrt(sum(FaceNormals.^2, 2))); % normr
+%FaceArea = sqrt(sum(FaceNormals.^2, 2));
 % Perpendicular vectors to edges, pointing inside triangular face.
 for e = 3:-1:1
     EdgeTriNormals(:,:,e) = cross(FaceNormals, EdgesV(:,:,e));
