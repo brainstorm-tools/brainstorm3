@@ -29,7 +29,7 @@ end
 
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, isMixed)  %#ok<DEFNU>
+function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, isMixed, isNirs)  %#ok<DEFNU>
     panelName = 'HeadmodelOptions';
     % Java initializations
     import java.awt.*;
@@ -40,6 +40,10 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         isEcog = 0;
         isSeeg = 0;
         isMixed = 0;
+    end
+    % Call without 'isNIRS'
+    if (nargin < 6)
+        isNirs = 0;
     end
     % Create main main panel
     jPanelNew = gui_river([8,10], [0,15,20,15]);
@@ -123,6 +127,17 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     else
         jCheckMethodSEEG = [];
         jComboMethodSEEG = [];
+    end
+    % === NIRS ===
+    if isNirs
+        % Checkbox
+        jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ');
+        jCheckMethodNIRS.setSelected(0);
+        jCheckMethodNIRS.setEnabled(0)
+        % Label
+        gui_component('Label', jPanelMethod, 'tab hfill', ['<HTML><FONT color="#777777">To compute head model for NIRS, use process:<BR>' ...
+                                                           'NIRS > Sources > Compute head model from fluence<BR>' ...
+                                                           '(NIRSTORM plugin is required)']);
     end
     % Attach sub panel to NewPanel
     jPanelNew.add('br hfill', jPanelMethod);
@@ -329,15 +344,16 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             isEeg  = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'EEG'));
             isEcog = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'ECOG'));
             isSeeg = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'SEEG'));
-            isNIRS = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'NIRS'));
+            isNirs = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'NIRS'));
         end
     end
     % Check that at least one modality is available
-    if isNIRS
-        errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
-        return;
-    elseif ~isMeg && ~isEeg && ~isEcog && ~isSeeg
-        errMessage = 'No valid sensor types to estimate a head model.';
+    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
+        if isNirs
+            errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
+        else
+            errMessage = 'No valid sensor types to estimate a head model.';
+        end
         return;
     end
     % Check if the first subject has a "Source model" atlas
@@ -356,7 +372,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     end
     % Display options panel
     if (nargin < 2) || isempty(sMethod)
-        sMethod = gui_show_dialog('Compute head model', @panel_headmodel, 1, [], isMeg, isEeg, isEcog, isSeeg, isMixed);
+        sMethod = gui_show_dialog('Compute head model', @panel_headmodel, 1, [], isMeg, isEeg, isEcog, isSeeg, isMixed, isNirs);
         if isempty(sMethod)
             return;
         end
