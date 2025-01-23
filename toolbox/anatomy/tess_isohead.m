@@ -30,6 +30,10 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % Work in progress: Marc Lalancette 2022-2025 
 % modified quite a bit, erode and fill factors no longer used. See my notes in OneNote
 
+% To visualize steps for debugging.
+isDebugVis = true;
+nDebugVisSlices = 9;
+
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
 HeadFile = [];
@@ -100,10 +104,10 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
         return
     end
     % Get new values
-    nVertices   = str2num(res{1});
-    erodeFactor = str2num(res{2});
-    fillFactor  = str2num(res{3});
-    bgLevel     = str2num(res{4});
+    nVertices   = str2double(res{1});
+    erodeFactor = str2double(res{2});
+    fillFactor  = str2double(res{3});
+    bgLevel     = str2double(res{4});
     if isempty(bgLevel)
         bgLevel = sMri.Histogram.bgLevel;
     end
@@ -161,6 +165,9 @@ headmask(:,1,:)   = 0; %*headmask(:,1,:);
 headmask(:,end,:) = 0; %*headmask(:,1,:);
 headmask(:,:,1)   = 0; %*headmask(:,:,1);
 headmask(:,:,end) = 0; %*headmask(:,:,1);
+if isDebugVis
+    view_mri_slices(headmask, 'x', nDebugVisSlices);
+end
 % Erode + dilate, to remove small components
 % if (erodeFactor > 0)
 %     headmask = headmask & ~mri_dilate(~headmask, erodeFactor);
@@ -182,8 +189,21 @@ headmask(:,:,end) = 0; %*headmask(:,:,1);
 %     headmask(2:end-1,2:end-1,2:end-1);
 % headmask(isFill) = 0;
 
-% Fill neck holes (bones, etc.) where it is cut at edge of volume.
+% Fill neck holes (bones, etc.) where it is cut at edge of volume. 
 bst_progress('text', 'Filling holes and removing disconnected parts...');
+if isDebugVis
+    figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
+end
+% Brainstorm reorients MRI so voxels are in RAS. But do all faces in case the bounding box was too
+% small and another part is cut (e.g. nose).
+
+% Number of slices to average to smooth out noise in low SNR regions (e.g. around neck and chin). 
+% 4,3 worked ok in noisy scan, but probably best to denoise entire scan first.
+nSlices = 1; % 1 = no averaging.
+FillThresh = 1; %min(nSlices, floor(nSlices/2)+1);
+if FillThresh > nSlices || FillThresh < floor(nSlices/2)
+    error('Bad hard-coded FillThresh.');
+end
 for iDim = 1:3
     % Swap slice dimension into first position.
     switch iDim 
@@ -195,22 +215,65 @@ for iDim = 1:3
             Perm = [3, 2, 1];
     end
     TempMask = permute(headmask, Perm);
-    % Edit second and second-to-last slices
-    Slice = TempMask(2, :, :);
-    TempMask(2, :, :) = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
-    Slice = TempMask(end-1, :, :);
-    TempMask(end-1, :, :) = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
+    % Edit second and second-to-last slices. Flip the array to reuse code with same indices.
+    for isFlip = [false, true]
+        if isFlip
+            TempMask = flip(TempMask, 1);
+        end
+        % Skip if just background (e.g. above or behind head)
+        if ~any(any(squeeze(TempMask(2, :, :))))
+            if isFlip
+                TempMask = flip(TempMask, 1);
+            end
+            continue;
+        end
+        Slice = sum(TempMask(2:2+nSlices-1, :, :), 1);
+        if isDebugVis
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+        end
+        Slice = Slice >= FillThresh;
+        % Skip if just background (previous check had just some noise)
+        if ~any(any(squeeze(Slice)))
+            if isFlip
+                TempMask = flip(TempMask, 1);
+            end
+            continue;
+        end
+        if isDebugVis
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+        end
+        Slice = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
+        if isDebugVis
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+        end
+        Slice = CenterSpread(Slice);
+        if isDebugVis
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+        end
+        TempMask(2, :, :) = Slice;
+        if isFlip
+            TempMask = flip(TempMask, 1);
+        end
+    end
     % Permute back
     headmask = permute(TempMask, Perm);
+end
+if isDebugVis
+    figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
 end
 % Fill holes
 InsideMask = (Fill(headmask, 1) & Fill(headmask, 2) & Fill(headmask, 3));
 headmask = InsideMask | (Dilate(InsideMask) & headmask);
+if isDebugVis
+    view_mri_slices(headmask, 'x', nDebugVisSlices);
+end
 % Keep only central connected volume (trim "beard" or bubbles)
 headmask = CenterSpread(headmask);
 bst_progress('inc', 15);
 
-% view_mri_slices(headmask, 'x', 20)
+if isDebugVis
+    view_mri_slices(headmask, 'x', nDebugVisSlices);
+end
 
 
 %% ===== CREATE SURFACE =====
@@ -220,6 +283,16 @@ bst_progress('text', 'Creating isosurface...');
 [sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
 % Flip x-y back to our voxel coordinates.
 sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
+if isDebugVis
+    FigureId = db_template('FigureId');
+    FigureId.Type = '3DViz';
+    hFig = figure_3d('CreateFigure', FigureId);
+    figure_3d('PlotSurface', hFig, sHead.Faces, sHead.Vertices, [1,1,1], 0); % color, transparency required
+    figure_3d('ViewAxis', hFig, true); % isVisible
+    hFig.Visible = "on";
+    fprintf('mri_isohead surface\n');
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+end
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
 % maxIsoVert = 60000;
@@ -228,9 +301,16 @@ bst_progress('inc', 10);
 %     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, maxIsoVert./length(sHead.Vertices));
 %     bst_progress('inc', 10);
 % end
+
 % Remove small objects
 bst_progress('text', 'Removing small patches...');
 [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
+if isDebugVis
+    hFig = figure_3d('CreateFigure', FigureId);
+    figure_3d('PlotSurface', hFig, sHead.Faces, sHead.Vertices, [1,1,1], 0); % color, transparency required
+    figure_3d('ViewAxis', hFig, true); % isVisible
+    hFig.Visible = "on";
+end
 bst_progress('inc', 15);
 
 % Clean final surface
@@ -245,17 +325,46 @@ bst_progress('text', 'Smoothing voxel artefacts...');
 % Restrict iterations to make it faster, smooth a bit more (normal to surface
 % only) after downsampling.
 sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 5, [], false); % voxel/smoothing size, iterations, verbose
+if isDebugVis
+    fprintf('mildly smoothed isosurface\n');
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+end
 bst_progress('inc', 20);
 
 % Downsampling isosurface
 if (length(sHead.Vertices) > nVertices)
     bst_progress('text', 'Downsampling surface...');
-    [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-    bst_progress('inc', 15);
+    % Modified tess_downsize to accept sHead
+    % Check if Lidar Toolbox is installed (requires image processing + computer vision)
+    isLidarToolbox = exist('surfaceMesh', 'file') == 2;
+    if isLidarToolbox
+        Method = 'simplify';
+    else
+        % This can produce a "bad" patch. disconnected? intersecting?
+        % TODO: need to fix and use tess_clean, or use different method
+        Method = 'reducepatch';
+    end
+    sHead = tess_downsize(sHead, nVertices, Method);
+    %[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
+    if isDebugVis
+        fprintf('reduced surface (%s)\n', Method);
+        [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+    end
+    % Fix this patch
+    [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
+    if isDebugVis
+        fprintf('reduced surface (small disconnected parts removed)\n');
+        [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+    end
 end
+bst_progress('inc', 15);
 
 bst_progress('text', 'Smoothing...');
 sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 45, 0, false); % voxel/smoothing size, iterations, freedom (normal), verbose
+if isDebugVis
+    fprintf('final smoothed surface\n');
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+end
 bst_progress('inc', 10);
 
 % Convert to SCS
@@ -355,15 +464,20 @@ end
 
 function OutMask = CenterSpread(InMask)
 % Similar to Fill, but from a central starting point and intersecting with the input "reference" mask.
+% This should work on slices as well as volumes.
 OutMask = false(size(InMask));
-iStart = round(size(OutMask)/2);
+iStart = max(1,round(size(OutMask)/2));
 nVox = size(OutMask);
+% Force starting center point to be 1, and spread from there. But this will still fail if it's fully
+% surrounded by 0s.
 OutMask(iStart(1), iStart(2), iStart(3)) = true;
 nPrev = 0;
 nOut = 1;
 while nOut > nPrev
     % Dilation loop was very slow.
     %     OutMask = OutMask | (Dilate(OutMask) & InMask);
+    % Instead, propagate as far as possible in each direction (3 dim, forward & back) at each step
+    % of the main loop.
     for x = 2:nVox(1)
         OutMask(x,:,:) = OutMask(x,:,:) | (OutMask(x-1,:,:) & InMask(x,:,:));
     end
@@ -385,6 +499,9 @@ while nOut > nPrev
     nPrev = nOut;
     nOut = sum(OutMask(:));
 end
+if nOut == 1
+    warning('CenterSpread failed: starting center point is not part of the mask.');
+end
 end
 
 
@@ -394,3 +511,117 @@ function [Vol, Vect]  = NormGradient(Vol)
 Vect = cat(4,x,y,z);
 Vol = sqrt(sum(Vect.^2, 4));
 end
+
+
+% Modified version to detect duplicate faces based on vertex indices, not strange alignment of face
+% normals. 
+% TODO: DELETE just started, probably won't keep.
+% function [Vertices, Faces, remove_vertices, remove_faces, Atlas] = tess_clean(Vertices, Faces, Atlas)
+% % TESS_CLEAN: Check the integrity of a tesselation.
+% %
+% % USAGE:  [Vertices, Faces, remove_vertices, Atlas] = tess_clean(Vertices, Faces, Atlas)
+% %
+% % DESCRIPTION:
+% %      Check in a tesselation if there are some identical faces and remove the bad_oriented one.
+% %      Moreover it removes isolated triangles and some other pathological configurations.
+% %
+% % INPUTS:
+% %    - Vertices : Mx3 double matrix
+% %    - Faces    : Nx3 double matrix
+% % OUTPUTS:
+% %    - Vertices : Corrected vertices structure
+% %    - Faces    : Corrected faces structure
+% 
+% % Authors: Julien Lefevre, 2007
+% %          Francois Tadel, 2008-2014
+% %          Marc Lalancette, 2025
+% 
+% % Parse inputs
+% if (nargin < 3) || isempty(Atlas)
+%     Atlas = [];
+% end
+% % Check matrix orientation
+% if (size(Vertices, 2) ~= 3) || (size(Faces, 2) ~= 3)
+%     error('Faces and Vertices must have 3 columns (X,Y,Z).');
+% end
+% 
+% % Face connectivity matrix for edges
+% [~, FaceConn] = tess_faceconn(Faces, 2);
+% 
+% % Items to remove
+% remove_faces=[];
+% remove_vertices=[];
+% 
+% % Sort face vertex indices to identify duplicates.
+% FacesSrt = sort(Faces, 2);
+% [~, iFace, iUniqFace] = unique(FacesSrt, 'rows');
+% % UniqFaces = Faces(iFace), Faces = UniqFaces(iUniqFace)
+% % For each unique item, check if multiple copies in iUniqFace
+% for iU = 1:numel(iFace)
+%     if sum(iUniqFace == iU) > 1
+%         isFaceSuspect = iUniqFace == iU;
+% 
+%         iRemoveFace(end+1) = i
+% 
+% TessArea = tess_area(Vertices, Faces);
+% [~, FaceNormals] = tess_normals(Vertices, Faces);
+% 
+% sort_crossprod = sortrows(abs([FaceNormals,(1:size(FaceNormals,1))']));
+% diff_sort_crossprod = diff(sort_crossprod);
+% indices = find((diff_sort_crossprod(:,1) < tol) & ...
+%                (diff_sort_crossprod(:,2) < tol) & ...
+%                (diff_sort_crossprod(:,3) < tol));
+% % Indices of redundant triangles (same coordinates, two different orientations)
+% indices_tri1 = sort_crossprod(indices,4); 
+% indices_tri2 = sort_crossprod(indices+1,4);
+% 
+% [VertFacesConn, FaceConn] = tess_faceconn(Faces);
+% 
+% % For each suspected face we compute the mean of normals of neighbouring faces
+% scal=zeros(length(indices_tri1),2);
+% 
+% % We remove faces whose normal is not in the same direction as their neighbouring faces
+% for i=1:length(indices_tri1)
+%     neighbours = find(FaceConn(indices_tri1(i),:));
+%     neighbours = setdiff(neighbours, indices_tri2(i));
+%     % Isolated faces
+%     if isempty(neighbours) 
+%         remove_faces    = [remove_faces,    indices_tri1(i), indices_tri2(i)];
+%         remove_vertices = [remove_vertices, Faces(indices_tri1(i),:)];
+%     else
+%         normal_mean = mean(FaceNormals(neighbours,:) .* repmat(TessArea(neighbours),1,3),1);
+%         norm_i = FaceNormals(indices_tri1(i),:);
+%         scal(i,1) = normal_mean*norm_i'/(norm(normal_mean));
+% 
+%         if scal(i,1)>0
+%             remove_faces = [remove_faces,indices_tri2(i)];
+%             scal(i,2) = indices_tri2(i);
+%         else
+%             if scal(i,1)<0
+%                 remove_faces = [remove_faces,indices_tri1(i)];
+%                 scal(i,2) = indices_tri1(i);
+%             else
+%                 remove_faces = [remove_faces,indices_tri1(i),indices_tri2(i)];
+%                 remove_vertices = [remove_vertices, Faces(indices_tri1(i),:)];
+%             end
+%         end
+%     end
+% end
+% 
+% % Find all the isolated faces
+% FaceConn(remove_faces, :) = 0;
+% FaceConn(:, remove_faces) = 0;
+% iIsolatedFaces = find(sum(FaceConn) <= 1);
+% remove_faces = union(remove_faces', iIsolatedFaces);
+% % Remove faces
+% Faces(remove_faces, :) = [];
+% 
+% % Find the vertices that are not used in any face
+% VertConn = tess_vertconn(Vertices, Faces);
+% iIsolatedVert = find(sum(VertConn) <= 1);
+% remove_vertices = union(remove_vertices, iIsolatedVert);
+% % Remove vertices
+% [Vertices, Faces, Atlas] = tess_remove_vert(Vertices, Faces, remove_vertices, Atlas);
+% 
+% end
+

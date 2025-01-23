@@ -2,9 +2,12 @@ function [NewTessFile, iSurface, I, J] = tess_downsize( TessFile, newNbVertices,
 % TESS_DOWNSIZE: Reduces the number of vertices in a surface file.
 %
 % USAGE:  [NewTessFile, iSurface, I, J] = tess_downsize(TessFile, newNbVertices=[ask], Method=[ask]);
+%         [NewTessMat, iSurface, I, J] = tess_downsize(TessMat, newNbVertices=[ask], Method=[ask]);
 % 
 % INPUT: 
 %    - TessFile      : Full path to surface file to decimate
+%    - TessMat       : Already loaded surface structure, a structure is returned in that case and no
+%                      file is saved.
 %    - newNbVertices : Desired number of vertices
 %    - Method        : {'reducepatch', 'reducepatch_subdiv', 'iso2mesh', 'iso2mesh_project'}
 % OUTPUT:
@@ -56,11 +59,17 @@ iSurface = [];
 I = [];
 J = [];
 
+% Surface structure now accepted as input
+isTessInput = isstruct(TessFile);
 
 %% ===== ASK FOR MISSING OPTIONS =====
 % Get the number of vertices
-VarInfo = whos('-file',file_fullpath(TessFile),'Vertices');
-oldNbVertices = VarInfo.size(1);
+if isTessInput
+    oldNbVertices = size(TessFile.Vertices, 1);
+else
+    VarInfo = whos('-file',file_fullpath(TessFile),'Vertices');
+    oldNbVertices = VarInfo.size(1);
+end
 % If new number of vertices was not provided: ask user
 if isempty(newNbVertices)
     % Ask user the new number of vertices
@@ -82,11 +91,13 @@ if (newNbVertices >= oldNbVertices)
     return;
 end
 
+% Check if Lidar Toolbox is installed (requires image processing + computer vision)
+isLidarToolbox = exist('surfaceMesh', 'file') == 2;
+
 % Ask for resampling method
 if isempty(Method)
     % Ask method
-    ind = java_dialog('radio', 'Select the resampling method:', 'Resample surface', [], ...
-                      {['<HTML><B><U>Matlab''s reducepatch:</U></B><BR>' ...
+    OptionsText =     {['<HTML><B><U>Matlab''s reducepatch:</U></B><BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - Inhomogeneous mesh: large faces at the top of the gyri<BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - Keeps the atlases and the subjects co-registration'], ...
                        ['<HTML><B>Matlab''s reducepatch + subdivide large faces:</B><BR>' ...
@@ -95,10 +106,18 @@ if isempty(Method)
                        ['<HTML><B>iso2mesh/CGAL library:</B><BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh: all the faces have similar sizes<BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subject co-registration<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - If the downsample looks dark, right-click > Swap faces']}, 1);
+                        '&nbsp;&nbsp;&nbsp;| - If the downsample looks dark, right-click > Swap faces']};
 %                        ['<HTML><B>iso2mesh/CGAL + project on the original surface:</B><BR>' ...
 %                         '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh but possible <U>topological problems</U><BR>' ...
-%                         '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']}, 1);
+%                         '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']};
+    if isLidarToolbox
+        OptionsText{end+1} = ...
+                       ['<HTML><B>Matlab''s simplify, from Lidar Toolbox:</B><BR>' ...
+                        '&nbsp;&nbsp;&nbsp;| - Possibly better at preserving shape topology than reducepatch<BR>' ...
+                        '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'];
+    end
+    ind = java_dialog('radio', 'Select the resampling method:', 'Resample surface', [], ...
+                      OptionsText, 1);
     if isempty(ind)
         return
     end
@@ -107,7 +126,8 @@ if isempty(Method)
         case 1,  Method = 'reducepatch';
         case 2,  Method = 'reducepatch_subdiv';
         case 3,  Method = 'iso2mesh';
-        case 4,  Method = 'iso2mesh_project';
+        case 4,  Method = 'simplify';
+        % case 4,  Method = 'iso2mesh_project';
     end
 end
 
@@ -121,15 +141,18 @@ if ~isempty(MultipleFiles)
 end
     
 %% ===== LOAD FILE =====
-% Progress bar
-bst_progress('start', 'Resample surface', 'Loading file...');
-% Load file
-TessMat = in_tess_bst(TessFile);
-% Prepare variables
+if isTessInput
+    TessMat = TessFile;
+else
+    % Progress bar
+    bst_progress('start', 'Resample surface', 'Loading file...');
+    % Load file
+    TessMat = in_tess_bst(TessFile);
+    % Prepare variables
+end
 TessMat.Faces    = double(TessMat.Faces);
 TessMat.Vertices = double(TessMat.Vertices);
-dsFactor = newNbVertices / size(TessMat.Vertices, 1); 
-
+dsFactor = newNbVertices / size(TessMat.Vertices, 1);
 
 %% ===== RESAMPLE =====
 bst_progress('start', 'Resample surface', ['Resampling surface: ' TessMat.Comment '...']);
@@ -411,6 +434,21 @@ switch (Method)
         NewTessMat.Faces    = Faces;
         NewTessMat.Vertices = Vertices;
         MethodTag = '_iso2mesh_proj';
+
+    % ===== REDUCEPATCH =====
+    % Matlab's Lidar Toolbox simplify (since R2022b)
+    case 'simplify'
+        if ~isLidarToolbox
+            fprintf('BST>tess_downsize method "simplify" requires Matlab''s Lidar Toolbox, which was not found.\n');
+        end
+        % Create mesh object
+        oMesh = surfaceMesh(TessMat.Vertices, TessMat.Faces);
+
+        % Reduce number of vertices
+        oMesh = simplify(oMesh, TessMat.Vertices, 'TargetNumFaces', newNbVertices);
+        NewTessMat.Faces = oMesh.Faces;
+        NewTessMat.Vertices = oMesh.Vertices;
+
 end
 
 
@@ -529,15 +567,18 @@ end
 
 
 %% ===== UPDATE DATABASE =====
-% Save downsized surface file
-bst_save(NewTessFile, NewTessMat, 'v7');
-% Make output filename relative
-NewTessFile = file_short(NewTessFile);
-% Get subject
-[sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
-% Register this file in Brainstorm database
-iSurface = db_add_surface(iSubject, NewTessFile, NewComment);
-
+% Save downsized surface file, or return structure
+if isTessInput
+    NewTessFile = NewTessMat;
+else
+    bst_save(NewTessFile, NewTessMat, 'v7');
+    % Make output filename relative
+    NewTessFile = file_short(NewTessFile);
+    % Get subject
+    [~, iSubject] = bst_get('SurfaceFile', TessFile);
+    % Register this file in Brainstorm database
+    iSurface = db_add_surface(iSubject, NewTessFile, NewComment);
+end
 % Close progress bar
 bst_progress('stop');
 
@@ -550,15 +591,20 @@ end
 function NewTessMat = iso2mesh_resample(TessMat, dsFactor)
     % Check if iso2mesh is installed
     if ~exist('meshresample', 'file')
-        bst_error(['<HTML>Please install <B>iso2mesh</B> on your computer:<BR><BR>' ...
-               '  1) Visit the website: <A href="http://iso2mesh.sourceforge.net">http://iso2mesh.sourceforge.net</A><BR>' ...
-               '  2) Download the iso2mesh package for your operating system.<BR>' ...
-               '  3) Unzip it on your local hard drive.<BR>' ...
-               '  4) Add the iso2mesh folder to your Matlab path.<BR>' ...
-               '  5) Try again downsampling the surface.<BR><BR>'], 'Install iso2mesh', 0);
-        web('http://sourceforge.net/projects/iso2mesh/files/iso2mesh/1.5.0%20%28iso2mesh%202013%29/', '-browser');
-        NewTessMat = [];
-        return;
+        % iso2mesh is now a plugin, install/load iso2mesh plugin
+        [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', true); % isInteractive
+        if ~isInstalled
+            bst_error(errInstall);
+            % bst_error(['<HTML>Please install <B>iso2mesh</B> on your computer:<BR><BR>' ...
+            %     '  1) Visit the website: <A href="http://iso2mesh.sourceforge.net">http://iso2mesh.sourceforge.net</A><BR>' ...
+            %     '  2) Download the iso2mesh package for your operating system.<BR>' ...
+            %     '  3) Unzip it on your local hard drive.<BR>' ...
+            %     '  4) Add the iso2mesh folder to your Matlab path.<BR>' ...
+            %     '  5) Try again downsampling the surface.<BR><BR>'], 'Install iso2mesh', 0);
+            % web('http://sourceforge.net/projects/iso2mesh/files/iso2mesh/1.5.0%20%28iso2mesh%202013%29/', '-browser');
+            NewTessMat = [];
+            return;
+        end
     end
     % Running iso2mesh routine
     [Vertices,Faces] = meshresample(TessMat.Vertices, TessMat.Faces, dsFactor);
