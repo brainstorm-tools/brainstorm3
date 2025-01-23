@@ -45,8 +45,8 @@ bst_progress('start', 'GARDEL', 'Starting GARDEL external tool');
 bst_plugin('SetProgressLogo', 'gardel');
 
 % Create temporary folder for GARDEL
-% TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
-TmpGardelDir = 'C:\Users\chinm\.brainstorm\tmp\gardel_250122_185555';
+TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
+% TmpGardelDir = 'C:\Users\chinm\.brainstorm\tmp\gardel_250122_185555';
 
 % Get current subject
 sSubject = bst_get('Subject', iSubject);
