@@ -139,7 +139,7 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
                                'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
                                 (~isfield(sProcesses(iProc).options.tfedit, 'Value') || isempty(sProcesses(iProc).options.tfedit.Value)))    % check 'tfedit' field
             bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before running the pipeline.'], 'Pipeline editor', 0);
-            panel_process_select('ShowPanel', {sFilesA.FileName}, {sFilesB.FileName}, sProcesses);
+            panel_process_select('ShowPanel', [{sFilesA.FileName}, {sFilesB.FileName}], sProcesses);
             return
         end
     end

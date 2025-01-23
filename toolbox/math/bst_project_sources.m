@@ -189,8 +189,8 @@ for iGroup = 1:nGroup
         ResultsFile = ResultsGroups{iGroup}{iFile};
         if isInteractive
             bst_progress('inc', 1);
+            bst_progress('text', sprintf('Processing file #%d/%d: %s', iFile, nFile, ResultsFile));
         end
-        bst_progress('text', sprintf('Processing file #%d/%d: %s', iFile, nFile, ResultsFile));
         
         % ===== OUTPUT STUDY =====
         % Get source study
@@ -254,8 +254,8 @@ for iGroup = 1:nGroup
         end
         % Remove link with original file
         ResultsMat.DataFile = [];
-        % Check if the file was reprojected on an atlas
-        if isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas)
+        % Check if the file was reprojected on an atlas (only for results files)
+        if isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isTimefreq
             wrnMsg = ['Cannot process atlas-based source files: Skipping file "' ResultsFile '"...'];
             if isInteractive
                 disp(wrnMsg);

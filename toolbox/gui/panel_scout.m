@@ -201,6 +201,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jRadioAbsolute = gui_component('Radio', jPanelDisplay, 'tab', 'Absolute', {Insets(0,0,0,0), jButtonGroup});
                 jRadioRelative = gui_component('Radio', jPanelDisplay, 'tab', 'Relative', {Insets(0,0,0,0), jButtonGroup});
                 jRadioAbsolute.setSelected(1);
+                % Uniform amplitude scales
+                gui_component('Label', jPanelDisplay, 'br', ['Uniform amplitude scale:' strSpace]);
+                jCheckUniformAmplitude  = gui_component('CheckBox', jPanelDisplay, '', '',  Insets(0,0,0,0), [], @UniformTimeSeries_Callback);
+
             jPanelBottom.add('br hfill', jPanelDisplay);
             
         jPanelMain.add(jPanelBottom, BorderLayout.SOUTH)
@@ -235,6 +239,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckRegionColor',        jCheckRegionColor, ...
                                   'jCheckOverlayScouts',      jCheckOverlayScouts, ...
                                   'jCheckOverlayConditions',  jCheckOverlayConditions, ...
+                                  'jCheckUniformAmplitude',   jCheckUniformAmplitude, ...
                                   'jListScouts',                jListScouts));
                               
     
@@ -301,6 +306,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 EditScoutsSize('Shrink1');
             case ev.VK_ESCAPE
                 SetSelectedScouts(0);
+            case 3 % CTRL+C
+                if ev.getModifiers == 2
+                    CopyScouts();
+                end
+            case 22 % CTRL+V
+                if ev.getModifiers == 2
+                    PasteScouts()
+                end
         end
     end
 
@@ -337,6 +350,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     end
 end
                    
+
+%% ===== OPTIONS: UNIFORMIZE SCALES =====
+function UniformTimeSeries_Callback(hObj, ev)
+    % Get button
+    jCheck = ev.getSource();
+    isSel = jCheck.isSelected();
+    figure_timeseries('UniformizeTimeSeriesScales', isSel);
+    jCheck.setSelected(isSel);
+end
+
 
 
 %% =================================================================================
@@ -468,11 +491,18 @@ function UpdateMenus(sAtlas, sSurf)
     gui_component('MenuItem', jMenu, [], 'Rename',       IconLoader.ICON_EDIT,    [], @(h,ev)bst_call(@EditScoutLabel));
     gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor));
     if ~isReadOnly
-        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
-        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
-        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,  [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,     [], @(h,ev)bst_call(@RemoveScouts));
+        gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,     [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Duplicate',    IconLoader.ICON_COPY,       [], @(h,ev)bst_call(@DuplicateScouts));
+        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,      [], @(h,ev)bst_call(@DifferenceScouts));
+        gui_component('MenuItem', jMenu, [], 'Intersect',    IconLoader.ICON_SCROLL_UP,  [], @(h,ev)bst_call(@IntersectScouts));
         jMenu.addSeparator();
     end
+    gui_component('MenuItem', jMenu, [], 'Copy', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CopyScouts));
+    if ~isReadOnly
+        gui_component('MenuItem', jMenu, [], 'Paste', IconLoader.ICON_PASTE, [], @(h,ev)bst_call(@PasteScouts));
+    end
+    jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab));
@@ -569,6 +599,7 @@ function CreateMenuFunction(jMenu)
     jMenuNorm = gui_component('RadioMenuItem', jMenu, [], 'Mean(norm)', [], [], @(h,ev)bst_call(@SetScoutFunction,'Mean_norm'));
     jMenuMax  = gui_component('RadioMenuItem', jMenu, [], 'Max',        [], [], @(h,ev)bst_call(@SetScoutFunction,'Max'));
     jMenuPow  = gui_component('RadioMenuItem', jMenu, [], 'Power',      [], [], @(h,ev)bst_call(@SetScoutFunction,'Power'));
+    jMenuRms  = gui_component('RadioMenuItem', jMenu, [], 'RMS',        [], [], @(h,ev)bst_call(@SetScoutFunction,'RMS'));
     jMenuAll  = gui_component('RadioMenuItem', jMenu, [], 'All',        [], [], @(h,ev)bst_call(@SetScoutFunction,'All'));
     % Get the selected functions
     allFun = unique({sScouts.Function});
@@ -583,6 +614,7 @@ function CreateMenuFunction(jMenu)
         case 'Mean_norm', jMenuNorm.setSelected(1);
         case 'Max',       jMenuMax.setSelected(1);
         case 'Power',     jMenuPow.setSelected(1);
+        case 'RMS',       jMenuRms.setSelected(1);
         case 'All',       jMenuAll.setSelected(1);
     end
 end
@@ -691,6 +723,58 @@ function CreateMenuInverse(jMenu)
             case 'L',  jMenuLoose.setSelected(1);
         end
     end
+end
+
+
+%% ===== SET LOCATION CONSTRAINT =====
+function SetLocationConstraint(iScout, locationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set location constraint
+    switch lower(locationConstraint)
+        case 'surface'
+            regionArgument = '.S.';
+        case 'volume'
+            regionArgument = '.V.';
+        case 'deep brain'
+            regionArgument = '.D.';
+        case 'exclude'
+            regionArgument = '.X.';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
+end
+
+
+%% ===== SET ORIENTATION CONSTRAINT =====
+function SetOrientationConstraint(iScout, orientationConstraint)
+    % Seleted scouts
+    if ~isempty(iScout)
+        SetSelectedScouts(iScout)
+    end
+    sScouts = GetSelectedScouts();
+    if isempty(sScouts)
+        return
+    end
+    % Set orientation constraint
+    switch lower(orientationConstraint)
+        case 'constrained'
+            regionArgument = '..C.';
+        case 'unconstrained'
+            regionArgument = '..U';
+        case 'loose'
+            regionArgument = '..L';
+        otherwise
+            return
+    end
+    SetScoutRegion(regionArgument);
 end
 
 
@@ -863,27 +947,39 @@ function UpdateScoutProperties()
         strSize = sprintf('  Vertices: %d', length(allVertices));
         % Volume: Compute the volume enclosed in the scout (cm3)
         if isVolumeAtlas
+            GridLoc = [];
+            if bst_get('MatlabVersion') >=840 % R2014b
+                hFig = bst_figures('GetCurrentFigure', '3D');
+                GridLoc = GetFigureGrid(hFig);
+            end
             totalVol = 0;
             for i = 1:length(sScouts)
-                patchVol = 0;
-                if (length(sScouts(i).Vertices) > 3) && ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
-                    % Get the faces and vertices of the patch
-                    Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
-                    Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
-                    % Compute patch volume
-                    if (size(Faces,1) > 1)
-                        patchVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                scoutVol = 0;
+                if (length(sScouts(i).Vertices) > 3)
+                    % Compute volume using scout vertices (for 3DFig or MRIViewer)
+                    if ~isempty(GridLoc)
+                        [~, scoutVol] = boundary(GridLoc(sScouts(i).Vertices, :));
+                        scoutVol = scoutVol * 1e6;
+                    % Compute volume from scout path (only for 3DFig)
+                    elseif ~isempty(sScouts(i).Handles) && ~isempty(sScouts(i).Handles(1).hPatch)
+                        % Get the faces and vertices of the patch
+                        Vertices = double(get(sScouts(i).Handles(1).hPatch, 'Vertices'));
+                        Faces    = double(get(sScouts(i).Handles(1).hPatch, 'Faces'));
+                        % Compute patch volume
+                        if (size(Faces,1) > 1)
+                            scoutVol = stlVolumeNormals(Vertices', Faces') * 1e6;
+                        end
                     end
                 end
-                % Use the maximum of 0.03cm3 and the compute volume of the patch
-                minVol = 0.01 * length(sScouts(i).Vertices);
-                if (minVol > patchVol)
-                    patchVol = minVol;
-                end
                 % Sum with the other scouts
-                totalVol = totalVol + patchVol;
+                totalVol = totalVol + scoutVol;
             end
-            strArea = sprintf('Volume: %1.2f cm3  ', totalVol);
+            % Prepare volume (cm3) string
+            strCm3 = 'Use MRI(3D)';
+            if totalVol ~= 0
+                strCm3 = sprintf('%1.2f cm3  ', totalVol);
+            end
+            strArea = ['Volume: ', strCm3];
             
         % Surface: Compute the total area (cm2)
         else
@@ -909,39 +1005,11 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
         GlobalData.CurrentScoutsSurface = '';
         return
     end
-    % Get surfaces in new figure
-    TessInfo = getappdata(hFig, 'Surface');
-    iTess = getappdata(hFig, 'iSurface');
-    if isempty(iTess) || isempty(TessInfo)
-        SurfaceFile = [];
-    else
-        SurfaceFile = TessInfo(iTess).SurfaceFile;
-    end
+    % Get scout surface in new figure
+    SurfaceFile = GetScoutSurface(hFig);
     % If the current surface didn't change: nothing to do
     if file_compare(GlobalData.CurrentScoutsSurface, SurfaceFile)
         return;
-    end
-    % If surface file is an MRI or fibers
-    if ~isempty(iTess) && ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
-        % By default: no attached surface
-        SurfaceFile = [];
-        % If there are some data associated with this file: get the associated scouts
-        if ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
-            FileMat.SurfaceFile = [];
-            if strcmpi(TessInfo(iTess).DataSource.Type, 'Source')
-                FileMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
-            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'Timefreq')
-                FileMat = in_bst_timefreq(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile', 'DataFile', 'DataType');
-                if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
-                    FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
-                end
-            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
-                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
-            end
-            if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
-                SurfaceFile = FileMat.SurfaceFile;
-            end
-        end
     end
     % Update current surface
     SetCurrentSurface(SurfaceFile);
@@ -988,11 +1056,11 @@ end
 function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     global GlobalData;
     % Parse inputs
-    if (nargin < 1) || isempty(isInteractive)
+    if (nargin < 2) || isempty(isInteractive)
         isInteractive = 1;
     end
     % Get current atlas
-    if (nargin < 2) || isempty(sAtlas)
+    if (nargin < 1) || isempty(sAtlas)
         % Get current surface
         sSurf = bst_memory('GetSurface', GlobalData.CurrentScoutsSurface);
         % If there are no surface, or atlases: return
@@ -1004,9 +1072,18 @@ function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     end
     % If it is an "official" atlas: read-only
     if ismember(lower(sAtlas.Name), {...
-            'brainvisa_tzourio-mazoyer', ... % Old default anatomy
-            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ... % Old default anatomy
-            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'structures'})  % New freesurf
+            ... % Old default anatomy
+            'brainvisa_tzourio-mazoyer', ...
+            ... % Old default anatomy
+            'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ...
+            ... % New default anatomy (2023b)
+            ... % https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy#FreeSurfer_templates
+            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'vcatlas', 'structures', ... % FreeSurfer
+            'brainnetome', 'hcp_mmp1', 'oasis cortical hubs', ...                                         % Brainnetome, HCP-MMP1.0, OASIS
+            'pals-b12 brodmann', 'pals-b12 lobes', 'pals-b12 orbito-frontal', 'pals-b12 visuotopic', ...  % PALS-B12
+            'schaefer_100_17net', 'schaefer_200_17net', 'schaefer_400_17net', 'schaefer_600_17net',...    % Schaefer2018 17 networks
+            'schaefer_100_7net', ' schaefer_200_7net',  'schaefer_400_7net',  'schaefer_600_7net',...     % Schaefer2018  7 networks
+            })
         if isInteractive
             java_dialog('warning', [...
                 'This atlas is a reference and cannot be modified or deleted.' 10 10 ...
@@ -1073,6 +1150,41 @@ function SetCurrentAtlas(iAtlas, isForced)
     % Close progress bar
     if isProgress
         bst_progress('stop');
+    end
+end
+
+
+%% ===== GET SCOUT SURFACE FOR FIGURE =====
+function SurfaceFile = GetScoutSurface(hFig)
+    % Get surface in new figure
+    TessInfo = getappdata(hFig, 'Surface');
+    iTess = getappdata(hFig, 'iSurface');
+    SurfaceFile = [];
+    if isempty(iTess) || isempty(TessInfo)
+        return
+    % If surface file is an MRI or fibers
+    elseif ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
+        % By default: no attached surface
+        SurfaceFile = [];
+        % If there are some data associated with this file: get the associated scouts
+        if ~isempty(TessInfo(iTess).DataSource) && ~isempty(TessInfo(iTess).DataSource.FileName)
+            FileMat.SurfaceFile = [];
+            if strcmpi(TessInfo(iTess).DataSource.Type, 'Source')
+                FileMat = in_bst_results(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'Timefreq')
+                FileMat = in_bst_timefreq(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile', 'DataFile', 'DataType');
+                if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
+                    FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
+                end
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
+            end
+            if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
+                SurfaceFile = FileMat.SurfaceFile;
+            end
+        end
+    else
+        SurfaceFile = TessInfo(iTess).SurfaceFile;
     end
 end
 
@@ -1333,6 +1445,7 @@ function ScoutsOptions = GetScoutsOptions()
             'overlayScouts',      0, ...
             'overlayConditions',  0, ...
             'displayAbsolute',    1, ...
+            'uniformAmplitude',   0, ...
             'showSelection',      'all', ...
             'patchAlpha',         .7, ...
             'displayContour',     1, ...
@@ -1345,6 +1458,8 @@ function ScoutsOptions = GetScoutsOptions()
     ScoutsOptions.overlayConditions = ctrl.jCheckOverlayConditions.isSelected();
     % Absolute values
     ScoutsOptions.displayAbsolute = ctrl.jRadioAbsolute.isSelected();
+    % Uniform amplitude scale
+    ScoutsOptions.uniformAmplitude = ctrl.jCheckUniformAmplitude.isSelected();
     % Show selection
     if ~ctrl.jRadioShowSel.isSelected() && ~ctrl.jRadioShowAll.isSelected()
         ScoutsOptions.showSelection = 'none';
@@ -3707,6 +3822,82 @@ function JoinScouts(varargin)
 end
 
 
+%% ===== INTERSECT SCOUTS =====
+% Intersection between scouts selected in the JList
+function IntersectScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    [sScouts, iScouts] = GetSelectedScouts();
+    % Need at least TWO scouts
+    if (length(sScouts) < 2)
+        java_dialog('warning', 'You need to select at least two scouts.', 'Join selected scouts');
+        return;
+    end
+    % === Intersect scouts ===
+    % Create new scout
+    sNewScout = db_template('Scout');
+    % Initialize vertices
+    sNewScout.Vertices = sScouts(1).Vertices;
+    for i = 2:length(sScouts)
+        sNewScout.Vertices =  intersect(sNewScout.Vertices, sScouts(i).Vertices);
+    end
+    if isempty(sNewScout.Vertices)
+        java_dialog('msgbox', 'Intersection is empty.', 'Intersect selected scouts');
+        return;
+    end
+    % Copy unmodified fields
+    sNewScout.Seed = sNewScout.Vertices(1);
+    % Label : "Label1 ^ Label2 ^ ..."
+    sNewScout.Label = sScouts(1).Label;
+    for i = 2:length(sScouts)
+        sNewScout.Label = [sNewScout.Label ' n ' sScouts(i).Label];
+    end
+    % Save new scout
+    iNewScout = SetScouts([], 'Add', sNewScout);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
+
+%% ===== DUPLICATE SCOUTS =====
+% Duplicate scouts selected in the JList
+function DuplicateScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    % New scout template
+    sNewScout = db_template('scout');
+
+    % === Copy scouts ===
+    sNewScouts = sScouts;
+    % Update new scouts name and reset handles
+    for i = 1:length(sNewScouts)
+        sNewScouts(i).Label = [sScouts(i).Label '_copy'];
+        sNewScouts(i).Handles = sNewScout.Handles;
+    end
+    % Save new scouts
+    iNewScouts = SetScouts([], 'Add', sNewScouts);
+    % Display new scouts
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select new scouts in list
+    SetSelectedScouts(iNewScouts);
+end
+
 %% ===============================================================================
 %  ====== OTHER SCOUTS OPERATIONS ================================================
 %  ===============================================================================
@@ -3896,7 +4087,7 @@ function ExpandWithCorrelation(varargin)
 end
 
 %% ===== NEW SURFACE: FROM SELECTED SCOUTS =====
-function NewSurface(isKeep)
+function NewTessFile = NewSurface(isKeep)
     % === GET VERTICES TO REMOVE ===
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
@@ -3946,8 +4137,84 @@ function NewSurface(isKeep)
     [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
     % Register this file in Brainstorm database
     db_add_surface(iSubject, NewTessFile, sSurfNew.Comment);
-    % Re-open one to show the modifications
-    view_surface(NewTessFile);
+    if nargout == 0
+        % Re-open one to show the modifications
+        view_surface(NewTessFile);
+    end
+end
+
+%% ===== COPY SCOUTS =====
+function CopyScouts()
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    % If nothing selected, exit
+    if isempty(sScouts)
+        return;
+    end
+    % Remove the graphic Handles
+    if isfield(sScouts, 'Handles')
+        [sScouts.Handles] = deal([]);
+    end
+    % Get current surface
+    [sAtlas, ~, sSurf] = GetAtlas();
+    [isVolumeAtlas, nGrid] = ParseVolumeAtlas(sAtlas.Name);
+    % Prepare data for copy to clipboard
+    sClipboardScout.surfFileName  = sSurf.FileName;
+    sClipboardScout.isVolumeAtlas = isVolumeAtlas;
+    sClipboardScout.nGrid         = nGrid;
+    sClipboardScout.sScouts       = sScouts;
+    clipboard('copy', bst_jsonencode(sClipboardScout));
+end
+
+%% ===== PASTE SCOUTS =====
+function PasteScouts()
+    % Get copied scouts
+    strClipboard = clipboard('paste');
+    if isempty(strClipboard)
+        return
+    end
+    sClip = bst_jsondecode(strClipboard);
+    if isempty(sClip) || ~isstruct(sClip) || ~all(ismember({'surfFileName', 'isVolumeAtlas', 'nGrid', 'sScouts'} ,fieldnames(sClip)))
+        return
+    end
+    % Get current surface
+    [sAtlas, ~, sSurf] = GetAtlas();
+    [isVolumeAtlas, nGrid] = ParseVolumeAtlas(sAtlas.Name);
+    % Checks to allow copy-paste
+    if isAtlasReadOnly(sAtlas, 1)
+        return
+    end
+    if ~strcmpi(sSurf.FileName, sClip.surfFileName)
+        disp('BST> Cannot copy-paste scouts to a different surface.');
+        return
+    end
+    if sClip.isVolumeAtlas && ~isVolumeAtlas
+        disp('BST> Cannot copy-paste scouts from a Volume atlas to a Surface atlas.');
+        return
+    elseif ~sClip.isVolumeAtlas && isVolumeAtlas
+        disp('BST> Cannot copy-paste scouts from a Surface atlas to a Volume atlas.');
+        return
+    elseif sClip.isVolumeAtlas && isVolumeAtlas
+        if (nGrid ~= sClip.nGrid)
+            disp('BST> Cannot copy-paste scouts between volume grids of different size.');
+            return
+        end
+    end
+    % All 1D vectors are JSON are column vectors, change to row vectors when needed
+    sScouts = sClip.sScouts';
+    sTemplate = db_template('scout');
+    for i = 1:length(sScouts)
+        sScouts(i).Vertices = sScouts(i).Vertices';
+        sScouts(i).Handles = sTemplate.Handles;
+    end
+    % Add new scouts
+    iNewScout = SetScouts([], 'Add', sScouts);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
 end
 
 %% ===== EXPORT SCOUTS TO MATLAB =====
@@ -4303,9 +4570,9 @@ function PlotScouts(iScouts, hFigSel)
                 continue;
             end
             % Skip the display of the scouts that are on a hidden half of the cortex (for struct atlas)
-            if isequal(sSurface.Resect, 'left') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'R')
+            if isequal(sSurface.Resect{2}, 'left') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'R')
                 continue;
-            elseif isequal(sSurface.Resect, 'right') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'L')
+            elseif isequal(sSurface.Resect{2}, 'right') && ~isempty(sScouts(i).Region) && (sScouts(i).Region(1) == 'L')
                 continue;
             end
             % Get indice of the target figure in the sScouts.Handles array
@@ -4645,7 +4912,7 @@ function ReloadScouts(hFig)
     % Plot all scouts again
     PlotScouts([], hFig);
     % Update selected/displayed scouts
-    UpdateScoutsDisplay(hFig);
+    UpdateScoutsDisplay('current');
 end
 
 
@@ -4843,13 +5110,9 @@ function UpdateScoutsDisplay(target)
     % Get target scouts
     if ~ischar(target)
         hFigTarget = target;
-        TessInfo = getappdata(hFigTarget, 'Surface');
-        iTess = getappdata(hFigTarget, 'iSurface');
-        if isempty(TessInfo) || isempty(iTess)
+        SurfaceFile = GetScoutSurface(hFigTarget);
+        if isempty(SurfaceFile)
             hFigTarget = [];
-            SurfaceFile = [];
-        else
-            SurfaceFile = TessInfo(iTess).SurfaceFile;
         end
     elseif strcmpi(target, 'all')
         SurfaceFile = [];
@@ -5202,10 +5465,14 @@ end
 %  ===============================================================================
 
 %% ===== LOAD SCOUT =====
-% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1) : Files to import
-%         LoadScouts()                         : Ask the user for the files to read
-function LoadScouts(ScoutFiles, isNewAtlas)
+% USAGE:  LoadScouts(ScoutFiles, isNewAtlas=1, FileFormat) : Files to import
+%         LoadScouts()                                     : Ask the user for the files to read
+function LoadScouts(ScoutFiles, isNewAtlas, FileFormat)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3)
+        FileFormat = [];
+    end
     % Parse inputs
     if (nargin < 2) || isempty(isNewAtlas)
         isNewAtlas = 1;
@@ -5250,7 +5517,7 @@ function LoadScouts(ScoutFiles, isNewAtlas)
     end   
     
     % Load all files selected by user
-    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc);
+    [sAtlas, Messages] = import_label(sSurf.FileName, ScoutFiles, isNewAtlas, GridLoc, FileFormat);
     % Display error messages
     if ~isempty(Messages)
         java_dialog('error', Messages, 'Load atlas');
@@ -5509,6 +5776,9 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
     GridLoc = [];
     HeadModelType = [];
     GridAtlas = [];
+    if isempty(hFig)
+        return
+    end
     % Get source file displayed in the figure
     ResultsFile = getappdata(hFig, 'ResultsFile');
     if ~isempty(ResultsFile)
@@ -5527,6 +5797,22 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
         if ~isempty(HeadModelMat.GridLoc) && ~strcmpi(HeadModelType, 'surface')
             GridLoc = HeadModelMat.GridLoc;
             GridAtlas = HeadModelMat.GridAtlas;
+        end
+    end
+    % Get timefreq file displayed in the figure
+    Timefreq = getappdata(hFig, 'Timefreq');
+    if ~isempty(Timefreq)
+        % Get loaded time-freq structure
+        [iDS, iTimefreq] = bst_memory('LoadTimefreqFile', Timefreq.FileName);
+        % Get results file
+        if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType, 'results') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile)
+            iResult = bst_memory('GetResultInDataSet', iDS, GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataFile);
+            HeadModelType = GlobalData.DataSet(iDS).Results(iResult).HeadModelType;
+            % Get volume grids
+            if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc) && ~strcmpi(HeadModelType, 'surface')
+                GridLoc   = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
+                GridAtlas = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridAtlas;
+            end
         end
     end
 end

@@ -194,6 +194,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_progress('inc',1);
         
         % ===== LOAD RESULTS =====
+        % Check the data type: timefreq must be source/surface based
+        if strcmpi(file_gettype(sInputs(iFile).FileName), 'timefreq')
+            ResMat = in_bst_timefreq(sInputs(iFile).FileName, 0, 'DataType');
+            if ~strcmpi(ResMat.DataType, 'results')
+                errMsg = 'Only surface or volume maps can be exported.';
+                bst_report('Error', func2str(sProcess.Function), sInputs(iFile).FileName, errMsg);
+                continue;
+            end
+        end
         % Load results
         sInput = bst_process('LoadInputFile', sInputs(iFile).FileName, [], TimeWindow, LoadOptions);
         if isempty(sInput.Data)
@@ -250,8 +259,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Unconstrained sources: combine orientations (norm of all dimensions)
         sInput.Data = bst_source_orient([], sInput.nComponents, ResultsMat.GridAtlas, sInput.Data, 'rms');
-        % If an atlas exists
-        if strcmpi(ResultsMat.HeadModelType, 'surface') && isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isempty(ResultsMat.Atlas.Scouts)
+        % If an atlas exists and it is not from a 1xN connectivity file (1 Scout x N Sources)
+        if strcmpi(ResultsMat.HeadModelType, 'surface') && isfield(ResultsMat, 'Atlas') && ~isempty(ResultsMat.Atlas) && ~isempty(ResultsMat.Atlas.Scouts) && isempty(strfind(sInputs(iFile).FileName, '_connect1'))
             Atlas = ResultsMat.Atlas;
         else
             Atlas = [];
@@ -292,13 +301,40 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Else: Compute interpolation matrix grid points => MRI voxels
                     else
                         sMri.FileName = MriFile;
-                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms','t'});
-                        MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
+                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResudltsMat.DisplayUnits, {'s','ms','t'});
+                        switch (ResultsMat.HeadModelType)
+                            case 'volume'
+                                % Compute interpolation
+                                MriInterp = grid_interp_mri(ResultsMat.GridLoc, sMri, ResultsMat.SurfaceFile, 0, [], [], GridSmooth);
+
+                            case 'mixed'
+                                % Compute the surface interpolation
+                                tess2mri_interp = tess_interp_mri(ResultsMat.SurfaceFile, sMri);
+                                % Initialize returned interpolation matrix
+                                MriInterp = sparse(numel(sMri.Cube(:,:,:,1)), size(ResultsMat.GridAtlas.Grid2Source, 1));
+                                % Process each region separately
+                                ind = 1;
+                                sScouts = ResultsMat.GridAtlas.Scouts;
+                                for i = 1:length(sScouts)
+                                    % Indices in the interpolation matrix
+                                    iGrid = ind + (0:length(sScouts(i).GridRows) - 1);
+                                    ind = ind + length(sScouts(i).GridRows);
+                                    % Interpolation depends on the type of region (volume or surface)
+                                    switch (sScouts(i).Region(2))
+                                        case 'V'
+                                            GridLoc = ResultsMat.GridLoc(sScouts(i).GridRows,:);
+                                            MriInterp(:,iGrid) = grid_interp_mri(GridLoc, sMri, ResultsMat.SurfaceFile, 1, [], [], GridSmooth);
+                                        case 'S'
+                                            MriInterp(:,iGrid) = tess2mri_interp(:, sScouts(i).Vertices);
+                                    end
+                                end
+                        end
                         % Save values for next iteration
                         prevInterp  = MriInterp;
                         prevGridLoc = ResultsMat.GridLoc;
                     end
             end
+
         % Export surface-based files
         else
             MriInterp = [];

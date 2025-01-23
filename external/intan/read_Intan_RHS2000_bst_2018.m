@@ -371,10 +371,11 @@ if (data_present && loadData)
     %% Select specific blocks, based on the time selection
     
     %  The starting block is based on the iSamplesStart selection
-    
-    iStartingBlock = floor(iSamplesStart/num_samples_per_data_block)+1;
 
-    selectedBlocks = iStartingBlock + (0:num_data_blocks);
+    iStartingBlock = floor(iSamplesStart / num_samples_per_data_block) + 1;
+    iEndingBlock   = floor((iSamplesStart + nSamplesToLoad) / num_samples_per_data_block) + 1;
+
+    selectedBlocks = iStartingBlock : iEndingBlock;
     
     for i=1:num_data_blocks_ALL
         t(amplifier_index:(amplifier_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'int32');
@@ -412,14 +413,14 @@ if (data_present && loadData)
             end
         end
         if (num_board_dig_in_channels > 0)
-            if ismember(i, selectedBlocks)
-                board_dig_in_raw(board_dig_in_index:(board_dig_in_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
+            if ismember(i, selectedBlocks) && loadEvents
+                board_dig_in_raw(:, board_dig_in_index:(board_dig_in_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
             else
                 fseek(fid, num_samples_per_data_block*2,'cof');
             end
         end
         if (num_board_dig_out_channels > 0)
-            if ismember(i, selectedBlocks)
+            if ismember(i, selectedBlocks) && loadEvents
                 board_dig_out_raw(board_dig_out_index:(board_dig_out_index + num_samples_per_data_block - 1)) = fread(fid, num_samples_per_data_block, 'uint16');
             else
                 fseek(fid, num_samples_per_data_block*2,'cof');

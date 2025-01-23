@@ -22,14 +22,20 @@ function F = in_fread_oebin(sFile, sfid, SamplesBounds, ChannelsRange)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
+%          Raymundo Cassani, 2024
 
 % Parse inputs
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.continuous.num_channels];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+    SamplesBounds = [sFile.header.first_samp, sFile.header.last_samp];
 end
+% Clip sample limits
+SamplesBounds(1) = max(SamplesBounds(1), sFile.header.first_samp);
+SamplesBounds(2) = min(SamplesBounds(2), sFile.header.last_samp);
+% Remove first sample offset
+SamplesBounds = SamplesBounds - sFile.header.first_samp;
 
 % ===== COMPUTE OFFSETS =====
 nChannels     = double(sFile.header.continuous.num_channels);

@@ -36,7 +36,7 @@ end
 % ===== READ DATA =====
 % Get data type
 switch (sFile.header.data_type)
-    case {0,3}
+    case {0,3,6}
         bytesPerVal = 2;
         dataClass = 'int16';
     case {1,4}

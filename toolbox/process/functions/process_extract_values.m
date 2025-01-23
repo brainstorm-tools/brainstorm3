@@ -91,7 +91,8 @@ function sProcess = DefineExtractOptions(sProcess)
     sProcess.options.scoutfunc.InputTypes = {'results'};
     
     % === NORM XYZ
-    sProcess.options.isnorm.Comment    = 'Compute absolute values (or norm for unconstrained sources)';
+    sProcess.options.isnorm.Comment    = ['Compute absolute values (or norm for unconstrained sources). <BR>' ...
+                                          '<i>Applied after scout function.</i>'];
     sProcess.options.isnorm.Type       = 'checkbox';
     sProcess.options.isnorm.Value      = 0;
     sProcess.options.isnorm.InputTypes = {'results'};
@@ -395,14 +396,6 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                 sLoaded.Data = sLoaded.Data(:,1,:,:);
                 sLoaded.Time = OPTIONS.TimeWindow(1);
             end
-            % Add components labels
-            if (sLoaded.nComponents == 3)
-                sLoaded.RowNames = sLoaded.RowNames(:)';
-                sLoaded.RowNames = [cellfun(@(c)cat(2,c,'.1'), sLoaded.RowNames, 'UniformOutput', 0); ...
-                                    cellfun(@(c)cat(2,c,'.2'), sLoaded.RowNames, 'UniformOutput', 0); ...
-                                    cellfun(@(c)cat(2,c,'.3'), sLoaded.RowNames, 'UniformOutput', 0)];
-                sLoaded.RowNames = sLoaded.RowNames(:);
-            end
             % Convert to matrix structure
             FileMat = db_template('matrixmat');
             FileMat.Value       = sLoaded.Data;
@@ -681,8 +674,18 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
                     tstart = FileMat.Time(1);
                 end
             elseif isfield(FileMat, 'TimeBands') && ~isempty(FileMat.TimeBands)
-                sfreq = 1;
-                tstart = 1;
+                timeBounds = process_tf_bands('GetBounds', FileMat.TimeBands);
+                durationBands = diff(timeBounds, 1, 2);
+                stepBands = diff(timeBounds(:,1));      % Empty if only one timeband
+                % Generate time vector if time bands are periodic
+                if (~isempty(stepBands)) && (std(stepBands) / mean(stepBands) < 0.01) && (std(durationBands) / mean(durationBands) < 0.01)
+                    tmpTime = mean(timeBounds, 2);
+                    sfreq = 1/(tmpTime(2) - tmpTime(1));
+                    tstart = tmpTime(1);
+                else
+                    sfreq  = 1;
+                    tstart = 1 ;
+                end
                 FileMat.TimeBands = [];
             else
                 sfreq = 1/(FileMat.Time(2) - FileMat.Time(1));

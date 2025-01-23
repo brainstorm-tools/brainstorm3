@@ -153,9 +153,10 @@ end
 % Load kernel-based results as kernel+data for coherence and phase metrics only.
 % This is always for 1xN, i.e. the B side has all sources and the A side has only one signal.
 % Kernel on the A side is not implemented.
+methodsKernelBased = {'plv', 'ciplv', 'wpli', 'dwpli', 'pli', 'cohere'};
 LoadOptionsA.LoadFull = 1; % ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere','plv','ciplv','wpli'});  
 LoadOptionsB = LoadOptionsA;
-LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere','plv','ciplv','wpli'});
+LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, methodsKernelBased);
 % Use the signal processing toolbox?
 if bst_get('UseSigProcToolbox')
     hilbert_fcn = @hilbert;
@@ -404,7 +405,7 @@ Time = [];
 nWinLenSamples = [];
 
 % Loop over input files
-for iFile = 1:nFiles
+for iFile = 1 : length(FilesA)
     % Increments here, and in LoadAll above. 100 points are assigned per process (in bst_process('run'))
     bst_progress('set',  round(startValue + (iFile-1) / nFiles * 100));
     %% ===== LOAD SIGNALS =====
@@ -472,6 +473,10 @@ for iFile = 1:nFiles
     sfreq = round(sfreq * 1e6) * 1e-6;
     nA = size(sInputA.Data,1);
     nB = size(sInputB.Data,1);
+    % Number of sources if B is kernel-based
+    if ~isempty(sInputB.ImagingKernel) && ismember(OPTIONS.Method, methodsKernelBased)
+        nB = size(sInputB.ImagingKernel, 1);
+    end
     
     % ===== CHECK UNCONSTRAINED SOURCES =====
     % Unconstrained models?
@@ -541,8 +546,35 @@ for iFile = 1:nFiles
             DisplayUnits = 'Correlation';
             bst_progress('text', sprintf('Calculating: Correlation [%dx%d]...', nA, nB));
             Comment = 'Corr';
-            % All the correlations with one call
-            R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean); 
+            % Verify WinLen argument for windowed metric
+            if strcmpi(OPTIONS.TimeRes, 'windowed')
+                % Window length and overlap in samples
+                nWinLenSamples    = round(OPTIONS.WinLen * sfreq);
+                nWinOvelapSamples = round(OPTIONS.WinOverlap * nWinLenSamples);
+                if nWinLenSamples >= nTime
+                    Message = 'File time duration too short wrt requested window length. Only computing one estimate across all time.';
+                    bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                    % Avoid further checks and error messages.
+                    OPTIONS.TimeRes = 'none';
+                end
+            end
+            % Compute correlation
+            if strcmpi(OPTIONS.TimeRes, 'windowed')
+                Comment = [Comment '-time'];
+                % Get [start, end] indices for windows
+                [~, ixs] = bst_epoching(1 : length(sInputA.Time), nWinLenSamples, nWinOvelapSamples);
+                nTimeOut = size(ixs,1);
+                % Center of the time window (sample 1 = 0 s)
+                Time = reshape((mean(ixs, 2)-1) ./ sfreq, 1, []);
+                % Initialize R
+                R = zeros(nA, nB, nTimeOut);
+                for iWin = 1 : size(ixs, 1)
+                    R(:,:,iWin) = bst_corrn(sInputA.Data(:, ixs(iWin,1) : ixs(iWin,2)), sInputB.Data(:, ixs(iWin,1): ixs(iWin,2)), OPTIONS.RemoveMean);
+                end
+            else
+                % All the correlations with one call
+                R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean);
+            end
             
         % ==== GRANGER ====
         case 'granger'
@@ -838,6 +870,10 @@ for iFile = 1:nFiles
                                     HB = morlet_transform(sInputB.Data, sInputB.Time, OPTIONS.Freqs(iBand), OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
                                 end
                         end
+                        % Apply kernel if needed
+                        if ~isConnNN && ~isempty(sInputB.ImagingKernel)
+                            HB = sInputB.ImagingKernel * HB;
+                        end
                         % PLV: Normalize first, keep only phase info.
                         if ismember(OPTIONS.Method, {'plv', 'ciplv'})
                             HA = HA ./ abs(HA);
@@ -923,6 +959,14 @@ for iFile = 1:nFiles
                         end
                         % Add the number of averaged windows & files to the report
                         nWinLenSamples = nWinLenAvg;
+                    elseif strcmp(OPTIONS.TimeRes, 'none')
+                        % Add time dimension
+                       for f = 1:numel(Terms)
+                            % Insert a singleton second-to-last dimension
+                            order = 1 : (length(size(S.(Terms{f}))) + 1);
+                            newOrder = [order(1:end-2), order(end:-1:end-1)];
+                            S.(Terms{f}) = permute(S.(Terms{f}), newOrder);
+                       end
                     end
                     % Initial R or Accumulate R
                     if isempty(R) || strcmpi(OPTIONS.OutputMode, 'input')
@@ -932,12 +976,15 @@ for iFile = 1:nFiles
                         end
                         nWin = 0;
                         % Add the number of averaged windows & files to the report (only once per output file)
-                        if TimeRes == 0
-                            nAvgLen = nWinFile;
-                        else
-                            nAvgLen = nWinLenAvg;
+                        switch OPTIONS.TimeRes
+                            case 'full'
+                                nAvgLen = 1;
+                            case 'windowed'
+                                nAvgLen = nWinLenAvg;
+                            case 'none'
+                                nAvgLen = nWinFile;
                         end
-                        Message = sprintf('Estimating across %d windows of %d samples each', nAvgLen, round(OPTIONS.WinLen * sfreq));
+                        Message = sprintf('Estimating across %d windows of %d samples each', nAvgLen, round(OPTIONS.StftWinLen * sfreq));
                         if ~strcmpi(OPTIONS.OutputMode, 'input') && nFiles > 1
                             Message = [Message sprintf(' per file, across %d files', nFiles)];
                         end
@@ -1054,7 +1101,7 @@ for iFile = 1:nFiles
         end
         OutputFiles{iFile} = Finalize(OrigFilesB{iFile});
         R = [];
-    else 
+    elseif strcmpi(OPTIONS.OutputMode, 'avg')
         % Sum terms and continue file loop.
         if isnumeric(R)
             if isempty(Ravg)
@@ -1067,7 +1114,8 @@ for iFile = 1:nFiles
             end
         % Else R is a struct and terms are already being summed into its fields directly.
         end
-        
+    else % case 'concat'
+        Ravg = R;
     end
 end
 
@@ -1100,11 +1148,11 @@ function CleanExit
 end
 
 
+%% ===== ASSEMBLE CONNECTIVITY METRIC FROM ACCUMULATED TERMS =====
 function NewFile = Finalize(DataFile)
     if nargin < 1
         DataFile = [];
     end
-    %% ===== ASSEMBLE CONNECTIVITY METRIC FROM ACCUMULATED TERMS =====
     if isstruct(R)
         switch OPTIONS.Method
             case 'plv'
@@ -1151,11 +1199,6 @@ function NewFile = Finalize(DataFile)
                         R = imag(R.Sab).^2 ./ (1-real(R.Sab).^2);
                         R(isnan(R(:))) = 0;
                 end
-        end
-        % Static measures may need to be reshaped to add singleton time dimension.
-        if ndims(R) == 3
-            % Push freq to 4th dim.
-            R = permute(R, [1,2,4,3]);
         end
     end
 

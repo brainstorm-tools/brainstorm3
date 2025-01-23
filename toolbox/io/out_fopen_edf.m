@@ -83,6 +83,7 @@ sFileOut.condition = '';
 sFileOut.format    = 'EEG-EDF';
 sFileOut.byteorder = 'l';
 sFileOut.comment   = fBase;
+sFileOut.encoding  = 'UTF-8';
 date = datetime;
 
 % Create a new header structure
@@ -187,7 +188,7 @@ for i = 1:header.nsignal
     if i == header.annotchan
         header.signal(i).label    = 'EDF Annotations';
         eventsPerRecord           = ceil(numel(header.annotations) / header.nrec);
-        header.signal(i).nsamples = eventsPerRecord * maxAnnotLength + 15; % For first annotation of each record
+        header.signal(i).nsamples = eventsPerRecord * maxAnnotLength + 18; % For first annotation of each record
         % Convert chars (1-byte) to 2-byte integers, the size of a sample
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
@@ -227,7 +228,7 @@ if isRawEdf
 end
 
 % Open file
-fid = fopen(OutputFile, 'w+', sFileOut.byteorder);
+fid = fopen(OutputFile, 'w+', sFileOut.byteorder, sFileOut.encoding);
 if (fid == -1)
     error('Could not open output file.');
 end

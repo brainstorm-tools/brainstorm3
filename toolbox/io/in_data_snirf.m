@@ -25,7 +25,15 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 %
 % Authors: Edouard Delaire, Francois Tadel, 2020
 
-% Load file header with the JSNIRF Toolbox (https://github.com/fangq/jsnirfy)
+% Install/load JSNIRF Toolbox (https://github.com/NeuroJSON/jsnirfy) as plugin
+if ~exist('loadsnirf', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'jsnirfy');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
+% Load file header
 jnirs = loadsnirf(DataFile);
 
 if isempty(jnirs) || ~isfield(jnirs, 'nirs')
@@ -85,13 +93,22 @@ end
 % Create channel file structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
-ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
 
 % NIRS channels
 for iChan = 1:nChannels
     % This assume measure are raw; need to change for Hbo,HbR,HbT
     channel = jnirs.nirs.data.measurementList(iChan);
-    [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+    if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
+        [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(channel.sourceIndex, channel.detectorIndex, jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)); 
+    else
+
+        ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
+                                                             jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
+                                                       round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+        ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+
+    end
     ChannelMat.Channel(iChan).Type = 'NIRS';
     ChannelMat.Channel(iChan).Weight = 1;
     if ~isempty(src_pos) && ~isempty(det_pos)
@@ -148,11 +165,11 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
         name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
+        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, 1:3);
 
         % Fiducials NAS/LPA/RPA
         switch lower(name)
-            case {'nasion','nas'}
+            case {'nasion','nas','nz'}
                 ChannelMat.SCS.NAS = coord;
                 ltype = 'CARDINAL';
             case {'leftear', 'lpa'}
@@ -222,24 +239,31 @@ end
 DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 for iEvt = 1:length(jnirs.nirs.stim)
     
-    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
-    if ~isfield(jnirs.nirs.stim(iEvt), 'data')
+    if iscell(jnirs.nirs.stim(iEvt))
+        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim{iEvt}.name)));
+    else
+        DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
+    end
+    if ~isfield(jnirs.nirs.stim(iEvt), 'data') || isempty(jnirs.nirs.stim(iEvt).data) 
             % Events structure
         warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
         continue
     end    
     % Get timing
-    
-    if size(jnirs.nirs.stim(iEvt).data,1) >  size(jnirs.nirs.stim(iEvt).data,1)
+    nStimDataCols = 3; % [starttime duration value]
+    if isfield(jnirs.nirs.stim(iEvt), 'dataLabels')
+        nStimDataCols = length(jnirs.nirs.stim(iEvt).dataLabels);
+    end
+    % Transpose to match number of columns
+    if size(jnirs.nirs.stim(iEvt).data, 1) == nStimDataCols && diff(size(jnirs.nirs.stim(iEvt).data)) ~= 0
         jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
     end    
-    
-    isExtended = (size(jnirs.nirs.stim(iEvt).data,1) >= 2) && ~all(jnirs.nirs.stim(iEvt).data(2,:) == 0);
+    isExtended = ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
     if isExtended
-        evtTime = [jnirs.nirs.stim(iEvt).data(1,:); ...
-                   jnirs.nirs.stim(iEvt).data(1,:) + jnirs.nirs.stim(iEvt).data(2,:)];
+        evtTime = [jnirs.nirs.stim(iEvt).data(:,1) ,  ...
+                   jnirs.nirs.stim(iEvt).data(:,1) + jnirs.nirs.stim(iEvt).data(:,2)]';
     else
-        evtTime = jnirs.nirs.stim(iEvt).data(1,:)';
+        evtTime = jnirs.nirs.stim(iEvt).data(:,1)';
     end
 
     DataMat.Events(iEvt).times      = evtTime;

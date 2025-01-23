@@ -34,9 +34,9 @@ end
 hdr = read_itab_mhd(HeaderFile);
 % Get endianness
 switch (hdr.data_type)
-    case {0,1,2},  byteorder = 'b';
-    case {3,4,5},  byteorder = 'l';
-    otherwise,     error('Data type not supported.');
+    case {0,1,2, 6},  byteorder = 'b';
+    case {3,4,5},     byteorder = 'l';
+    otherwise,        error('Data type not supported.');
 end
 
 
@@ -52,7 +52,7 @@ for i = 1:hdr.nchan
     % Position
     for iCoil = 1:hdr.ch(iChannels(i)).ncoils
         ChannelMat.Channel(i).Loc(:,iCoil)    = hdr.ch(iChannels(i)).position(iCoil).r_s' ./ 1000;
-        ChannelMat.Channel(i).Orient(:,iCoil) = hdr.ch(iChannels(i)).position(iCoil).u_s' ./ 1000;
+        ChannelMat.Channel(i).Orient(:,iCoil) = hdr.ch(iChannels(i)).position(iCoil).u_s';
         ChannelMat.Channel(i).Weight(1,iCoil) = hdr.ch(iChannels(i)).wgt(iCoil);
     end
     % Type
@@ -112,7 +112,7 @@ ChannelFlag(ChannelFlag == 0) = -1;
 
 %% ===== EXTRA HEAD POINTS =====
 % Get extra head points
-HpLoc = hdr.marker;
+HpLoc = hdr.marker(1:3, :); % Keep only marker positions
 iGood = find(~all(HpLoc == 0, 1));
 HpLoc = HpLoc(:,iGood) ./ 1000;
 nPoints = size(HpLoc,2);

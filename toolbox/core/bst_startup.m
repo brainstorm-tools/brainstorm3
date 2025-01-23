@@ -1,4 +1,4 @@
-function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
+function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir, TemplateName)
 % BST_STARTUP: Start a new Brainstorm Session.
 %
 % USAGE:  bst_startup(BrainstormHomeDir, GuiLevel=1, BrainstormDbDir=[])
@@ -7,6 +7,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 %    - BrainstormHomeDir : Path to the brainstorm3 folder
 %    - GuiLevel          : -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - BrainstormDbDir   : Database folder to use by default in this session
+%    - TemplateName      : Default anatomy template
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -34,6 +35,9 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % Parse inputs
 if (nargin < 3) || isempty(BrainstormDbDir)
     BrainstormDbDir = [];
+end
+if (nargin < 4) || isempty(TemplateName)
+    TemplateName = '';
 end
 % If version is too old
 MatlabVersion = bst_get('MatlabVersion');
@@ -146,6 +150,17 @@ localRel.day   = str2num(Release(5:6));
 % Check Matlab version
 if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
+end
+
+% Check for New Matlab Desktop (started with R2023a)
+if (MatlabVersion >= 914) && panel_options('isJSDesktop')
+    disp('BST> Warning: Brainstorm is not fully tested and supported on the New Matlab Desktop.');
+end
+
+% Check for Apple silicon (started with R2023b)
+if (MatlabVersion >= 2302) && strcmp(bst_get('OsType', 0), 'mac64arm')
+    disp(['BST> Warning: Running on Apple silicon, some functions and plugins are not supported yet:' 10 ...
+          '              Use Matlab < 2023b or Matlab for Intel processor for full support']);
 end
 
 
@@ -300,22 +315,28 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF',
 end
 
 
+%% ===== INTERNET CONNECTION =====
+% Check internet connection
+fprintf(1, 'BST> Checking internet connectivity... ');
+[GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
+if GlobalData.Program.isInternet
+    disp('ok');
+else
+    disp('failed');
+end
+
+
 %% ===== AUTOMATIC UPDATES =====
-% Automatic updates disabled: do not check for internet connection
+% Automatic updates disabled
 if ~bst_get('AutoUpdates')
     disp('BST> Warning: Automatic updates are disabled.');
     disp('BST> Warning: Make sure your version of Brainstorm is up to date.');
 % Matlab is running: check for updates
 elseif ~isCompiled && (GuiLevel == 1)
-    % Check internect connection
-    fprintf(1, 'BST> Checking internet connectivity... ');
-    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
     % If no internet connection
     if ~GlobalData.Program.isInternet
-        disp('failed');
         disp('BST> Could not check for Brainstorm updates.')
     else
-        disp('ok');
         % Determine if release is old (local version > 30 days older than online version)
         daysOnline = onlineRel.year*365 + onlineRel.month*30 + onlineRel.day;
         daysLocal  =  localRel.year*365 +  localRel.month*30 +  localRel.day;
@@ -418,6 +439,11 @@ if (GuiLevel >= 0)
 end
 
 
+%% ===== USER-DEFINED PLUGINS =====
+% Print information about user-defined plugins
+bst_plugin('GetSupported', [], 1);
+
+
 %% ===== LOAD PLUGINS =====
 % Get installed plugins
 [InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
@@ -453,10 +479,9 @@ panel_process_select('ParseProcessFolder', 1);
 
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
-% Download ICBM152 template if missing (e.g. when cloning from GitHub)
+% Download ICBM152 template if missing
 TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
-if ~isCompiled && ~exist(TemplateDir, 'file')
-    TemplateName = 'ICBM152_2023b';
+if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
     isSkipTemplate = 0;
     % Template file
     ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);

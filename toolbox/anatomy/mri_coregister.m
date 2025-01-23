@@ -9,7 +9,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - MriFileRef : Relative path to the Brainstorm MRI file used as a reference
 %    - sMriSrc    : Brainstorm MRI structure to register (fields Cube, Voxsize, SCS, NCS...)
 %    - sMriRef    : Brainstorm MRI structure used as a reference
-%    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
+%    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras', 'ct2mri'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
 %    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
 %
@@ -38,6 +38,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2016-2023
+%          Chinmay Chinara, 2023
 
 % ===== LOAD INPUTS =====
 % Parse inputs
@@ -133,7 +134,8 @@ switch lower(Method)
         
         % Create coregistration batch
         if isReslice
-            % Coreg: Estimate and reslice
+            % Coregister: Estimate and reslice
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate & Reslice)');
             matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
@@ -143,7 +145,8 @@ switch lower(Method)
             % Output file
             NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
-            % Coreg: Estimate
+            % Coregister: Estimate
+            bst_progress('text', 'Calling SPM batch...(Coregister: Estimate)');
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
@@ -233,7 +236,68 @@ switch lower(Method)
         end
         % Output file tag
         fileTag = '_mni';
+
+    % ===== CT2MRIREG =====
+    case 'ct2mri'
+        % Check if ct2mrireg plugin is installed
+        [isInstalled, errMsg] = bst_plugin('Install', 'ct2mrireg');
+        if ~isInstalled
+            if ~isProgress
+                bst_progress('stop');
+            end
+            return;
+        end
+
+        % Save files in tmp directory
+        bst_progress('text', 'Saving temporary files...');
+        % Get temporary folder
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'ct2mrireg');
+        % Save source CT in .nii format
+        NiiSrcFile = bst_fullfile(TmpDir, 'ct2mri_src.nii');
+        out_mri_nii(sMriSrc, NiiSrcFile);
+        % Save reference MRI in .nii format
+        NiiRefFile = bst_fullfile(TmpDir, 'ct2mri_ref.nii');
+        out_mri_nii(sMriRef, NiiRefFile);
         
+        % Perform the coregistration of the CT to MRI
+        NiiRegFile = bst_fullfile(TmpDir, 'contrastmri2preMRI.nii.gz');
+        bst_progress('text', 'Performing co-registration using ct2mrireg plugin...');
+        NiiRegFile = ct2mrireg(NiiSrcFile, NiiRefFile, NiiRegFile);
+
+        % Read output volume
+        sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
+
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
+        % Output file tag
+        fileTag = '_ct2mri';
+        
+        % === UPDATE FIDUCIALS ===
+        if isReslice
+            % Use the reference SCS coordinates
+            if isfield(sMriRef, 'SCS')
+                sMriReg.SCS = sMriRef.SCS;
+            end
+            % Use the reference NCS coordinates
+            if isfield(sMriRef, 'NCS')
+                sMriReg.NCS = sMriRef.NCS;
+            end
+
+            % Reslice the volume
+            bst_progress('text', 'Performing Reslicing...');
+            [sMriReg, errMsg] = mri_reslice(sMriReg, sMriRef, 'scs', 'scs', isAtlas);
+            % Error handling
+            if isempty(sMriReg) || ~isempty(errMsg)
+                if ~isProgress
+                    bst_progress('stop');
+                end
+                return
+            end
+        else
+            isUpdateScs = 1;
+            isUpdateNcs = 1;
+        end
+
     % ===== VOX2RAS =====
     case 'vox2ras'
         % Nothing to do, just reslice if needed
@@ -334,6 +398,10 @@ if ~isempty(MriFileSrc)
     % Add history entry
     sMriReg.History = sMriSrc.History;
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file (' Method '): ' MriFileRef]);
+    % Add history entry (reslice)
+    if isReslice
+        sMriReg = bst_history('add', sMriReg, 'resample', ['MRI resliced to default file: ' MriFileRef]);
+    end
     % Save new file
     MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
     MriFileReg = file_short(MriFileRegFull);

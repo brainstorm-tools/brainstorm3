@@ -81,6 +81,11 @@ elseif ischar(ScoutsArg) && strcmpi(ScoutsArg, 'SelectedScouts')
 % Else: use directly the scout indices in argument
 else
     iScouts = ScoutsArg;
+    % Get current atlas
+    sAtlas = panel_scout('GetAtlas');
+    % Volume scout: Get number of vertices of the atlas
+    [isVolumeAtlas, nAtlasGrid] = panel_scout('ParseVolumeAtlas', sAtlas.Name);
+    % Get selected scouts
     [sScouts, sSurf] = panel_scout('GetScouts', iScouts);
 end
 if isempty(sScouts)
@@ -174,7 +179,9 @@ for iResFile = 1:length(ResultsFiles)
             bst_progress('stop');
             return;
         end
-        if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta'))
+        if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ...
+           ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta')) || ...
+           ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'))
             issloreta = 1;
         end
         fileUnits = GlobalData.DataSet(iDS).Results(iResult).DisplayUnits;
@@ -355,6 +362,7 @@ for iResFile = 1:length(ResultsFiles)
                          isempty(strfind(TestTags, '_norm')) && ...
                          isempty(strfind(TestTags, 'NIRS')) && ...
                          isempty(strfind(TestTags, 'Summed_sensitivities')) && ...
+                         isempty(strfind(TestTags, 'bold')) && ...
                          (isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Results(iResult).GoodChannel) || ...
                           ~ismember('NIRS', {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Results(iResult).GoodChannel).Type}));
             iTrace = k;
@@ -660,6 +668,8 @@ if (length(ResultsFiles) == 1)
 else
     setappdata(hFig, 'ResultsFile', []);
 end
+% === UNIFORM AMPLITUDE SCALE ===
+figure_timeseries('UniformizeTimeSeriesScales', ScoutsOptions.uniformAmplitude);
 % Update figure name
 bst_figures('UpdateFigureName', hFig);
 % Set the time label visible

@@ -117,11 +117,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         isCerebellum = 1;
     end
-    % TPM atlas
+    % % TPM atlas, preferably from SPM plugin
     if isfield(sProcess.options, 'tpmnii') && isfield(sProcess.options.tpmnii, 'Value') && ~isempty(sProcess.options.tpmnii.Value) && ~isempty(sProcess.options.tpmnii.Value{1})
         TpmNii = sProcess.options.tpmnii.Value{1};
     else
-        TpmNii = bst_get('SpmTpmAtlas');
+        TpmNii = bst_get('SpmTpmAtlas', 'SPM');
     end
     % Thickness maps
     if isfield(sProcess.options, 'extramaps') && isfield(sProcess.options.extramaps, 'Value') && ~isempty(sProcess.options.extramaps.Value)
@@ -191,7 +191,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
     % Check provided TPM.nii
     if isempty(TpmNii)
-        TpmNii = bst_get('SpmTpmAtlas');
+        % TPM atlas, preferably from SPM plugin
+        TpmNii = bst_get('SpmTpmAtlas', 'SPM');
     end
     
     % ===== GET SUBJECT =====
@@ -430,8 +431,9 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
+    % TPM atlas, preferably from SPM plugin
+    TpmNii = bst_get('SpmTpmAtlas', 'SPM');
     % Run CAT12
-    TpmNii = bst_get('SpmTpmAtlas');
     isInteractive = 1;
     isSphReg = 1;
     isCerebellum = 0;

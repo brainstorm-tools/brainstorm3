@@ -84,6 +84,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Alpha slider
             jSliderSurfAlpha = JSlider(0, 100, 0);
             jSliderSurfAlpha.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+            jSliderSurfAlpha.setToolTipText('Surface transparency');
             java_setcb(jSliderSurfAlpha, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfAlpha'), ...
                                          'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfAlpha'));
             jPanelSurfaceOptions.add('tab hfill', jSliderSurfAlpha);
@@ -105,6 +106,20 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jLabelSurfSmoothValue = gui_component('label', jPanelSurfaceOptions, [], '   0%', {JLabel.RIGHT, Dimension(LABEL_WIDTH, DEFAULT_HEIGHT)});
             % Quick preview
             java_setcb(jSliderSurfSmoothValue, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfSmoothValue, jLabelSurfSmoothValue, 1));
+
+            % Threshold title
+            jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
+            % Min size slider
+            jSliderSurfIsoValue = JSlider(1, GetIsoValueMaxRange(), 1);
+            jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
+            jSliderSurfIsoValue.setToolTipText('isoSurface Threshold');
+            java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
+                                            'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
+            jPanelSurfaceOptions.add('tab hfill', jSliderSurfIsoValue);
+            % IsoValue label
+            jLabelSurfIsoValue = gui_component('label', jPanelSurfaceOptions, [], '   1', {JLabel.RIGHT, Dimension(LABEL_WIDTH, DEFAULT_HEIGHT)});
+            % Quick preview
+            java_setcb(jSliderSurfIsoValue, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfIsoValue, jLabelSurfIsoValue, 0));
 
             % Buttons
             jButtonSurfColor = gui_component('button', jPanelSurfaceOptions, 'br center', 'Color', {Dimension(BUTTON_WIDTH, DEFAULT_HEIGHT), Insets(0,0,0,0)}, 'Set surface color', @ButtonSurfColorCallback);
@@ -186,7 +201,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jToggleResectLeft   = gui_component('toggle', jPanelSurfaceResect, 'br center', 'Left',   {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectLeftToggle_Callback);           
             jToggleResectRight  = gui_component('toggle', jPanelSurfaceResect, '',          'Right',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectRightToggle_Callback);           
             jToggleResectStruct = gui_component('toggle', jPanelSurfaceResect, '',          'Struct', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectStruct_Callback);           
-            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
+            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
         jPanelOptions.add(jPanelSurfaceResect);
  
         % ===== SURFACE LABELS =====
@@ -213,6 +228,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jButtonSurfColor',       jButtonSurfColor, ...
                                   'jLabelSurfSmoothValue',  jLabelSurfSmoothValue, ...
                                   'jSliderSurfSmoothValue', jSliderSurfSmoothValue, ...
+                                  'jLabelSurfIsoValueTitle',jLabelSurfIsoValueTitle, ...
+                                  'jLabelSurfIsoValue',     jLabelSurfIsoValue, ...
+                                  'jSliderSurfIsoValue',    jSliderSurfIsoValue, ...
                                   'jButtonSurfSulci',       jButtonSurfSulci, ...
                                   'jButtonSurfEdge',        jButtonSurfEdge, ...
                                   'jSliderResectX',         jSliderResectX, ...
@@ -240,6 +258,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             nVertices = str2num(char(jLabelNbVertices.getText()));
             sliderSizeVector = GetSliderSizeVector(nVertices);
             jText.setText(sprintf('%d', sliderSizeVector(double(jSlider.getValue()))));
+        elseif (jSlider == jSliderSurfIsoValue)
+            jText.setText(sprintf('%d', double(jSlider.getValue())));
         elseif isPercent
             jText.setText(sprintf('%d%%', double(jSlider.getValue())));
         else
@@ -265,7 +285,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jSliderResectX.setValue(0);
         jSliderResectY.setValue(0);
         jSliderResectZ.setValue(0);
-        
+        jToggleResectLeft.setSelected(0);
+        jToggleResectRight.setSelected(0);
+        jToggleResectStruct.setSelected(0);
+
         % Get handle to current 3DViz figure
         hFig = bst_figures('GetCurrentFigure', '3D');
         if isempty(hFig)
@@ -288,7 +311,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if strcmpi(TessInfo(iSurf).Name, 'FEM')
                 iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
             end
-            [TessInfo(iSurf).Resect] = deal('none');
+            for ix = 1 : length(iSurf)
+                TessInfo(iSurf(ix)).Resect{1} = [0, 0, 0];
+                TessInfo(iSurf(ix)).Resect{2} = 'none';
+            end
             setappdata(hFig, 'Surface', TessInfo);
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
         end
@@ -388,6 +414,42 @@ function SliderCallback(hObject, event, target)
             SurfSmoothValue = jSlider.getValue() / 100;
             SetSurfaceSmooth(hFig, iSurface, SurfSmoothValue, 1);
 
+        case 'SurfIsoValue'
+            % get the handles
+            hFig = bst_figures('GetFiguresByType', '3DViz');
+            SubjectFile = getappdata(hFig, 'SubjectFile');
+            if ~isempty(SubjectFile)
+                sSubject = bst_get('Subject', SubjectFile);
+                CtFile = [];
+                MeshFile = [];
+                for i=1:length(sSubject.Anatomy)
+                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
+                        CtFile = sSubject.Anatomy(i).FileName;
+                    end
+                end
+                for i=1:length(sSubject.Surface)
+                    if ~isempty(regexp(sSubject.Surface(i).FileName, 'tess_isosurface', 'match')) 
+                        MeshFile = sSubject.Surface(i).FileName;
+                    end
+                end
+            end
+            
+            % ask user if they want to proceed
+            isProceed = java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold');
+            if ~isProceed
+                [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
+                isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
+                SetIsoValue(str2double(isoValue{1}));
+                return;
+            end
+            
+            % get the iso value from slider
+            isoValue = jSlider.getValue();
+            
+            % remove the old isosurface and generate and load the new one
+            ButtonRemoveSurfaceCallback();
+            tess_isosurface(CtFile, isoValue);
+            
         case 'DataAlpha'
             % Update value in Surface array
             TessInfo(iSurface).DataAlpha = jSlider.getValue() / 100;
@@ -469,6 +531,41 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
     end
 end
 
+%% ===== GET SLIDER ISOVALUE =====
+function isoValue = GetIsoValueMaxRange()
+    % get the handles
+    hFig = bst_figures('GetFiguresByType', '3DViz');
+    if ~isempty(hFig)
+        SubjectFile = getappdata(hFig, 'SubjectFile');
+        if ~isempty(SubjectFile)
+            sSubject = bst_get('Subject', SubjectFile);
+            CtFile = [];
+            for i=1:length(sSubject.Anatomy)
+                if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
+                    CtFile = sSubject.Anatomy(i).FileName;
+                end
+            end
+        end
+        
+        if ~isempty(CtFile)
+            sMri = bst_memory('LoadMri', CtFile);
+            isoValue = double(sMri.Histogram.intensityMax);
+        end
+    else
+        isoValue = 4500.0;
+    end
+end
+
+%% ===== SET SLIDER ISOVALUE =====
+function SetIsoValue(isoValue)
+    % get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    if isempty(ctrl)
+        return;
+    end 
+    ctrl.jLabelSurfIsoValue.setText(sprintf('%d', isoValue));
+    ctrl.jSliderSurfIsoValue.setValue(isoValue);
+end
 
 %% ===== SCROLL MRI CUTS =====
 function ScrollMriCuts(hFig, direction, value) %#ok<DEFNU>
@@ -614,13 +711,9 @@ function SelectHemispheres(name)
     end
     % Update surface Resect field
     for i = 1:length(iSurf)
-        TessInfo(iSurf(i)).Resect = name;
+        TessInfo(iSurf(i)).Resect{2} = name;
     end
     setappdata(hFig, 'Surface', TessInfo);
-    % Reset all the resect sliders
-    ctrl.jSliderResectX.setValue(0);
-    ctrl.jSliderResectY.setValue(0);
-    ctrl.jSliderResectZ.setValue(0);
     % Display progress bar
     bst_progress('start', 'Select hemisphere', 'Selecting hemisphere...');
     % Update surface display
@@ -648,13 +741,8 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
     end
     % Update all selected surfaces
     for i = 1:length(iSurf)
-        % If previously using "Select hemispheres"
-        if ischar(TessInfo(iSurf(i)).Resect)
-            % Reset "Resect" field
-            TessInfo(iSurf(i)).Resect = [0 0 0];
-        end
         % Update value in Surface array
-        TessInfo(iSurf(i)).Resect(resectDim) = resectValue;
+        TessInfo(iSurf(i)).Resect{1}(resectDim) = resectValue;
     end
     % Update surface
     setappdata(hFig, 'Surface', TessInfo);
@@ -673,11 +761,6 @@ function ResectSurface(hFig, iSurf, resectDim, resectValue)
             figure_callback(hFig, 'PlotTensorCut', hFig, resectValue, resectDim, 1);
         end
     end
-    % Deselect both Left and Right buttons
-    ctrl = bst_get('PanelControls', 'Surface');
-    ctrl.jToggleResectLeft.setSelected(0);
-    ctrl.jToggleResectRight.setSelected(0);
-    ctrl.jToggleResectStruct.setSelected(0);
     % Close progress bar
     if isProgress
         bst_progress('text', 'Updating figure...');
@@ -1052,6 +1135,11 @@ function UpdateSurfaceProperties()
     end
     % If surface is sliced MRI
     isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
+    if ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'isosurface', 'match'))
+        isIsoSurface = 1;
+    else
+        isIsoSurface = 0;
+    end
 
     % ==== Surface properties ====
     % Number of vertices
@@ -1067,6 +1155,15 @@ function UpdateSurfaceProperties()
     % Surface smoothing ALPHA
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    % Show/hide isoSurface thresholding
+    ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
+    ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
+    ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
+    if isIsoSurface
+        [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', TessInfo(iSurface).SurfaceFile);
+        isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
+        SetIsoValue(str2double(isoValue{1}));
+    end
     % Show sulci button
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
     % Show surface edges button
@@ -1083,12 +1180,9 @@ function UpdateSurfaceProperties()
             ResectXYZ = [0,0,0];
         end
         radioSelected = 'none';
-    elseif ischar(TessInfo(iSurface).Resect)
-        ResectXYZ = [0,0,0];
-        radioSelected = TessInfo(iSurface).Resect;
     else
-        ResectXYZ = 100 * TessInfo(iSurface).Resect;
-        radioSelected = 'none';
+        ResectXYZ     = 100 * TessInfo(iSurface).Resect{1};
+        radioSelected = TessInfo(iSurface).Resect{2};
     end
     % X, Y, Z
     ctrl.jSliderResectX.setValue(ResectXYZ(1));
@@ -1184,6 +1278,11 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         TessInfo(iTess).Name      = sSurface.Name;
         TessInfo(iTess).nVertices = size(sSurface.Vertices, 1);
         TessInfo(iTess).nFaces    = size(sSurface.Faces, 1);
+        if isempty(sSurface.Color)
+            sSurface.Color = TessInfo(iTess).AnatomyColor(2,:);
+        else
+            TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
+        end
 
         % === PLOT SURFACE ===
         switch (FigureId.Type)
@@ -1194,7 +1293,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
                 [hFig, TessInfo(iTess).hPatch] = figure_3d('PlotSurface', hFig, ...
                                          sSurface.Faces, ...
                                          sSurface.Vertices, ...
-                                         TessInfo(iTess).AnatomyColor(2,:), ...
+                                         sSurface.Color, ...
                                          TessInfo(iTess).SurfAlpha);
         end
         % Update figure's surfaces list and current surface pointer
@@ -1784,6 +1883,14 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
+                elseif ~isempty(strfind(TessInfo(iTess).DataSource.FileName, '_connect1'))
+                    TessInfo(iTess).DataSource.Atlas = [];
+                    if size(TessInfo(iTess).Data, 1) ~= nVertices
+                        bst_error(sprintf(['Number of connectivity values (%d) is different from number of vertices (%d).\n\n' ...
+                                  'Please compute the connectivity metric.'], size(TessInfo(iTess).Data, 1), nVertices), 'Data mismatch', 0);
+                        isOk = 0;
+                        return;
+                    end
                 elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
@@ -1949,6 +2056,7 @@ end
 
 %% ===== UPDATE SURFACE COLORMAP =====
 function UpdateSurfaceColormap(hFig, iSurfaces)
+    global GlobalData;
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
@@ -2022,8 +2130,15 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
                 DataType = upper(ColormapInfo.Type);
             % sLORETA: Do not use regular source scaling (pAm)
-            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
-                DataType = 'sLORETA';
+            elseif strcmpi(DataType, 'Source')
+                if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
+                    DataType = 'sLORETA';
+                elseif ~strcmpi(file_gettype(lower(TessInfo(iTess).DataSource.FileName)), 'headmodel')
+                    [iDS, iResult] = bst_memory('LoadResultsFile', TessInfo(iTess).DataSource.FileName, 0);
+                    if ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'));
+                        DataType = 'sLORETA';
+                    end
+                end
             end
         end     
         % === DISPLAY ON MRI ===

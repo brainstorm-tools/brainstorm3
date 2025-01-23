@@ -72,7 +72,15 @@ if isempty(OutputFile)
     end
     % Build default output filename
     if ~isempty(BstFile)
-        [BstPath, BstBase, BstExt] = bst_fileparts(BstFile);
+        fileType = file_gettype(BstFile);
+        if strcmp(fileType, 'link')
+            [kernelFile, dataFile] = file_resolve_link(BstFile);
+            [~, kernelBase] = bst_fileparts(kernelFile);
+            [BstPath, BstBase, BstExt] = bst_fileparts(dataFile);
+            BstBase = [kernelBase, '_' ,BstBase];
+        else
+            [BstPath, BstBase, BstExt] = bst_fileparts(BstFile);
+        end
     else
         BstBase = file_standardize(ResultsMat.Comment);
     end
@@ -101,7 +109,7 @@ if isempty(OutputFile)
     
 % Guess file format based on its extension
 elseif isempty(FileFormat)
-    [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
+    [BstPath, BstBase, BstExt] = bst_fileparts(OutputFile);
     switch lower(BstExt)
         case '.txt',   FileFormat = 'ASCII-SPC';
         case '.csv',   FileFormat = 'ASCII-CSV-HDR';

@@ -77,6 +77,9 @@ end
 if isempty(PlugName)
     % Read list of users
     str = bst_webread('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+    % Replace actions ['i' and 'j'] with 'x' so it is not read as imaginary in textscan
+    str = strrep(str, 'i', 'x');
+    str = strrep(str, 'j', 'x');
     % Extract values
     c = textscan(str, '%02d%02d%c');
     dates = double([c{1}, c{2}]);
@@ -85,19 +88,21 @@ if isempty(PlugName)
     % Create histograms
     iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
     [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
-    % Look for all dates in the current year (exclude current month)
-    year = 2023;
-    iAvg = find((xUpdate >= year) & (xUpdate < year+1));
+    % Look for all dates in last 12 months (exclude current month)
+    t = datetime('today');
+    finRollAvg = t.Year + ((t.Month -1) ./12);
+    iniRollAvg = finRollAvg - 1;
+    iAvg = find((xUpdate >= iniRollAvg) & (xUpdate < finRollAvg));
     % Remove invalid data
     iBad = ((nUpdate < 100) | (nUpdate > 4000));
     nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
     % Plot number of downloads
     [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
                [2005, max(xUpdate(1:end-1))], [], ...
-               sprintf('Downloads per month: Avg(%d)=%d', year, round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+               sprintf('Downloads per month: 12-month Avg=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
     % String for MoinMoin website
-    fprintf('Number of software downloads per month: (average %d = %s%d/month%s)\r', year, boldMoinMoin, round(mean(nUpdate(iAvg))), boldMoinMoin);
+    fprintf('Number of software downloads per month: (12-month average = %s%d/month%s)\r', boldMoinMoin, round(mean(nUpdate(iAvg))), boldMoinMoin);
 end
 
 
@@ -123,11 +128,42 @@ end
 
 % ===== PUBLICATIONS =====
 if isempty(PlugName)
-    % Hard coded list of publications
-    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022]; 
-    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
-    nPubliCurYear = 118; % Updated March 2023
-    strPubDate = 'Up to March 2023';
+    % Up to December 2022, citation count was manually curated
+    year_man   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022];
+    nPubli_man = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  478];
+    % nPubliCurYear = 118; % January to March 2023
+    % strPubDate = 'Up to March 2023';
+
+    % From January 2023 onwards, citation count is obtained from Google Scholar, and posted in:
+    % https://neuroimage.usc.edu/bst/citations_count.html
+    % Read list of users
+    str = bst_webread('https://neuroimage.usc.edu/bst/citations_count.html');
+    % Extract values YYYY#nPubli
+    year_Npubli_gs = regexp(str, '[0-9]+#[0-9]+', 'match');
+    year_Npubli_gs = sort(year_Npubli_gs);
+    year_gs = [];
+    nPubli_gs = [];
+    for iRow = 1 : length(year_Npubli_gs)
+        C = textscan(year_Npubli_gs{iRow}, '%d#%d');
+        if C{1} >= 2023
+            year_gs(end+1) = C{1};
+            nPubli_gs(end+1) = C{2};
+        end
+    end
+    % Publications current year (last year in array)
+    nPubliCurYear = nPubli_gs(end);
+    % Remove current year from graph
+    nPubli_gs(end) = [];
+    year_gs(end)   = [];
+
+    % Get month of last update
+    dateCount = regexp(str, 'UpdatedOn#([^<]*)', 'tokens', 'once');
+    C = str_split(dateCount{1}, '-');
+    strPubDate = sprintf('Up to %s %s', C{2}, C{3});
+
+    % Aggregate manual and automatic citation counts
+    year   = [year_man, year_gs];
+    nPubli = [nPubli_man, nPubli_gs];
     % Plot figure
     hFig(end+1) = fig_report(year, nPubli, 1, ...
                [2000 max(year)], [], ...
@@ -143,6 +179,11 @@ if ~isempty(PlugName)
     % Download statistics
     url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
     str =  bst_webread(url);
+
+    if isempty(str)
+        bst_progress('stop');
+        return;
+    end
     % Process report
     str = str_split(str, char(10));
     nTotal = length(str);

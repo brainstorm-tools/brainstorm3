@@ -202,7 +202,9 @@ if ~isempty(subjMat)
 
     % ==== ANATOMY ====
     % By default : use the first anatomy in list (which is not a volume atlas)
-    if ~isempty(sSubject(1).Anatomy)
+    if ~isempty(sSubject(1).Anatomy) && isempty(strfind(sSubject(1).Anatomy(1).FileName, '_volatlas')) ...
+                                     && isempty(strfind(sSubject(1).Anatomy(1).FileName, '_tissues')) ...
+                                     && isempty(strfind(sSubject(1).Anatomy(1).FileName, '_volct'))
         sSubject(1).iAnatomy = 1;
     else
         sSubject(1).iAnatomy = [];

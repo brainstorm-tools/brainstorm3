@@ -51,7 +51,7 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if (hdr.version > 52)
+if (hdr.version > 53)
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -108,6 +108,12 @@ for i = 1:nproj
         end
     end
     ChannelMat.Projector(i).Status = double(fread(fid, [1 1], 'int8'));            % INT8(1)    : Status
+    % September 2024: Added char array for projector method
+    if hdr.version >= 53
+        ChannelMat.Projector(i).Method = str_read(fid, 20);                        % CHAR(20)   : Projector method
+    end
+    % Complete projector method if necesary
+    ChannelMat.Projector(i) = process_ssp2('ConvertOldFormat', ChannelMat.Projector(i));
 end
 
 % ===== HEAD POINTS =====

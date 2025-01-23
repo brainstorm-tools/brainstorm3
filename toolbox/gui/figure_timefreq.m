@@ -970,18 +970,18 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
         % Keep only the selected (good) channels
         % This won't apply when displaying a single channel (e.g. FOOOF overlay mode)
         % or when displaying connectivity matrices, or any PSD not computed directly on sensor data
-        [hFig, iFig] = bst_figures('GetFigure', hFig);
-        if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) && ...
-                numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow) && ...
+        [hFig, iFig, iDSFig] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDSFig).Figure(iFig).SelectedChannels) && ...
+                numel(GlobalData.DataSet(iDSFig).Figure(iFig).SelectedChannels) < numel(iRow) && ...
                 strcmpi(DataType, 'data') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
             % Grad norm: need to return both gradiometers
-            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'MEG GRADNORM')
-                selBaseName = cellfun(@(c)cat(2, {[c(1:end-1) '2']}, {[c(1:end-1) '3']}), {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name}, 'UniformOutput', false);
+            if strcmpi(GlobalData.DataSet(iDSFig).Figure(iFig).Id.Modality, 'MEG GRADNORM')
+                selBaseName = cellfun(@(c)cat(2, {[c(1:end-1) '2']}, {[c(1:end-1) '3']}), {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDSFig).Figure(iFig).SelectedChannels).Name}, 'UniformOutput', false);
                 selBaseName = [selBaseName{:}];
                 iSelected = ismember(RowNames, selBaseName);
             % Regular sensor selection
             else
-                iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
+                iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDSFig).Figure(iFig).SelectedChannels).Name});
             end
             % Return only selected sensors
             TF = TF(iSelected,:,:);
@@ -1063,9 +1063,20 @@ function UpdateFigurePlot(hFig, isForced)
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
-    % Displaying LOG values: always use the "RealMin" display
-    if strcmpi(TfInfo.Function, 'log')
-        sColormap.isRealMin = 1;
+    % Displaying LOG values   : always use the "RealMin" display and not absolutes values
+    % Displaying Power values : always use absolutes values
+    if ~isempty(TfInfo) && strcmpi(ColormapInfo.Type, 'timefreq')
+        isAbsoluteValues = sColormap.isAbsoluteValues;
+        if strcmpi(TfInfo.Function, 'log')
+            sColormap.isRealMin = 1;
+            isAbsoluteValues = 0;
+        elseif strcmpi(TfInfo.Function, 'power')
+            isAbsoluteValues = 1;
+        end
+        if isAbsoluteValues ~= sColormap.isAbsoluteValues
+            sColormap.isAbsoluteValues = isAbsoluteValues;
+            bst_colormaps('SetColormap', ColormapInfo.Type, sColormap);
+        end
     end
     % Get figure maximum
     MinMaxVal = bst_colormaps('GetMinMax', sColormap, TF, TopoHandles.DataMinMax);

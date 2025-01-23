@@ -182,27 +182,48 @@ switch (FileFormat)
             end
             % Save headers
             if ~isempty(Label1) && ~isempty(Label2)
-                xlswrite(OutputFile, {Title2},   SheetName, 'A1');
-                xlswrite(OutputFile, Label1(:),  SheetName, 'A2');
-                xlswrite(OutputFile, Label2(:)', SheetName, 'B1');
+                xls_write(OutputFile, {Title2},   SheetName, 'A1');
+                xls_write(OutputFile, Label1(:),  SheetName, 'A2');
+                xls_write(OutputFile, Label2(:)', SheetName, 'B1');
                 StartCell = 'B2';
             elseif ~isempty(Label1)
-                xlswrite(OutputFile, Label1(:), SheetName, 'A1');
+                xls_write(OutputFile, Label1(:), SheetName, 'A1');
                 StartCell = 'B1';
             elseif ~isempty(Label2)
-                xlswrite(OutputFile, Label2(:)', SheetName, 'A1');
+                xls_write(OutputFile, Label2(:)', SheetName, 'A1');
                 StartCell = 'A2';
             else
                 StartCell = 'A1';
             end
             % Save data as a new sheet
-            [res,errMsg] = xlswrite(OutputFile, Data(:,:,i3), SheetName, StartCell);
+            [res,errMsg] = xls_write(OutputFile, Data(:,:,i3), SheetName, StartCell);
             if ~res
                 error(['Could not export file to Excel: ' 10 errMsg]);
             end
         end
 end
 
+function [res,errMsg] = xls_write(varargin)
+    % Wrapper to write a EXCEL .xls file for different Matlab versions)
+    if bst_get('MatlabVersion') < 906 % R2019a
+        [res,errMsg] = xlswrite(varargin{:});
+    else
+        res    = 1;   % Success
+        errMsg = '';
+        vars = varargin;
+        try
+            if iscell(vars{2})
+                writecell(vars{2}, vars{1}, 'Sheet', vars{3}, 'Range', vars{4});
+            elseif isnumeric(vars{2})
+                writematrix(vars{2}, vars{1}, 'Sheet', vars{3}, 'Range', vars{4});
+            end
+        catch me
+            res = 0;  % Fail
+            errMsg = me.message;
+        end
+    end
+end
+end
 
 
                 

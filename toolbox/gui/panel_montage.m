@@ -1234,8 +1234,9 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Average reference (L -> R)', 'Scalp current density (L -> R)'}) && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
-            % Not EEG or no 3D positions: Skip scalp current density
-            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Scalp current density', 'Scalp current density (L -> R)'}) && ~isempty(FigId.Modality) && (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})))
+            % Not EEG or no 3D positions or less than 4 unique points: Skip scalp current density
+            if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Scalp current density', 'Scalp current density (L -> R)'}) && ~isempty(FigId.Modality) && ...
+                    (~ismember(FigId.Modality, {'EEG'}) || any(cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iFigChannels).Loc})) || size(unique([GlobalData.DataSet(iDS).Channel(iFigChannels).Loc]', 'rows'), 1) < 4)
                 continue;
             end
             % Not CTF-MEG: Skip head motion distance
@@ -1478,6 +1479,11 @@ function sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
     
     % Get surface of electrodes
     pnt = [Channels.Loc]';
+    % Check for at least four unique channel positions
+    if size(unique(pnt, 'rows'), 1) < 4
+        sMontage = [];
+        return;
+    end
     tri = channel_tesselate(pnt);
     % Compute the SCP (surface Laplacian) with FieldTrip function lapcal
     Lscp = lapcal(pnt, tri);
@@ -2383,27 +2389,30 @@ function AddAutoMontagesProj(ChannelMat, isInteractive)
         if (length(sCat.Comment) < 3) || strcmpi(sCat.Comment(1:3), 'EEG')
             continue;
         end
-        % ICA
-        if isequal(sCat.SingVal, 'ICA')
-            % Field Components stores the mixing matrix W
-            W = sCat.Components(iChannels, :)';
-            % Display name
-            strDisplay = 'IC';
-        % SSP
-        else
-            % Field Components stores the spatial components U
-            U = sCat.Components(iChannels, :);
-            % SSP/PCA results
-            if ~isempty(sCat.SingVal) 
-                Singular = sCat.SingVal ./ sum(sCat.SingVal);
-            % SSP/Mean results
-            else
-                Singular = eye(size(U,2));
-            end
-            % Rebuild mixing matrix
-            W = diag(sqrt(Singular)) * pinv(U);
-            % Display name
-            strDisplay = 'SSP';
+        componentType = sCat.Method(1:3);
+        switch lower(componentType)
+            % ICA
+            case 'ica'
+                % Field Components stores the mixing matrix W
+                W = sCat.Components(iChannels, :)';
+                % Display name
+                strDisplay = 'IC';
+            % SSP
+            case 'ssp'
+                % Field Components stores the spatial components U
+                U = sCat.Components(iChannels, :);
+                switch(sCat.Method)
+                    case 'SSP_pca'
+                        % SSP/PCA results
+                        Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    case 'SSP_mean'
+                        % SSP/Mean results
+                        Singular = eye(size(U,2));
+                end
+                % Rebuild mixing matrix
+                W = diag(sqrt(Singular)) * pinv(U);
+                % Display name
+                strDisplay = 'SSP';
         end
         % Create line labels
         LinesLabels = cell(size(W,1), 1);

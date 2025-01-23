@@ -107,7 +107,7 @@ if isempty(newEvents)
         case 'BIDS'
             newEvents = in_events_bids(sFile, EventFile);
         case 'BRAINAMP'
-            newEvents = in_events_brainamp(sFile, EventFile);
+            newEvents = in_events_brainamp(sFile, ChannelMat, EventFile);
         case 'BST'
             FileMat = load(EventFile);
             % Add missing fields if required
@@ -222,6 +222,24 @@ for iNew = 1:length(newEvents)
                      sFile.events(iEvt).label, ...
                      '" inconsistent, converting to extended event.']);
                 newEvents(iNew).times = [newEvents(iNew).times; newEvents(iNew).times + 0.001];
+            end
+        end
+        % Expand 'channels' field for event occurrences if needed
+        if ~isempty(sFile.events(iEvt).channels) || ~isempty(newEvents(iNew).channels)
+            if isempty(sFile.events(iEvt).channels)
+                sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+            end
+            if isempty(newEvents(iNew).channels)
+                newEvents(iNew).channels = cell(1, size(newEvents(iNew).times, 2));
+            end
+        end
+        % Expand 'notes' field for event occurrences if needed
+        if ~isempty(sFile.events(iEvt).notes) || ~isempty(newEvents(iNew).notes)
+            if isempty(sFile.events(iEvt).notes)
+                sFile.events(iEvt).notes = cell(1, size(sFile.events(iEvt).times, 2));
+            end
+            if isempty(newEvents(iNew).notes)
+                newEvents(iNew).notes = cell(1, size(newEvents(iNew).times, 2));
             end
         end
         % Merge events occurrences

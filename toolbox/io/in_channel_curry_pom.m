@@ -1,5 +1,5 @@
 function ChannelMat = in_channel_curry_pom(ChannelFile)
-% IN_CHANNEL_CURRY_RS3:  Read 3D cartesian positions for a set of points from a Curry .pom file.
+% IN_CHANNEL_CURRY_POM:  Read 3D cartesian positions for a set of points from a Curry .pom file.
 %
 % USAGE:  ChannelMat = in_channel_curry_pom(ChannelFile)
 %

@@ -52,9 +52,25 @@ if ~exist('mcc', 'file')
     error('You must install the toolboxes "Matlab Compiler" and "Matlab Compiler SDK" to run this function.');
 end
 % Start brainstorm without the GUI
-isNogui = ~brainstorm('status');
-if isNogui
+wasBstRunning = brainstorm('status');
+if ~wasBstRunning
     brainstorm nogui
+end
+isGUI = bst_get('isGUI');
+% Delete current default anatomy and download it
+templateDir = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'anatomy');
+if exist(templateDir, 'dir')
+    brainstorm stop
+    try
+        rmdir(templateDir, 's');
+    catch
+        disp(['COMPILE> Error: Could not delete folder: ' templateDir]);
+    end
+    if isGUI
+        brainstorm start
+    else
+        brainstorm nogui
+    end
 end
 % Remove .brainstorm from the path
 rmpath(bst_get('UserMexDir'));
@@ -154,6 +170,9 @@ if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     if ~isempty(bst_plugin('GetInstalled', 'cat12'))
         bst_plugin('LinkCatSpm', 0);
     end
+    % Unload FieldTrip and SPM plugins
+    bst_plugin('Unload', 'fieldtrip');
+    bst_plugin('Unload', 'spm12');
     % Extract functions to compile from SPM and Fieldtrip
     bst_spmtrip(SpmDir, FieldTripDir, spmtripDir);
     % Add to Matlab path
@@ -258,13 +277,15 @@ if file_exist(bstJar)
     delete(bstJar);
 end
 if ispc
-    cmdSeparator = '&';
+    cdCall = 'cd /d';
+    cmdSeparator = '&&';
     jarExePath = '\bin\jar.exe'; 
-else   
+else
+    cdCall = 'cd';
     cmdSeparator = ';';
     jarExePath = '/bin/jar'; 
 end
-system(['cd "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
+system([cdCall ' "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
 
 
 

@@ -96,28 +96,34 @@ isLidarToolbox = exist('surfaceMesh', 'file') == 2;
 
 % Ask for resampling method
 if isempty(Method)
-    % Ask method
-    OptionsText =     {['<HTML><B><U>Matlab''s reducepatch:</U></B><BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - Inhomogeneous mesh: large faces at the top of the gyri<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - Keeps the atlases and the subjects co-registration'], ...
-                       ['<HTML><B>Matlab''s reducepatch + subdivide large faces:</B><BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - The large faces at the top of the gyri are subdivided in three<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'], ...
-                       ['<HTML><B>iso2mesh/CGAL library:</B><BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh: all the faces have similar sizes<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subject co-registration<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - If the downsample looks dark, right-click > Swap faces']};
-%                        ['<HTML><B>iso2mesh/CGAL + project on the original surface:</B><BR>' ...
-%                         '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh but possible <U>topological problems</U><BR>' ...
-%                         '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']};
+    % Downsize methods strings
+    methods_str = {['<HTML><B><U>Matlab''s reducepatch:</U></B><BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - Inhomogeneous mesh: large faces at the top of the gyri<BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - Keeps the atlases and the subjects co-registration'], ...
+                   ['<HTML><B>Matlab''s reducepatch + subdivide large faces:</B><BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - The large faces at the top of the gyri are subdivided in three<BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'], ...
+                   ['<HTML><B>iso2mesh/CGAL library:</B><BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh: all the faces have similar sizes<BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subject co-registration<BR>' ...
+                    '&nbsp;&nbsp;&nbsp;| - If the downsample looks dark, right-click > Swap faces']};
+        %          ['<HTML><B>iso2mesh/CGAL + project on the original surface:</B><BR>' ...
+        %           '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh but possible <U>topological problems</U><BR>' ...
+        %           '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']},
+
     if isLidarToolbox
-        OptionsText{end+1} = ...
+        methods_str{end+1} = ...
                        ['<HTML><B>Matlab''s simplify, from Lidar Toolbox:</B><BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - Possibly better at preserving shape topology than reducepatch<BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'];
     end
-    ind = java_dialog('radio', 'Select the resampling method:', 'Resample surface', [], ...
-                      OptionsText, 1);
+    % Identify textured surfaces (color info is present) and show available methods for them
+    VarInfo = whos('-file',file_fullpath(TessFile), 'Color');
+    if all(VarInfo.size ~= 0)
+        methods_str = methods_str(1); % Inhomogeneous mesh
+    end
+    % Ask method
+    ind = java_dialog('radio', 'Select the resampling method:', 'Resample surface', [], methods_str, 1);
     if isempty(ind)
         return
     end
@@ -152,7 +158,8 @@ else
 end
 TessMat.Faces    = double(TessMat.Faces);
 TessMat.Vertices = double(TessMat.Vertices);
-dsFactor = newNbVertices / size(TessMat.Vertices, 1);
+TessMat.Color    = double(TessMat.Color);
+dsFactor = newNbVertices / size(TessMat.Vertices, 1); 
 
 %% ===== RESAMPLE =====
 bst_progress('start', 'Resample surface', ['Resampling surface: ' TessMat.Comment '...']);
@@ -168,6 +175,9 @@ switch (Method)
         % Re-order the vertices so that they are in the same order in the output surface
         [I, iSort] = sort(I);
         NewTessMat.Vertices = TessMat.Vertices(I,:);
+        if ~isempty(TessMat.Color)
+            NewTessMat.Color = TessMat.Color(I,:);
+        end
         J = J(iSort);
         % Re-order the vertices in the faces
         iSortFaces(J) = 1:length(J);
@@ -435,7 +445,7 @@ switch (Method)
         NewTessMat.Vertices = Vertices;
         MethodTag = '_iso2mesh_proj';
 
-    % ===== REDUCEPATCH =====
+    % ===== SIMPLIFY =====
     % Matlab's Lidar Toolbox simplify (since R2022b)
     case 'simplify'
         if ~isLidarToolbox
@@ -589,22 +599,11 @@ end
 % Resample a surface using iso2mesh/CGAL library
 % Author: Qianqian Fang (fangq<at> nmr.mgh.harvard.edu)
 function NewTessMat = iso2mesh_resample(TessMat, dsFactor)
-    % Check if iso2mesh is installed
-    if ~exist('meshresample', 'file')
-        % iso2mesh is now a plugin, install/load iso2mesh plugin
-        [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', true); % isInteractive
-        if ~isInstalled
-            bst_error(errInstall);
-            % bst_error(['<HTML>Please install <B>iso2mesh</B> on your computer:<BR><BR>' ...
-            %     '  1) Visit the website: <A href="http://iso2mesh.sourceforge.net">http://iso2mesh.sourceforge.net</A><BR>' ...
-            %     '  2) Download the iso2mesh package for your operating system.<BR>' ...
-            %     '  3) Unzip it on your local hard drive.<BR>' ...
-            %     '  4) Add the iso2mesh folder to your Matlab path.<BR>' ...
-            %     '  5) Try again downsampling the surface.<BR><BR>'], 'Install iso2mesh', 0);
-            % web('http://sourceforge.net/projects/iso2mesh/files/iso2mesh/1.5.0%20%28iso2mesh%202013%29/', '-browser');
-            NewTessMat = [];
-            return;
-        end
+    % Install/load iso2mesh plugin
+    isInteractive = 1;
+    [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+    if ~isInstalled
+        error('Plugin "iso2mesh" not available.');
     end
     % Running iso2mesh routine
     [Vertices,Faces] = meshresample(TessMat.Vertices, TessMat.Faces, dsFactor);

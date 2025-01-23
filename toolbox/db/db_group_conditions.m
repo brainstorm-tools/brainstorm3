@@ -107,6 +107,7 @@ for iSubj = 1:length(uniqueSubjectFiles)
     % === PROCESS ALL STUDIES ===
     isChanCopied = 0;
     oldCondPath = {};
+    badDataFiles = {};
     for iStud = 1:length(iCondStudies)
         % Increment progressbar 
         bst_progress('inc', 1);
@@ -123,6 +124,8 @@ for iSubj = 1:length(uniqueSubjectFiles)
         dirStudy = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudy.FileName));
         studyFiles = dir(dirStudy);
         iNonTrial = 1;
+        % Bad trials
+        badDataFiles = [badDataFiles, {sStudy.Data(find([sStudy.Data.BadTrial])).FileName}];
         % Copy all files in the target study
         for iFile = 1:length(studyFiles)
             % Ignore if directory
@@ -157,6 +160,11 @@ for iSubj = 1:length(uniqueSubjectFiles)
             srcFilename = bst_fullfile(dirStudy, studyFiles(iFile).name);
             % Move file physically
             file_move(srcFilename, destFilename);
+            % Get new FileName for bad trial
+            iBadDataFile = find(ismember(badDataFiles, file_short(srcFilename)));
+            if ~isempty(iBadDataFile)
+                badDataFiles{iBadDataFile} = file_short(destFilename);
+            end
         end
     end
 end
@@ -182,6 +190,8 @@ if isempty(iAllDestStudies)
 end
 % Reload modified studies
 db_reload_studies(iAllDestStudies);
+% Update bad trials info
+process_detectbad('SetTrialStatus', badDataFiles, 1);
 % Repaint node
 panel_protocols('UpdateNode', 'Study', iAllDestStudies);
 % Save database
