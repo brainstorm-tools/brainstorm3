@@ -157,6 +157,7 @@ end
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 isCt    = strcmpi(volType, 'CT');
+isCtRaw = 0;
 % Tag for CT volume
 if isCt
     tagVolType = '_volct';
@@ -224,6 +225,14 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % Load the reference MRI (the first one)
     refMriFile = sSubject.Anatomy(1).FileName;
     sMriRef = in_mri_bst(refMriFile);
+    % Whilef importing CT, ask if user wants to import raw CT (for GARDEL)
+    if isCt
+        isCtRaw = java_dialog('confirm', 'Add unprocessed raw CT to database? (required for GARDEL)', 'Import CT');
+        sCtRaw  = [];
+        if isCtRaw
+            sCtRaw = sMri;
+        end
+    end
     % Adding an MNI volume to an existing subject
     if isMni
         sMri = mri_reslice_mni(sMri, sMriRef, isAtlas);
@@ -437,6 +446,9 @@ end
 % Add a Comment field in MRI structure, if it does not exist yet
 if ~isempty(Comment)
     sMri.Comment = Comment;
+    if isCtRaw
+        sCtRaw.Comment = Comment;
+    end
     importedBaseName = file_standardize(Comment);
 else
     if ~isfield(sMri, 'Comment') || isempty(sMri.Comment)
@@ -451,7 +463,10 @@ else
         else
             sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
         end
-    end
+        if isCtRaw
+            sCtRaw.Comment = [fBase '_raw']; 
+        end
+    end    
     % Add MNI tag
     if isMni
         if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y_method)
@@ -481,12 +496,26 @@ BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_'
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format
 sMri = out_mri_bst(sMri, BstMriFile);
+if isCtRaw
+    % Produce a default anatomy filename
+    BstRawCtFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '_raw.mat']);
+    % Make this filename unique
+    BstRawCtFile = file_unique(BstRawCtFile);
+    % Save new raw CT in Brainstorm format
+    sCtRaw = out_mri_bst(sCtRaw, BstRawCtFile);
+end
 
 %% ===== REFERENCE NEW MRI IN DATABASE ======
 % New anatomy structure
 sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
+if isCtRaw
+    % New anatomy structure for raw CT
+    sSubject.Anatomy(iAnatomy+1) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy+1).FileName = file_short(BstRawCtFile);
+    sSubject.Anatomy(iAnatomy+1).Comment  = sCtRaw.Comment;
+end
 % Default anatomy: do not change
 if isempty(sSubject.iAnatomy) && ~isCt && ~isAtlas
     sSubject.iAnatomy = iAnatomy;
