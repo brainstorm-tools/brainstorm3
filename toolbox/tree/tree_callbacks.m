@@ -576,6 +576,13 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
+                    if ~isempty(sSubject.Anatomy)
+                        % Show GARDEL option in menu only if ther is a raw unprocessed CT available
+                        iCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
+                        if ~isempty(iCt)
+                            gui_component('MenuItem', jPopup, [], 'GARDEL', [], [], @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
+                        end
+                    end
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
