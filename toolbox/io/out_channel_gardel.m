@@ -1,5 +1,5 @@
 function out_channel_gardel(BstFile, OutputFile, Transf)
-% OUT_CHANNEL_GARDEL: Exports a Brainstorm channel file to GARDEL format .txt file
+% OUT_CHANNEL_GARDEL: Exports a Brainstorm channel file to a GARDEL supported .txt file
 %
 % USAGE:  out_channel_gardel( BstFile,    OutputFile );
 %         out_channel_gardel( ChannelMat, OutputFile );
@@ -61,7 +61,10 @@ for i = 1:nEEG
         R = Transf(1:3,1:3);
         T = Transf(1:3,4);
         Loc = R * sChan.Loc(:,1) + T * ones(1, size(sChan.Loc(:,1),2));
-        fprintf(fid, '%s\t%s\t%3.8f\t%3.8f\t%3.8f\n', sChan.Group, strrep(sChan.Name, sChan.Group, ''), Loc);
+        % Fields in order: electrode name, contact number, loc_X, loc_Y, loc_Z, anatomical label id (dummy), anatomical label name (dummy)
+        % Note: dummy anatomical label values will be recomputed when the exported file is loaded into GARDEL tool
+        % TODO: replace the dummy anatomical label values with actual ones computed from Brainstorm
+        fprintf(fid, '%s\t%s\t%3.8f\t%3.8f\t%3.8f\t%d\t%s\n', sChan.Group, strrep(sChan.Name, sChan.Group, ''), Loc, 1, 'grey');
     end
 end
 
