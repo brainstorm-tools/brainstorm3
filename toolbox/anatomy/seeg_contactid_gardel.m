@@ -5,7 +5,7 @@ function errMsg = seeg_contactid_gardel(iSubject)
 %
 % INPUT:
 %    - iSubject : Indice of the subject where to import the MRI
-%                      If iSubject=0 : import MRI in default subject
+%                 If iSubject=0 : import MRI in default subject
 % OUTPUT:
 %    - errMsg   : String: error message if an error occurs
 
@@ -27,7 +27,7 @@ function errMsg = seeg_contactid_gardel(iSubject)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Chinmay Chinara, 2024
+% Author: Chinmay Chinara, 2025
 
 % Initialize returned variables
 errMsg = [];
@@ -166,45 +166,13 @@ ChannelMat = db_template('channelmat');
 ChannelMat.Channel = db_template('channeldesc');
 ChannelMat.Comment = conditionName;
 
-% Parse the electrode coordinates txt file and load it to the channel file
-fid = fopen(GardelElectrodeFile);
-tline = fgets(fid);
-while isempty(strfind(tline,'MRI_voxel'))
-    tline = fgets(fid);
-end
-tline = fgets(fid);
-Electrodes = [];
-i = 1;
-while ischar(tline) && ~contains(tline,'MRI_FS')
-    if isempty(strfind(tline,'#'))
-        Electrodes = [Electrodes; textscan(tline, '%s %f %f %f %f %f %s %s', 8, 'Delimiter', '\t')];
-        i = i+1;
-    end
-    tline = fgets(fid);
-end
-fclose(fid);
-
-% Parse the 'Electrodes' variable and put it in the BST format in the channel file
+% Parse the Gardel exported electrode coordinates 'txt' file and load it to BST channel file
+ChannelMat = in_channel_gardel(GardelElectrodeFile);
+% Convert coordinates: VOXEL => SCS
 sMri = bst_memory('LoadMri', sSubject.Anatomy(1).FileName);
-for ii=1:length(Electrodes)
-    a = Electrodes(ii, 1);
-    b = Electrodes(ii, 2);
-    ChannelMat.Channel(ii).Name = [a{:}{:} num2str(b{:})];
-
-    ChannelMat.Channel(ii).Group = a{:}{:};
-    
-    x = Electrodes(ii, 3);
-    y = Electrodes(ii, 4);
-    z = Electrodes(ii, 5);
-    xx(1) = x{:};
-    xx(2) = y{:};
-    xx(3) = z{:};
-
-    % Convert coordinates from GARDEL MRI Voxel space to Brainstorm SCS space
-    xx = cs_convert(sMri, 'voxel', 'scs', xx);
-    ChannelMat.Channel(ii).Loc = xx';
-    ChannelMat.Channel(ii).Type = 'SEEG';
-end
+fcnTransf = @(Loc)cs_convert(sMri, 'voxel', 'scs', Loc')';
+AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 0);
+ChannelMat = AllChannelMats{1};
 
 % Save the new channel file
 ChannelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudy.FileName)), ['channel_' lower(conditionName) '.mat']);

@@ -241,7 +241,18 @@ switch (FileFormat)
             AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
             ChannelMat = AllChannelMats{1};
         end
-        
+    
+    case 'GARDEL-TXT'
+        ChannelMat = in_channel_gardel(ChannelFile);
+        % Convert coordinates: VOXEL => SCS
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        sMri = bst_memory('LoadMri', sSubject.Anatomy(1).FileName);
+        fcnTransf = @(Loc)cs_convert(sMri, 'voxel', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 0);
+        ChannelMat = AllChannelMats{1};
+        FileUnits = 'mm';
+
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
             case 'pts'
