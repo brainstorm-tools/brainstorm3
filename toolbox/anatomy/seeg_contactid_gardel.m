@@ -46,10 +46,14 @@ bst_plugin('SetProgressLogo', 'gardel');
 
 % Create temporary folder for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
-% TmpGardelDir = 'C:\Users\chinm\.brainstorm\tmp\gardel_250122_185555';
+% TmpGardelDir = 'C:\Users\chinm\OneDrive\Desktop\study_this\gardel_241117_122450';
 
 % Get current subject
 sSubject = bst_get('Subject', iSubject);
+
+ChannelFile = [];
+ChannelMat = [];
+GardelElectrodeFile = [];
 
 % Save reference MRI in .nii format in tmp folder
 MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -71,17 +75,24 @@ else
     return;
 end
 
-% Hide Brainstorm window
+% GetBrainstorm window
 jBstFrame = bst_get('BstFrame');
-jBstFrame.setVisible(0);
 
 % Check if SPM12 tissue segmentation data is available
 iVolAtlas = find(cellfun(@(x) ~isempty(regexp(x, '_gardel_volatlas', 'match')), {sSubject.Anatomy.FileName})); 
-if isempty(iVolAtlas)
+sStudy = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
+if isempty(iVolAtlas) || isempty(sStudy) || isempty(sStudy.Channel)
+    % Hide Brainstorm GUI
+    jBstFrame.setVisible(0);
     % Call the external GARDEL tool
     bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
         'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile);
 else
+    % Export the channel file to GARDEL txt format
+    ProtocolInfo = bst_get('ProtocolInfo');
+    ChannelFile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Channel.FileName);
+    GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
+    export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);
     % Load the available tissue segmentation data
     TissueMris = extract_tissuemasks(sSubject.Anatomy(iVolAtlas).FileName);
     mkdir([TmpGardelDir '\IntermediateFiles\']);
@@ -95,6 +106,8 @@ else
         end
         export_mri(TissueMris{i}, bst_fullfile(TmpGardelDir, ['\IntermediateFiles\' newLabel 'coreg_' sMriRef.Comment '.nii']));
     end
+    % Hide Brainstorm GUI
+    jBstFrame.setVisible(0);
     % Call the external GARDEL tool with already available tissue segmentation data
 end
 
@@ -112,8 +125,8 @@ disp([appName ' app closed !']);
 % Show Brainstorm GUI
 jBstFrame.setVisible(1);
 
-%% ===== SPM12 TISSUE CLASSIFICATION TO BRAINSTORM =====
 if isempty(iVolAtlas)
+    %% ===== SPM12 TISSUE CLASSIFICATION TO BRAINSTORM =====
     TpmFiles = {...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c2coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c1coreg_' sMriRef.Comment '.nii']), ...
@@ -127,8 +140,8 @@ end
 
 %% ===== LOAD GARDEL CALCULATED ELECTRODE COORDINATES =====
 % Check if electrode coordinates txt file was exported 
-electrodes_file_path = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
-if ~exist(electrodes_file_path, 'file')
+GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
+if ~exist(GardelElectrodeFile, 'file')
     bst_error('Electrode coordinates file not found. Make sure you export before quitting GARDEL !', 'GARDEL', 0);
     % Comment this line to keep the temporary folder
     file_delete(TmpGardelDir, 1, 1);
@@ -136,33 +149,25 @@ if ~exist(electrodes_file_path, 'file')
 end
 
 % Create new channel file for the data from GARDEL 
-% Get subject
-SubjectName = sSubject.Name;
-sMri = bst_memory('LoadMri', sSubject.Anatomy(1).FileName);
-% Get current date/time
-c = clock;
-% Create a unique channel file each time we try running GARDEL from BST (may not be required in future) 
-for i = 1:99
-    % Generate new condition name
-    ConditionName = sprintf('%s_%02d%02d%02d_%02d', SubjectName, c(1), c(2), c(3), i);
-    % Get condition
-    [sStudy, ~] = bst_get('StudyWithCondition', [SubjectName '/' ConditionName]);
-    % If condition doesn't exist: ok, keep this one
-    if isempty(sStudy)
-        break;
-    end
+% Get folder 'Gardel'
+conditionName = 'Gardel';
+[sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
+if ~isempty(sStudy)
+    % Delete existing Gardel study
+    db_delete_studies(iStudy);
 end
-% Create condition
-iStudy = db_add_condition(SubjectName, ConditionName);
+% Create new folder if needed
+iStudy = db_add_condition(sSubject.Name, conditionName, 1);
+% Get 'Gardel' study
 sStudy = bst_get('Study', iStudy);
 
-%% Create an empty channel file for GARDEL data
+% Create an empty channel file for GARDEL data
 ChannelMat = db_template('channelmat');
 ChannelMat.Channel = db_template('channeldesc');
-ChannelMat.Comment = ConditionName;
+ChannelMat.Comment = conditionName;
 
-%% Parse the electrode coordinates txt file and load it to the channel file
-fid = fopen(electrodes_file_path);
+% Parse the electrode coordinates txt file and load it to the channel file
+fid = fopen(GardelElectrodeFile);
 tline = fgets(fid);
 while isempty(strfind(tline,'MRI_voxel'))
     tline = fgets(fid);
@@ -180,6 +185,7 @@ end
 fclose(fid);
 
 % Parse the 'Electrodes' variable and put it in the BST format in the channel file
+sMri = bst_memory('LoadMri', sSubject.Anatomy(1).FileName);
 for ii=1:length(Electrodes)
     a = Electrodes(ii, 1);
     b = Electrodes(ii, 2);
@@ -200,13 +206,13 @@ for ii=1:length(Electrodes)
     ChannelMat.Channel(ii).Type = 'SEEG';
 end
 
-%% Save the new channel file
-ChannelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudy.FileName)), ['channel_' ConditionName '.mat']);
+% Save the new channel file
+ChannelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudy.FileName)), ['channel_' lower(conditionName) '.mat']);
 save(ChannelFile, '-struct', 'ChannelMat');
 
-%% Reload condition
+% Reload condition
 db_reload_studies(iStudy);
 
-%% Delete temporary folder
+% Delete temporary folder
 % Comment this line to keep the temporary folder
 file_delete(TmpGardelDir, 0, 1);
