@@ -109,6 +109,8 @@ else
     % Hide Brainstorm GUI
     jBstFrame.setVisible(0);
     % Call the external GARDEL tool with already available tissue segmentation data
+    bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
+        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'electrodes', GardelElectrodeFile);
 end
 
 % Set process logo
