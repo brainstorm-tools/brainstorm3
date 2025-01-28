@@ -506,15 +506,15 @@ function [FaceArea, VertexArea, FaceNormals, VertexNormals] = CalcAreas(S)
         % -1/4 face area * ratio of adjoining short edge to projection of long edge on that short edge.
         % (show with similar right triangle and edge length ratios) Minus sign because of
         % "dot product" with vectors always making obtuse angle.
-        FaceVertAreas(isDo,iSh(2)) = 0.25 * EdgeSq(isDo,iSh(3)) * FaceArea(isDo,:) / -sum(Edges(isDo,:,iSh(1)) .* Edges(isDo,:,iSh(3)), 2);
-        FaceVertAreas(isDo,iSh(3)) = 0.25 * EdgeSq(isDo,iSh(2)) * FaceArea(isDo,:) / -sum(Edges(isDo,:,iSh(1)) .* Edges(isDo,:,iSh(2)), 2);
+        FaceVertAreas(isDo,iSh(2)) = 0.25 * EdgeSq(isDo,iSh(3)) .* FaceArea(isDo,:) ./ -sum(Edges(isDo,:,iSh(1)) .* Edges(isDo,:,iSh(3)), 2);
+        FaceVertAreas(isDo,iSh(3)) = 0.25 * EdgeSq(isDo,iSh(2)) .* FaceArea(isDo,:) ./ -sum(Edges(isDo,:,iSh(1)) .* Edges(isDo,:,iSh(2)), 2);
         % Vertex opposite long edge; area has 4 or 5 sides, just assign remaining area.
         FaceVertAreas(isDo,iSh(1)) = FaceArea(isDo,:) - FaceVertAreas(isDo,iSh(2)) - FaceVertAreas(isDo,iSh(3));
     end
     % Last case: circumcenter is inside face, each region is a quadrilateral
     % Normalize weights and scale with half face area
     BaryWeights = BaryWeights ./ (BaryWeights(:,1) + BaryWeights(:,2) + BaryWeights(:,3));
-    FaceVertAreas(isRemain,:) = 1/2 * FaceArea(isRemain,:) .* (circshift(BaryWeights, 1, 2) + circshift(BaryWeights, -1, 2));
+    FaceVertAreas(isRemain,:) = 1/2 * FaceArea(isRemain,:) .* (circshift(BaryWeights(isRemain,:), 1, 2) + circshift(BaryWeights(isRemain,:), -1, 2));
 
     % Now sum back to single vertex area list
     VertexArea = accumarray(S.Faces(:), FaceVertAreas(:), [nV, 1]);

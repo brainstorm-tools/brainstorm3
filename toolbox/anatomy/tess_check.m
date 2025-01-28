@@ -151,6 +151,8 @@ if isOk
 end
 
 if isShow
+    FigureId = db_template('FigureId');
+    FigureId.Type = '3DViz';
     hFig = figure_3d('CreateFigure', FigureId);
     figure_3d('PlotSurface', hFig, Faces, Vertices, [1,1,1], 0); % color, transparency required
     figure_3d('ViewAxis', hFig, true); % isVisible
@@ -180,10 +182,10 @@ Info.isWatertight = isWatertight(oMesh); % Check if surface mesh is watertight
 
 if isVerbose
     if (isOpenOk && ~Info.isEdgeManifold) || (~isOpenOk && ~Info.isClosedManifold)
-        fprintf('BST>Surface not "edge manifold" (each edge has at most one face on each side)\n.');
+        fprintf('BST>Surface not "edge manifold" (each edge has at most one face on each side).\n');
     end
     if ~Info.isVertexManifold
-        fprintf('BST>Surface not "vertex manifold" (like a "fan" at each vertex)\n.');
+        fprintf('BST>Surface not "vertex manifold" (like a "fan" at each vertex).\n');
     end
     if ~Info.isOrientable
         fprintf('BST>Surface not well oriented (face normals are mixed pointing in and out).\n');

@@ -31,8 +31,8 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % modified quite a bit, erode and fill factors no longer used. See my notes in OneNote
 
 % To visualize steps for debugging.
-isDebugVis = true;
-nDebugVisSlices = 9;
+isDebugVis = false;
+nDebugVisSlices = 9; %#ok<NASGU>
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -143,7 +143,7 @@ if isGradient
     % Find appropriate threshold from gradient histogram
     % TODO: need to find a robust way to do this.  Only verified on one
     % relatively bad MRI sequence with preprocessing (debias, denoise).
-    [Grad, VectGrad] = NormGradient(sMri.Cube(:,:,:,1));
+    [Grad, VectGrad] = NormGradient(sMri.Cube(:,:,:,1)); %#ok<ASGLU>
     if isempty(bgLevel)
         Hist = mri_histogram(Grad, [], 'headgrad');
         bgLevel = Hist.bgLevel;
@@ -178,7 +178,7 @@ headmask(:,end,:) = 0; %*headmask(:,1,:);
 headmask(:,:,1)   = 0; %*headmask(:,:,1);
 headmask(:,:,end) = 0; %*headmask(:,:,1);
 if isDebugVis
-    view_mri_slices(headmask, 'x', nDebugVisSlices);
+    view_mri_slices(headmask, 'x', nDebugVisSlices); %#ok<*UNRCH>
 end
 % Erode + dilate, to remove small components
 % if (erodeFactor > 0)
@@ -203,9 +203,9 @@ end
 
 % Fill neck holes (bones, etc.) where it is cut at edge of volume. 
 bst_progress('text', 'Filling holes and removing disconnected parts...');
-if isDebugVis
-    figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
-end
+% if isDebugVis
+%     figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
+% end
 % Brainstorm reorients MRI so voxels are in RAS. But do all faces in case the bounding box was too
 % small and another part is cut (e.g. nose).
 
@@ -234,14 +234,18 @@ for iDim = 1:3
         end
         % Skip if just background (e.g. above or behind head)
         if ~any(any(squeeze(TempMask(2, :, :))))
-            if isFlip
+            % Flip back and move on
+            if isFlip 
                 TempMask = flip(TempMask, 1);
             end
             continue;
         end
-        Slice = sum(TempMask(2:2+nSlices-1, :, :), 1);
         if isDebugVis
-            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+            figure; imagesc(squeeze(TempMask(2,:,:))); colormap('gray'); axis equal; title(sprintf('Dim %d, Flip %d', iDim, isFlip));
+        end
+        Slice = sum(TempMask(2:2+nSlices-1, :, :), 1);
+        if isDebugVis && nSlices > 1
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal; title(sprintf('Dim %d, Flip %d, Avg %d slices', iDim, isFlip, nSlices));
         end
         Slice = Slice >= FillThresh;
         % Skip if just background (previous check had just some noise)
@@ -251,16 +255,14 @@ for iDim = 1:3
             end
             continue;
         end
+        Slice = FillConcaveVolume(Slice, true); % isClean
+        % Slice = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
         if isDebugVis
-            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
-        end
-        Slice = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
-        if isDebugVis
-            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal; title(sprintf('Dim %d, Flip %d, Filled', iDim, isFlip));
         end
         Slice = CenterSpread(Slice);
         if isDebugVis
-            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal;
+            figure; imagesc(squeeze(Slice)); colormap('gray'); axis equal; title(sprintf('Dim %d, Flip %d, Center spread', iDim, isFlip));
         end
         TempMask(2, :, :) = Slice;
         if isFlip
@@ -270,21 +272,20 @@ for iDim = 1:3
     % Permute back
     headmask = permute(TempMask, Perm);
 end
-if isDebugVis
-    figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
-end
+% if isDebugVis
+%     figure; imagesc(headmask(:,:,2)); colormap('gray'); axis equal;
+% end
 % Fill holes
-InsideMask = (Fill(headmask, 1) & Fill(headmask, 2) & Fill(headmask, 3));
-headmask = InsideMask | (Dilate(InsideMask) & headmask);
+headmask = FillConcaveVolume(headmask, true); % clean, which may remove a few more original 1-voxel-wide or noise bits
 if isDebugVis
-    view_mri_slices(headmask, 'x', nDebugVisSlices);
+    view_mri_slices(headmask, 'x', nDebugVisSlices); title('Filled');
 end
 % Keep only central connected volume (trim "beard" or bubbles)
 headmask = CenterSpread(headmask);
 bst_progress('inc', 15);
 
 if isDebugVis
-    view_mri_slices(headmask, 'x', nDebugVisSlices);
+    view_mri_slices(headmask, 'x', nDebugVisSlices); title('Center spread');
 end
 
 
@@ -296,14 +297,9 @@ bst_progress('text', 'Creating isosurface...');
 % Flip x-y back to our voxel coordinates.
 sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
 if isDebugVis
-    FigureId = db_template('FigureId');
-    FigureId.Type = '3DViz';
-    hFig = figure_3d('CreateFigure', FigureId);
-    figure_3d('PlotSurface', hFig, sHead.Faces, sHead.Vertices, [1,1,1], 0); % color, transparency required
-    figure_3d('ViewAxis', hFig, true); % isVisible
-    hFig.Visible = "on";
     fprintf('mri_isohead surface\n');
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+    title('isosurface');
 end
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
@@ -316,12 +312,12 @@ bst_progress('inc', 10);
 
 % Remove small objects
 bst_progress('text', 'Removing small patches...');
+nVertTemp = size(sHead.Vertices, 1);
 [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-if isDebugVis
-    hFig = figure_3d('CreateFigure', FigureId);
-    figure_3d('PlotSurface', hFig, sHead.Faces, sHead.Vertices, [1,1,1], 0); % color, transparency required
-    figure_3d('ViewAxis', hFig, true); % isVisible
-    hFig.Visible = "on";
+if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
+    fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+    title('isosurface & small removed');
 end
 bst_progress('inc', 15);
 
@@ -339,7 +335,8 @@ bst_progress('text', 'Smoothing voxel artefacts...');
 sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 5, [], false); % voxel/smoothing size, iterations, verbose
 if isDebugVis
     fprintf('mildly smoothed isosurface\n');
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+    title('mildly smoother isosurface');
 end
 bst_progress('inc', 20);
 
@@ -347,9 +344,11 @@ bst_progress('inc', 20);
 if (length(sHead.Vertices) > nVertices)
     bst_progress('text', 'Downsampling surface...');
     % Modified tess_downsize to accept sHead
+    % Method = 'iso2mesh';
     % Check if Lidar Toolbox is installed (requires image processing + computer vision)
     isLidarToolbox = exist('surfaceMesh', 'file') == 2;
     if isLidarToolbox
+        % Still produces problems, e.g. some open edges
         Method = 'simplify';
     else
         % This can produce a "bad" patch. disconnected? intersecting?
@@ -360,22 +359,26 @@ if (length(sHead.Vertices) > nVertices)
     %[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
     if isDebugVis
         fprintf('reduced surface (%s)\n', Method);
-        [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, false); %#ok<ASGLU> % verbose, not open, don't show
+        [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+        title('reduced')
     end
     % Fix this patch
+    nVertTemp = size(sHead.Vertices, 1);
     [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-    if isDebugVis
+    if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
+        fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
         fprintf('reduced surface (small disconnected parts removed)\n');
         [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+        title('reduced & small removed')
     end
 end
 bst_progress('inc', 15);
 
 bst_progress('text', 'Smoothing...');
-sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 45, 0, false); % voxel/smoothing size, iterations, freedom (normal), verbose
+sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 1.5, [], 45, 0, false); % voxel/smoothing size, iterations, freedom (normal), verbose
 if isDebugVis
     fprintf('final smoothed surface\n');
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
 end
 bst_progress('inc', 10);
 
@@ -431,48 +434,155 @@ end
 end
 
 %% ===== Subfunctions =====
-function mask = Fill(mask, dim)
-% Modified to exclude boundaries, so we can get rid of external junk as well as
-% internal holes easily.
+function mask = FillConcaveVolume(mask, isClean)
+    if nargin < 2 || isempty(isClean)
+        % Default to not remove any of the original mask.
+        isClean = false;
+    end
 
-% Initialize two accumulators, for the two directions
-acc1 = false(size(mask));
-acc2 = false(size(mask));
-n = size(mask,dim);
-% Process in required direction
-switch dim
-    case 1
-        for i = 2:n
-            acc1(i,:,:) = acc1(i-1,:,:) | mask(i-1,:,:);
-        end
-        for i = n-1:-1:1
-            acc2(i,:,:) = acc2(i+1,:,:) | mask(i+1,:,:);
-        end
-    case 2
-        for i = 2:n
-            acc1(:,i,:) = acc1(:,i-1,:) | mask(:,i-1,:);
-        end
-        for i = n-1:-1:1
-            acc2(:,i,:) = acc2(:,i+1,:) | mask(:,i+1,:);
-        end
-    case 3
-        for i = 2:n
-            acc1(:,:,i) = acc1(:,:,i-1) | mask(:,:,i-1);
-        end
-        for i = n-1:-1:1
-            acc2(:,:,i) = acc2(:,:,i+1) | mask(:,:,i+1);
-        end
-end
-% Combine two accumulators
-mask = acc1 & acc2;
+    % % Dimensions that have thickness, not singleton
+    % isThk = size(mask, [1,2,3]) > 1;
+    % nThk = sum(isThk);
+    
+    % "First to last" fill
+    % Fill from first to last 1-voxels along each direction and keep intersection across 3 dimensions.
+    % This can result in very narrow deep "tunnels", which we fix with the "surround" fill step next.
+    mask = (Fill(mask, 1, true) & Fill(mask, 2, true) & Fill(mask, 3, true));
+    % This was because fill was previously not including the "first and last" voxels, probably to
+    % exclude single voxels, but we added it back anyway so added.
+    % mask = InsideMask | (Dilate(InsideMask) & mask); % filled region or original adjacent 1s.
+
+    % "Surround" fill
+    % Fill a voxel if it's surrounded by 1
+    % 4 adjacent voxels in a plane (not diagonals) for 3d, 2 adjacent voxels in a line for 2d.
+    % Repeat for filling intersections. Twice ok for 2d or 3d.
+    mask = Surrounded(mask, true);
+    mask = Surrounded(mask, true);
+
+    if isClean
+        % Apply inverse "surround" to remove noise and small protrusions.
+        % Erase voxel if surrounded by 0 in a plane. Could do before "first to last" above to clean
+        % noise first, but could also erase more parts in low SNR areas. We later keep only
+        % connected central part so no need to iterate this step.
+        mask = Surrounded(mask, false);
+        mask = Surrounded(mask, false);
+    end
 end
 
-function mask = Dilate(mask)
-% Dilate by 1 voxel in 6 directions, except at volume edges
-mask(2:end-1,2:end-1,2:end-1) = mask(1:end-2,2:end-1,2:end-1) | mask(3:end,2:end-1,2:end-1) | ...
-    mask(2:end-1,1:end-2,2:end-1) | mask(2:end-1,3:end,2:end-1) | ...
-    mask(2:end-1,2:end-1,1:end-2) | mask(2:end-1,2:end-1,3:end);
+
+function mask = Surrounded(mask, Value)
+    % Find voxels that are surrounded by a value and add them (if Value=true) or remove them (false).
+    % 4 adjacent voxels in a plane (not diagonals) for 3d, 2 adjacent voxels in a line for 2d.
+
+    if nargin < 2 || isempty(Value)
+        Value = true;
+    end
+    % Flip the mask if we're looking for false.
+    if ~Value
+        mask = ~mask;
+    end
+
+    % Indices for dimensions excluding ends (2:end-1), except if thin dimension, then it's just 1 or [1 2].
+    nVox = size(mask, [1,2,3]);
+    iVox = {min(2, nVox(1)):max(nVox(1)-1, 1), min(2, nVox(2)):max(nVox(2)-1, 1), min(2, nVox(3)):max(nVox(3)-1, 1)};
+    S = zeros(nVox - (nVox > 2)*2);
+
+    % Loop so it works on 2d or 3d
+    nDim = 0;
+    for iDim = 1:3
+        if size(mask, iDim) > 2 % Skip singleton dimensions
+            nDim = nDim + 1;
+            switch iDim
+                case 1
+                    S = S + (mask(1:end-2,iVox{2},iVox{3}) & mask(3:end,iVox{2},iVox{3}));
+                case 2
+                    S = S + (mask(iVox{1},1:end-2,iVox{3}) & mask(iVox{1},3:end,iVox{3}));
+                case 3
+                    S = S + (mask(iVox{1},iVox{2},1:end-2) & mask(iVox{1},iVox{2},3:end));
+            end
+        end
+    end
+
+    % Modify original mask by adding (true) or removing (false)
+    mask(iVox{1},iVox{2},iVox{3}) = mask(iVox{1},iVox{2},iVox{3}) | S >= nDim - 1;
+    if ~Value
+        mask = ~mask;
+    end
 end
+
+
+function mask = Fill(mask, dim, isFullSingl)
+    % Modified to exclude boundaries, so we can get rid of external junk as well as
+    % internal holes easily.
+    if nargin < 3 || isempty(isFullSingl)
+        % Return original mask for singleton dim by default.
+        isFullSingl = false;
+    end
+
+    % Initialize two accumulators, for the two directions
+    acc1 = mask;
+    acc2 = mask;
+    n = size(mask,dim);
+    % Skip singleton dimensions
+    if n == 1
+        if isFullSingl
+            % Return all true, e.g. to combine with Fill in other directions.
+            mask = true(size(mask));
+        end
+        return;
+    end
+
+    % Process in required direction
+    switch dim
+        case 1
+            for i = 2:n
+                acc1(i,:,:) = acc1(i,:,:) | acc1(i-1,:,:);
+            end
+            for i = n-1:-1:1
+                acc2(i,:,:) = acc2(i,:,:) | acc2(i+1,:,:);
+            end
+        case 2
+            for i = 2:n
+                acc1(:,i,:) = acc1(:,i,:) | acc1(:,i-1,:);
+            end
+            for i = n-1:-1:1
+                acc2(:,i,:) = acc2(:,i,:) | acc2(:,i+1,:);
+            end
+        case 3
+            for i = 2:n
+                acc1(:,:,i) = acc1(:,:,i) | acc1(:,:,i-1);
+            end
+            for i = n-1:-1:1
+                acc2(:,:,i) = acc2(:,:,i) | acc2(:,:,i+1);
+            end
+    end
+    % Combine two accumulators
+    mask = acc1 & acc2;
+end
+
+
+% function mask = Dilate(mask)
+%     % Dilate by 1 voxel in 6 directions, except at volume edges
+%     % Indices for dimensions excluding ends (2:end-1), except if thin dimension, then it's just 1 or [1 2].
+%     nVox = size(mask, [1,2,3]);
+%     iVox = {min(2, nVox(1)):max(nVox(1)-1, 1), min(2, nVox(2)):max(nVox(2)-1, 1), min(2, nVox(3)):max(nVox(3)-1, 1)};
+% 
+%     % Loop so it works on 2d or 3d
+%     for iDim = 1:3
+%         if nVox(iDim) > 2 % Skip thin dimensions (size 1 or 2)
+%             switch iDim
+%                 case 1
+%                     DilateMask = mask(1:end-2,iVox{2},iVox{3}) | mask(3:end,iVox{2},iVox{3});
+%                 case 2
+%                     DilateMask = mask(iVox{1},1:end-2,iVox{3}) | mask(iVox{1},3:end,iVox{3});
+%                 case 3
+%                     DilateMask = mask(iVox{1},iVox{2},1:end-2) | mask(iVox{1},iVox{2},3:end);
+%             end
+%             mask(iVox{1},iVox{2},iVox{3}) = mask(iVox{1},iVox{2},iVox{3}) | DilateMask;
+%         end
+%     end
+% end
+
 
 function OutMask = CenterSpread(InMask)
 % Similar to Fill, but from a central starting point and intersecting with the input "reference" mask.
@@ -512,6 +622,8 @@ while nOut > nPrev
     nOut = sum(OutMask(:));
 end
 if nOut == 1
+    % Remove "forced" initial vertex, everything else is now gone.
+    OutMask(iStart(1), iStart(2), iStart(3)) = false;
     warning('CenterSpread failed: starting center point is not part of the mask.');
 end
 end

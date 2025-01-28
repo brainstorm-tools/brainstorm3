@@ -149,6 +149,9 @@ end
 %% ===== LOAD FILE =====
 if isTessInput
     TessMat = TessFile;
+    if ~isfield(TessMat, 'Comment')
+        TessMat.Comment = 'iso head';
+    end
 else
     % Progress bar
     bst_progress('start', 'Resample surface', 'Loading file...');
@@ -158,7 +161,11 @@ else
 end
 TessMat.Faces    = double(TessMat.Faces);
 TessMat.Vertices = double(TessMat.Vertices);
-TessMat.Color    = double(TessMat.Color);
+if isfield(TessMat, 'Color')
+    TessMat.Color = double(TessMat.Color);
+else
+    TessMat.Color = [];
+end
 dsFactor = newNbVertices / size(TessMat.Vertices, 1); 
 
 %% ===== RESAMPLE =====
@@ -455,12 +462,18 @@ switch (Method)
         oMesh = surfaceMesh(TessMat.Vertices, TessMat.Faces);
 
         % Reduce number of vertices
-        oMesh = simplify(oMesh, TessMat.Vertices, 'TargetNumFaces', newNbVertices);
+        simplify(oMesh, 'TargetNumFaces', (newNbVertices - 2) * 2); % no output variable for this toolbox!
         NewTessMat.Faces = oMesh.Faces;
         NewTessMat.Vertices = oMesh.Vertices;
 
 end
 
+if isTessInput
+    % This should go after "remove folded faces" if that step was desired... skipping for now for
+    % tess_isohead as it does its own checks and corrections.
+    NewTessFile = NewTessMat;
+    return;
+end
 
 %% ===== REMOVE FOLDED FACES =====
 % Find equal faces
