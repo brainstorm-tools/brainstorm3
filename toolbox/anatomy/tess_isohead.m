@@ -1,4 +1,4 @@
-function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, bgLevel, Comment, isGradient)
+function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, bgLevel, Comment, isGradient, Method)
 % TESS_GENERATE: Reconstruct a head surface based on the MRI, based on an isosurface
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, bgLevel=GuessFromHistorgram, Comment)
@@ -40,6 +40,16 @@ HeadFile = [];
 iSurface = [];
 isSave = true;
 % Parse inputs
+if (nargin < 8) || isempty(Method)
+    Method = 'simplify';
+end
+if strcmpi(Method, 'simplify')
+    % Check if Lidar Toolbox is installed (requires image processing + computer vision)
+    isLidarToolbox = exist('surfaceMesh', 'file') == 2;
+    if ~isLidarToolbox
+        bst_error('Lidar toolbox required for method ''simplify''.');
+    end
+end
 if (nargin < 7) || isempty(isGradient)
     isGradient = false;
 end
@@ -289,87 +299,109 @@ if isDebugVis
 end
 
 
+
+
 %% ===== CREATE SURFACE =====
 % Compute isosurface
 bst_progress('text', 'Creating isosurface...');
-% Could have avoided x-y flip by specifying XYZ in isosurface...
-[sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
-% Flip x-y back to our voxel coordinates.
-sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
-if isDebugVis
-    fprintf('mri_isohead surface\n');
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
-    title('isosurface');
+
+switch Method
+    case 'iso2mesh'
+        method = 'cgalsurf';
+        opt.radbound = 4; % max radius of the Delaunay sphere - adjust to get desired vertex numbers
+        opt.distbound = 1; % max distance from isosurface
+        dofix = 1; % don't know if needed
+
+        [sHead.Vertices, sHead.Faces, regions, holes] = vol2surf(headmask, ...
+            1:size(headmask,1), 1:size(headmask,2), 1:size(headmask,3), opt, dofix, method); % ,isovalues
+        if size(regions, 1) > 1
+            bst_error('Multiple regions returned.\n');
+            return;
+        elseif ~isempty(holes)
+            bst_error('Holes present.\n');
+            return;
+        end
+        % Remove region label
+        sHead.Faces(:,4) = [];
+        if isDebugVis
+            fprintf('iso2mesh surface\n');
+            [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+            title('iso2mesh surface', 'color', 'white');
+        end
+        bst_progress('inc', 45);
+
+    case {'reducepatch', 'simplify'}
+        % Could have avoided x-y flip by specifying XYZ in isosurface...
+        [sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
+        % Flip x-y back to our voxel coordinates
+        sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
+        % Flip to have desired face orientations (seems inconsistent if needed or not).
+        % sHead.Faces = sHead.Faces(:, [2, 1, 3]);
+        if isDebugVis
+            fprintf('mri_isohead surface\n');
+            [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+            title('isosurface', 'color', 'white');
+        end
+        bst_progress('inc', 10);
+        % Downsample to a maximum number of vertices
+        % maxIsoVert = 60000;
+        % if (length(sHead.Vertices) > maxIsoVert)
+        %     bst_progress('text', 'Downsampling isosurface...');
+        %     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, maxIsoVert./length(sHead.Vertices));
+        %     bst_progress('inc', 10);
+        % end
+
+        % Remove small objects
+        bst_progress('text', 'Removing small patches...');
+        nVertTemp = size(sHead.Vertices, 1);
+        [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
+        if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
+            fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
+            [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+            title('isosurface & small removed', 'color', 'white');
+        end
+        bst_progress('inc', 15);
+
+        % Clean final surface
+        % This is very strange, it doesn't look at face locations, only the normals.
+        % After isosurface, many many faces are parallel.
+        % bst_progress('text', 'Fill: Cleaning surface...');
+        % [sHead.Vertices, sHead.Faces] = tess_clean(sHead.Vertices, sHead.Faces);
+
+        % Smooth voxel artefacts, but preserve shape and volume.
+        bst_progress('text', 'Smoothing voxel artefacts...');
+        % Should normally use 1 as voxel size, but using a larger value smooths.
+        % Restrict iterations to make it faster, smooth a bit more (normal to surface
+        % only) after downsampling.
+        sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 5, [], false); % voxel/smoothing size, iterations, verbose
+        if isDebugVis
+            fprintf('mildly smoothed isosurface\n');
+            [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
+            title('mildly smoother isosurface', 'color', 'white');
+        end
+        bst_progress('inc', 20);
 end
-bst_progress('inc', 10);
-% Downsample to a maximum number of vertices
-% maxIsoVert = 60000;
-% if (length(sHead.Vertices) > maxIsoVert)
-%     bst_progress('text', 'Downsampling isosurface...');
-%     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, maxIsoVert./length(sHead.Vertices));
-%     bst_progress('inc', 10);
-% end
 
-% Remove small objects
-bst_progress('text', 'Removing small patches...');
-nVertTemp = size(sHead.Vertices, 1);
-[sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
-    fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
-    title('isosurface & small removed');
-end
-bst_progress('inc', 15);
-
-% Clean final surface
-% This is very strange, it doesn't look at face locations, only the normals.
-% After isosurface, many many faces are parallel.
-% bst_progress('text', 'Fill: Cleaning surface...');
-% [sHead.Vertices, sHead.Faces] = tess_clean(sHead.Vertices, sHead.Faces);
-
-% Smooth voxel artefacts, but preserve shape and volume.
-bst_progress('text', 'Smoothing voxel artefacts...');
-% Should normally use 1 as voxel size, but using a larger value smooths.
-% Restrict iterations to make it faster, smooth a bit more (normal to surface
-% only) after downsampling.
-sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 5, [], false); % voxel/smoothing size, iterations, verbose
-if isDebugVis
-    fprintf('mildly smoothed isosurface\n');
-    [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
-    title('mildly smoother isosurface');
-end
-bst_progress('inc', 20);
-
-% Downsampling isosurface
-if (length(sHead.Vertices) > nVertices)
+% Downsampling surface
+if (length(sHead.Vertices) > 1.5* nVertices)
     bst_progress('text', 'Downsampling surface...');
     % Modified tess_downsize to accept sHead
-    % Method = 'iso2mesh';
-    % Check if Lidar Toolbox is installed (requires image processing + computer vision)
-    isLidarToolbox = exist('surfaceMesh', 'file') == 2;
-    if isLidarToolbox
-        % Still produces problems, e.g. some open edges
-        Method = 'simplify';
-    else
-        % This can produce a "bad" patch. disconnected? intersecting?
-        % TODO: need to fix and use tess_clean, or use different method
-        Method = 'reducepatch';
-    end
     sHead = tess_downsize(sHead, nVertices, Method);
-    %[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
     if isDebugVis
         fprintf('reduced surface (%s)\n', Method);
         [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); % verbose, not open, show
-        title('reduced')
+        title('reduced', 'color', 'white')
     end
     % Fix this patch
-    nVertTemp = size(sHead.Vertices, 1);
-    [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-    if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
-        fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
-        fprintf('reduced surface (small disconnected parts removed)\n');
-        [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
-        title('reduced & small removed')
+    if ~strcmpi(Method, 'iso2mesh') % I don't think iso2mesh returns multiple disconnected regions.
+        nVertTemp = size(sHead.Vertices, 1);
+        [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
+        if isDebugVis && nVertTemp > size(sHead.Vertices, 1) % only if something was removed in previous step
+            fprintf('BST>Some disconnected small patches removed (%d vertices).\n', nVertTemp - size(sHead.Vertices, 1));
+            fprintf('reduced surface (small disconnected parts removed)\n');
+            [isOk, Info] = tess_check(sHead.Vertices, sHead.Faces, true, false, true); %#ok<ASGLU> % verbose, not open, show
+            title('reduced & small removed', 'color', 'white')
+        end
     end
 end
 bst_progress('inc', 15);
@@ -443,7 +475,18 @@ function mask = FillConcaveVolume(mask, isClean)
     % % Dimensions that have thickness, not singleton
     % isThk = size(mask, [1,2,3]) > 1;
     % nThk = sum(isThk);
-    
+% for iDim = 1:3
+%     % Swap slice dimension into first position.
+%     switch iDim 
+%         case 1
+%             Perm = 1:3;
+%         case 2
+%             Perm = [2, 1, 3];
+%         case 3
+%             Perm = [3, 2, 1];
+%     end
+%     TempMask = permute(headmask, Perm);
+% 
     % "First to last" fill
     % Fill from first to last 1-voxels along each direction and keep intersection across 3 dimensions.
     % This can result in very narrow deep "tunnels", which we fix with the "surround" fill step next.
@@ -464,7 +507,6 @@ function mask = FillConcaveVolume(mask, isClean)
         % Erase voxel if surrounded by 0 in a plane. Could do before "first to last" above to clean
         % noise first, but could also erase more parts in low SNR areas. We later keep only
         % connected central part so no need to iterate this step.
-        mask = Surrounded(mask, false);
         mask = Surrounded(mask, false);
     end
 end
