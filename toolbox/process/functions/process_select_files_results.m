@@ -63,6 +63,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.includecommon.Comment = 'Include the folder "Common files"';
     sProcess.options.includecommon.Type    = 'checkbox';
     sProcess.options.includecommon.Value   = 0;
+    % USE FOUND FILES IN PROCESS TABS
+    sProcess.options.outprocesstab.Comment = 'Use found files in Process tab';
+    sProcess.options.outprocesstab.Type    = 'combobox_label';
+    sProcess.options.outprocesstab.Value   = {'no', {'No', 'Process1', 'Process2A', 'Process2B'; ...
+                                                     'no', 'process1', 'process2a', 'process2b'}};
 end
 
 

@@ -37,17 +37,17 @@ summaryPairs = cell(0,2);
 summaryPairs = [summaryPairs; {'=== Brainstorm ===', ''}];
 % Version
 bst_version = bst_get('Version');
-summaryPairs = [summaryPairs; {'Version', bst_version.Version}];
-summaryPairs = [summaryPairs; {'Release', bst_version.Release}];
-bst_variant = 'souce';
+summaryPairs = [summaryPairs; {'Version ', bst_version.Version}];
+summaryPairs = [summaryPairs; {'Release ', bst_version.Release}];
+bst_variant  = 'source';
 if bst_iscompiled()
     bst_variant = 'standalone';
 end
-summaryPairs = [summaryPairs; {'Variant', bst_variant}];
+summaryPairs = [summaryPairs; {'Variant ', bst_variant}];
 % Plugins
 pluginTextPairs = cell(0,2);
-pluginTextPairs = [pluginTextPairs, {'Plugins', 'No installed plugins.'}];
-InstPlugs = bst_plugin('GetInstalled');
+pluginTextPairs = [pluginTextPairs, {'Plugins ', 'No installed plugins.'}];
+InstPlugs  = bst_plugin('GetInstalled');
 nInstPlugs = length(InstPlugs);
 iPluginRow = 0;
 for ix = 1 : nInstPlugs
@@ -68,24 +68,24 @@ summaryPairs = [summaryPairs; {'', ''}];
 summaryPairs = [summaryPairs; {'=== Brainstorm directories ===', ''}];
 summaryPairs = [summaryPairs; {'*** Directory paths may contain sensitive information, check before sharing ***', ''}];
 summaryPairs = [summaryPairs; {'Brainstorm ', bst_get('BrainstormHomeDir')}];
-summaryPairs = [summaryPairs; {'DataBase   ',   bst_get('BrainstormDbDir')}];
-summaryPairs = [summaryPairs; {'Bst_User   ',   bst_get('BrainstormUserDir')}];
-summaryPairs = [summaryPairs; {'Temporary  ',  bst_get('BrainstormTmpDir')}];
+summaryPairs = [summaryPairs; {'DataBase   ', bst_get('BrainstormDbDir')}];
+summaryPairs = [summaryPairs; {'Bst_User   ', bst_get('BrainstormUserDir')}];
+summaryPairs = [summaryPairs; {'Temporary  ', bst_get('BrainstormTmpDir')}];
 summaryPairs = [summaryPairs; {'', ''}];
 
 % === Matlab and Java
 summaryPairs = [summaryPairs; {'=== Matlab ===', ''}];
-summaryPairs = [summaryPairs; {'Matlab version', [bst_get('MatlabReleaseName') ' (' num2str(bst_get('MatlabVersion')/100) ')']}];
-summaryPairs = [summaryPairs; {'Java version', num2str(bst_get('JavaVersion'))}];
+summaryPairs = [summaryPairs; {'Matlab version ', [bst_get('MatlabReleaseName') ' (' num2str(bst_get('MatlabVersion')/100) ')']}];
+summaryPairs = [summaryPairs; {'Java version   ', num2str(bst_get('JavaVersion'))}];
 summaryPairs = [summaryPairs; {'', ''}];
 
 % == System
 summaryPairs = [summaryPairs; {'=== System ===', ''}];
-summaryPairs = [summaryPairs; {'OS name', bst_get('OsName')}];
-summaryPairs = [summaryPairs; {'OS type', bst_get('OsType')}];
+summaryPairs = [summaryPairs; {'OS name   ', bst_get('OsName')}];
+summaryPairs = [summaryPairs; {'OS type   ', bst_get('OsType')}];
 [memTotal, memAvail] = bst_get('SystemMemory');
-summaryPairs = [summaryPairs; {'Mem total', [num2str(memTotal) ' MiB']}];
-summaryPairs = [summaryPairs; {'Mem avail', [num2str(memAvail) ' MiB']}];
+summaryPairs = [summaryPairs; {'Mem total ', [num2str(memTotal) ' MiB']}];
+summaryPairs = [summaryPairs; {'Mem avail ', [num2str(memAvail) ' MiB']}];
 
 % Format string
 iFields = find(~cellfun(@isempty, summaryPairs(:,2)));

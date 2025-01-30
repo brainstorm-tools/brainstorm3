@@ -309,6 +309,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             if (length(sSelElec) == 1)
                 CenterMriOnElectrode(sSelElec);
             end
+            % Unselect all contacts in list
+            SetSelectedContacts(0);
+            % Update contact list
+            UpdateContactList();
         end
     end
 
@@ -329,13 +333,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         if (ev.getClickCount() == 2)
             % Rename selection
             EditElectrodeLabel();
-        end
-
-        if (ev.getClickCount() == 1)
-            % Unselect all contacts in list
-            SetSelectedContacts(0);
-            % Update contact list
-            UpdateContactList();
         end
     end
 
@@ -802,7 +799,7 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
-    sContacts = GetContacts(sSelElec.Name);
+    sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
     end
@@ -1250,6 +1247,8 @@ function sContacts = GetContacts(selectedElecName)
     end
     % Get the channel data
     ChannelData = GlobalData.DataSet(iDSall).Channel;
+    % Replace empty Group with ''
+    [ChannelData(cellfun('isempty', {ChannelData.Group})).Group] = deal('');
     % Get the contacts for the electrode
     iChannels = find(ismember({ChannelData.Group}, selectedElecName));
     for i = 1:length(iChannels)
@@ -3043,9 +3042,17 @@ end
 
 
 %% ===== CREATE IMPLANTATION =====
+% USAGE: CreateImplantation(MriFile)   % Implantation on given Volume file
+%        CreateImplantation(sSubject)  % Ask user for Volume and Surface files for implantation
 function CreateImplantation(MriFile) %#ok<DEFNU>
-    % Find subject
-    [sSubject,iSubject,iAnatomy] = bst_get('MriFile', MriFile);
+    % Parse input
+    if isstruct(MriFile)
+        sSubject = MriFile;
+        MriFiles = [];
+    else
+        sSubject = bst_get('MriFile', MriFile);
+        MriFiles = {MriFile};
+    end
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
         case 0
@@ -3076,7 +3083,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             sStudy = bst_get('Study', iStudy);
         case 1
             % Use default channel file
-            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', iSubject);
+            [sStudy, iStudy] = bst_get('AnalysisIntraStudy', sSubject.Name);
             % The @intra study must not contain an existing channel file
             if ~isempty(sStudy.Channel) && ~isempty(sStudy.Channel(1).FileName)
                 error(['There is already a channel file for this subject:' 10 sStudy.Channel(1).FileName]);
@@ -3084,6 +3091,105 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         case 2
             error('The subject uses a shared channel file, it should not be edited in this way.');
     end
+
+    % Ask user about implantation volume and surface files
+    iVol1 = [];
+    iVol2 = [];
+    iSrf  = [];
+    if isempty(MriFiles)
+        if isempty(sSubject.Anatomy)
+            return
+        end
+        iMriVol = sSubject.iAnatomy;
+        iCtVol  = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+        iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+        iMriVol = setdiff(iMriVol, iCtVol);
+        impOptions = {};
+        if ~isempty(iMriVol)
+            impOptions = [impOptions, {'MRI'}];
+        end
+        if ~isempty(iCtVol)
+            impOptions = [impOptions, {'CT'}];
+        end
+        if ~isempty(iMriVol) && ~isempty(iCtVol)
+            impOptions = [impOptions, {'MRI+CT'}];
+        end
+        if ~isempty(iCtVol) && ~isempty(iIsoSrf)
+            tmpOption = 'CT+IsoSurf';
+            if ~isempty(iMriVol)
+                tmpOption = ['MRI+' tmpOption];
+            end
+            impOptions = [impOptions, {tmpOption}];
+        end
+        impOptions = [impOptions, {'Cancel'}];
+        % User dialog
+        [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
+                                                   'How do you want to continue with the existing implantation?'], ...
+                                                   'SEEG/ECOG implantation', [], impOptions, 'Cancel');
+        if strcmpi(res, 'cancel') || isCancel
+            return
+        end
+        switch lower(res)
+            case 'mri'
+                iVol1 = iMriVol;
+            case 'ct'
+                iVol1 = iCtVol;
+            case 'mri+ct'
+                iVol1 = iMriVol;
+                iVol2 = iCtVol;
+            case 'mri+ct+isosurf'
+                iVol1 = iMriVol;
+                iVol2 = iCtVol;
+                iSrf  = iIsoSrf;
+            case 'ct+isosurf'
+                iVol1 = iCtVol;
+                iVol2 = [];
+                iSrf  = iIsoSrf;
+        end
+        % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
+        if ~isempty(iSrf)
+            sSurf = load(file_fullpath(sSubject.Surface(iSrf).FileName), 'History');
+            if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+                % Search for CT threshold in history
+                ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
+                % Return intersection of the found and then update iCtVol
+                if ~isempty(ctEntry)
+                    [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
+                    if iCtIso
+                        iCtVol = intersect(iCtIso, iCtVol);
+                    else
+                        bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
+                                           'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
+                        return
+                    end
+                end
+            end
+        end
+        if ~strcmpi(res, 'mri') && length(iCtVol) > 1
+            % Prompt for the CT file selection
+            ctComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtVol).Comment});
+            if isempty(ctComment)
+                return
+            end
+            [~, ix] = ismember(ctComment, {sSubject.Anatomy(iCtVol).Comment});
+            iCtVol = iCtVol(ix);
+        end
+        % Update vol1 or vol2 to have single CT
+        switch lower(res)
+            case {'mri+ct', 'mri+ct+isosurf'}
+                iVol2 = iCtVol;
+            case {'ct', 'ct+isosurf'}
+                iVol1 = iCtVol;
+        end
+        % Get Volume filenames
+        if ~isempty(iVol1)
+            MriFiles{1} = sSubject.Anatomy(iVol1).FileName;
+        end
+        if ~isempty(iVol2)
+            MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
+        end
+    end
+
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
     % Channel file
@@ -3102,13 +3208,16 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display isosurface
-    DisplayIsosurface(sSubject, [], ChannelFile, 'SEEG');
-    % Display channels
-    DisplayChannelsMri(ChannelFile, 'SEEG', iAnatomy);
+    % Display channels on MRI viewer
+    DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
+    if ~isempty(iSrf)
+        % Display isosurface
+        DisplayIsosurface(sSubject, iSrf, [], ChannelFile, 'SEEG');
+    end
     % Close progress bar
     bst_progress('stop');
 end
+
 
 %% ===== LOAD ELECTRODES =====
 function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
@@ -3152,70 +3261,32 @@ function LoadElectrodes(hFig, ChannelFile, Modality) %#ok<DEFNU>
     bst_figures('UpdateFigureName', hFig);
 end
 
+
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
 % USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
 %         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
+%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, {MriFiles}, isEdit=0)
 function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
     % Parse inputs
     if (nargin < 4) || isempty(isEdit)
         isEdit = 0;
     end
-    
-    % ==== check if the subject has just MRI or both MRI+CT =====
-    % Get study
-    sStudy = bst_get('ChannelFile', ChannelFile);
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    if isempty(sSubject) || isempty(sSubject.Anatomy)
-        bst_error('No MRI available for this subject.', 'Display electrodes', 0);
-    end
-    % Find CT volumes
-    iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
-    if ~isempty(iCtVol)
-        tmp = iCtVol(1);
-        % Prefer a masked CT volume if available
-        if length(iCtVol) > 1
-            iMask = find(cellfun(@(x) ~isempty(regexp(x, 'masked', 'match')), {sSubject.Anatomy(iCtVol).FileName}));
-            if ~isempty(iMask)
-                tmp = iCtVol(iMask(1));
-            end
-        end
-        iCtVol = tmp;
-    end
-    
-    % Set the MRI Viewer to display
-    if ischar(iAnatomy)
-        % if implantation starts from CT then definitely MRI exists
-        if ~isempty(regexp(iAnatomy, 'CT', 'match'))
-            MriFile = sSubject.Anatomy(1).FileName;
-            CtFile = iAnatomy;
-        % if implantation starts from MRI then CT may or maynot exist
-        else
-            % if CT exists
-            if iCtVol
-                MriFile = iAnatomy;
-                CtFile = sSubject.Anatomy(iCtVol).FileName;
-            else
-                MriFile = iAnatomy;
-                CtFile = [];
-            end
-        end
+
+    % Get MRI files
+    if iscell(iAnatomy)
+        MriFiles = iAnatomy;
+    elseif ischar(iAnatomy)
+        MriFiles = {iAnatomy};
     else
-        % if implantation starts from CT then definitely MRI exists
-        if ~isempty(regexp(sSubject.Anatomy(iAnatomy).FileName, 'CT', 'match'))
-            MriFile = sSubject.Anatomy(1).FileName;
-            CtFile = sSubject.Anatomy(iAnatomy).FileName;
-        % if implantation starts from MRI then CT may or maynot exist
-        else
-            % if CT exists
-            if iCtVol
-                MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = sSubject.Anatomy(iCtVol).FileName;
-            else
-                MriFile = sSubject.Anatomy(iAnatomy).FileName;
-                CtFile = [];
-            end
+        % Get study
+        sStudy = bst_get('ChannelFile', ChannelFile);
+        % Get subject
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        if isempty(sSubject) || isempty(sSubject.Anatomy)
+            bst_error('No MRI available for this subject.', 'Display electrodes', 0);
         end
+        % MRI volumes
+        MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
     end
 
     % If MRI Viewer is open don't open another one
@@ -3223,8 +3294,13 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
     if ~isempty(hFig)
         return
     end
-    % Display the MRI Viewer
-    [hFig, iDS, iFig] = view_mri(MriFile, CtFile, [], 2);
+
+    % == DISPLAY THE MRI VIEWER
+    if length(MriFiles) == 1
+        [hFig, iDS, iFig] = view_mri(MriFiles{1}, [], [], 2);
+    else
+        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2);
+    end
     if isempty(hFig)
         return;
     end
@@ -3241,27 +3317,21 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(Subject, hFig, ChannelFile, Modality)
+function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, ChannelFile, Modality)
     % Parse inputs
-    if (nargin < 2) || isempty(hFig)
+    if (nargin < 3) || isempty(hFig)
         hFig = [];
     end 
-    % Check that Subject exists and has surfaces
-    if  isempty(Subject) || isempty(Subject.Surface)
-        return;
-    end
-    % Find isosurface
-    ixIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {Subject.Surface.FileName}));
-    % Return if not isosurfaces
-    if isempty(ixIsoSurf)
-        return
-    end
     if isempty(hFig)
-        hFig = view_mri_3d(Subject.Anatomy(1).FileName, [], 0.3, []);
+        hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
     end
-    [hFig, iDS, iFig] = view_surface(Subject.Surface(ixIsoSurf(1)).FileName, 0.6, [], hFig, []);
+    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, 0.6, [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
+    % SEEG and ECOG: Open tab "iEEG"
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        gui_brainstorm('ShowToolTab', 'iEEG'); 
+    end
 end
 
 %% ===== EXPORT CONTACT POSITIONS =====
