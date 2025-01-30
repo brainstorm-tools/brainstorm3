@@ -118,13 +118,19 @@ end
 % Set process logo
 bst_progress('stop');
 
-% Find the app 'GARDEL_v2.3.7'
-% Save data to temporary folder from GARDEL
-appName = 'GARDEL_v2.3.7';
-disp([appName ' app opened !']);
-f = findall(bst_get('groot'),'Type','figure','Name',appName);
-waitfor(f);
-disp([appName ' app closed !']);
+% Find the MATLAB app 'GARDEL' and wait till user is done with it
+hFig = findall(bst_get('groot'), 'Type', 'figure');
+iGardel = find(cellfun(@(x) ~isempty(regexp(x, 'GARDEL', 'match')), {hFig.Name}));
+if ~isempty(iGardel)
+    disp('GARDEL tool opened !');
+    waitfor(hFig(iGardel(1)));
+    disp('GARDEL tool closed !');
+else
+    disp('GARDEL tool not found !');
+    % Delete temporary files
+    file_delete(TmpGardelDir, 1, 1);
+    return;
+end
 
 % Show Brainstorm GUI
 jBstFrame.setVisible(1);
@@ -147,9 +153,9 @@ end
 GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
 if ~exist(GardelElectrodeFile, 'file')
     bst_error('Electrode coordinates file not found. Make sure you export before quitting GARDEL !', 'GARDEL', 0);
-    % Comment this line to keep the temporary folder
+    % Delete temporary files
     file_delete(TmpGardelDir, 1, 1);
-    return
+    return;
 end
 
 % Create new channel file for the data from GARDEL 
