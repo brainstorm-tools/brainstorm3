@@ -40,10 +40,6 @@ if ~isInstalled
 end
 
 %% ===== START EXTERNAL GARDEL TOOL =====
-% Set process logo
-bst_progress('start', 'GARDEL', 'Starting GARDEL external tool');
-bst_plugin('SetProgressLogo', 'gardel');
-
 % Create temporary folder for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
 % TmpGardelDir = 'C:\Users\chinm\OneDrive\Desktop\study_this\gardel_241117_122450';
@@ -84,11 +80,14 @@ sStudy = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
 if isempty(iVolAtlas) || isempty(sStudy) || isempty(sStudy.Channel)
     % Hide Brainstorm GUI
     jBstFrame.setVisible(0);
+    % Set process logo
+    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
+    bst_plugin('SetProgressLogo', 'gardel');
     % Call the external GARDEL tool
     bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
-        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile);
+        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'bs_flag', '1');
 else
-    % Export the channel file to GARDEL txt format
+    % Export the channel file to GARDEL .txt format
     ProtocolInfo = bst_get('ProtocolInfo');
     ChannelFile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Channel.FileName);
     GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
@@ -108,9 +107,12 @@ else
     end
     % Hide Brainstorm GUI
     jBstFrame.setVisible(0);
-    % Call the external GARDEL tool with already available tissue segmentation data
+    % Set process logo
+    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
+    bst_plugin('SetProgressLogo', 'gardel');
+    % Call the external GARDEL tool with already available tissue segmentation and electrtode coordinates
     bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
-        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'electrodes', GardelElectrodeFile);
+        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'bs_flag', '1', 'electrodes', GardelElectrodeFile);
 end
 
 % Set process logo
@@ -136,7 +138,7 @@ if isempty(iVolAtlas)
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c4coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c5coreg_' sMriRef.Comment '.nii'])};
     % Import tissue classification in its raw form (no autoadjusting required as it is in CT space)
-    bst_progress('start', 'Loading SPM12 tissue segmentations...', 'GARDEL');
+    bst_progress('start', 'GARDEL', 'Loading SPM12 tissue segmentations...');
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_segment_gardel');
 end
 
@@ -185,4 +187,4 @@ db_reload_studies(iStudy);
 
 % Delete temporary folder
 % Comment this line to keep the temporary folder
-file_delete(TmpGardelDir, 0, 1);
+file_delete(TmpGardelDir, 1, 1);
