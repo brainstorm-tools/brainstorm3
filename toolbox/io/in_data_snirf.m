@@ -106,6 +106,7 @@ for iChan = 1:nChannels
         ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                              jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
                                                        round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+        ChannelMat.Channel(iChan).Name = TxRxtoSD(ChannelMat.Channel(iChan).Name);
         ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
 
     end
@@ -290,4 +291,10 @@ function vect = toLine(vect)
     if size(vect,1) >= size(vect,2)
         vect = vect';
     end
+end
+
+function channel_name = TxRxtoSD(channel_name)
+% Convert channel names from Tx1Rx1WL760 to S1D1WL760
+    channel_name = strrep(channel_name, 'Tx','S');
+    channel_name = strrep(channel_name, 'Rx','D');
 end
