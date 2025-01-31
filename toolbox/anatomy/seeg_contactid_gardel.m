@@ -1,4 +1,4 @@
-function errMsg = seeg_contactid_gardel(iSubject)
+function seeg_contactid_gardel(iSubject)
 % SEEG_CONTACTID_GARDEL: Handle GARDEL tool from Brainstorm
 %
 % USAGE:  errMsg = seeg_contactid_gardel(iSubject)
@@ -29,27 +29,30 @@ function errMsg = seeg_contactid_gardel(iSubject)
 %
 % Author: Chinmay Chinara, 2025
 
-% Initialize returned variables
-errMsg = [];
+%% ===== PARSE INPUTS =====
+% Check command line
+if ~isnumeric(iSubject) || (iSubject < 0)
+    error('Invalid subject indice.');
+end
 
-%% ===== CHECK IF GARDEL PLUGIN IS INSTALLED =====
-% If GARDEL not installed install it else continue
-[isInstalled, errMsg] = bst_plugin('Install', 'gardel');
-if ~isInstalled
+%% ===== START EXTERNAL GARDEL TOOL FROM BRAINSTORM =====
+% Check for 'gardel' plugin installation
+[isInstalledGardel, errMsg] = bst_plugin('Install', 'gardel');
+if ~isInstalledGardel
+    bst_error(errMsg, 'GARDEL', 0);
     return;
 end
 
-%% ===== START EXTERNAL GARDEL TOOL =====
 % Create temporary folder for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
-% TmpGardelDir = 'C:\Users\chinm\OneDrive\Desktop\study_this\gardel_241117_122450';
 
 % Get current subject
 sSubject = bst_get('Subject', iSubject);
+sStudy = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
+GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
 
-ChannelFile = [];
-ChannelMat = [];
-GardelElectrodeFile = [];
+% Get Brainstorm window
+jBstFrame = bst_get('BstFrame');
 
 % Save reference MRI in .nii format in tmp folder
 MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -58,75 +61,70 @@ NiiRefMriFile = bst_fullfile(TmpGardelDir, [sMriRef.Comment '.nii']);
 % NiiRefMriFile is the MRI file of the subject
 out_mri_nii(sMriRef, NiiRefMriFile);
 
-% Save the unprocessed CT in .nii format in tmp folder 
+% Save the unprocessed raw CT in .nii format in tmp folder 
 iRawCt = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName}));
 if ~isempty(iRawCt)
     RawCtFileRef = sSubject.Anatomy(iRawCt(1)).FileName;
     sMriRawCt = bst_memory('LoadMri', RawCtFileRef);
     NiiRawCtFile = bst_fullfile(TmpGardelDir, [sMriRawCt.Comment '.nii']);
-    % NiiRawCtFile is the unprocessed CT file of the subject
+    % NiiRawCtFile is the unprocessed raw CT file of the subject
     out_mri_nii(sMriRawCt, NiiRawCtFile);
 else
-    bst_error('No Raw unprocessed CT found', 'GARDEL', 0);
+    bst_error('No unprocessed raw CT found.', 'GARDEL', 0);
+    % Delete temporary files
+    file_delete(TmpGardelDir, 1, 1);
     return;
 end
 
-% GetBrainstorm window
-jBstFrame = bst_get('BstFrame');
-
 % Check if SPM12 tissue segmentation data is available
 iVolAtlas = find(cellfun(@(x) ~isempty(regexp(x, '_gardel_volatlas', 'match')), {sSubject.Anatomy.FileName})); 
-sStudy = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
 if isempty(iVolAtlas) || isempty(sStudy) || isempty(sStudy.Channel)
-    % Hide Brainstorm GUI
+    % Hide Brainstorm GUI and set process logo
     jBstFrame.setVisible(0);
-    % Set process logo
     bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
     bst_plugin('SetProgressLogo', 'gardel');
     % Call the external GARDEL tool
-    bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
-        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'bs_flag', '1');
+    bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
+        'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1');
 else
-    % Export the channel file to GARDEL .txt format
-    ProtocolInfo = bst_get('ProtocolInfo');
-    ChannelFile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Channel.FileName);
-    GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
+    % Export the Brainstorm channel file to GARDEL electrode .txt file
+    ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
     export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);
-    % Load the available tissue segmentation data
+    % Extract the available tissue segmentation and export as MRI for GARDEL 
     TissueMris = extract_tissuemasks(sSubject.Anatomy(iVolAtlas).FileName);
-    mkdir([TmpGardelDir '\IntermediateFiles\']);
+    intermediateDir = bst_fullfile(TmpGardelDir, 'IntermediateFiles');
+    mkdir(intermediateDir); 
     for i=1:length(TissueMris)
         switch (TissueMris{i}.Comment)
-            case 'scalp',                 newLabel = 'c5';
-            case 'skull',                 newLabel = 'c4';
-            case 'csf',                   newLabel = 'c3';
             case {'grey','gray','brain'}, newLabel = 'c1';
             case 'white',                 newLabel = 'c2';
+            case 'csf',                   newLabel = 'c3';
+            case 'skull',                 newLabel = 'c4';
+            case 'scalp',                 newLabel = 'c5';            
         end
-        export_mri(TissueMris{i}, bst_fullfile(TmpGardelDir, ['\IntermediateFiles\' newLabel 'coreg_' sMriRef.Comment '.nii']));
+        export_mri(TissueMris{i}, bst_fullfile(intermediateDir, [newLabel 'coreg_' sMriRef.Comment '.nii']));
     end
-    % Hide Brainstorm GUI
+    % Hide Brainstorm GUI and set process logo
     jBstFrame.setVisible(0);
-    % Set process logo
     bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
     bst_plugin('SetProgressLogo', 'gardel');
-    % Call the external GARDEL tool with already available tissue segmentation and electrtode coordinates
-    bst_call(@GARDEL,'output_dir',TmpGardelDir, ...
-        'postimp',NiiRawCtFile, 'preimp',NiiRefMriFile, 'bs_flag', '1', 'electrodes', GardelElectrodeFile);
+    % Call the external GARDEL tool with the exported electrode coordinates
+    bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
+        'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1', 'electrodes', GardelElectrodeFile);
 end
 
-% Set process logo
+% Stop process logo
 bst_progress('stop');
 
-% Find the MATLAB app 'GARDEL' and wait till user is done with it
+% Find the MATLAB app 'GARDEL' and wait till user exits it
 hFig = findall(bst_get('groot'), 'Type', 'figure');
 iGardel = find(cellfun(@(x) ~isempty(regexp(x, 'GARDEL', 'match')), {hFig.Name}));
 if ~isempty(iGardel)
-    disp('GARDEL tool opened !');
+    disp('GARDEL tool opened.');
     waitfor(hFig(iGardel(1)));
-    disp('GARDEL tool closed !');
+    disp('GARDEL tool closed.');
 else
-    disp('GARDEL tool not found !');
+    bst_error('GARDEL tool not found.', 'GARDEL', 0);
     % Delete temporary files
     file_delete(TmpGardelDir, 1, 1);
     return;
@@ -135,22 +133,21 @@ end
 % Show Brainstorm GUI
 jBstFrame.setVisible(1);
 
+%% ===== PARSE AND LOAD GARDEL COMPUTED DATA TO BRAINSTORM =====
+% If no tissue data available, import tissue masks in its raw form as computed by GARDEL
 if isempty(iVolAtlas)
-    %% ===== SPM12 TISSUE CLASSIFICATION TO BRAINSTORM =====
     TpmFiles = {...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c2coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c1coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c3coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c4coreg_' sMriRef.Comment '.nii']), ...
         bst_fullfile(TmpGardelDir, ['\IntermediateFiles\c5coreg_' sMriRef.Comment '.nii'])};
-    % Import tissue classification in its raw form (no autoadjusting required as it is in CT space)
     bst_progress('start', 'GARDEL', 'Loading SPM12 tissue segmentations...');
+    % No autoadjusting required as it is in the unprocessed raw CT space
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_segment_gardel');
 end
 
-%% ===== LOAD GARDEL CALCULATED ELECTRODE COORDINATES =====
 % Check if electrode coordinates txt file was exported 
-GardelElectrodeFile = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
 if ~exist(GardelElectrodeFile, 'file')
     bst_error('Electrode coordinates file not found. Make sure you export before quitting GARDEL !', 'GARDEL', 0);
     % Delete temporary files
@@ -163,7 +160,7 @@ end
 conditionName = 'Gardel';
 [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
 if ~isempty(sStudy)
-    % Delete existing Gardel study
+    % Delete existing 'Gardel' study
     db_delete_studies(iStudy);
 end
 % Create new folder if needed
