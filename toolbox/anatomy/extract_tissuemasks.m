@@ -1,7 +1,14 @@
-function TissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
-% EXTRACT_TISSUEMASKS: Extract tissue segmentation masks
+function sTissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
+% EXTRACT_TISSUEMASKS: Extract tissue segmentation masks from an atlas volume
 %
 % USAGE:  TissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
+%
+% INPUT: 
+%    - TissueFile   : Full path to the atlas volume file
+%    - TissueLabels : if [], then automatically detect the labels from the atlas volume
+%                     or if user knows, then pass as a list e.g. {'grey', 'white', 'csf'}
+% OUTPUT:
+%    - sTissueMasks : List of Brainstorm MRI structures for the masks
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,7 +32,7 @@ function TissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
-TissueMasks = {};
+sTissueMasks = {};
 
 %% ===== LOAD TISSUE SEGMENTATION =====
 % Load MRI 
@@ -62,7 +69,7 @@ for iTissue = 1:length(TissueLabels)
     sTissueMask.Cube = (sMri.Cube == sMri.Labels{iLayer,1});
     sTissueMask.Comment = lower(TissueLabels{iTissue});
     % Return new files
-    TissueMasks{end+1} = sTissueMask;
+    sTissueMasks{end+1} = sTissueMask;
 end
 
 % Close, success

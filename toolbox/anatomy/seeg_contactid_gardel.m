@@ -93,7 +93,7 @@ else
     ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
     export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);
     % Extract the available tissue segmentation and export as MRI for GARDEL 
-    TissueMris = extract_tissuemasks(sSubject.Anatomy(iVolAtlas).FileName);
+    TissueMris = extract_tissuemasks(sSubject.Anatomy(iVolAtlas(1)).FileName);
     mkdir(IntermediateFilesDir); 
     for i=1:length(TissueMris)
         switch (TissueMris{i}.Comment)
