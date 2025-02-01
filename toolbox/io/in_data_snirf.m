@@ -106,6 +106,7 @@ for iChan = 1:nChannels
         ChannelMat.Channel(iChan).Name = sprintf('%s%sWL%d', jnirs.nirs.probe.sourceLabels(channel.sourceIndex), ...
                                                              jnirs.nirs.probe.detectorLabels(channel.detectorIndex), ...
                                                        round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
+        ChannelMat.Channel(iChan).Name = TxRxtoSD(ChannelMat.Channel(iChan).Name);
         ChannelMat.Channel(iChan).Group = sprintf('WL%d', round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex)));
 
     end
@@ -125,7 +126,7 @@ aux_index = false(1,nAux);
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
-        && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
+        && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || ( isfield(jnirs.nirs.aux(iAux), 'timeOffset') && jnirs.nirs.aux(iAux).timeOffset ~= 0 ))
     
         warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
         continue;
@@ -290,4 +291,10 @@ function vect = toLine(vect)
     if size(vect,1) >= size(vect,2)
         vect = vect';
     end
+end
+
+function channel_name = TxRxtoSD(channel_name)
+% Convert channel names from Tx1Rx1WL760 to S1D1WL760
+    channel_name = strrep(channel_name, 'Tx','S');
+    channel_name = strrep(channel_name, 'Rx','D');
 end
