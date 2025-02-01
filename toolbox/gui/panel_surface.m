@@ -419,18 +419,40 @@ function SliderCallback(hObject, event, target)
             hFig = bst_figures('GetFiguresByType', '3DViz');
             SubjectFile = getappdata(hFig, 'SubjectFile');
             if ~isempty(SubjectFile)
-                sSubject = bst_get('Subject', SubjectFile);
-                CtFile = [];
+                sSubject = bst_get('Subject', SubjectFile);                
                 MeshFile = [];
-                for i=1:length(sSubject.Anatomy)
-                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
-                        CtFile = sSubject.Anatomy(i).FileName;
-                    end
+                CtFile = [];
+                % Get IsoSurface MeshFile
+                iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+                if ~isempty(iIsoSrf)
+                    MeshFile = sSubject.Surface(iIsoSrf).FileName;
+                else
+                    bst_error('No IsoSurface found.', 'Generate IsoSurface', 0);
+                    return;
                 end
-                for i=1:length(sSubject.Surface)
-                    if ~isempty(regexp(sSubject.Surface(i).FileName, 'tess_isosurface', 'match')) 
-                        MeshFile = sSubject.Surface(i).FileName;
+                % Get CT from IsoSurface  % TODO do not assume there is only one IsoSurf
+                iCtVol  = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+                if ~isempty(iCtVol)
+                    sSurf = load(file_fullpath(sSubject.Surface(iIsoSrf).FileName), 'History');
+                    if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+                        % Search for CT threshold in history
+                        ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
+                        % Return intersection of the found and then update iCtVol
+                        if ~isempty(ctEntry)
+                            [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
+                            if iCtIso
+                                iCtVol = intersect(iCtIso, iCtVol);
+                            else
+                                bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
+                                                   'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
+                                return;
+                            end
+                        end
                     end
+                    CtFile = sSubject.Anatomy(iCtVol).FileName;
+                else
+                    bst_error('No CT volume found.', 'Loading CT for IsoSurface', 0);
+                    return;
                 end
             end
             
