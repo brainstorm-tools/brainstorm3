@@ -107,9 +107,8 @@ end
 
 
 % ===== TRANSFORMATIONS =====
-isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM'});
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM', 'GARDEL-TXT'});
 isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM', 'BRAINSIGHT-TXT'});
-isVoxelTransf = ismember(FileFormat, {'GARDEL-TXT'});
 isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf || isVoxelTransf
@@ -170,10 +169,6 @@ elseif isWorldTransf
     if ~isempty(iTransfReg) && isRevertReg
         Transf = inv(sMri.InitTransf{iTransfReg,2}) * Transf;
     end
-% Voxel transformation
-elseif isVoxelTransf
-    % Compute the transformation SCS => VOXEL
-    Transf = cs_convert(sMri, 'scs', 'voxel');
 else
     Transf = [];
 end

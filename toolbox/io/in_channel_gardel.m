@@ -3,8 +3,10 @@ function ChannelMat = in_channel_gardel(ChannelFile)
 %
 % USAGE:  ChannelMat = in_channel_gardel(ChannelFile)
 %
-% INPUTS: 
-%     - ChannelFile : Full path to the file
+% INPUT: 
+%    - ChannelFile : Full path to the channel file (with .txt extension)
+% OUTPUT:
+%    - ChannelMat  : Brainstorm channel structure
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -31,43 +33,50 @@ fid = fopen(ChannelFile, 'r');
 if (fid == -1)
     error('Cannot open file.');
 end
-% Initialize indices structure
+
+% Skip lines until finding 'MRI_voxel'
+while true
+    tline = fgets(fid);
+    if ~isempty(strfind(tline, 'MRI_voxel'))
+        break;
+    end
+end
+
+% Initialize electrode storage
+Electrodes = {};
+% Read lines until finding 'MRI_FS'
+while true
+    tline = fgets(fid);
+    if ~ischar(tline) || ~isempty(strfind(tline, 'MRI_FS'))
+        break;
+    end
+    if isempty(strfind(tline, '#'))
+        parsedLine = textscan(tline, '%s %f %f %f %f %f %s %s', 'Delimiter', '\t');
+        Electrodes(end + 1, :) = parsedLine;
+    end
+end
+% Close file
+fclose(fid);
+
+% Initialize channel structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Channel = db_template('channeldesc');
 ChannelMat.Comment = 'Gardel';
-
-tline = fgets(fid);
-while isempty(strfind(tline,'MRI_voxel'))
-    tline = fgets(fid);
-end
-tline = fgets(fid);
-Electrodes = [];
-i = 1;
-while ischar(tline) && ~contains(tline,'MRI_FS')
-    if isempty(strfind(tline,'#'))
-        Electrodes = [Electrodes; textscan(tline, '%s %f %f %f %f %f %s %s', 8, 'Delimiter', '\t')];
-        i = i+1;
-    end
-    tline = fgets(fid);
-end
-fclose(fid);
-
-for ii=1:length(Electrodes)
-    a = Electrodes(ii, 1);
-    b = Electrodes(ii, 2);
-    ChannelMat.Channel(ii).Name = [a{:}{:} num2str(b{:})];
-
-    ChannelMat.Channel(ii).Group = a{:}{:};
-    
-    x = Electrodes(ii, 3);
-    y = Electrodes(ii, 4);
-    z = Electrodes(ii, 5);
-    xx(1) = x{:};
-    xx(2) = y{:};
-    xx(3) = z{:};
-
-    ChannelMat.Channel(ii).Loc = xx';
-    ChannelMat.Channel(ii).Type = 'SEEG';
+% Assign parsed electrodes data to Brainstorm channel
+numElectrodes = size(Electrodes, 1);
+% Preallocate structure array
+ChannelMat.Channel(numElectrodes).Name = ''; 
+for iElectrode = 1:numElectrodes
+    electrodeData = Electrodes(iElectrode,:);    
+    % Set channel name and group
+    electrodeName = electrodeData{1}{1};
+    electrodeIndex = electrodeData{2};
+    ChannelMat.Channel(iElectrode).Name = sprintf('%s%d', electrodeName, electrodeIndex);
+    ChannelMat.Channel(iElectrode).Group = electrodeName;  
+    % Set location coordinates
+    ChannelMat.Channel(iElectrode).Loc = [electrodeData{3:5}]';    
+    % Set channel type
+    ChannelMat.Channel(iElectrode).Type = 'SEEG';
 end
 
 
