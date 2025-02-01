@@ -498,7 +498,7 @@ BstMriFile = file_unique(BstMriFile);
 sMri = out_mri_bst(sMri, BstMriFile);
 if isCtRaw
     % Produce a default anatomy filename
-    BstRawCtFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '_raw.mat']);
+    BstRawCtFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName tagVolType '_raw.mat']);
     % Make this filename unique
     BstRawCtFile = file_unique(BstRawCtFile);
     % Save new raw CT in Brainstorm format
