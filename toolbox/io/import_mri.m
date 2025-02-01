@@ -225,7 +225,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % Load the reference MRI (the first one)
     refMriFile = sSubject.Anatomy(1).FileName;
     sMriRef = in_mri_bst(refMriFile);
-    % Whilef importing CT, ask if user wants to import raw CT (for GARDEL)
+    % While importing CT, ask if user wants to import raw CT (for GARDEL)
     if isCt
         isCtRaw = java_dialog('confirm', 'Add unprocessed raw CT to database? (required for GARDEL)', 'Import CT');
         sCtRaw  = [];
