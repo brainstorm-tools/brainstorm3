@@ -25,8 +25,9 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2022
-%          Chinmay Chinara, 2024
+% Authors: Francois Tadel,   2017-2022
+%          Raymundo Cassani, 2023-2024
+%          Chinmay Chinara,  2024-2025
 
 eval(macro_method);
 end
@@ -40,12 +41,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     import javax.swing.*;
     import org.brainstorm.icon.*;
     % Create tools panel
-    jPanelNew = gui_component('Panel');
-    jPanelTop = gui_component('Panel');
+    jPanelNew    = gui_component('Panel');
+    jPanelTop    = gui_component('Panel');
+    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
+    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',25,25);
     
-    % ===== TOOLBAR =====
+    % ===== TOP TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
         jToolbar = gui_component('Toolbar', jMenuBar);
         jToolbar.setPreferredSize(TB_DIM);
@@ -69,6 +72,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Menu: Contacts
         jToolbar.addSeparator();
         jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+
+    % ===== BOTTOM TOOLBAR =====
+    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
+        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
+        jToolbarBottom.setPreferredSize(TB_DIM);
+        jToolbarBottom.setOpaque(0);
+        % Add GARDEL
+        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'Auto detect contacts using GARDEL', @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
+        jToolbarBottom.addSeparator();
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -213,6 +225,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
                                   'jToolbar',            jToolbar, ...
+                                  'jToolbarBottom',      jToolbarBottom, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonShow',         jButtonShow, ...
@@ -366,12 +379,12 @@ function UpdatePanel()
     hFig = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
     % Else: no figure associated with the panel : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -390,6 +403,91 @@ function UpdatePanel()
     UpdateContactList('SCS');
 end
 
+%% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
+function AutoDetectContacts(method)
+    global GlobalData
+
+    switch(method)
+        case 'gardel'
+            disp('Calling GARDEL !');
+
+            % Get figure handles subject
+            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
+            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+            % Channels = GlobalData.DataSet(iDS).Channel;
+            % Get study
+            sStudy = bst_get('ChannelFile', ChannelFile);
+            % Get subject
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            if isempty(sSubject) || isempty(sSubject.Anatomy)
+                bst_error('No CT available for this subject.', 'GARDEL', 0);
+            end
+            % Find CT volumes
+            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
+            CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            sCt = bst_memory('LoadMri', CtFile);
+
+            %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
+            %  Handle CT slice dimensions (to match with GARDEL segmentation function)
+            if size(sCt.Cube,1)==size(sCt.Cube,3)
+                CT_image = permute(sCt.Cube, [1,3,2]);
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);  
+            else
+                CT_image = sCt.Cube;
+                CT_info.pixdim = sCt.Voxsize;
+            end
+
+            % get isoValue from isoSurface
+            iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
+            isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
+
+            % Set process logo
+            bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
+            bst_plugin('SetProgressLogo', 'gardel');
+
+            % use GARDEL magic button routine
+            New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
+
+            % parse the coordinates for electrodes and contacts
+            contDetectedCnt=0; % to keep a count of valid contact detection
+            for elec=1:size(New_Centroids_vox,1) % electrodes
+                % add only if minimum 2 contacts found per electrode
+                if size(New_Centroids_vox{elec},1)>2
+                    AddElectrode(char('A'+contDetectedCnt));
+                    contDetectedCnt = contDetectedCnt+1;
+
+                    % Get selected electrodes
+                    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
+
+                    % Get selected electrode
+                    for cont=1:size(New_Centroids_vox{elec},1) % contacts   
+                        % Set electrode position (covert from GARDEL to Brainstorm coordinates)
+                        if size(sCt.Cube,1)==size(sCt.Cube,3)
+                            x(1) = New_Centroids_vox{elec}(cont,1);
+                            x(2) = New_Centroids_vox{elec}(cont,3);
+                            x(3) = New_Centroids_vox{elec}(cont,2);
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
+                        else
+                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
+                        end
+                    end
+
+                    sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
+
+                    % Save electrode modification
+                    SetElectrodes(iSelElec, sSelElec);
+
+                    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
+                end
+            end
+
+            % Stop process box
+            bst_progress('stop');
+
+        otherwise
+            disp('Not defined !')
+    end
+end
 
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()
@@ -1313,7 +1411,13 @@ end
 
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(varargin)
+    if nargin<1
+        elecName = [];
+    else
+        elecName = varargin{1};
+    end
+
     global GlobalData;
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
@@ -1324,9 +1428,13 @@ function AddElectrode()
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
+    if isempty(elecName)
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    else
+        newLabel = elecName;
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -2648,6 +2756,9 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
+                    case 'auto'
+                        % Project the existing contact on the depth electrode
+                        Channels(iChan(i)).Loc = sElectrodes(iElec).Loc(:,i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
