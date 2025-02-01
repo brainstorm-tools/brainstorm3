@@ -78,8 +78,3 @@ for iElectrode = 1:numElectrodes
     % Set channel type
     ChannelMat.Channel(iElectrode).Type = 'SEEG';
 end
-
-
-
-
-

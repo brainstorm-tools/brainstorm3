@@ -81,9 +81,3 @@ end
 
 % Close file
 fclose(fid);
-
-
-
-
-
-
