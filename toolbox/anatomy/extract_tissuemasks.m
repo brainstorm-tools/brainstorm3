@@ -1,11 +1,11 @@
 function sTissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
 % EXTRACT_TISSUEMASKS: Extract tissue segmentation masks from an atlas volume
 %
-% USAGE:  TissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
+% USAGE:  sTissueMasks = extract_tissuemasks(TissueFile, TissueLabels)
 %
 % INPUT: 
 %    - TissueFile   : Full path to the atlas volume file
-%    - TissueLabels : if [], then automatically detect the labels from the atlas volume
+%    - TissueLabels : if empty, then automatically detect the labels from the atlas volume
 %                     or if user knows, then pass as a list e.g. {'grey', 'white', 'csf'}
 % OUTPUT:
 %    - sTissueMasks : List of Brainstorm MRI structures for the masks
@@ -44,7 +44,6 @@ if ~isfield(sMri, 'Labels') || isempty(sMri.Labels)
     bst_error('Invalid tissue segmentation: missing labels.', 'Extract tissue', 0);
     return;
 end
-
 
 %% ===== GET TISSUE LABELS =====
 if (nargin < 2) || isempty(TissueLabels)
