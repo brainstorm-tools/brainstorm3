@@ -1546,6 +1546,8 @@ function RemoveElectrode()
                     delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
                     delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
                     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+                    % Remove any line fitting renderings
+                    delete(findobj(hFig, 'Tag', sSelElec(iElec).Name)); 
                     % Update list of displayed channels
                     iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
                     remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
@@ -1564,11 +1566,6 @@ function RemoveElectrode()
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
-    % remove any line fitting
-    hCoord = findobj(0, 'Tag', sSelElec.Name); 
-    if ~isempty(hCoord)
-        delete(hCoord);
-    end
     % Update list of electrodes
     UpdateElecList();
     % Update figure
