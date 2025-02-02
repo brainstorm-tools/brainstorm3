@@ -75,7 +75,10 @@ for iOutSub = 1:nSub
             continue;
         end
         sMriJson = bst_jsondecode(MriJsonFile, false);
-        BstFids = {'NAS', 'LPA', 'RPA', 'AC', 'PC', 'IH'};
+        % We ignore other fiducials after the 3 we use for coregistration.
+        % These were likely not placed well, only automatically by initial
+        % linear template alignment.
+        BstFids = {'NAS', 'LPA', 'RPA'}; %, 'AC', 'PC', 'IH'};
         % We need to go to original Nifti voxel coordinates, but Brainstorm may have
         % flipped/permuted dimensions to bring voxels to RAS orientation.  If it did, it modified
         % all sMRI fields, including under .Header, accordingly, and it saved the transformation
@@ -99,6 +102,7 @@ for iOutSub = 1:nSub
             % Bst MRI coordinates are in mm and voxels are 1-indexed, so subtract 1 voxel after going from mm to voxels.
             if isfield(sMri, CS) && isfield(sMri.(CS), Fid) && ~isempty(sMri.(CS).(Fid)) && any(sMri.(CS).(Fid))
                 % Round to 0.001 voxel.
+                % Voxsize has 3 elements, ok for non-isotropic voxel size
                 FidCoord = round(1000 * (sMri.(CS).(Fid)./sMri.Voxsize - 1)) / 1000;
                 if ~isempty(iTransf)
                     % Go from Brainstorm RAS-oriented voxels, back to original Nifti voxel orientation.
@@ -131,7 +135,7 @@ for iOutSub = 1:nSub
         sMriNative = sMriScs; % transformed below
 
         for iStudy = 1:numel(sStudies)
-            % Is it a link to raw file?
+            % Try to find the first link to raw file in this study.
             isLinkToRaw = false;
             for iData = 1:numel(sStudies(iStudy).Data)
                 if strcmpi(sStudies(iStudy).Data(iData).DataType, 'raw')
@@ -139,12 +143,14 @@ for iOutSub = 1:nSub
                     break;
                 end
             end
+            % Skip study if no raw file found.
             if ~isLinkToRaw
                 continue;
             end
 
             % Find MEG _coordsystem.json
             Link = load(file_fullpath(sStudies(iStudy).Data(iData).FileName));
+            % Skip if original MEG file not found.
             if ~exist(Link.F.filename, 'file')
                 warning('Missing raw MEG file. Skipping study %s.', Link.F.filename);
                 continue;
@@ -154,7 +160,7 @@ for iOutSub = 1:nSub
                 [MegPath, MegName, MegExt] = bst_fileparts(MegPath);
             end
             MegCoordJsonFile = file_find(MegPath, '*_coordsystem.json', 1, false); % max depth 1, not just one file
-
+            % Skip if MEG json file not found.
             if isempty(MegCoordJsonFile)
                 warning('Imported MEG BIDS _coordsystem.json file not found. Skipping study %s.', Link.F.filename);
                 continue;

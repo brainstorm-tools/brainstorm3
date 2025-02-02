@@ -1142,7 +1142,11 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         ChannelMat.SCS.LPA = mean(ChannelMat.HeadPoints.Loc(:,iLpa)', 1);
         ChannelMat.SCS.RPA = mean(ChannelMat.HeadPoints.Loc(:,iRpa)', 1);
     end
-    % Do the same with head coils, used when exporting coregistration to BIDS
+    % Do the same with head coils to get "current" SCS to Native
+    % transformation; used when exporting coregistration to BIDS.
+    % Here we temporarily put the head coil coordinates into .SCS to
+    % compute SCS to Native transformation, instead of relying on previous
+    % transformations (which are named differently for different MEG systems).
     iHpiN = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-N'));
     iHpiL = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-L'));
     iHpiR = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-R'));
