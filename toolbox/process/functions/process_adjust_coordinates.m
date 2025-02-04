@@ -998,7 +998,7 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
         % Nothing to check.
         return;
     end
-    if nargin < 2 || isempty(sMri) || ~isfield(sMri, 'History')
+    if nargin < 2 || isempty(sMri) || ~isfield(sMri, 'History') || isempty(sMri.History)
         iMriHist = [];
     else
         % History string is set in figure_mri SaveMri.

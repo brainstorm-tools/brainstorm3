@@ -533,7 +533,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         errorMsg = [errorMsg, 10, errMsg];
                     end
                     % Generate head surface
-                    tess_isohead(iSubject, 10000, 0, 2);
+                    tess_isohead(iSubject, 15000, 0, 0);
                 else
                     MrisToRegister{end+1} = BstMriFile;
                 end
