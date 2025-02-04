@@ -1,4 +1,4 @@
-function hFig = view_mri_histogram( MriFile, isInteractive )
+function hFig = view_mri_histogram(MriFile, isInteractive)
 % VIEW_MRI_HISTOGRAM: Compute and view the histogram of a brainstorm MRI.
 %
 % USAGE:  hFig = view_mri_histogram(MriFile, isInteractive=false);
@@ -28,6 +28,10 @@ function hFig = view_mri_histogram( MriFile, isInteractive )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2006-2020, Marc Lalancette 2025
+
+if nargin < 2 || isempty(isInteractive)
+    isInteractive = false;
+end
 
 %% ===== LOAD OR COMPUTE HISTOGRAM =====
 % Display progress bar
@@ -115,7 +119,7 @@ function clickCallback(~, event)
     bgLevel = event.IntersectionPoint(1);
     % fprintf('Clicked at x = %.4f\n', x);
     if bgLevel ~= Histogram.bgLevel
-        set(hBg, xdata, [bgLevel, bgLevel]);
+        set(hBg, 'xdata', [bgLevel, bgLevel]);
         % drawnow % needed?
     end
 end
@@ -124,22 +128,20 @@ function closeFigureCallback()
     if bgLevel ~= Histogram.bgLevel
         % Request save confirmation.
         [Proceed, isCancel] = java_dialog('confirm', sprintf(...
-            'MRI background intensity threshold changed (%d > %d). Save?', Histogram.bgLevel, bgLevel), ...
+            'MRI background intensity threshold changed (%d > %d). Save?', round(Histogram.bgLevel), round(bgLevel)), ...
             'MRI background threshold');
         if isCancel
             return;
-        elseif Proceed
+        end
+        if Proceed
             % Save histogram
             Histogram.bgLevel = bgLevel;
             s.Histogram = Histogram;
             bst_save(MriFile, s, 'v7', 1); % isAppend
-            % Close figure
-            delete(fig);
         end
-    else
-        % Close figure
-        delete(fig);
     end
+    % Close figure
+    delete(hFig);
 end
 
 end
