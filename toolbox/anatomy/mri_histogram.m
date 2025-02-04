@@ -102,11 +102,11 @@ if (length(Histogram.cumulFncY) > 257)
 end
 
 % Construct a regular Histogram function 
-% Suppress all indices that has zero-values (to avoid previous normalizations)
-% NOTA : Do not consider the values at the intensity value 0, it may
+% Suppress all indices that have zero values (to avoid previous normalizations)
+% NOTA : Do not consider the first bin (intensity 0), it may
 % not correspond to the real image Histogram...
 index = find(Histogram.fncY > 10);   % PREVIOUSLY: 100 instead of 10
-index = index(2:length(index));
+index = index(2:length(index)); % discard first bin
 histoX = [0 Histogram.fncX(index)];
 histoY = [0 Histogram.fncY(index)];
 
@@ -136,7 +136,7 @@ if (length(maxIndex) - length(minIndex) > 1)
     minIndex(diff(minIndex) == 1) = [];
 end
     
-% Detect and deleting all "wrong" extrema (that are too close to each other)
+% Detect and delete all "wrong" extrema (that are too close to each other)
 epsilon = max(histoX)*.02;
 i = 1;
 while(i <= length(maxIndex))
@@ -223,17 +223,17 @@ switch(volumeType)
         defaultWhite = round(interp1(unikCumulFncY, unikFncX, .8));
         Histogram.bgLevel = defaultBg;
         Histogram.whiteLevel = defaultWhite;
-        % Detect if the background has already been removed :
-        % ie. if there is a unique 0 valued interval a the beginning of the Histogram
-        % Practically : - nzero =  length of the first 0-valued interval
-        %               - nnonzero = length of the first non-0-valued interval
-        %               - bg removed if : (nzero > 1) and (nnonzero > nzero)
-        nzero = find(Histogram.fncY(2:length(Histogram.fncY)) ~= 0);
-        nnonzero = find(Histogram.fncY((nzero(1)+1):length(Histogram.fncY)) == 0);
-        if ((nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1)))
-            Histogram.bgLevel = nzero(1);
+        % Detect if the background has already been removed, ie. if there is an interval of empty bins
+        % at the beginning of the Histogram, after the first (zero-intensity) bin, i.e. if a range
+        % of low intensity values were replaced by zeros in the volume.
+        % 2025: Modified to work as described, and avoid cases where it wrongly gave a threshold near 0.
+        % First non-empty bin after first bin.
+        iNonZero = find(Histogram.fncY(2:end) ~= 0, 1) + 1;
+        if ~isempty(iNonZero) && iNonZero > 2
+            % There was an interval of empty bins. Set threshold at last empty bin intensity.
+            Histogram.bgLevel = Histogram.fncX(iNonZero - 1);
         % Else, background has not been removed yet
-        % If there is less than two maxima : use the default background threshold
+        % If there are fewer than two maxima : use the default background threshold
         elseif (length(cat(1,Histogram.max.x)) < 2)
             Histogram.bgLevel = defaultBg;
             Histogram.whiteLevel = defaultWhite;
@@ -242,7 +242,7 @@ switch(volumeType)
             % If the highest maximum is > (3*second highest maximum) : 
             % it is a background maximum : use the first minimum after the
             % background maximum as background threshold
-            % (and if this minimum exist)
+            % (and if this minimum exists)
             [orderedMaxVal, orderedMaxInd] = sort(cat(1,Histogram.max.y), 'descend');
             if ((orderedMaxVal(1) > 3*orderedMaxVal(2)) && (length(Histogram.min) >= orderedMaxInd(1)))
                 Histogram.bgLevel = Histogram.min(orderedMaxInd(1)).x;
