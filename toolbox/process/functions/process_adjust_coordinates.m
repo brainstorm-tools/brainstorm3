@@ -987,12 +987,13 @@ function M = GeoMedian(X, Precision)
 end % GeoMedian
 
 
-function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMri)
+function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMri)
     % Flag if auto or manual registration performed, and if MRI fids updated. Print to command
     % window for now, if no output arguments.
     AlignType = [];
     isMriUpdated = [];
     isMriMatch = [];
+    isSessionMatch = [];
     isPrint = nargout == 0;
     if any(~isfield(ChannelMat, {'History', 'HeadPoints'}))
         % Nothing to check.
@@ -1062,19 +1063,37 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
         % again.
         % Get the three fiducials in the head points
         ChannelMat = UpdateChannelMatScs(ChannelMat);
+        % Check if coordinates differ by more than 1 um.
         if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
             isMriMatch = false;
-            if isPrint
-                disp('BST> MRI fiducials previously updated, but different than current digitized fiducials.');
+            % Check if just different alignment, or if different set of fiducials (different
+            % session), using inter-fid distances.
+            DiffMri = [sMri.SCS.NAS - sMri.SCS.LPA, sMri.SCS.LPA - sMri.SCS.RPA, sMri.SCS.RPA - sMri.SCS.NAS];
+            DiffChannel = [ChannelMat.SCS.NAS - ChannelMat.SCS.LPA, ChannelMat.SCS.LPA - ChannelMat.SCS.RPA, ChannelMat.SCS.RPA - ChannelMat.SCS.NAS];
+            if any(abs(DiffMri - DiffChannel) > 1e-3)
+                isSessionMatch = false;
+                if isPrint
+                    disp('BST> MRI fiducials previously updated, but different session than current digitized fiducials.');
+                end
+            else
+                isSessionMatch = true;
+                if isPrint
+                    disp('BST> MRI fiducials previously updated, same session but not aligned with current digitized fiducials.');
+                end
             end
         else
             isMriMatch = true;
+            isSessionMatch = true;
             if isPrint
                 disp('BST> MRI fiducials previously updated, and match current digitized fiducials.');
             end
         end
+    else
+        isMriUpdated = false;
+        isMriMatch = false;
+        isSessionMatch = false;
     end
 
 end
@@ -1147,6 +1166,7 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
     iHpiL = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-L'));
     iHpiR = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-R'));
     if ~isempty(iHpiN) && ~isempty(iHpiL) && ~isempty(iHpiR)
+        % Temporarily put the head coils there to calculate transform.
         ChannelMat.Native.NAS = mean(ChannelMat.HeadPoints.Loc(:,iHpiN)', 1);
         ChannelMat.Native.LPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiL)', 1);
         ChannelMat.Native.RPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiR)', 1);
@@ -1156,6 +1176,12 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         % cs_compute doesn't change coordinates, only adds the R,T,Origin fields
         [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
         ChannelMat.Native = TmpChanMat.SCS;
+        % Now apply the transform to the digitized anat fiducials. These are not used anywhere yet,
+        % only the transform, but might as well be consistent and save the same points as in .SCS.
+        % But still in meters, not cm.
+        ChannelMat.Native.NAS(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.NAS'; 1];
+        ChannelMat.Native.LPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.LPA'; 1];
+        ChannelMat.Native.RPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.RPA'; 1];
     else
         % Missing digitized MEG head coils, probably the anatomical points are actually coils.
         disp('BST> Missing digitized MEG head coils, NAS/LPA/RPA are likely head coils.');
@@ -1178,11 +1204,11 @@ function [Transform, isCancel, isError] = channel_align_scs(ChannelFile, Transfo
 %       this set of digitized points. This affects all files registered to the MRI and should
 %       therefore be done as one of the first steps after importing, and with only one set of
 %       digitized points (one session). Surfaces are adjusted to maintain alignment with the MRI.
-%       Additional sessions for the same subject, with separate digitized points, will still need
-%       the usual "per dataset" registration adjustment to align with the same MRI.
+%       Additional sessions for the same Brainstorm subject, with separate digitized points, will
+%       still need the usual "per dataset" registration adjustment to align with the same MRI.
 %
 %       This function will not modify an MRI that it changed previously without user confirmation
-%       (if both isInteractive and isConfirm are false). In that case, the Transform is returned unaltered.
+%       (if both isInteractive and isConfirm are false). In that case, Transform is returned unaltered.
 %
 % INPUTS:
 %     - ChannelFile : Channel file to align with its anatomy
@@ -1190,7 +1216,8 @@ function [Transform, isCancel, isError] = channel_align_scs(ChannelFile, Transfo
 %                     after some alignment is made (auto or manual) and the two no longer match.
 %                     This transform should not already be saved in the ChannelFile, though the
 %                     file may already contain similar adjustments, in which case Transform would be
-%                     an additional adjustment to add.
+%                     an additional adjustment to add. (This will typically be empty or identity, it
+%                     was intended for calling from manual alignment panel, but now done after.)
 %     - isInteractive : If true, display dialog in case of errors, or if this was already done 
 %                     previously for this MRI. 
 %     - isConfirm   : If true, ask the user for confirmation before proceeding.
@@ -1279,7 +1306,7 @@ sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 % This Check function also updates ChannelMat.SCS with the saved (possibly previously adjusted) head
 % points. (We don't consider isMriMatch here because we still have to apply the provided
 % Transformation.)
-[~, isMriUpdated, ~, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMriOld);
+[~, isMriUpdated, ~, ~, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMriOld);
 % Get user confirmation
 if isMriUpdated
     % Already done previously.

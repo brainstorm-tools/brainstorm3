@@ -1,10 +1,12 @@
-function hFig = view_mri_histogram( MriFile )
+function hFig = view_mri_histogram( MriFile, isInteractive )
 % VIEW_MRI_HISTOGRAM: Compute and view the histogram of a brainstorm MRI.
 %
-% USAGE:  hFig = view_mri_histogram( MriFile );
+% USAGE:  hFig = view_mri_histogram(MriFile, isInteractive=false);
 %
 % INPUT:
 %    - MriFile : Full path to a brainstorm MRI file
+%    - isInteractive : If true, clicking on the figure will update the background threshold value, 
+%                      and offer saving when closing the figure.
 % OUTPUT:
 %    - hFig    : Matlab handle to the figure where the histogram is displayed
 % @=============================================================================
@@ -25,7 +27,7 @@ function hFig = view_mri_histogram( MriFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2020
+% Authors: Francois Tadel, 2006-2020, Marc Lalancette 2025
 
 %% ===== LOAD OR COMPUTE HISTOGRAM =====
 % Display progress bar
@@ -40,7 +42,7 @@ else
         Histogram = mri_histogram(MRI.Cube(:,:,:,1));
         % Save histogram
         s.Histogram = Histogram;
-        bst_save(MriFile, s, 'v7', 1);
+        bst_save(MriFile, s, 'v7', 1); % isAppend
     else
         Histogram = MRI.Histogram;
     end
@@ -88,17 +90,58 @@ ylabel('Number of voxels');
 yLimits = [0 maxVal*1.3];
 ylim(yLimits);
 % Display background and white matter thresholds
-line([Histogram.bgLevel, Histogram.bgLevel], yLimits, 'Color','b');
+% Keep original level to check if it changes.
+bgLevel = Histogram.bgLevel;
+hBg = line([Histogram.bgLevel, Histogram.bgLevel], yLimits, 'Color','b');
 line([Histogram.whiteLevel, Histogram.whiteLevel], yLimits, 'Color','y');
 h = legend('MRI hist.','Smoothed hist.','Cumulative hist.','Maxima','Minima',...
     'Scalp or grey thresh.','White m thresh.');
 set(h, 'FontSize',  bst_get('FigFont'), ...
        'FontUnits', 'points');
 
+% Set interactive callbacks
+if isInteractive
+    set(hAxes, 'ButtonDownFcn', @clickCallback);
+    set(hFig, 'CloseRequestFcn', @(src, event) closeFigureCallback());
+end
+
 % Hide progress bar
 bst_progress('stop');
 
 
 
+function clickCallback(~, event)
+    % Extract the x-coordinate of the click
+    bgLevel = event.IntersectionPoint(1);
+    % fprintf('Clicked at x = %.4f\n', x);
+    if bgLevel ~= Histogram.bgLevel
+        set(hBg, xdata, [bgLevel, bgLevel]);
+        % drawnow % needed?
+    end
+end
+
+function closeFigureCallback()
+    if bgLevel ~= Histogram.bgLevel
+        % Request save confirmation.
+        [Proceed, isCancel] = java_dialog('confirm', sprintf(...
+            'MRI background intensity threshold changed (%d > %d). Save?', Histogram.bgLevel, bgLevel), ...
+            'MRI background threshold');
+        if isCancel
+            return;
+        elseif Proceed
+            % Save histogram
+            Histogram.bgLevel = bgLevel;
+            s.Histogram = Histogram;
+            bst_save(MriFile, s, 'v7', 1); % isAppend
+            % Close figure
+            delete(fig);
+        end
+    else
+        % Close figure
+        delete(fig);
+    end
+end
+
+end
 
 
