@@ -223,13 +223,15 @@ switch(volumeType)
         defaultWhite = round(interp1(unikCumulFncY, unikFncX, .8));
         Histogram.bgLevel = defaultBg;
         Histogram.whiteLevel = defaultWhite;
-        % Detect if the background has already been removed, ie. if there is an interval of empty bins
-        % at the beginning of the Histogram, after the first (zero-intensity) bin, i.e. if a range
-        % of low intensity values were replaced by zeros in the volume.
-        % 2025: Modified to work as described, and avoid cases where it wrongly gave a threshold near 0.
+        % Detect if the background has already been removed, i.e. if a range of low intensity values
+        % were replaced by zeros in the volume, producing an interval of empty bins at the beginning
+        % of the Histogram, after the first (zero-intensity) bin. Require also that the zero bin be
+        % the largest, as it seems denoising can produce this background removal effect but with a
+        % very low threshold which is not appropriate.
+        [~, iMaxBin] = max(Histogram.fncY);
         % First non-empty bin after first bin.
         iNonZero = find(Histogram.fncY(2:end) ~= 0, 1) + 1;
-        if ~isempty(iNonZero) && iNonZero > 2
+        if iMaxBin == 1 && ~isempty(iNonZero) && iNonZero > 2
             % There was an interval of empty bins. Set threshold at last empty bin intensity.
             Histogram.bgLevel = Histogram.fncX(iNonZero - 1);
         % Else, background has not been removed yet
