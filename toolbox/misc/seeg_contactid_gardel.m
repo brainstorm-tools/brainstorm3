@@ -37,7 +37,7 @@ if ~isnumeric(iSubject) || (iSubject < 0)
 end
 
 %% ===== START EXTERNAL GARDEL TOOL FROM BRAINSTORM =====
-% Check for 'gardel' plugin installation
+% Check for GARDEL plugin installation
 [isInstalledGardel, errMsg] = bst_plugin('Install', 'gardel');
 if ~isInstalledGardel
     errMsg = bst_error(errMsg, 'GARDEL', 0);
@@ -80,18 +80,7 @@ end
 
 % Check if SPM12 tissue segmentation data is available
 iVolAtlas = find(cellfun(@(x) ~isempty(regexp(x, '_gardel_volatlas', 'match')), {sSubject.Anatomy.FileName})); 
-if isempty(iVolAtlas) || isempty(sStudy) || isempty(sStudy.Channel)
-    % Hide Brainstorm GUI and set process logo
-    jBstFrame.setVisible(0);
-    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
-    bst_plugin('SetProgressLogo', 'gardel');
-    % Call the external GARDEL tool
-    bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
-        'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1');
-else
-    % Export the Brainstorm channel file to GARDEL electrode .txt file
-    ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
-    export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);
+if ~isempty(iVolAtlas)
     % Extract the available tissue segmentation and export as MRI for GARDEL 
     TissueMris = extract_tissuemasks(sSubject.Anatomy(iVolAtlas(1)).FileName);
     mkdir(IntermediateFilesDir); 
@@ -105,6 +94,21 @@ else
         end
         export_mri(TissueMris{i}, bst_fullfile(IntermediateFilesDir, [newLabel 'coreg_' sMriRef.Comment '.nii']));
     end
+end
+
+% Check if imported GARDEL channel file exists and proceed accordingly 
+if isempty(sStudy) || isempty(sStudy.Channel)
+    % Hide Brainstorm GUI and set process logo
+    jBstFrame.setVisible(0);
+    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
+    bst_plugin('SetProgressLogo', 'gardel');
+    % Call the external GARDEL tool
+    bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
+        'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1');
+else
+    % Export the Brainstorm channel file to GARDEL electrode .txt file
+    ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
+    export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);   
     % Hide Brainstorm GUI and set process logo
     jBstFrame.setVisible(0);
     bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
@@ -155,7 +159,7 @@ if ~exist(GardelElectrodeFile, 'file')
 end
 
 % Create new channel file for the data from GARDEL 
-% Get folder 'Gardel'
+% Get GARDEL folder
 conditionName = 'Gardel';
 [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
 if ~isempty(sStudy)

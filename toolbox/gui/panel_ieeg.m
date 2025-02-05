@@ -403,90 +403,109 @@ function UpdatePanel()
     UpdateContactList('SCS');
 end
 
-%% ==== GARDEL: AUTOMATIC CONTACT DETECTION ====
-function AutoDetectContacts(method)
+%% ===== GARDEL: AUTOMATIC CONTACT LOCALIZATION =====
+function AutoDetectContacts(Method)
     global GlobalData
-
-    switch(method)
+    % Get figure handles
+    [~, ~, iDS] = bst_figures('GetCurrentFigure');
+    ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+    % Get study
+    sStudy = bst_get('ChannelFile', ChannelFile);
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Process as per the method
+    switch(lower(Method))
         case 'gardel'
-            disp('Calling GARDEL !');
-
-            % Get figure handles subject
-            [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
-            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-            % Channels = GlobalData.DataSet(iDS).Channel;
-            % Get study
-            sStudy = bst_get('ChannelFile', ChannelFile);
-            % Get subject
-            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-            if isempty(sSubject) || isempty(sSubject.Anatomy)
-                bst_error('No CT available for this subject.', 'GARDEL', 0);
+            disp('Processing using GARDEL.');
+            CtFile   = [];
+            isoValue = [];
+            iCtVol   = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+            iIsoSrf  = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+            % Get CT from IsoSurf ans also the isoValue % TODO do not assume there is only one IsoSurf
+            if ~isempty(iIsoSrf)
+                sSurf = load(file_fullpath(sSubject.Surface(iIsoSrf).FileName), 'History');
+                if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+                    % Search for CT threshold in history
+                    ctEntry  = regexp(sSurf.History{1, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
+                    isoValue = regexp(sSurf.History{1, 3}, 'threshold\s*=\s*(\d+)', 'tokens', 'once');
+                    % Return intersection of the found and then update iCtVol
+                    if ~isempty(ctEntry)
+                        [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
+                        if iCtIso
+                            iCtVol = intersect(iCtIso, iCtVol);
+                        else
+                            bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
+                                               'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
+                            return
+                        end
+                    end
+                end
+                CtFile = sSubject.Anatomy(iCtVol).FileName;
+            else
+                bst_error('No IsoSurface available.', 'Loading IsoSurface', 0);
+                return
             end
-            % Find CT volumes
-            iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')) && isempty(regexp(x, '_raw', 'match')), {sSubject.Anatomy.FileName}));
-            CtFile = sSubject.Anatomy(iCtVol(1)).FileName;
+            % Load CT file
             sCt = bst_memory('LoadMri', CtFile);
-
-            %  THIS IS NOT THE BEST APPROACH (NEED TO DISCUSS WITH GARDEL)
-            %  Handle CT slice dimensions (to match with GARDEL segmentation function)
-            if size(sCt.Cube,1)==size(sCt.Cube,3)
-                CT_image = permute(sCt.Cube, [1,3,2]);
-                CT_info.pixdim = sCt.Voxsize([1 3 2]);  
+            
+            % Adjust CT slice dimensions to match GARDEL's required input
+            if size(sCt.Cube, 1) == size(sCt.Cube, 3)
+                CT_image = permute(sCt.Cube, [1, 3, 2]);
+                CT_info.pixdim = sCt.Voxsize([1 3 2]);
             else
                 CT_image = sCt.Cube;
                 CT_info.pixdim = sCt.Voxsize;
             end
-
-            % get isoValue from isoSurface
-            iIsoValue = find(cellfun(@(x) ~isempty(regexp(x, 'isosurface', 'match')), {sSubject.Surface.FileName}));
-            isoValue  = regexp(sSubject.Surface(iIsoValue(1)).Comment, '\d+', 'match');
-
+            
             % Set process logo
             bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
             bst_plugin('SetProgressLogo', 'gardel');
-
-            % use GARDEL magic button routine
+            
+            % Use GARDEL automatic segmentation of electrodes
             New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
-
-            % parse the coordinates for electrodes and contacts
-            contDetectedCnt=0; % to keep a count of valid contact detection
-            for elec=1:size(New_Centroids_vox,1) % electrodes
-                % add only if minimum 2 contacts found per electrode
-                if size(New_Centroids_vox{elec},1)>2
-                    AddElectrode(char('A'+contDetectedCnt));
-                    contDetectedCnt = contDetectedCnt+1;
-
-                    % Get selected electrodes
-                    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
-
-                    % Get selected electrode
-                    for cont=1:size(New_Centroids_vox{elec},1) % contacts   
-                        % Set electrode position (covert from GARDEL to Brainstorm coordinates)
-                        if size(sCt.Cube,1)==size(sCt.Cube,3)
-                            x(1) = New_Centroids_vox{elec}(cont,1);
-                            x(2) = New_Centroids_vox{elec}(cont,3);
-                            x(3) = New_Centroids_vox{elec}(cont,2);
-                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', x);
-                        else
-                            sSelElec.Loc(:,cont) = cs_convert(sCt, 'voxel', 'scs', New_Centroids_vox{elec}(cont,:));
-                        end
+            
+            % Initialize contact detection count
+            contDetectedCnt = 0;
+            
+            % Loop through detected electrodes
+            for elec = 1:numel(New_Centroids_vox)
+                contacts = New_Centroids_vox{elec};
+            
+                % Ensure minimum 2 contacts per electrode
+                if size(contacts, 1) > 2
+                    electrodeLabel = char('A' + contDetectedCnt);
+                    AddElectrode(electrodeLabel);
+                    contDetectedCnt = contDetectedCnt + 1;
+            
+                    % Get selected electrode structure
+                    [sSelElec, iSelElec, iDS, iFig, ~] = GetSelectedElectrodes();
+            
+                    % Convert and assign coordinates
+                    if size(sCt.Cube, 1) == size(sCt.Cube, 3)
+                        coords = [contacts(:, 1), contacts(:, 3), contacts(:, 2)];
+                    else
+                        coords = contacts;
                     end
-
-                    sSelElec.ContactNumber = size(New_Centroids_vox{elec},1);
-
-                    % Save electrode modification
+                    for cont = 1:size(coords, 1)
+                        sSelElec.Loc(:, cont) = cs_convert(sCt, 'voxel', 'scs', coords(cont, :));
+                    end
+            
+                    % Update electrode properties
+                    sSelElec.ContactNumber = size(contacts, 1);
                     SetElectrodes(iSelElec, sSelElec);
-
+            
+                    % Align contacts automatically
                     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
                 end
             end
 
-            % Stop process box
-            bst_progress('stop');
-
         otherwise
-            disp('Not defined !')
+            bst_error(['Invalid method: ' Method], 'Automatic contact localization', 0);
+            return
     end
+
+    % Stop process box
+    bst_progress('stop');
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
