@@ -447,29 +447,22 @@ function AutoDetectContacts(Method)
             end
             % Load CT file
             sCt = bst_memory('LoadMri', CtFile);
-            
-            % Adjust CT slice dimensions to match GARDEL's required input
-            if size(sCt.Cube, 1) == size(sCt.Cube, 3)
-                CT_image = permute(sCt.Cube, [1, 3, 2]);
-                CT_info.pixdim = sCt.Voxsize([1 3 2]);
-            else
-                CT_image = sCt.Cube;
-                CT_info.pixdim = sCt.Voxsize;
-            end
+            % Set voxel size as per GARDEL input requirements
+            CT_info.pixdim = sCt.Voxsize;
             
             % Set process logo
             bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
             bst_plugin('SetProgressLogo', 'gardel');
             
             % Use GARDEL automatic segmentation of electrodes
-            New_Centroids_vox = elec_auto_segmentation(CT_image, CT_info, str2double(isoValue{1}));
+            Electrodes = elec_auto_segmentation(sCt.Cube, CT_info, str2double(isoValue{1}));
             
             % Initialize contact detection count
             contDetectedCnt = 0;
             
             % Loop through detected electrodes
-            for elec = 1:numel(New_Centroids_vox)
-                contacts = New_Centroids_vox{elec};
+            for elec = 1:numel(Electrodes)
+                contacts = Electrodes{elec};
             
                 % Ensure minimum 2 contacts per electrode
                 if size(contacts, 1) > 2
@@ -480,14 +473,9 @@ function AutoDetectContacts(Method)
                     % Get selected electrode structure
                     [sSelElec, iSelElec, iDS, iFig, ~] = GetSelectedElectrodes();
             
-                    % Convert and assign coordinates
-                    if size(sCt.Cube, 1) == size(sCt.Cube, 3)
-                        coords = [contacts(:, 1), contacts(:, 3), contacts(:, 2)];
-                    else
-                        coords = contacts;
-                    end
-                    for cont = 1:size(coords, 1)
-                        sSelElec.Loc(:, cont) = cs_convert(sCt, 'voxel', 'scs', coords(cont, :));
+                    % Assign coordinates
+                    for cont = 1:size(contacts, 1)
+                        sSelElec.Loc(:, cont) = cs_convert(sCt, 'voxel', 'scs', contacts(cont, :));
                     end
             
                     % Update electrode properties
