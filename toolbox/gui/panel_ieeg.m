@@ -79,7 +79,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbarBottom.setPreferredSize(TB_DIM);
         jToolbarBottom.setOpaque(0);
         % Add GARDEL
-        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'Auto detect contacts using GARDEL', @(h,ev)bst_call(@AutoDetectContacts, 'gardel'));
+        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'GARDEL: Automatic electrode labeling and contact localization', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'gardel'));
         jToolbarBottom.addSeparator();
 
     % ===== PANEL MAIN =====
@@ -403,8 +403,8 @@ function UpdatePanel()
     UpdateContactList('SCS');
 end
 
-%% ===== GARDEL: AUTOMATIC CONTACT LOCALIZATION =====
-function AutoDetectContacts(Method)
+%% ===== AUTOMATIC ELECTRODE LABELING AND CONTACT LOCALIZATION =====
+function AutoElecLabelContLocalize(Method)
     global GlobalData
     % Get figure handles
     [~, ~, iDS] = bst_figures('GetCurrentFigure');
@@ -413,6 +413,7 @@ function AutoDetectContacts(Method)
     sStudy = bst_get('ChannelFile', ChannelFile);
     % Get subject
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    
     % Process as per the method
     switch(lower(Method))
         case 'gardel'
@@ -454,46 +455,65 @@ function AutoDetectContacts(Method)
             bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
             bst_plugin('SetProgressLogo', 'gardel');
             
-            % Use GARDEL automatic segmentation of electrodes
-            Electrodes = elec_auto_segmentation(sCt.Cube, CT_info, str2double(isoValue{1}));
-            
-            % Initialize contact detection count
-            contDetectedCnt = 0;
+            % Use GARDEL automatic segmentation of electrodes            
+            sElectrodes = elec_auto_segmentation(sCt.Cube, CT_info, str2double(isoValue{1}));
+
+            % Based on the number of electrodes detected, generate a list of electrode labels recursively
+            electrodeLabels = GenerateElecLabels(size(sElectrodes, 1));
             
             % Loop through detected electrodes
-            for elec = 1:numel(Electrodes)
-                contacts = Electrodes{elec};
-            
-                % Ensure minimum 2 contacts per electrode
-                if size(contacts, 1) > 2
-                    electrodeLabel = char('A' + contDetectedCnt);
-                    AddElectrode(electrodeLabel);
-                    contDetectedCnt = contDetectedCnt + 1;
-            
-                    % Get selected electrode structure
-                    [sSelElec, iSelElec, iDS, iFig, ~] = GetSelectedElectrodes();
-            
-                    % Assign coordinates
-                    for cont = 1:size(contacts, 1)
-                        sSelElec.Loc(:, cont) = cs_convert(sCt, 'voxel', 'scs', contacts(cont, :));
-                    end
-            
-                    % Update electrode properties
-                    sSelElec.ContactNumber = size(contacts, 1);
-                    SetElectrodes(iSelElec, sSelElec);
-            
-                    % Align contacts automatically
-                    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
-                end
+            for iElec = 1:size(sElectrodes, 1)
+                % Extract contacts for current electrode
+                sContacts = sElectrodes{iElec};
+                % Add electrode assigning a label to it
+                AddElectrode(electrodeLabels{iElec});        
+                % Get selected electrode structure
+                [sSelElec, iSelElec, iDS, iFig, ~] = GetSelectedElectrodes();       
+                % Assign coordinates
+                for iCont = 1:size(sContacts, 1)
+                    sSelElec.Loc(:, iCont) = cs_convert(sCt, 'voxel', 'scs', sContacts(iCont, :));
+                end        
+                % Update electrode properties
+                sSelElec.ContactNumber = size(sContacts, 1);
+                SetElectrodes(iSelElec, sSelElec);        
+                % Align contacts automatically
+                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
             end
 
         otherwise
-            bst_error(['Invalid method: ' Method], 'Automatic contact localization', 0);
+            bst_error(['Invalid method: ' Method], 'Automatic electrode labeling and contact localization', 0);
             return
     end
 
     % Stop process box
     bst_progress('stop');
+end
+
+%% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
+% Recursively generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
+function elecLabels = GenerateElecLabels(maxLabelCount)
+    % Preallocate for speed
+    elecLabels = cell(1, maxLabelCount);  
+    for labelNum = 1:maxLabelCount
+        elecLabels{labelNum} = NumToLabel(labelNum);
+    end
+end
+
+% Helper function for the recursive generation of labels
+% Converts a positive integer 'labelNum' to text 'labelText'
+% For example: 1 -> 'A', 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
+function labelText = NumToLabel(labelNum)
+    if labelNum <= 26
+        % Base case: a single letter.
+        labelText = char('A' + labelNum - 1);
+    else
+        % For labelNum > 26, adjust 'labelNum' by subtracting 1, then compute the remainder and quotient. 
+        % Recursively convert the quotient, then append the letter corresponding to the remainder.
+        labelNum  = labelNum - 1;
+        remainder = mod(labelNum, 26);
+        quotient  = floor(labelNum / 26);
+        labelText = [NumToLabel(quotient) char('A' + remainder)];
+    end
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
@@ -1419,13 +1439,14 @@ end
 
 %% ===== ADD ELECTRODE =====
 function AddElectrode(varargin)
-    if nargin<1
+    global GlobalData;
+    % Parse inputs
+    if nargin < 1 || isempty(varargin{1})
         elecName = [];
     else
         elecName = varargin{1};
-    end
-
-    global GlobalData;
+    end    
+    
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
