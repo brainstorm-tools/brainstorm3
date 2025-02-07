@@ -278,7 +278,7 @@ end
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
 
-if ~isempty(sMri)
+if ~isempty(sMri) && isfield(sMri, 'FileName')
     % Get the current subject
     sSubject = bst_get('MriFile', sMri.FileName);
     % Unique comment
