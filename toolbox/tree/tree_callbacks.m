@@ -3183,15 +3183,15 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         % Right click on the subject only
         if isempty(iAnatomy) && iSubject ~=0
             jMenuImplantation = gui_component('Menu', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], []);
-            gui_component('MenuItem', jMenuImplantation, [], 'Brainstorm', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
+            gui_component('MenuItem', jMenuImplantation, [], 'Brainstorm', IconLoader.ICON_SEEG_DEPTH, 'Brainstorm native method', @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
             % Show GARDEL option in menu only if there is a raw unprocessed CT available
             iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
             if ~isempty(iCtRaw)
-                gui_component('MenuItem', jMenuImplantation, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
+                gui_component('MenuItem', jMenuImplantation, [], 'Gardel', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
             end
         % Right click on a desired volume (MRI/CT) in a subject
         elseif (length(iAnatomy) == 1) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation (Brainstorm)', IconLoader.ICON_SEEG_DEPTH, 'Brainstorm native method', @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
         end
           
     % === TISSUE SEGMENTATION ===
