@@ -413,6 +413,12 @@ function AutoElecLabelContLocalize(Method)
     sStudy = bst_get('ChannelFile', ChannelFile);
     % Get subject
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Add disclaimer to users that 'Auto' feature is experimental
+    if ~java_dialog('confirm', ['<HTML><B>' Method '</B> is an <B>experimental</B> feature. <BR>' ...
+                                'Please verify the results carefully. <BR><BR>' ...
+                                'Do you want to continue?'], 'Auto detect SEEG electrodes')
+        return
+    end 
     
     % Process as per the method
     switch(lower(Method))
@@ -428,7 +434,7 @@ function AutoElecLabelContLocalize(Method)
             [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSrf);
             % Ensure isoValue is available; otherwise, exit with an error
             if isempty(isoValue)
-                bst_error('No isoValue available. Cannot proceed as GARDEL requires it for electrode segmentation.', 'GARDEL: Automatic electrode labeling and contact localization');
+                bst_error('No isoValue available. Cannot proceed as GARDEL requires it for electrode segmentation.', 'GARDEL: Auto detect SEEG electrodes');
                 return;
             end     
             sCt = [];
@@ -439,7 +445,7 @@ function AutoElecLabelContLocalize(Method)
                 infoCt.pixdim = sCt.Voxsize;
             end             
             % Set process logo
-            bst_progress('start', 'GARDEL', 'Detecting electrodes and contacts...');
+            bst_progress('start', 'GARDEL: Auto detect SEEG electrodes', 'Detecting electrodes and contacts...');
             bst_plugin('SetProgressLogo', 'gardel');           
             % Use GARDEL automatic segmentation of electrodes            
             sElectrodes = elec_auto_segmentation(sCt.Cube, infoCt, isoValue);
@@ -466,7 +472,7 @@ function AutoElecLabelContLocalize(Method)
             end
 
         otherwise
-            bst_error(['Invalid method: ' Method], 'Automatic electrode labeling and contact localization');
+            bst_error(['Invalid method: ' Method], 'Auto detect SEEG electrodes');
             return
     end
 
@@ -1079,7 +1085,7 @@ function ShowContactsMenuBottom(jButton)
     % Create popup menu
     jMenu = java_create('javax.swing.JPopupMenu');
     % Menu: GARDEL (Automatic electrode labeling and contact localization)
-    gui_component('MenuItem', jMenu, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'gardel'));
+    gui_component('MenuItem', jMenu, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'Gardel'));
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
