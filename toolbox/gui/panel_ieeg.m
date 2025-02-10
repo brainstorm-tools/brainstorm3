@@ -78,10 +78,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
         jToolbarBottom.setPreferredSize(TB_DIM);
         jToolbarBottom.setOpaque(0);
-        % Add GARDEL
-        gui_component('ToolbarButton', jToolbarBottom,[],'GARDEL',[], 'GARDEL: Automatic electrode labeling and contact localization', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'gardel'));
-        jToolbarBottom.addSeparator();
-
+        % Menu: Auto (Automatic electrode labeling and contact localization)
+        jMenuContactsBottom = gui_component('ToolbarButton', jToolbarBottom, [], 'Auto', IconLoader.ICON_MENU, 'Automatic electrode labeling and contact localization', @(h,ev)ShowContactsMenuBottom(ev.getSource()), []);
+        
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
     jPanelMain.setBorder(BorderFactory.createEmptyBorder(7,7,7,7));
@@ -232,6 +231,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
                                   'jMenuContacts',       jMenuContacts, ...
+                                  'jMenuContactsBottom', jMenuContactsBottom, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
                                   'jRadioMri',           jRadioMri, ...
@@ -1040,7 +1040,7 @@ function SetSelectedContacts(iSelCont)
     SetMriCrosshair(sContacts);
 end
 
-%% ===== SHOW CONTACTS MENU =====
+%% ===== SHOW CONTACTS MENU (TOP) =====
 function ShowContactsMenu(jButton)
     import org.brainstorm.icon.*;
     % Create popup menu
@@ -1073,6 +1073,16 @@ function ShowContactsMenu(jButton)
 end
 
 
+%% ===== SHOW CONTACTS MENU (BOTTOM) =====
+function ShowContactsMenuBottom(jButton)
+    import org.brainstorm.icon.*;
+    % Create popup menu
+    jMenu = java_create('javax.swing.JPopupMenu');
+    % Menu: GARDEL (Automatic electrode labeling and contact localization)
+    gui_component('MenuItem', jMenu, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'gardel'));
+    % Show popup menu
+    gui_brainstorm('ShowPopup', jMenu, jButton);
+end
 
 %% ===== GET COLOR TABLE =====
 function ColorTable = GetElectrodeColorTable()
