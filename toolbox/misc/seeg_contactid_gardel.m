@@ -60,6 +60,8 @@ if ~isempty(sStudy) && ~isempty(sStudy.Channel)
                                                'Do do you want to overwrite the existing implantation?'], ...
                                                'Edit implantation using GARDEL tool');
     if ~isEdit || isCancel
+        % Delete temporary folder
+        file_delete(TmpGardelDir, 1, 1);
         return
     else
         % Export the Brainstorm channel file to GARDEL electrode .txt file
