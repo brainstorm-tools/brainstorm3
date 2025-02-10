@@ -32,6 +32,7 @@ function errMsg = seeg_contactid_gardel(iSubject)
 %% ===== PARSE INPUTS =====
 % Intializations
 errMsg = [];
+isEdit = 0;
 if ~isnumeric(iSubject) || (iSubject < 0)
     error('Invalid subject indice.');
 end
@@ -78,6 +79,20 @@ else
     return;
 end
 
+% If editing using GARDEL, ask user if they want to overwrite the existign channel data
+if ~isempty(sStudy) || ~isempty(sStudy.Channel)
+    [isEdit, isCancel] = java_dialog('confirm', ['<HTML><B>Warning</B>: the existing "Gardel" implantation folder for this Subject will be overwritten.' 10 10 ...
+                                               'Do do you want to overwrite the existing implantation?'], ...
+                                               'Edit implantation using GARDEL tool');
+    if ~isEdit || isCancel
+        return
+    else
+        % Export the Brainstorm channel file to GARDEL electrode .txt file
+        ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
+        export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0); 
+    end
+end
+
 % Check if SPM12 tissue segmentation data is available
 iVolAtlas = find(cellfun(@(x) ~isempty(regexp(x, '_gardel_volatlas', 'match')), {sSubject.Anatomy.FileName})); 
 if ~isempty(iVolAtlas)
@@ -96,24 +111,18 @@ if ~isempty(iVolAtlas)
     end
 end
 
-% Check if imported GARDEL channel file exists and proceed accordingly 
-if isempty(sStudy) || isempty(sStudy.Channel)
-    % Hide Brainstorm GUI and set process logo
-    jBstFrame.setVisible(0);
-    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
-    bst_plugin('SetProgressLogo', 'gardel');
+% Hide Brainstorm GUI and set process logo
+jBstFrame.setVisible(0);
+bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
+bst_plugin('SetProgressLogo', 'gardel');
+
+% Start GARDEL external tool 
+if ~isEdit
     % Call the external GARDEL tool
     bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
         'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1');
 else
-    % Export the Brainstorm channel file to GARDEL electrode .txt file
-    ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
-    export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0);   
-    % Hide Brainstorm GUI and set process logo
-    jBstFrame.setVisible(0);
-    bst_progress('start', 'GARDEL', 'Starting GARDEL external tool...');
-    bst_plugin('SetProgressLogo', 'gardel');
-    % Call the external GARDEL tool with the exported electrode coordinates
+    % Call the external GARDEL tool with the exported electrode coordinates 
     bst_call(@GARDEL, 'output_dir', TmpGardelDir, ...
         'postimp', NiiRawCtFile, 'preimp', NiiRefMriFile, 'bs_flag', '1', 'electrodes', GardelElectrodeFile);
 end
@@ -162,7 +171,7 @@ end
 % Get GARDEL folder
 conditionName = 'Gardel';
 [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
-if ~isempty(sStudy)
+if isEdit && ~isempty(sStudy)
     % Delete existing 'Gardel' study
     db_delete_studies(iStudy);
 end
