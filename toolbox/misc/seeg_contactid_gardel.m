@@ -170,8 +170,8 @@ end
 % Create new channel file for the data from GARDEL 
 % Get GARDEL folder
 conditionName = 'Gardel';
-[sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
-if isEdit && ~isempty(sStudy)
+[~, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
+if isEdit
     % Delete existing 'Gardel' study
     db_delete_studies(iStudy);
 end
