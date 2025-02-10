@@ -45,14 +45,28 @@ if ~isInstalledGardel
     return;
 end
 
+% Get current subject and study
+sSubject = bst_get('Subject', iSubject);
+sStudy   = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
+
 % Folders and files for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
 IntermediateFilesDir = bst_fullfile(TmpGardelDir, 'IntermediateFiles');
 GardelElectrodeFile  = bst_fullfile(TmpGardelDir, '\ElectrodesAllCoordinates.txt');
 
-% Get current subject and study
-sSubject = bst_get('Subject', iSubject);
-sStudy   = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
+% If editing using GARDEL, warn user that the existing channel data will be overwritten 
+if ~isempty(sStudy) && ~isempty(sStudy.Channel)
+    [isEdit, isCancel] = java_dialog('confirm', ['<HTML><B>Warning</B>: the existing "Gardel" implantation for this Subject will be overwritten.' 10 10 ...
+                                               'Do do you want to overwrite the existing implantation?'], ...
+                                               'Edit implantation using GARDEL tool');
+    if ~isEdit || isCancel
+        return
+    else
+        % Export the Brainstorm channel file to GARDEL electrode .txt file
+        ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
+        export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0); 
+    end
+end
 
 % Get Brainstorm window
 jBstFrame = bst_get('BstFrame');
@@ -77,20 +91,6 @@ else
     % Delete temporary files
     file_delete(TmpGardelDir, 1, 1);
     return;
-end
-
-% If editing using GARDEL, ask user if they want to overwrite the existign channel data
-if ~isempty(sStudy) || ~isempty(sStudy.Channel)
-    [isEdit, isCancel] = java_dialog('confirm', ['<HTML><B>Warning</B>: the existing "Gardel" implantation folder for this Subject will be overwritten.' 10 10 ...
-                                               'Do do you want to overwrite the existing implantation?'], ...
-                                               'Edit implantation using GARDEL tool');
-    if ~isEdit || isCancel
-        return
-    else
-        % Export the Brainstorm channel file to GARDEL electrode .txt file
-        ChannelFile = bst_fullfile(bst_get('ProtocolInfo').STUDIES, sStudy.Channel.FileName);
-        export_channel(ChannelFile, GardelElectrodeFile, 'GARDEL-TXT', 0); 
-    end
 end
 
 % Check if SPM12 tissue segmentation data is available
