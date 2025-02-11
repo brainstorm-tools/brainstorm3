@@ -47,7 +47,7 @@ end
 
 % Get current subject and study
 sSubject = bst_get('Subject', iSubject);
-sStudy   = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Gardel'));
+sStudy   = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, 'Implantation_Gardel'));
 
 % Folders and files for GARDEL
 TmpGardelDir = bst_get('BrainstormTmpDir', 0, 'gardel');
@@ -171,7 +171,7 @@ end
 
 % Create new channel file for the data from GARDEL 
 % Get GARDEL folder
-conditionName = 'Gardel';
+conditionName = 'Implantation_Gardel';
 [~, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, conditionName));
 if isEdit
     % Delete existing 'Gardel' study
@@ -181,11 +181,7 @@ end
 iStudy = db_add_condition(sSubject.Name, conditionName, 1);
 % Get 'Gardel' study
 sStudy = bst_get('Study', iStudy);
-% Create an empty channel file for GARDEL data
-ChannelMat = db_template('channelmat');
-ChannelMat.Channel = db_template('channeldesc');
-ChannelMat.Comment = conditionName;
-% Parse the GARDEL exported electrode coordinates file and load it to the channel file
+% Load GARDEL exported electrode coordinates file
 ChannelMat = in_channel_gardel(GardelElectrodeFile);
 % Convert coordinates: VOXEL => SCS 
 sMri = bst_memory('LoadMri', sSubject.Anatomy(1).FileName);
@@ -193,7 +189,7 @@ fcnTransf = @(Loc)cs_convert(sMri, 'voxel', 'scs', Loc')';
 AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 0);
 ChannelMat = AllChannelMats{1};
 % Save the new channel file
-ChannelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudy.FileName)), ['channel_' lower(conditionName) '.mat']);
+ChannelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudy.FileName)), 'channel.mat');
 save(ChannelFile, '-struct', 'ChannelMat');
 % Reload condition
 db_reload_studies(iStudy);
