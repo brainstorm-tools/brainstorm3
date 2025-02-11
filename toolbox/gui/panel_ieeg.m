@@ -411,12 +411,6 @@ function AutoElecLabelContLocalize(Method)
         % Set GARDEL as default method
         Method = 'Gardel';
     end
-    % Check validity of the provided method 
-    validMethods = {'Gardel'};
-    if ~any(strcmpi(Method, validMethods))
-        bst_error(['Invalid method: ' Method], 'Auto detect SEEG electrodes');
-        return
-    end
     % Get figure handles
     [~, ~, iDS] = bst_figures('GetCurrentFigure');
     ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
@@ -488,6 +482,10 @@ function AutoElecLabelContLocalize(Method)
                 % Align contacts automatically
                 AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
             end
+            
+        otherwise
+            bst_error(['Invalid method: ' Method], 'Auto detect SEEG electrodes');
+            return
     end
 
     % Stop process box
