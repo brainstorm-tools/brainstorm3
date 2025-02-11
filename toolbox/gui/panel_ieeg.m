@@ -406,6 +406,17 @@ end
 %% ===== AUTOMATIC ELECTRODE LABELING AND CONTACT LOCALIZATION =====
 function AutoElecLabelContLocalize(Method)
     global GlobalData
+    % Parse input
+    if nargin < 1 || isempty(Method)
+        % Set GARDEL as default method
+        Method = 'Gardel';
+    end
+    % Check validity of the provided method 
+    validMethods = {'Gardel'};
+    if ~any(strcmpi(Method, validMethods))
+        bst_error(['Invalid method: ' Method], 'Auto detect SEEG electrodes');
+        return
+    end
     % Get figure handles
     [~, ~, iDS] = bst_figures('GetCurrentFigure');
     ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
@@ -413,16 +424,17 @@ function AutoElecLabelContLocalize(Method)
     sStudy = bst_get('ChannelFile', ChannelFile);
     % Get subject
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    % Disclaimers
+    % Get all electrodes
     sAllElec = GetElectrodes();
-    if ~isempty(sAllElec) && RemoveElectrode(1)   
-        if ~java_dialog('confirm', ['<HTML><B>' Method ':</B> This method may be subject to inaccuracies due to <BR>' ...
-                                                       'image resolution, anatomical variations, and registration errors. <BR>' ...
-                                                       'Please verify the results carefully. <BR><BR>' ...
-                                                       'Do you want to continue?'], 'Auto detect SEEG electrodes')
-            return
-        end
-    else
+    % Exit if removal is not confirmed
+    if ~isempty(sAllElec) && ~RemoveElectrode(1)
+        return
+    end
+    % Exit if not confirmed
+    if ~java_dialog('confirm', ['<HTML><B>' Method ':</B> This method may be subject to inaccuracies due to <BR>' ...
+                                'image resolution, anatomical variations, and registration errors. <BR>' ...
+                                'Please verify the results carefully. <BR><BR>' ...
+                                'Do you want to continue?'], 'Auto detect SEEG electrodes')
         return
     end 
     
@@ -476,10 +488,6 @@ function AutoElecLabelContLocalize(Method)
                 % Align contacts automatically
                 AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
             end
-
-        otherwise
-            bst_error(['Invalid method: ' Method], 'Auto detect SEEG electrodes');
-            return
     end
 
     % Stop process box
