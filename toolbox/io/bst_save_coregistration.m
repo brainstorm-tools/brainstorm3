@@ -1,6 +1,8 @@
 function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjects, isBids)
     % Save MRI-MEG coregistration info in imported raw BIDS dataset, or MRI fiducials only if not BIDS.
     %
+    %   [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjects, isBids=<detect>)
+    % 
     % Save MRI-MEG coregistration by adding AnatomicalLandmarkCoordinates to the
     % _T1w.json MRI metadata, in 0-indexed voxel coordinates, and to the
     % _coordsystem.json files for functional data, in native coordinates (e.g. CTF).
@@ -14,7 +16,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
     % https://groups.google.com/g/bids-discussion/c/BeyUeuNGl7I
 
     if nargin < 2 || isempty(isBids)
-        isBids = false;
+        isBids = [];
     end
     sSubjects = bst_get('ProtocolSubjects');
     if nargin < 1 || isempty(iSubjects)
@@ -47,6 +49,19 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
         end
         % Get all linked raw data files.
         sStudies = bst_get('StudyWithSubject', sSubjects.Subject(iSub).FileName);
+        if isempty(isBids)
+            % Try to find root BIDS folder.
+            BidsRoot = bst_fileparts(bst_fileparts(ImportedFile)); % go back through "anat" and subject folders at least (session not mandatory).
+            isBids = true; % changed if not found below
+            while ~exist(fullfile(BidsRoot, 'dataset_description.json'), 'file')
+                if isempty(BidsRoot) || ~exist(BidsRoot, 'dir')
+                    isBids = false;
+                    fprintf('BST> bst_save_coregistration detected that raw imported data is NOT structured as BIDS.');
+                    break;
+                end
+                BidsRoot = bst_fileparts(BidsRoot);
+            end
+        end
         if isBids
             if isempty(BidsRoot)
                 BidsRoot = bst_fileparts(bst_fileparts(ImportedFile)); % go back through "anat" and subject folders at least (session not mandatory).

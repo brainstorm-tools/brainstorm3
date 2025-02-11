@@ -113,7 +113,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
         return
     end
     % Guess background level
-    if isempty(bgLevel)
+    if isempty(bgLevel) && ~isGradient
         bgLevel = sMri.Histogram.bgLevel;
     end
 
