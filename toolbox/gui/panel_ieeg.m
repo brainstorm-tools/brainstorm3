@@ -79,7 +79,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbarBottom.setPreferredSize(TB_DIM);
         jToolbarBottom.setOpaque(0);
         % Menu: Auto (Automatic electrode labeling and contact localization)
-        jMenuContactsBottom = gui_component('ToolbarButton', jToolbarBottom, [], 'Auto', IconLoader.ICON_MENU, 'Automatic electrode labeling and contact localization', @(h,ev)ShowContactsMenuBottom(ev.getSource()), []);
+        jMenuAuto = gui_component('Menu', jMenuBarBottom, [], 'Auto', IconLoader.ICON_MENU, 'Automatic electrode labeling and contact localization', [], 11);
+        % Menu: GARDEL (Automatic electrode labeling and contact localization)
+        jMenuGardel = gui_component('MenuItem', jMenuAuto, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'Gardel'));
         
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -231,7 +233,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
                                   'jMenuContacts',       jMenuContacts, ...
-                                  'jMenuContactsBottom', jMenuContactsBottom, ...
+                                  'jMenuAuto',           jMenuAuto, ...
+                                  'jMenuGardel',         jMenuGardel, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
                                   'jRadioMri',           jRadioMri, ...
@@ -370,21 +373,28 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
+    global GlobalData
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
     % Get current figure
-    hFig = bst_figures('GetCurrentFigure');
+    [hFig,iFig,iDS] = bst_figures('GetCurrentFigure');
     % If a surface is available for current figure
     if ~isempty(hFig)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jMenuAuto], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
+        % Enable 'GARDEL' button if modality is SEEG
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
+            gui_enable(ctrl.jMenuGardel, 1);
+        else
+            gui_enable(ctrl.jMenuGardel, 0);
+        end
     % Else: no figure associated with the panel : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jToolbarBottom], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar, ctrl.jMenuAuto], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -1086,18 +1096,6 @@ function ShowContactsMenu(jButton)
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 0));
     gui_component('MenuItem', jMenu, [], 'Compute atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@ExportChannelFile, 1));
-    % Show popup menu
-    gui_brainstorm('ShowPopup', jMenu, jButton);
-end
-
-
-%% ===== SHOW CONTACTS MENU (BOTTOM) =====
-function ShowContactsMenuBottom(jButton)
-    import org.brainstorm.icon.*;
-    % Create popup menu
-    jMenu = java_create('javax.swing.JPopupMenu');
-    % Menu: GARDEL (Automatic electrode labeling and contact localization)
-    gui_component('MenuItem', jMenu, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@AutoElecLabelContLocalize, 'Gardel'));
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
