@@ -430,22 +430,23 @@ function AutoElecLabelContLocalize(Method)
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
     % Get all electrodes
     sAllElec = GetElectrodes();
-    % Exit if removal is not confirmed
-    if ~isempty(sAllElec) && ~RemoveElectrode(1)
-        return
-    end
-    % Exit if not confirmed
-    if ~java_dialog('confirm', ['<HTML><B>' Method ':</B> This method may be subject to inaccuracies due to <BR>' ...
-                                'image resolution, anatomical variations, and registration errors. <BR>' ...
-                                'Please verify the results carefully. <BR><BR>' ...
-                                'Do you want to continue?'], 'Auto detect SEEG electrodes')
-        return
-    end 
     
     % Process as per the method
     switch(lower(Method))
         case 'gardel'
             disp('Processing using GARDEL.');
+            % Exit if removal is not confirmed
+            if ~isempty(sAllElec) && ~RemoveElectrode(1)
+                return
+            end
+            % Exit if not confirmed
+            if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
+                                        'image resolution, anatomical variations, and registration errors. <BR>' ...
+                                        'Please verify the results carefully. <BR><BR>' ...
+                                        'Do you want to continue?'], 'Auto detect SEEG electrodes')
+                return
+            end 
+            % Get IsoSurface
             iIsoSrf  = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
             % Check if any IsoSurface is available
             if isempty(iIsoSrf)
