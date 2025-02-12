@@ -468,7 +468,7 @@ function AutoElecLabelContLocalize(Method)
                 infoCt.pixdim = sCt.Voxsize;
             end             
             % Set process logo
-            bst_progress('start', 'GARDEL: Auto detect SEEG electrodes', 'Detecting electrodes and contacts...');
+            bst_progress('start', 'GARDEL: Auto detect SEEG electrodes', 'Detecting electrodes and contacts...', 0, 100);
             bst_plugin('SetProgressLogo', 'gardel');           
             % Use GARDEL automatic segmentation of electrodes            
             sElectrodes = elec_auto_segmentation(sCt.Cube, infoCt, isoValue);
@@ -477,6 +477,11 @@ function AutoElecLabelContLocalize(Method)
            
             % Loop through detected electrodes
             for iElec = 1:size(sElectrodes, 1)
+                % Show progress
+                progressPrc = round(100 .* iElec ./ size(sElectrodes, 1));
+                if progressPrc > 0
+                    bst_progress('set', progressPrc);
+                end
                 % Extract contacts for current electrode
                 sContacts = sElectrodes{iElec};
                 % Add electrode assigning a label to it
