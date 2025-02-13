@@ -277,7 +277,6 @@ end
 
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
-
 if ~isempty(sMri)
     % Get the current subject
     sSubject = bst_get('MriFile', sMri.FileName);
