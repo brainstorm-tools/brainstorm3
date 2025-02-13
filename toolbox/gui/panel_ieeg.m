@@ -344,11 +344,20 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     end
 
     %% ===== ELECTRODE LIST CLICK CALLBACK =====
-    function ElecListClick_Callback(h, ev)
+    function ElecListClick_Callback(h, ev)        
         % If DOUBLE CLICK
         if (ev.getClickCount() == 2)
             % Rename selection
             EditElectrodeLabel();
+        end
+
+        if (ev.getButton() == 3)
+            % Get the selected electrode
+            sSelElec = GetSelectedElectrodes();
+            % Center MRI view on electrode tip
+            if (length(sSelElec) > 1)
+                DisplayPanelPopup();
+            end
         end
     end
 
@@ -533,6 +542,53 @@ function labelText = NumToLabel(labelNum)
         quotient  = floor(labelNum / 26);
         labelText = [NumToLabel(quotient) char('A' + remainder)];
     end
+end
+
+%% ===== DISPLAY PANEL POP-UP MENU =====
+function DisplayPanelPopup()
+    import java.awt.event.KeyEvent;
+    import javax.swing.KeyStroke;
+    import org.brainstorm.icon.*;
+
+    % Create popup menu
+    jPopup = java_create('javax.swing.JPopupMenu');
+    gui_component('MenuItem', jPopup, [], 'Group electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@GroupElectrodes));
+    
+    % ==== Display menu ====
+    gui_popup(jPopup);
+end
+
+%% ===== GROUP ELECTRODES =====
+function GroupElectrodes(isInteractive)
+    global GlobalData
+    % Parse inputs
+    if nargin < 1 || isempty(isInteractive)
+        isInteractive = 1;
+    end
+    % Ask for confirmation
+    if isInteractive && ~java_dialog('confirm', 'Group all selected electrodes?')
+        return;
+    end
+    % Get selected electrodes
+    [sSelElecOld, iSelElecOld] = GetSelectedElectrodes();
+    % Add new electrode assigning a label to it
+    newLabel = [sSelElecOld(1).Name 'group'];
+    AddElectrode(newLabel);
+    % Get new selected electrode structure
+    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
+    % Copy all contacts from all electrodes to the new electrode
+    for i=1:length(sSelElecOld)
+        sSelElec(1).Loc = [sSelElec(1).Loc, sSelElecOld(i).Loc];
+    end
+    % Update electrode properties
+    sSelElec(1).ContactNumber = size(sSelElec(1).Loc, 2);
+    SetElectrodes(iSelElec, sSelElec);
+    % Align contacts automatically
+    AlignContacts(iDS, iFig, 'auto', sSelElec(1), [], 1, 0);
+    % Select ungrouped electrodes for removal
+    SetSelectedElectrodes(iSelElecOld);
+    % Remove selected electrodes
+    RemoveElectrode(0, 0);
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
@@ -1527,10 +1583,14 @@ function AddElectrode(varargin)
 end
 
 %% ===== REMOVE ELECTRODE =====
-% USAGE: isRemoveAll = RemoveElectrode(isRemoveAll)  % 1 = remove all electrodes; 0/[] = remove selected electrode
-function isRemoveAll = RemoveElectrode(isRemoveAll)
+% USAGE: isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)  
+% isRemoveAll: 1 = remove all electrodes; 0/[] = remove selected electrode
+function isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)
     global GlobalData;
     % Parse inputs
+    if nargin < 2 || isempty(isInteractive)
+        isInteractive = 1;
+    end
     if nargin < 1 || isempty(isRemoveAll)
         isRemoveAll = 0;
     end
@@ -1563,7 +1623,7 @@ function isRemoveAll = RemoveElectrode(isRemoveAll)
         end
     end
     % Ask for confirmation
-    if ~java_dialog('confirm', strConfirm)
+    if isInteractive && ~java_dialog('confirm', strConfirm)
         isRemoveAll = 0;
         return;
     end
