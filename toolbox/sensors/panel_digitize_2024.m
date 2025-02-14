@@ -1304,6 +1304,7 @@ function AddMontage(ChannelFile)
         % Intialize new montage
         newMontage.Name = MontageName;
         newMontage.Labels = {};
+        newMontage.ChannelFile = [];
         
         % Open file
         fid = fopen(MontageFile,'r');
