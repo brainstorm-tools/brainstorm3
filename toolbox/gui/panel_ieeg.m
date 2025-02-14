@@ -567,23 +567,35 @@ function GroupElectrodes(isInteractive)
     if isInteractive && ~java_dialog('confirm', 'Group all selected electrodes?')
         return;
     end
+    % Get figure handles
+    [~, ~, iDS] = bst_figures('GetCurrentFigure');
+    % Get channel data
+    Channels = GlobalData.DataSet(iDS(1)).Channel; 
     % Get selected electrodes
     [sSelElecOld, iSelElecOld] = GetSelectedElectrodes();
+    % Find indices of channels belonging to the selected electrodes
+    iChan = ismember({Channels.Group}, {sSelElecOld.Name});
+    % Extract and concatenate contact locations
+    sContactsOld = [Channels(iChan).Loc];
+    % Sort by computing the euclidean distance from origin
+    [~, sortedIdx] = sort(sum(sContactsOld.^2, 1));
+    % Get the sorted coordinates
+    sContactsNew = sContactsOld(:, sortedIdx);
     % Add new electrode assigning a label to it
     newLabel = [sSelElecOld(1).Name 'group'];
     AddElectrode(newLabel);
     % Get new selected electrode structure
     [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
-    % Copy all contacts from all electrodes to the new electrode
-    for i=1:length(sSelElecOld)
-        sSelElec(1).Loc = [sSelElec(1).Loc, sSelElecOld(i).Loc];
-    end
-    % Update electrode properties
-    sSelElec(1).ContactNumber = size(sSelElec(1).Loc, 2);
-    SetElectrodes(iSelElec, sSelElec);
-    % Align contacts automatically
-    AlignContacts(iDS, iFig, 'auto', sSelElec(1), [], 1, 0);
-    % Select ungrouped electrodes for removal
+    % Assign coordinates for electrode tip and skull entry
+    sSelElec.Loc(:, 1) = sContactsNew(:, 1);
+    sSelElec.Loc(:, 2) = sContactsNew(:, end);    
+    % Update electrode contact number
+    sSelElec.ContactNumber = size(sContactsNew, 2);
+    % Set the changed electrode properties
+    SetElectrodes(iSelElec, sSelElec);              
+    % Align contacts
+    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsNew);
+    % Select old electrodes for removal
     SetSelectedElectrodes(iSelElecOld);
     % Remove selected electrodes
     RemoveElectrode(0, 0);
@@ -2877,8 +2889,8 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
-                    case 'gardel'
-                        Channels(iChan(i)).Loc = sContacts(i, :)';
+                    case 'auto'
+                        Channels(iChan(i)).Loc = sContacts(:, i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
