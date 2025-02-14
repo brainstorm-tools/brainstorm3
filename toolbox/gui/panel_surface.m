@@ -839,7 +839,7 @@ function ButtonAddSurfaceCallback(surfaceType)
             typesList = setdiff(typesList, {TessInfo.Name});
         end
         % Nothing more
-        if isempty(typesList)
+        if isempty(typesList) && isempty(sSubject.Surface)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
             return;
         end
