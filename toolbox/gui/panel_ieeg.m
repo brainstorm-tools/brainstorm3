@@ -340,7 +340,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 RemoveElectrode();
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
-            case {'G', 'g'}
+            case 7 % CTRL+G
                 sSelElec = GetSelectedElectrodes();
                 if (length(sSelElec) > 1)
                     GroupElectrodes();
