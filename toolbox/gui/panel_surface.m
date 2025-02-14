@@ -429,7 +429,7 @@ function SliderCallback(hObject, event, target)
                 % Retrieve CT volume index and isoValue from the IsoSurface data
                 [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSrf);            
                 % Ask user if they want to proceed
-                if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold')
+                if ~isempty(isoValue) && ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold')
                     SetIsoValue(isoValue);
                     return
                 end                
@@ -2738,8 +2738,10 @@ function [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSurface)
         iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
         % Search for CT threshold in history
         ctEntry  = regexp(sSurf.History{1, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
-        isoValue = regexp(sSurf.History{1, 3}, 'threshold\s*=\s*(\d+)', 'tokens', 'once');
-        isoValue = str2double(isoValue{1});
+        isoValueEntry = regexp(sSurf.History{1, 3}, 'threshold\s*=\s*(\d+)', 'tokens', 'once');
+        if ~isempty(isoValueEntry)
+            isoValue = str2double(isoValueEntry{1});
+        end
         % Return intersection of the found and then update iCtVol
         if ~isempty(ctEntry)
             [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
