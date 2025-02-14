@@ -64,8 +64,6 @@ ChannelMat.Channel = db_template('channeldesc');
 ChannelMat.Comment = 'Gardel';
 % Assign parsed electrodes data to Brainstorm channel
 numElectrodes = size(Electrodes, 1);
-% Preallocate structure array
-ChannelMat.Channel(numElectrodes).Name = ''; 
 for iElectrode = 1:numElectrodes
     electrodeData = Electrodes(iElectrode,:);    
     % Set channel name and group
