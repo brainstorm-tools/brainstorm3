@@ -72,11 +72,9 @@ for i = 1:nEEG
             Loc = R * Loc + T * ones(1, size(Loc,2));
         end
     end
-    % Fields in order: electrode name, contact number, loc_X, loc_Y, loc_Z, anatomical label id (dummy), anatomical label name (dummy)
-    % Note: dummy anatomical label values will be recomputed when the exported file is loaded into GARDEL tool
-    % TODO: replace the dummy anatomical label values with actual ones computed from Brainstorm
+    % Fields in order: electrode name, contact number, loc_X, loc_Y, loc_Z
     contactNumber = strrep(sChan.Name, sChan.Group, '');
-    fprintf(fid, '%s\t%s\t%3.12f\t%3.12f\t%3.12f\t%d\t%s\n', sChan.Group, contactNumber, Loc, 1, 'grey');
+    fprintf(fid, '%s\t%s\t%3.12f\t%3.12f\t%3.12f\n', sChan.Group, contactNumber, Loc);
 end
 
 % Close file
