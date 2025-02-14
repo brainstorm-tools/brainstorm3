@@ -503,7 +503,7 @@ function AutoElecLabelContLocalize(Method)
                 % Set the changed electrode properties
                 SetElectrodes(iSelElec, sSelElec);              
                 % Align contacts
-                AlignContacts(iDS, iFig, 'gardel', sSelElec, [], 1, 0, sContactsScs);
+                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsScs');
             end
             
         otherwise
