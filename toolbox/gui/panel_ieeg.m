@@ -602,7 +602,7 @@ function GroupElectrodes(isInteractive)
     % Select old electrodes for removal
     SetSelectedElectrodes(iSelElecOld);
     % Remove selected electrodes
-    RemoveElectrode(0, 0);
+    RemoveElectrode(0, 1);
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
