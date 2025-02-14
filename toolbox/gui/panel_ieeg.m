@@ -432,11 +432,8 @@ function AutoElecLabelContLocalize(Method)
     end
     % Get figure handles
     [~, ~, iDS] = bst_figures('GetCurrentFigure');
-    ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-    % Get study
-    sStudy = bst_get('ChannelFile', ChannelFile);
     % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
     % Get all electrodes
     sAllElec = GetElectrodes();
     
@@ -470,6 +467,7 @@ function AutoElecLabelContLocalize(Method)
                 return;
             end     
             sCt = [];
+            infoCt = struct();
             % If a CT volume index was returned, load CT file
             if ~isempty(iCtVol)
                 sCt = bst_memory('LoadMri', sSubject.Anatomy(iCtVol).FileName);
@@ -488,24 +486,24 @@ function AutoElecLabelContLocalize(Method)
             for iElec = 1:size(sElectrodes, 1)
                 % Show progress
                 progressPrc = round(100 .* iElec ./ size(sElectrodes, 1));
-                if progressPrc > 0
-                    bst_progress('set', progressPrc);
-                end
+                bst_progress('set', progressPrc);
                 % Extract contacts for current electrode
                 sContacts = sElectrodes{iElec};
                 % Add electrode assigning a label to it
                 AddElectrode(electrodeLabels{iElec});        
                 % Get selected electrode structure
-                [sSelElec, iSelElec, iDS, iFig, ~] = GetSelectedElectrodes();       
-                % Assign coordinates
-                for iCont = 1:size(sContacts, 1)
-                    sSelElec.Loc(:, iCont) = cs_convert(sCt, 'voxel', 'scs', sContacts(iCont, :));
-                end        
-                % Update electrode properties
+                [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes(); 
+                % VOXEL => SCS coordinates
+                sContactsScs = cs_convert(sCt, 'voxel', 'scs', sContacts);
+                % Assign coordinates for electrode tip and skull entry
+                sSelElec.Loc(:, 1) = sContactsScs(1, :);
+                sSelElec.Loc(:, 2) = sContactsScs(end, :);     
+                % Update electrode contact number
                 sSelElec.ContactNumber = size(sContacts, 1);
-                SetElectrodes(iSelElec, sSelElec);        
-                % Align contacts automatically
-                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0);
+                % Set the changed electrode properties
+                SetElectrodes(iSelElec, sSelElec);              
+                % Align contacts
+                AlignContacts(iDS, iFig, 'gardel', sSelElec, [], 1, 0, sContactsScs);
             end
             
         otherwise
@@ -2770,9 +2768,12 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog, sContacts)
     global GlobalData;
     % Default values
+    if (nargin < 8) || isempty(sContacts)
+        sContacts = [];
+    end
     if (nargin < 7) || isempty(isProjectEcog)
         isProjectEcog = 1;
     end
@@ -2876,9 +2877,8 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
-                    case 'auto'
-                        % Project the existing contact on the depth electrode
-                        Channels(iChan(i)).Loc = sElectrodes(iElec).Loc(:,i);
+                    case 'gardel'
+                        Channels(iChan(i)).Loc = sContacts(i, :)';
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
