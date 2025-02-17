@@ -60,7 +60,7 @@ function Start(varargin)
         'iPoint',           0, ...
         'Transf',           []);
     
-    % Fix old structure (bef 2024) for Digitize.Options.Montages
+    % Update montage struct. ChannelFile is used for Automatic EEG with 3Dscanner (nov 2024)
     if length(Digitize.Options.Montages) > 1 && ~isfield(Digitize.Options.Montages, 'ChannelFile')
         Digitize.Options.Montages(end).ChannelFile = [];
     end
