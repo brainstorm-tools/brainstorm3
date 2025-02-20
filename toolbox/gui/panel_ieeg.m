@@ -445,17 +445,19 @@ function AutoElecLabelContLocalize(Method)
     switch(lower(Method))
         case 'gardel'
             disp('Processing using GARDEL.');
-            % Exit if removal is not confirmed
-            if ~isempty(sAllElec) && ~RemoveElectrode(1)
-                return
-            end
             % Exit if not confirmed
             if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
                                         'image resolution, anatomical variations, and registration errors. <BR>' ...
                                         'Please verify the results carefully. <BR><BR>' ...
+                                        'This will also reset the implantation and remove all electrodes present.<BR><BR>' ...
                                         'Do you want to continue?'], 'Auto detect SEEG electrodes')
                 return
             end 
+            % Remove all electrodes present
+            if ~isempty(sAllElec)
+                SetSelectedElectrodes(1:length(sAllElec));
+                RemoveElectrode(0);
+            end           
             % Get IsoSurface
             iIsoSrf  = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
             % Check if any IsoSurface is available
@@ -561,14 +563,10 @@ function DisplayPanelPopup()
 end
 
 %% ===== GROUP ELECTRODES =====
-function GroupElectrodes(isInteractive)
-    global GlobalData
-    % Parse inputs
-    if nargin < 1 || isempty(isInteractive)
-        isInteractive = 1;
-    end
+function GroupElectrodes()
+    global GlobalData;
     % Ask for confirmation
-    if isInteractive && ~java_dialog('confirm', 'Group all selected electrodes?')
+    if ~java_dialog('confirm', 'Group all selected electrodes?')
         return;
     end
     % Get figure handles
@@ -602,7 +600,7 @@ function GroupElectrodes(isInteractive)
     % Select old electrodes for removal
     SetSelectedElectrodes(iSelElecOld);
     % Remove selected electrodes
-    RemoveElectrode(0, 1);
+    RemoveElectrode(0);
 end
 
 %% ===== UPDATE ELECTRODE LIST =====
@@ -1597,16 +1595,11 @@ function AddElectrode(varargin)
 end
 
 %% ===== REMOVE ELECTRODE =====
-% USAGE: isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)  
-% isRemoveAll: 1 = remove all electrodes; 0/[] = remove selected electrode
-function isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)
+function RemoveElectrode(isInteractive)
     global GlobalData;
     % Parse inputs
-    if nargin < 2 || isempty(isInteractive)
+    if nargin < 1 || isempty(isInteractive)
         isInteractive = 1;
-    end
-    if nargin < 1 || isempty(isRemoveAll)
-        isRemoveAll = 0;
     end
     % Get dataset
     [sElecOld, iDSall, iFigall] = GetElectrodes();
@@ -1617,29 +1610,23 @@ function isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     isImplantation = ~isempty(strfind(folderName, 'Implantation'));
-    % Get electrode
-    if isRemoveAll
-        sSelElec = sElecOld;
-        % Confirmation text
-        strConfirm = ['<HTML>This will remove all the electrodes. Any unsaved electrodes will be lost. <BR><BR>' ...
-                      'Do you want to continue?'];
-    else
-        [sSelElec, iSelElec] = GetSelectedElectrodes();
-        if isempty(iSelElec)
-            java_dialog('warning', 'No electrode selected.', 'Remove color');
-            return
-        end
-        % Confirmation text
+    % Get selected electrode
+    [sSelElec, iSelElec] = GetSelectedElectrodes();
+    if isempty(iSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Remove electrode');
+        return
+    end
+    % Confirmation text
+    if isInteractive
         if (length(sSelElec) == 1)
             strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
         else
             strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
         end
-    end
-    % Ask for confirmation
-    if isInteractive && ~java_dialog('confirm', strConfirm)
-        isRemoveAll = 0;
-        return;
+        % Ask for confirmation
+        if ~java_dialog('confirm', strConfirm)
+            return;
+        end
     end
     % Loop on datasets
     for iDS = unique(iDSall)
@@ -1694,12 +1681,8 @@ function isRemoveAll = RemoveElectrode(isRemoveAll, isInteractive)
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
         end
-        % Delete electrodes
-        if isRemoveAll
-            GlobalData.DataSet(iDS).IntraElectrodes = [];
-        else
-            GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
-        end
+        % Delete selected electrodes
+        GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
