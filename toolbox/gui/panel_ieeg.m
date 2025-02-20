@@ -459,14 +459,14 @@ function AutoElecLabelContLocalize(Method)
             iIsoSrf  = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
             % Check if any IsoSurface is available
             if isempty(iIsoSrf)
-                bst_error('No IsoSurface available.', 'Loading IsoSurface');
+                bst_error('Cannot proceed as GARDEL requires an isoValue for electrode segmentation.', 'Loading IsoSurface');
                 return;
             end
             % Retrieve CT volume index and isoValue from the IsoSurface data
             [iCtVol, isoValue] = panel_surface('GetIsosurfaceData', sSubject, iIsoSrf);
             % Ensure isoValue is available; otherwise, exit with an error
             if isempty(isoValue)
-                bst_error('No isoValue available. Cannot proceed as GARDEL requires it for electrode segmentation.', 'GARDEL: Auto detect SEEG electrodes');
+                bst_error('Cannot proceed as GARDEL requires an isoValue for electrode segmentation.', 'Loading isoValue from IsoSurface');
                 return;
             end     
             sCt = [];
