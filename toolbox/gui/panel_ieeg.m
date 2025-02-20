@@ -431,12 +431,10 @@ function AutoElecLabelContLocalize(Method)
         % Set GARDEL as default method
         Method = 'Gardel';
     end
-    % Get figure handles
-    [~, ~, iDS] = bst_figures('GetCurrentFigure');
-    % Get subject
-    sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
     % Get all electrodes
-    sAllElec = GetElectrodes();
+    [sAllElec, iDS, iFig] = GetElectrodes();
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     
     % Process as per the method
     switch(lower(Method))
@@ -495,18 +493,20 @@ function AutoElecLabelContLocalize(Method)
                 % Add electrode assigning a label to it
                 AddElectrode(electrodeLabels{iElec});        
                 % Get selected electrode structure
-                [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes(); 
+                [sSelElec, iSelElec] = GetSelectedElectrodes(); 
                 % VOXEL => SCS coordinates
                 sContactsScs = cs_convert(sCt, 'voxel', 'scs', sContacts);
-                % Assign coordinates for electrode tip and skull entry
-                sSelElec.Loc(:, 1) = sContactsScs(1, :);
-                sSelElec.Loc(:, 2) = sContactsScs(end, :);     
+                % Sort contacts (distance from origin)
+                sContactsSorted = GetSortedContacts(sContactsScs');
                 % Update electrode contact number
-                sSelElec.ContactNumber = size(sContacts, 1);
+                sSelElec.ContactNumber = size(sContactsSorted, 2);
+                % Set electrode tip and skull entry
+                sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
+                sSelElec.Loc(:, 2) = sContactsSorted(:, end);  
                 % Set the changed electrode properties
                 SetElectrodes(iSelElec, sSelElec);              
                 % Align contacts
-                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsScs');
+                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsSorted);
             end
             
         otherwise
@@ -571,34 +571,30 @@ function GroupElectrodes()
     if ~java_dialog('confirm', 'Group all selected electrodes?')
         return;
     end
-    % Get figure handles
-    [~, ~, iDS] = bst_figures('GetCurrentFigure');
-    % Get channel data
-    Channels = GlobalData.DataSet(iDS(1)).Channel; 
     % Get selected electrodes
-    [sSelElecOld, iSelElecOld] = GetSelectedElectrodes();
+    [sSelElecOld, iSelElecOld, iDS, iFig] = GetSelectedElectrodes();
+    % Get channel data
+    Channels = GlobalData.DataSet(iDS).Channel; 
     % Find indices of channels belonging to the selected electrodes
     iChan = ismember({Channels.Group}, {sSelElecOld.Name});
     % Extract and concatenate contact locations
     sContactsOld = [Channels(iChan).Loc];
-    % Sort by computing the euclidean distance from origin
-    [~, sortedIdx] = sort(sum(sContactsOld.^2, 1));
-    % Get the sorted coordinates
-    sContactsNew = sContactsOld(:, sortedIdx);
+    % Sort contacts (distance from origin)
+    sContactsSorted = GetSortedContacts(sContactsOld);
     % Add new electrode assigning a label to it
     newLabel = [sSelElecOld(1).Name 'group'];
     AddElectrode(newLabel);
     % Get new selected electrode structure
-    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
-    % Assign coordinates for electrode tip and skull entry
-    sSelElec.Loc(:, 1) = sContactsNew(:, 1);
-    sSelElec.Loc(:, 2) = sContactsNew(:, end);    
+    [sSelElec, iSelElec] = GetSelectedElectrodes();
     % Update electrode contact number
-    sSelElec.ContactNumber = size(sContactsNew, 2);
+    sSelElec.ContactNumber = size(sContactsSorted, 2);
+    % Set electrode tip and skull entry
+    sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
+    sSelElec.Loc(:, 2) = sContactsSorted(:, end); 
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);              
     % Align contacts
-    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsNew);
+    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsSorted);
     % Select old electrodes for removal
     SetSelectedElectrodes(iSelElecOld);
     % Remove selected electrodes
@@ -2767,6 +2763,11 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
 
 end
 
+%% ===== GET SORTED CONTACTS (DISTANCE FROM ORIGIN) =====
+function sContactsSorted = GetSortedContacts(sContacts)
+    [~, sortedIdx] = sort(sum(sContacts.^2, 1));
+    sContactsSorted = sContacts(:, sortedIdx);
+end
 
 %% ===== ALIGN CONTACTS =====
 function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog, sContacts)
