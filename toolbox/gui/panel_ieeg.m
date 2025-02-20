@@ -358,10 +358,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % If RIGHT CLICK
         if (ev.getButton() == 3)
             % Popup
-            sSelElec = GetSelectedElectrodes();
-            if (length(sSelElec) > 1)
-                DisplayPanelPopup();
-            end
+            DisplayPanelPopup();
         end
     end
 
@@ -554,11 +551,16 @@ function DisplayPanelPopup()
     import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
 
+    % Get selected electrodes
+    sSelElec = GetSelectedElectrodes();            
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
-    gui_component('MenuItem', jPopup, [], 'Group electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@GroupElectrodes));
+    if (length(sSelElec) > 1)
+        jGroupElec = gui_component('MenuItem', jPopup, [], 'Group electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@GroupElectrodes));
+        jGroupElec.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_MASK));
+    end
     
-    % ==== Display menu ====
+    % Display menu
     gui_popup(jPopup);
 end
 
