@@ -114,5 +114,7 @@ else
         %  UINT16  – Attribute byte count  - 02 bytes
         fwrite(fid, 0, 'int16');
     end
+    % Close file
+    fclose(fid);
 end
 
