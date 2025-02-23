@@ -23,7 +23,7 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire, Francois Tadel, 2020
+% Authors: Edouard Delaire, Francois Tadel, 2020 - 2025
 
 % Install/load JSNIRF Toolbox (https://github.com/NeuroJSON/jsnirfy) as plugin
 if ~exist('loadsnirf', 'file')
@@ -36,27 +36,16 @@ end
 % Load file header
 jnirs = loadsnirf(DataFile);
 
-if isempty(jnirs) || ~isfield(jnirs, 'nirs')
-    error('The file doesnt seems to be a valid SNIRF file');
-end
-
-if length(jnirs.nirs) > 1 ||  length(jnirs.nirs.data) > 1
-    error('Brainstorm doesnt support SNIRF file with multiple data block');
-end
-
-if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
-    warning('SNIRF format doesnt contains source or detector name. Name of the channels might be wrong');
-    jnirs.nirs.probe.sourceLabels = {};
-    jnirs.nirs.probe.detectorLabels = {};
-end
+% Detect and fix common error
+jnirs = detectAndFixError(jnirs);
 
 %% ===== CHANNEL FILE ====
 
 % Get length scaling units
-scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
+lenght_scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 
 % Read optodes positions
-[src_pos, det_pos, has3Dposition] = getOptodesPosition(jnirs, scale);
+[src_pos, det_pos, has3Dposition] = getOptodesPosition(jnirs, lenght_scale);
 
 % Create channel file structure
 if isfield(jnirs.nirs.data, 'measurementLists')
@@ -91,7 +80,7 @@ ChannelMat.Channel      = [ChannelMat.Channel(good_channel) ,  ChannelAux(good_a
 ChannelMat              = fixChannelNames(ChannelMat);
 
 % Add fiducials and head point to ChannelMat
-[ChannelMat, hasLandmark] = updateLandmark(jnirs, scale, ChannelMat);
+[ChannelMat, hasLandmark] = updateLandmark(jnirs, lenght_scale, ChannelMat);
 
 % Read coordinate system
 hasCoordinateSystem = isfield(jnirs.nirs.probe, 'coordinateSystem') && ~isempty(jnirs.nirs.probe.coordinateSystem);
@@ -121,6 +110,38 @@ DataMat.DisplayUnits = getDisplayUnits(channel_type);
 
 end
 
+function jnirs = detectAndFixError(jnirs)
+% Attempt to detect and correct the classical missformating of the snirf
+% data and correct them 
+
+
+    if isempty(jnirs) || ~isfield(jnirs, 'nirs')
+        error('The file doesnt seems to be a valid SNIRF file');
+    end
+    
+    if length(jnirs.nirs) > 1 ||  length(jnirs.nirs.data) > 1
+        error('Brainstorm doesnt support SNIRF file with multiple data block');
+    end
+    
+    if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
+        warning('SNIRF format doesnt contains source or detector name. Name of the channels might be wrong');
+        jnirs.nirs.probe.sourceLabels = {};
+        jnirs.nirs.probe.detectorLabels = {};
+    end
+
+
+    % Detect the miss-naming of measurmentList vs measurmentLists
+    if isfield(jnirs.nirs.data , 'measurementList' ) && length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
+        jnirs.nirs.data.measurementLists = jnirs.nirs.data.measurementList;
+        jnirs.nirs.data =  rmfield(jnirs.nirs.data,  'measurementList');
+
+    end
+    
+
+
+end
+
+
 function Device      = readDeviceName(metaDataTags)
     
     if isfield(metaDataTags, 'Model') && isfield(metaDataTags, 'ManufacturerName') 
@@ -138,11 +159,20 @@ function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
     TimeOfStudy = [];
 
     if isfield(metaDataTags,'MeasurementDate') && ~isempty(metaDataTags.MeasurementDate)
-        DateOfStudy = datetime(toLine(metaDataTags.MeasurementDate),'InputFormat','yyyy-MM-dd');
+        try
+            DateOfStudy = datetime(toLine(metaDataTags.MeasurementDate),'InputFormat','yyyy-MM-dd');
+        catch
+            warning('Unable to read the Measurement Date')
+        end
     end
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
-        TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
+        try
+            TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
+        catch
+            warning('Unable to read the Measurement Time')
+        end
+        
     end
 
 end 
@@ -621,3 +651,4 @@ function DisplayUnits = getDisplayUnits(channel_type)
         DisplayUnits = '';
     end
 end
+
