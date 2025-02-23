@@ -143,6 +143,10 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels = convertCharsToStrings(jnirs.nirs.probe.detectorLabels);
     end
 
+    % Events. Convert cell array to struct array
+    if iscell(jnirs.nirs.stim)
+       jnirs.nirs.stim =  cell2mat(jnirs.nirs.stim);
+    end
 
     % Convert all measurementList to be array-of-struct
     if isfield(jnirs.nirs.data , 'measurementList' ) 
