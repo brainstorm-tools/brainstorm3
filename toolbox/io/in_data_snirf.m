@@ -48,13 +48,7 @@ lenght_scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 [src_pos, det_pos, has3Dposition] = getOptodesPosition(jnirs, lenght_scale);
 
 % Create channel file structure
-if isfield(jnirs.nirs.data, 'measurementLists')
-    [ChannelMat,good_channel,channel_type, data_scale] = channelMat_from_measurementLists(jnirs,src_pos,det_pos);
-elseif isfield(jnirs.nirs.data, 'measurementList')
-    [ChannelMat, good_channel,channel_type, data_scale] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
-else
-    error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
-end
+[ChannelMat, good_channel,channel_type, data_scale] = channelMat_from_measurementList(jnirs,src_pos,det_pos);
 
 
 if ~any(good_channel) 
@@ -130,14 +124,15 @@ function jnirs = detectAndFixError(jnirs)
     end
 
 
-    % Detect the miss-naming of measurmentList vs measurmentLists
+    % Convert all measurementList to be array-of-struct
     if isfield(jnirs.nirs.data , 'measurementList' ) && length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
-        jnirs.nirs.data.measurementLists = jnirs.nirs.data.measurementList;
-        jnirs.nirs.data =  rmfield(jnirs.nirs.data,  'measurementList');
-
+        jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
+    elseif isfield(jnirs.nirs.data , 'measurementLists' )
+        jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
+    else
+        error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
     end
     
-
 
 end
 
@@ -267,97 +262,6 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
        
     end
 
-end
-
-function [ChannelMat,good_channel,channel_type, factor] = channelMat_from_measurementLists(jnirs,src_pos,det_pos)
-    % Create channel file structure
-    ChannelMat = db_template('channelmat');
-    ChannelMat.Comment = 'NIRS-BRS channels';
-    
-    if isfield(jnirs.nirs.probe, 'wavelengths') && ~isempty(jnirs.nirs.probe.wavelengths)
-        ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
-    end
-
-    measurementLists = jnirs.nirs.data.measurementLists;
-
-    % Get number of channels
-    nChannels = length(measurementLists.dataType);
-    good_channel = true(1,nChannels);
-    channel_type = cell(1,nChannels);
-    factor       = ones(1, nChannels);
-
-    
-    % NIRS channels
-    for iChan = 1:nChannels
-
-        % Check data type for the channel 
-        if measurementLists.dataType(iChan) == 1
-            measure = round(jnirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
-            measure_label = sprintf('WL%d', measure);
-            channel_type{iChan} = 'raw'; 
-        elseif measurementLists.dataType(iChan) > 1 &&  measurementLists.dataType(iChan) < 99999
-            warning('Unsuported channel %d (channel type %d)', iChan, measurementLists.dataType(iChan))
-            good_channel(iChan) = false;
-            continue;
-        elseif measurementLists.dataType(iChan)  == 99999
-            if ~isfield(channel,'dataTypeLabel')
-                warning('Missing dataTypeLabel for channel %d')
-                good_channel(iChan) = false;
-                continue;
-            elseif ~any(strcmp(clean_str(measurementLists.dataTypeLabel(iChan)), {'dOD','HbO','HbR','HbT','HRF dOD', 'HRF HbO','HRF HbR','HRF HbT',}))
-                warning('%s is not yet supported by NIRSTORM.', clean_str(measurementLists.dataTypeLabel(iChan)))
-                good_channel(iChan) = false;
-                continue;
-            else
-                switch(clean_str(measurementLists.dataTypeLabel(iChan)))
-                    case {'dOD','HRF dOD'}
-                        measure = round(nirs.nirs.probe.wavelengths(measurementLists.wavelengthIndex(iChan)));
-                        measure_label = sprintf('WL%d', measure);
-                        channel_type{iChan} = 'dOD'; 
-                    case {'HbO','HRF HbO'}
-                        measure = 'HbO';
-                        measure_label = measure;
-                        channel_type{iChan} = 'dHb'; 
-                    case {'HbR','HRF HbR'}
-                        measure = 'HbR';
-                        measure_label  = measure;
-                        channel_type{iChan} = 'dHb'; 
-                    case {'HbT','HRF HbT'}
-                        measure = 'HbT';
-                        measure_label  = measure;
-                        channel_type{iChan} = 'dHb'; 
-                end
-            end
-        end
-
-
-        % This assume measure are raw; need to change for Hbo,HbR,HbT
-        if isempty(jnirs.nirs.probe.sourceLabels) || isempty(jnirs.nirs.probe.detectorLabels)
-            [ChannelMat.Channel(iChan).Name, ChannelMat.Channel(iChan).Group] = nst_format_channel(measurementLists.sourceIndex(iChan), measurementLists.detectorIndex(iChan), measure); 
-        else
-    
-            ChannelMat.Channel(iChan).Name = sprintf('%s%s%s', jnirs.nirs.probe.sourceLabels(measurementLists.sourceIndex(iChan)), ...
-                                                               jnirs.nirs.probe.detectorLabels(measurementLists.detectorIndex(iChan)), ...
-                                                               measure_label);
-
-            ChannelMat.Channel(iChan).Name = TxRxtoSD(ChannelMat.Channel(iChan).Name);
-            ChannelMat.Channel(iChan).Group = measure_label;
-    
-        end
-
-        ChannelMat.Channel(iChan).Type = 'NIRS';
-        ChannelMat.Channel(iChan).Weight = 1;
-        if ~isempty(src_pos) && ~isempty(det_pos)
-            ChannelMat.Channel(iChan).Loc(:,1) = src_pos(measurementLists.sourceIndex(iChan), :);
-            ChannelMat.Channel(iChan).Loc(:,2) = det_pos(measurementLists.detectorIndex(iChan), :);
-            ChannelMat.Channel(iChan).Orient  = [];
-            ChannelMat.Channel(iChan).Comment = [];
-        end
-
-        if isfield(measurementLists, 'dataUnit') && ~isempty(measurementLists.dataUnit(iChan))
-            factor(iChan) = findFactorFromUnit(measurementLists.dataUnit(iChan),channel_type{iChan});
-        end
-    end
 end
 
 function vect = toColumn(vect, exp_size)
