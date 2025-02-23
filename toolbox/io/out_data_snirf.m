@@ -60,6 +60,7 @@ end
 
 % Set landmark position (eg fiducials) 
 n_landmark=length(ChannelMatOut.HeadPoints.Label);
+
 snirfdata.SNIRFData.probe.landmarkPos=zeros(n_landmark,3);
 for i_landmark=1:n_landmark
     snirfdata.SNIRFData.probe.landmarkPos(i_landmark,:)=ChannelMatOut.HeadPoints.Loc(:,i_landmark)';
@@ -101,20 +102,37 @@ for ichan=1:n_channel
 end
 
 % Set Measurment list
+
+isProcessed = contains(DataMat.DisplayUnits, 'OD') || contains(DataMat.DisplayUnits, 'mol');
+if isProcessed
+    snirfdata.SNIRFData.data.measurementList.dataTypeLabel = '';
+end
+
 for ichan=1:n_channel
-    measurement=struct('sourceIndex',[],'detectorIndex',[],...
-              'wavelengthIndex',[],'dataType',1,'dataTypeIndex',1); 
+    measurement=struct('sourceIndex',[],'detectorIndex', [], 'wavelengthIndex', [], 'dataType',1, 'dataTypeIndex', 1, 'dataTypeLabel', ''); 
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
 
     measurement.sourceIndex     = find(src_Index == isrc);
     measurement.detectorIndex   = find(det_Index == idet);
-    measurement.wavelengthIndex = find(ChannelMatOut.Nirs.Wavelengths==chan_measures);
 
-    snirfdata.SNIRFData.data.measurementList(ichan)=measurement;      
+
+    [measurement.dataType,  dataTypeLabel] = getDataType(ChannelMatOut.Channel(ichan), DataMat.DisplayUnits);
+
+    if measurement.dataType > 1
+        measurement.dataTypeLabel = dataTypeLabel;
+    end
+
+    if ~contains(dataTypeLabel, {'HbO', 'HbR', 'HbT'})
+        measurement.wavelengthIndex = find(ChannelMatOut.Nirs.Wavelengths==chan_measures);
+    end
+    
+    snirfdata.SNIRFData.data.measurementList(ichan) = measurement;      
 
 end 
 
-snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
+if isfield(ChannelMatOut,'Nirs') && isfield(ChannelMatOut.Nirs, 'Wavelengths')
+    snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
+end
 
 snirfdata.SNIRFData.probe.sourcePos2D=src_pos(:,[1,2]);
 snirfdata.SNIRFData.probe.sourcePos3D=src_pos;
@@ -162,9 +180,27 @@ end
 % Save snirf file. 
 savesnirf(snirfdata, ExportFile);
 
+end
 
 
+function [dataType, dataTypeLabel] = getDataType(Channel, Unit)
 
+    [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({Channel.Name});
+
+    if contains(Unit, 'OD')
+        dataType        = 99999;
+        dataTypeLabel   = 'dOD';
+    else
+
+        if measure_type > 1 && contains(chan_measures, {'HbO', 'HbR', 'HbT'})
+            dataType        = 99999;
+            dataTypeLabel   = chan_measures;
+        else
+            dataType        = 1;
+            dataTypeLabel   = '';
+        end
+    end
+end
 
 
 

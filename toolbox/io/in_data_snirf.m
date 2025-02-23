@@ -125,11 +125,13 @@ function jnirs = detectAndFixError(jnirs)
 
 
     % Convert all measurementList to be array-of-struct
-    if isfield(jnirs.nirs.data , 'measurementList' ) && length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
-        jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
+    if isfield(jnirs.nirs.data , 'measurementList' ) 
+        if length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
+            jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
+        end
     elseif isfield(jnirs.nirs.data , 'measurementLists' )
         jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
-    else
+    else 
         error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
     end
     
