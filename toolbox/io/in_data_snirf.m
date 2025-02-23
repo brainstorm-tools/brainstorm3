@@ -33,8 +33,12 @@ if ~exist('loadsnirf', 'file')
     end
 end
 
-% Load file header
-jnirs = loadsnirf(DataFile);
+[~, ~, DataType] = fileparts(DataFile);
+
+
+% Load file
+jnirs = loadjsnirf(DataFile);
+
 
 % Detect and fix common error
 jnirs = detectAndFixError(jnirs);
@@ -109,8 +113,16 @@ function jnirs = detectAndFixError(jnirs)
 % data and correct them 
 
 
-    if isempty(jnirs) || ~isfield(jnirs, 'nirs')
+    if isempty(jnirs) 
         error('The file doesnt seems to be a valid SNIRF file');
+    end
+
+    if ~isfield(jnirs, 'nirs') 
+        if isfield(jnirs,'SNIRFData') && ~isempty(jnirs.SNIRFData)
+            jnirs.nirs = jnirs.SNIRFData;
+        else
+            error('The file doesnt seems to be a valid SNIRF file');
+        end
     end
     
     if length(jnirs.nirs) > 1 ||  length(jnirs.nirs.data) > 1
