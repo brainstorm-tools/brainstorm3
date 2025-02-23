@@ -997,6 +997,10 @@ switch (lower(action))
                     if ~bst_get('ReadOnly')
                         gui_component('MenuItem', jMenuAlign, [], 'Refine using head points', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_auto(filenameRelative, [], 1, 0));
                     end
+                    if ~bst_get('ReadOnly') && ~isempty(DisplayMod) && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'})) && any(ismember(DisplayMod,{'EEG','NIRS'}))
+                        AddSeparator(jMenuAlign);
+                        gui_component('MenuItem', jMenuAlign, [], 'Scalp scouts from scalp sensors', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_scout_channels(filenameRelative, 'Scalp', {'EEG', 'NIRS'}));
+                    end
                     
                     % === MENU: EXTRA HEAD POINTS ===
                     jMenuHeadPoints = gui_component('Menu', jPopup, [], 'Digitized head points', IconLoader.ICON_CHANNEL, [], []);
@@ -3128,8 +3132,8 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         % === MESH FROM THRESHOLD CT ===
         if (length(iAnatomy) <= 1) && isCt
             if ~isempty(sSubject.iAnatomy)
-                gui_component('MenuItem', jMenu, [], 'SPM: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(iAnatomy).FileName, 'SPM'));
-                gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(iAnatomy).FileName, 'BrainSuite'));
+                gui_component('MenuItem', jMenu, [], 'SPM: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'SPM'));
+                gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'BrainSuite'));
             end
             gui_component('MenuItem', jMenu, [], 'Generate threshold mesh from CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isosurface(MriFile));
         end

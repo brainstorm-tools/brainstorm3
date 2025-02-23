@@ -1,3 +1,9 @@
+December 2024
+- Anatomy: Copy/Paste scout operations
+- Anatomy: Scalp scouts from sensor positions
+- Distrib: Compilation with Matlab 2024a
+- Distrib: Compilation with Matlab 2024b
+--------------------------------------------------------------
 November 2024
 - SEEG/ECOG: Allow iEEG implantation using MRI and/or CT and/or IsoSurface
 - Registration: Manual and auto localization of EEG sensors with 3D scanner mesh

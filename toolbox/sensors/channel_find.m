@@ -61,7 +61,7 @@ for i = 1:length(target)
     else
         iChan = find(strcmpi(allNames, target{i}));
         % Search for NIRS channels using Source, Detector or Wavelength
-        if ismember('NIRS', allTypes)
+        if isempty(iChan) && ismember('NIRS', allTypes)
             % Find tokens in provided target
             % Token 1: Source,               e.g. 'S1'
             % Token 2: Detector,             e.g. 'D1'

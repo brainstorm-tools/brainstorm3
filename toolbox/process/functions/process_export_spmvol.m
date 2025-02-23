@@ -301,7 +301,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Else: Compute interpolation matrix grid points => MRI voxels
                     else
                         sMri.FileName = MriFile;
-                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResudltsMat.DisplayUnits, {'s','ms','t'});
+                        GridSmooth = isempty(ResultsMat.DisplayUnits) || ~ismember(ResultsMat.DisplayUnits, {'s','ms','t'});
                         switch (ResultsMat.HeadModelType)
                             case 'volume'
                                 % Compute interpolation

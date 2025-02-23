@@ -68,6 +68,11 @@ function Start(varargin) %#ok<DEFNU>
             'headshape',[], ...
             'trans',    []));
     
+    % Update montage struct. ChannelFile is used for Automatic EEG with 3Dscanner (nov 2024)
+    if length(Digitize.Options.Montages) > 1 && ~isfield(Digitize.Options.Montages, 'ChannelFile')
+        Digitize.Options.Montages(end).ChannelFile = [];
+    end
+
     % ===== PARSE INPUT =====
     DigitizerType = 'Digitize';
     sSubject = [];
@@ -1107,7 +1112,7 @@ function ManualCollect_Callback()
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation: call the callback directly
     if DigitizeOptions.isSimulate
-        BytesAvailable_Callback();
+        BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
         % User clicked the button, collect a point
@@ -1680,6 +1685,7 @@ function AddMontage(ChannelFile)
         % Intialize new montage
         newMontage.Name = MontageName;
         newMontage.Labels = {};
+        newMontage.ChannelFile = [];
         
         % Open file
         fid = fopen(MontageFile,'r');
@@ -1933,7 +1939,7 @@ end
 
 
 %% ===== BYTES AVAILABLE CALLBACK =====
-function BytesAvailable_Callback() 
+function BytesAvailable_Callback(h, ev)
     global Digitize rawpoints
 
     % Get controls
