@@ -103,15 +103,13 @@ end
 
 % Set Measurment list
 
-isProcessed = contains(DataMat.DisplayUnits, 'OD') || contains(DataMat.DisplayUnits, 'mol');
+isProcessed = ~isempty(DataMat.DisplayUnits) && ( contains(DataMat.DisplayUnits, {'OD', 'mol'}) );
 if isProcessed
     snirfdata.SNIRFData.data.measurementList.dataTypeLabel = '';
-
-
 end
 
 for ichan=1:n_channel
-    measurement=struct('sourceIndex',[],'detectorIndex', [], 'wavelengthIndex', [], 'dataType',1, 'dataTypeIndex', 1, 'dataTypeLabel', ''); 
+    measurement=struct('sourceIndex',[],'detectorIndex', [], 'wavelengthIndex', [], 'dataType',1, 'dataTypeIndex', 1); 
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
 
     measurement.sourceIndex     = find(src_Index == isrc);
@@ -131,7 +129,7 @@ for ichan=1:n_channel
     snirfdata.SNIRFData.data.measurementList(ichan) = measurement;      
 end 
 
-if contains(DataMat.DisplayUnits, 'mol')
+if isProcessed && contains(DataMat.DisplayUnits, 'mol')
     [snirfdata.SNIRFData.data.measurementList.dataUnit]  = deal(DataMat.DisplayUnits);
 end
 
@@ -192,19 +190,18 @@ end
 function [dataType, dataTypeLabel] = getDataType(Channel, Unit)
 
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({Channel.Name});
-
-    if contains(Unit, 'OD')
+    
+    if isempty(Unit)
+        dataType        = 1;
+        dataTypeLabel   = '';
+    elseif contains(Unit, 'OD')
         dataType        = 99999;
         dataTypeLabel   = 'dOD';
+    elseif contains(chan_measures, {'HbO', 'HbR', 'HbT'})
+        dataType        = 99999;
+        dataTypeLabel   = chan_measures;
     else
-
-        if measure_type > 1 && contains(chan_measures, {'HbO', 'HbR', 'HbT'})
-            dataType        = 99999;
-            dataTypeLabel   = chan_measures;
-        else
-            dataType        = 1;
-            dataTypeLabel   = '';
-        end
+        error('Unable to detect the unit of the file')
     end
 end
 
