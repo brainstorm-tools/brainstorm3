@@ -84,9 +84,9 @@ for ichan=1:n_channel
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(ichan).Name});
 
     if ~any(cellfun(@(x)strcmp(x, sprintf('S%d',isrc )), src_label))
-        src_label(nSrc) = sprintf("S%d",isrc );
+        src_label(nSrc) = sprintf("S%d", isrc);
         src_Index(nSrc) = isrc;
-        src_pos(nSrc,:)=ChannelMatOut.Channel(ichan).Loc(:,1)';
+        src_pos(nSrc,:) = ChannelMatOut.Channel(ichan).Loc(:,1)';
 
         nSrc = nSrc + 1;
     end
@@ -94,7 +94,7 @@ for ichan=1:n_channel
     if ~any(cellfun(@(x)strcmp(x, sprintf('D%d',idet )), det_label))
         det_label(nDet) = sprintf("D%d",idet );
         det_Index(nDet) = idet;
-        det_pos(nDet,:)=ChannelMatOut.Channel(ichan).Loc(:,2)';
+        det_pos(nDet,:) = ChannelMatOut.Channel(ichan).Loc(:,2)';
 
         nDet = nDet + 1;
     end
@@ -106,6 +106,8 @@ end
 isProcessed = contains(DataMat.DisplayUnits, 'OD') || contains(DataMat.DisplayUnits, 'mol');
 if isProcessed
     snirfdata.SNIRFData.data.measurementList.dataTypeLabel = '';
+
+
 end
 
 for ichan=1:n_channel
@@ -127,8 +129,12 @@ for ichan=1:n_channel
     end
     
     snirfdata.SNIRFData.data.measurementList(ichan) = measurement;      
-
 end 
+
+if contains(DataMat.DisplayUnits, 'mol')
+    [snirfdata.SNIRFData.data.measurementList.dataUnit]  = deal(DataMat.DisplayUnits);
+end
+
 
 if isfield(ChannelMatOut,'Nirs') && isfield(ChannelMatOut.Nirs, 'Wavelengths')
     snirfdata.SNIRFData.probe.wavelengths=ChannelMatOut.Nirs.Wavelengths;
