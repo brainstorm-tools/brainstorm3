@@ -33,12 +33,9 @@ if ~exist('loadsnirf', 'file')
     end
 end
 
-[~, ~, DataType] = fileparts(DataFile);
-
 
 % Load file
 jnirs = loadjsnirf(DataFile);
-
 
 % Detect and fix common error
 jnirs = detectAndFixError(jnirs);
