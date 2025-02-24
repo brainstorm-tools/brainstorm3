@@ -417,11 +417,14 @@ function timefreqMat = CompareToNormDistrib(timefreqMat, normDistrib, options)
             signif = (z_scores < normDistrib.percentiles(:, :, 1)) | (z_scores > normDistrib.percentiles(:, :, 2));
         end
         outValue = signif;
+        outUnit  = 'significant deviation';
     else
         outValue = z_scores;
+        outUnit  = 'z';
     end
     % Restore time dimenstion
     timefreqMat.TF = permute(outValue, [1,3,2]);
+    timefreqMat.DisplayUnits = outUnit;
 end
 
 
@@ -429,7 +432,7 @@ end
 function output = SaveData(sInputA, sInputsB, tfMat, options)
     % Add comment, change filename and save
     tfMat.ColormapType = 'stat2';
-
+    tfMat.Measure      = 'other';
     % Get file comment from options
     tfMat.Comment = GetComment(tfMat, options);
 
