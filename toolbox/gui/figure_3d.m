@@ -1287,6 +1287,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
                     end
+                    % For iEEG panel
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('RemoveContact');
+                    end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
                     % Remove selection cross
