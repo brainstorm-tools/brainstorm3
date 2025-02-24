@@ -438,7 +438,11 @@ function output = SaveData(sInputA, sInputsB, tfMat, options)
 
     % History
     tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('File compared to normative: %s', sInputA.FileName));
-    tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('devLevel = %.2f, isNorm = %d, isLog10 = %d', options.DevLevel, options.IsNormal, options.IsLog));
+    if options.IsTest
+        tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('devLevel = %.2f, isNorm = %d, isLog10 = %d', options.DevLevel, options.IsNormal, options.IsLog));
+    else
+        tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('z-scores, isLog10 = %d', options.IsLog));
+    end
     % History: List files used for normative
     tfMat = bst_history('add', tfMat, 'comp2norm', 'List of files used for normative distribution:');
     for i = 1:length(sInputsB)
