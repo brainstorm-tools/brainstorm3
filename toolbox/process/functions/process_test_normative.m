@@ -412,11 +412,13 @@ function timefreqMat = CompareToNormDistrib(timefreqMat, normDistrib, options)
     if options.IsTest
         % Identify z_scores that are significantly different from the normative distribution
         if options.IsNormal
-            signif = abs(z_scores) > normDistrib.norm_percentile;
+            signif_neg = (z_scores < -(normDistrib.norm_percentile))*(-1);
+            signif_pos = (z_scores > normDistrib.norm_percentile);
         else
-            signif = (z_scores < normDistrib.percentiles(:, :, 1)) | (z_scores > normDistrib.percentiles(:, :, 2));
+            signif_neg = (z_scores < normDistrib.percentiles(:, :, 1))*(-1);
+            signif_pos = (z_scores > normDistrib.percentiles(:, :, 2));
         end
-        outValue = signif;
+        outValue = signif_neg + signif_pos;
         outUnit  = 'significant deviation';
     else
         outValue = z_scores;
