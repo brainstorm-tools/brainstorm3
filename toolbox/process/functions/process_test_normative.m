@@ -27,7 +27,8 @@ function varargout = process_test_normative( varargin )
 % =============================================================================@
 %
 % Authors: Pauline Amrouche, 2024
-%          Raymundo Cassani, 2024
+%          Raymundo Cassani, 2024-2025
+%          Lindsey Power,    2024
 
 eval(macro_method);
 end
