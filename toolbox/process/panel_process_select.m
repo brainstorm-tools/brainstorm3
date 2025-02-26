@@ -1027,7 +1027,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jCheck.setSelected(isSelected);
                     % If class controller not selected, toggle off class
                     if ~isSelected && isfield(option, 'Controller') && ~isempty(option.Controller)
-                        ClassesToToggleOff{end+1} = option.Controller;
+                        [~, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, option.Controller);
+                        ClassesToToggleOff = [ClassesToToggleOff, {option.Controller}, nestClasses];
                     end
                 case 'radio'
                     jButtonGroup = javax.swing.ButtonGroup();
@@ -1050,8 +1051,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % If class controller not selected, toggle off class
                     if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
                         for f = fieldnames(option.Controller)'
+                            [~, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, f{1});
                             if ~strcmpi(f{1}, option.Value) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value) && isequal(option.Controller.(option.Value), option.Controller.(f{1})))
-                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                                ClassesToToggleOff = [ClassesToToggleOff, option.Controller.(f{1}), nestClasses];
                             end
                         end
                     end
@@ -1078,8 +1080,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % If class controller not selected, toggle off class
                     if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
                         for f = fieldnames(option.Controller)'
+                            [~, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, f{1});
                             if ~strcmpi(f{1}, option.Value) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value) && isequal(option.Controller.(option.Value), option.Controller.(f{1})))
-                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                                ClassesToToggleOff = [ClassesToToggleOff, option.Controller.(f{1}), nestClasses];
                             end
                         end
                     end
@@ -1110,8 +1113,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % If class controller not selected, toggle off class
                     if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
                         for f = fieldnames(option.Controller)'
+                            [~, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, f{1});
                             if ~strcmpi(f{1}, option.Value{1}) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value{1}) && isequal(option.Controller.(option.Value{1}), option.Controller.(f{1})))
-                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                                ClassesToToggleOff = [ClassesToToggleOff, option.Controller.(f{1}), nestClasses];
                             end
                         end
                     end
@@ -2353,7 +2357,21 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         if isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
             opt = GlobalData.Processes.Current(iProcess).options.(optName);
             if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
-                ToggleClass(opt.Controller, value);
+                % Find dependent options with controllers (recursive)
+                [nestOptNames, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, opt.Controller);
+                if value
+                    ToggleClass(opt.Controller, value);
+                    % Set values to nest options to enable/disable their controlled classes
+                    for iNestOpt = 1 : length(nestOptNames)
+                        SetOptionValue(iProcess, nestOptNames{iNestOpt}, GlobalData.Processes.Current(iProcess).options.(nestOptNames{iNestOpt}).Value)
+                    end
+                else
+                    % Disable controller and all nested options
+                    ClassesToToggleOff = [{opt.Controller}, nestClasses];
+                    for iClass = 1:length(ClassesToToggleOff)
+                        ToggleClass(ClassesToToggleOff{iClass}, value);
+                    end
+                end
             elseif ismember(optType, {'radio_label', 'radio_linelabel', 'combobox_label'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
                 if strcmpi(optType, 'combobox_label')
                     value = value{1};
@@ -2363,7 +2381,21 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     if ~strcmp(cl{1}, value) && isfield(opt.Controller, value) && isequal(opt.Controller.(cl{1}), opt.Controller.(value))
                         continue
                     end
-                    ToggleClass(opt.Controller.(cl{1}), strcmp(cl{1}, value));
+                    % Find dependent options with controllers (recursive)
+                    [nestOptNames, nestClasses] = FindNestOptions(GlobalData.Processes.Current(iProcess).options, cl{1});
+                    if strcmpi(cl{1}, value)
+                        ToggleClass(opt.Controller.(cl{1}), 1);
+                        % Set values to nest options to enable/disable their controlled classes
+                        for iNestOpt = 1 : length(nestOptNames)
+                            SetOptionValue(iProcess, nestOptNames{iNestOpt}, GlobalData.Processes.Current(iProcess).options.(nestOptNames{iNestOpt}).Value)
+                        end
+                    else
+                        % Disable controller and all nested options
+                        ClassesToToggleOff = [opt.Controller.(cl{1}), nestClasses];
+                        for iClass = 1:length(ClassesToToggleOff)
+                            ToggleClass(ClassesToToggleOff{iClass}, 0);
+                        end
+                    end
                 end
             end
         end
@@ -2805,6 +2837,35 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             end
         end
     end
+
+    %% ===== FIND NESTED OPTIONS WITH CONTROLLER =====
+    function [nestOptNames, nestClasses] = FindNestOptions(options, className)
+        optNames = fieldnames(options);
+        searchClasses{1} = className;
+        nestOptNames = {};
+        nestClasses  = {};
+        while ~isempty(searchClasses)
+            for iOpt =  1: length(optNames)
+                optTmp = options.(optNames{iOpt});
+                if isfield(optTmp, 'Class') && strcmpi(optTmp.Class, searchClasses{1}) && isfield(optTmp, 'Controller') && ~isempty(optTmp.Controller)
+                    if isstruct(optTmp.Controller)
+                        nestClass = {};
+                        for f = fieldnames(optTmp.Controller)'
+                            nestClass{end+1} = optTmp.Controller.(f{1});
+                        end
+                    else
+                        nestClass = {optTmp.Controller};
+                    end
+                    nestOptNames  = [nestOptNames, optNames(iOpt)];
+                    nestClasses   = [nestClasses, nestClass];
+                    searchClasses = [searchClasses, nestClass];
+                end
+            end
+            searchClasses(1) = [];
+        end
+    end
+
+
 end
 
 
