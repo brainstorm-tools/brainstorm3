@@ -69,8 +69,10 @@ function Start(varargin) %#ok<DEFNU>
             'trans',    []));
     
     % Update montage struct. ChannelFile is used for Automatic EEG with 3Dscanner (nov 2024)
-    if length(Digitize.Options.Montages) > 1 && ~isfield(Digitize.Options.Montages, 'ChannelFile')
-        Digitize.Options.Montages(end).ChannelFile = [];
+    DigitizeOptions = bst_get('DigitizeOptions');
+    if length(DigitizeOptions.Montages) > 1 && ~isfield(DigitizeOptions.Montages, 'ChannelFile')
+        DigitizeOptions.Montages(end).ChannelFile = [];
+        bst_set('DigitizeOptions', DigitizeOptions);
     end
 
     % ===== PARSE INPUT =====
