@@ -1,3 +1,11 @@
+February 2025
+- Anatomy: Import MRI BESA volumes and surfaces
+- Anatomy: Export surfaces as STL files
+- Process: Add frequency band support to process PSD features
+- Process: Add z-score output to process Compare to normative PSD
+- Process: GUI, handle nested controller-classes in process options
+- Distrib: Compilation with Matlab 2025a
+--------------------------------------------------------------
 December 2024
 - Anatomy: Copy/Paste scout operations
 - Anatomy: Scalp scouts from sensor positions
