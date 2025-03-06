@@ -124,6 +124,9 @@ if isempty(hFig)
     error('No reference surface available');
 end
 hold on
+% Hide scouts
+scoutsOptions = panel_scout('GetScoutsOptions');
+panel_scout('SetScoutsOptions', scoutsOptions.overlayScouts, scoutsOptions.overlayConditions, scoutsOptions.displayAbsolute, 'none');
 % Set orientation: left
 figure_3d('SetStandardView', hFig, 'left');
 % Update figure name
