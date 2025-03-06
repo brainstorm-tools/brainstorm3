@@ -15,6 +15,7 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %    - jParent  : Handle to the parent JFrame. 
 %                 If no parent, or unknown, set to [].
 %    - OPTIONS  : Depends on the dialog type
+%                  - 'msgbox'   : OPTIONS = isModal. If not set, isModal=1
 %                  - 'question' : OPTIONS = buttonList
 %                                 OPTIONS = buttonList, defaultButton
 %                  - 'combo'    : OPTIONS = buttonList
@@ -68,6 +69,7 @@ global GlobalData;
 
 % Java imports
 import org.brainstorm.dialogs.*;
+% import java.awt.*;
 
 % Get brainstorm frame
 jBstFrame = bst_get('BstFrame');
@@ -204,7 +206,18 @@ switch(lower(msgType))
         if isempty(msgTitle)
             msgTitle = 'Information';
         end
-        java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        isModal = 1;
+        if ~isempty(varargin)
+            isModal = varargin{1};
+        end
+        if isModal
+            java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        else
+            optionPane = java_create('javax.swing.JOptionPane', 'Ljava.lang.String;I', msg, javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            dialog = optionPane.createDialog(jParent, msgTitle);
+            java_call(dialog, 'setModal',   'Z', 0);
+            java_call(dialog, 'setVisible', 'Z', 1);
+        end
         isCancel = 0;
         res = 1;
     case 'confirm'
