@@ -39,10 +39,14 @@ end
 
 %% ===== START EXTERNAL GARDEL TOOL FROM BRAINSTORM =====
 if ~java_dialog('confirm', ['Warning: Switching from Brainstorm to GARDEL external tool.' 10 ...
-                            'This will hide the Brainstorm GUI.' 10 10 ...
+                            'This will close all figures and hide the Brainstorm GUI.' 10 10 ...
                             'Do you want to continue?'], 'Start GARDEL tool')
     return
 end
+
+% Unload everything
+bst_memory('UnloadAll', 'Forced');
+
 % Check for GARDEL plugin installation
 [isInstalledGardel, errMsg] = bst_plugin('Install', 'gardel');
 if ~isInstalledGardel
