@@ -169,7 +169,6 @@ end
 % Load MRI
 isNormalize = 0;
 sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
-sCtRaw = [];
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -180,7 +179,8 @@ if iscell(MriFile)
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
-
+% For Raw CT
+sCtRaw = [];
 
 %% ===== DELETE TEMPORARY FILES =====
 if ~isempty(TmpDir)
@@ -227,7 +227,14 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     refMriFile = sSubject.Anatomy(1).FileName;
     sMriRef = in_mri_bst(refMriFile);
     % Store raw CT
-    if isCt && java_dialog('confirm', 'Add unprocessed raw CT to database? (required for GARDEL)', 'Import CT')
+    iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
+    if isempty(iCtRaw)
+        [~, isCancel] = java_dialog('confirm', ['<HTML>Add unprocessed raw CT to database?<BR>' ...
+                                       'Choose <B>Yes</B> if using GARDEL standalone tool from Brainstorm<BR><BR></HTML>'], 'Import CT');
+        if isCancel
+            bst_progress('stop');
+            return;
+        end
         sCtRaw = sMri;
     end
     % Adding an MNI volume to an existing subject
@@ -458,7 +465,7 @@ else
             sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
         end
         if ~isempty(sCtRaw)
-            sCtRaw.Comment = [fBase '_raw']; 
+            sCtRaw.Comment = file_unique(fBase, {sSubject.Anatomy.Comment}); 
         end
     end    
     % Add MNI tag
