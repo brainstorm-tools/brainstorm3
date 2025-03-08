@@ -305,6 +305,7 @@ function SetSelectionState(isSelected)
         for hFig = hFigures
             set(hFig, 'Pointer', 'arrow');
             setappdata(hFig, 'isSelectingCoordinates', 0);      
+            delete(findobj(hFig, 'Tag', 'ptCoordinates'));
         end
     end
 end
@@ -431,8 +432,9 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
-    % Open MRI viewer for SEEG
-    if isCentroid
+    % Update MRI viewer (if open)
+    hFigMri = bst_figures('GetFiguresByType', {'MriViewer'});
+    if ~isempty(hFigMri)
         ViewInMriViewer();
     end
 end
