@@ -834,12 +834,17 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(iSubCortical)
             typesList{end+1} = 'Subcortical';
         end
+        % IsoSurface
+        iIsoSurface = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+        if ~isempty(iIsoSurface)
+            typesList{end+1} = 'IsoSurface';
+        end
         % Remove surfaces that are already displayed
         if ~isempty(TessInfo)
             typesList = setdiff(typesList, {TessInfo.Name});
         end
         % Nothing more
-        if isempty(typesList) && isempty(sSubject.Surface)
+        if isempty(typesList)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
             return;
         end
@@ -869,6 +874,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iFEM).FileName;
         case 'Subcortical'
             SurfaceFile = sSubject.Surface(iSubCortical).FileName;
+        case 'IsoSurface'
+            SurfaceFile = sSubject.Surface(iIsoSurface).FileName;
         case 'White'
             SurfaceFile = sSubject.Surface(iWhite).FileName;
         case 'Other'
