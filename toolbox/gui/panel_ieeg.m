@@ -1021,6 +1021,9 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
+    if isempty(sSelElec)
+        return
+    end
     sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
@@ -1152,7 +1155,7 @@ function SetSelectedContacts(iSelCont)
     SetMriCrosshair(sContacts);
 end
 
-%% ===== SHOW CONTACTS MENU (TOP) =====
+%% ===== SHOW CONTACTS MENU =====
 function ShowContactsMenu(jButton)
     import org.brainstorm.icon.*;
     % Create popup menu
@@ -1162,6 +1165,11 @@ function ShowContactsMenu(jButton)
     if isempty(iSelElec)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
+    end
+    % Menu: Remove contacts
+    if strcmpi(sSelElec(1).Type, 'SEEG')
+        gui_component('MenuItem', jMenu, [], 'Remove selected contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
+        jMenu.addSeparator();
     end
     % Menu: Default positions
     gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
@@ -1721,7 +1729,7 @@ function RemoveContact(isInteractive)
     isImplantation = ~isempty(strfind(folderName, 'Implantation'));
     % Get selected contact
     sSelCont = GetSelectedContacts();
-    if isempty(length(sSelCont))
+    if isempty(sSelCont)
         java_dialog('warning', 'No contact selected.', 'Remove contact');
         return
     end
