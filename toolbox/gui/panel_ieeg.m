@@ -3325,7 +3325,6 @@ function SetElectrodeLoc(iLoc, jButton)
 
     % Get selected electrodes
     [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
-    MriIdx = 1;
 
     if isempty(sSelElec)
     	bst_error('No electrode seleced.', 'Set electrode position', 0);
@@ -3333,32 +3332,14 @@ function SetElectrodeLoc(iLoc, jButton)
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif ~strcmpi(GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Id.Type, 'MriViewer')
-        if length(hFig) == 1
-            bst_error('MRI viewer must be open', 'Set electrode position', 0);
-            return;
-        end
-        MriIdx = 2;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
     
-    
-    sMri = panel_surface('GetSurfaceMri', hFig(MriIdx));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Handles);
-
-    % If SCS coordinates are not available
+    % Get crosshair location from figure
+    XYZ = GetFigureLoc('Set electrode position');
     if isempty(XYZ)
-        % Ask to compute MNI transformation
-        isComputeMni = java_dialog('confirm', [...
-            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-            'Compute the MNI normalization now?'], 'Set electrode position');
-        % Run computation
-        if isComputeMni
-            figure_mri('ComputeMniCoordinates', hFig);
-        end
         return;
     end
     % Make sure the points of the electrode are more than 1cm apart
