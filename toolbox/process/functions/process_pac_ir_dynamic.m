@@ -801,7 +801,7 @@ for ifreq=1:nFa
     Xnested = Xnested(:,nMargin-nHilMar+1:end-nMargin+nHilMar);               % Removing part of the margin
     
     % Hilbert transform
-    Z = hilbert_fcn(Xnested')';
+    Z = transpose(hilbert_fcn(transpose(Xnested)));
     
     % Phase and envelope detection
     nestedEnv_total = abs(Z);                                              % Envelope of nested frequency rhythms
@@ -910,7 +910,7 @@ for ifreq=1:nFa
         end        
         Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        
         % Hilbert transform
-        Z = hilbert_fcn(Xnesting')';        
+        Z = transpose(hilbert_fcn(transpose(Xnesting)));
         % Phase detection
         nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency        
         nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin

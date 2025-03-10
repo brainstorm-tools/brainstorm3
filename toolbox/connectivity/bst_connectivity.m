@@ -665,12 +665,12 @@ for iFile = 1 : length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
-                HA = hilbert_fcn(DataAband')';                
+                HA = transpose(hilbert_fcn(transpose(DataAband)));
                 if isConnNN
                     HB = HA;
                 else
                     DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
-                    HB = hilbert_fcn(DataBband')';
+                    HB = transpose(hilbert_fcn(transpose(DataBband)));
                 end
                 if OPTIONS.isOrth
                     if isConnNN
@@ -849,10 +849,10 @@ for iFile = 1 : length(FilesA)
                                 % Band-pass filter in one frequency band
                                 DataBand = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                                 % Analytic signals (original + i * Hilbert transform)
-                                HA = hilbert_fcn(DataBand')';
+                                HA = transpose(hilbert_fcn(transpose(DataBand)));
                                 if ~isConnNN
                                     DataBand = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                                    HB = hilbert_fcn(DataBand')';
+                                    HB = transpose(hilbert_fcn(transpose(DataBand)));
                                 end
                             case 'morlet'
                                 % Compute wavelet decompositions
@@ -1014,7 +1014,7 @@ for iFile = 1 : length(FilesA)
             R = zeros(nA, nB, 1, nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands
-                % Band-pass filter in one frequency band + Apply Hilbert transform
+                % Band-pass filter in one frequency band
                 DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                 % Compute PTE
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));

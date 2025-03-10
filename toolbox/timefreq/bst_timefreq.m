@@ -91,7 +91,11 @@ end
 % Copy default options to OPTIONS structure (do not replace defined values)
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Check if the signal processing toolbox is available
-UseSigProcToolbox = bst_get('UseSigProcToolbox');
+if bst_get('UseSigProcToolbox')
+    hilbert_fcn = @hilbert;
+else
+    hilbert_fcn = @oc_hilbert;
+end
 
 
 % ===== PARSE INPUTS =====
@@ -583,11 +587,7 @@ for iData = 1:length(Data)
                 Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', isMirror, isRelax);
                 % Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                 % Apply Hilbert transform
-                if UseSigProcToolbox
-                    TF(:,:,iBand) = hilbert(Fband')';
-                else
-                    TF(:,:,iBand) = oc_hilbert(Fband')';
-                end
+                TF(:,:,iBand) = transpose(hilbert_fcn(transpose(Fband)));
             end
             
         % Multitaper
