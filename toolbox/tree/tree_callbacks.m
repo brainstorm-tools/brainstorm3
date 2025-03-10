@@ -710,7 +710,7 @@ switch (lower(action))
                     % Show GARDEL option in menu only if there is a raw unprocessed CT available
                     iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
                     if ~isempty(iCtRaw)
-                        gui_component('MenuItem', jMenuImplantation, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
+                        gui_component('MenuItem', jMenuImplantation, [], 'GARDEL (external)', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
                     end
                 end
                 % Export menu (added later)
@@ -3187,7 +3187,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
             % Show GARDEL option in menu only if there is a raw unprocessed CT available
             iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
             if ~isempty(iCtRaw)
-                gui_component('MenuItem', jMenuImplantation, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
+                gui_component('MenuItem', jMenuImplantation, [], 'GARDEL (external)', IconLoader.ICON_SEEG_DEPTH, 'GARDEL external tool', @(h,ev)bst_call(@seeg_contactid_gardel, iSubject));
             end
         % Right click on a desired volume (MRI/CT) in a subject
         elseif (length(iAnatomy) == 1) && iSubject ~=0
