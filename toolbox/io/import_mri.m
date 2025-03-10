@@ -38,7 +38,8 @@ function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2023
-%          Chinmay Chinara, 2023
+%          Raymundo Cassani, 2023-2025
+%          Chinmay Chinara, 2023-2025
 
 %% ===== PARSE INPUTS =====
 if (nargin < 3) || isempty(FileFormat)
@@ -178,7 +179,8 @@ if iscell(MriFile)
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
-
+% For Raw CT
+sCtRaw = [];
 
 %% ===== DELETE TEMPORARY FILES =====
 if ~isempty(TmpDir)
@@ -224,6 +226,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     % Load the reference MRI (the first one)
     refMriFile = sSubject.Anatomy(1).FileName;
     sMriRef = in_mri_bst(refMriFile);
+    % Store raw CT
+    iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
+    if isempty(iCtRaw)
+        [~, isCancel] = java_dialog('confirm', ['<HTML>Add unprocessed raw CT to database?<BR>' ...
+                                       'Choose <B>Yes</B> if using GARDEL standalone tool from Brainstorm<BR><BR></HTML>'], 'Import CT');
+        if isCancel
+            bst_progress('stop');
+            return;
+        end
+        sCtRaw = sMri;
+    end
     % Adding an MNI volume to an existing subject
     if isMni
         sMri = mri_reslice_mni(sMri, sMriRef, isAtlas);
@@ -451,7 +464,10 @@ else
         else
             sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
         end
-    end
+        if ~isempty(sCtRaw)
+            sCtRaw.Comment = file_unique(fBase, {sSubject.Anatomy.Comment}); 
+        end
+    end    
     % Add MNI tag
     if isMni
         if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y_method)
@@ -476,17 +492,34 @@ end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
+if (iAnatomy == 1) && isCt
+    tagVolType = [tagVolType '_raw'];
+end
 BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagVolType '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format
 sMri = out_mri_bst(sMri, BstMriFile);
+if ~isempty(sCtRaw)
+    % Produce a default anatomy filename
+    BstRawCtFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName tagVolType '_raw.mat']);
+    % Make this filename unique
+    BstRawCtFile = file_unique(BstRawCtFile);
+    % Save new raw CT in Brainstorm format
+    sCtRaw = out_mri_bst(sCtRaw, BstRawCtFile);
+end
 
 %% ===== REFERENCE NEW MRI IN DATABASE ======
 % New anatomy structure
 sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
+if ~isempty(sCtRaw)
+    % New anatomy structure for raw CT
+    sSubject.Anatomy(iAnatomy+1) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy+1).FileName = file_short(BstRawCtFile);
+    sSubject.Anatomy(iAnatomy+1).Comment  = sCtRaw.Comment;
+end
 % Default anatomy: do not change
 if isempty(sSubject.iAnatomy) && ~isCt && ~isAtlas
     sSubject.iAnatomy = iAnatomy;

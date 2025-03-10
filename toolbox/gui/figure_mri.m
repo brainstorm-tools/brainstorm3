@@ -1060,6 +1060,8 @@ function DisplayFigurePopup(hFig)
             % Set position
             jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
+            % Add new contact
+            gui_component('MenuItem', jMenuElec, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));      
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
             gui_component('MenuItem', jMenuElec, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)panel_ieeg('LoadElectrodes', hFig, GlobalData.DataSet(iDS).ChannelFile, 'SEEG'));
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'ECOG')

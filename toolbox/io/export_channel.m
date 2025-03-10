@@ -63,6 +63,7 @@ if isempty(OutputChannelFile)
         case 'EEGLAB-XYZ',          DefaultExt = '.xyz';
         case 'EGI',                 DefaultExt = '.sfp';
         case 'BRAINSIGHT-TXT',      DefaultExt = '.txt';
+        case 'GARDEL-TXT',          DefaultExt = '.txt';
         case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
@@ -106,7 +107,7 @@ end
 
 
 % ===== TRANSFORMATIONS =====
-isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM'});
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM', 'BIDS-NIRS-MNI-MM', 'GARDEL-TXT'});
 isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM', 'BRAINSIGHT-TXT'});
 isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-NIRS-SCANRAS-MM'});
 % Get patient MRI (if needed)
@@ -238,6 +239,10 @@ switch FileFormat
     case 'BIDS-NIRS-ALS-MM'
         % No transformation: export unchanged SCS/CTF space
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
+    
+    % === GARDEL ONLY ===
+    case 'GARDEL-TXT'
+        out_channel_gardel(BstChannelFile, OutputChannelFile, Transf);
 
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);

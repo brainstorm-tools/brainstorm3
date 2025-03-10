@@ -1270,6 +1270,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
+                    AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
                     if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
@@ -1286,6 +1287,13 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
+                    end
+                    % For iEEG panel
+                    if gui_brainstorm('isTabVisible', 'iEEG') && ~isempty(AllTypes) && ismember('SEEG', AllTypes)
+                        sSelConts = panel_ieeg('GetSelectedContacts');
+                        if ~isempty(sSelConts)
+                            panel_ieeg('RemoveContact');
+                        end
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1803,6 +1811,13 @@ function DisplayFigurePopup(hFig)
             jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isLabels);
+            % Add/Remove contact
+            if ~isempty(Modality) && ismember(Modality, {'SEEG'})
+                jMenuChannels.addSeparator();
+                gui_component('MenuItem', jMenuChannels, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove contact', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+            end
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
