@@ -1811,9 +1811,10 @@ function DisplayFigurePopup(hFig)
             jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
             jItem.setSelected(isLabels);
-            % Remove contact
+            % Add/Remove contact
             if ~isempty(Modality) && ismember(Modality, {'SEEG'})
                 jMenuChannels.addSeparator();
+                gui_component('MenuItem', jMenuChannels, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove contact', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
             end

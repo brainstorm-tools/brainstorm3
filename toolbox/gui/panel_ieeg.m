@@ -1168,6 +1168,7 @@ function ShowContactsMenu(jButton)
     end
     % Menu: Remove contacts
     if strcmpi(sSelElec(1).Type, 'SEEG')
+        gui_component('MenuItem', jMenu, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
         gui_component('MenuItem', jMenu, [], 'Remove selected contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
         jMenu.addSeparator();
     end
@@ -1710,6 +1711,57 @@ function RemoveElectrode(isInteractive)
     UpdateFigures();
 end
 
+%% ===== ADD CONTACT =====
+function AddContact()
+    global GlobalData;
+    % Get electrodes
+    [sSelElec, iSelElec, iDSall, iFigall, hFigall] = GetSelectedElectrodes();
+    if isempty(sSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Add new contact');
+        return
+    end
+    
+    % Get crosshair location from figure
+    XYZ = GetFigureLoc();
+    if ~isempty(XYZ)
+        % sContacts = [];
+        Channels = GlobalData.DataSet(iDSall(1)).Channel;
+        % Get contacts for this electrode
+        iChan = find(strcmpi({Channels.Group}, sSelElec.Name));
+        sChannel = db_template('channeldesc');
+        sChannel.Name = sprintf('%s%d', sSelElec.Name, sSelElec.ContactNumber+1);
+        sChannel.Type = 'SEEG';
+        sChannel.Group = sSelElec.Name;       
+        Channels = [Channels(1:iChan(end))'; sChannel; Channels(iChan(end)+1:end)'];
+        iChan(end+1) = iChan(end)+1;
+        Channels(iChan(end)).Loc = XYZ;
+        % Update channel data
+        GlobalData.DataSet(iDSall(1)).Channel = Channels';
+        for iDS = unique(iDSall)         
+            for iFig = iFigall(iDSall == iDS)
+                GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = [GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan];
+            end
+        end
+        % Update intraelectrode structure in channel 
+        sContactsOld = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
+        % Sort contacts (distance from origin)
+        sContacts = GetSortedContacts(sContactsOld);
+        % Update electrode contact number
+        sSelElec.ContactNumber = size(sContacts, 2);       
+        % Assign electrode tip and skull entry
+        sSelElec.Loc = [];
+        if sSelElec.ContactNumber >= 1
+            sSelElec.Loc(:,1) = sContacts(:, 1);
+        end
+        if sSelElec.ContactNumber > 1
+            sSelElec.Loc(:,2) = sContacts(:, end);
+        end
+        % Set the changed electrode properties
+        SetElectrodes(iSelElec, sSelElec);    
+        % Align contacts
+        AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, sContacts);
+    end
+end
 
 %% ===== REMOVE CONTACT =====
 function RemoveContact(isInteractive)
@@ -2321,6 +2373,7 @@ function UpdateFigures(hFigTarget)
                     figure_mri('UpdateVisibleSensors3D', hFig);
                     figure_mri('UpdateVisibleLandmarks', hFig);
                 end
+                UpdatePanel();
         end
     end
     % Close progress bar
@@ -3359,6 +3412,48 @@ function SetElectrodeLoc(iLoc, jButton)
     end
 end
 
+%% ===== GET CROSSHAIR LOCATION FROM FIGURE =====
+function xyzScs = GetFigureLoc(MessageTitle)
+    global GlobalData;
+    % Intialize
+    if nargin < 1 || isempty(MessageTitle)
+        MessageTitle = '';
+    end
+    xyzScs = [];
+    % Get figure handles
+    [hFig, iFig, iDS] = bst_figures('GetCurrentFigure');
+    % Get location from 3D figure
+    if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, '3DViz')
+        CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
+        isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+        if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+            java_dialog('warning', 'Select a candidate contact from 3D IsoSurface', MessageTitle);
+            return;
+        else
+            if isSelectingCoordinates
+                xyzScs = CoordinatesSelector.SCS;
+            end
+        end
+    % Get location from MRI Viewer
+    elseif strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'MriViewer')
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        xyzScsMri = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+        % If SCS coordinates are not available
+        if isempty(xyzScsMri)
+            % Ask to compute MNI transformation
+            isComputeMni = java_dialog('confirm', [...
+                'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
+                'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+                'Compute the MNI normalization now?'], MessageTitle);
+            % Run computation
+            if isComputeMni
+                figure_mri('ComputeMniCoordinates', hFig);
+            end
+            return;
+        end
+        xyzScs = xyzScsMri';
+    end    
+end
 
 %% ===== CENTER MRI ON ELECTRODE =====
 function CenterMriOnElectrode(sElec, hFigTarget)

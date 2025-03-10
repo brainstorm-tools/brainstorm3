@@ -361,7 +361,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
         case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
             if ~isCentroid
-                scsLoc = sSurf.Vertices(vi,:);
+                scsLoc = sSurf.Vertices(vi,:)';
             else
                 scsLoc = vout';
             end
