@@ -228,7 +228,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     sMriRef = in_mri_bst(refMriFile);
     % Store raw CT
     iCtRaw = find(cellfun(@(x) ~isempty(regexp(x, '_volct_raw', 'match')), {sSubject.Anatomy.FileName})); 
-    if isempty(iCtRaw)
+    if isempty(iCtRaw) && isInteractive
         [~, isCancel] = java_dialog('confirm', ['<HTML>Add unprocessed raw CT to database?<BR>' ...
                                        'Choose <B>Yes</B> if using GARDEL standalone tool from Brainstorm<BR><BR></HTML>'], 'Import CT');
         if isCancel
