@@ -514,10 +514,8 @@ function UpdateMenus(sAtlas, sSurf)
     jMenuSurf = gui_component('Menu', jMenu, [], 'Edit surface', IconLoader.ICON_SURFACE_CORTEX, [], []);
         gui_component('MenuItem', jMenuSurf, [], 'Remove selected scouts',    IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,0));
         gui_component('MenuItem', jMenuSurf, [], 'Keep only selected scouts', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@NewSurface,1));
-    if isVolumeAtlas
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Export as MRI mask', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportScoutsToMri));
-    end
         
     % === MENU PROJECT ====
     % Offer these projection menus only for Cortex surfaces
@@ -4370,6 +4368,9 @@ end
 
 %% ===== EXPORT SCOUTS TO MRI MASK =====
 function ExportScoutsToMri()
+    % Get atlas
+    sAtlas = GetAtlas();
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
     % If nothing selected, take all scouts
@@ -4389,44 +4390,78 @@ function ExportScoutsToMri()
     if isempty(hFig)
         return
     end
-    % Get figure GridLoc
-    GridLoc = GetFigureGrid(hFig);
-    if isempty(GridLoc)
-        bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
-        return;
+    % Volume atlas: Get figure GridLoc
+    if isVolumeAtlas
+        GridLoc = GetFigureGrid(hFig);
+        if isempty(GridLoc) && isVolumeAtlas
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
+            return;
+        end
     end
     % Progress bar
     bst_progress('start', 'Export MRI mask', 'Loading volume...');
     % Load MRI
     sMri = in_mri_bst(MriFile);
-    % Convert grid to MRI coordinates
-    GridLoc = cs_convert(sMri, 'scs', 'voxel', GridLoc);
-
-    % Loop on all the scouts to export
+    % Output cube
     sMri.Cube = 0 * sMri.Cube(:,:,:,1);
-    for i = 1:length(sScouts)
-        % Get vertices coordinates
-        bst_progress('text', sprintf('Computing scout envelope... [%d/%d]', i, length(sScouts)));
-        Vertices = GridLoc(sScouts(i).Vertices,:);
-        % Extract envelope
-        if exist('alphaShape', 'file') && exist('boundary', 'file')
-            Faces = boundary(Vertices, 0.7);
-        else
-            Faces = convhulln(Vertices);
+
+    % Volume scouts
+    if isVolumeAtlas
+        % Convert grid to MRI coordinates
+        GridLoc = cs_convert(sMri, 'scs', 'voxel', GridLoc);
+        % Loop on all the scouts to export
+        for i = 1:length(sScouts)
+            % Get vertices coordinates
+            bst_progress('text', sprintf('Computing scout envelope... [%d/%d]', i, length(sScouts)));
+            Vertices = GridLoc(sScouts(i).Vertices,:);
+            % Extract envelope
+            if exist('alphaShape', 'file') && exist('boundary', 'file')
+                Faces = boundary(Vertices, 0.7);
+            else
+                Faces = convhulln(Vertices);
+            end
+            % Compute interpolation matrix from tessellation to MRI voxel grid
+            bst_progress('text', sprintf('Computing interpolation... [%d/%d]', i, length(sScouts)));
+            tess2mri_interp = tess_tri_interp(Vertices, Faces, size(sMri.Cube));
+            % Compute scout mask
+            bst_progress('text', sprintf('Computing scout mask... [%d/%d]', i, length(sScouts)));
+            scoutMask = tess_mrimask(size(sMri.Cube), tess2mri_interp);
+            % Get scout integer label
+            maskValue = round(str2num(sScouts(i).Label));
+            if isempty(maskValue)
+                maskValue = i;
+            end
+            % Adding to existing mask
+            sMri.Cube(scoutMask) = maskValue;
         end
-        % Compute interpolation matrix from tessellation to MRI voxel grid
-        bst_progress('text', sprintf('Computing interpolation... [%d/%d]', i, length(sScouts)));
-        tess2mri_interp = tess_tri_interp(Vertices, Faces, size(sMri.Cube));
-        % Compute scout mask
-        bst_progress('text', sprintf('Computing scout mask... [%d/%d]', i, length(sScouts)));
-        scoutMask = tess_mrimask(size(sMri.Cube), tess2mri_interp);
-        % Get scout integer label
-        maskValue = round(str2num(sScouts(i).Label));
-        if isempty(maskValue)
-            maskValue = i;
+    % Surface scouts
+    else
+        % Compute surface to MRI interpolation for entire surface
+        tess2mri_interp = tess_interp_mri(sSurf.FileName, sMri);
+        [nVoxels, nVertices] = size(tess2mri_interp);
+        % Indices for voxels that correspond to the surface to MRI interpolation
+        mriValue = tess_interp_mri_data(tess2mri_interp, size(sMri.Cube(:,:,:,1)), ones(nVertices,1), 0);
+        indexSurfMri = find(mriValue > 0);
+        % Find index of most probable surface vertex for each MRI voxel of the surface
+        [~, iColMax] = max(tess2mri_interp, [], 2);
+        % Interpolation for one cortex vertex to one cortex voxel
+        tess2mri_interp_1_1 = sparse(indexSurfMri, iColMax(indexSurfMri), 1, nVoxels, nVertices);
+        % Loop on all the scouts to export
+        for i = 1:length(sScouts)
+            dataScout = zeros(nVertices,1);
+            dataScout(sScouts(i).Vertices) = 1;
+            % Compute scout mask
+            bst_progress('text', sprintf('Computing scout mask... [%d/%d]', i, length(sScouts)));
+            mriValue = tess_interp_mri_data(tess2mri_interp_1_1, size(sMri.Cube(:,:,:,1)), dataScout, 0);
+            scoutMask = mriValue > 0;
+            % Get scout integer label
+            maskValue = round(str2num(sScouts(i).Label));
+            if isempty(maskValue)
+                maskValue = i;
+            end
+            % Adding to existing mask
+            sMri.Cube(scoutMask) = maskValue;
         end
-        % Adding to existing mask
-        sMri.Cube(scoutMask) = maskValue;
     end
     % Save new MRI file
     export_mri(sMri);
