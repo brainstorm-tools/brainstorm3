@@ -53,7 +53,7 @@ elseif ischar(TissueLabels)
     TissueLabels = {TissueLabels};
 end
 
-%% ===== EXTARCT TISSUE MASK =====
+%% ===== EXTRACT TISSUE MASK =====
 % Progress bar
 bst_progress('start', 'Extract tissue', 'Initializing...');
 for iTissue = 1:length(TissueLabels)
