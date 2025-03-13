@@ -1810,7 +1810,7 @@ function DisplayFigurePopup(hFig)
             jItem.setSelected(isLabels);
             % Add/Remove contact
             sSelElec = panel_ieeg('GetSelectedElectrodes');
-            if ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'SEEG')
+            if ~isempty(sSelElec) && length(sSelElec)==1 && sSelElec.ContactNumber>=1 && strcmpi(sSelElec.Type, 'SEEG')
                 jMenuChannels.addSeparator();
                 gui_component('MenuItem', jMenuChannels, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove contact', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));

@@ -1189,7 +1189,7 @@ function ShowContactsMenu(jButton)
         return
     end
     % Menu: Add/Remove contacts
-    if strcmpi(sSelElec(1).Type, 'SEEG')
+    if length(sSelElec)==1 && sSelElec.ContactNumber>=1 && strcmpi(sSelElec.Type, 'SEEG')
         gui_component('MenuItem', jMenu, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
         gui_component('MenuItem', jMenu, [], 'Remove selected contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
         jMenu.addSeparator();

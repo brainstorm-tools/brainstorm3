@@ -1062,7 +1062,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
             % Add new contact
             sSelElec = panel_ieeg('GetSelectedElectrodes');
-            if ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'SEEG')
+            if ~isempty(sSelElec) && length(sSelElec)==1 && sSelElec.ContactNumber>=1 && strcmpi(sSelElec.Type, 'SEEG')
                 gui_component('MenuItem', jMenuElec, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
             end
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
