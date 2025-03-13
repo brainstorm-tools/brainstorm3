@@ -513,8 +513,12 @@ function AutoElecLabelContLocalize(Method)
                 sContactsScs = cs_convert(sCt, 'voxel', 'scs', sContacts);
                 % Sort contacts (distance from origin)
                 sContactsSorted = GetSortedContacts(sContactsScs');
-                % Update electrode contact number
+                % Set model as blank (TODO: add layer for model detection)
+                sSelElec.Model = '';
+                % Set electrode contact number
                 sSelElec.ContactNumber = size(sContactsSorted, 2);
+                % Get average contact spacing
+                sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsSorted);
                 % Set electrode tip and skull entry
                 sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
                 sSelElec.Loc(:, 2) = sContactsSorted(:, end);  
@@ -557,6 +561,19 @@ function labelText = NumToLabel(labelNum)
         remainder = mod(labelNum, 26);
         quotient  = floor(labelNum / 26);
         labelText = [NumToLabel(quotient) char('A' + remainder)];
+    end
+end
+
+%% ===== AVERAGE CONTACT SPACING =====
+function avgContactSpacing = GetAvgContactSpacing(sContacts)
+    avgContactSpacing = '';
+    if size(sContacts, 2) >= 2
+        % Compute differences between adjacent points (across columns)
+        diffPoints = diff(sContacts, 1, 2);
+        % Compute the Euclidean distance for each adjacent pair
+        distances = sqrt(sum(diffPoints.^2, 1));
+        % Calculate the average distance
+        avgContactSpacing = mean(distances);
     end
 end
 
@@ -603,6 +620,8 @@ function GroupElectrodes()
     [sSelElec, iSelElec] = GetSelectedElectrodes();
     % Update electrode contact number
     sSelElec.ContactNumber = size(sContactsSorted, 2);
+    % Get average contact spacing
+    sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsSorted);
     % Set electrode tip and skull entry
     sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
     sSelElec.Loc(:, 2) = sContactsSorted(:, end); 
@@ -1750,7 +1769,9 @@ function AddContact()
         % Sort contacts (distance from origin)
         sContacts = GetSortedContacts(sContactsOld);
         % Update electrode contact number
-        sSelElec.ContactNumber = size(sContacts, 2);       
+        sSelElec.ContactNumber = size(sContacts, 2);
+        % Get average contact spacing
+        sSelElec.ContactSpacing = GetAvgContactSpacing(sContacts);
         % Assign electrode tip and skull entry
         sSelElec.Loc = [];
         if sSelElec.ContactNumber >= 1
@@ -1856,7 +1877,9 @@ function RemoveContact(isInteractive)
         % Update intraelectrode structure in channel
         sContacts = GetContacts(sSelElec.Name);
         % Update electrode contact number
-        sSelElec.ContactNumber = size(sContacts, 2);       
+        sSelElec.ContactNumber = size(sContacts, 2);
+        % Get average contact spacing
+        sSelElec.ContactSpacing = GetAvgContactSpacing([sContacts.Loc]);
         % Assign electrode tip and skull entry
         sSelElec.Loc = [];
         if sSelElec.ContactNumber >= 1
