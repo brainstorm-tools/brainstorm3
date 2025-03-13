@@ -512,20 +512,20 @@ function AutoElecLabelContLocalize(Method)
                 % VOXEL => SCS coordinates
                 sContactsScs = cs_convert(sCt, 'voxel', 'scs', sContacts);
                 % Sort contacts (distance from origin)
-                sContactsSorted = GetSortedContacts(sContactsScs');
+                sContactsLocSorted = GetSortedContacts(sContactsScs');
                 % Set model as blank (TODO: add layer for model detection)
                 sSelElec.Model = '';
                 % Set electrode contact number
-                sSelElec.ContactNumber = size(sContactsSorted, 2);
+                sSelElec.ContactNumber = size(sContactsLocSorted, 2);
                 % Get average contact spacing
-                sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsSorted);
+                sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsLocSorted);
                 % Set electrode tip and skull entry
-                sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
-                sSelElec.Loc(:, 2) = sContactsSorted(:, end);  
+                sSelElec.Loc(:, 1) = sContactsLocSorted(:, 1);
+                sSelElec.Loc(:, 2) = sContactsLocSorted(:, end);  
                 % Set the changed electrode properties
                 SetElectrodes(iSelElec, sSelElec);              
                 % Align contacts
-                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsSorted);
+                AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
             end
             
         otherwise
@@ -610,25 +610,25 @@ function GroupElectrodes()
     % Find indices of channels belonging to the selected electrodes
     iChan = ismember({Channels.Group}, {sSelElecOld.Name});
     % Extract and concatenate contact locations
-    sContactsOld = [Channels(iChan).Loc];
+    sContactsLoc = [Channels(iChan).Loc];
     % Sort contacts (distance from origin)
-    sContactsSorted = GetSortedContacts(sContactsOld);
+    sContactsLocSorted = GetSortedContacts(sContactsLoc);
     % Add new electrode assigning a label to it
     newLabel = [sSelElecOld(1).Name 'group'];
     AddElectrode(newLabel);
     % Get new selected electrode structure
     [sSelElec, iSelElec] = GetSelectedElectrodes();
     % Update electrode contact number
-    sSelElec.ContactNumber = size(sContactsSorted, 2);
+    sSelElec.ContactNumber = size(sContactsLocSorted, 2);
     % Get average contact spacing
-    sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsSorted);
+    sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsLocSorted);
     % Set electrode tip and skull entry
-    sSelElec.Loc(:, 1) = sContactsSorted(:, 1);
-    sSelElec.Loc(:, 2) = sContactsSorted(:, end); 
+    sSelElec.Loc(:, 1) = sContactsLocSorted(:, 1);
+    sSelElec.Loc(:, 2) = sContactsLocSorted(:, end); 
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);              
     % Align contacts
-    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsSorted);
+    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
     % Select old electrodes for removal
     SetSelectedElectrodes(iSelElecOld);
     % Remove selected electrodes
@@ -1748,9 +1748,10 @@ function AddContact()
     if ~isempty(XYZ)
         Channels = GlobalData.DataSet(iDSall(1)).Channel;
         % Get contacts for this electrode
+        sContacts = GetContacts(sSelElec.Name);
+        % Add new channel information for the contact
         iChan = find(strcmpi({Channels.Group}, sSelElec.Name));
         sChannel = db_template('channeldesc');
-        sContacts = GetContacts(sSelElec.Name);
         sChannel.Name = sprintf('%s%d', sSelElec.Name, size(sContacts, 2)+1);
         sChannel.Type = 'SEEG';
         sChannel.Group = sSelElec.Name;       
@@ -1764,26 +1765,26 @@ function AddContact()
                 GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = [GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan];
             end
         end
-        % Update intraelectrode structure in channel 
-        sContactsOld = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
+        % Update intraelectrode structure in channel
+        sContactsLoc = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
         % Sort contacts (distance from origin)
-        sContactsLoc = GetSortedContacts(sContactsOld);
+        sContactsLocSorted = GetSortedContacts(sContactsLoc);
         % Update electrode contact number
-        sSelElec.ContactNumber = size(sContactsLoc, 2);
+        sSelElec.ContactNumber = size(sContactsLocSorted, 2);
         % Get average contact spacing
-        sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsLoc);
+        sSelElec.ContactSpacing = GetAvgContactSpacing(sContactsLocSorted);
         % Assign electrode tip and skull entry
         sSelElec.Loc = [];
         if sSelElec.ContactNumber >= 1
-            sSelElec.Loc(:,1) = sContactsLoc(:, 1);
+            sSelElec.Loc(:,1) = sContactsLocSorted(:, 1);
         end
         if sSelElec.ContactNumber > 1
-            sSelElec.Loc(:,2) = sContactsLoc(:, end);
+            sSelElec.Loc(:,2) = sContactsLocSorted(:, end);
         end
         % Set the changed electrode properties
         SetElectrodes(iSelElec, sSelElec);    
         % Align contacts
-        AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, sContactsLoc);
+        AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
     end
 end
 
@@ -2976,17 +2977,17 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
 end
 
 %% ===== GET SORTED CONTACTS (DISTANCE FROM ORIGIN) =====
-function sContactsSorted = GetSortedContacts(sContacts)
-    [~, sortedIdx] = sort(sum(sContacts.^2, 1));
-    sContactsSorted = sContacts(:, sortedIdx);
+function sContactsLocSorted = GetSortedContacts(sContactsLoc)
+    [~, sortedIdx] = sort(sum(sContactsLoc.^2, 1));
+    sContactsLocSorted = sContactsLoc(:, sortedIdx);
 end
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog, sContacts)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog, sContactsLoc)
     global GlobalData;
     % Default values
-    if (nargin < 8) || isempty(sContacts)
-        sContacts = [];
+    if (nargin < 8) || isempty(sContactsLoc)
+        sContactsLoc = [];
     end
     if (nargin < 7) || isempty(isProjectEcog)
         isProjectEcog = 1;
@@ -3092,7 +3093,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
                     case 'auto'
-                        Channels(iChan(i)).Loc = sContacts(:, i);
+                        Channels(iChan(i)).Loc = sContactsLoc(:, i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
