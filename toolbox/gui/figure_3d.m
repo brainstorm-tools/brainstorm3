@@ -618,7 +618,7 @@ function FigureMouseUpCallback(hFig, varargin)
                     [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
                     if ~isempty(sSurf)
                         iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
-                        if ~isempty(iIsoSurf)
+                        if ~isempty(iIsoSurf) && GlobalData.isSelCentroid
                             panel_coordinates('SelectPoint', hFig, 0, 1);
                         else
                             panel_coordinates('SelectPoint', hFig);
@@ -1202,6 +1202,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % CTRL+P : Toggle point selection mode
                 case 'p'
                     if ismember('control', keyEvent.Modifier)
+                        GlobalData.isSelCentroid = 0;
                         tmp = bst_get('PanelControls', 'Coordinates');
                         if isempty(tmp)
                             gui_brainstorm('ShowToolTab', 'Coordinates');

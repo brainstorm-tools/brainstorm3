@@ -57,7 +57,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)ShowSurfSelectMenu(ev.getSource()), []);
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -436,6 +436,27 @@ function UpdatePanel()
     % Update JList
     UpdateElecList();
     UpdateContactList('SCS');
+end
+
+%% ===== SHOW SURFACE POINT SELECTION MENU =====
+function ShowSurfSelectMenu(jButton)
+    global GlobalData;
+    GlobalData.isSelCentroid = 0;
+    import org.brainstorm.icon.*;
+
+    jMenu = java_create('javax.swing.JPopupMenu');
+    panel_coordinates('SetSelectionState', jButton.isSelected());
+    if jButton.isSelected()
+        gui_component('checkbox', jMenu, [], 'Centroid', '', [], @(h,ev)CentroidSelect(h,ev));
+        % Show popup menu
+        gui_brainstorm('ShowPopup', jMenu, jButton);
+    end
+end
+
+% Toggle between mesh centroid and mesh surface point selection
+function CentroidSelect(h, ev)
+    global GlobalData;
+    GlobalData.isSelCentroid = ev.getSource.isSelected();
 end
 
 %% ===== AUTOMATIC ELECTRODE LABELING AND CONTACT LOCALIZATION =====
