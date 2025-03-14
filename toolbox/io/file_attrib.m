@@ -53,13 +53,18 @@ elseif ~isdir(fName)
 elseif isdir(fName)
     % Get all the rights
     [tmp__,att] = fileattrib(fName);
-%     % On windows: grab write permission automatically
-%     if ispc && (right == 'w') && ~att.UserWrite
-%         % Use attrib function to update the file
-%         system(['attrib -r ' fName ' /s /d']);
-%         % Read again the permissions
-%         [tmp__,att] = fileattrib(fName);
-%     end
+    % On windows: if no write permission, check again by creating a dummy file
+    if ispc && (right == 'w') && ~att.UserWrite
+        % Create dummy file
+        fDummy = fullfile(fName, 'dummy.txt');
+        fid = fopen(fDummy, 'w');
+        if (fid > 0)
+            % File was created
+            fclose(fid);
+            delete(fDummy);
+            att.UserWrite = 1;
+        end
+    end
     % Get proper right
     switch (right)
         case 'r'
