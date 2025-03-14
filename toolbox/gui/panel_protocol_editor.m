@@ -321,7 +321,7 @@ function [subjectDir, studyDir, protocolName] = SelectProtocolDir(protocolDir)
                                'one for the subjects'' anatomies, and one for the recordings/results.'], ...
                                'Load protocol');
         return
-    end    
+    end
     % Extract first level of subdir
     subjectDirList = str_split(strrep(subjectFile, protocolDir, ''));
     studyDirList   = str_split(strrep(studyFile, protocolDir, ''));
