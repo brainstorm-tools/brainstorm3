@@ -78,7 +78,7 @@ for i = 1:length(iDestStudies)
             break;
         end
     end
-    if ~foundNonRawData
+    if ~isempty(destStudy.Data)  && ~foundNonRawData
         continue;
     end
     
