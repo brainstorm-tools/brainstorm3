@@ -420,35 +420,29 @@ function SliderCallback(hObject, event, target)
             SubjectFile = getappdata(hFig, 'SubjectFile');
             if ~isempty(SubjectFile)
                 sSubject = bst_get('Subject', SubjectFile);
-                CtFile = [];
-                MeshFile = [];
-                for i=1:length(sSubject.Anatomy)
-                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
-                        CtFile = sSubject.Anatomy(i).FileName;
-                    end
+                % Get IsoSurface
+                iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
+                if isempty(iIsoSrf)
+                    bst_error('No IsoSurface available.', 'Loading IsoSurface');
+                    return;
                 end
-                for i=1:length(sSubject.Surface)
-                    if ~isempty(regexp(sSubject.Surface(i).FileName, 'tess_isosurface', 'match')) 
-                        MeshFile = sSubject.Surface(i).FileName;
-                    end
+                % Retrieve CT volume index and isoValue from the IsoSurface data
+                [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSrf);
+                if isempty(iCtVol)
+                    SetIsoValue(isoValue);
+                    return;
                 end
+                % Ask user if they want to proceed
+                if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold')
+                    SetIsoValue(isoValue);
+                    return;
+                end                
+                % Get new isoValue from the slider
+                isoValue = jSlider.getValue();                
+                % Remove the old IsoSurface and generate and load the new one
+                ButtonRemoveSurfaceCallback();
+                tess_isosurface(sSubject.Anatomy(iCtVol).FileName, isoValue);
             end
-            
-            % ask user if they want to proceed
-            isProceed = java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold');
-            if ~isProceed
-                [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
-                isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
-                SetIsoValue(str2double(isoValue{1}));
-                return;
-            end
-            
-            % get the iso value from slider
-            isoValue = jSlider.getValue();
-            
-            % remove the old isosurface and generate and load the new one
-            ButtonRemoveSurfaceCallback();
-            tess_isosurface(CtFile, isoValue);
             
         case 'DataAlpha'
             % Update value in Surface array
