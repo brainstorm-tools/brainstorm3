@@ -3148,21 +3148,9 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         end
         % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
         if ~isempty(iSrf)
-            sSurf = load(file_fullpath(sSubject.Surface(iSrf).FileName), 'History');
-            if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-                % Search for CT threshold in history
-                ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
-                % Return intersection of the found and then update iCtVol
-                if ~isempty(ctEntry)
-                    [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
-                    if iCtIso
-                        iCtVol = intersect(iCtIso, iCtVol);
-                    else
-                        bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
-                                           'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
-                        return
-                    end
-                end
+            iCtVol = panel_surface('GetIsosurfaceData', sSubject, iSrf);
+            if isempty(iCtVol)
+                return;
             end
         end
         if ~strcmpi(res, 'mri') && length(iCtVol) > 1

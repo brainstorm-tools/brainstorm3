@@ -2729,3 +2729,33 @@ function ApplyDefaultDisplay() %#ok<DEFNU>
     end
 end
 
+%% ===== FOR AN ISOSURFACE IN A SUBJECT, GET ITS ASSOCIATED CT VOLUME INDEX AND ISOVALUE
+function [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSurface)
+    % Intialize returned variables
+    iCtVol = [];
+    isoValue = [];
+    % Load the IsoSurface history
+    sSurf = load(file_fullpath(sSubject.Surface(iIsoSurface).FileName), 'History');
+    if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+        % Get all the CT volumes for the subject
+        iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
+        % Search for CT threshold in history
+        ctEntry  = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
+        isoValueEntry = regexp(sSurf.History{:, 3}, 'threshold\s*=\s*(\d+)', 'tokens', 'once');
+        if ~isempty(isoValueEntry)
+            isoValue = str2double(isoValueEntry{1});
+        end
+        % Return intersection of the found and then update iCtVol
+        if ~isempty(ctEntry)
+            [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
+            if iCtIso
+                iCtVol = intersect(iCtIso, iCtVol);
+            else
+                bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
+                                   'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
+                iCtVol = [];
+                return
+            end
+        end
+    end
+end
