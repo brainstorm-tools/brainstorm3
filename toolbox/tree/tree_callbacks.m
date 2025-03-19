@@ -1109,11 +1109,11 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
                         if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'SPM', 1));
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'SPM', 0));
+                            gui_component('MenuItem', jMenuRegister, [], '<HTML><B>SPM12</B>: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'SPM', 1));
+                            gui_component('MenuItem', jMenuRegister, [], '<HTML><B>SPM12</B>: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'SPM', 0));
                             if isCt
-                                gui_component('MenuItem', jMenuRegister, [], 'CT2MRI: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'CT2MRI', 1));
-                                gui_component('MenuItem', jMenuRegister, [], 'CT2MRI: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'CT2MRI', 0));
+                                gui_component('MenuItem', jMenuRegister, [], '<HTML><B>CT2MRI</B>: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'CT2MRI', 1));
+                                gui_component('MenuItem', jMenuRegister, [], '<HTML><B>CT2MRI</B>: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'CT2MRI', 0));
                             end
                             AddSeparator(jMenuRegister);
                             gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'ncs', 'ncs'));
@@ -3132,8 +3132,8 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
         % === MESH FROM THRESHOLD CT ===
         if (length(iAnatomy) <= 1) && isCt
             if ~isempty(sSubject.iAnatomy)
-                gui_component('MenuItem', jMenu, [], 'SPM: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'SPM'));
-                gui_component('MenuItem', jMenu, [], 'BrainSuite: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'BrainSuite'));
+                gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'SPM'));
+                gui_component('MenuItem', jMenu, [], '<HTML><B>BrainSuite</B>: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'BrainSuite'));
             end
             gui_component('MenuItem', jMenu, [], 'Generate threshold mesh from CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isosurface(MriFile));
         end
