@@ -3163,8 +3163,13 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 return;
             end
             [sSubjectCt, ~, iCtVol] = bst_get('MriFile', ctFile);
+            if isempty(sSubjectCt)
+                bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), 'CT implantation');
+                return;
+            end
             if ~strcmp(sSubjectCt.FileName, sSubject.FileName)
                 bst_error('Subject for CT and IsoSurface is not the same', 'CT implantation');
+                return;
             end
 
         end
