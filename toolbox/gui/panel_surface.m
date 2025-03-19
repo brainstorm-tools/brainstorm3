@@ -845,7 +845,7 @@ function ButtonAddSurfaceCallback(surfaceType)
             typesList{end+1} = 'Subcortical';
         end
         % IsoSurface
-        iIsoSurface = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
+        iIsoSurface = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
         if ~isempty(iIsoSurface)
             typesList{end+1} = 'IsoSurface';
         end
