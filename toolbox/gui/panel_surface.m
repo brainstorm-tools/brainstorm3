@@ -853,6 +853,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(TessInfo)
             typesList = setdiff(typesList, {TessInfo.Name});
         end
+        % Order of surfacetypes
+        typeListOrder = {'Anatomy', 'Scalp', 'OuterSkull', 'InnerSkull', 'Cortex', 'White', 'Fibers', 'FEM', 'IsoSurface'};
+        typesList = intersect(typeListOrder, typesList, 'stable');
         % Nothing more
         if isempty(typesList)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
