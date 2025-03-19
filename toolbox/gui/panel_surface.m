@@ -435,9 +435,11 @@ function SliderCallback(hObject, event, target)
             end
             % Get new isoValue from the slider
             isoValue = jSlider.getValue();
-            % Remove the old IsoSurface and generate and load the new one
+            % Remove the old IsoSurface, generate, and load the new one
             ButtonRemoveSurfaceCallback();
+            colorBak = TessInfo(iSurface).AnatomyColor;
             tess_isosurface(ctFile, isoValue);
+            SetSurfaceColor(hFig, iSurface, colorBak(1,:), colorBak(2,:));
             
         case 'DataAlpha'
             % Update value in Surface array
