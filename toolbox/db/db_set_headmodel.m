@@ -70,15 +70,9 @@ for i = 1:length(iDestStudies)
         continue;
     end
     
-    % Skip studies without non-raw data
-    foundNonRawData = 0;
-    for iData = 1:length(destStudy.Data)
-        if ~strcmpi(destStudy.Data(iData).DataType, 'raw')
-            foundNonRawData = 1;
-            break;
-        end
-    end
-    if ~foundNonRawData
+    % Skip @raw studies and studies without channel file
+    conditionName = destStudy.Condition{1};
+    if (length(conditionName) > 4 && strcmpi(conditionName(1:4), '@raw')) || isempty(destStudy.Channel)
         continue;
     end
     
@@ -86,7 +80,7 @@ for i = 1:length(iDestStudies)
     destHeadModel = bst_get('HeadModelForStudy', iDestStudy);
     if ~isempty(destHeadModel)
         destSubject = bst_get('Subject', destStudy.BrainStormSubject);
-        disp(['BST> Study "' destStudy.Name '" of subject "' destSubject.Name '" already contains a head model. Skipping.']);
+        disp(['BST> Study "' conditionName '" of subject "' destSubject.Name '" already contains a head model. Skipping.']);
         continue;
     end
     
@@ -99,7 +93,7 @@ end
 if nCopied > 0
     db_reload_studies(iDestStudies);
 else
-    java_dialog('warning', ['No file was copied. To avoid errors, folders with existing head models, only raw data, or empty' 10 ...
+    java_dialog('warning', ['No file was copied. To avoid errors, folders with existing head models, only raw data, or without channel file' 10 ...
         'are not supported by this process. You need to copy them manually via File -> Copy/Paste.']);
 end
 
