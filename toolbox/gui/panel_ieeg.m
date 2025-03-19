@@ -3146,8 +3146,16 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 iVol2 = [];
                 iSrf  = iIsoSrf;
         end
-        % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
+
         if ~isempty(iSrf)
+            % Prompt for the IsoSurf file selection
+            isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iSrf).Comment});
+            if isempty(isoComment)
+                return
+            end
+            [~, ix] = ismember(isoComment, {sSubject.Surface(iSrf).Comment});
+            iSrf = iSrf(ix);
+            % Get CT from IsoSurf
             ctFile = panel_surface('GetIsosurfaceParams', sSubject.Surface(iSrf).FileName);
             if isempty(ctFile)
                 return;
