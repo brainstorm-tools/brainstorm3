@@ -415,34 +415,29 @@ function SliderCallback(hObject, event, target)
             SetSurfaceSmooth(hFig, iSurface, SurfSmoothValue, 1);
 
         case 'SurfIsoValue'
-            % get the handles
-            hFig = bst_figures('GetFiguresByType', '3DViz');
-            SubjectFile = getappdata(hFig, 'SubjectFile');
-            if ~isempty(SubjectFile)
-                sSubject = bst_get('Subject', SubjectFile);
-                % Get IsoSurface
-                iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
-                if isempty(iIsoSrf)
-                    bst_error('No IsoSurface available.', 'Loading IsoSurface');
-                    return;
+            isosurfFile = TessInfo(iSurface).SurfaceFile;
+            % Get CT file and IsoValue used to generate the isosurface file
+            [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
+            sSubject = bst_get('MriFile', ctFile);
+            dialogTitle = 'Change threshold IsoSurface';
+            if isempty(sSubject)
+                bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), dialogTitle);
+            else
+                subjectFile = getappdata(hFig, 'SubjectFile');
+                if ~strcmp(subjectFile, sSubject.FileName)
+                    bst_error('Subject for CT and IsoSurface is not the same', dialogTitle);
                 end
-                % Retrieve CT volume index and isoValue from the IsoSurface data
-                [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSrf);
-                if isempty(iCtVol)
-                    SetIsoValue(isoValue);
-                    return;
-                end
-                % Ask user if they want to proceed
-                if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold')
-                    SetIsoValue(isoValue);
-                    return;
-                end                
-                % Get new isoValue from the slider
-                isoValue = jSlider.getValue();                
-                % Remove the old IsoSurface and generate and load the new one
-                ButtonRemoveSurfaceCallback();
-                tess_isosurface(sSubject.Anatomy(iCtVol).FileName, isoValue);
             end
+            % Ask user if they want to proceed
+            if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', dialogTitle)
+                SetIsoValue(isoValue);
+                return;
+            end
+            % Get new isoValue from the slider
+            isoValue = jSlider.getValue();
+            % Remove the old IsoSurface and generate and load the new one
+            ButtonRemoveSurfaceCallback();
+            tess_isosurface(ctFile, isoValue);
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -2733,33 +2728,20 @@ function ApplyDefaultDisplay() %#ok<DEFNU>
     end
 end
 
-%% ===== FOR AN ISOSURFACE IN A SUBJECT, GET ITS ASSOCIATED CT VOLUME INDEX AND ISOVALUE
-function [iCtVol, isoValue] = GetIsosurfaceData(sSubject, iIsoSurface)
+%% ===== GET ISOSURFACE PARAMETERS
+function [ctFile, isoValue] = GetIsosurfaceParams(isosurfaceFile)
     % Intialize returned variables
-    iCtVol = [];
+    ctFile = [];
     isoValue = [];
     % Load the IsoSurface history
-    sSurf = load(file_fullpath(sSubject.Surface(iIsoSurface).FileName), 'History');
+    sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-        % Get all the CT volumes for the subject
-        iCtVol = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
-        % Search for CT threshold in history
-        ctEntry  = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
-        isoValueEntry = regexp(sSurf.History{:, 3}, 'threshold\s*=\s*(\d+)', 'tokens', 'once');
-        if ~isempty(isoValueEntry)
-            isoValue = str2double(isoValueEntry{1});
-        end
-        % Return intersection of the found and then update iCtVol
-        if ~isempty(ctEntry)
-            [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
-            if iCtIso
-                iCtVol = intersect(iCtIso, iCtVol);
-            else
-                bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
-                                   'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
-                iCtVol = [];
-                return
-            end
+        % Get CT file and value from last History entry
+        ctEntries  = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)', 'tokens');
+        iEntries =  find(~cellfun(@isempty, ctEntries));
+        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 2
+            ctFile   = ctEntries{iEntries(end)}{1}{1};
+            isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
         end
     end
 end
