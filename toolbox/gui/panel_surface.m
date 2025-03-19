@@ -418,6 +418,9 @@ function SliderCallback(hObject, event, target)
             isosurfFile = TessInfo(iSurface).SurfaceFile;
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
+            if isoValue == jSlider.getValue()
+                return
+            end
             sSubject = bst_get('MriFile', ctFile);
             dialogTitle = 'Change threshold IsoSurface';
             if isempty(sSubject)
