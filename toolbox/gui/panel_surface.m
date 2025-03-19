@@ -838,10 +838,18 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(iSubCortical)
             typesList{end+1} = 'Subcortical';
         end
+        % IsoSurface
+        iIsoSurface = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
+        if ~isempty(iIsoSurface)
+            typesList{end+1} = 'IsoSurface';
+        end
         % Remove surfaces that are already displayed
         if ~isempty(TessInfo)
             typesList = setdiff(typesList, {TessInfo.Name});
         end
+        % Order of surfacetypes
+        typeListOrder = {'Anatomy', 'Scalp', 'OuterSkull', 'InnerSkull', 'Cortex', 'White', 'Fibers', 'FEM', 'IsoSurface'};
+        typesList = intersect(typeListOrder, typesList, 'stable');
         % Nothing more
         if isempty(typesList)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
@@ -875,6 +883,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(iSubCortical).FileName;
         case 'White'
             SurfaceFile = sSubject.Surface(iWhite).FileName;
+        case 'IsoSurface'
+            SurfaceFile = sSubject.Surface(iIsoSurface).FileName;
         case 'Other'
             % Offer all the other surfaces
             Comment = java_dialog('combo', '<HTML>Select the surface to add:<BR><BR>', 'Select surface', [], {sSubject.Surface.Comment});
