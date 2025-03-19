@@ -3135,7 +3135,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
                 gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'SPM'));
                 gui_component('MenuItem', jMenu, [], '<HTML><B>BrainSuite</B>: Skull stripping', IconLoader.(volIcon), [], @(h,ev)MriSkullStrip(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName, 'BrainSuite'));
             end
-            gui_component('MenuItem', jMenu, [], 'Generate threshold mesh from CT', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isosurface(MriFile));
+            gui_component('MenuItem', jMenu, [], 'Generate SEEG/ECoG isosurface', IconLoader.ICON_SURFACE, [], @(h,ev)tess_isosurface(MriFile));
         end
         % === GENERATE HEAD/BEM ===
         if (length(iAnatomy) <= 1) && ~isCt
