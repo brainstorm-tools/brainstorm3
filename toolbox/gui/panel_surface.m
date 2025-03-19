@@ -442,7 +442,7 @@ function SliderCallback(hObject, event, target)
             ButtonRemoveSurfaceCallback();
             colorBak = TessInfo(iSurface).AnatomyColor;
             tess_isosurface(ctFile, isoValue);
-            SetSurfaceColor(hFig, iSurface, colorBak(1,:), colorBak(2,:));
+            SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
             
         case 'DataAlpha'
             % Update value in Surface array
