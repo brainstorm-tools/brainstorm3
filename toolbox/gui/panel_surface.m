@@ -425,10 +425,14 @@ function SliderCallback(hObject, event, target)
             dialogTitle = 'Change threshold IsoSurface';
             if isempty(sSubject)
                 bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), dialogTitle);
+                SetIsoValue(isoValue);
+                return;
             else
                 subjectFile = getappdata(hFig, 'SubjectFile');
                 if ~strcmp(subjectFile, sSubject.FileName)
                     bst_error('Subject for CT and IsoSurface is not the same', dialogTitle);
+                    SetIsoValue(isoValue);
+                    return;
                 end
             end
             % Ask user if they want to proceed
