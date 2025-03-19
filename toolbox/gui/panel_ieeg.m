@@ -3148,10 +3148,15 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         end
         % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
         if ~isempty(iSrf)
-            iCtVol = panel_surface('GetIsosurfaceData', sSubject, iSrf);
-            if isempty(iCtVol)
+            ctFile = panel_surface('GetIsosurfaceParams', sSubject.Surface(iSrf).FileName);
+            if isempty(ctFile)
                 return;
             end
+            [sSubjectCt, ~, iCtVol] = bst_get('MriFile', ctFile);
+            if ~strcmp(sSubjectCt.FileName, sSubject.FileName)
+                bst_error('Subject for CT and IsoSurface is not the same', 'CT implantation');
+            end
+
         end
         if ~strcmpi(res, 'mri') && length(iCtVol) > 1
             % Prompt for the CT file selection
