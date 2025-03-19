@@ -3148,13 +3148,15 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         end
 
         if ~isempty(iSrf)
-            % Prompt for the IsoSurf file selection
-            isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iSrf).Comment});
-            if isempty(isoComment)
-                return
+            if length(iSrf) > 1
+                % Prompt for the IsoSurf file selection
+                isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iSrf).Comment});
+                if isempty(isoComment)
+                    return
+                end
+                [~, ix] = ismember(isoComment, {sSubject.Surface(iSrf).Comment});
+                iSrf = iSrf(ix);
             end
-            [~, ix] = ismember(isoComment, {sSubject.Surface(iSrf).Comment});
-            iSrf = iSrf(ix);
             % Get CT from IsoSurf
             ctFile = panel_surface('GetIsosurfaceParams', sSubject.Surface(iSrf).FileName);
             if isempty(ctFile)
