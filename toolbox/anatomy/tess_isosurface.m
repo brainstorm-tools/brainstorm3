@@ -129,6 +129,15 @@ end
 %% ===== CREATE SURFACE =====
 % Compute isosurface
 bst_progress('start', 'Generate thresholded isosurface from CT', 'Creating isosurface...');
+% Find tess_isosurface file computed using the same CT volume
+iIsoSurfForThisCt = 0;
+iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
+for ix = 1 : length(iIsoSrfs)
+    [CtFileIso, oldIsoValue]= panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
+    if strcmp(CtFileIso, CtFile)
+        iIsoSurfForThisCt = iIsoSrfs(ix);
+    end
+end
 [sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
@@ -148,25 +157,34 @@ sMesh.Vertices = cs_convert(sMri, 'mri', 'scs', sMesh.Vertices ./ 1000);
 
 %% ===== SAVE FILES =====
 if isSave
-    bst_progress('text', 'Saving new file...');
+    bst_progress('text', 'Saving file...');
     % Create output filenames
-    ProtocolInfo = bst_get('ProtocolInfo');
-    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
-    % Get the mesh file
-    MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
-
-    % Replace existing isoSurface surface (tess_isosurface.mat)
-    [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
-    if ~isempty(iSurfaceTmp)
-        file_delete(file_fullpath(MeshFile), 1);
-        sSubjectTmp.Surface(iSurfaceTmp) = [];
-        bst_set('Subject', iSubjectTmp, sSubjectTmp);
+    SurfaceDir = bst_fileparts(file_fullpath(CtFile));
+    % Create or Overwrite tess_isosurface file
+    if iIsoSurfForThisCt == 0
+        % Create IsoFile
+        MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+        comment = sprintf('isoSurface (ISO_%d)', isoValue);
+        isAppend = 0;
+    else
+        % Overwrite the updated fields, do not delete the file
+        MeshFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
+        % Force to be the newest isosurface
+        sSubject.Surface(iIsoSurfForThisCt) = [];
+        bst_set('Subject', iSubject, sSubject);
+        % Get Comment and History (then update)
+        sMeshTmp = load(MeshFile, 'Comment', 'History');
+        comment = strrep(sMeshTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
+        sMesh.History = sMeshTmp.History;
+        isAppend = 1;
     end
-    
-    % Save isosurface
-    sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
+    % Set comment
+    sMesh.Comment = comment;
+    % Append History
     sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue)]);
-    bst_save(MeshFile, sMesh, 'v7');
+    % Save isosurface
+    bst_save(MeshFile, sMesh, 'v7', isAppend);
+    % Add isosurface to database
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
     MriFile = sSubject.Anatomy(1).FileName;

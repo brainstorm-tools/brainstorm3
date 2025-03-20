@@ -415,40 +415,38 @@ function SliderCallback(hObject, event, target)
             SetSurfaceSmooth(hFig, iSurface, SurfSmoothValue, 1);
 
         case 'SurfIsoValue'
-            % get the handles
-            hFig = bst_figures('GetFiguresByType', '3DViz');
-            SubjectFile = getappdata(hFig, 'SubjectFile');
-            if ~isempty(SubjectFile)
-                sSubject = bst_get('Subject', SubjectFile);
-                CtFile = [];
-                MeshFile = [];
-                for i=1:length(sSubject.Anatomy)
-                    if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
-                        CtFile = sSubject.Anatomy(i).FileName;
-                    end
-                end
-                for i=1:length(sSubject.Surface)
-                    if ~isempty(regexp(sSubject.Surface(i).FileName, 'tess_isosurface', 'match')) 
-                        MeshFile = sSubject.Surface(i).FileName;
-                    end
+            isosurfFile = TessInfo(iSurface).SurfaceFile;
+            % Get CT file and IsoValue used to generate the isosurface file
+            [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
+            if isoValue == jSlider.getValue()
+                return
+            end
+            sSubject = bst_get('MriFile', ctFile);
+            dialogTitle = 'Change threshold IsoSurface';
+            if isempty(sSubject)
+                bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), dialogTitle);
+                SetIsoValue(isoValue);
+                return;
+            else
+                subjectFile = getappdata(hFig, 'SubjectFile');
+                if ~strcmp(subjectFile, sSubject.FileName)
+                    bst_error('Subject for CT and IsoSurface is not the same', dialogTitle);
+                    SetIsoValue(isoValue);
+                    return;
                 end
             end
-            
-            % ask user if they want to proceed
-            isProceed = java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', 'Changing threshold');
-            if ~isProceed
-                [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
-                isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
-                SetIsoValue(str2double(isoValue{1}));
+            % Ask user if they want to proceed
+            if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', dialogTitle)
+                SetIsoValue(isoValue);
                 return;
             end
-            
-            % get the iso value from slider
+            % Get new isoValue from the slider
             isoValue = jSlider.getValue();
-            
-            % remove the old isosurface and generate and load the new one
+            % Remove the old IsoSurface, generate, and load the new one
             ButtonRemoveSurfaceCallback();
-            tess_isosurface(CtFile, isoValue);
+            colorBak = TessInfo(iSurface).AnatomyColor;
+            tess_isosurface(ctFile, isoValue);
+            SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -2746,3 +2744,20 @@ function ApplyDefaultDisplay() %#ok<DEFNU>
     end
 end
 
+%% ===== GET ISOSURFACE PARAMETERS
+function [ctFile, isoValue] = GetIsosurfaceParams(isosurfaceFile)
+    % Intialize returned variables
+    ctFile = [];
+    isoValue = [];
+    % Load the IsoSurface history
+    sSurf = load(file_fullpath(isosurfaceFile), 'History');
+    if isfield(sSurf, 'History') && ~isempty(sSurf.History)
+        % Get CT file and value from last History entry
+        ctEntries  = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)', 'tokens');
+        iEntries =  find(~cellfun(@isempty, ctEntries));
+        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 2
+            ctFile   = ctEntries{iEntries(end)}{1}{1};
+            isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
+        end
+    end
+end

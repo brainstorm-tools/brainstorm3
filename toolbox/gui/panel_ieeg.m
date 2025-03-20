@@ -3146,24 +3146,32 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
                 iVol2 = [];
                 iSrf  = iIsoSrf;
         end
-        % Get CT from IsoSurf  % TODO do not assume there is only one IsoSurf
+
         if ~isempty(iSrf)
-            sSurf = load(file_fullpath(sSubject.Surface(iSrf).FileName), 'History');
-            if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-                % Search for CT threshold in history
-                ctEntry = regexp(sSurf.History{:, 3}, '^Thresholded CT:\s(.*)\sthreshold.*$', 'tokens', 'once');
-                % Return intersection of the found and then update iCtVol
-                if ~isempty(ctEntry)
-                    [~, iCtIso] = ismember(ctEntry{1}, {sSubject.Anatomy.FileName});
-                    if iCtIso
-                        iCtVol = intersect(iCtIso, iCtVol);
-                    else
-                        bst_error(sprintf(['The CT that was used to create the IsoSurface cannot be found. ' 10 ...
-                                           'CT file : %s'], ctEntry{1}), 'Loading CT for IsoSurface');
-                        return
-                    end
+            if length(iSrf) > 1
+                % Prompt for the IsoSurf file selection
+                isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iSrf).Comment});
+                if isempty(isoComment)
+                    return
                 end
+                [~, ix] = ismember(isoComment, {sSubject.Surface(iSrf).Comment});
+                iSrf = iSrf(ix);
             end
+            % Get CT from IsoSurf
+            ctFile = panel_surface('GetIsosurfaceParams', sSubject.Surface(iSrf).FileName);
+            if isempty(ctFile)
+                return;
+            end
+            [sSubjectCt, ~, iCtVol] = bst_get('MriFile', ctFile);
+            if isempty(sSubjectCt)
+                bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), 'CT implantation');
+                return;
+            end
+            if ~strcmp(sSubjectCt.FileName, sSubject.FileName)
+                bst_error('Subject for CT and IsoSurface is not the same', 'CT implantation');
+                return;
+            end
+
         end
         if ~strcmpi(res, 'mri') && length(iCtVol) > 1
             % Prompt for the CT file selection
