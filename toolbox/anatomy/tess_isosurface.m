@@ -133,11 +133,12 @@ bst_progress('start', 'Generate thresholded isosurface from CT', 'Creating isosu
 iIsoSurfForThisCt = 0;
 iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
 for ix = 1 : length(iIsoSrfs)
-    [CtFileIso, oldIsoValue]= panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
+    CtFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
     if strcmp(CtFileIso, CtFile)
         iIsoSurfForThisCt = iIsoSrfs(ix);
     end
 end
+
 [sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
@@ -167,20 +168,21 @@ if isSave
         comment = sprintf('isoSurface (ISO_%d)', isoValue);
         isAppend = 0;
     else
+        % Get old IsoValue
+        [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Overwrite the updated fields, do not delete the file
         MeshFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Force to be the newest isosurface
         sSubject.Surface(iIsoSurfForThisCt) = [];
         bst_set('Subject', iSubject, sSubject);
-        % Get Comment and History (then update)
+        % Get Comment and update it
         sMeshTmp = load(MeshFile, 'Comment', 'History');
         comment = strrep(sMeshTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
-        sMesh.History = sMeshTmp.History;
         isAppend = 1;
     end
     % Set comment
     sMesh.Comment = comment;
-    % Append History
+    % Set history
     sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue)]);
     % Save isosurface
     bst_save(MeshFile, sMesh, 'v7', isAppend);
