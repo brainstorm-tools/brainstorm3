@@ -2388,7 +2388,7 @@ function hs = PlotMri(hFig, posXYZ, isFast)
     setappdata(hFig, 'Surface', TessInfo);
     
     % Plot threshold markers
-    if ~isempty(TessInfo(iTess).Data) 
+    if ~isempty(TessInfo(iTess).Data) || ~isempty(TessInfo(iTess).OverlayCube)
         if ~sColormapData.isAbsoluteValues && (OPTIONS.OverlayBounds(1) == -OPTIONS.OverlayBounds(2))
             ThreshBar = OPTIONS.OverlayThreshold * max(abs(OPTIONS.OverlayBounds)) * [-1,1];
         elseif (OPTIONS.OverlayBounds(2) <= 0)
