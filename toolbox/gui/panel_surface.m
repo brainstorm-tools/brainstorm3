@@ -1232,9 +1232,14 @@ function UpdateSurfaceProperties()
     % Data threshold
     ctrl.jSliderDataThresh.setValue(100 * TessInfo(iSurface).DataThreshold);
     ctrl.jLabelDataThresh.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).DataThreshold)));
-    DataLimit = TessInfo(iSurface).DataLimitValue;
-    threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
-    ctrl.jSliderDataThresh.setToolTipText(num2str(threshBar));
+    if isOverlay && ~isOverlayStat && ~isOverlayLabel
+        DataLimit = TessInfo(iSurface).DataLimitValue;
+        threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
+        tooltipText = num2str(threshBar);
+    else
+        tooltipText = '';
+    end
+    ctrl.jSliderDataThresh.setToolTipText(tooltipText);
     % Size threshold
     sliderSizeVector = GetSliderSizeVector(TessInfo(iSurface).nVertices);
     iSlider = bst_closest(sliderSizeVector, TessInfo(iSurface).SizeThreshold);
