@@ -475,6 +475,10 @@ function SliderCallback(hObject, event, target)
             DefaultSurfaceDisplay = bst_get('DefaultSurfaceDisplay');
             DefaultSurfaceDisplay.DataThreshold = TessInfo(iSurface).DataThreshold;
             bst_set('DefaultSurfaceDisplay', DefaultSurfaceDisplay); 
+            % Update threshold value as tooltip
+            DataLimit = TessInfo(iSurface).DataLimitValue;
+            threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
+            ctrl.jSliderDataThresh.setToolTipText(num2str(threshBar));
             
         case 'SizeThreshold'
             % Update value in Surface array
@@ -1230,6 +1234,9 @@ function UpdateSurfaceProperties()
     % Data threshold
     ctrl.jSliderDataThresh.setValue(100 * TessInfo(iSurface).DataThreshold);
     ctrl.jLabelDataThresh.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).DataThreshold)));
+    DataLimit = TessInfo(iSurface).DataLimitValue;
+    threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
+    ctrl.jSliderDataThresh.setToolTipText(num2str(threshBar));
     % Size threshold
     sliderSizeVector = GetSliderSizeVector(TessInfo(iSurface).nVertices);
     iSlider = bst_closest(sliderSizeVector, TessInfo(iSurface).SizeThreshold);
