@@ -183,7 +183,9 @@ if isSave
     % Set comment
     sMesh.Comment = comment;
     % Set history
-    sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue)]);
+    sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue) ...
+                                                       ' minRange = ' num2str(round(sMri.Histogram.whiteLevel)) ...
+                                                       ' maxRange = ' num2str(round(sMri.Histogram.intensityMax))]);
     % Save isosurface
     bst_save(MeshFile, sMesh, 'v7', isAppend);
     % Add isosurface to database
