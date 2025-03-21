@@ -2752,19 +2752,21 @@ function ApplyDefaultDisplay() %#ok<DEFNU>
 end
 
 %% ===== GET ISOSURFACE PARAMETERS
-function [ctFile, isoValue] = GetIsosurfaceParams(isosurfaceFile)
+function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     % Intialize returned variables
     ctFile = [];
     isoValue = [];
+    isoRange = [];
     % Load the IsoSurface history
     sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
         % Get CT file and value from last History entry
-        ctEntries  = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)', 'tokens');
+        ctEntries  = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)\sminRange\s*=\s*(\d+)\smaxRange\s*=\s*(\d+)', 'tokens');
         iEntries =  find(~cellfun(@isempty, ctEntries));
-        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 2
+        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
             ctFile   = ctEntries{iEntries(end)}{1}{1};
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
+            isoRange = [str2double(ctEntries{iEntries(end)}{1}{3}) str2double(ctEntries{iEntries(end)}{1}{4})];
         end
     end
 end
