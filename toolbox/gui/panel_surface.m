@@ -110,7 +110,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Threshold title
             jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
             % Min size slider
-            jSliderSurfIsoValue = JSlider(1, GetIsoValueMaxRange(), 1);
+            jSliderSurfIsoValue = JSlider(1, 1000, 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
             jSliderSurfIsoValue.setToolTipText('isoSurface Threshold');
             java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
@@ -535,30 +535,6 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
     end
 end
 
-%% ===== GET SLIDER ISOVALUE =====
-function isoValue = GetIsoValueMaxRange()
-    % get the handles
-    hFig = bst_figures('GetFiguresByType', '3DViz');
-    if ~isempty(hFig)
-        SubjectFile = getappdata(hFig, 'SubjectFile');
-        if ~isempty(SubjectFile)
-            sSubject = bst_get('Subject', SubjectFile);
-            CtFile = [];
-            for i=1:length(sSubject.Anatomy)
-                if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
-                    CtFile = sSubject.Anatomy(i).FileName;
-                end
-            end
-        end
-        
-        if ~isempty(CtFile)
-            sMri = bst_memory('LoadMri', CtFile);
-            isoValue = double(sMri.Histogram.intensityMax);
-        end
-    else
-        isoValue = 4500.0;
-    end
-end
 
 %% ===== SET SLIDER ISOVALUE =====
 function SetIsoValue(isoValue)
