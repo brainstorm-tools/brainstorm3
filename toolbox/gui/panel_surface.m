@@ -1150,9 +1150,10 @@ function UpdateSurfaceProperties()
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
     if isIsoSurface
-        [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', TessInfo(iSurface).SurfaceFile);
-        isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
-        SetIsoValue(str2double(isoValue{1}));
+        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
+        ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
+        SetIsoValue(isoValue);
     end
     % Show sulci button
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
