@@ -109,10 +109,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
             % Threshold title
             jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
-            % Min size slider
+            % IsoSurface threshold slider
             jSliderSurfIsoValue = JSlider(1, 1000, 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
-            jSliderSurfIsoValue.setToolTipText('isoSurface Threshold');
+            jSliderSurfIsoValue.setToolTipText('IsoSurface threshold');
             java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
                                             'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
             jPanelSurfaceOptions.add('tab hfill', jSliderSurfIsoValue);
