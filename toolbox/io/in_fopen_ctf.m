@@ -194,7 +194,8 @@ if ~isempty(pos_file)
     if ~isfield(HeadMat, 'TransfMegLabels') || ~iscell(HeadMat.TransfMegLabels) || isempty(HeadMat.TransfMegLabels)
         disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');
     elseif ismember('Native=>Brainstorm/CTF', HeadMat.TransfMegLabels)
-        disp('BST> Warning: head point coordinates appear to already be in SCS, presumably because of missing digitized head coils.');
+        disp(['BST> Warning: head point coordinates appear to already be in SCS, presumably because of missing digitized head coils' 10 ...
+            'or missing digitized anatomical points and digitized coils were named NAS/LPA/RPA.']);
         isAlign = false;
     elseif ~ismember('RawPoints=>Native', HeadMat.TransfMegLabels)
         disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');

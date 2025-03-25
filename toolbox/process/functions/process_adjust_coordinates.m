@@ -437,11 +437,13 @@ function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, N
     else
         
         % Import from original file.
-        [NewChannelMat, NewChannelFile] = import_channel(sInput.iStudy, ChannelFile, FileFormat, 0, 0, 0, [], []);
+        [NewChannelMat, NewChannelFile] = import_channel(sInput.iStudy, ChannelFile, FileFormat, 0, 0, 0, [], 0);
         % iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
         % iStudy index is needed to avoid error for noise recordings with missing SCS transform.
         % ChannelReplace is for replacing the file, only if isSave.
         % ChannelAlign is for headpoints, but also ONLY if isSave.  We do it later if user selected.
+        % isApplyVox2ras should be false to avoid the pop-up asking if we want to use the MRI world
+        % transformation even before checking for digitized fids (it would then apply MRI world > MRI vox > MRI SCS).
     end
     
     % See if it worked.
@@ -1064,7 +1066,13 @@ function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = Che
         % Get the three fiducials in the head points
         ChannelMat = UpdateChannelMatScs(ChannelMat);
         % Check if coordinates differ by more than 1 um.
-        if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
+        if isempty(ChannelMat.SCS.NAS) || isempty(ChannelMat.SCS.LPA) || isempty(ChannelMat.SCS.RPA) 
+            isMriMatch = false;
+            isSessionMatch = false;
+            if isPrint
+                disp('BST> MRI fiducials previously updated, but different session than current (missing) digitized fiducials.');
+            end
+        elseif any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
                 any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
             isMriMatch = false;
@@ -1149,6 +1157,9 @@ end
 
 
 function ChannelMat = UpdateChannelMatScs(ChannelMat)
+    % Update the coordinates of the digitized anatomical fiducials in the channel SCS field, after
+    % potentially having edited the coregistration such that these points no longer define the SCS
+    % for the functional data - it's still defined by the MRI anatomical fiducials.
     if ~isfield(ChannelMat, 'HeadPoints')
         return;
     end
@@ -1160,6 +1171,9 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         ChannelMat.SCS.NAS = mean(ChannelMat.HeadPoints.Loc(:,iNas)', 1); %#ok<*UDIM> 
         ChannelMat.SCS.LPA = mean(ChannelMat.HeadPoints.Loc(:,iLpa)', 1);
         ChannelMat.SCS.RPA = mean(ChannelMat.HeadPoints.Loc(:,iRpa)', 1);
+        % The SCS.R, T and Origin fields no longer have any use, except for missing digitized fids
+        % (see below), but keep them updated always for consistency.
+        [~, ChannelMat] = cs_compute(ChannelMat, 'scs');
     end
     % Do the same with head coils, used when exporting coregistration to BIDS
     iHpiN = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-N'));
@@ -1177,14 +1191,14 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
         ChannelMat.Native = TmpChanMat.SCS;
         % Now apply the transform to the digitized anat fiducials. These are not used anywhere yet,
-        % only the transform, but might as well be consistent and save the same points as in .SCS.
-        % But still in meters, not cm.
+        % only the transform, but might as well be consistent and save the same points as in .SCS
+        % (digitized anat fids). Still in meters, not cm, despite actual native CTF being in cm.
         ChannelMat.Native.NAS(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.NAS'; 1];
         ChannelMat.Native.LPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.LPA'; 1];
         ChannelMat.Native.RPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.RPA'; 1];
     else
         % Missing digitized MEG head coils, probably the anatomical points are actually coils.
-        disp('BST> Missing digitized MEG head coils, NAS/LPA/RPA are likely head coils.');
+        disp('BST> Missing digitized MEG head coils, assuming NAS/LPA/RPA are actually head coils.');
         ChannelMat.Native = ChannelMat.SCS;
     end
 end
