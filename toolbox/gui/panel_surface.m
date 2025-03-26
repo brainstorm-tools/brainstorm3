@@ -2743,7 +2743,7 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
         if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
             ctFile   = ctEntries{iEntries(end)}{1}{1};
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
-            if isempty(ctEntries{iEntries(end)}{1}{3}) || isempty(ctEntries{iEntries(end)}{1}{4})
+            if isempty(ctEntries{iEntries(end)}{1}{3}) && isempty(ctEntries{iEntries(end)}{1}{4})
                 % If range not in last History entry, load from CT file and update History accordingly
                 sCt = bst_memory('LoadMri', ctFile);
                 minVal = round(sCt.Histogram.whiteLevel);
