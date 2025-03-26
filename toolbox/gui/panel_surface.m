@@ -2737,24 +2737,22 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     % Load the IsoSurface
     sSurf = load(file_fullpath(isosurfaceFile));
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-        % Get CT file and value from last History entry
-        ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(\sminVal\s*=\s*(\d+))?(\smaxVal\s*=\s*(\d+))?', 'tokens');
+        % Get CT file, value and range from last History entry
+        ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(?:\sminVal\s*=\s*)?(\d+)?(?:\smaxVal\s*=\s*)?(\d+)?', 'tokens');
         iEntries =  find(~cellfun(@isempty, ctEntries));
         if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
             ctFile   = ctEntries{iEntries(end)}{1}{1};
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
             if isempty(ctEntries{iEntries(end)}{1}{3}) || isempty(ctEntries{iEntries(end)}{1}{4})
-                % If IsoValue range not in IsoSurface History, load CT info and update History accordingly
+                % If range not in last History entry, load from CT file and update History accordingly
                 sCt = bst_memory('LoadMri', ctFile);
-                isoRange = [round(sCt.Histogram.whiteLevel) round(sCt.Histogram.intensityMax)];
-                sSurf = bst_history('add', sSurf, 'threshold_ct', ['Thresholded CT: ' sCt.FileName ' threshold = ' num2str(isoValue) ...
-                                                                   ' minVal = ' num2str(round(sCt.Histogram.whiteLevel)) ...
-                                                                   ' maxVal = ' num2str(round(sCt.Histogram.intensityMax))]);
+                minVal = round(sCt.Histogram.whiteLevel);
+                maxVal = round(sCt.Histogram.intensityMax);
+                isoRange = [minVal maxVal];
+                sSurf.History(:, 3) = cellstr([char(sSurf.History(:, 3)) ' minVal = ' num2str(minVal) ' maxVal = ' num2str(maxVal)]);
                 bst_save(file_fullpath(isosurfaceFile), sSurf, 'v7');
             else
-                minVal = str2double(strrep(ctEntries{iEntries(end)}{1}{3}, 'minVal = ', ''));
-                maxVal = str2double(strrep(ctEntries{iEntries(end)}{1}{4}, 'maxVal = ', ''));
-                isoRange = [minVal maxVal];
+                isoRange = [str2double(ctEntries{iEntries(end)}{1}{3}) str2double(ctEntries{iEntries(end)}{1}{4})];
             end
         end
     end
