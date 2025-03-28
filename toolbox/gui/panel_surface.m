@@ -2750,7 +2750,8 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
                     sCt = bst_memory('LoadMri', ctFile);
                 end
                 isoRange = double(round([sCt.Histogram.whiteLevel, sCt.Histogram.intensityMax]));
-                sSurf.History{iEntries(end), 3} = ['Thresholded CT: ' ctFile ' threshold = ' num2str(isoValue) ' minVal = ' num2str(isoRange(1)) ' maxVal = ' num2str(isoRange(2))];
+                % Update history
+                sSurf.History{iEntries(end), 3} = sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, isoValue, isoRange);                
                 bst_save(file_fullpath(isosurfaceFile), sSurf, [], 1);
             else
                 isoRange = str2double(ctEntries{iEntries(end)}{1}(3:4));
