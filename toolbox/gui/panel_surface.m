@@ -2735,7 +2735,7 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     isoValue = [];
     isoRange = [];
     % Load the IsoSurface
-    sSurf = load(file_fullpath(isosurfaceFile));
+    sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
         % Get CT file, value and range from last History entry
         ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(?:\sminVal\s*=\s*)?(\d+)?(?:\smaxVal\s*=\s*)?(\d+)?', 'tokens');
@@ -2751,8 +2751,7 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
                 end
                 isoRange = double(round([sCt.Histogram.whiteLevel, sCt.Histogram.intensityMax]));
                 sSurf.History{iEntries(end), 3} = [sSurf.History{iEntries(end), 3} ' minVal = ' num2str(isoRange(1)) ' maxVal = ' num2str(isoRange(2))];
-                sSurfTmp.History = sSurf.History;
-                bst_save(file_fullpath(isosurfaceFile), sSurfTmp, [], 1);
+                bst_save(file_fullpath(isosurfaceFile), sSurf, [], 1);
             else
                 isoRange = str2double(ctEntries{iEntries(end)}{1}(3:4));
             end
