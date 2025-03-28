@@ -1,3 +1,9 @@
+March 2025
+- Anatomy: Export surface scouts as MRI mask
+- Anatomy: Improved isosurface threshold slider
+- TimeFreq: Correct sign of imaginary part in complex TF computed with Hilbert
+- Distrib: Improved detection of write permissions in Windows symlinks
+--------------------------------------------------------------
 February 2025
 - Anatomy: Import MRI BESA volumes and surfaces
 - Anatomy: Export surfaces as STL files
