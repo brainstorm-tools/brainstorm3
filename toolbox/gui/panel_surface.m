@@ -2750,7 +2750,8 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
                 maxVal = round(sCt.Histogram.intensityMax);
                 isoRange = [minVal maxVal];
                 sSurf.History{iEntries(end), 3} = [sSurf.History{iEntries(end), 3} ' minVal = ' num2str(minVal) ' maxVal = ' num2str(maxVal)];
-                bst_save(file_fullpath(isosurfaceFile), sSurf, 'v7');
+                sSurfTmp.History = sSurf.History;
+                bst_save(file_fullpath(isosurfaceFile), sSurfTmp, [], 1);
             else
                 isoRange = [str2double(ctEntries{iEntries(end)}{1}{3}) str2double(ctEntries{iEntries(end)}{1}{4})];
             end
