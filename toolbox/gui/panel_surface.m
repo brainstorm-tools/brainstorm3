@@ -2745,7 +2745,9 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
             if any(cellfun(@isempty, ctEntries{iEntries(end)}{1}(3:4)))
                 % If range not in last History entry, load from CT file and update History accordingly
+                warning off
                 sCt = load(file_fullpath(ctFile), 'Histogram');
+                warning on
                 if ~isfield(sCt, 'Histogram')
                     sCt = bst_memory('LoadMri', ctFile);
                 end
