@@ -115,6 +115,7 @@ if (nargin < 2) || isempty(isoValue)
     % Get new value isoValue
     isoValue = round(str2double(res));
 end
+isoRange = double(round([sMri.Histogram.whiteLevel, sMri.Histogram.intensityMax]));
 
 % Check parameters values
 % isoValue cannot be < 0 as there cannot be negative intensity in the CT
@@ -183,7 +184,8 @@ if isSave
     % Set comment
     sMesh.Comment = comment;
     % Set history
-    sMesh = bst_history('add', sMesh, 'threshold_ct', ['Thresholded CT: ' sMri.FileName ' threshold = ' num2str(isoValue)]);
+    sMesh = bst_history('add', sMesh, 'threshold_ct', ...
+                        sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', sMri.FileName, isoValue, isoRange));
     % Save isosurface
     bst_save(MeshFile, sMesh, 'v7', isAppend);
     % Add isosurface to database

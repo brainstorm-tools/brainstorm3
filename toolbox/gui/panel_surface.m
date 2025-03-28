@@ -109,10 +109,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
             % Threshold title
             jLabelSurfIsoValueTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Thresh.:');
-            % Min size slider
-            jSliderSurfIsoValue = JSlider(1, GetIsoValueMaxRange(), 1);
+            % IsoSurface threshold slider
+            jSliderSurfIsoValue = JSlider(1, 1000, 1);
             jSliderSurfIsoValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
-            jSliderSurfIsoValue.setToolTipText('isoSurface Threshold');
+            jSliderSurfIsoValue.setToolTipText('IsoSurface threshold');
             java_setcb(jSliderSurfIsoValue, 'MouseReleasedCallback', @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'), ...
                                             'KeyPressedCallback',    @(h,ev)SliderCallback(h, ev, 'SurfIsoValue'));
             jPanelSurfaceOptions.add('tab hfill', jSliderSurfIsoValue);
@@ -535,30 +535,6 @@ function sliderSizeVector = GetSliderSizeVector(nVertices)
     end
 end
 
-%% ===== GET SLIDER ISOVALUE =====
-function isoValue = GetIsoValueMaxRange()
-    % get the handles
-    hFig = bst_figures('GetFiguresByType', '3DViz');
-    if ~isempty(hFig)
-        SubjectFile = getappdata(hFig, 'SubjectFile');
-        if ~isempty(SubjectFile)
-            sSubject = bst_get('Subject', SubjectFile);
-            CtFile = [];
-            for i=1:length(sSubject.Anatomy)
-                if ~isempty(regexp(sSubject.Anatomy(i).FileName, '_volct', 'match'))
-                    CtFile = sSubject.Anatomy(i).FileName;
-                end
-            end
-        end
-        
-        if ~isempty(CtFile)
-            sMri = bst_memory('LoadMri', CtFile);
-            isoValue = double(sMri.Histogram.intensityMax);
-        end
-    else
-        isoValue = 4500.0;
-    end
-end
 
 %% ===== SET SLIDER ISOVALUE =====
 function SetIsoValue(isoValue)
@@ -1174,9 +1150,10 @@ function UpdateSurfaceProperties()
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
     if isIsoSurface
-        [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', TessInfo(iSurface).SurfaceFile);
-        isoValue = regexp(sSubjectTmp.Surface(iSurfaceTmp).Comment, '\d*', 'match');
-        SetIsoValue(str2double(isoValue{1}));
+        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
+        ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
+        SetIsoValue(isoValue);
     end
     % Show sulci button
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
@@ -2751,20 +2728,36 @@ function ApplyDefaultDisplay() %#ok<DEFNU>
     end
 end
 
-%% ===== GET ISOSURFACE PARAMETERS
-function [ctFile, isoValue] = GetIsosurfaceParams(isosurfaceFile)
+%% ===== GET ISOSURFACE PARAMETERS =====
+function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     % Intialize returned variables
     ctFile = [];
     isoValue = [];
-    % Load the IsoSurface history
+    isoRange = [];
+    % Load the IsoSurface
     sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
-        % Get CT file and value from last History entry
-        ctEntries  = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)', 'tokens');
+        % Get CT file, value and range from last History entry
+        ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(?:\sminVal\s*=\s*)?(\d+)?(?:\smaxVal\s*=\s*)?(\d+)?', 'tokens');
         iEntries =  find(~cellfun(@isempty, ctEntries));
-        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 2
+        if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
             ctFile   = ctEntries{iEntries(end)}{1}{1};
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
+            if any(cellfun(@isempty, ctEntries{iEntries(end)}{1}(3:4)))
+                % If range not in last History entry, load from CT file and update History accordingly
+                warning off
+                sCt = load(file_fullpath(ctFile), 'Histogram');
+                warning on
+                if ~isfield(sCt, 'Histogram')
+                    sCt = bst_memory('LoadMri', ctFile);
+                end
+                isoRange = double(round([sCt.Histogram.whiteLevel, sCt.Histogram.intensityMax]));
+                % Update history
+                sSurf.History{iEntries(end), 3} = sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, isoValue, isoRange);                
+                bst_save(file_fullpath(isosurfaceFile), sSurf, [], 1);
+            else
+                isoRange = str2double(ctEntries{iEntries(end)}{1}(3:4));
+            end
         end
     end
 end
