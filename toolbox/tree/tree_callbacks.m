@@ -68,7 +68,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas', 'volct'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas', 'volct', 'volpet'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix', 'spike'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -166,8 +166,8 @@ switch (lower(action))
                 % MRI: Display in MRI viewer
                 view_mri(filenameRelative);
                 
-            % ===== VOLUME ATLAS AND VOLUME CT=====
-            case {'volatlas', 'volct'}
+            % ===== VOLUME ATLAS, CT and PET =====
+            case {'volatlas', 'volct', 'volpet'}
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
                 iAnatomy = bstNodes(1).getItemIndex();
@@ -572,10 +572,13 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ((iSubject == 0) || ~sSubject.UseDefaultAnat)
                     AddSeparator(jPopup);
                     % === IMPORT ===
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
-                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
-                    gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
+                    jMenuImportAnat = gui_component('Menu', jPopup, [], 'Import anatomy', IconLoader.ICON_ANATOMY, [], []);
+                        gui_component('MenuItem', jMenuImportAnat, [], 'Anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));  
+                        gui_component('MenuItem', jMenuImportAnat, [], 'Anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
+                    jMenuImportVol= gui_component('Menu', jPopup, [], 'Import volumes', IconLoader.ICON_ANATOMY, [], []);  
+                        gui_component('MenuItem', jMenuImportVol, [], 'MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
+                        gui_component('MenuItem', jMenuImportVol, [], 'CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
+                        gui_component('MenuItem', jMenuImportVol, [], 'PET', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 0, 1, 'Import PET'));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
@@ -1046,7 +1049,7 @@ switch (lower(action))
                 end
                 
 %% ===== POPUP: ANATOMY =====
-            case {'anatomy', 'volatlas', 'volct'}
+            case {'anatomy', 'volatlas', 'volct', 'volpet'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iAnatomy = [];
@@ -1056,8 +1059,9 @@ switch (lower(action))
                 mriComment = lower(char(bstNodes(1).getComment()));
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                 isCt    = strcmpi(nodeType, 'volct');
+                isPet   = strcmpi(nodeType, 'volpet');
                     
-                if (length(bstNodes) == 1)
+                if (length(bstNodes) == 1) && ~isPet
                     % MENU : DISPLAY
                     jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
                         % Display
@@ -1087,11 +1091,11 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
                         end
                     % === MENU: EDIT MRI ===
-                    if ~bst_get('ReadOnly') && ~isAtlas && ~isCt
+                    if ~bst_get('ReadOnly') && ~isAtlas && ~isCt && ~isPet
                         gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
                     end
                     % === MENU: SET AS DEFAULT ===
-                    if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas && ~isCt
+                    if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas && ~isCt && ~isPet
                         gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
                     end
                     % === MENU: CREATE SURFACES ===

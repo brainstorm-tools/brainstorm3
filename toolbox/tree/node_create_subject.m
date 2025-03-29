@@ -69,6 +69,7 @@ else
     iAnatList = 1:length(sSubject.Anatomy);
     iAtlas = find(~cellfun(@(c)(isempty(strfind(char(c), '_volatlas')) && isempty(strfind(char(c), '_tissues'))), {sSubject.Anatomy.FileName}));
     iCt    = find(cellfun(@(c)(~isempty(strfind(char(c), '_volct'))), {sSubject.Anatomy.FileName}));
+    iPet   = find(cellfun(@(c)(~isempty(strfind(char(c), '_volpet'))), {sSubject.Anatomy.FileName}));
     if (length(sSubject.Anatomy) > 1)
         iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,[iAtlas,sSubject.iAnatomy]), setdiff(iAtlas,sSubject.iAnatomy)];
     end
@@ -78,6 +79,8 @@ else
             nodeType = 'volatlas';
         elseif ismember(iAnatomy, iCt)
             nodeType = 'volct';
+        elseif ismember(iAnatomy, iPet)
+            nodeType = 'volpet';
         else
             nodeType = 'anatomy';
         end
