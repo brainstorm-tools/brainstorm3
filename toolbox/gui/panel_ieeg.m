@@ -2905,41 +2905,20 @@ function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
 
     % Get selected electrodes
-    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
-    MriIdx = 1;
-
+    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
     if isempty(sSelElec)
-    	bst_error('No electrode seleced.', 'Set electrode position', 0);
+    	bst_error('No electrode selected.', 'Set electrode position', 0);
         return;
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif ~strcmpi(GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Id.Type, 'MriViewer')
-        if length(hFig) == 1
-            bst_error('MRI viewer must be open', 'Set electrode position', 0);
-            return;
-        end
-        MriIdx = 2;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-    
-    
-    sMri = panel_surface('GetSurfaceMri', hFig(MriIdx));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Handles);
-
-    % If SCS coordinates are not available
+    % Get location from the current figure
+    XYZ = GetCrosshairLoc('scs');
     if isempty(XYZ)
-        % Ask to compute MNI transformation
-        isComputeMni = java_dialog('confirm', [...
-            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-            'Compute the MNI normalization now?'], 'Set electrode position');
-        % Run computation
-        if isComputeMni
-            figure_mri('ComputeMniCoordinates', hFig);
-        end
         return;
     end
     % Make sure the points of the electrode are more than 1cm apart
@@ -3368,3 +3347,34 @@ function ExportChannelFile(isAtlas)
     end
 end
 
+%% ===== GET CROSSHAIR LOCATION FROM CURRENT FIGURE =====
+function XYZ = GetCrosshairLoc(cs)
+    global GlobalData;
+    % Intialize output
+    XYZ = [];
+    % Get figures
+    [hFig, iFig, iDS] = bst_figures('GetCurrentFigure');
+    switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Type)
+        case '3dviz'
+            XYZ = figure_3d('GetLocation', cs, hFig);
+            if isempty(XYZ)
+                return;
+            end
+        case 'mriviewer'
+            sMri = panel_surface('GetSurfaceMri', hFig);
+            XYZ = figure_mri('GetLocation', cs, sMri, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+            % If SCS coordinates are not available
+            if isempty(XYZ)
+                % Ask to compute MNI transformation
+                isComputeMni = java_dialog('confirm', [...
+                    'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
+                    'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+                    'Compute the MNI normalization now?'], 'Get MRI crosshair location');
+                % Run computation
+                if isComputeMni
+                    figure_mri('ComputeMniCoordinates', hFig);
+                end
+                return;
+            end
+    end
+end

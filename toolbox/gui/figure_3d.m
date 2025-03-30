@@ -4800,6 +4800,31 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+%% ===== GET LOCATION FROM 3D FIGURE =====
+function XYZ = GetLocation(cs, hFig)
+    XYZ = [];
+    CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
+    isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+    % Exit early if required data is missing or selection is inactive
+    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI) || ~isSelectingCoordinates
+        return;
+    end
+    % Determine which coordinate set to return based on input
+    switch lower(cs)
+        case 'mni'
+            XYZ = CoordinatesSelector.MNI;
+        case 'mri'
+            XYZ = CoordinatesSelector.MRI;
+        case 'scs'
+            XYZ = CoordinatesSelector.SCS;
+        case 'voxel'
+            XYZ = CoordinatesSelector.Voxel;
+        case 'world'
+            XYZ = CoordinatesSelector.World;
+        otherwise
+            bst_error('Invalid coordinate conversion', 'Get location (3D)');
+    end
+end
 
 %% ===== SET LOCATION MRI =====
 function SetLocationMri(hFig, cs, XYZ)
