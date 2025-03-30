@@ -531,7 +531,7 @@ function UpdateContactList(varargin)
         Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
     else
         for i = 1:length(sContacts)
-            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', sContacts(i).Name, contacLocsMm(i,:));
+            itemText = sprintf('%s   %3.1f   %3.1f   %3.1f', sContacts(i).Name, contacLocsMm(i,:));
             listModel.addElement(BstListItem('', [], itemText, i));
             % Get longest string
             W = tk.getFontMetrics(jFont).stringWidth(itemText);
