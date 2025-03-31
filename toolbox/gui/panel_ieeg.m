@@ -3217,7 +3217,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
     if ~isempty(iSrf)
         % Display isosurface
-        DisplayIsosurface(sSubject, iSrf, [], ChannelFile, 'SEEG');
+        DisplayIsosurface(sSubject, iSrf, ChannelFile, 'SEEG');
     end
     % Close progress bar
     bst_progress('stop');
@@ -3322,15 +3322,11 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, ChannelFile, Modality)
-    % Parse inputs
-    if (nargin < 3) || isempty(hFig)
-        hFig = [];
-    end 
-    if isempty(hFig)
-        hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
-    end
-    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, 0.6, [], hFig, []);
+function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, ChannelFile, Modality)
+    % Get dataset with ChannelFile
+    iDS = bst_memory('GetDataSetChannel', ChannelFile);
+    hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, iDS);
+    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, [], [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"
