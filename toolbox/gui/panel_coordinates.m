@@ -432,7 +432,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     % Update "Coordinates" panel
     UpdatePanel();
     % Update MRI viewer (if open)
-    hFigMri = bst_figures('GetFiguresByType', {'MriViewer'});
+    hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
     if ~isempty(hFigMri)
         ViewInMriViewer();
     end
