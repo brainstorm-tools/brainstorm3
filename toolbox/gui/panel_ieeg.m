@@ -530,8 +530,10 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], itemText, 1));
         Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
     else
+        maxNameLength = max(cellfun(@length, {sContacts.Name}));
         for i = 1:length(sContacts)
-            itemText = sprintf('%s   %3.1f   %3.1f   %3.1f', sContacts(i).Name, contacLocsMm(i,:));
+            itemText = sprintf(['%' num2str(maxNameLength) 's %6.1f %6.1f %6.1f'], sContacts(i).Name, contacLocsMm(i,:));
+            disp(itemText);
             listModel.addElement(BstListItem('', [], itemText, i));
             % Get longest string
             W = tk.getFontMetrics(jFont).stringWidth(itemText);
