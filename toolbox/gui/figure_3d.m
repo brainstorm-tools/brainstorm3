@@ -4813,7 +4813,7 @@ function XYZ = GetLocation(cs, hFig)
     keysCs = {'MNI','MRI','SCS','Voxel','World'};
     iCs = find(strcmpi(cs, keysCs));
     if isempty(iCs)
-        bst_error(sprintf('Invalid coordinate conversion: %s', cs), 'Get location (3D)');
+        bst_error(sprintf('Invalid coordinate system: %s', cs), 'Get location (3D)');
         return;
     end
     XYZ = CoordinatesSelector.(keysCs{iCs});
