@@ -1450,17 +1450,14 @@ function RemoveElectrode()
                 % Remove channels
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
+            % Remove electrode line fitting
+            delete(findobj(hFig, 'Tag', sSelElec(iElec).Name));
         end
         % Delete selected electrodes
         GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
-    % remove any line fitting
-    hCoord = findobj(0, 'Tag', sSelElec.Name); 
-    if ~isempty(hCoord)
-        delete(hCoord);
-    end
     % Update list of electrodes
     UpdateElecList();
     % Update figure
