@@ -3309,7 +3309,7 @@ function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, Channel
     if isempty(hFig)
         hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
     end
-    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, 0.6, [], hFig, []);
+    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, [], [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"
