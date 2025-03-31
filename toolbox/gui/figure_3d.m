@@ -4810,20 +4810,13 @@ function XYZ = GetLocation(cs, hFig)
         return;
     end
     % Determine which coordinate set to return based on input
-    switch lower(cs)
-        case 'mni'
-            XYZ = CoordinatesSelector.MNI;
-        case 'mri'
-            XYZ = CoordinatesSelector.MRI;
-        case 'scs'
-            XYZ = CoordinatesSelector.SCS;
-        case 'voxel'
-            XYZ = CoordinatesSelector.Voxel;
-        case 'world'
-            XYZ = CoordinatesSelector.World;
-        otherwise
-            bst_error('Invalid coordinate conversion', 'Get location (3D)');
+    keysCs = {'MNI','MRI','SCS','Voxel','World'};
+    iCs = find(strcmpi(cs, keysCs));
+    if isempty(iCs)
+        bst_error(sprintf('Invalid coordinate conversion: %s', cs), 'Get location (3D)');
+        return;
     end
+    XYZ = CoordinatesSelector.(keysCs{iCs});
 end
 
 %% ===== SET LOCATION MRI =====
