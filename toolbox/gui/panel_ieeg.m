@@ -357,26 +357,26 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
+    global GlobalData;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
     % Get current figure
-    hFig = bst_figures('GetCurrentFigure');
-    % If a surface is available for current figure
-    if ~isempty(hFig)
+    [hFigall,~,iDSall] = bst_figures('GetCurrentFigure');
+    if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
-    % Else: no figure associated with the panel : disable all controls
+    % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
-    if ~isempty(hFig)
-        ElectrodeDisplay = getappdata(hFig(1), 'ElectrodeDisplay');
+    if ~isempty(hFigall)
+        ElectrodeDisplay = getappdata(hFigall(1), 'ElectrodeDisplay');
         if strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
             ctrl.jRadioDispDepth.setSelected(1);
         else
@@ -3196,7 +3196,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
     if ~isempty(iSrf)
         % Display isosurface
-        DisplayIsosurface(sSubject, iSrf, [], ChannelFile, 'SEEG');
+        DisplayIsosurface(sSubject, iSrf, ChannelFile, 'SEEG');
     end
     % Close progress bar
     bst_progress('stop');
@@ -3301,14 +3301,10 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, ChannelFile, Modality)
-    % Parse inputs
-    if (nargin < 3) || isempty(hFig)
-        hFig = [];
-    end 
-    if isempty(hFig)
-        hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
-    end
+function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, ChannelFile, Modality)
+    % Get dataset with ChannelFile
+    iDS = bst_memory('GetDataSetChannel', ChannelFile);
+    hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, iDS);
     [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, [], [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
