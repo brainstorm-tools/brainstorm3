@@ -3025,10 +3025,15 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     % Parse input
     if isstruct(MriFile)
         sSubject = MriFile;
+        MriFile  = sSubject.Anatomy(sSubject.iAnatomy).FileName;
         MriFiles = [];
     else
         sSubject = bst_get('MriFile', MriFile);
         MriFiles = {MriFile};
+    end
+    % Check if fiducials are defined
+    if ~figure_mri('HasFiducials', MriFile)
+        return;
     end
     % Get study for the new channel file
     switch (sSubject.UseDefaultChannel)
@@ -3354,17 +3359,5 @@ function XYZ = GetCrosshairLoc(cs)
             sMri = panel_surface('GetSurfaceMri', hFig);
             Handles = bst_figures('GetFigureHandles', hFig);
             XYZ = figure_mri('GetLocation', cs, sMri, Handles);
-            % If SCS coordinates are not available
-            if isempty(XYZ)
-                % Ask to compute MNI transformation
-                isComputeMni = java_dialog('confirm', [...
-                    'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-                    'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-                    'Compute the MNI normalization now?'], 'Get MRI crosshair location');
-                % Run computation
-                if isComputeMni
-                    figure_mri('ComputeMniCoordinates', hFig);
-                end
-            end
     end
 end
