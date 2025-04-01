@@ -3343,20 +3343,17 @@ end
 
 %% ===== GET CROSSHAIR LOCATION FROM CURRENT FIGURE =====
 function XYZ = GetCrosshairLoc(cs)
-    global GlobalData;
     % Intialize output
     XYZ = [];
     % Get figures
-    [hFig, iFig, iDS] = bst_figures('GetCurrentFigure');
-    switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Type)
+    hFig = bst_figures('GetCurrentFigure');
+    switch lower(hFig.Tag)
         case '3dviz'
             XYZ = figure_3d('GetLocation', cs, hFig);
-            if isempty(XYZ)
-                return;
-            end
         case 'mriviewer'
             sMri = panel_surface('GetSurfaceMri', hFig);
-            XYZ = figure_mri('GetLocation', cs, sMri, GlobalData.DataSet(iDS).Figure(iFig).Handles);
+            Handles = bst_figures('GetFigureHandles', hFig);
+            XYZ = figure_mri('GetLocation', cs, sMri, Handles);
             % If SCS coordinates are not available
             if isempty(XYZ)
                 % Ask to compute MNI transformation
@@ -3368,7 +3365,6 @@ function XYZ = GetCrosshairLoc(cs)
                 if isComputeMni
                     figure_mri('ComputeMniCoordinates', hFig);
                 end
-                return;
             end
     end
 end
