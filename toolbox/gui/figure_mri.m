@@ -3202,4 +3202,30 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     end
 end
 
-
+%% ===== CHECK FOR FIDUCIALS AVALABILITY =====
+% USAGE:  isOk = HasFiducials(MriFile) % In Volume file
+%         isOk = HasFiducials(sMri)    % In Brainstorm structure of Volume
+function isOk = HasFiducials(MriFile)
+    % Initialize outputs
+    isOk = false;
+    % Parse inputs
+    if isstruct(MriFile)
+        sMri = MriFile;
+    elseif ischar(MriFile)
+        warning off;
+        sMri = load(file_fullpath(MriFile), 'SCS');
+        warning on;
+        if ~isfield(sMri, 'SCS')
+            sMri = bst_memory('LoadMri', MriFile);
+        end
+    else
+        error('Invalid call.');
+    end
+    % Ensure SCS coordinates are available
+    if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || ~all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) || any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}))
+        java_dialog('warning', ['<HTML>You need to define the NAS/LPA/RPA fiducial points before proceeding. <BR><BR>' ...
+                                '<B>Tip:</B> Computing the <B>MNI normalization</B> would also define default fiducials.'], 'Set fiducials');
+        return;
+    end
+    isOk = true;
+end
