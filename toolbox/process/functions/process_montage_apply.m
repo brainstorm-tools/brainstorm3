@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 307;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.InputTypes  = {'data', 'raw'};
+    sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
@@ -116,7 +116,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         for ik = 1:length(iDataFile)
             iInput = iDataFile(ik);
             % Load input file 
-            DataMat = in_bst_data(sInputs(iInput).FileName);
+            if strcmp(sInputs(iInput).FileType, 'data')
+                DataMat = in_bst_data(sInputs(iInput).FileName);
+            else 
+                DataMat = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no');
+            end
+
             iStudyIn = sInputs(iInput).iStudy;
             sStudyIn = bst_get('Study', iStudyIn);
             % Build average reference
@@ -252,19 +257,58 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
 
             % Get output study
-            sStudyOut = bst_get('Study', iStudyOut);
-            % Edit data structure
-            DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
-            DataMat.ChannelFlag = ChannelFlag;
-            DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
-            % New filename
-            [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
-            NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
-            NewDataFile = file_unique(NewDataFile);
-            % Save new data file
-            bst_save(NewDataFile, DataMat, 'v6');
-            % Add file to database
-            db_add_data(iStudyOut, NewDataFile, DataMat);
+
+            if strcmp(sInputs(iInput).FileType, 'data')
+
+                sStudyOut = bst_get('Study', iStudyOut);
+                % Edit data structure
+                DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
+                DataMat.ChannelFlag = ChannelFlag;
+                DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
+                % New filename
+                [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
+                NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
+                NewDataFile = file_unique(NewDataFile);
+                % Save new data file
+                bst_save(NewDataFile, DataMat, 'v6');
+                % Add file to database
+                db_add_data(iStudyOut, NewDataFile, DataMat);
+
+            else
+                sStudyOut = bst_get('Study', iStudyOut);
+
+                % New filename
+                [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
+                NewDataFile = bst_process('GetNewFilename', bst_fileparts(sStudyOut.FileName), [fBase '_montage']);
+
+                
+                RawFileOut = strrep(NewDataFile,'.mat','.bst');
+                sDataRaw            = in_bst_data(sInputs(iInput).FileName, 'F');
+                sFileIn             = sDataRaw.F;
+                sFileIn.channelflag = ChannelFlag;
+                
+                if ~isempty(sChannelOut)
+                    ChannelMatOut = in_bst_channel(sChannelOut.FileName);
+                end
+                
+                [sFileOut, errMsg] = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMatOut);
+
+                 % Set Output sFile structure
+                sOutMat.format = 'BST-BIN';
+                sOutMat.F = sFileOut;
+                sOutMat.DataType     = 'raw'; 
+                sOutMat.ChannelFlag  = ChannelFlag;
+                sOutMat.Comment     = [DataMat.Comment ' | ' strMontage];
+                sOutMat.ChannelFlag = ChannelFlag;
+
+                % Save new link to raw .mat file
+                bst_save(NewDataFile, sOutMat, 'v6');
+                % Write block
+                out_fwrite(sFileOut, ChannelMatOut, 1, [], [], DataMat.F);
+                % Register in BST database
+                db_add_data(iStudyOut, sFileOut, sOutMat);
+
+            end
             % Add file to list of returned files
             OutputFiles{end+1} = NewDataFile;
             
