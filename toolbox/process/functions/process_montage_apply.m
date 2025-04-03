@@ -258,8 +258,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Load data file
                 DataMat = in_bst_data(sInputs(1).FileName, 'F', 'ChannelFlag', 'Time');
                 sFileIn = DataMat.F;
-                % Create an empty Brainstorm-binary file
-                sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
+
 
                 % Get all good channels (?)
                 iGoodChannels = DataMat.ChannelFlag;
@@ -280,28 +279,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Add the times for the remaining block
                     iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
                 end
-                iTimesBlocks = [1, length(DataMat.Time)];
+                % Process each block
                 for iBlock = 1 : size(iTimesBlocks, 1)
                     blockTimeBounds = DataMat.Time(iTimesBlocks(iBlock, :));
                     % Load data from link to raw data
-                    RawDataMat = in_bst(sInputs(1).FileName, blockTimeBounds, 1, 0, 'no');
+                    RawDataMat = in_bst(sInputs(1).FileName, blockTimeBounds, 1, 0, 'no', 0);
                     % Apply montage
                     RawDataMat.F = panel_montage('ApplyMontage', sMontage, RawDataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                     if iBlock == 1
-                        sOutMat = RawDataMat;
-                        % Set Output sFile structure
-                        sOutMat.F = sFileOut;
-                        % Compute channel flag
+                        % Compute channel flag and update it
                         ChannelFlag = ones(size(RawDataMat.F,1),1);
                         isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(RawDataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                         ChannelFlag(isChanBad) = -1;
-                        sOutMat.F.ChannelFlag = ChannelFlag;
-                        % Save new link to raw .mat file
-                        bst_save(MatFile, sOutMat, 'v6');
+                        sFileIn.channelflag = ChannelFlag;
+                        % Create an empty Brainstorm-binary file
+                        sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
                     end
                     % Write block
-                    out_fwrite(sFileOut, ChannelMat, 1, [], [], RawDataMat.F);
+                    out_fwrite(sFileOut, ChannelMat, 1, iTimesBlocks(iBlock, :)-1, [], RawDataMat.F);
                 end
+                % Set and save output sFile structure (link to raw, a .mat file)
+                sInMat = in_bst(sInputs(1).FileName, [], 1);
+                sOutMat = sInMat;
+                sOutMat.ChannelFlag = sFileOut.channelflag;
+                sOutMat.F = sFileOut;
+                bst_save(MatFile, sOutMat, 'v6');
                 % Register in BST database
                 db_add_data(iStudyOut, MatFile, sOutMat);
                 OutputFiles{end+1} = MatFile;
