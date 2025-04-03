@@ -75,9 +75,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned variables
     OutputFiles = {};
     % Options
-    isCreateChan = (sProcess.options.createchan.Value == 1);
-    isUseCtfComp = (sProcess.options.usectfcomp.Value == 1);
-    isUseSsp     = (sProcess.options.usessp.Value == 1);
+    isCreateChan = ~isfield('createchan', sProcess.options) || (sProcess.options.createchan.Value == 1);
+    isUseCtfComp =  isfield('usectfcomp', sProcess.options) && (sProcess.options.usectfcomp.Value == 1);
+    isUseSsp     =  isfield('usessp', sProcess.options) && (sProcess.options.usessp.Value == 1);
     MontageName  = sProcess.options.montage.Value;
     % Get a simpler montage name (for automatic SEEG montages)
     strMontage = MontageName;
