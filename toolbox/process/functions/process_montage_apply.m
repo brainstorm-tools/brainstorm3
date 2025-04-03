@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 307;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
@@ -84,6 +84,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get subject for the channel file
         sStudyChan = bst_get('ChannelFile', allChanFiles{iChan});
         sSubject = bst_get('Subject', sStudyChan.BrainStormSubject, 1);
+        isRaw = strncmp(sStudyChan.Name, '@raw', 4);
         % Load channel file 
         ChannelMat = in_bst_channel(allChanFiles{iChan});
         % Update automatic montages
@@ -106,7 +107,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % If not creating a new channel file: montage output has to be compatible with curent channel structure
         isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
-        if ~isCreateChan && ~isCompatibleChan
+        if ~isCreateChan && (~isCompatibleChan || isRaw)
             bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
             return;
         end
