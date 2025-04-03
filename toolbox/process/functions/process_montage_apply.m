@@ -322,6 +322,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sOutMat = sInMat;
                 sOutMat.ChannelFlag = sFileOut.channelflag;
                 sOutMat.F = sFileOut;
+                % Update History
+                if isUseCtfComp && strcmp(sOutMat.F.device, 'CTF')
+                    sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied CTF compensation']);
+                end
+                if isUseSsp && ~isempty(ChannelMatOut.Projector)
+                    sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied SSP/ICA projectors']);
+                end
+                sOutMat = bst_history('add', sOutMat, 'montage', ['Applied montage: ' sMontage.Name]);
                 bst_save(MatFile, sOutMat, 'v6');
                 % Register in BST database
                 db_add_data(iStudyOut, MatFile, sOutMat);
