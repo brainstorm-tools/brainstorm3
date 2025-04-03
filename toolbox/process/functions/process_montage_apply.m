@@ -272,7 +272,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Load data file
                 DataMat = in_bst_data(sInputs(1).FileName, 'F', 'ChannelFlag', 'Time');
                 sFileIn = DataMat.F;
-                % Get all good channels (?)
+                % Get all good channels
                 iGoodChannels = DataMat.ChannelFlag;
                 nChannels = length(iGoodChannels);
                 % Get maximum size of a data block
