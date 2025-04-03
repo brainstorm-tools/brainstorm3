@@ -1282,6 +1282,10 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         else
             TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
         end
+        % Set transparency for isosurface
+        if ~isempty(regexp(surfaceFile, 'tess_isosurface', 'match'))
+            TessInfo(iTess).SurfAlpha = 0.6;
+        end
 
         % === PLOT SURFACE ===
         switch (FigureId.Type)

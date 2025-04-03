@@ -431,8 +431,9 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
-    % Open MRI viewer for SEEG
-    if isCentroid
+    % Update MRI viewer (if open)
+    hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
+    if ~isempty(hFigMri)
         ViewInMriViewer();
     end
 end
