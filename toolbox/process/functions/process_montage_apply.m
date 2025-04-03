@@ -240,35 +240,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             else
                 iStudyOut = sInputs(iInput).iStudy;
             end
-            
-            % Apply montage
-            if isCreateChan
-                DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
-                % Compute channel flag
-                ChannelFlag = ones(size(DataMat.F,1),1);
-                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
-                ChannelFlag(isChanBad) = -1;
-            else
-                DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
-                ChannelFlag = DataMat.ChannelFlag;
-            end
-
             % Get output study
             sStudyOut = bst_get('Study', iStudyOut);
-            % Edit data structure
-            DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
-            DataMat.ChannelFlag = ChannelFlag;
-            DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
-            % New filename
-            [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
-            NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
-            NewDataFile = file_unique(NewDataFile);
-            % Save new data file
-            bst_save(NewDataFile, DataMat, 'v6');
-            % Add file to database
-            db_add_data(iStudyOut, NewDataFile, DataMat);
-            % Add file to list of returned files
-            OutputFiles{end+1} = NewDataFile;
+
+            % Apply montage
+            if isRaw
+            else
+                if isCreateChan
+                    DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                    % Compute channel flag
+                    ChannelFlag = ones(size(DataMat.F,1),1);
+                    isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
+                    ChannelFlag(isChanBad) = -1;
+                else
+                    DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                    ChannelFlag = DataMat.ChannelFlag;
+                end
+                % Edit data structure
+                DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
+                DataMat.ChannelFlag = ChannelFlag;
+                DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
+                % New filename
+                [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
+                NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
+                NewDataFile = file_unique(NewDataFile);
+                % Save new data file
+                bst_save(NewDataFile, DataMat, 'v6');
+                % Add file to database
+                db_add_data(iStudyOut, NewDataFile, DataMat);
+                % Add file to list of returned files
+                OutputFiles{end+1} = NewDataFile;
+            end
             
             % Copy video links
             if ~isequal(iStudyIn, iStudyOut) && ~isempty(sStudyIn.Image) && isempty(sStudyOut.Image)
