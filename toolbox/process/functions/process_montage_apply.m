@@ -317,6 +317,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Write block
                     out_fwrite(sFileOut, ChannelMatOut, 1, iTimesBlocks(iBlock, :)-1, [], RawDataMat.F);
                 end
+                % Mark the projectors as already applied to the file
+                if isUseSsp && ~isempty(ChannelMatOut.Projector)
+                    for iProj = 1:length(ChannelMatOut.Projector)
+                        if (ChannelMatOut.Projector(iProj).Status == 1)
+                            ChannelMatOut.Projector(iProj).Status = 2;
+                        end
+                    end
+                    bst_save(sChannelOut.FileName, ChannelMatOut);
+                end
                 % Set and save output sFile structure (link to raw, a .mat file)
                 sInMat = in_bst(sInputs(1).FileName, [], 1);
                 sOutMat = sInMat;
