@@ -247,7 +247,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if isRaw
                 % Channel file in new Study
                 sChannelOut = bst_get('ChannelForStudy', iStudyOut);
-                ChannelMat = in_bst_channel(sChannelOut.FileName);
+                ChannelMatOut = in_bst_channel(sChannelOut.FileName);
                 % Full output filename derives from the condition name
                 studyOutPath = bst_fileparts(file_fullpath(sStudyOut.FileName));
                 [~, rawBaseOut] = bst_fileparts(studyOutPath);
@@ -293,10 +293,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         ChannelFlag(isChanBad) = -1;
                         sFileIn.channelflag = ChannelFlag;
                         % Create an empty Brainstorm-binary file
-                        sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
+                        sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMatOut);
                     end
                     % Write block
-                    out_fwrite(sFileOut, ChannelMat, 1, iTimesBlocks(iBlock, :)-1, [], RawDataMat.F);
+                    out_fwrite(sFileOut, ChannelMatOut, 1, iTimesBlocks(iBlock, :)-1, [], RawDataMat.F);
                 end
                 % Set and save output sFile structure (link to raw, a .mat file)
                 sInMat = in_bst(sInputs(1).FileName, [], 1);
