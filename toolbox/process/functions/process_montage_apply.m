@@ -180,8 +180,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Create condition
                     iStudyOut = db_add_condition(sSubjectOut.Name, sInputs(iInput).Condition, 1);
                 else
-                    % Output condition name
+                    % Output Condition name must be unique for raw files
                     ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strrep(strMontage, '''', 'p'))];
+                    if isRaw
+                        % Get conditions for this subject
+                        sSubjStudies = bst_get('StudyWithSubject', sStudyChan.BrainStormSubject, 'intra_subject', 'default_study');
+                        ConditionOut = file_unique(ConditionOut, [sSubjStudies.Condition]);
+                    end
                     % Get output condition
                     [sStudyOut, iStudyOut] = bst_get('StudyWithCondition', [sSubject.Name '/' ConditionOut]);
                     % Create condition
