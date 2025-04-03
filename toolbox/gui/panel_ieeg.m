@@ -3174,6 +3174,24 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
         end
     end
+    % Check SCS coordinates availability for the MriFiles
+    hasValidSCS = @(sMri) isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
+    % Pre-load all MRI files once
+    sMris = cellfun(@(vol) bst_memory('LoadMri', vol), MriFiles, 'UniformOutput', false);
+    % Find the index for volumes to unload
+    iMriUnload = find(~cellfun(hasValidSCS, sMris));
+    if ~isempty(iMriUnload)
+        % Unload from memory
+        cellfun(@(vol) bst_memory('UnloadMri', vol), MriFiles(iMriUnload));
+        switch(length(MriFiles))
+            case 1
+                bst_error('You need to set the fiducial points in the volume first.', 'SEEG/ECOG implantation', 0);
+                return;
+            case 2
+                bst_error('You need to co-register the volumes first.', 'SEEG/ECOG implantation', 0);
+                return;
+        end
+    end
 
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
