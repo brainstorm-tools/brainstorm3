@@ -22,6 +22,7 @@ function varargout = process_montage_apply( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2014-2019
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -46,9 +47,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.montage.Type    = 'montage';
     sProcess.options.montage.Value   = '';
     % === NEW CHANNEL FILE
-    sProcess.options.createchan.Comment = 'Create new folders';
-    sProcess.options.createchan.Type    = 'checkbox';
-    sProcess.options.createchan.Value   = 1;
+    sProcess.options.createchan.Comment    = 'Create new folders';
+    sProcess.options.createchan.Type       = 'checkbox';
+    sProcess.options.createchan.Value      = 1;
+    sProcess.options.createchan.InputTypes = {'data'};
+    % === APPLY CTF COMPENSATION
+    sProcess.options.usectfcomp.Comment    = 'Use CTF compensation';
+    sProcess.options.usectfcomp.Type       = 'checkbox';
+    sProcess.options.usectfcomp.Value      = 1;
+    sProcess.options.usectfcomp.InputTypes = {'raw'};
+    % === APPLY SSP/ICA PROJECTORS
+    sProcess.options.usessp.Comment    = 'Use SSP/ICA projectors';
+    sProcess.options.usessp.Type       = 'checkbox';
+    sProcess.options.usessp.Value      = 1;
+    sProcess.options.usessp.InputTypes = {'raw'};
 end
 
 
@@ -64,6 +76,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % Options
     isCreateChan = (sProcess.options.createchan.Value == 1);
+    isUseCtfComp = (sProcess.options.usectfcomp.Value == 1);
+    isUseSsp     = (sProcess.options.usessp.Value == 1);
     MontageName  = sProcess.options.montage.Value;
     % Get a simpler montage name (for automatic SEEG montages)
     strMontage = MontageName;
@@ -258,16 +272,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Load data file
                 DataMat = in_bst_data(sInputs(1).FileName, 'F', 'ChannelFlag', 'Time');
                 sFileIn = DataMat.F;
-
-
                 % Get all good channels (?)
                 iGoodChannels = DataMat.ChannelFlag;
                 nChannels = length(iGoodChannels);
-
                 % Get maximum size of a data block
                 ProcessOptions = bst_get('ProcessOptions');
                 blockLengthSamples = max(floor(ProcessOptions.MaxBlockSize / nChannels), 1);
-
                 % Indices for each block
                 [~, iTimesBlocks, R] = bst_epoching(1:length(DataMat.Time), blockLengthSamples);
                 if ~isempty(R)
@@ -279,11 +289,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Add the times for the remaining block
                     iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
                 end
+
                 % Process each block
+                ImportOptions = db_template('ImportOptions');
+                ImportOptions.ImportMode      = 'Time';
+                ImportOptions.DisplayMessages = 0;
+                ImportOptions.UseCtfComp      = isUseCtfComp;
+                ImportOptions.UseSsp          = isUseSsp;
+                ImportOptions.RemoveBaseline  = 'no';
                 for iBlock = 1 : size(iTimesBlocks, 1)
-                    blockTimeBounds = DataMat.Time(iTimesBlocks(iBlock, :));
+                    SamplesBounds = iTimesBlocks(iBlock, :) - 1;
                     % Load data from link to raw data
-                    RawDataMat = in_bst(sInputs(1).FileName, blockTimeBounds, 1, 0, 'no', 0);
+                    F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, [], ImportOptions);
+                    RawDataMat = in_bst_data(sInputs(1).FileName, 'ChannelFlag');
+                    RawDataMat.F = F;
                     % Apply montage
                     RawDataMat.F = panel_montage('ApplyMontage', sMontage, RawDataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                     if iBlock == 1
