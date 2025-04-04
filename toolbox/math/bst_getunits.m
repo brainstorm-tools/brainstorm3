@@ -219,10 +219,11 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     
     
     [unit, modifier] = getUnit(originalUnit);
-    if abs(val) > 10^-2
+    if abs(val) > 10^-2 || abs(val) < 10^-24
         valFactor = 1;
         valUnits = originalUnit;
         return
+        
     end    
     
     adj = n2pAdjust(log10(abs(val)),dpw);
