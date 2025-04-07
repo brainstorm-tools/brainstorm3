@@ -338,7 +338,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         ChannelMatOut.Projector = repmat(db_template('projector'), 0);
                     end
                 end
-                bst_save(sChannelOut.FileName, ChannelMatOut);
+                bst_save(file_fullpath(sChannelOut.FileName), ChannelMatOut);
                 % Set and save output sFile structure (link to raw, a .mat file)
                 sInMat = in_bst(sInputs(1).FileName, [], 1);
                 sOutMat = sInMat;
