@@ -946,7 +946,11 @@ function DeletePoint_Callback()
 
     % Remove last point from figure. It must still be in the list.
     PlotCoordinate(false); % isAdd = false: remove last point instead of adding one
-
+    
+    % Disable 'Random' button
+    if strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EEG')
+        ctrl.jButtonRandomHeadPts.setEnabled(0);
+    end
     % Decrement head shape point count
     if strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EXTRA')
         nShapePts = str2num(ctrl.jTextFieldExtra.getText());
@@ -1669,14 +1673,20 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
         % Update the coordinate list
         UpdateList();
     end
-    % Enable 'Auto' button IFF all landmark fiducials have been acquired
-    if strcmpi(Digitize.Type, '3DScanner') && ~strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EXTRA')
-        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
-        if ~isempty(eegCapLandmarkLabels)
-            acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
-            if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))
-                ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+    if strcmpi(Digitize.Type, '3DScanner')
+        % Enable 'Auto' button IFF all landmark fiducials have been acquired
+        if ~strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EXTRA')
+            eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+            if ~isempty(eegCapLandmarkLabels)
+                acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
+                if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))
+                    ctrl.jButtonEEGAutoDetectElectrodes.setEnabled(1);
+                end
             end
+        end
+        % Enable 'Random' button IFF all the EEG points have been collected/corrected
+        if Digitize.iPoint == numel(Digitize.Points)
+            ctrl.jButtonRandomHeadPts.setEnabled(1);
         end
     end
 end
