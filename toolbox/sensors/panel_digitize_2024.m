@@ -823,6 +823,9 @@ function EEGAutoDetectElectrodes()
     end
 
     UpdateList();
+    % Change delete button label and callback such that we can delete the last point
+    java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@DeletePoint_Callback));
+    ctrl.jButtonDeletePoint.setText('Delete last point');
     % Enable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(1);
     bst_progress('stop');
