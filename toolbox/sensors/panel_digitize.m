@@ -866,6 +866,9 @@ function SwitchToNewMode(mode)
                 SetSelectedButton(8);
                 Digitize.Mode = 8;
             end
+            if strcmpi(Digitize.Type, '3DScanner')
+                ctrl.jButtonRandomHeadPts.setEnabled(0);
+            end
         % Shape
         case 8
             ctrl.jButtonExtraStart.setEnabled(1);
@@ -2145,6 +2148,8 @@ function BytesAvailable_Callback(h, ev)
             % Find the index for the current point
             % ADD A CONDITION HERE THAT EDITS EXISTING EEG POINTS
             if Digitize.isEditPts
+                % Reset global variable required for updating
+                Digitize.isEditPts = 0;
                 [~, iSelCoord] = GetSelectedCoord(); 
                 iPoint = iSelCoord - 3;
             else
@@ -2162,19 +2167,14 @@ function BytesAvailable_Callback(h, ev)
             [curMontage, nEEG] = GetCurrentMontage();
             Digitize.Points.Label{iPoint} = curMontage.Labels{iPoint};
             PlotCoordinate(Digitize.Points.EEG(iPoint,:), Digitize.Points.Label{iPoint}, 'EEG', iPoint)
-            
-            if Digitize.isEditPts
-                Digitize.isEditPts = 0;
+            % Update text field counter to the next point in the list
+            nextPoint = max(size(Digitize.Points.EEG,1)+1, 1);
+            if nextPoint > nEEG
+                % All EEG points have been collected, switch to next mode
+                ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nEEG)));
+                SwitchToNewMode(8);
             else
-                % Update text field counter to the next point in the list
-                nextPoint = max(size(Digitize.Points.EEG,1)+1, 1);
-                if nextPoint > nEEG
-                    % All EEG points have been collected, switch to next mode
-                    ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nEEG)));
-                    SwitchToNewMode(8);
-                else
-                    ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nextPoint)));
-                end
+                ctrl.jTextFieldEEG.setText(java.lang.String.valueOf(int16(nextPoint)));
             end
         % === EXTRA ===
         case 8
