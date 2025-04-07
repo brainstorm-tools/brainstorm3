@@ -124,17 +124,16 @@ function Start(varargin) %#ok<DEFNU>
     end
     
     % ===== PATIENT ID =====
+    % Get Digitize options
+    DigitizeOptions = bst_get('DigitizeOptions');
     if isempty(sSubject)
-        % Get Digitize options
-        DigitizeOptions = bst_get('DigitizeOptions');
         % Ask for subject id
         PatientId = java_dialog('input', 'Please, enter subject ID:', Digitize.Type, [], DigitizeOptions.PatientId);
         if isempty(PatientId)
             return;
         end
         % Save the new default patient id
-        DigitizeOptions.PatientId = PatientId;
-        bst_set('DigitizeOptions', DigitizeOptions);
+        DigitizeOptions.PatientId = PatientId;      
     
         % ===== GET SUBJECT =====
         if strcmpi(Digitize.Type, '3DScanner')
@@ -145,8 +144,11 @@ function Start(varargin) %#ok<DEFNU>
     
         [sSubject, iSubject] = bst_get('Subject', SubjectName);
     else
+        DigitizeOptions.PatientId = strrep(sSubject.Name, [Digitize.Type '_'], '');
         SubjectName = sSubject.Name;
     end
+    % Set Digitize options
+    bst_set('DigitizeOptions', DigitizeOptions);
 
     % Save the new SubjectName
     Digitize.SubjectName = SubjectName;

@@ -120,6 +120,7 @@ function Start(varargin)
     
         [sSubject, iSubject] = bst_get('Subject', Digitize.SubjectName);
     else
+        Digitize.Options.PatientId = strrep(sSubject.Name, [Digitize.Type '_'], '');
         Digitize.SubjectName = sSubject.Name;
     end
 
