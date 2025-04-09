@@ -273,23 +273,29 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
         nFrames = size(sMri.Cube, 4);
         if isPet
-            isInteractive = 0; % skip method and register with SPM
-            RegMethod = 'SPM';
-            if nFrames>1
-                isRealign = java_dialog('confirm', [sprintf(' Imported volume contains %d frames ', nFrames) 10 10 ...
-                    ' Do you want to align the frames and compute their mean? ' 10 10], ['Dynamic volume']);
-                isSmooth = java_dialog('confirm', ['Do you want to smooth the frames before importing?' 10 10], ['Dynamic volume']);
-                if isRealign && isSmooth
-                    [~, sMri, fileTag] = mri_realign(sMri); % Align frames then register to frame mean
-                elseif isRealign && ~isSmooth
-                    [~, sMri, fileTag] = mri_realign(sMri, [], 0); % Align frames but don't smooth
+            petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
+            % User aborted the import
+            if isempty(petopts)
+                sMri = [];
+                bst_progress('stop');
+                return;
+            end
+            % Realign (with or without smoothing)
+            if isfield(petopts, 'align')
+                if petopts.align
+                    fwhm = petopts.smooth * petopts.fwhm;
+                    [sMri, ~, fileTag] = mri_realign(sMri, [], fwhm);
                 else
+                    fileTag = '';
+                end
+                % Average across frames if requested
+                if petopts.average
                     sMri.Cube = mean(sMri.Cube, 4);
                 end
             end
         end
         % Ask what operation to perform with this MRI
-        if isInteractive && ~isPet
+        if isInteractive
             % Initialize list of options to register this new MRI with the existing one
             strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
             cellOptions = {};
@@ -309,8 +315,6 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             cellOptions{end+1} = 'Ignore';
             % Ask user to make a choice
             RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
-        elseif isPet
-            RegMethod = 'SPM'
 
         % In non-interactive mode: ignore if possible, or use the first option available
         else
@@ -325,9 +329,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
 
         % === ASK RESLICE ===
         if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
-             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
-             ~isResliceDisabled)) && ~isPet
+                (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+                isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
+                ~isResliceDisabled))  && ~isPet
             % If the volumes don't have the same size, add a warning
             if ~isSameSize
                 strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
@@ -345,11 +349,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 bst_progress('stop');
                 return;
             end
-            % Reslice PET 
-            elseif isPet
-                isReslice=1; 
-                isInteractive=1;
-        % In non-interactive mode: never reslice
+            % Reslice PET
+        elseif isPet
+            isInteractive      = petopts.register;
+            isReslice          = petopts.reslice;
+            % In non-interactive mode: never reslice
         else
             isReslice = 0;
         end
