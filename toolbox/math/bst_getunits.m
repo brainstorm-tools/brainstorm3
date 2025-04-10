@@ -223,7 +223,6 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
         valFactor = 1;
         valUnits = originalUnit;
         return
-        
     end    
     
     adj = n2pAdjust(log10(abs(val)),dpw);
