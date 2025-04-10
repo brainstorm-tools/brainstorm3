@@ -67,6 +67,8 @@ if isempty(OutputFile)
         fPath = '';
         fBase = 'export';
     end
+    % Generate BIDS event file
+    fBaseBids = regexprep(fBase, '_meg$|_eeg$|_ieeg$', '_events');
     % Get default directories and formats
     DefaultFormats = bst_get('DefaultFormats');
     if isempty(DefaultFormats.EventsOut)
@@ -92,17 +94,23 @@ if isempty(OutputFile)
             OutputFile = bst_fullfile(fPath, [fBase, '.csv']);
         case 'CTFVIDEO'
             OutputFile = bst_fullfile(fPath, 'video_events.txt');
+        case 'BIDS'
+            OutputFile = bst_fullfile(fPath, [fBaseBids, '.tsv']);
         otherwise
             OutputFile = bst_fullfile(fPath, [fBase, '.eve']);
     end
+
+    % BIDS: Set FileFiler Suffix to whole BIDS filename
+    eventsOutFileFilters = bst_get('FileFilters', 'eventsout');
+    eventsOutFileFilters{strcmp(eventsOutFileFilters(:,3), 'BIDS'), 1} = [fBaseBids, '.tsv'];
 
     % === Ask filename ===
     [OutputFile, FileFormat] = java_getfile( 'save', ...
         'Export events...', ...  % Window title
         OutputFile, ...          % Default filename
         'single', 'files', ...   % Selection mode
-        bst_get('FileFilters', 'eventsout'), ...
-         DefaultFormats.EventsOut);
+        eventsOutFileFilters, ...
+        DefaultFormats.EventsOut);
     % If no file was selected: exit
     if isempty(OutputFile)
         return
