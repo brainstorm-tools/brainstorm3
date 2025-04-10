@@ -530,8 +530,9 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], itemText, 1));
         Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
     else
+        maxNameLength = max(cellfun(@length, {sContacts.Name}));
         for i = 1:length(sContacts)
-            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', sContacts(i).Name, contacLocsMm(i,:));
+            itemText = sprintf(['%' num2str(maxNameLength) 's %6.1f %6.1f %6.1f'], sContacts(i).Name, contacLocsMm(i,:));
             listModel.addElement(BstListItem('', [], itemText, i));
             % Get longest string
             W = tk.getFontMetrics(jFont).stringWidth(itemText);
@@ -2902,41 +2903,20 @@ function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
 
     % Get selected electrodes
-    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
-    MriIdx = 1;
-
+    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
     if isempty(sSelElec)
-    	bst_error('No electrode seleced.', 'Set electrode position', 0);
+    	bst_error('No electrode selected.', 'Set electrode position', 0);
         return;
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif ~strcmpi(GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Id.Type, 'MriViewer')
-        if length(hFig) == 1
-            bst_error('MRI viewer must be open', 'Set electrode position', 0);
-            return;
-        end
-        MriIdx = 2;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-    
-    
-    sMri = panel_surface('GetSurfaceMri', hFig(MriIdx));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Handles);
-
-    % If SCS coordinates are not available
+    % Get location from the current figure
+    XYZ = GetCrosshairLoc('scs');
     if isempty(XYZ)
-        % Ask to compute MNI transformation
-        isComputeMni = java_dialog('confirm', [...
-            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-            'Compute the MNI normalization now?'], 'Set electrode position');
-        % Run computation
-        if isComputeMni
-            figure_mri('ComputeMniCoordinates', hFig);
-        end
         return;
     end
     % Make sure the points of the electrode are more than 1cm apart
@@ -3194,6 +3174,36 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
         end
     end
+    % Check SCS coordinates and coregistration of MRI files
+    errMsg = '';
+    for iVol=1:length(MriFiles)
+        sMri = bst_memory('LoadMri', MriFiles{iVol});
+        hasFiducials = isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
+        if iVol == 1
+            if hasFiducials
+                refCubeSize = size(sMri.Cube(:,:,:,1));
+                refVoxSize  = round(sMri.Voxsize(1:3) .* 1000); % mm
+                refSCS      = sMri.SCS;
+            else
+                errMsg = 'You need to set the fiducial points in the MRI first.';
+                break;
+            end
+        elseif iVol == 2
+            isSameSize = isequal(refCubeSize, size(sMri.Cube(:,:,:,1))) && isequal(refVoxSize, round(sMri.Voxsize(1:3) .* 1000));
+            if ~isSameSize || ~hasFiducials || ~isequal(refSCS.NAS, sMri.SCS.NAS) || ~isequal(refSCS.LPA, sMri.SCS.LPA) || ~isequal(refSCS.RPA, sMri.SCS.RPA)
+                errMsg = ['You need to co-register ' MriFiles{iVol} ' to the MRI first.'];
+                break;
+            end
+        end
+    end
+    if ~isempty(errMsg)
+        % Unload all MRIs that have been loaded
+        for iiVol = 1 : iVol
+            bst_memory('UnloadMri', MriFiles{iiVol});
+        end
+        bst_error(errMsg, 'SEEG/ECOG implantation', 0);
+        return
+    end
 
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
@@ -3361,3 +3371,18 @@ function ExportChannelFile(isAtlas)
     end
 end
 
+%% ===== GET CROSSHAIR LOCATION FROM CURRENT FIGURE =====
+function XYZ = GetCrosshairLoc(cs)
+    % Intialize output
+    XYZ = [];
+    % Get figures
+    hFig = bst_figures('GetCurrentFigure');
+    switch lower(hFig.Tag)
+        case '3dviz'
+            XYZ = figure_3d('GetLocation', cs, hFig);
+        case 'mriviewer'
+            sMri = panel_surface('GetSurfaceMri', hFig);
+            Handles = bst_figures('GetFigureHandles', hFig);
+            XYZ = figure_mri('GetLocation', cs, sMri, Handles);
+    end
+end
