@@ -1061,7 +1061,7 @@ switch (lower(action))
                 isCt    = strcmpi(nodeType, 'volct');
                 isPet   = strcmpi(nodeType, 'volpet');
                     
-                if (length(bstNodes) == 1) && ~isPet
+                if (length(bstNodes) == 1)
                     % MENU : DISPLAY
                     jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
                         % Display

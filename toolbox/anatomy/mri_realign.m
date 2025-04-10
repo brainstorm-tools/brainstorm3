@@ -1,5 +1,5 @@
 function  [sMriAlign, sMriMean, fileTag] = mri_realign (MriFile, Method, FWHM)
-% MRI_REALIGN: Extract frames from dynamic volumes, realign and compute the mean across frames.
+% MRI_REALIGN: Extract frames from dynamic volumes, realign and compute the mean across frames.realign
 %
 % USAGE:  [sMriAlign, sMriMean, fileTag] = mri_realign(MriFile, Method, FWHM)
 %         [sMriAlign, sMriMean, fileTag] = mri_realign(MriFile)
@@ -52,7 +52,7 @@ end
 FWHM = FWHM * [1 1 1];
 
 if (nargin < 2) || isempty(Method)
-    Method = 'spm_align';
+    Method = 'spm_realign';
 end
 
 % Progress bar
@@ -79,8 +79,8 @@ MriFileMean = bst_fullfile(TmpDir, 'meansorig.nii'); % SPM output: static volume
 MriFileRealign = bst_fullfile(TmpDir, 'sorig.nii'); % SPM output: dynamic volume with realigned frames
 
 % ====== ALIGN FRAMES =======
-numFrames = size(sMri.Cube, 4);  % Number of frames
-if numFrames==1 % If numFrames is 1, volume is static
+nFrames = size(sMri.Cube, 4);  % Number of frames
+if nFrames==1 % If nFrames is 1, volume is static
     return
 else
     % Remove NaN
@@ -91,7 +91,7 @@ end
 switch lower(Method)
 
     % ===== METHOD: SPM ALIGN =====
-    case 'spm_align'
+    case 'spm_realign'
         % Initialize SPM
         [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
         if ~isInstalled
@@ -103,7 +103,7 @@ switch lower(Method)
         bst_plugin('SetProgressLogo', 'spm12');
 
         % === CALL SPM REALIGN ===
-        bst_progress('text', sprintf('Aligning %d frames using SPM Realign...', numFrames));
+        bst_progress('text', sprintf('Aligning %d frames using SPM Realign...', nFrames));
         matlabbatch = {};
         if ~isempty(FWHM) && isequal (FWHM, [0, 0, 0])     % Create realign batch, skip smoothing
             MriFileMean = bst_fullfile(TmpDir, 'meanorig.nii'); % SPM output: static volume with mean of realigned frames
@@ -164,10 +164,10 @@ end
 % ===== UPDATE HISTORY ========
 fileTag = '_spm_realign'; % Output file tag
 sMriAlign.Comment = [sMriAlign.Comment, fileTag]; % Add file tag
-sMriAlign = bst_history('add', sMriAlign, 'realign', ['PET Frames realigned using (' Method '): ']);   % Add history entry
+sMriAlign = bst_history('add', sMriAlign, 'realign', sprintf(['Realigned %d frames in dynamic volume using ' Method ' '], nFrames));   % Add history entry
 sMriMean.Comment = [fileTag, '_mean']; % Add file tag
-sMriMean = bst_history('add', sMriMean, 'realign', ['PET Frames realigned using (' Method '): ']);
-sMriMean = bst_history('add', sMriMean, 'mean realigned', ['Mean of realigned PET using (' Method '): ']);
+sMriMean = bst_history('add', sMriMean, 'realign', sprintf(['Realigned %d frames in dynamic volume using ' Method ' '], nFrames));
+sMriMean = bst_history('add', sMriMean, 'aggregate', sprintf('Mean of %d frames' , nFrames));
 
 file_delete(TmpDir, 1, 1);
 

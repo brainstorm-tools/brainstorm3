@@ -272,26 +272,32 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         newSize = size(sMri.Cube(:,:,:,1));
         isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
         nFrames = size(sMri.Cube, 4);
+
+        % ==== PET PRE-PROCESSING ====
         if isPet
+            % Collect user inputs
             petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
-            % User aborted the import
-            if isempty(petopts)
+            if isempty(petopts)  % User aborted the import
                 sMri = [];
                 bst_progress('stop');
                 return;
             end
-            % Realign (with or without smoothing)
+            % If alignment options were returned, realign frames
             if isfield(petopts, 'align')
                 if petopts.align
-                    fwhm = petopts.smooth * petopts.fwhm;
-                    [sMri, ~, fileTag] = mri_realign(sMri, [], fwhm);
-                else
-                    fileTag = '';
+                    fwhm = petopts.smooth * petopts.fwhm;  % Compute FWHM value (0 if smoothing is unchecked)
+                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], fwhm);
+                    if petopts.smooth
+                        sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
+                    end
                 end
-                % Average across frames if requested
+                % Compute mean across frames if requested
                 if petopts.average
                     sMri.Cube = mean(sMri.Cube, 4);
+                    realignFileTag = [realignFileTag, '_mean'];
+                    sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
                 end
+                 realignHistory = sMri.History;
             end
         end
         % Ask what operation to perform with this MRI
@@ -461,6 +467,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         if ~isempty(maskFileTag)
             sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
         end
+        % Add history entry (realignment)
+        if ~isempty(realignFileTag)
+            fileTag = [realignFileTag, fileTag];           
+            sMri.History = [realignHistory; sMri.History];
+        end
         % Add back history entry (import)
         sMri.History = [tmpHistory.History; sMri.History];
     end
@@ -522,7 +533,7 @@ sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
-if isempty(sSubject.iAnatomy) && ~isCt && ~isAtlas
+if isempty(sSubject.iAnatomy) && ~isCt && ~isPet && ~isAtlas
     sSubject.iAnatomy = iAnatomy;
 end
 % Default subject
@@ -534,7 +545,7 @@ else
 end
 bst_set('ProtocolSubjects', ProtocolSubjects);
 % Save first MRI as permanent default
-if (iAnatomy == 1) && ~isCt && ~isAtlas
+if (iAnatomy == 1) && ~isCt && ~isPet && ~isAtlas
     db_surface_default(iSubject, 'Anatomy', iAnatomy, 0);
 end
 
