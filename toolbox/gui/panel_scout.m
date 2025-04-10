@@ -5636,60 +5636,30 @@ function SaveScouts(varargin)
             ct.struct_names = {sScouts.Label};
             ct.table = zeros(length(sScouts),5);
 
-            % Address duplicate colors
-            sScouts = arrayfun(@(s) setfield(s,'Color', round(255*s.Color)), sScouts);  % Scale colors to 0-255
-            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');                          % Unique colors
-            if length(C) ~= length(sScouts)
-                % Space to search neightbors, includes [0, 0, 0]
-                [~, nMostRep] = mode(ic);
-                sideCube  = ceil(nMostRep^(1/3)) - 1;
-                [R, G, B] = meshgrid(-sideCube:sideCube, -sideCube:sideCube, -sideCube:sideCube);
-                seachRGB= [R(:), G(:), B(:)];
-                for iia = 1 : length(ia)
-                    rep = find(ic == ic(ia(iia)));
-                    % If duplicate colors, get neighboring colors
-                    if length(rep) > 1
-                        colorNeighbors = bst_bsxfun(@plus, seachRGB, sScouts(rep(1)).Color);
-                        colorNeighbors(any(colorNeighbors > 255, 2) | any(colorNeighbors < 0, 2) , :) = [];
-                        [~, iClosest] = sort(sum((bsxfun(@minus, colorNeighbors, sScouts(rep(1)).Color) .^2), 2));
-                        colorNeighbors = colorNeighbors(iClosest(1: length(rep)), :);
-                        for irep = 1 : length(rep)
-                            sScouts(rep(irep)).Color = colorNeighbors(irep, :);
-                        end
-                    end
-                end
+            % Make Scout colors unique, they need to be RGB with 0-255 range
+            scoutColors = MakeColorsUnique(round(cat(1, sScouts.Color) * 255));
+            for iScout = 1 : length(sScouts)
+                sScouts(iScout).Color = scoutColors(iScout, :);
             end
-            % Check again for unique colors, if duplicate colors get random RGB
-            [C,ia,ic] = unique(cat(1, sScouts.Color), 'rows');
-            if length(C) ~= length(sScouts)
-                % Find indexes of duplicate colors
-                repIxs = [];
-                for iia = 1 : length(ia)
-                    rep = find(ic == ic(ia(iia)));
-                    if length(rep) > 1
-                        repIxs = [repIxs, rep(2:end)];
-                    end
-                end
-                % Get a unique random color for each duplicate color
-                colorsRnd = [];
-                while size(colorsRnd, 1) < length(repIxs)
-                     colorRnd = randi(256, 1, 3) - 1;
-                     if ~ismember(colorRnd, C)
-                         C = [C; colorRnd];
-                         colorsRnd = [colorsRnd; colorRnd];
-                     end
-                end
-                for ix = 1 : length(repIxs)
-                    sScouts(repIxs(ix)).Color = colorsRnd(ix, :);
-                end
-            end
-
+            % Generate table with Scouts info
             for iScout = 1:length(sScouts)
                 ct.table(iScout,1:3) = sScouts(iScout).Color;
-                ct.table(iScout,5)   = ct.table(iScout,1)  + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
-                vertices = [vertices , sScouts(iScout).Vertices - 1];
-                label    = [label ,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
+                ct.table(iScout,5)   = ct.table(iScout,1) + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
+                vertices = [vertices, sScouts(iScout).Vertices];
+                label    = [label,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
             end
+            % A label for each vertex is needed, orphan vertices set as 'background'
+            orphanVertices = setdiff(1:size(sSurf.Vertices,1), vertices);
+            if ~isempty(orphanVertices)
+                ct.numEntries          = ct.numEntries + 1;
+                ct.struct_names{end+1} = 'background';
+                ct.table(end+1, :)     = zeros(1,5);
+                ct.table(end,1:3)      = [0 0 0];
+                ct.table(end,5)        = ct.table(end,1) + ct.table(end,2) *2^8 + ct.table(end,3) *2^16;
+                vertices = [vertices, orphanVertices];
+                label    = [label,  repmat(ct.table(end,5), 1, length(orphanVertices))];
+            end
+            vertices = vertices-1; % 0-indexed
             write_annotation(ScoutFile, vertices, label, ct)
     end
 end
@@ -5848,6 +5818,61 @@ function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
                 GridLoc   = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
                 GridAtlas = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridAtlas;
             end
+        end
+    end
+end
+
+%% ===== MAKE COLORS UNIQUE =====
+% Avoids duplicated colors, by finding close enough colors.
+% Needd as some atlas formats do not allow them
+%
+% colors  = [nColors, 3] RGB with the range 0-255
+function colors = MakeColorsUnique(colors)
+    nColors = size(colors, 1);
+    % Unique colors
+    [C,ia,ic] = unique(colors, 'rows');
+    if length(C) ~= nColors
+        % Space to search neightbors, includes [0, 0, 0]
+        [~, nMostRep] = mode(ic);
+        sideCube  = ceil(nMostRep^(1/3)) - 1;
+        [R, G, B] = meshgrid(-sideCube:sideCube, -sideCube:sideCube, -sideCube:sideCube);
+        seachRGB= [R(:), G(:), B(:)];
+        for iia = 1 : length(ia)
+            rep = find(ic == ic(ia(iia)));
+            % If duplicate colors, get neighboring colors
+            if length(rep) > 1
+                colorNeighbors = bst_bsxfun(@plus, seachRGB, colors(rep(1), :));
+                colorNeighbors(any(colorNeighbors > 255, 2) | any(colorNeighbors < 0, 2) , :) = [];
+                [~, iClosest] = sort(sum((bsxfun(@minus, colorNeighbors, colors(rep(1), :)).^2), 2));
+                colorNeighbors = colorNeighbors(iClosest(1: length(rep)), :);
+                for irep = 1 : length(rep)
+                    colors(rep(irep), :) = colorNeighbors(irep, :);
+                end
+            end
+        end
+    end
+    % Check again for unique colors, if duplicate colors get random RGB
+    [C,ia,ic] = unique(colors, 'rows');
+    if length(C) ~= nColors
+        % Find indexes of duplicate colors
+        repIxs = [];
+        for iia = 1 : length(ia)
+            rep = find(ic == ic(ia(iia)));
+            if length(rep) > 1
+                repIxs = [repIxs, rep(2:end)];
+            end
+        end
+        % Get a unique random color for each duplicate color
+        colorsRnd = [];
+        while size(colorsRnd, 1) < length(repIxs)
+             colorRnd = randi(256, 1, 3) - 1;
+             if ~ismember(colorRnd, C)
+                 C = [C; colorRnd];
+                 colorsRnd = [colorsRnd; colorRnd];
+             end
+        end
+        for ix = 1 : length(repIxs)
+            colors(repIxs(ix), :) = colorsRnd(ix, :);
         end
     end
 end
