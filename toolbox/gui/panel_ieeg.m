@@ -3175,11 +3175,11 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         end
     end
     % Check SCS coordinates availability for the MriFiles
-    for i=1:length(MriFiles)
-        sMri = bst_memory('LoadMri', MriFiles{i});
+    for iVol=1:length(MriFiles)
+        sMri = bst_memory('LoadMri', MriFiles{iVol});
         if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || ~all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) || any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}))
-            bst_memory('UnloadMri', MriFiles{i});
-            switch(i)
+            bst_memory('UnloadMri', MriFiles{iVol});
+            switch(iVol)
                 case 1
                     bst_error('You need to set the fiducial points in the MRI first.', 'SEEG/ECOG implantation', 0);
                     return;
