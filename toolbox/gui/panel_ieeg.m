@@ -3174,20 +3174,35 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
         end
     end
-    % Check SCS coordinates availability for the MriFiles
+    % Check SCS coordinates and coregistration of MRI files
+    errMsg = '';
     for iVol=1:length(MriFiles)
         sMri = bst_memory('LoadMri', MriFiles{iVol});
-        if ~isfield(sMri, 'SCS') || isempty(sMri.SCS) || ~all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) || any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}))
-            bst_memory('UnloadMri', MriFiles{iVol});
-            switch(iVol)
-                case 1
-                    bst_error('You need to set the fiducial points in the MRI first.', 'SEEG/ECOG implantation', 0);
-                    return;
-                case 2
-                    bst_error(['You need to co-register ' MriFiles{2} ' to the MRI first.'], 'SEEG/ECOG implantation', 0);
-                    return;
+        hasFiducials = isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
+        if iVol == 1
+            if hasFiducials
+                refCubeSize = size(sMri.Cube(:,:,:,1));
+                refVoxSize  = round(sMri.Voxsize(1:3) .* 1000); % mm
+                refSCS      = sMri.SCS;
+            else
+                errMsg = 'You need to set the fiducial points in the MRI first.';
+                break;
+            end
+        elseif iVol == 2
+            isSameSize = isequal(refCubeSize, size(sMri.Cube(:,:,:,1))) && isequal(refVoxSize, round(sMri.Voxsize(1:3) .* 1000));
+            if ~isSameSize || ~hasFiducials || ~isequal(refSCS.NAS, sMri.SCS.NAS) || ~isequal(refSCS.LPA, sMri.SCS.LPA) || ~isequal(refSCS.RPA, sMri.SCS.RPA)
+                errMsg = ['You need to co-register ' MriFiles{iVol} ' to the MRI first.'];
+                break;
             end
         end
+    end
+    if ~isempty(errMsg)
+        % Unload all MRIs that have been loaded
+        for iiVol = 1 : iVol
+            bst_memory('UnloadMri', MriFiles{iiVol});
+        end
+        bst_error(errMsg, 'SEEG/ECOG implantation', 0);
+        return
     end
 
     % Progress bar
