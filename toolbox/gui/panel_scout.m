@@ -5641,33 +5641,25 @@ function SaveScouts(varargin)
             for iScout = 1 : length(sScouts)
                 sScouts(iScout).Color = scoutColors(iScout, :);
             end
-            
+            % Generate table with Scouts info
             for iScout = 1:length(sScouts)
                 ct.table(iScout,1:3) = sScouts(iScout).Color;
-                ct.table(iScout,5)   = ct.table(iScout,1)  + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
-                vertices = [vertices , sScouts(iScout).Vertices - 1];
-                label    = [label ,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
+                ct.table(iScout,5)   = ct.table(iScout,1) + ct.table(iScout,2) *2^8 + ct.table(iScout,3) *2^16;
+                vertices = [vertices, sScouts(iScout).Vertices];
+                label    = [label,  repmat(ct.table(iScout,5), 1, length(sScouts(iScout).Vertices))];
             end
-            
-            % We need to set a label for each vertex. Complete with a
-            % background label
-
-            background_vertix = setdiff(0:(size(sSurf.Vertices,1)-1), vertices);
-            if ~isempty(background_vertix)
-                ct.numEntries   = ct.numEntries + 1;
+            % A label for each vertex is needed, orphan vertices set as 'background'
+            orphanVertices = setdiff(1:size(sSurf.Vertices,1), vertices);
+            if ~isempty(orphanVertices)
+                ct.numEntries          = ct.numEntries + 1;
                 ct.struct_names{end+1} = 'background';
-                ct.table(end+1, :) = zeros(1,5);
-
-
-                ct.table(end,1:3) =[0 0 0];
-                ct.table(end,5)   = ct.table(end,1)  + ct.table(end,2) *2^8 + ct.table(end,3) *2^16;
-
-                
-                vertices = [vertices ,background_vertix];
-                label    = [label ,  repmat(ct.table(end,5), 1, length(background_vertix))];
+                ct.table(end+1, :)     = zeros(1,5);
+                ct.table(end,1:3)      = [0 0 0];
+                ct.table(end,5)        = ct.table(end,1) + ct.table(end,2) *2^8 + ct.table(end,3) *2^16;
+                vertices = [vertices, orphanVertices];
+                label    = [label,  repmat(ct.table(end,5), 1, length(orphanVertices))];
             end
-
-
+            vertices = vertices-1; % 0-indexed
             write_annotation(ScoutFile, vertices, label, ct)
     end
 end
