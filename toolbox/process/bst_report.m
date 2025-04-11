@@ -1407,8 +1407,8 @@ function Recall(target)
         return
     end
     % Get the start and process entries
-    iStart   = strcmpi(Reports(:,1), 'start');
-    iProcess = strcmpi(Reports(:,1), 'process');
+    iStart   = find(strcmpi(Reports(:,1), 'start'));
+    iProcess = find(strcmpi(Reports(:,1), 'process'));
     if isempty(iStart) || isempty(iProcess)
         return;
     end
