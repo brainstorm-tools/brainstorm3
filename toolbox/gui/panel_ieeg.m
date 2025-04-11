@@ -54,7 +54,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)ShowSurfPointSelectMenu(ev.getSource()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -755,6 +755,17 @@ function UpdateElecProperties(isUpdateModelList)
     ctrl.jButtonShow.setSelected(isSelected);
     % Save selected electrodes
     ctrl.jLabelSelectElec.setText(num2str(iSelElec));
+end
+
+%% ===== SHOW SURFACE POINT SELECTION MENU =====
+function ShowSurfPointSelectMenu(jButton)
+    panel_coordinates('SetSelectionState', jButton.isSelected());
+    if jButton.isSelected()
+        jMenu = java_create('javax.swing.JPopupMenu');
+        % MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION
+        gui_component('checkbox', jMenu, [], 'Select Centroid', '', [], @(h,ev)panel_coordinates('SetSurfacePointSelector', ev.getSource.isSelected()));
+        gui_brainstorm('ShowPopup', jMenu, jButton);
+    end
 end
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====

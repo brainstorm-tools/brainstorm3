@@ -125,6 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
+    setappdata(hFig, 'isSelectingCentroid',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -545,6 +546,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
+    isSelectingCentroid     = getappdata(hFig, 'isSelectingCentroid');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -618,7 +620,7 @@ function FigureMouseUpCallback(hFig, varargin)
                     [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
                     if ~isempty(sSurf)
                         iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
-                        if ~isempty(iIsoSurf)
+                        if ~isempty(iIsoSurf) && isSelectingCentroid
                             panel_coordinates('SelectPoint', hFig, 0, 1);
                         else
                             panel_coordinates('SelectPoint', hFig);
@@ -1998,6 +2000,17 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('checkboxmenuitem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
         jItem.setSelected(panel_coordinates('GetSelectionState'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_MASK));
+        % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
+        if gui_brainstorm('isTabVisible', 'iEEG')
+            ctrl = bst_get('PanelControls', 'iEEG');
+            if ctrl.jButtonSelect.isSelected()
+                jPopup.addSeparator();
+                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select Centroid', [], [], @(h,ev)panel_coordinates('SetSurfacePointSelector', ev.getSource.isSelected()));
+                isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
+                jItem.setSelected(isSelectingCentroid);
+                jPopup.addSeparator();
+            end
+        end
     end
     
     % ==== MENU: SNAPSHOT ====
