@@ -616,15 +616,11 @@ function FigureMouseUpCallback(hFig, varargin)
             % Selecting from Coordinates or iEEG panels
             if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    % For SEEG, making sure centroid calculation for plotting contacts is active
-                    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
-                    if ~isempty(sSurf)
-                        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
-                        if ~isempty(iIsoSurf) && isSelectingCentroid
-                            panel_coordinates('SelectPoint', hFig, 0, 1);
-                        else
-                            panel_coordinates('SelectPoint', hFig);
-                        end
+                    % For IsoSurface allow toggle bewteen centroid/surface point selection
+                    TessInfo = getappdata(hFig, 'Surface');
+                    iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile}));
+                    if ~isempty(iIsoSurf) && isSelectingCentroid
+                        panel_coordinates('SelectPoint', hFig, 0, 1);
                     else
                         panel_coordinates('SelectPoint', hFig);
                     end
