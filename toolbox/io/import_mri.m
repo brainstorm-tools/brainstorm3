@@ -1,5 +1,5 @@
 function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
-% IMPORT_MRI: Import a volume file (MRI, Atlas, CT, etc) in a subject of the Brainstorm database
+% IMPORT_MRI: Import a volume file (MRI, Atlas, CT, PET, etc) in a subject of the Brainstorm database
 % 
 % USAGE: [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
@@ -74,6 +74,9 @@ end
 volType = 'MRI';
 if ~isempty(strfind(Comment, 'CT'))
     volType = 'CT';
+end
+if ~isempty(strfind(Comment, 'PET'))
+    volType = 'PET';
 end
 % Get node comment from filename
 if ~isempty(strfind(Comment, 'Import'))
@@ -153,21 +156,25 @@ isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
 end
-% MNI / Atlas / CT ?
+% MNI / Atlas / CT / PET?
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 isCt    = strcmpi(volType, 'CT');
+isPet = strcmpi(volType,'PET');
 % Tag for CT volume
 if isCt
     tagVolType = '_volct';
     isAtlas = 0;
+elseif isPet
+    tagVolType = '_volpet';
+    isAtlas = 0;    
 else
     tagVolType = '';
 end
 
 % Load MRI
 isNormalize = 0;
-sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
+sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni && ~isPet, isNormalize);
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -188,7 +195,7 @@ end
 
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-if isempty(Labels) && ~iscell(MriFile) && ~isCt
+if isempty(Labels) && ~iscell(MriFile) && ~isCt && ~isPet
     Labels = mri_getlabels(MriFile, sMri, isAtlas);
 end
 % Save labels in the file structure
@@ -264,6 +271,35 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         refSize = size(sMriRef.Cube(:,:,:,1));
         newSize = size(sMri.Cube(:,:,:,1));
         isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
+        nFrames = size(sMri.Cube, 4);
+
+        % ==== PET PRE-PROCESSING ====
+        if isPet
+            % Collect user inputs
+            petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
+            if isempty(petopts)  % User aborted the import
+                sMri = [];
+                bst_progress('stop');
+                return;
+            end
+            % If alignment options were returned, realign frames
+            if isfield(petopts, 'align')
+                if petopts.align
+                    fwhm = petopts.smooth * petopts.fwhm;  % Compute FWHM value (0 if smoothing is unchecked)
+                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], fwhm);
+                    if petopts.smooth
+                        sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
+                    end
+                end
+                % Compute mean across frames if requested
+                if petopts.average
+                    sMri.Cube = mean(sMri.Cube, 4);
+                    realignFileTag = [realignFileTag, '_mean'];
+                    sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
+                end
+                 realignHistory = sMri.History;
+            end
+        end
         % Ask what operation to perform with this MRI
         if isInteractive
             % Initialize list of options to register this new MRI with the existing one
@@ -299,9 +335,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
 
         % === ASK RESLICE ===
         if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
-             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
-             ~isResliceDisabled))
+                (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+                isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
+                ~isResliceDisabled))  && ~isPet
             % If the volumes don't have the same size, add a warning
             if ~isSameSize
                 strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
@@ -319,7 +355,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 bst_progress('stop');
                 return;
             end
-        % In non-interactive mode: never reslice
+            % Reslice PET
+        elseif isPet
+            isInteractive      = petopts.register;
+            isReslice          = petopts.reslice;
+            % In non-interactive mode: never reslice
         else
             isReslice = 0;
         end
@@ -427,6 +467,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         if ~isempty(maskFileTag)
             sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
         end
+        % Add history entry (realignment)
+        if ~isempty(realignFileTag)
+            fileTag = [realignFileTag, fileTag];           
+            sMri.History = [realignHistory; sMri.History];
+        end
         % Add back history entry (import)
         sMri.History = [tmpHistory.History; sMri.History];
     end
@@ -488,7 +533,7 @@ sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
-if isempty(sSubject.iAnatomy) && ~isCt && ~isAtlas
+if isempty(sSubject.iAnatomy) && ~isCt && ~isPet && ~isAtlas
     sSubject.iAnatomy = iAnatomy;
 end
 % Default subject
@@ -500,7 +545,7 @@ else
 end
 bst_set('ProtocolSubjects', ProtocolSubjects);
 % Save first MRI as permanent default
-if (iAnatomy == 1) && ~isCt && ~isAtlas
+if (iAnatomy == 1) && ~isCt && ~isPet && ~isAtlas
     db_surface_default(iSubject, 'Anatomy', iAnatomy, 0);
 end
 

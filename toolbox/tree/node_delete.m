@@ -133,7 +133,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== ANATOMY =====
-    case {'anatomy', 'volatlas', 'volct'}
+    case {'anatomy', 'volatlas', 'volct', 'volpet'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Full file names
         FullFilesList = cellfun(@(f)fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
