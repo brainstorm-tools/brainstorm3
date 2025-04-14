@@ -133,8 +133,7 @@ function s = GetPanelContents(h)
     if isfield(h, 'jCheckAlign') && ~isempty(h.jCheckAlign)
         s.align    = h.jCheckAlign.isSelected();
         s.average  = h.jCheckAverage.isSelected();
-        s.smooth   = h.jCheckSmooth.isSelected();
-        s.fwhm     = str2double(char(h.jTextFwhm.getText()));
+        s.fwhm     = h.jCheckSmooth.isSelected() * str2double(char(h.jTextFwhm.getText()));
     end
     s.register = h.jCheckRegister.isSelected();
     s.reslice  = h.jCheckReslice.isSelected();

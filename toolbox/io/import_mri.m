@@ -285,9 +285,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % If alignment options were returned, realign frames
             if isfield(petopts, 'align')
                 if petopts.align
-                    fwhm = petopts.smooth * petopts.fwhm;  % Compute FWHM value (0 if smoothing is unchecked)
-                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], fwhm);
-                    if petopts.smooth
+                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
+                    if petopts.fwhm > 0
                         sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
                     end
                 end
@@ -297,7 +296,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     realignFileTag = [realignFileTag, '_mean'];
                     sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
                 end
-                 realignHistory = sMri.History;
+                realignHistory = sMri.History;
             end
         end
         % Ask what operation to perform with this MRI
