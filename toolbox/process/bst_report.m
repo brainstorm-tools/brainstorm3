@@ -875,7 +875,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
     iErrors   = find(strcmpi(Reports(:,1), 'error'));
     iWarnings = find(strcmpi(Reports(:,1), 'warning'));
     iImages   = find(strcmpi(Reports(:,1), 'image'));
-    iMessages = setdiff(1:size(Reports,1), [iStart(:); iStop(:); iImages(:)]');
+    iMessages = setdiff(1:size(Reports,1), [iVersion(:); iStart(:); iStop(:); iImages(:)]');
     
     % Start tag
     FilesInit = {};
@@ -1407,7 +1407,7 @@ function Recall(target)
         return
     end
     % Get the start and process entries
-    iStart   = strcmpi(Reports(:,1), 'start');
+    iStart   = find(strcmpi(Reports(:,1), 'start'), 1);
     iProcess = strcmpi(Reports(:,1), 'process');
     if isempty(iStart) || isempty(iProcess)
         return;
@@ -1415,7 +1415,7 @@ function Recall(target)
     % Process bar
     bst_progress('start', 'Process history', 'Loading pipeline...');
     % Get the input files
-    FileNames = GetFilesList(Reports{iStart(1),3}, 0);
+    FileNames = GetFilesList(Reports{iStart,3}, 0);
     % Get the processes
     sProcesses = [Reports{iProcess,2}];
     
