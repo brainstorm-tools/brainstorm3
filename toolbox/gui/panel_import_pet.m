@@ -77,8 +77,7 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
     end
     % === REGISTRATION PANEL ===
     jPanelReg = gui_river('Registration');
-    jCheckRegister = gui_component('checkbox', jPanelReg, 'br', 'Register to default MRI');
-    jCheckRegister.setSelected(true);
+    jComboboxRegister = gui_component('combobox', jPanelReg, 'br', [], {{'SPM', 'MNI', 'Ignore'}});
     jCheckReslice = gui_component('checkbox', jPanelReg, 'br', 'Reslice volume on import');
     jCheckReslice.setSelected(true);
     jPanelMain.add('br', jPanelReg);
@@ -104,7 +103,7 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
         'jCheckAverage', jCheckAverage, ...
         'jCheckSmooth', jCheckSmooth, ...
         'jTextFwhm', jTextFwhm, ...
-        'jCheckRegister', jCheckRegister, ...
+        'jComboboxRegister', jComboboxRegister, ...
         'jCheckReslice', jCheckReslice));
 
 %% =================================================================================
@@ -125,16 +124,13 @@ end
 %  === EXTERNAL CALLBACKS ==========================================================
 %  =================================================================================
 %% ===== GET PANEL CONTENTS =====
-function s = GetPanelContents(h)
-    if nargin < 1
-        h = bst_get('PanelControls', 'panel_import_pet');
-    end
-    s = struct();
-    if isfield(h, 'jCheckAlign') && ~isempty(h.jCheckAlign)
-        s.align    = h.jCheckAlign.isSelected();
-        s.average  = h.jCheckAverage.isSelected();
-        s.fwhm     = h.jCheckSmooth.isSelected() * str2double(char(h.jTextFwhm.getText()));
-    end
-    s.register = h.jCheckRegister.isSelected();
-    s.reslice  = h.jCheckReslice.isSelected();
+function s = GetPanelContents()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'panel_import_pet');
+    % Get import PET options
+    s.align    = ctrl.jCheckAlign.isSelected();
+    s.average  = ctrl.jCheckAverage.isSelected();
+    s.fwhm     = ctrl.jCheckSmooth.isSelected() * str2double(char(ctrl.jTextFwhm.getText()));
+    s.register = lower(char(ctrl.jComboboxRegister.getSelectedItem()));
+    s.reslice  = ctrl.jCheckReslice.isSelected();
 end
