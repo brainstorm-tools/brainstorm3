@@ -443,6 +443,10 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 maskFileTag = '';
         end
         fileTag = [fileTag, maskFileTag];
+        % Add tag for realign
+        if isPet
+            fileTag = [realignFileTag, fileTag];
+        end
         % Stop in case of error
         if ~isempty(errMsg)
             if isInteractive
@@ -466,11 +470,6 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         % Add history entry (skull stripping)
         if ~isempty(maskFileTag)
             sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
-        end
-        % Add history entry (realignment)
-        if ~isempty(realignFileTag)
-            fileTag = [realignFileTag, fileTag];           
-            sMri.History = [realignHistory; sMri.History];
         end
         % Add back history entry (import)
         sMri.History = [tmpHistory.History; sMri.History];
