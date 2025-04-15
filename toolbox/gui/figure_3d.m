@@ -616,7 +616,7 @@ function FigureMouseUpCallback(hFig, varargin)
             % Selecting from Coordinates or iEEG panels
             if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    % For IsoSurface allow toggle between centroid/surface point selection                    
+                    % Allow toggle between centroid/surface point selection
                     if isSelectingCentroid
                         panel_coordinates('SelectPoint', hFig, 0, 1);
                     else

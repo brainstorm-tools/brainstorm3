@@ -915,6 +915,7 @@ function ButtonRemoveSurfaceCallback(varargin)
     if isempty(iSurface)
         return
     end
+    % Check if surface being removed is an IsoSurface
     isRemoveIsoSurface = ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'tess_isosurface', 'match'));
     % Remove surface 
     RemoveSurface(hFig, iSurface);
