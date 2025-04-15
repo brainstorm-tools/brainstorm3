@@ -309,6 +309,10 @@ function SetSelectionState(isSelected)
             setappdata(hFig, 'isSelectingCoordinates', 0);      
         end
     end
+    % Update iEEG panel
+    if ~isempty(ctrl2)
+        panel_ieeg('UpdatePanel');
+    end
 end
 
 
