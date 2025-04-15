@@ -211,8 +211,29 @@ function [valFactor, valUnits] = GetExponent(val)
 end
 
 function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
-
-
+%GETSIFACTOR Converts a small numerical value to an SI-prefixed format.
+%
+%   [valFactor, valUnits] = GETSIFACTOR(val, originalUnit)
+%
+%   This function finds the appropriate SI prefix to represent a small
+%   numerical value `val` in a more human-readable format, particularly
+%   when `val` is significantly smaller than 1. It returns a multiplicative
+%   factor (`valFactor`) and the updated unit string with an SI prefix
+%   (`valUnits`).
+%
+%   INPUTS:
+%       val           - A numeric scalar value (e.g., 3.2e-6)
+%       originalUnit  - A string representing the unit of the value
+%                       (e.g., 'V', 'mA', etc.). Can include a prefix.
+%
+%   OUTPUTS:
+%       valFactor     - The factor by which the input value should be
+%                       multiplied to apply the SI prefix. For example,
+%                       if val = 3.2e-6 and the prefix is μ, then
+%                       valFactor = 1e6 (i.e., 3.2 = val * valFactor).
+%       valUnits      - A string representing the new unit with the
+%                       appropriate SI prefix applied (e.g., 'μV').
+%
     % Configuration
     decPowerStep = 3;
     sigFigs      = 5;
@@ -251,20 +272,51 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     valUnits    = sprintf('%s%s', siPrefixes{prefixIndex}, unit);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n2pAdjust
 function [unit, modifier] = getUnit(data)
-% return the unit and the modifier from a string
-% getUnit('mol/l') should return mol/l and 0
-% getUnit('mmol/l') should return mol/l and -1 
-% getUnit('pA') should return A and -4 
+%GETUNIT Extracts the base unit and SI prefix modifier from a unit string.
+%
+%   [unit, modifier] = GETUNIT(data)
+%
+%   This function parses a unit string with a possible SI prefix (e.g., 'pA',
+%   'mmol/l') and returns the base unit without the prefix and a corresponding
+%   numeric modifier indicating the power of 10 the prefix represents.
+%
+%   INPUT:
+%       data - A string containing a unit with an optional SI prefix.
+%
+%   OUTPUT:
+%       unit     - The base unit string (e.g., 'A', 'mol/l')
+%       modifier - The power of 10 associated with the SI prefix.
+%                  For example, 'p' -> -12, 'm' -> -3, 'k' -> +3, etc.
+%                  If no prefix is found, returns 0.
+%
+%   EXAMPLES:
+%       getUnit('mol/l')   returns 'mol/l', 0
+%       getUnit('mmol/l')  returns 'mol/l', -3
+%       getUnit('pA')      returns 'A', -12
 
+    % SI prefix symbols and corresponding powers of ten
+    prefixes = {'y','z','a','f','p','n','\mu','m','','k','M','G','T','P','E','Z','Y'};
+    powers   = -24:3:24;
 
-    pfs     = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };        
-    Units   = {'A','mol.l-1'};
-    
-    unit        = Units{cellfun(@(x)contains(data,x), Units)};
-    modifier    = find(strcmp(strcat(pfs,unit),data)) - 9 ;
+    % Define the base units you expect
+    knownUnits = {'A', 'mol/l', 'mol.l-1'};  % Support both 'mol/l' and 'mol.l-1'
 
+    % Try to match any unit suffix
+    for iUnit = 1:length(knownUnits)
+        base = knownUnits{iUnit};
+        for jPrefix = 1:length(prefixes)
+            candidate = strcat(prefixes{jPrefix}, base);
+            if strcmp(data, candidate)
+                unit = base;
+                modifier = powers(jPrefix);
+                return;
+            end
+        end
+    end
+
+    % If no match found, assume no prefix and return input as-is
+    unit = data;
+    modifier = 0;
 end
