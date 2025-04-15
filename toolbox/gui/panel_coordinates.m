@@ -524,9 +524,14 @@ end
 
 %% ===== SET CENTROID SELECTION =====
 function SetCentroidSelection(isSelected)
-    hFigures = bst_figures('GetFiguresByType', '3DViz');
-    for hFig = hFigures 
-        setappdata(hFig, 'isSelectingCentroid', isSelected);
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return;
+    end
+    setappdata(hFig, 'isSelectingCentroid', isSelected);
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if ~isempty(ctrl)
+        ctrl.jButtonCentroid.setSelected(isSelected);
     end
 end
 
