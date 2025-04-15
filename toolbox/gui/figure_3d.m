@@ -616,10 +616,8 @@ function FigureMouseUpCallback(hFig, varargin)
             % Selecting from Coordinates or iEEG panels
             if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    % For IsoSurface allow toggle bewteen centroid/surface point selection
-                    TessInfo = getappdata(hFig, 'Surface');
-                    iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile}));
-                    if ~isempty(iIsoSurf) && isSelectingCentroid
+                    % For IsoSurface allow toggle between centroid/surface point selection                    
+                    if isSelectingCentroid
                         panel_coordinates('SelectPoint', hFig, 0, 1);
                     else
                         panel_coordinates('SelectPoint', hFig);
@@ -1998,9 +1996,9 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_MASK));
         % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
         if gui_brainstorm('isTabVisible', 'iEEG')
-            ctrl = bst_get('PanelControls', 'iEEG');
-            if ctrl.jButtonSelect.isSelected()
-                jPopup.addSeparator();
+            isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+            iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile})); 
+            if ~isempty(iIsoSurf) && isSelectingCoordinates
                 jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
                 jItem.setSelected(isSelectingCentroid);
