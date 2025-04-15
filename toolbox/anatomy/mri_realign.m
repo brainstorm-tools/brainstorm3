@@ -11,7 +11,6 @@ function  [sMriAlign, fileTag] = mri_realign (MriFile, Method, FWHM)
 %    - MriFile : Relative path to the Brainstorm Mri file to realign
 %    - Method  : Method used for the realignment of the volume (default is spm_realign):
 %                       -'spm_realign' :        uses the SPM plugin
-%    - FWHM    : Full width at half maximum of the smoothing kernel in mm
 %
 % OUTPUTS:
 %    - sMriRealign      : Dynamic Brainstorm Mri structure with realigned frames
@@ -147,6 +146,7 @@ switch lower(Method)
         spm('defaults', 'PET');
         spm_jobman('run', matlabbatch);
         sMriAlign = in_mri(MriFileRealign, 'ALL', 0, 0);  % Import the realigned dynamic volume
+        sMriMean = in_mri_nii(MriFileMean, 0, 1, []); % Import mean and apply multiplicative rescaling, if any
 end
 
 % ===== UPDATE HISTORY ========

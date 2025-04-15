@@ -273,33 +273,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
         nFrames = size(sMri.Cube, 4);
 
-        % ==== PET PRE-PROCESSING ====
-        if isPet
-            % Collect user inputs
-            petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
-            if isempty(petopts)  % User aborted the import
-                sMri = [];
-                bst_progress('stop');
-                return;
-            end
-            % If alignment options were returned, realign frames
-            if isfield(petopts, 'align')
-                if petopts.align
-                    fwhm = petopts.smooth * petopts.fwhm;  % Compute FWHM value (0 if smoothing is unchecked)
-                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], fwhm);
-                    if petopts.smooth
-                        sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
-                    end
-                end
-                % Compute mean across frames if requested
-                if petopts.average
-                    sMri.Cube = mean(sMri.Cube, 4);
-                    realignFileTag = [realignFileTag, '_mean'];
-                    sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
-                end
-                 realignHistory = sMri.History;
-            end
-        end
+        % ==== ASK OPERATIONS FOR VOLUME ====
         % Ask what operation to perform with this MRI
         if isInteractive
             if ~isPet
@@ -364,15 +338,16 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 realignFileTag = '';
                 % Realign and smooth
                 if petopts.align
-                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
+                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
                     if petopts.fwhm > 0
                         sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
                     end
                 end
-                % Aggregate values across time frames if requested
-                if ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
-                    [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
-                    realignFileTag = [realignFileTag, aggregateFileTag];           
+                % Compute mean across frames if requested
+                if petopts.average
+                    sMri.Cube = mean(sMri.Cube, 4);
+                    realignFileTag = [realignFileTag, '_mean'];
+                    sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
                 end
                 tmpHistory.History = sMri.History;
                 % Registration method
@@ -387,6 +362,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Reslice: never reslice
             isReslice = 0;
         end
+
         % Check that reference volume has set fiducials for reslicing
         if isReslice && (~isfield(sMriRef, 'SCS') || ~isfield(sMriRef.SCS, 'R') || ~isfield(sMriRef.SCS, 'T') || isempty(sMriRef.SCS.R) || isempty(sMriRef.SCS.T))
             errMsg = 'Reslice: No SCS transformation available for the reference volume. Set the fiducials first.';
@@ -414,17 +390,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         end
 
         % === REGISTRATION AND RESLICING ===
-        switch (RegMethod)
-            case 'MNI'
+        switch lower(RegMethod)
+            case 'mni'
                 % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice, isAtlas);
-            case 'SPM'
+            case 'spm'
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
-            case 'CT2MRI'
+            case 'ct2mri'
                 % Register the CT to existing MRI using USC's CT2MRI plugin + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
-            case 'Ignore'
+            case 'ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
                     [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
@@ -467,6 +443,10 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 maskFileTag = '';
         end
         fileTag = [fileTag, maskFileTag];
+        % Add tag for realign
+        if isPet
+            fileTag = [realignFileTag, fileTag];
+        end
         % Stop in case of error
         if ~isempty(errMsg)
             if isInteractive
@@ -490,11 +470,6 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         % Add history entry (skull stripping)
         if ~isempty(maskFileTag)
             sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
-        end
-        % Add history entry (realignment)
-        if ~isempty(realignFileTag)
-            fileTag = [realignFileTag, fileTag];           
-            sMri.History = [realignHistory; sMri.History];
         end
         % Add back history entry (import)
         sMri.History = [tmpHistory.History; sMri.History];

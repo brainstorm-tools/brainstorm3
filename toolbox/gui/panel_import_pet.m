@@ -33,7 +33,7 @@ function varargout = panel_import_pet(varargin)
 % =============================================================================@
 %
 % Authors: Diellor Basha, 2025
-
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -52,14 +52,8 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
             sprintf('<HTML><EM>Imported volume contains %d frames.</EM><BR></HTML>', nFrames));
         jCheckAlign = gui_component('checkbox', jPanelAlign, 'br', 'Align frames');
         jCheckAlign.setSelected(true);
-
-        jPanelAggregate = gui_river([0, 0], [2, 0, 0, 0]);  
-        jCheckAggregate = gui_component('checkbox', jPanelAggregate, 'br', 'Aggregate frames: ');
-        jCheckAggregate.setSelected(true);
-        jComboboxAggregate = gui_component('combobox', jPanelAggregate, 'tab', [], {{'Mean', 'Sum', 'Median', 'Max', 'Min', 'First', 'Last', 'Z-score'}});
-        set(handle(jCheckAggregate, 'CallbackProperties'), 'ActionPerformedCallback', ...
-            @(src, evt) jComboboxAggregate.setEnabled(jCheckAggregate.isSelected()));
-
+        jCheckAverage = gui_component('checkbox', jPanelAlign, 'br', 'Aggregate aligned frames');
+        jCheckAverage.setSelected(true);
         jPanelSmooth = gui_river([0, 0], [2, 0, 0, 0]);
         jCheckSmooth = gui_component('checkbox', jPanelSmooth, 'br', 'Apply smoothing');
         jCheckSmooth.setSelected(false);
@@ -74,27 +68,24 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
             @(src, evt) jTextFwhm.setEnabled(jCheckSmooth.isSelected()));
         jPanelSmooth.add('br', jPanelFwhm);
         jPanelAlign.add('br', jPanelSmooth);
-        jPanelAlign.add('br', jPanelAggregate);
         jPanelMain.add('br', jPanelAlign);
     else
         jCheckAlign = [];
-        jCheckAggregate = [];
+        jCheckAverage = [];
         jCheckSmooth = [];
         jTextFwhm = [];
     end
     % === REGISTRATION PANEL ===
     jPanelReg = gui_river('Registration');
-    jCheckRegister = gui_component('checkbox', jPanelReg, 'br', 'Register to MRI using:');
-    jCheckRegister.setSelected(true);
-    jComboboxRegister = gui_component('combobox', jPanelReg, 'tab', [], {{'SPM', 'MNI'}});
+    jComboboxRegister = gui_component('combobox', jPanelReg, 'br', [], {{'SPM', 'MNI', 'Ignore'}});
     jCheckReslice = gui_component('checkbox', jPanelReg, 'br', 'Reslice volume on import');
     jCheckReslice.setSelected(true);
     jPanelMain.add('br', jPanelReg);
     % === BUTTONS ===
-    jPanelButtons = gui_river([2 0], [0 5 0 5]);
+    jPanelButtons = gui_river([10 0], [6 10 0 10]);
     gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
     gui_component('button', jPanelButtons, '', 'Import', [], [], @ButtonImport_Callback);
-    jPanelMain.add('br right', jPanelButtons);
+    jPanelMain.add('br', jPanelButtons);
     % === Panel Layout  ===
     if ~isempty(jCheckAlign)
         jPanelAlign.doLayout();
@@ -109,11 +100,9 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
     bstPanelNew = BstPanel(panelName, ...
         jPanelMain, ...
         struct('jCheckAlign', jCheckAlign, ...
-        'jCheckAggregate', jCheckAggregate, ...
-        'jComboBoxAggregate', jComboboxAggregate, ...
+        'jCheckAverage', jCheckAverage, ...
         'jCheckSmooth', jCheckSmooth, ...
         'jTextFwhm', jTextFwhm, ...
-        'jCheckRegister', jCheckRegister, ...
         'jComboboxRegister', jComboboxRegister, ...
         'jCheckReslice', jCheckReslice));
 
@@ -125,26 +114,23 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames)
         gui_hide(panelName);
     end
 
+%% ===== IMPORT BUTTON =====
     function ButtonImport_Callback(~, ~)
         bst_mutex('release', panelName);  % Triggers gui_show_dialog to call GetPanelContents
     end
 end
+
+%% =================================================================================
+%  === EXTERNAL CALLBACKS ==========================================================
+%  =================================================================================
 %% ===== GET PANEL CONTENTS =====
 function s = GetPanelContents()
     % Get panel controls
     ctrl = bst_get('PanelControls', 'panel_import_pet');
     % Get import PET options
     s.align    = ctrl.jCheckAlign.isSelected();
+    s.average  = ctrl.jCheckAverage.isSelected();
     s.fwhm     = ctrl.jCheckSmooth.isSelected() * str2double(char(ctrl.jTextFwhm.getText()));
-    if ctrl.jCheckAggregate.isSelected()
-    s.aggregate = lower(char(ctrl.jComboBoxAggregate.getSelectedItem()));
-    else
-    s.aggregate = 'ignore';
-    end
-    if ctrl.jCheckRegister.isSelected()
     s.register = lower(char(ctrl.jComboboxRegister.getSelectedItem()));
-    else
-    s.register = 'ignore';
-    end
     s.reslice  = ctrl.jCheckReslice.isSelected();
 end
