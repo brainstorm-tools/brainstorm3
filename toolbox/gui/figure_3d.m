@@ -2001,7 +2001,7 @@ function DisplayFigurePopup(hFig)
             ctrl = bst_get('PanelControls', 'iEEG');
             if ctrl.jButtonSelect.isSelected()
                 jPopup.addSeparator();
-                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select Centroid', [], [], @(h,ev)panel_coordinates('SetSurfacePointSelector', ev.getSource.isSelected()));
+                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
                 jItem.setSelected(isSelectingCentroid);
                 jPopup.addSeparator();

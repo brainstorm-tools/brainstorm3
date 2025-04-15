@@ -522,11 +522,11 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
 end
 
-%% ===== SET SURFACE POINT SELECTOR (CENTROID/SURFACE) =====
-function SetSurfacePointSelector(isCentroid)
+%% ===== SET CENTROID SELECTION =====
+function SetCentroidSelection(isSelected)
     hFigures = bst_figures('GetFiguresByType', '3DViz');
     for hFig = hFigures 
-        setappdata(hFig, 'isSelectingCentroid', isCentroid);
+        setappdata(hFig, 'isSelectingCentroid', isSelected);
     end
 end
 
