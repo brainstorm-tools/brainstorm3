@@ -211,41 +211,48 @@ function [valFactor, valUnits] = GetExponent(val)
 end
 
 function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
-    vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
-    pfn = {'yocto','zepto','atto','femto','pico','nano','micro','milli','','kilo','mega','giga','tera','peta','exa','zetta','yotta'};
-    pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
-    sgf = 5;
-    dpw = mode(diff(vpw));
-    
-    
-    [unit, modifier] = getUnit(originalUnit);
-    if abs(val) > 10^-2 || abs(val) < 10^-24
+
+
+    % Configuration
+    decPowerStep = 3;
+    sigFigs      = 5;
+    siPowers     = -24:decPowerStep:24;
+    siPrefixes   = {'y','z','a','f','p','n','\mu','m','','k','M','G','T','P','E','Z','Y'};
+
+
+    % Extract base unit (remove any prefix)
+    unit = getUnit(originalUnit);
+
+    % Compute possible decimal adjustments
+    exponentFloor     = floor(log10(abs(val)));
+    adjustedExponents = decPowerStep * ((0:1) + floor(exponentFloor / decPowerStep));
+    adjustedValues    = val ./ 10.^adjustedExponents;
+
+    % Round to significant figures
+    powerTen = 10.^(sigFigs - 1 - floor(log10(abs(adjustedValues))));
+    roundedValues = round(adjustedValues .* powerTen) ./ powerTen;
+
+    % Determine index for best prefix
+    idx = 1 + any(abs(roundedValues) == [10^decPowerStep, 1]);
+    targetExponent = adjustedExponents(idx);
+
+    % Find corresponding SI prefix
+    prefixIndex = find(siPowers == targetExponent, 1);
+
+    % If no valid prefix found, return original
+    if isempty(prefixIndex)
         valFactor = 1;
         valUnits = originalUnit;
-        return
-    end    
-    
-    adj = n2pAdjust(log10(abs(val)),dpw);
-    
-    vec = val./10.^adj;
-    % Determine the number of decimal places:
-    p10 = 10.^(sgf-1-floor(log10(abs(vec))));
-    % Round coefficients to decimal places:
-    vec = round(vec.*p10)./p10;
-    % Identify which prefix is required:
-    idx = 1+any(abs(vec)==[10.^dpw,1]);
-    pwr = 1+floor(log10(abs(vec(idx))));
-    
-    % Obtain the required prefix index:
-    idp = find(adj(idx)==vpw);
-    
-    valFactor = 10^(- vpw(idp));
-    valUnits  = sprintf('%s%s',pfs{idp-1}, unit);
+        return;
+    end
+
+    % Compute output
+    valFactor   = 10^(-siPowers(prefixIndex));
+    valUnits    = sprintf('%s%s', siPrefixes{prefixIndex}, unit);
 end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
-function adj = n2pAdjust(pwr,dPw)
-adj = dPw*((0:1)+floor(floor(pwr)/dPw));
-end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n2pAdjust
 function [unit, modifier] = getUnit(data)
 % return the unit and the modifier from a string
@@ -254,12 +261,10 @@ function [unit, modifier] = getUnit(data)
 % getUnit('pA') should return A and -4 
 
 
-pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
-vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
-
-Units = {'A','mol.l-1'};
-
-unit = Units{cellfun(@(x)contains(data,x), Units)};
-modifier = find(strcmp(strcat(pfs,unit),data)) - 9 ;
+    pfs     = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };        
+    Units   = {'A','mol.l-1'};
+    
+    unit        = Units{cellfun(@(x)contains(data,x), Units)};
+    modifier    = find(strcmp(strcat(pfs,unit),data)) - 9 ;
 
 end
