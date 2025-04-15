@@ -373,6 +373,16 @@ function UpdatePanel()
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
+        ctrl.jButtonCentroid.setEnabled(0);
+        % Enable centroid select button only when IsoSurface present
+        TessInfo = getappdata(hFigall, 'Surface');
+        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile}));            
+        if ~isempty(iIsoSurf)
+            isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
+            ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
+            isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
+            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);              
+        end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
