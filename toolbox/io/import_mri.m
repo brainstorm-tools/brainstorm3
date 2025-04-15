@@ -302,65 +302,89 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         end
         % Ask what operation to perform with this MRI
         if isInteractive
-            % Initialize list of options to register this new MRI with the existing one
-            strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
-            cellOptions = {};
-            % Register with the SPM
-            strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (uses SPM plugin).'];
-            cellOptions{end+1} = 'SPM';
-            if isCt
-                % Register with the ct2mrireg plugin
-                strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC CT2MRI plugin.'];
-                cellOptions{end+1} = 'CT2MRI';
-            end
-            % Register with the MNI transformation
-            strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
-            cellOptions{end+1} = 'MNI';
-            % Skip registration
-            strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
-            cellOptions{end+1} = 'Ignore';
-            % Ask user to make a choice
-            RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
+            if ~isPet
+                % Initialize list of options to register this new MRI with the existing one
+                strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
+                cellOptions = {};
+                % Register with the SPM
+                strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (uses SPM plugin).'];
+                cellOptions{end+1} = 'SPM';
+                if isCt
+                    % Register with the ct2mrireg plugin
+                    strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC CT2MRI plugin.'];
+                    cellOptions{end+1} = 'CT2MRI';
+                end
+                % Register with the MNI transformation
+                strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
+                cellOptions{end+1} = 'MNI';
+                % Skip registration
+                strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
+                cellOptions{end+1} = 'Ignore';
+                % Ask user to make a choice
+                RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
+                % User aborted the import
+                if isempty(RegMethod)
+                    sMri = [];
+                    bst_progress('stop');
+                    return;
+                end
+                % === ASK RESLICE ===
+                if (~strcmpi(RegMethod, 'Ignore') || ...
+                        (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+                        isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
+                        ~isResliceDisabled))
+                    % If the volumes don't have the same size, add a warning
+                    if ~isSameSize
+                        strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
+                    else
+                        strSizeWarn = [];
+                    end
+                    % Ask to reslice
+                    [isReslice, isCancel]= java_dialog('confirm', [...
+                        '<HTML><B>Reslice the volume?</B><BR><BR>' ...
+                        ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
+                        strSizeWarn ...
+                        '<BR><BR></HTML>'], ['Import ', volType]);
+                    % User aborted the process
+                    if isCancel
+                        bst_progress('stop');
+                        return;
+                    end
+                end
 
-        % In non-interactive mode: ignore if possible, or use the first option available
-        else
-            RegMethod = 'Ignore';
-        end
-        % User aborted the import
-        if isempty(RegMethod)
-            sMri = [];
-            bst_progress('stop');
-            return;
-        end
-
-        % === ASK RESLICE ===
-        if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-                (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
-                isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
-                ~isResliceDisabled))  && ~isPet
-            % If the volumes don't have the same size, add a warning
-            if ~isSameSize
-                strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
+            % Ask for PET processing
             else
-                strSizeWarn = [];
+                % Collect user inputs
+                petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
+                if isempty(petopts)  % User aborted the import
+                    sMri = [];
+                    bst_progress('stop');
+                    return;
+                end
+                realignFileTag = '';
+                % Realign and smooth
+                if petopts.align
+                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
+                    if petopts.fwhm > 0
+                        sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
+                    end
+                end
+                % Aggregate values across time frames if requested
+                if ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
+                    [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
+                    realignFileTag = [realignFileTag, aggregateFileTag];           
+                end
+                tmpHistory.History = sMri.History;
+                % Registration method
+                RegMethod = petopts.register;
+                % Reslice
+                isReslice = petopts.reslice;
             end
-            % Ask to reslice
-            [isReslice, isCancel]= java_dialog('confirm', [...
-                '<HTML><B>Reslice the volume?</B><BR><BR>' ...
-                ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
-                strSizeWarn ...
-                '<BR><BR></HTML>'], ['Import ', volType]);
-            % User aborted the process
-            if isCancel
-                bst_progress('stop');
-                return;
-            end
-            % Reslice PET
-        elseif isPet
-            isInteractive      = petopts.register;
-            isReslice          = petopts.reslice;
-            % In non-interactive mode: never reslice
+        % In non-interactive mode
         else
+            % Registration: ignore if possible, or use the first option available
+            RegMethod = 'Ignore';
+            % Reslice: never reslice
             isReslice = 0;
         end
         % Check that reference volume has set fiducials for reslicing
