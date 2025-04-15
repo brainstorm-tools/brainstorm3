@@ -205,6 +205,11 @@ switch(fileType)
         dataFields = fieldnames(db_template('timefreqmat'));
         sMatrix = in_bst_timefreq( FileName, 0, dataFields{:});
         isKernel = ~isempty(strfind(FileName, '_KERNEL_'));
+        % Define TimeBounds for TimeBands
+        if isempty(TimeBounds) && isfield(sMatrix, 'TimeBands') && ~isempty(sMatrix.TimeBands)
+            iTime = GetTimeIndices(TimeBounds, sMatrix.Time);
+            TimeBounds = sMatrix.Time([iTime(1), iTime(end)]);
+        end
         % Keep required values
         if ~isempty(TimeBounds) && (size(sMatrix.TF,2) > 1)
             if isfield(sMatrix, 'TimeBands') && ~isempty(sMatrix.TimeBands)
