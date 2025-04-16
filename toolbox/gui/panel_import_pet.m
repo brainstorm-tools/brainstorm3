@@ -40,71 +40,84 @@ end
 
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel(nFrames)
-    panelName = 'panel_import_pet';
-    import java.awt.*
-    import javax.swing.*
-    % === Main layout ===
-    jPanelMain = gui_river([5, 5], [0, 10, 10, 10]);
-    % === FRAME ALIGNMENT & SMOOTHING ===
-    if nFrames > 1
-        jPanelAlign = gui_river([2, 2], [0, 10, 10, 10], 'Frame Alignment');
-        gui_component('label', jPanelAlign, 'br', ...
-            sprintf('<HTML><EM>Imported volume contains %d frames.</EM><BR></HTML>', nFrames));
-        jCheckAlign = gui_component('checkbox', jPanelAlign, 'br', 'Align frames');
-        jCheckAlign.setSelected(true);
-        jCheckAverage = gui_component('checkbox', jPanelAlign, 'br', 'Aggregate aligned frames');
-        jCheckAverage.setSelected(true);
-        jPanelSmooth = gui_river([0, 0], [2, 0, 0, 0]);
-        jCheckSmooth = gui_component('checkbox', jPanelSmooth, 'br', 'Apply smoothing');
-        jCheckSmooth.setSelected(false);
-        set(handle(jCheckAlign, 'CallbackProperties'), 'ActionPerformedCallback', ...
-            @(src, evt) jCheckSmooth.setEnabled(jCheckAlign.isSelected()));
-        jPanelFwhm = gui_river([0, 0], [0, 15, 0, 0]);
-        gui_component('label', jPanelFwhm, 'br', 'FWHM (mm): ');
-        jTextFwhm = gui_component('text', jPanelFwhm, 'tab', '8');
-        jTextFwhm.setMaximumSize(java.awt.Dimension(50, 20));
-        jTextFwhm.setEnabled(false);
-        set(handle(jCheckSmooth, 'CallbackProperties'), 'ActionPerformedCallback', ...
-            @(src, evt) jTextFwhm.setEnabled(jCheckSmooth.isSelected()));
-        jPanelSmooth.add('br', jPanelFwhm);
-        jPanelAlign.add('br', jPanelSmooth);
-        jPanelMain.add('br', jPanelAlign);
-    else
-        jCheckAlign = [];
-        jCheckAverage = [];
-        jCheckSmooth = [];
-        jTextFwhm = [];
-    end
-    % === REGISTRATION PANEL ===
-    jPanelReg = gui_river('Registration');
-    jComboboxRegister = gui_component('combobox', jPanelReg, 'br', [], {{'SPM', 'MNI', 'Ignore'}});
-    jCheckReslice = gui_component('checkbox', jPanelReg, 'br', 'Reslice volume on import');
-    jCheckReslice.setSelected(true);
-    jPanelMain.add('br', jPanelReg);
-    % === BUTTONS ===
-    jPanelButtons = gui_river([10 0], [6 10 0 10]);
-    gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
-    gui_component('button', jPanelButtons, '', 'Import', [], [], @ButtonImport_Callback);
-    jPanelMain.add('br', jPanelButtons);
-    % === Panel Layout  ===
-    if ~isempty(jCheckAlign)
-        jPanelAlign.doLayout();
-        jPanelReg.doLayout();
-        maxWidth = max([jPanelAlign.getPreferredSize().width, jPanelReg.getPreferredSize().width]);
-        jPanelAlign.setPreferredSize(java.awt.Dimension(maxWidth, jPanelAlign.getPreferredSize().height));
-        jPanelReg.setPreferredSize(java.awt.Dimension(maxWidth, jPanelReg.getPreferredSize().height));
-    end
-    % === Create mutex ===
-    bst_mutex('create', panelName);
-    % === Return panel object ===
-    bstPanelNew = BstPanel(panelName, ...
-        jPanelMain, ...
-        struct('jCheckAlign', jCheckAlign, ...
-        'jCheckAverage', jCheckAverage, ...
-        'jCheckSmooth', jCheckSmooth, ...
-        'jTextFwhm', jTextFwhm, ...
-        'jComboboxRegister', jComboboxRegister, ...
-        'jCheckReslice', jCheckReslice));
+panelName = 'panel_import_pet';
+import java.awt.*
+import javax.swing.*
+% === Main layout ===
+jPanelMain = gui_river([5, 5], [0, 10, 10, 10]);
+% === FRAME ALIGNMENT & SMOOTHING ===
+if nFrames > 1
+    jPanelAlign = gui_river([2, 2], [0, 10, 10, 10], 'Frame Alignment');
+    gui_component('label', jPanelAlign, 'br', ...
+        sprintf('<HTML><EM>Imported volume contains %d frames.</EM><BR></HTML>', nFrames));
+    jCheckAlign = gui_component('checkbox', jPanelAlign, 'br', 'Align frames');
+    jCheckAlign.setSelected(true);
+
+    jPanelAggregate = gui_river([0, 0], [2, 0, 0, 0]);
+    jCheckAggregate = gui_component('checkbox', jPanelAggregate, 'br', 'Aggregate frames: ');
+    jCheckAggregate.setSelected(true);
+    jComboboxAggregate = gui_component('combobox', jPanelAggregate, 'tab', [], {{'Mean', 'Sum', 'Median', 'Max', 'Min', 'First', 'Last', 'Z-score'}});
+    set(handle(jCheckAggregate, 'CallbackProperties'), 'ActionPerformedCallback', ...
+        @(src, evt) jComboboxAggregate.setEnabled(jCheckAggregate.isSelected()));
+
+    jPanelSmooth = gui_river([0, 0], [2, 0, 0, 0]);
+    jCheckSmooth = gui_component('checkbox', jPanelSmooth, 'br', 'Apply smoothing');
+    jCheckSmooth.setSelected(false);
+    set(handle(jCheckAlign, 'CallbackProperties'), 'ActionPerformedCallback', ...
+        @(src, evt) jCheckSmooth.setEnabled(jCheckAlign.isSelected()));
+    jPanelFwhm = gui_river([0, 0], [0, 15, 0, 0]);
+    gui_component('label', jPanelFwhm, 'br', 'FWHM (mm): ');
+    jTextFwhm = gui_component('text', jPanelFwhm, 'tab', '8');
+    jTextFwhm.setMaximumSize(java.awt.Dimension(50, 20));
+    jTextFwhm.setEnabled(false);
+    set(handle(jCheckSmooth, 'CallbackProperties'), 'ActionPerformedCallback', ...
+        @(src, evt) jTextFwhm.setEnabled(jCheckSmooth.isSelected()));
+    jPanelSmooth.add('br', jPanelFwhm);
+    jPanelAlign.add('br', jPanelSmooth);
+    jPanelAlign.add('br', jPanelAggregate);
+    jPanelMain.add('br', jPanelAlign);
+else
+    jCheckAlign = [];
+    jCheckAggregate = [];
+    jCheckSmooth = [];
+    jTextFwhm = [];
+end
+% === REGISTRATION PANEL ===
+jPanelReg = gui_river('Registration');
+jCheckRegister = gui_component('checkbox', jPanelReg, 'br', 'Register to MRI using:');
+jCheckRegister.setSelected(true);
+jComboboxRegister = gui_component('combobox', jPanelReg, 'tab', [], {{'SPM', 'MNI'}});
+    set(handle(jCheckRegister, 'CallbackProperties'), 'ActionPerformedCallback', ...
+        @(src, evt) jComboboxRegister.setEnabled(jCheckRegister.isSelected()));
+jCheckReslice = gui_component('checkbox', jPanelReg, 'br', 'Reslice volume on import');
+jCheckReslice.setSelected(true);
+jPanelMain.add('br', jPanelReg);
+% === BUTTONS ===
+jPanelButtons = gui_river([2 0], [0 5 0 5]);
+gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
+gui_component('button', jPanelButtons, '', 'Import', [], [], @ButtonImport_Callback);
+jPanelMain.add('br right', jPanelButtons);
+% === Panel Layout  ===
+if ~isempty(jCheckAlign)
+    jPanelAlign.doLayout();
+    jPanelReg.doLayout();
+    maxWidth = max([jPanelAlign.getPreferredSize().width, jPanelReg.getPreferredSize().width]);
+    jPanelAlign.setPreferredSize(java.awt.Dimension(maxWidth, jPanelAlign.getPreferredSize().height));
+    jPanelReg.setPreferredSize(java.awt.Dimension(maxWidth, jPanelReg.getPreferredSize().height));
+end
+% === Create mutex ===
+bst_mutex('create', panelName);
+% === Return panel object ===
+bstPanelNew = BstPanel(panelName, ...
+    jPanelMain, ...
+    struct('jCheckAlign', jCheckAlign, ...
+    'jCheckAggregate', jCheckAggregate, ...
+    'jComboBoxAggregate', jComboboxAggregate, ...
+    'jCheckSmooth', jCheckSmooth, ...
+    'jTextFwhm', jTextFwhm, ...
+    'jCheckRegister', jCheckRegister, ...
+    'jComboboxRegister', jComboboxRegister, ...
+    'jCheckReslice', jCheckReslice));
 
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
@@ -125,12 +138,20 @@ end
 %  =================================================================================
 %% ===== GET PANEL CONTENTS =====
 function s = GetPanelContents()
-    % Get panel controls
+   % Get panel controls
     ctrl = bst_get('PanelControls', 'panel_import_pet');
     % Get import PET options
     s.align    = ctrl.jCheckAlign.isSelected();
-    s.average  = ctrl.jCheckAverage.isSelected();
     s.fwhm     = ctrl.jCheckSmooth.isSelected() * str2double(char(ctrl.jTextFwhm.getText()));
+    if ctrl.jCheckAggregate.isSelected()
+    s.aggregate = lower(char(ctrl.jComboBoxAggregate.getSelectedItem()));
+    else
+    s.aggregate = 'ignore';
+    end
+    if ctrl.jCheckRegister.isSelected()
     s.register = lower(char(ctrl.jComboboxRegister.getSelectedItem()));
+    else
+    s.register = 'ignore';
+    end
     s.reslice  = ctrl.jCheckReslice.isSelected();
 end
