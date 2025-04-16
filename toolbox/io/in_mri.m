@@ -1,4 +1,4 @@
-function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
+function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize, isRescale)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
@@ -51,6 +51,9 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 % Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
+if (nargin < 5) || isempty(isRescale)
+    isRescale = 0;
+end
 if (nargin < 4) || isempty(isNormalize)
     isNormalize = 0;
 end
@@ -129,6 +132,8 @@ switch (FileFormat)
     case {'Nifti1', 'Analyze'}
         if isInteractive
             [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], []);
+        elseif isRescale
+           [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, 1); 
         else
             [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, 0);
         end
