@@ -338,16 +338,15 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 realignFileTag = '';
                 % Realign and smooth
                 if petopts.align
-                    [sMri, ~, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
+                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
                     if petopts.fwhm > 0
                         sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
                     end
                 end
-                % Compute mean across frames if requested
-                if petopts.average
-                    sMri.Cube = mean(sMri.Cube, 4);
-                    realignFileTag = [realignFileTag, '_mean'];
-                    sMri= bst_history('add', sMri, 'aggregate', sprintf('Mean of %d frames', nFrames));
+                % Aggregate values across time frames if requested
+                if ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
+                    [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
+                    realignFileTag = [realignFileTag, aggregateFileTag];           
                 end
                 tmpHistory.History = sMri.History;
                 % Registration method
