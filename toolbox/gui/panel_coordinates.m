@@ -292,6 +292,7 @@ function SetSelectionState(isSelected)
             TessInfo = getappdata(hFig, 'Surface');
             if ~isempty(TessInfo)
                 setappdata(hFig, 'isSelectingCoordinates', 1);
+                setappdata(hFig, 'isSelectingCentroid', 0);
                 set(hFig, 'Pointer', 'cross');
             end
         end
@@ -304,8 +305,13 @@ function SetSelectionState(isSelected)
         % Exit 3DViz figures from SelectingCorticalSpot mode
         for hFig = hFigures
             set(hFig, 'Pointer', 'arrow');
+            setappdata(hFig, 'isSelectingCentroid', 0);
             setappdata(hFig, 'isSelectingCoordinates', 0);      
         end
+    end
+    % Update iEEG panel
+    if ~isempty(ctrl2)
+        panel_ieeg('UpdatePanel');
     end
 end
 
@@ -517,6 +523,19 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             iTess = i;
             break;
         end
+    end
+end
+
+%% ===== SET CENTROID SELECTION =====
+function SetCentroidSelection(isSelected)
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return;
+    end
+    setappdata(hFig, 'isSelectingCentroid', isSelected);
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if ~isempty(ctrl)
+        ctrl.jButtonCentroid.setSelected(isSelected);
     end
 end
 

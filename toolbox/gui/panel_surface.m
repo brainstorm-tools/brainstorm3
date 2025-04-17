@@ -891,9 +891,13 @@ function ButtonAddSurfaceCallback(surfaceType)
         % Update colormap
         figure_3d('ColormapChangedCallback', iDS, iFig);
     end
-    % Reload scouts (only if new surface was added)
     if (iTess > length(TessInfo))
+        % Reload scouts (only if new surface was added)
         panel_scout('ReloadScouts', hFig);
+        % Update iEEG panel (only if new IsoSurface was added)
+        if strcmpi(surfaceType, 'IsoSurface') && gui_brainstorm('isTabVisible', 'iEEG')
+             panel_ieeg('UpdatePanel');
+        end
     end
 end
 
@@ -905,15 +909,22 @@ function ButtonRemoveSurfaceCallback(varargin)
     if isempty(hFig)
         return
     end
-    % Get current surface index
+    % Get current surface and its index
     iSurface = getappdata(hFig, 'iSurface');
     if isempty(iSurface)
         return
     end
-    % Remove surface
+    % Remove surface 
     RemoveSurface(hFig, iSurface);
     % Update "Surfaces" panel
     UpdatePanel();
+    % Update iEEG panel if IsoSurface was removed
+    TessInfo = getappdata(hFig, 'Surface');
+    % Check if no IsoSurface remains
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    if ~isIsoSurf && gui_brainstorm('isTabVisible', 'iEEG')
+        panel_ieeg('UpdatePanel');
+    end
 end
 
 

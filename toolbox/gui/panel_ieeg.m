@@ -43,7 +43,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = java_scaled('dimension',25,25);
+    TB_DIM = java_scaled('dimension',20,25);
     
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -54,7 +54,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
+        jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        % Button "Select surface centroid"
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -215,6 +218,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jToolbar',            jToolbar, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
+                                  'jButtonCentroid',     jButtonCentroid, ...
                                   'jButtonShow',         jButtonShow, ...
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
@@ -369,6 +373,18 @@ function UpdatePanel()
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
+        ctrl.jButtonCentroid.setEnabled(0);
+        % Enable centroid select button only when IsoSurface present
+        TessInfo = getappdata(hFigall, 'Surface');
+        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+        if isIsoSurf
+            isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
+            ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
+            isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
+            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
+        else
+            panel_coordinates('SetCentroidSelection', 0);
+        end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
@@ -756,6 +772,7 @@ function UpdateElecProperties(isUpdateModelList)
     % Save selected electrodes
     ctrl.jLabelSelectElec.setText(num2str(iSelElec));
 end
+
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
 function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
