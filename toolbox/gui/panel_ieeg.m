@@ -56,8 +56,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "Select vertex"
         jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
-        % Button "Select centroid"
-        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_RESET, 'Select centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        % Button "Select surface centroid"
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SURFACE, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -381,7 +381,7 @@ function UpdatePanel()
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
-            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);              
+            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else

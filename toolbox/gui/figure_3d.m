@@ -1999,7 +1999,7 @@ function DisplayFigurePopup(hFig)
             isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
             isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
             if isIsoSurf && isSelectingCoordinates
-                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select surface centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
                 jItem.setSelected(isSelectingCentroid);
                 jPopup.addSeparator();
