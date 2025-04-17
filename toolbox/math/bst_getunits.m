@@ -211,55 +211,112 @@ function [valFactor, valUnits] = GetExponent(val)
 end
 
 function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
-    vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
-    pfn = {'yocto','zepto','atto','femto','pico','nano','micro','milli','','kilo','mega','giga','tera','peta','exa','zetta','yotta'};
-    pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
-    sgf = 5;
-    dpw = mode(diff(vpw));
-    
-    
-    [unit, modifier] = getUnit(originalUnit);
-    if abs(val) > 10^-2
+%GETSIFACTOR Converts a small numerical value to an SI-prefixed format.
+%
+%   [valFactor, valUnits] = GETSIFACTOR(val, originalUnit)
+%
+%   This function finds the appropriate SI prefix to represent a small
+%   numerical value `val` in a more human-readable format, particularly
+%   when `val` is significantly smaller than 1. It returns a multiplicative
+%   factor (`valFactor`) and the updated unit string with an SI prefix
+%   (`valUnits`).
+%
+%   INPUTS:
+%       val           - A numeric scalar value (e.g., 3.2e-6)
+%       originalUnit  - A string representing the unit of the value
+%                       (e.g., 'V', 'mA', etc.). Can include a prefix.
+%
+%   OUTPUTS:
+%       valFactor     - The factor by which the input value should be
+%                       multiplied to apply the SI prefix. For example,
+%                       if val = 3.2e-6 and the prefix is μ, then
+%                       valFactor = 1e6 (i.e., 3.2 = val * valFactor).
+%       valUnits      - A string representing the new unit with the
+%                       appropriate SI prefix applied (e.g., 'μV').
+%
+    % Configuration
+    decPowerStep = 3;
+    sigFigs      = 5;
+    siPowers     = -24:decPowerStep:24;
+    siPrefixes   = {'y','z','a','f','p','n','\mu','m','','k','M','G','T','P','E','Z','Y'};
+
+
+    % Extract base unit (remove any prefix)
+    unit = getUnit(originalUnit);
+
+    % Compute possible decimal adjustments
+    exponentFloor     = floor(log10(abs(val)));
+    adjustedExponents = decPowerStep * ((0:1) + floor(exponentFloor / decPowerStep));
+    adjustedValues    = val ./ 10.^adjustedExponents;
+
+    % Round to significant figures
+    powerTen = 10.^(sigFigs - 1 - floor(log10(abs(adjustedValues))));
+    roundedValues = round(adjustedValues .* powerTen) ./ powerTen;
+
+    % Determine index for best prefix
+    idx = 1 + any(abs(roundedValues) == [10^decPowerStep, 1]);
+    targetExponent = adjustedExponents(idx);
+
+    % Find corresponding SI prefix
+    prefixIndex = find(siPowers == targetExponent, 1);
+
+    % If no valid prefix found, return original
+    if isempty(prefixIndex)
         valFactor = 1;
         valUnits = originalUnit;
-        return
-    end    
-    
-    adj = n2pAdjust(log10(abs(val)),dpw);
-    
-    vec = val./10.^adj;
-    % Determine the number of decimal places:
-    p10 = 10.^(sgf-1-floor(log10(abs(vec))));
-    % Round coefficients to decimal places:
-    vec = round(vec.*p10)./p10;
-    % Identify which prefix is required:
-    idx = 1+any(abs(vec)==[10.^dpw,1]);
-    pwr = 1+floor(log10(abs(vec(idx))));
-    
-    % Obtain the required prefix index:
-    idp = find(adj(idx)==vpw);
-    
-    valFactor = 10^(- vpw(idp));
-    valUnits  = sprintf('%s%s',pfs{idp-1}, unit);
+        return;
+    end
+
+    % Compute output
+    valFactor   = 10^(-siPowers(prefixIndex));
+    valUnits    = sprintf('%s%s', siPrefixes{prefixIndex}, unit);
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
-function adj = n2pAdjust(pwr,dPw)
-adj = dPw*((0:1)+floor(floor(pwr)/dPw));
-end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n2pAdjust
+
+
 function [unit, modifier] = getUnit(data)
-% return the unit and the modifier from a string
-% getUnit('mol/l') should return mol/l and 0
-% getUnit('mmol/l') should return mol/l and -1 
-% getUnit('pA') should return A and -4 
+%GETUNIT Extracts the base unit and SI prefix modifier from a unit string.
+%
+%   [unit, modifier] = GETUNIT(data)
+%
+%   This function parses a unit string with a possible SI prefix (e.g., 'pA',
+%   'mmol/l') and returns the base unit without the prefix and a corresponding
+%   numeric modifier indicating the power of 10 the prefix represents.
+%
+%   INPUT:
+%       data - A string containing a unit with an optional SI prefix.
+%
+%   OUTPUT:
+%       unit     - The base unit string (e.g., 'A', 'mol/l')
+%       modifier - The power of 10 associated with the SI prefix.
+%                  For example, 'p' -> -12, 'm' -> -3, 'k' -> +3, etc.
+%                  If no prefix is found, returns 0.
+%
+%   EXAMPLES:
+%       getUnit('mol/l')   returns 'mol/l', 0
+%       getUnit('mmol/l')  returns 'mol/l', -3
+%       getUnit('pA')      returns 'A', -12
 
+    % SI prefix symbols and corresponding powers of ten
+    prefixes = {'y','z','a','f','p','n','\mu','m','','k','M','G','T','P','E','Z','Y'};
+    powers   = -24:3:24;
 
-pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
-vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
+    % Define the base units you expect
+    knownUnits = {'A', 'mol/l', 'mol.l-1'};  % Support both 'mol/l' and 'mol.l-1'
 
-Units = {'A','mol.l-1'};
+    % Try to match any unit suffix
+    for iUnit = 1:length(knownUnits)
+        base = knownUnits{iUnit};
+        for jPrefix = 1:length(prefixes)
+            candidate = strcat(prefixes{jPrefix}, base);
+            if strcmp(data, candidate)
+                unit = base;
+                modifier = powers(jPrefix);
+                return;
+            end
+        end
+    end
 
-unit = Units{cellfun(@(x)contains(data,x), Units)};
-modifier = find(strcmp(strcat(pfs,unit),data)) - 9 ;
-
+    % If no match found, assume no prefix and return input as-is
+    unit = data;
+    modifier = 0;
 end
