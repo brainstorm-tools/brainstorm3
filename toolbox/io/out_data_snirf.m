@@ -61,9 +61,9 @@ end
 % Set landmark position (eg fiducials) 
 n_landmark=length(ChannelMatOut.HeadPoints.Label);
 
-snirfdata.SNIRFData.probe.landmarkPos=zeros(n_landmark,3);
+snirfdata.SNIRFData.probe.landmarkPos3D = zeros(n_landmark,3);
 for i_landmark=1:n_landmark
-    snirfdata.SNIRFData.probe.landmarkPos(i_landmark,:)=ChannelMatOut.HeadPoints.Loc(:,i_landmark)';
+    snirfdata.SNIRFData.probe.landmarkPos3D(i_landmark,:)=ChannelMatOut.HeadPoints.Loc(:,i_landmark)';
     snirfdata.SNIRFData.probe.landmarkLabels(i_landmark)=string(ChannelMatOut.HeadPoints.Label{i_landmark}); 
 end    
 
