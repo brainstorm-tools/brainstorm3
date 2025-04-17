@@ -47,7 +47,7 @@ dataFullFile = bst_fullfile(dataDir, dataFile);
 % Try to download if file does not exist
 if ~exist(dataFullFile, 'file')
     if ~isempty(bstUser) && ~isempty(bstPwd)
-        dwnUrl = sprintf('http://neuroimage.usc.edu/bst/download.php?file=%s&user=%s&mdp=%s', ...
+        dwnUrl = sprintf('https://neuroimage.usc.edu/bst/download.php?file=%s&user=%s&mdp=%s', ...
                          urlencode(dataFile), urlencode(bstUser), urlencode(bstPwd));
         dataFullFile = bst_fullfile(dataDir, dataFile);
         errMsg = bst_websave(dataFullFile, dwnUrl);
