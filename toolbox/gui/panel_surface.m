@@ -910,19 +910,19 @@ function ButtonRemoveSurfaceCallback(varargin)
         return
     end
     % Get current surface and its index
-    TessInfo = getappdata(hFig, 'Surface');
     iSurface = getappdata(hFig, 'iSurface');
     if isempty(iSurface)
         return
     end
-    % Check if surface being removed is an IsoSurface
-    isRemoveIsoSurface = ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'tess_isosurface', 'match'));
     % Remove surface 
     RemoveSurface(hFig, iSurface);
     % Update "Surfaces" panel
     UpdatePanel();
     % Update iEEG panel if IsoSurface was removed
-    if isRemoveIsoSurface && gui_brainstorm('isTabVisible', 'iEEG')
+    TessInfo = getappdata(hFig, 'Surface');
+    % Check if no IsoSurface remains
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    if ~isIsoSurf && gui_brainstorm('isTabVisible', 'iEEG')
         panel_ieeg('UpdatePanel');
     end
 end
