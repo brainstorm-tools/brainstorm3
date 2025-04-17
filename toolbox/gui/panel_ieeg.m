@@ -376,8 +376,8 @@ function UpdatePanel()
         ctrl.jButtonCentroid.setEnabled(0);
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
-        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile}));            
-        if ~isempty(iIsoSurf)
+        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+        if isIsoSurf
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');

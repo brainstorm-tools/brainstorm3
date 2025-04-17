@@ -1997,8 +1997,8 @@ function DisplayFigurePopup(hFig)
         % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
         if gui_brainstorm('isTabVisible', 'iEEG')
             isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
-            iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile})); 
-            if ~isempty(iIsoSurf) && isSelectingCoordinates
+            isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+            if isIsoSurf && isSelectingCoordinates
                 jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
                 jItem.setSelected(isSelectingCentroid);
