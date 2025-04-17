@@ -338,13 +338,10 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 realignFileTag = '';
                 % Realign and smooth
                 if petopts.align
-                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm); % FWHM == 0 => no smoothing
-                    if petopts.fwhm > 0
-                        sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', petopts.fwhm));
-                    end
+                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
                 end
-                % Aggregate values across time frames if requested
-                if ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
+                % Aggregate values across time frames without realignment
+                if ~petopts.align && ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
                     [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
                     realignFileTag = [realignFileTag, aggregateFileTag];           
                 end

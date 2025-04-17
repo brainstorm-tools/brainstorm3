@@ -182,13 +182,17 @@ fileTag = ['_' Method]; % Output file tag
 sMriAlign.History=History; 
 sMriAlign.Comment=Comment;
 sMriAlign = bst_history('add', sMriAlign, 'realign', sprintf(['Realigned %d frames in dynamic volume using ' Method ' '], nFrames));   % Add history entry
-file_delete(TmpDir, 1, 1);
+if FWHM > 0
+    sMri= bst_history('add', sMri, 'smooth', sprintf('Volume smoothed with %d mm kernel ', FWHM(1)));
+end
 
 % ===== FRAME AGGREGATION ========
 if ~isempty(Aggregation) && ~strcmp(Aggregation, 'ignore')
     [sMriAlign, aggregateFileTag] = mri_aggregate(sMriAlign, Aggregation);
     fileTag = [fileTag, aggregateFileTag, volTag];
 end
+
+file_delete(TmpDir, 1, 1);
 
 % ===== SAVE NEW FILE =====
 sMriAlign.Comment = [sMriAlign.Comment, fileTag, volTag]; % Add file tag
