@@ -1,21 +1,34 @@
-function  [sMriAlign, fileTag] = mri_realign (MriFile, Method, FWHM)
+function  [MriRealign, fileTag] = mri_realign (MriFile, Method, FWHM, Aggregation)
 % MRI_REALIGN: Extract frames from dynamic volumes and realign with optional smoothing
 %
-% USAGE:  [sMriAlign, fileTag] = mri_realign(MriFile, Method, FWHM)
-%         [sMriAlign, fileTag] = mri_realign(MriFile)
-%         [sMriAlign, fileTag] = mri_realign(sMri)
-%         [sMriAlign, fileTag] = mri_realign(MriFile, Method)
-%         [sMriAlign, fileTag] = mri_realign(sMri, Method)
+% USAGE:  [MriFileRealign, fileTag] = mri_realign(MriFile, Method, FWHM, Aggregation)
+%         [sMriRealign, fileTag] = mri_realign(sMri, Method, FWHM, Aggregation)
 %
 % INPUTS:
 %    - MriFile : Relative path to the Brainstorm Mri file to realign
 %    - Method  : Method used for the realignment of the volume (default is spm_realign):
 %                       -'spm_realign' :        uses the SPM plugin
+%    - FWHM    : Size of smoothing kernel in mm, as full-width at half maximum of gaussian kernel
+%    - Aggregation: Method to use for aggregating dynamic volume: 'mean', 'median', 'max', 'min', 'zscore', 'first',
+%                    'last
 %
 % OUTPUTS:
-%    - sMriRealign      : Dynamic Brainstorm Mri structure with realigned frames
-%    - fileTag          : Tag added to the comment/filename
-
+%
+%   - MriRealign      : Brainstorm Mri structure or relative path to the Brainstorm MRI file with realigned frames
+%   - fileTag          : Tag added to the comment/filename
+%
+% DEFAULTS: 
+%
+%         - Method  : Default method is 'spm_realign' 
+%                     //Example:  [sMriRealign, fileTag] = mri_realign(sMri)
+%                                 [MriFileRealign, fileTag] = mri_realign(MriFile)
+%         - FWHM    : No smoothing by default
+%                     // Example: [MriFileRealign, fileTag] = mri_realign(MriFile, Method)
+%                                 [sMriRealign, fileTag] = mri_realign(MriFile, Method)
+%         - Aggregation: No aggregation by default; returns dynamic (4D)
+%         realigned volume
+%                     // Example: [MriFileRealign, fileTag] = mri_realign(MriFile, Method, FWHM)
+%                                 [sMriAlign, fileTag] = mri_realign(MriFile, Method, FWHM)      
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -34,12 +47,14 @@ function  [sMriAlign, fileTag] = mri_realign (MriFile, Method, FWHM)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Diellor Basha, 2024
-%          Chinmay Chinara, 2023
-%          Francois Tadel, 2016-2023
+% Authors: Diellor Basha, 2025
+%          Raymundo Cassani, 2025
 
 % ===== LOAD INPUTS =====
-% Parse inputs
+% Parase inputs
+if (nargin < 4) || isempty(Aggregation)
+    Aggregation = 'ignore'; % Ignores aggregation, returns realigned dynamic volume
+end
 if (nargin < 3) || isempty(FWHM)
     FWHM = 0; % Default 6 mm smoothing
 end
@@ -63,8 +78,22 @@ else
     bst_progress('stop');
     error('Invalid call.');
 end
+
 % Initialize returned variables
-sMriAlign = []; fileTag   = '';
+MriRealign = []; sMriAlign = []; 
+Comment=sMri.Comment; History=sMri.History;
+fileTag   = '';
+volTag = regexp(Comment, '_vol\w*', 'match', 'once');
+
+if size(sMri.Cube, 4) == 1
+    MriRealign = sMri;  
+    errMsg = 'Source volume is static (3D)';
+      disp(['BST> Warning: ' errMsg]);
+      disp(['BST> Skipping Realignment - Returned original volume' ]);
+      bst_progress('stop');
+      return;
+end
+
 % Define temporary directory for exporting nifti files
 TmpDir = bst_get('BrainstormTmpDir', 0, 'mri_frames');
 % Initialize output file names
@@ -149,10 +178,42 @@ switch lower(Method)
 end
 
 % ===== UPDATE HISTORY ========
-fileTag = '_spm_realign'; % Output file tag
-sMriAlign.Comment = [sMriAlign.Comment, fileTag]; % Add file tag
+fileTag = ['_' Method]; % Output file tag
+sMriAlign.History=History; 
+sMriAlign.Comment=Comment;
 sMriAlign = bst_history('add', sMriAlign, 'realign', sprintf(['Realigned %d frames in dynamic volume using ' Method ' '], nFrames));   % Add history entry
 file_delete(TmpDir, 1, 1);
+
+% ===== FRAME AGGREGATION ========
+if ~isempty(Aggregation) && ~strcmp(Aggregation, 'ignore')
+    [sMriAlign, aggregateFileTag] = mri_aggregate(sMriAlign, Aggregation);
+    fileTag = [fileTag, aggregateFileTag, volTag];
+end
+
+% ===== SAVE NEW FILE =====
+sMriAlign.Comment = [sMriAlign.Comment, fileTag, volTag]; % Add file tag
+% Save output
+if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI file
+    [sSubject, iSubject, ~] = bst_get('MriFile', MriFile);
+    % Save new MRI in Brainstorm format
+    MriFileFull = file_unique(strrep(file_fullpath(MriFile), '.mat', [fileTag '.mat']));
+    MriRealign = out_mri_bst(sMriAlign, MriFileFull);
+    % Register new MRI
+    iAnatomy = length(sSubject.Anatomy) + 1;
+    sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy).FileName = file_short(MriFileFull);
+    sSubject.Anatomy(iAnatomy).Comment  = sMriAlign.Comment;
+    % Update subject structure
+    bst_set('Subject', iSubject, sSubject);
+    % Refresh tree
+    panel_protocols('UpdateNode', 'Subject', iSubject);
+    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
+    % Save database
+    db_save();
+else
+    % Return output structure
+    MriRealign = sMriAlign;
+end
 
 % Close progress bar
 if ~isProgress
