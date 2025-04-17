@@ -1152,7 +1152,9 @@ function ReloadRecordings(isForced)
     % Refresh time panel
     panel_time('UpdatePanel');
     % Reload recordings matrix from raw file
-    bst_memory('LoadRecordingsMatrix', iDS);
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        bst_memory('LoadRecordingsMatrix', iDS);
+    end
     % Replot all figures
     bst_figures('ReloadFigures', [], 1, 1);
     % Flushes the display updates
@@ -2708,7 +2710,14 @@ function CallProcessOnRaw(ProcessName)
     % Save current modifications
     SaveModifications(iDS);
     % Get filename
-    DataFile = GlobalData.DataSet(iDS).DataFile;
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        DataFile = GlobalData.DataSet(iDS).DataFile;
+    else
+        % Look for open figures
+        for iMat = 1:length(GlobalData.DataSet(iDS).Matrix)
+            DataFile = file_fullpath(GlobalData.DataSet(iDS).Matrix(iMat).FileName);
+        end
+    end
     % File time
     if isRaw
         FileTimeVector = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time;
