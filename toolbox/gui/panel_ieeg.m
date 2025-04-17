@@ -382,6 +382,8 @@ function UpdatePanel()
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
             ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
+        else
+            panel_coordinates('SetCentroidSelection', 0);
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
