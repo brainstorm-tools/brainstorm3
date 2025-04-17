@@ -1213,8 +1213,12 @@ function UpdateSurfaceProperties()
     ctrl.jLabelDataThresh.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).DataThreshold)));
     if isOverlay && ~isOverlayStat && ~isOverlayLabel
         DataLimit = TessInfo(iSurface).DataLimitValue;
-        threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
-        tooltipText = num2str(threshBar);
+        if isempty(DataLimit)
+            tooltipText = '';
+        else
+            threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
+            tooltipText = num2str(threshBar);
+        end
     else
         tooltipText = '';
     end
