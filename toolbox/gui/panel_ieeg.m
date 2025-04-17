@@ -57,7 +57,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
         % Button "Select surface centroid"
-        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SURFACE, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
