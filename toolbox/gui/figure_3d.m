@@ -1264,8 +1264,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             view_timefreq(TfInfo.FileName, 'SingleSensor', SelChan{1});
                         end
                     end
-                % DELETE: SET CHANNELS AS BAD
+                % DELETE
                 case {'delete', 'backspace'}
+                    % Set channels as bad
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
                     if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
@@ -1282,6 +1283,12 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
+                    end
+                    % For iEEG: Remove contact(s) (TODO: support for ECoG)
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        if ~isempty(SelChan) && ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'SEEG'})
+                            panel_ieeg('RemoveContact');
+                        end
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1794,6 +1801,14 @@ function DisplayFigurePopup(hFig)
             end
         % 3DElectrodes
         elseif ~isempty(hElectrodeGrid)
+            % For iEEG: Remove contact(s) (TODO: support for ECoG)
+            if gui_brainstorm('isTabVisible', 'iEEG')
+                if ~isempty(SelChan) && ~isempty(Modality) && ismember(Modality, {'SEEG'})
+                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+                    jMenuChannels.addSeparator();
+                end
+            end
             % Menu "View sensor labels"
             isLabels = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
             jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
