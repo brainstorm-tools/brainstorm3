@@ -833,6 +833,9 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
+    if isempty(sSelElec)
+        return
+    end
     sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
