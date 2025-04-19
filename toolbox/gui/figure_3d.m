@@ -830,12 +830,18 @@ function FigureMouseUpCallback(hFig, varargin)
                     else
                         bst_figures('ToggleSelectedRow', SelChan);
                     end
-                    % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
-                    if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
+                    % Get current selected channels in the figure
+                    SelChanCur = GetFigSelectedRows(hFig);
+                    % If there are channels selected, they have intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
+                    if ~isempty(SelChanCur) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
                         selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
                         % Highlight the electrode and contacts
                         panel_ieeg('SetSelectedElectrodes', selGroup);
                         panel_ieeg('SetSelectedContacts', SelChan);
+                    else % Else if no selected channels: Reset electrode selection in panel_ieeg
+                        % Remove highlight for contacts and electrode
+                        panel_ieeg('SetSelectedContacts', 0);
+                        panel_ieeg('SetSelectedElectrodes', 0);
                     end
                 end
             end
