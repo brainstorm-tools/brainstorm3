@@ -1601,7 +1601,9 @@ function DisplayFigurePopup(hFig)
     else
         TfFile = [];
     end
-
+    % Check if IsoSurface exists in the figure
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     
@@ -1816,7 +1818,6 @@ function DisplayFigurePopup(hFig)
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
             % For iEEG: Add/Remove contact(s) (TODO: support for ECoG)
-            isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
             sSelElec = panel_ieeg('GetSelectedElectrodes');
             if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
                 if isIsoSurf
@@ -2022,7 +2023,6 @@ function DisplayFigurePopup(hFig)
         % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
         if gui_brainstorm('isTabVisible', 'iEEG')
             isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
-            isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
             if isIsoSurf && isSelectingCoordinates
                 jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select surface centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
