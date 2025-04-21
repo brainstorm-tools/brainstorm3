@@ -1060,6 +1060,11 @@ function DisplayFigurePopup(hFig)
             % Set position
             jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
+            % For iEEG: Add contact (TODO: support for ECoG) 
+            sSelElec = panel_ieeg('GetSelectedElectrodes');
+            if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
+                gui_component('MenuItem', jMenuElec, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact')); 
+            end
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
             gui_component('MenuItem', jMenuElec, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)panel_ieeg('LoadElectrodes', hFig, GlobalData.DataSet(iDS).ChannelFile, 'SEEG'));
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'ECOG')

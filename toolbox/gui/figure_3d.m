@@ -1807,14 +1807,6 @@ function DisplayFigurePopup(hFig)
             end
         % 3DElectrodes
         elseif ~isempty(hElectrodeGrid)
-            % For iEEG: Remove contact(s) (TODO: support for ECoG)
-            if gui_brainstorm('isTabVisible', 'iEEG')
-                if ~isempty(SelChan) && ~isempty(Modality) && ismember(Modality, {'SEEG'})
-                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
-                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
-                    jMenuChannels.addSeparator();
-                end
-            end
             % Menu "View sensor labels"
             isLabels = ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSensorLabels);
             jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Display labels', IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)ViewSensors(hFig, [], ~isLabels));
@@ -1823,6 +1815,18 @@ function DisplayFigurePopup(hFig)
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
+            % For iEEG: Add/Remove contact(s) (TODO: support for ECoG)
+            isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+            sSelElec = panel_ieeg('GetSelectedElectrodes');
+            if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
+                if isIsoSurf
+                    gui_component('MenuItem', jMenuChannels, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                end
+                if ~isempty(SelChan)
+                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+                end
+            end
         % Other figures
         else
             % Menu "View sensors"
