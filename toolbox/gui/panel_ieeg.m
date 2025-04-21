@@ -1528,7 +1528,7 @@ function RemoveContact()
     if (length(sSelCont) == 1)
         strConfirm = ['Delete contact "' sSelCont.Name '"?'];
     else
-        strConfirm = ['Delete ' num2str(length(sSelCont)) ' contacts in electrode "' sSelElec.Name '"?'];
+        strConfirm = ['Delete ' num2str(length(sSelCont)) ' contacts in electrode "' sSelElec(end).Name '"?'];
     end
     % Ask for confirmation
     if ~java_dialog('confirm', strConfirm)
@@ -1588,24 +1588,24 @@ function RemoveContact()
             end
             % === Update intraelectrode structure in channel ===
             % Get the updated contacts
-            sContacts = GetContacts(sSelElec.Name);
+            sContacts = GetContacts(sSelElec(end).Name);
             % Update electrode contact number
-            sSelElec.ContactNumber = size(sContacts, 2);
+            sSelElec(end).ContactNumber = size(sContacts, 2);
             % Assign electrode tip and skull entry
-            sSelElec.Loc = [];
-            if sSelElec.ContactNumber >= 1
-                sSelElec.Loc(:,1) = sContacts(1).Loc;
+            sSelElec(end).Loc = [];
+            if sSelElec(end).ContactNumber >= 1
+                sSelElec(end).Loc(:,1) = sContacts(1).Loc;
             end
-            if sSelElec.ContactNumber > 1
-                sSelElec.Loc(:,2) = sContacts(end).Loc;
+            if sSelElec(end).ContactNumber > 1
+                sSelElec(end).Loc(:,2) = sContacts(end).Loc;
             end
             % Set the changed electrode properties
             SetElectrodes(iSelElec, sSelElec);
             % === Update contact names in channel ===
             [~, iChan] = ismember({sContacts.Name}, {GlobalData.DataSet(iDS).Channel.Name});
             newContNames  = {};
-            for iCont = 1:sSelElec.ContactNumber
-                newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
+            for iCont = 1:sSelElec(end).ContactNumber
+                newContNames{end+1} = sprintf('%s%d', sSelElec(end).Name, iCont);
             end
             [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
         end
