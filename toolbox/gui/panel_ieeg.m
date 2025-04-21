@@ -354,11 +354,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
-                sSelElec = GetSelectedElectrodes();
-                % Remove contact(s) (TODO: support for ECoG)
-                if strcmpi(sSelElec(1).Type, 'SEEG')
-                    RemoveContact();
-                end
+                RemoveContactHelper();
             case ev.VK_ESCAPE
                 SetSelectedContacts(0);
         end
@@ -978,9 +974,9 @@ function ShowContactsMenu(jButton)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
-    % Menu: Remove contact(s) (TODO: support for ECoG)
-    if length(sSelElec)==1 && sSelElec.ContactNumber>=1 && strcmpi(sSelElec.Type, 'SEEG')
-        gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
+    % Menu: Remove contact(s)
+    if strcmpi(sSelElec(end).Type, 'SEEG')
+        gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
         jMenu.addSeparator();
     end
     % Menu: Default positions
@@ -1614,6 +1610,26 @@ function RemoveContact()
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
     % Update figure
     UpdateFigures();
+end
+
+%% ===== HELPER TO REMOVE CONTACT(S) OR ELECTRODE =====
+function RemoveContactHelper()
+    sSelElec = GetSelectedElectrodes();
+    if isempty(sSelElec) || ~strcmpi(sSelElec(end).Type, 'SEEG') % TODO: support for ECoG
+        return
+    end
+    % If multiple electrodes were selected, update selection to just the electrode whose contacts are to be removed
+    if numel(sSelElec) > 1
+        SetSelectedElectrodes(sSelElec(end).Name);
+    end
+    sSelCont = GetSelectedContacts();
+    % If every contact of that electrode is selected, remove the whole electrode
+    if numel(sSelCont) == sSelElec(end).ContactNumber
+        RemoveElectrode();
+    else
+        % Otherwise just remove the highlighted contact(s)
+        RemoveContact();
+    end
 end
 
 %% ===== GET ELECTRODE MODELS =====

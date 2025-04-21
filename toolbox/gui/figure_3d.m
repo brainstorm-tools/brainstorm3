@@ -1293,7 +1293,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     % For iEEG: Remove contact(s) (TODO: support for ECoG)
                     if gui_brainstorm('isTabVisible', 'iEEG')
                         if ~isempty(SelChan) && ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'SEEG'})
-                            panel_ieeg('RemoveContact');
+                            panel_ieeg('RemoveContactHelper');
                         end
                     end
                 % ESCAPE: RESET SELECTION
@@ -1810,7 +1810,7 @@ function DisplayFigurePopup(hFig)
             % For iEEG: Remove contact(s) (TODO: support for ECoG)
             if gui_brainstorm('isTabVisible', 'iEEG')
                 if ~isempty(SelChan) && ~isempty(Modality) && ismember(Modality, {'SEEG'})
-                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
+                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
                     jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
                     jMenuChannels.addSeparator();
                 end
