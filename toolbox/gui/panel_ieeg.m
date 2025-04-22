@@ -330,7 +330,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 RemoveElectrode();
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
-            case 115 % S
+            case {'s', 'S'}
                 if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
                     AddContact();
                 end
