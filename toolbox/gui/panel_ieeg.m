@@ -994,6 +994,8 @@ end
 
 %% ===== SHOW CONTACTS MENU =====
 function ShowContactsMenu(jButton)
+    import java.awt.event.KeyEvent;
+    import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
     % Create popup menu
     jMenu = java_create('javax.swing.JPopupMenu');
@@ -1005,8 +1007,9 @@ function ShowContactsMenu(jButton)
     end
     % Menu: Add/Remove contact(s)
     if strcmpi(sSelElec(end).Type, 'SEEG')
-        gui_component('MenuItem', jMenu, [], 'Add new contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
-        gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
+        gui_component('MenuItem', jMenu, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
+        jItem = gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
         jMenu.addSeparator();
     end
     % Menu: Default positions
