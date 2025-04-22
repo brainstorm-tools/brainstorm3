@@ -323,14 +323,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== ELECTRODE LIST KEY TYPED CALLBACK =====
     function ElecListKeyTyped_Callback(h, ev)
+        sSelElec = GetSelectedElectrodes();
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 RemoveElectrode();
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
+            case 115 % S
+                if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
+                    AddContact();
+                end
             case 7 % CTRL+G
-                sSelElec = GetSelectedElectrodes();
                 if ev.getModifiers == 2 && length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'}))
                     GroupElectrodes();
                 end
@@ -1007,7 +1011,8 @@ function ShowContactsMenu(jButton)
     end
     % Menu: Add/Remove contact(s)
     if strcmpi(sSelElec(end).Type, 'SEEG')
-        gui_component('MenuItem', jMenu, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
+        jItem = gui_component('MenuItem', jMenu, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
         jItem = gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
         jMenu.addSeparator();
@@ -1480,6 +1485,10 @@ function AddContact()
     XYZ = GetCrosshairLoc('scs');
     if isempty(XYZ)
         java_dialog('warning', 'Select a candidate contact from figure', 'Add contact');
+        return;
+    end
+    % Ask for confirmation
+    if ~java_dialog('confirm', ['Add contact to electrode "' sSelElec(end).Name '"'])
         return;
     end
     % Get contacts for this electrode

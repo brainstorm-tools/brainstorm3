@@ -1225,6 +1225,15 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         bst_figures('ViewResults', hFig); 
                     end
+                    % For iEEG: Add contact
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        TessInfo = getappdata(hFig, 'Surface');
+                        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match'))); 
+                        sSelElec = panel_ieeg('GetSelectedElectrodes');
+                        if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG') && isIsoSurf
+                            panel_ieeg('AddContact');
+                        end
+                    end
                 % CTRL+T : Default topography
                 case 't'
                     if ismember('control', keyEvent.Modifier) 
@@ -1821,7 +1830,8 @@ function DisplayFigurePopup(hFig)
             sSelElec = panel_ieeg('GetSelectedElectrodes');
             if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
                 if isIsoSurf
-                    gui_component('MenuItem', jMenuChannels, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
                 end
                 if ~isempty(SelChan)
                     jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
