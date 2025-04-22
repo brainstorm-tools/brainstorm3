@@ -329,6 +329,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 RemoveElectrode();
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
+            case 7 % CTRL+G
+                sSelElec = GetSelectedElectrodes();
+                if ev.getModifiers == 2 && length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'}))
+                    GroupElectrodes();
+                end
         end
     end
 
@@ -338,6 +343,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         if (ev.getClickCount() == 2)
             % Rename selection
             EditElectrodeLabel();
+        end
+        % If RIGHT CLICK
+        if (ev.getButton() == 3)
+            % Popup
+            ElecListPanelPopup();
         end
     end
 
@@ -963,6 +973,25 @@ function SetSelectedContacts(iSelCont)
     SetMriCrosshair(sContacts);
 end
 
+%% ===== ELECTRODE LIST PANEL POP-UP MENU =====
+function ElecListPanelPopup()
+    import java.awt.event.KeyEvent;
+    import javax.swing.KeyStroke;
+    import org.brainstorm.icon.*;
+
+    % Get selected electrodes
+    sSelElec = GetSelectedElectrodes();            
+    % Create popup menu
+    jPopup = java_create('javax.swing.JPopupMenu');
+    if (length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'})))
+        jGroupElec = gui_component('MenuItem', jPopup, [], 'Group electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@GroupElectrodes));
+        jGroupElec.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_MASK));
+    end
+
+    % Display menu
+    gui_popup(jPopup);
+end
+
 %% ===== SHOW CONTACTS MENU =====
 function ShowContactsMenu(jButton)
     import org.brainstorm.icon.*;
@@ -1356,8 +1385,12 @@ function iElec = SetElectrodes(iElec, sElect)
 end
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(elecName)
     global GlobalData;
+    % Parse inputs
+    if nargin < 1 || isempty(elecName)
+        elecName = [];
+    end  
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
@@ -1367,9 +1400,13 @@ function AddElectrode()
         Modality = 'SEEG';
     end
     % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
+    if isempty(elecName)
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    else
+        newLabel = elecName;
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -1480,8 +1517,12 @@ function AddContact()
 end
 
 %% ===== REMOVE ELECTRODE =====
-function RemoveElectrode()
+function RemoveElectrode(isInteractive)
     global GlobalData;
+    % Parse inputs
+    if nargin < 1 || isempty(isInteractive)
+        isInteractive = 1;
+    end
     % Get dataset
     [sElecOld, iDSall, iFigall] = GetElectrodes();
     if isempty(iDSall)
@@ -1494,17 +1535,19 @@ function RemoveElectrode()
     % Get selected electrode
     [sSelElec, iSelElec] = GetSelectedElectrodes();
     if isempty(iSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Remove color');
+        bst_error('No electrode selected.', 'Remove electrode', 0);
         return
     end
     % Ask for confirmation
-    if (length(sSelElec) == 1)
-        strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
-    else
-        strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
-    end
-    if ~java_dialog('confirm', strConfirm)
-        return;
+    if isInteractive
+        if (length(sSelElec) == 1)
+            strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
+        else
+            strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
+        end
+        if ~java_dialog('confirm', strConfirm)
+            return;
+        end
     end
     % Loop on datasets
     for iDS = unique(iDSall)
@@ -1698,6 +1741,43 @@ function RemoveContactHelper()
         % Otherwise just remove the highlighted contact(s)
         RemoveContact();
     end
+end
+
+%% ===== GROUP ELECTRODES =====
+function GroupElectrodes()
+    global GlobalData;
+    % Ask for confirmation
+    if ~java_dialog('confirm', 'Group all selected electrodes?')
+        return;
+    end
+    % Get selected electrodes
+    [sSelElecOld, iSelElecOld, iDS, iFig] = GetSelectedElectrodes();
+    % Get channel data
+    Channels = GlobalData.DataSet(iDS).Channel; 
+    % Find indices of channels belonging to the selected electrodes
+    iChan = ismember({Channels.Group}, {sSelElecOld.Name});
+    % Extract and concatenate contact locations
+    sContactsLoc = [Channels(iChan).Loc];
+    % Sort contacts (distance from origin)
+    sContactsLocSorted = GetSortedContacts(sContactsLoc);
+    % Add new electrode assigning a label to it (appending the word 'group' to the 1st selected electrode in the list)
+    newLabel = sprintf('%sgroup', sSelElecOld(1).Name);
+    AddElectrode(newLabel);
+    % Get updated selected electrodes structure
+    [sSelElec, iSelElec] = GetSelectedElectrodes();
+    % Update electrode contact number
+    sSelElec.ContactNumber = size(sContactsLocSorted, 2);
+    % Set electrode tip and skull entry
+    sSelElec.Loc(:, 1) = sContactsLocSorted(:, 1);
+    sSelElec.Loc(:, 2) = sContactsLocSorted(:, end); 
+    % Set the changed electrode properties
+    SetElectrodes(iSelElec, sSelElec);              
+    % Align contacts
+    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
+    % Select old electrodes for removal
+    SetSelectedElectrodes(iSelElecOld);
+    % Remove selected electrodes
+    RemoveElectrode(0);
 end
 
 %% ===== GET ELECTRODE MODELS =====
