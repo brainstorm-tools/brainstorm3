@@ -54,9 +54,9 @@ end
 % Reading function: urlread replaced with webread in Matlab 2014b
 if (bst_get('MatlabVersion') <= 803)
     url_read_fcn = @(f,u)urlwrite(u,f);
-    url_read_alt = @(f,u)websave(f,u,weboptions('CertificateFilename', ''));
+    url_read_alt = @(f,u)websave(f,u);
 else
-    url_read_fcn = @(f,u)websave(f,u,weboptions('CertificateFilename', ''));
+    url_read_fcn = @(f,u)websave(f,u);
     url_read_alt = @(f,u)urlwrite(u,f);
 end
 % Read online version.txt
