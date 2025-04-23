@@ -1136,8 +1136,10 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'vox2ras', 0));
                         end
                     end
-                    % === MRI SEGMENTATION ===
-                    fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt);
+                    % === MRI and CT SEGMENTATION ===
+                    if ~isPet
+                        fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt);
+                    end
                     if ~isAtlas
                         % === DEFACE MRI ===
                         gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
