@@ -1139,6 +1139,8 @@ switch (lower(action))
                     % === MRI and CT SEGMENTATION ===
                     if ~isPet
                         fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt);
+                    else
+                        fcnPetProcessing(jPopup, sSubject, iAnatomy);
                     end
                     if ~isAtlas
                         % === DEFACE MRI ===
@@ -3199,6 +3201,40 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
 end
 
                     
+%% ===== PET PROCESSING =====
+function fcnPetProcessing(jPopup, sSubject, iAnatomy)
+    import org.brainstorm.icon.*;
+    % Add menu separator
+    AddSeparator(jPopup);
+    % Create sub-menu
+    jMenu = gui_component('Menu', jPopup, [], 'PET processing', IconLoader.ICON_VOLPET);
+    % === PET IMPORT PROCESSING ===
+    if length(iAnatomy) == 1
+        PetFile = sSubject.Anatomy(iAnatomy).FileName;
+        gui_component('MenuItem', jMenu, [], 'Realing frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
+    end
+end
+
+
+%% ===== PET IMPORT PROCESSING =====
+function PetImportProcess_Callback(PetFile)
+    % Get number of frames (4D)
+    CubeInfo = whos('-file', file_fullpath(PetFile), 'Cube');
+    nFrames = CubeInfo.size(4);
+    % Nothing to do here
+    if nFrames < 2
+        disp('BST> PET volume is static (3D), skipping realignment across frames');
+        return
+    end
+    % Collect user inputs
+    petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames, 0);
+    if ~isempty(petopts)
+        % Realign, smooth and aggregate
+        mri_realign(PetFile, petopts.align, petopts.fwhm, petopts.aggregate);
+    end
+end
+
+
 %% ===== GET ALL FILENAMES =====
 function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullPath)
     % Parse inputs
