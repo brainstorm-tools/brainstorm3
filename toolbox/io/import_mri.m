@@ -335,15 +335,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     bst_progress('stop');
                     return;
                 end
-                petImportFileTag = '';
                 % Realign, smooth and aggregate
-                if ~isempty(petopts.align)
-                    [sMri, petImportFileTag] = mri_realign(sMri, petopts.align, petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
-                % Aggregate values across time frames without realignment nor smoothing
-                elseif ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
-                    [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
-                    petImportFileTag = [petImportFileTag, aggregateFileTag];
-                end
+                [sMri, petImportFileTag] = mri_realign(sMri, petopts.align, petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
                 tmpHistory.History = sMri.History;
                 % Registration method
                 RegMethod = petopts.register;
