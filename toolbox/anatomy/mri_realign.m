@@ -60,10 +60,6 @@ if (nargin < 3) || isempty(FWHM)
 end
 FWHM = FWHM * [1 1 1];
 
-if (nargin < 2) || isempty(Method)
-    Method = 'spm_realign';
-end
-
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
