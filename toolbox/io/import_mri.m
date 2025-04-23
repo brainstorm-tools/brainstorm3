@@ -335,15 +335,14 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     bst_progress('stop');
                     return;
                 end
-                realignFileTag = '';
-                % Realign and smooth
-                if petopts.align
-                    [sMri, realignFileTag] = mri_realign(sMri, [], petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
-                end
-                % Aggregate values across time frames without realignment
-                if ~petopts.align && ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
+                petImportFileTag = '';
+                % Realign, smooth and aggregate
+                if ~isempty(petopts.align)
+                    [sMri, petImportFileTag] = mri_realign(sMri, petopts.align, petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
+                % Aggregate values across time frames without realignment nor smoothing
+                elseif ~isempty(petopts.aggregate) && ~strcmp(petopts.aggregate, 'ignore')
                     [sMri, aggregateFileTag] = mri_aggregate(sMri, petopts.aggregate);
-                    realignFileTag = [realignFileTag, aggregateFileTag];           
+                    petImportFileTag = [petImportFileTag, aggregateFileTag];
                 end
                 tmpHistory.History = sMri.History;
                 % Registration method
@@ -439,9 +438,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 maskFileTag = '';
         end
         fileTag = [fileTag, maskFileTag];
-        % Add tag for realign
+        % Add tag for PET (realign, smooth, aggregate)
         if isPet
-            fileTag = [realignFileTag, fileTag];
+            fileTag = [petImportFileTag, fileTag];
         end
         % Stop in case of error
         if ~isempty(errMsg)
