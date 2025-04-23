@@ -1142,7 +1142,7 @@ switch (lower(action))
                         % === DEFACE MRI ===
                         gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                         % === SEEG/ECOG ===
-                        if (length(iAnatomy) == 1) && iSubject ~=0
+                        if (length(iAnatomy) == 1) && iSubject ~=0 && ~isPet
                             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', filenameRelative));
                         end
                     end
