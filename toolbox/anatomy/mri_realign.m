@@ -194,7 +194,7 @@ end
 file_delete(TmpDir, 1, 1);
 
 % ===== SAVE NEW FILE =====
-sMriAlign.Comment = [sMriAlign.Comment, fileTag]; % Add file tag
+sMriAlign.Comment = [sMri.Comment, fileTag]; % Add file tag
 % Save output
 if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI file
     [sSubject, iSubject, ~] = bst_get('MriFile', MriFile);
