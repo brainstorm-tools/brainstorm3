@@ -1,7 +1,7 @@
 function [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 % IN_MRI_NII: Reads a structural NIfTI/Analyze MRI.
 %
-% USAGE:  [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[]);
+% USAGE:  [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[ask]);
 %
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
@@ -66,6 +66,7 @@ switch(lower(extension))
         if isempty(hdr), disp(sprintf('in_mri_nii : Error reading header file')); return; end
         % If there is some scaling needed: ask user what to do
         if isempty(isScale)
+            % Rescaling is not needed if the slope==1 and intersect==0
             if(hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_slope==1 && hdr.nifti.scl_inter==0)
                 isScale = java_dialog('confirm', ...
                     ['A scaling is available in this volume:' 10 ...

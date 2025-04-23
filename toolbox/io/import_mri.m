@@ -160,7 +160,7 @@ end
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 isCt    = strcmpi(volType, 'CT');
-isPet = strcmpi(volType,'PET');
+isPet   = strcmpi(volType, 'PET');
 % Tag for CT volume
 if isCt
     tagVolType = '_volct';
@@ -174,7 +174,7 @@ end
 
 % Load MRI
 isNormalize = 0;
-sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni && ~isPet, isNormalize);
+sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize, isPet || isCt);
 if isempty(sMri)
     bst_progress('stop');
     return
