@@ -100,6 +100,20 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         if (i == 1)
             % First call: convert more information
             [ftAllFiles{i}, ResultsMat, VertConn] = out_fieldtrip_results(sAllInputs(i).FileName, OPT.ScoutSel, OPT.ScoutFunc, OPT.TimeWindow, OPT.isAbsolute);
+            % Check for TimeBands and Freqs
+            OutTimeBands = [];
+            OutFreqs = [];
+            if strcmpi(sInputsA(1).FileType, 'results')
+                sMat = in_bst_results(sAllInputs(i).FileName, 0, 'TimeBands', 'Freqs');
+            elseif strcmpi(sInputsA(1).FileType, 'timefreq')
+                sMat = in_bst_timefreq(sAllInputs(i).FileName, 0, 'TimeBands', 'Freqs');
+            end
+            if ~isempty(sMat.TimeBands)
+                OutTimeBands = sMat.TimeBands;
+            end
+            if ~isempty(sMat.Freqs)
+                OutFreqs = sMat.Freqs;
+            end
             % Use the information from the first file for all the files
             nComponents = ResultsMat.nComponents;
             GridAtlas   = ResultsMat.GridAtlas;
@@ -135,6 +149,30 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             ftAllFiles{i}.time = ftAllFiles{i}.time(1);
             if (i == 1)
                 OutTime = OutTime([1,end]);
+                if ~isempty(OutTimeBands)
+                    % Update TimeBand
+                    OutTimeBands = OutTimeBands(1,:);
+                    OutTimeBands{1} = 'TimeBand';
+                    OutTimeBands{2} = sprintf('%f, %f', OutTime);
+                    OutTimeBands{3} = 'mean';
+                end
+            end
+        end
+        % Frequency average
+        if OPT.isAvgFreq && strcmpi(ftAllFiles{i}.dimord, 'pos_freq_time') && (size(ftAllFiles{i}.pow,2) > 1)
+            ftAllFiles{i}.pow  = mean(ftAllFiles{i}.pow, 2);
+            ftAllFiles{i}.freq = ftAllFiles{i}.freq(1);
+            if (i == 1)
+                if ~iscell(sMat.Freqs)
+                    OutFreqs = OutFreqs([1,end]);
+                else
+                    % Update Freqs (bands)
+                    freqBounds = process_tf_bands('GetBounds', OutFreqs);
+                    OutFreqs = OutFreqs(1,:);
+                    OutFreqs{1} = 'FreqBand';
+                    OutFreqs{2} = sprintf('%f, %f', freqBounds(1,1), freqBounds(end,2));
+                    OutFreqs{3} = 'mean';
+                end
             end
         end
         % Check that all the files have the same dimensions as the first one
@@ -271,6 +309,12 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         sOutput.pmap = [sOutput.pmap(:,1,:), sOutput.pmap(:,1,:)];
     else
         sOutput.Time = ftStat.time;
+    end
+    % TimeBands
+    sOutput.TimeBands = OutTimeBands;
+    % FreqBands
+    if strcmpi(sInputsA(1).FileType, 'timefreq')
+        sOutput.Freqs = OutFreqs;
     end
     % Save clusters
     if isfield(ftStat, 'posclusters')

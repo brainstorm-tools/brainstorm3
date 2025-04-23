@@ -891,9 +891,13 @@ function ButtonAddSurfaceCallback(surfaceType)
         % Update colormap
         figure_3d('ColormapChangedCallback', iDS, iFig);
     end
-    % Reload scouts (only if new surface was added)
     if (iTess > length(TessInfo))
+        % Reload scouts (only if new surface was added)
         panel_scout('ReloadScouts', hFig);
+        % Update iEEG panel (only if new IsoSurface was added)
+        if strcmpi(surfaceType, 'IsoSurface') && gui_brainstorm('isTabVisible', 'iEEG')
+             panel_ieeg('UpdatePanel');
+        end
     end
 end
 
@@ -905,15 +909,22 @@ function ButtonRemoveSurfaceCallback(varargin)
     if isempty(hFig)
         return
     end
-    % Get current surface index
+    % Get current surface and its index
     iSurface = getappdata(hFig, 'iSurface');
     if isempty(iSurface)
         return
     end
-    % Remove surface
+    % Remove surface 
     RemoveSurface(hFig, iSurface);
     % Update "Surfaces" panel
     UpdatePanel();
+    % Update iEEG panel if IsoSurface was removed
+    TessInfo = getappdata(hFig, 'Surface');
+    % Check if no IsoSurface remains
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    if ~isIsoSurf && gui_brainstorm('isTabVisible', 'iEEG')
+        panel_ieeg('UpdatePanel');
+    end
 end
 
 
@@ -1213,8 +1224,12 @@ function UpdateSurfaceProperties()
     ctrl.jLabelDataThresh.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).DataThreshold)));
     if isOverlay && ~isOverlayStat && ~isOverlayLabel
         DataLimit = TessInfo(iSurface).DataLimitValue;
-        threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
-        tooltipText = num2str(threshBar);
+        if isempty(DataLimit)
+            tooltipText = '';
+        else
+            threshBar = ((DataLimit(2) - DataLimit(1)) * TessInfo(iSurface).DataThreshold) + DataLimit(1);
+            tooltipText = num2str(threshBar);
+        end
     else
         tooltipText = '';
     end
@@ -1281,6 +1296,10 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
             sSurface.Color = TessInfo(iTess).AnatomyColor(2,:);
         else
             TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
+        end
+        % Set transparency for isosurface
+        if ~isempty(regexp(surfaceFile, 'tess_isosurface', 'match'))
+            TessInfo(iTess).SurfAlpha = 0.6;
         end
 
         % === PLOT SURFACE ===

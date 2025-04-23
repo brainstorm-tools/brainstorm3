@@ -2361,103 +2361,103 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember('icbm152', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
             sTemplates(end).Name = 'ICBM152';
         end
         if ~ismember('icbm152_2022', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
             sTemplates(end).Name = 'ICBM152_2022';
         end
         if ~ismember('icbm152_2023b', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2023b';
             sTemplates(end).Name = 'ICBM152_2023b';
         end
         if ~ismember('icbm152_2019', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152_2019';
         end
         if ~ismember('icbm152_brainsuite_2016', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
         if ~ismember('colin27_2016', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
         if ~ismember('colin27_4nirs_2024', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_4NIRS_2024';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_4NIRS_2024';
             sTemplates(end).Name = 'Colin27_4NIRS_2024';
         end
         if ~ismember('colin27_brainsuite_2016', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
         if ~ismember('bci-dni_brainsuite_2020', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
         if ~ismember('uscbrain_brainsuite_2020', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
             sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
         if ~ismember('fsaverage_2020', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
             sTemplates(end).Name = 'FsAverage_2020';
         end
         if ~ismember('kabdebon_7w', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
             sTemplates(end).Name = 'Kabdebon_7w';
         end
         if ~ismember('oreilly_0.5m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m_2021';
             sTemplates(end).Name = 'Oreilly_0.5m_2021';
         end
         if ~ismember('oreilly_1m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m_2021';
             sTemplates(end).Name = 'Oreilly_1m_2021';
         end
         if ~ismember('oreilly_2m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m_2021';
             sTemplates(end).Name = 'Oreilly_2m_2021';
         end
         if ~ismember(lower({sTemplates.Name}), 'oreilly_3m_2021')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m_2021';
             sTemplates(end).Name = 'Oreilly_3m_2021';
         end
         if ~ismember('oreilly_4.5m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m_2021';
             sTemplates(end).Name = 'Oreilly_4.5m_2021';
         end
         if ~ismember('oreilly_6m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m_2021';
             sTemplates(end).Name = 'Oreilly_6m_2021';
         end
         if ~ismember('oreilly_7.5m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m_2021';
             sTemplates(end).Name = 'Oreilly_7.5m_2021';
         end
         if ~ismember('oreilly_9m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m_2021';
             sTemplates(end).Name = 'Oreilly_9m_2021';
         end
         if ~ismember('oreilly_10.5m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m_2021';
             sTemplates(end).Name = 'Oreilly_10.5m_2021';
         end
         if ~ismember('oreilly_12m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m_2021';
             sTemplates(end).Name = 'Oreilly_12m_2021';
         end
         if ~ismember('oreilly_15m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m_2021';
             sTemplates(end).Name = 'Oreilly_15m_2021';
         end
         if ~ismember('oreilly_18m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m_2021';
             sTemplates(end).Name = 'Oreilly_18m_2021';
         end
         if ~ismember('oreilly_24m_2021', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m_2021';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m_2021';
             sTemplates(end).Name = 'Oreilly_24m_2021';
         end
         % If a specific template was requested
@@ -2502,57 +2502,57 @@ switch contextName
         
         % Get defaults from internet
         if ~ismember('aal1', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL1';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL1';
             sTemplates(end).Name = 'AAL1';
             sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
         end
         if ~ismember('aal2', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL2';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL2';
             sTemplates(end).Name = 'AAL2';
             sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
         end
         if ~ismember('aal3', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL3';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL3';
             sTemplates(end).Name = 'AAL3';
             sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
         end
         if ~ismember('aicha', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AICHA';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_AICHA';
             sTemplates(end).Name = 'AICHA';
             sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aicha';
         end
         if ~ismember('brainnetome', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
             sTemplates(end).Name = 'Brainnetome';
             sTemplates(end).Info = 'http://atlas.brainnetome.org/';
         end
         if ~ismember('brainnetome_leaddbs', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
             sTemplates(end).Name = 'Brainnetome_leaddbs';
             sTemplates(end).Info = 'http://atlas.brainnetome.org/';
         end
         if ~ismember('brodmann', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
             sTemplates(end).Name = 'Brodmann';
             sTemplates(end).Info = 'https://people.cas.sc.edu/rorden/mricro/lesion.html#brod';
         end
         if ~ismember('hammers83', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
             sTemplates(end).Name = 'Hammers';
             sTemplates(end).Info = 'http://brain-development.org/brain-atlases/adult-brain-atlases/';
         end
         if ~ismember('neuromorphometrics', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
             sTemplates(end).Name = 'Neuromorphometrics';
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('julich-brain-v25', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
             sTemplates(end).Name = 'Julich-Brain-v25';
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('schaefer2018_100_7net', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Schaefer2018';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Schaefer2018';
             sTemplates(end).Name = 'Schaefer2018';
             sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
         end
@@ -3829,7 +3829,7 @@ switch contextName
                     {'.trg'},          'ANT EEProbe (*.trg)',           'ANT'; ...
                     {'.mrk'},          'AnyWave (*.mrk)',               'ANYWAVE'; ...
                     {'.evt'},          'BESA (*.evt)',                  'BESA'; ...
-                    {'.tsv'},          'BIDS events: onset, duration, trial_type, channel (*.tsv)', 'BIDS'; ...
+                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type, channel (*_events.tsv)', 'BIDS'; ...
                     {'.vmrk'},         'BrainVision BrainAmp (*.vmrk)', 'BRAINAMP'; ...
                     {'_events'},       'Brainstorm (events*.mat)',      'BST'; ...
                     {'.mrk'},          'Cartool (*.mrk)',               'CARTOOL'; ...
@@ -3864,7 +3864,7 @@ switch contextName
                     {'.txt'},          'Array of samples (*.txt)',     'ARRAY-SAMPLES'; ...
                     {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
                     {'.txt'},          'CTF Video Times (*.txt)',      'CTFVIDEO'; ...
-                    {'.tsv'},          'BIDS events: onset, duration, trial_type (*.tsv)', 'BIDS'; ...
+                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type (*_events.tsv)', 'BIDS'; ...
                     };
             case 'channel'
                 argout1 = {...

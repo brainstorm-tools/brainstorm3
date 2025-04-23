@@ -43,7 +43,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = java_scaled('dimension',25,25);
+    TB_DIM = java_scaled('dimension',20,25);
     
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -54,7 +54,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         % Button "Select vertex"
+        jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        % Button "Select surface centroid"
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
         % Set color
         jToolbar.addSeparator();
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
@@ -215,6 +218,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jToolbar',            jToolbar, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
+                                  'jButtonCentroid',     jButtonCentroid, ...
                                   'jButtonShow',         jButtonShow, ...
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
@@ -357,26 +361,38 @@ end
 
 %% ===== UPDATE CALLBACK =====
 function UpdatePanel()
+    global GlobalData;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'iEEG');
     if isempty(ctrl)
         return;
     end
     % Get current figure
-    hFig = bst_figures('GetCurrentFigure');
-    % If a surface is available for current figure
-    if ~isempty(hFig)
+    [hFigall,~,iDSall] = bst_figures('GetCurrentFigure');
+    if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
-    % Else: no figure associated with the panel : disable all controls
+        ctrl.jButtonCentroid.setEnabled(0);
+        % Enable centroid select button only when IsoSurface present
+        TessInfo = getappdata(hFigall, 'Surface');
+        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+        if isIsoSurf
+            isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
+            ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
+            isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
+            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
+        else
+            panel_coordinates('SetCentroidSelection', 0);
+        end
+    % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
-    if ~isempty(hFig)
-        ElectrodeDisplay = getappdata(hFig(1), 'ElectrodeDisplay');
+    if ~isempty(hFigall)
+        ElectrodeDisplay = getappdata(hFigall(1), 'ElectrodeDisplay');
         if strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
             ctrl.jRadioDispDepth.setSelected(1);
         else
@@ -530,8 +546,9 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], itemText, 1));
         Wmax = tk.getFontMetrics(jFont).stringWidth(itemText);
     else
+        maxNameLength = max(cellfun(@length, {sContacts.Name}));
         for i = 1:length(sContacts)
-            itemText = sprintf('%s   %3.2f   %3.2f   %3.2f', sContacts(i).Name, contacLocsMm(i,:));
+            itemText = sprintf(['%' num2str(maxNameLength) 's %6.1f %6.1f %6.1f'], sContacts(i).Name, contacLocsMm(i,:));
             listModel.addElement(BstListItem('', [], itemText, i));
             % Get longest string
             W = tk.getFontMetrics(jFont).stringWidth(itemText);
@@ -755,6 +772,7 @@ function UpdateElecProperties(isUpdateModelList)
     % Save selected electrodes
     ctrl.jLabelSelectElec.setText(num2str(iSelElec));
 end
+
 
 %% ===== SET CROSSHAIR POSITION ON MRI =====
 function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
@@ -1450,17 +1468,14 @@ function RemoveElectrode()
                 % Remove channels
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
+            % Remove electrode line fitting
+            delete(findobj(hFig, 'Tag', sSelElec(iElec).Name));
         end
         % Delete selected electrodes
         GlobalData.DataSet(iDS).IntraElectrodes(iSelElec) = [];
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
-    % remove any line fitting
-    hCoord = findobj(0, 'Tag', sSelElec.Name); 
-    if ~isempty(hCoord)
-        delete(hCoord);
-    end
     % Update list of electrodes
     UpdateElecList();
     % Update figure
@@ -2905,41 +2920,20 @@ function SetElectrodeLoc(iLoc, jButton)
     global GlobalData;
 
     % Get selected electrodes
-    [sSelElec, iSelElec, iDS, iFig, hFig] = GetSelectedElectrodes();
-    MriIdx = 1;
-
+    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
     if isempty(sSelElec)
-    	bst_error('No electrode seleced.', 'Set electrode position', 0);
+    	bst_error('No electrode selected.', 'Set electrode position', 0);
         return;
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif ~strcmpi(GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Id.Type, 'MriViewer')
-        if length(hFig) == 1
-            bst_error('MRI viewer must be open', 'Set electrode position', 0);
-            return;
-        end
-        MriIdx = 2;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
         return;
     end
-    
-    
-    sMri = panel_surface('GetSurfaceMri', hFig(MriIdx));
-    XYZ = figure_mri('GetLocation', 'scs', sMri, GlobalData.DataSet(iDS(MriIdx)).Figure(iFig(MriIdx)).Handles);
-
-    % If SCS coordinates are not available
+    % Get location from the current figure
+    XYZ = GetCrosshairLoc('scs');
     if isempty(XYZ)
-        % Ask to compute MNI transformation
-        isComputeMni = java_dialog('confirm', [...
-            'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
-            'Compute the MNI normalization now?'], 'Set electrode position');
-        % Run computation
-        if isComputeMni
-            figure_mri('ComputeMniCoordinates', hFig);
-        end
         return;
     end
     % Make sure the points of the electrode are more than 1cm apart
@@ -3197,6 +3191,36 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
         end
     end
+    % Check SCS coordinates and coregistration of MRI files
+    errMsg = '';
+    for iVol=1:length(MriFiles)
+        sMri = bst_memory('LoadMri', MriFiles{iVol});
+        hasFiducials = isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
+        if iVol == 1
+            if hasFiducials
+                refCubeSize = size(sMri.Cube(:,:,:,1));
+                refVoxSize  = round(sMri.Voxsize(1:3) .* 1000); % mm
+                refSCS      = sMri.SCS;
+            else
+                errMsg = 'You need to set the fiducial points in the MRI first.';
+                break;
+            end
+        elseif iVol == 2
+            isSameSize = isequal(refCubeSize, size(sMri.Cube(:,:,:,1))) && isequal(refVoxSize, round(sMri.Voxsize(1:3) .* 1000));
+            if ~isSameSize || ~hasFiducials || ~isequal(refSCS.NAS, sMri.SCS.NAS) || ~isequal(refSCS.LPA, sMri.SCS.LPA) || ~isequal(refSCS.RPA, sMri.SCS.RPA)
+                errMsg = ['You need to co-register ' MriFiles{iVol} ' to the MRI first.'];
+                break;
+            end
+        end
+    end
+    if ~isempty(errMsg)
+        % Unload all MRIs that have been loaded
+        for iiVol = 1 : iVol
+            bst_memory('UnloadMri', MriFiles{iiVol});
+        end
+        bst_error(errMsg, 'SEEG/ECOG implantation', 0);
+        return
+    end
 
     % Progress bar
     bst_progress('start', 'Implantation', 'Updating display...');
@@ -3220,7 +3244,7 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
     if ~isempty(iSrf)
         % Display isosurface
-        DisplayIsosurface(sSubject, iSrf, [], ChannelFile, 'SEEG');
+        DisplayIsosurface(sSubject, iSrf, ChannelFile, 'SEEG');
     end
     % Close progress bar
     bst_progress('stop');
@@ -3325,15 +3349,11 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, hFig, ChannelFile, Modality)
-    % Parse inputs
-    if (nargin < 3) || isempty(hFig)
-        hFig = [];
-    end 
-    if isempty(hFig)
-        hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, []);
-    end
-    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, 0.6, [], hFig, []);
+function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, ChannelFile, Modality)
+    % Get dataset with ChannelFile
+    iDS = bst_memory('GetDataSetChannel', ChannelFile);
+    hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, iDS);
+    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, [], [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"
@@ -3368,3 +3388,18 @@ function ExportChannelFile(isAtlas)
     end
 end
 
+%% ===== GET CROSSHAIR LOCATION FROM CURRENT FIGURE =====
+function XYZ = GetCrosshairLoc(cs)
+    % Intialize output
+    XYZ = [];
+    % Get figures
+    hFig = bst_figures('GetCurrentFigure');
+    switch lower(hFig.Tag)
+        case '3dviz'
+            XYZ = figure_3d('GetLocation', cs, hFig);
+        case 'mriviewer'
+            sMri = panel_surface('GetSurfaceMri', hFig);
+            Handles = bst_figures('GetFigureHandles', hFig);
+            XYZ = figure_mri('GetLocation', cs, sMri, Handles);
+    end
+end

@@ -650,6 +650,10 @@ switch (lower(action))
 
                     % === MRI SEGMENTATION ===
                     fcnMriSegment(jPopup, sSubject, iSubject, [], 0, 0);
+                    % === DEFACE MRI ===
+                    gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
+                    % === SEEG/ECOG ===
+                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
                     % Export menu (added later)
                     if (iSubject ~= 0)
                         jMenuExport{1} = gui_component('MenuItem', [], [], 'Export subject',  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
@@ -1058,6 +1062,13 @@ switch (lower(action))
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                 isCt    = strcmpi(nodeType, 'volct');
                 isPet   = strcmpi(nodeType, 'volpet');
+                % Menu icon
+                volIcon = 'ICON_ANATOMY';
+                if isCt
+                    volIcon = 'ICON_VOLCT';
+                elseif isPet
+                    volIcon = 'ICON_VOLPET';
+                end
                     
                 if (length(bstNodes) == 1)
                     % MENU : DISPLAY
@@ -1127,6 +1138,14 @@ switch (lower(action))
                     end
                     % === MRI SEGMENTATION ===
                     fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt);
+                    if ~isAtlas
+                        % === DEFACE MRI ===
+                        gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
+                        % === SEEG/ECOG ===
+                        if (length(iAnatomy) == 1) && iSubject ~=0
+                            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', filenameRelative));
+                        end
+                    end
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
@@ -3168,20 +3187,6 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt)
                 AddSeparator(jMenu);
                 gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
             end
-        end
-        % === DEFACE MRI ===
-        if isempty(iAnatomy)
-            gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
-        else
-            gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.(volIcon), [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
-        end
-        % === SEEG/ECOG ===
-        % Right click on the subject only
-        if isempty(iAnatomy) && iSubject ~=0
-            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
-        % Right click on a desired volume (MRI/CT) in a subject
-        elseif (length(iAnatomy) == 1) && iSubject ~=0
-                gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', MriFile));
         end
           
     % === TISSUE SEGMENTATION ===

@@ -489,7 +489,7 @@ if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
     if ~exist(ZipFile, 'file')
         disp('BST> Downloading ICBM152 template...');
         % Download file
-        errMsg = gui_brainstorm('DownloadFile', ['http://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
+        errMsg = gui_brainstorm('DownloadFile', ['https://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
         % Error message
         if ~isempty(errMsg)
             disp(['BST> Error: Could not download template: ' errMsg]);
