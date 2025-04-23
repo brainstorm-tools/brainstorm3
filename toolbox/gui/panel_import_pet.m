@@ -138,20 +138,20 @@ end
 %  =================================================================================
 %% ===== GET PANEL CONTENTS =====
 function s = GetPanelContents()
-   % Get panel controls
+    % Get panel controls
     ctrl = bst_get('PanelControls', 'panel_import_pet');
     % Get import PET options
     s.align    = ctrl.jCheckAlign.isSelected();
     s.fwhm     = ctrl.jCheckSmooth.isSelected() * str2double(char(ctrl.jTextFwhm.getText()));
     if ctrl.jCheckAggregate.isSelected()
-    s.aggregate = lower(char(ctrl.jComboBoxAggregate.getSelectedItem()));
+        s.aggregate = lower(char(ctrl.jComboBoxAggregate.getSelectedItem()));
     else
-    s.aggregate = 'ignore';
+        s.aggregate = 'ignore';
     end
     if ctrl.jCheckRegister.isSelected()
-    s.register = lower(char(ctrl.jComboboxRegister.getSelectedItem()));
+        s.register = lower(char(ctrl.jComboboxRegister.getSelectedItem()));
     else
-    s.register = 'ignore';
+        s.register = 'ignore';
     end
     s.reslice  = ctrl.jCheckReslice.isSelected();
 end
