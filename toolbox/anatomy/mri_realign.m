@@ -56,7 +56,7 @@ if (nargin < 4) || isempty(Aggregation)
     Aggregation = 'ignore'; % Ignores aggregation, returns realigned dynamic volume
 end
 if (nargin < 3) || isempty(FWHM)
-    FWHM = 0; % Default 6 mm smoothing
+    FWHM = 0; % Default 0 mm smoothing
 end
 FWHM = FWHM * [1 1 1];
 
