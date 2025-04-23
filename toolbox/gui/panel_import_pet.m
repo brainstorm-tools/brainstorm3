@@ -1,9 +1,9 @@
 function varargout = panel_import_pet(varargin)
 % PANEL_IMPORT_PET: User options for pre-processing dynamic PET volumes.
 %
-% USAGE: [bstPanelNew, panelName] = panel_import_pet('CreatePanel', nFrames)
+% USAGE: [bstPanelNew, panelName] = panel_import_pet('CreatePanel', nFrames, dispRegistration)
 %
-% petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames)
+% petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames)
 % This panel is typically displayed using gui_show_dialog() to collect user inputs:
 %   - Align PET frames (realignment)
 %   - Smooth the volume using a specified FWHM kernel
@@ -39,7 +39,7 @@ eval(macro_method);
 end
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel(nFrames)
+function [bstPanelNew, panelName] = CreatePanel(nFrames, dispRegistration)
 panelName = 'panel_import_pet';
 import java.awt.*
 import javax.swing.*
@@ -92,6 +92,12 @@ jComboboxRegister = gui_component('combobox', jPanelReg, 'tab', [], {{'SPM', 'MN
 jCheckReslice = gui_component('checkbox', jPanelReg, 'br', 'Reslice volume on import');
 jCheckReslice.setSelected(true);
 jPanelMain.add('br', jPanelReg);
+if ~dispRegistration
+    jPanelReg.setVisible(0);
+    jCheckRegister.setSelected(0);
+    jCheckReslice.setSelected(0);
+end
+
 % === BUTTONS ===
 jPanelButtons = gui_river([2 0], [0 5 0 5]);
 gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);

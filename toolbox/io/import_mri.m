@@ -329,7 +329,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             % Ask for PET processing
             else
                 % Collect user inputs
-                petopts = gui_show_dialog('PET Pre-processing Options', @panel_import_pet, 1, [], nFrames);
+                petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames, 1);
                 if isempty(petopts)  % User aborted the import
                     sMri = [];
                     bst_progress('stop');
