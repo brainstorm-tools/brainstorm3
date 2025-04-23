@@ -79,7 +79,6 @@ end
 MriRealign = []; sMriAlign = []; 
 Comment=sMri.Comment; History=sMri.History;
 fileTag   = '';
-volTag = regexp(Comment, '_vol\w*', 'match', 'once');
 
 if size(sMri.Cube, 4) == 1
     MriRealign = sMri;  
@@ -185,13 +184,13 @@ end
 % ===== FRAME AGGREGATION ========
 if ~isempty(Aggregation) && ~strcmp(Aggregation, 'ignore')
     [sMriAlign, aggregateFileTag] = mri_aggregate(sMriAlign, Aggregation);
-    fileTag = [fileTag, aggregateFileTag, volTag];
+    fileTag = [fileTag, aggregateFileTag];
 end
 
 file_delete(TmpDir, 1, 1);
 
 % ===== SAVE NEW FILE =====
-sMriAlign.Comment = [sMriAlign.Comment, fileTag, volTag]; % Add file tag
+sMriAlign.Comment = [sMriAlign.Comment, fileTag]; % Add file tag
 % Save output
 if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI file
     [sSubject, iSubject, ~] = bst_get('MriFile', MriFile);
