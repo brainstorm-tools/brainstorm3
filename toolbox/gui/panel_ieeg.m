@@ -1396,7 +1396,7 @@ end
 function AddElectrode(elecName)
     global GlobalData;
     % Parse inputs
-    if nargin < 1 || isempty(elecName)
+    if nargin < 1
         elecName = [];
     end  
     % Get available electrodes
