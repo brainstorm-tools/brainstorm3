@@ -3211,7 +3211,7 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
     % === PET IMPORT PROCESSING ===
     if length(iAnatomy) == 1
         PetFile = sSubject.Anatomy(iAnatomy).FileName;
-        gui_component('MenuItem', jMenu, [], 'Realing frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
+        gui_component('MenuItem', jMenu, [], 'Realign frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
     end
 end
 
