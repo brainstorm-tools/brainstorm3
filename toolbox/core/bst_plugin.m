@@ -343,12 +343,12 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
 
-    % === I/O: jsonlab ===
+    % === I/O: JSONLab ===
     PlugDesc(end+1)              = GetStruct('jsonlab');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
     PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsonlab/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jsonlab/';
+    PlugDesc(end).URLinfo        = 'https://neurojson.org/jsonlab';
     PlugDesc(end).TestFile       = 'savejson.m';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
