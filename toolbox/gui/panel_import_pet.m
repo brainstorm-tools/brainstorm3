@@ -3,11 +3,13 @@ function varargout = panel_import_pet(varargin)
 %
 % USAGE: [bstPanelNew, panelName] = panel_import_pet('CreatePanel', nFrames, dispRegistration)
 %
-% petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames)
+% petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames, dispRegistration)
+%
 % This panel is typically displayed using gui_show_dialog() to collect user inputs:
 %   - Align PET frames (realignment)
 %   - Smooth the volume using a specified FWHM kernel
 %   - Aggregate aligned frames into a static volume
+%   If dispRegistration == 1, the options below are also shown:
 %   - Register the PET volume to the default MRI
 %   - Choose whether to reslice the volume on import
 %
