@@ -1763,7 +1763,7 @@ function MergeElectrodes()
         return;
     end
     % Get selected electrodes
-    [sSelElecOld, iSelElecOld, iDS, iFig] = GetSelectedElectrodes();
+    [sSelElecOld, ~, iDS, iFig] = GetSelectedElectrodes();
     % Get channel data
     Channels = GlobalData.DataSet(iDS).Channel; 
     % Find indices of channels belonging to the selected electrodes
@@ -1772,8 +1772,10 @@ function MergeElectrodes()
     sContactsLoc = [Channels(iChan).Loc];
     % Sort contacts (distance from origin)
     sContactsLocSorted = GetSortedContacts(sContactsLoc);
-    % Add new electrode assigning a label to it (appending the word 'group' to the 1st selected electrode in the list)
-    newLabel = sprintf('%sgroup', sSelElecOld(1).Name);
+    % Remove to-be-merged electrodes
+    RemoveElectrode(0);
+    % Add new electrode assigning a label to it (appending the word 'merged' to the 1st to-be-merged electrode in the list)
+    newLabel = sprintf('%smerged', sSelElecOld(1).Name);
     AddElectrode(newLabel);
     % Get updated selected electrodes structure
     [sSelElec, iSelElec] = GetSelectedElectrodes();
@@ -1786,10 +1788,6 @@ function MergeElectrodes()
     SetElectrodes(iSelElec, sSelElec);              
     % Align contacts
     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
-    % Select old electrodes for removal
-    SetSelectedElectrodes(iSelElecOld);
-    % Remove selected electrodes
-    RemoveElectrode(0);
 end
 
 %% ===== GET ELECTRODE MODELS =====
