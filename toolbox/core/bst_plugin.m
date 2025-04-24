@@ -343,18 +343,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
 
-    % === I/O: JSONLab ===
-    PlugDesc(end+1)              = GetStruct('jsonlab');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsonlab/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'https://neurojson.org/jsonlab';
-    PlugDesc(end).TestFile       = 'savejson.m';
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).ReadmeFile     = 'README.rst';
-
-
     % === I/O: JSNIRF ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
     PlugDesc(end).Version        = 'github-master';
@@ -367,6 +355,18 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).RequiredPlugs  = {'easyh5','jsonlab'};
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
+
+    % === I/O: JSONLab ===
+    PlugDesc(end+1)              = GetStruct('jsonlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsonlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neurojson.org/jsonlab';
+    PlugDesc(end).TestFile       = 'savejson.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples', 'images', 'test', '.github', '.gitignore'};
+    PlugDesc(end).ReadmeFile     = 'README.rst';
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
