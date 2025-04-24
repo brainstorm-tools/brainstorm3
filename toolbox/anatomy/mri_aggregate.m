@@ -1,24 +1,25 @@
 function  [sMri, fileTag] = mri_aggregate (MriFile, Method)
 % MRI_AGGREGATE: Aggregate values voxel-wise accross frames in a dynamic volume
 %
-% USAGE:  [sMri, fileTag] = mri_aggregate(sMri, Method)
-%         [sMri, fileTag] = mri_aggregate(MriFile, Method)
-%         [MriFile, fileTag] = mri_aggregate(MriFile, Method)
+% USAGE:  [MriFile, fileTag] = mri_aggregate(MriFile, Method)
+%            [sMri, fileTag] = mri_aggregate(sMri, Method)
+%
 % EXAMPLE:
-%         [sMriOut, tag] = mri_aggregate('subject01/dynamic_pet.mat', 'median');
+%         [MriFile, fileTag] = mri_aggregate('subject01/dynamic_pet.mat', 'median');
 %
 % INPUTS:
 %       - MriFile : Relative path to the Brainstorm Mri file to aggregate
-%       - Method  : Method used for the aggregagation of values across time frames (default is mean):
+%       - sMri    : Brainstorm MRI structure to agrregate frames (fields Cube, Voxsize, SCS, NCS...)
+%       - Method  : Method used for the aggregagation of values across time frames (default is 'mean'):
 %                  - 'mean'  : Average across frames
 %                  - 'median': Median across frames
 %                  - 'sum'   : Sum across frames
 %                  - 'max'   : Max across frames
 %                  - 'min'   : Min across frames
 % OUTPUTS:
-%       - sMri             : Dynamic Brainstorm Mri structure with aggregateed frames
-%       - errMsg           : Error messages if any
-%       - fileTag          : Tag added to the comment/filename
+%       - MriFile : Relative path to the new Brainstorm MRI file with aggregateed frames (containing the structure sMri)
+%       - sMri    : Brainstorm Mri structure with aggregateed frames
+%       - fileTag : Tag added to the comment/filename
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -101,6 +102,31 @@ sMri = bst_history('add', sMri, 'aggregate', sprintf(['Voxel-wise ' Method ' of 
 % Close progress bar
 if ~isProgress
     bst_progress('stop');
+end
+
+% ===== SAVE NEW FILE =====
+% Save output
+if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI file
+    [sSubject, iSubject, ~] = bst_get('MriFile', MriFile);
+    % Save new MRI in Brainstorm format
+    MriFileFull = file_unique(strrep(file_fullpath(MriFile), '.mat', [fileTag '.mat']));
+    out_mri_bst(sMri, MriFileFull);
+    % Register new MRI
+    iAnatomy = length(sSubject.Anatomy) + 1;
+    sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy).FileName = file_short(MriFileFull);
+    sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
+    % Update subject structure
+    bst_set('Subject', iSubject, sSubject);
+    % Refresh tree
+    panel_protocols('UpdateNode', 'Subject', iSubject);
+    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
+    % Save database
+    db_save();
+    % Return new MRI file
+    sMri = file_short(MriFileFull);
+else
+    % Return output structure
 end
 
 end
