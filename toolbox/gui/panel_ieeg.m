@@ -334,9 +334,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
                     AddContact();
                 end
-            case 7 % CTRL+G
+            case 10 % CTRL+M
                 if ev.getModifiers == 2 && length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'}))
-                    GroupElectrodes();
+                    MergeElectrodes();
                 end
         end
     end
@@ -988,8 +988,8 @@ function ElecListPanelPopup()
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     if (length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'})))
-        jGroupElec = gui_component('MenuItem', jPopup, [], 'Group electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@GroupElectrodes));
-        jGroupElec.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G, KeyEvent.CTRL_MASK));
+        jGroupElec = gui_component('MenuItem', jPopup, [], 'Merge electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@MergeElectrodes));
+        jGroupElec.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
     end
 
     % Display menu
@@ -1755,11 +1755,11 @@ function RemoveContactHelper()
     end
 end
 
-%% ===== GROUP ELECTRODES =====
-function GroupElectrodes()
+%% ===== MERGE ELECTRODES =====
+function MergeElectrodes()
     global GlobalData;
     % Ask for confirmation
-    if ~java_dialog('confirm', 'Group all selected electrodes?')
+    if ~java_dialog('confirm', 'Merge all selected electrodes?')
         return;
     end
     % Get selected electrodes
