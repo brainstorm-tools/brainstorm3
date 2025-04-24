@@ -1,34 +1,34 @@
 function  [MriRealign, fileTag] = mri_realign (MriFile, Method, FWHM, Aggregation)
-% MRI_REALIGN: Extract frames from dynamic volumes and realign with optional smoothing
+% MRI_REALIGN: Extract frames from dynamic volumes and realign with optional smoothing and aggregation
 %
 % USAGE:  [MriFileRealign, fileTag] = mri_realign(MriFile, Method, FWHM, Aggregation)
-%         [sMriRealign, fileTag] = mri_realign(sMri, Method, FWHM, Aggregation)
+%            [sMriRealign, fileTag] = mri_realign(sMri,    Method, FWHM, Aggregation)
 %
 % INPUTS:
-%    - MriFile : Relative path to the Brainstorm Mri file to realign
-%    - Method  : Method used for the realignment of the volume (default is spm_realign):
-%                       -'spm_realign' :        uses the SPM plugin
-%    - FWHM    : Size of smoothing kernel in mm, as full-width at half maximum of gaussian kernel
-%    - Aggregation: Method to use for aggregating dynamic volume: 'mean', 'median', 'max', 'min', 'zscore', 'first',
-%                    'last
+%    - MriFile : Relative path to the Brainstorm MRI file to realign
+%    - sMri    : Brainstorm MRI structure to realign (fields Cube, Voxsize, SCS, NCS...)
+%    - Method  : Method used for the realignment of the volume:
+%                'spm_realign' :  Uses the SPM plugin
+%    - FWHM    : Size of smoothing kernel in mm, as full-width at half maximum of Gaussian kernel
+%                Default = 0;
+%    - Aggregation: Method to use for aggregating dynamic volume
+%                'mean', 'median', 'max', 'min', 'zscore', 'first', 'last', 'ignore' (default)
 %
 % OUTPUTS:
 %
-%   - MriRealign      : Brainstorm Mri structure or relative path to the Brainstorm MRI file with realigned frames
-%   - fileTag          : Tag added to the comment/filename
+%   - MriFileRealign : Relative path to the new Brainstorm realigned MRI file (containing the structure sMriRealign)
+%   - sMriRealign    : Brainstorm MRI structure with realigned MRI
+%   - fileTag        : Tag added to the comment/filename
 %
 % DEFAULTS: 
 %
-%         - Method  : Default method is 'spm_realign' 
-%                     //Example:  [sMriRealign, fileTag] = mri_realign(sMri)
-%                                 [MriFileRealign, fileTag] = mri_realign(MriFile)
-%         - FWHM    : No smoothing by default
+%         - FWHM    : No smoothing by default, FWHM = 0
 %                     // Example: [MriFileRealign, fileTag] = mri_realign(MriFile, Method)
-%                                 [sMriRealign, fileTag] = mri_realign(MriFile, Method)
-%         - Aggregation: No aggregation by default; returns dynamic (4D)
-%         realigned volume
+%                                    [sMriRealign, fileTag] = mri_realign(MriFile, Method)
+%         - Aggregation: No aggregation by default; returns dynamic (4D) realigned volume
 %                     // Example: [MriFileRealign, fileTag] = mri_realign(MriFile, Method, FWHM)
-%                                 [sMriAlign, fileTag] = mri_realign(MriFile, Method, FWHM)      
+%                                      [sMriAlign, fileTag] = mri_realign(MriFile, Method, FWHM)
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -186,7 +186,7 @@ else
 end
 
 % ===== FRAME AGGREGATION ========
-if ~isempty(Aggregation) && ~strcmp(Aggregation, 'ignore')
+if ~isempty(Aggregation) && ~strcmpi(Aggregation, 'ignore')
     [sMriAlign, aggregateFileTag] = mri_aggregate(sMriAlign, Aggregation);
     fileTag = [fileTag, aggregateFileTag];
 end
@@ -200,7 +200,7 @@ if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI fil
     [sSubject, iSubject, ~] = bst_get('MriFile', MriFile);
     % Save new MRI in Brainstorm format
     MriFileFull = file_unique(strrep(file_fullpath(MriFile), '.mat', [fileTag '.mat']));
-    MriRealign = out_mri_bst(sMriAlign, MriFileFull);
+    out_mri_bst(sMriAlign, MriFileFull);
     % Register new MRI
     iAnatomy = length(sSubject.Anatomy) + 1;
     sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
@@ -213,6 +213,8 @@ if ~isempty(MriFile) && ischar(MriFile) % If input is path to Brainstorm MRI fil
     panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
     % Save database
     db_save();
+    % Return new MRI file
+    MriRealign = file_short(MriFileFull);
 else
     % Return output structure
     MriRealign = sMriAlign;
