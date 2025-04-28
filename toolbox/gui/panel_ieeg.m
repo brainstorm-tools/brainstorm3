@@ -1500,7 +1500,7 @@ function AddContact()
     sChannel.Group = sSelElec(end).Name;       
     Channels = [Channels(1:iChan(end))'; sChannel; Channels(iChan(end)+1:end)'];
     iChan(end+1) = iChan(end)+1;
-    Channels(iChan(end)).Loc = XYZ';
+    Channels(iChan(end)).Loc = XYZ(:);
     % Update channel data
     GlobalData.DataSet(iDSall(1)).Channel = Channels';
     for iDS = unique(iDSall)         
