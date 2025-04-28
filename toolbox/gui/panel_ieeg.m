@@ -1476,17 +1476,18 @@ function AddContact()
     % If multiple electrodes were selected, update selection to just the electrode whose contacts are visible in iEEG panel
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
     end
     % Only for SEEG
-    if ~strcmpi(sSelElec(end).Type, 'SEEG')
+    if ~strcmpi(sSelElec.Type, 'SEEG')
         java_dialog('warning', 'Add contact is only available for SEEG electrodes.', 'Add contact');
         return
     end
     % Get channel data
     Channels = GlobalData.DataSet(iDSall(1)).Channel;
-    iChan = find(strcmpi({Channels.Group}, sSelElec(end).Name));
+    iChan = find(strcmpi({Channels.Group}, sSelElec.Name));
     if isempty(iChan)
-        java_dialog('warning', ['Set the tip and skull entry for electrode "' sSelElec(end).Name '"'], 'Add contact');
+        java_dialog('warning', ['Set the tip and skull entry for electrode "' sSelElec.Name '"'], 'Add contact');
         return;
     end
     % Get crosshair location from figure
@@ -1496,21 +1497,21 @@ function AddContact()
         return;
     end
     % Ask for confirmation
-    if ~java_dialog('confirm', ['Add contact to electrode "' sSelElec(end).Name '"'])
+    if ~java_dialog('confirm', ['Add contact to electrode "' sSelElec.Name '"'])
         return;
     end
     % Get contacts for this electrode
     sContacts = GetContacts(sSelElec.Name);
     % Add new channel data for the contact
     sChannel = db_template('channeldesc');
-    sChannel.Name = sprintf('%s%d', sSelElec(end).Name, size(sContacts, 2)+1);
+    sChannel.Name = sprintf('%s%d', sSelElec.Name, size(sContacts, 2)+1);
     sChannel.Type = 'SEEG';
-    sChannel.Group = sSelElec(end).Name;       
-    Channels = [Channels(1:iChan(end))'; sChannel; Channels(iChan(end)+1:end)'];
+    sChannel.Group = sSelElec.Name;
+    Channels = [Channels(1:iChan(end)), sChannel, Channels(iChan(end)+1:end)];
     iChan(end+1) = iChan(end)+1;
     Channels(iChan(end)).Loc = XYZ(:);
     % Update channel data
-    GlobalData.DataSet(iDSall(1)).Channel = Channels';
+    GlobalData.DataSet(iDSall(1)).Channel = Channels;
     for iDS = unique(iDSall)         
         for iFig = iFigall(iDSall == iDS)
             GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = [GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan];
@@ -1521,14 +1522,14 @@ function AddContact()
     % Sort contacts (distance from origin)
     contactLocsSorted = SortContactLocs(contactLocs);
     % Update electrode contact number
-    sSelElec(end).ContactNumber = size(contactLocsSorted, 2);
+    sSelElec.ContactNumber = size(contactLocsSorted, 2);
     % Assign electrode tip and skull entry
-    sSelElec(end).Loc = [];
-    if sSelElec(end).ContactNumber >= 1
-        sSelElec(end).Loc(:,1) = contactLocsSorted(:, 1);
+    sSelElec.Loc = [];
+    if sSelElec.ContactNumber >= 1
+        sSelElec.Loc(:,1) = contactLocsSorted(:, 1);
     end
-    if sSelElec(end).ContactNumber > 1
-        sSelElec(end).Loc(:,2) = contactLocsSorted(:, end);
+    if sSelElec.ContactNumber > 1
+        sSelElec.Loc(:,2) = contactLocsSorted(:, end);
     end
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);    
