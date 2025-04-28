@@ -1812,8 +1812,10 @@ function MergeElectrodes()
     SetElectrodes(iSelElec, sSelElec);
     % Align contacts
     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, contactLocs);
-    % Remove to-be-merged electrodes
+    % Remove merged electrodes
     RemoveElectrode(sSelElecOld);
+    % Select new electrode
+    SetSelectedElectrodes(newLabel);
 end
 
 %% ===== GET ELECTRODE MODELS =====
