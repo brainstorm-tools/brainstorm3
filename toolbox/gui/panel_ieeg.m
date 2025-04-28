@@ -331,7 +331,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         else
             ctrlm_value = 13;
         end
-        sSelElec = GetSelectedElectrodes();
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
@@ -339,9 +338,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
             case {'s', 'S'}
-                if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
-                    AddContact();
-                end
+                AddContact();
             case ctrlm_value % CTRL+M
                 if ev.getModifiers == 2
                     MergeElectrodes();
@@ -1483,6 +1480,11 @@ function AddContact()
     % If multiple electrodes were selected, update selection to just the electrode whose contacts are visible in iEEG panel
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
+    end
+    % Only for SEEG
+    if ~strcmpi(sSelElec(end).Type, 'SEEG')
+        java_dialog('warning', 'Add contact is only available for SEEG electrodes.', 'Add contact');
+        return
     end
     % Get channel data
     Channels = GlobalData.DataSet(iDSall(1)).Channel;
