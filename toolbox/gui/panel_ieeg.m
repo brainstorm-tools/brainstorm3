@@ -1786,22 +1786,26 @@ function MergeElectrodes()
     contactLocs = [Channels(iChan).Loc];
     % Sort contact locations by distance from origin
     contactLocs = SortContactLocs(contactLocs);
-    % Remove to-be-merged electrodes
-    RemoveElectrode(0);
     % Add new electrode assigning a label to it (appending the word 'merged' to the 1st to-be-merged electrode in the list)
     newLabel = sprintf('%smerged', sSelElecOld(1).Name);
+    % Add new electrode
     AddElectrode(newLabel);
-    % Get updated selected electrodes structure
+    % Create and select new electrode
+    SetSelectedElectrodes(newLabel);
     [sSelElec, iSelElec] = GetSelectedElectrodes();
+    if isempty(iSelElec) || length(iSelElec) ~= 1
+        return
+    end
     % Set electrode tip and skull entry
     sSelElec.ContactNumber = size(contactLocs, 2);
     % Set electrode tip and skull entry
     sSelElec.Loc(:, 1) = contactLocs(:, 1);
     sSelElec.Loc(:, 2) = contactLocs(:, end);
-    % Set the changed electrode properties
-    SetElectrodes(iSelElec, sSelElec);              
+    SetElectrodes(iSelElec, sSelElec);
     % Align contacts
     AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, contactLocs);
+    % Remove to-be-merged electrodes
+    RemoveElectrode(sSelElecOld);
 end
 
 %% ===== GET ELECTRODE MODELS =====
