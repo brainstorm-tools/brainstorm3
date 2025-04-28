@@ -1343,10 +1343,10 @@ function sContacts = GetContacts(selectedElecName)
     end
 end
 
-%% ===== GET SORTED CONTACTS (DISTANCE FROM ORIGIN) =====
-function sContactsLocSorted = GetSortedContacts(sContactsLoc)
-    [~, sortedIdx] = sort(sum(sContactsLoc.^2, 1));
-    sContactsLocSorted = sContactsLoc(:, sortedIdx);
+%% ===== SORT CONTACT LOCATIONS BY DISTANCE FROM ORIGIN =====
+function contactLocsSorted= SortContactLocs(contactLocs)
+    [~, sortedIdx] = sort(sum(contactLocs.^2, 1));
+    contactLocsSorted = contactLocs(:, sortedIdx);
 end
 
 %% ===== SET ELECTRODES =====
@@ -1519,23 +1519,23 @@ function AddContact()
         end
     end
     % Update intraelectrode structure in channel
-    sContactsLoc = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
+    contactLocs = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
     % Sort contacts (distance from origin)
-    sContactsLocSorted = GetSortedContacts(sContactsLoc);
+    contactLocsSorted = SortContactLocs(contactLocs);
     % Update electrode contact number
-    sSelElec(end).ContactNumber = size(sContactsLocSorted, 2);
+    sSelElec(end).ContactNumber = size(contactLocsSorted, 2);
     % Assign electrode tip and skull entry
     sSelElec(end).Loc = [];
     if sSelElec(end).ContactNumber >= 1
-        sSelElec(end).Loc(:,1) = sContactsLocSorted(:, 1);
+        sSelElec(end).Loc(:,1) = contactLocsSorted(:, 1);
     end
     if sSelElec(end).ContactNumber > 1
-        sSelElec(end).Loc(:,2) = sContactsLocSorted(:, end);
+        sSelElec(end).Loc(:,2) = contactLocsSorted(:, end);
     end
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);    
     % Align contacts
-    AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
+    AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, contactLocsSorted);
 end
 
 %% ===== REMOVE ELECTRODE =====
@@ -1779,9 +1779,9 @@ function MergeElectrodes()
     % Find indices of channels belonging to the selected electrodes
     iChan = ismember({Channels.Group}, {sSelElecOld.Name});
     % Extract and concatenate contact locations
-    sContactsLoc = [Channels(iChan).Loc];
-    % Sort contacts (distance from origin)
-    sContactsLocSorted = GetSortedContacts(sContactsLoc);
+    contactLocs = [Channels(iChan).Loc];
+    % Sort contact locations by distance from origin
+    contactLocs = SortContactLocs(contactLocs);
     % Remove to-be-merged electrodes
     RemoveElectrode(0);
     % Add new electrode assigning a label to it (appending the word 'merged' to the 1st to-be-merged electrode in the list)
@@ -1789,15 +1789,15 @@ function MergeElectrodes()
     AddElectrode(newLabel);
     % Get updated selected electrodes structure
     [sSelElec, iSelElec] = GetSelectedElectrodes();
-    % Update electrode contact number
-    sSelElec.ContactNumber = size(sContactsLocSorted, 2);
     % Set electrode tip and skull entry
-    sSelElec.Loc(:, 1) = sContactsLocSorted(:, 1);
-    sSelElec.Loc(:, 2) = sContactsLocSorted(:, end); 
+    sSelElec.ContactNumber = size(contactLocs, 2);
+    % Set electrode tip and skull entry
+    sSelElec.Loc(:, 1) = contactLocs(:, 1);
+    sSelElec.Loc(:, 2) = contactLocs(:, end);
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);              
     % Align contacts
-    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, sContactsLocSorted);
+    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, contactLocs);
 end
 
 %% ===== GET ELECTRODE MODELS =====
