@@ -1401,12 +1401,16 @@ function iElec = SetElectrodes(iElec, sElect)
 end
 
 %% ===== ADD ELECTRODE =====
-function AddElectrode(elecName)
+function AddElectrode(newLabel)
     global GlobalData;
     % Parse inputs
-    if nargin < 1
-        elecName = [];
-    end  
+    if nargin < 1 || isempty(newLabel)
+       % Ask user for a new label
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    end
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
@@ -1414,15 +1418,6 @@ function AddElectrode(elecName)
         Modality = GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality;
     else
         Modality = 'SEEG';
-    end
-    % Ask user for a new label
-    if isempty(elecName)
-        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-        if isempty(newLabel)
-            return;
-        end
-    else
-        newLabel = elecName;
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
