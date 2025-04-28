@@ -53,6 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Add/remove
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
         % Button "Select vertex"
         jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
