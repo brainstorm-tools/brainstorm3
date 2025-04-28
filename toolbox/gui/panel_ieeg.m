@@ -1019,11 +1019,11 @@ function ShowContactsMenu(jButton)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
     end
-    % Menu: Add/Remove contact(s)
+    % Menu: Add/Remove contacts
     if strcmpi(sSelElec(end).Type, 'SEEG')
         jItem = gui_component('MenuItem', jMenu, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-        jItem = gui_component('MenuItem', jMenu, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
+        jItem = gui_component('MenuItem', jMenu, [], 'Remove selected contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
         jMenu.addSeparator();
     end
@@ -1635,7 +1635,7 @@ function RemoveElectrode(isInteractive)
     UpdateFigures();
 end
 
-%% ===== REMOVE CONTACT(S) =====
+%% ===== REMOVE CONTACT =====
 function RemoveContact()
     global GlobalData;
     % Get selected electrode
@@ -1745,7 +1745,7 @@ function RemoveContact()
     UpdateFigures();
 end
 
-%% ===== HELPER TO REMOVE CONTACT(S) OR ELECTRODE =====
+%% ===== HELPER TO REMOVE CONTACT OR ELECTRODE =====
 function RemoveContactHelper()
     sSelElec = GetSelectedElectrodes();
     if isempty(sSelElec) || ~strcmpi(sSelElec(end).Type, 'SEEG') % TODO: support for ECoG
@@ -1760,7 +1760,7 @@ function RemoveContactHelper()
     if numel(sSelCont) == sSelElec(end).ContactNumber
         RemoveElectrode();
     else
-        % Otherwise just remove the highlighted contact(s)
+        % Otherwise just remove the highlighted contacts
         RemoveContact();
     end
 end
