@@ -1539,36 +1539,40 @@ function AddContact()
 end
 
 %% ===== REMOVE ELECTRODE =====
-function RemoveElectrode(isInteractive)
+function RemoveElectrode(sSelElec)
     global GlobalData;
-    % Parse inputs
-    if nargin < 1 || isempty(isInteractive)
-        isInteractive = 1;
-    end
     % Get dataset
     [sElecOld, iDSall, iFigall] = GetElectrodes();
     if isempty(iDSall)
         return;
     end
+    % Parse inputs
+    if nargin < 1
+        sSelElec = [];
+    else
+        [~, iSelElec] = ismember({sSelElec.Name}, {sElecOld.Name});
+    end
     % Check if this is an new implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [fPath, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     isImplantation = ~isempty(strfind(folderName, 'Implantation'));
-    % Get selected electrode
-    [sSelElec, iSelElec] = GetSelectedElectrodes();
-    if isempty(iSelElec)
-        bst_error('No electrode selected.', 'Remove electrode', 0);
-        return
-    end
-    % Ask for confirmation
-    if isInteractive
-        if (length(sSelElec) == 1)
-            strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
-        else
-            strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
+    if isempty(sSelElec)
+        % Get selected electrode
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
+        if isempty(iSelElec)
+            bst_error('No electrode selected.', 'Remove electrode', 0);
+            return
         end
-        if ~java_dialog('confirm', strConfirm)
-            return;
+        % Ask for confirmation
+        if isInteractive
+            if (length(sSelElec) == 1)
+                strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
+            else
+                strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
+            end
+            if ~java_dialog('confirm', strConfirm)
+                return;
+            end
         end
     end
     % Loop on datasets
