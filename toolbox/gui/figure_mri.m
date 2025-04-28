@@ -627,10 +627,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     end
                     % For iEEG: Add contact (TODO: support for ECoG)
                     if gui_brainstorm('isTabVisible', 'iEEG')
-                        sSelElec = panel_ieeg('GetSelectedElectrodes');
-                        if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
-                            panel_ieeg('AddContact');
-                        end
+                        panel_ieeg('AddContact');
                     end
                 % CTRL+E : Set electrode labels visible
                 case 'e'
@@ -1067,10 +1064,9 @@ function DisplayFigurePopup(hFig)
             % Set position
             jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
-            % For iEEG: Add contact (TODO: support for ECoG) 
-            sSelElec = panel_ieeg('GetSelectedElectrodes');
-            if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
-                jItem = gui_component('MenuItem', jMenuElec, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+            % For iEEG: Add contact (TODO: support for ECoG)
+            if isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
+                jItem = gui_component('MenuItem', jMenuElec, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
             end
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
