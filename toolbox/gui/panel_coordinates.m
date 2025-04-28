@@ -337,7 +337,6 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     end
     if (nargin < 2) || isempty(AcceptMri)
         AcceptMri = 1;
-        isCentroid = 0;
     end
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -370,7 +369,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
             else
                 scsLoc = vout';
             end
-            plotLoc = vout;
+            plotLoc = vout';
             iVertex = vi;
             % Get value
             if ~isempty(TessInfo(iTess).Data)
@@ -448,12 +447,11 @@ end
 %% ===== POINT SELECTION: Surface detection =====
 function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)     
     % Parse inputs
-    if (nargin < 3)
+    if (nargin < 3) || isempty(isCentroid)
         isCentroid = 0;
     end
     if (nargin < 2)
         SurfacesType = [];
-        isCentroid = 0;
     end
     iTess = [];
     pout = {};
@@ -495,7 +493,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
             % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
                 VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
-                vout{i} = mean(sSurf.Vertices(VertexList(:), :)); % SCS of the centroid
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :))'; % SCS of the centroid
                 vi{i} = []; % No surface vertex associated to centroid
             end
         else

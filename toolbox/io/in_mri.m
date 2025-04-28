@@ -1,4 +1,4 @@
-function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
+function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize, isRescale)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
@@ -7,6 +7,7 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 %     - FileFormat    : Format of the input file (default = 'ALL')
 %     - isInteractive : 0 or 1
 %     - isNormalize   : If 1, converts values to uint8 and scales between 0 and 1
+%     - isRescale     : Apply available scale (Only applies to NIfTI files)
 % OUTPUT:
 %     - MRI       : Standard brainstorm structure for MRI volumes
 %     - vox2ras   : [4x4] transformation matrix: voxels 0-based to RAS coordinates
@@ -51,6 +52,9 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 % Authors: Francois Tadel, 2008-2023
 
 % Parse inputs
+if (nargin < 5)
+    isRescale = [];
+end
 if (nargin < 4) || isempty(isNormalize)
     isNormalize = 0;
 end
@@ -59,6 +63,9 @@ if (nargin < 3) || isempty(isInteractive)
 end
 if (nargin < 2) || isempty(FileFormat)
     FileFormat = 'ALL';
+end
+if ~isInteractive && isempty(isRescale)
+    isRescale = 0;
 end
 % Get current byte order
 ByteOrder = bst_get('ByteOrder');
@@ -128,9 +135,9 @@ switch (FileFormat)
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
         if isInteractive
-            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], []);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], isRescale);
         else
-            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, 0);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, isRescale);
         end
     case 'MGH'
         if isInteractive
