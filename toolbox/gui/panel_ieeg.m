@@ -323,6 +323,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== ELECTRODE LIST KEY TYPED CALLBACK =====
     function ElecListKeyTyped_Callback(h, ev)
+        % CTRL+M
+        %  Windows: ev.getKeyChar() == 10 (LF)
+        %  Linux:   ev.getKeyChar() == 13 (CR)
+        if ispc
+            ctrlm_value = 10;
+        else
+            ctrlm_value = 13;
+        end
         sSelElec = GetSelectedElectrodes();
         switch(uint8(ev.getKeyChar()))
             % DELETE
@@ -334,7 +342,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
                     AddContact();
                 end
-            case 10 % CTRL+M
+            case ctrlm_value % CTRL+M
                 if ev.getModifiers == 2 && length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'}))
                     MergeElectrodes();
                 end
