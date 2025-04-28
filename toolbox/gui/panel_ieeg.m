@@ -343,7 +343,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     AddContact();
                 end
             case ctrlm_value % CTRL+M
-                if ev.getModifiers == 2 && length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'}))
+                if ev.getModifiers == 2
                     MergeElectrodes();
                 end
         end
@@ -1772,12 +1772,22 @@ end
 %% ===== MERGE ELECTRODES =====
 function MergeElectrodes()
     global GlobalData;
-    % Ask for confirmation
-    if ~java_dialog('confirm', 'Merge all selected electrodes?')
-        return;
-    end
     % Get selected electrodes
     [sSelElecOld, ~, iDS, iFig] = GetSelectedElectrodes();
+    % Need TWO electrodes
+    if (length(sSelElecOld) < 2)
+        java_dialog('warning', 'You need to select at least two electrodes.', 'Merge selected electrodes');
+        return
+    end
+    % Merge not available for ECOG
+    if any(ismember({sSelElecOld.Type}, {'ECOG'}))
+        java_dialog('warning', 'Merge is not available for ECOG electrodes.', 'Merge selected electrodes');
+        return
+    end
+    % Ask for confirmation
+    if ~java_dialog('confirm', 'Merge selected electrodes?')
+        return
+    end
     % Get channel data
     Channels = GlobalData.DataSet(iDS).Channel; 
     % Find indices of channels belonging to the selected electrodes
