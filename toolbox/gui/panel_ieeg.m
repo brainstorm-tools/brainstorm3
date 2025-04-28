@@ -369,6 +369,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 RemoveContactHelper();
+            case {'s', 'S'}
+                AddContact();
             case ev.VK_ESCAPE
                 SetSelectedContacts(0);
         end
