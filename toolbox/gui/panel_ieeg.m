@@ -1622,6 +1622,11 @@ function RemoveContact()
     if isempty(iDSall)
         return;
     end
+    % Use last selected electrode if multiple electrodes are selected
+    if numel(sSelElec) > 1
+        SetSelectedElectrodes(sSelElec(end).Name);
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
+    end
     % Check if this is an new implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
@@ -1636,7 +1641,7 @@ function RemoveContact()
     if (length(sSelCont) == 1)
         strConfirm = ['Delete contact "' sSelCont.Name '"?'];
     else
-        strConfirm = ['Delete ' num2str(length(sSelCont)) ' contacts in electrode "' sSelElec(end).Name '"?'];
+        strConfirm = ['Delete ' num2str(length(sSelCont)) ' contacts in electrode "' sSelElec.Name '"?'];
     end
     % Ask for confirmation
     if ~java_dialog('confirm', strConfirm)
@@ -1696,24 +1701,24 @@ function RemoveContact()
             end
             % === Update intraelectrode structure in channel ===
             % Get the updated contacts
-            sContacts = GetContacts(sSelElec(end).Name);
+            sContacts = GetContacts(sSelElec.Name);
             % Update electrode contact number
-            sSelElec(end).ContactNumber = size(sContacts, 2);
+            sSelElec.ContactNumber = size(sContacts, 2);
             % Assign electrode tip and skull entry
-            sSelElec(end).Loc = [];
-            if sSelElec(end).ContactNumber >= 1
-                sSelElec(end).Loc(:,1) = sContacts(1).Loc;
+            sSelElec.Loc = [];
+            if sSelElec.ContactNumber >= 1
+                sSelElec.Loc(:,1) = sContacts(1).Loc;
             end
             if sSelElec(end).ContactNumber > 1
-                sSelElec(end).Loc(:,2) = sContacts(end).Loc;
+                sSelElec.Loc(:,2) = sContacts(end).Loc;
             end
             % Set the changed electrode properties
             SetElectrodes(iSelElec, sSelElec);
             % === Update contact names in channel ===
             [~, iChan] = ismember({sContacts.Name}, {GlobalData.DataSet(iDS).Channel.Name});
             newContNames  = {};
-            for iCont = 1:sSelElec(end).ContactNumber
-                newContNames{end+1} = sprintf('%s%d', sSelElec(end).Name, iCont);
+            for iCont = 1:sSelElec.ContactNumber
+                newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
             end
             [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
         end
@@ -1734,15 +1739,16 @@ function RemoveContactHelper()
     % Use last selected electrode if multiple electrodes are selected
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
+        sSelElec = GetSelectedElectrodes();
     end
     % Only for SEEG
-    if ~strcmpi(sSelElec(end).Type, 'SEEG')
+    if ~strcmpi(sSelElec.Type, 'SEEG')
         java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
         return
     end
     sSelCont = GetSelectedContacts();
     % If every contact of that electrode is selected, remove the whole electrode
-    if numel(sSelCont) == sSelElec(end).ContactNumber
+    if numel(sSelCont) == sSelElec.ContactNumber
         RemoveElectrode();
     else
         % Otherwise just remove the highlighted contacts
