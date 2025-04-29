@@ -1449,7 +1449,7 @@ function AddContact()
         java_dialog('warning', 'No electrode selected.', 'Add contact');
         return
     end
-    % If multiple electrodes were selected, update selection to just the electrode whose contacts are visible in iEEG panel
+    % Use last selected electrode if multiple electrodes are selected
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
         [sSelElec, iSelElec] = GetSelectedElectrodes();
@@ -1731,7 +1731,7 @@ function RemoveContactHelper()
         java_dialog('warning', 'No electrode selected.', 'Remove contact');
         return
     end
-    % If multiple electrodes were selected, update selection to just the electrode whose contacts are to be removed
+    % Use last selected electrode if multiple electrodes are selected
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
     end
