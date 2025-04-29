@@ -1019,9 +1019,9 @@ function ShowContactsMenu(jButton)
     end
     % Menu: Add/Remove contacts
     if strcmpi(sSelElec(end).Type, 'SEEG')
-        jItem = gui_component('MenuItem', jMenu, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
+        jItem = gui_component('MenuItem', jMenu, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-        jItem = gui_component('MenuItem', jMenu, [], 'Remove selected contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
+        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
         jMenu.addSeparator();
     end
