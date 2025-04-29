@@ -1227,12 +1227,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                     % For iEEG: Add contact
                     if gui_brainstorm('isTabVisible', 'iEEG')
-                        TessInfo = getappdata(hFig, 'Surface');
-                        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match'))); 
-                        sSelElec = panel_ieeg('GetSelectedElectrodes');
-                        if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG') && isIsoSurf
-                            panel_ieeg('AddContact');
-                        end
+                        panel_ieeg('AddContact');
                     end
                 % CTRL+T : Default topography
                 case 't'
@@ -1299,11 +1294,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
                     end
-                    % For iEEG: Remove contact(s) (TODO: support for ECoG)
+                    % For iEEG: Remove contacts (TODO: support for ECoG)
                     if gui_brainstorm('isTabVisible', 'iEEG')
-                        if ~isempty(SelChan) && ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'SEEG'})
-                            panel_ieeg('RemoveContactHelper');
-                        end
+                        panel_ieeg('RemoveContactHelper');
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1826,17 +1819,12 @@ function DisplayFigurePopup(hFig)
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
-            % For iEEG: Add/Remove contact(s) (TODO: support for ECoG)
-            sSelElec = panel_ieeg('GetSelectedElectrodes');
-            if ~isempty(sSelElec) && strcmpi(sSelElec(end).Type, 'SEEG')
-                if isIsoSurf
-                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Add contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
-                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-                end
-                if ~isempty(SelChan)
-                    jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove selected contact(s)', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
-                    jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
-                end
+            % For iEEG: Add/Remove contacts (TODO: support for ECoG)
+            if isequal(Modality, 'SEEG')
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
             end
         % Other figures
         else
