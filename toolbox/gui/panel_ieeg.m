@@ -1749,12 +1749,18 @@ end
 %% ===== HELPER TO REMOVE CONTACT OR ELECTRODE =====
 function RemoveContactHelper()
     sSelElec = GetSelectedElectrodes();
-    if isempty(sSelElec) || ~strcmpi(sSelElec(end).Type, 'SEEG') % TODO: support for ECoG
+    if isempty(sSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Remove contact');
         return
     end
     % If multiple electrodes were selected, update selection to just the electrode whose contacts are to be removed
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
+    end
+    % Only for SEEG
+    if ~strcmpi(sSelElec(end).Type, 'SEEG')
+        java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
+        return
     end
     sSelCont = GetSelectedContacts();
     % If every contact of that electrode is selected, remove the whole electrode
