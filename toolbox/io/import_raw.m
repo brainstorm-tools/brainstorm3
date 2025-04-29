@@ -332,7 +332,7 @@ for iFile = 1:length(RawFiles)
         NewMat.Time        = sFileOut.prop.times;
         NewMat.DataType    = 'raw';
         NewMat.Device      = sFileOut.device;
-        if isfield(DataMat(iSes),'DisplayUnits')
+        if ~isempty(DataMat) && isfield(DataMat(iSes),'DisplayUnits')
             NewMat.DisplayUnits = DataMat(iSes).DisplayUnits;
         end
         % Compumedics: add start time to the file comment
