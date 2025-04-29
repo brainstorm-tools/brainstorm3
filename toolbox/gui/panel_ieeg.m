@@ -1510,17 +1510,14 @@ function AddContact()
     Channels = [Channels(1:iChan(end)), sChannel, Channels(iChan(end)+1:end)];
     iChan(end+1) = iChan(end)+1;
     Channels(iChan(end)).Loc = XYZ(:);
-    % Update channel data
-    GlobalData.DataSet(iDSall(1)).Channel = Channels;
-    for iDS = unique(iDSall)         
-        for iFig = iFigall(iDSall == iDS)
-            GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = [GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan];
-        end
-    end
-    % Update intraelectrode structure in channel
-    contactLocs = [GlobalData.DataSet(iDSall(1)).Channel(iChan).Loc];
+    contactLocs = [Channels(iChan).Loc];
     % Sort contacts (distance from origin)
     contactLocsSorted = SortContactLocs(contactLocs);
+    % Update with sorted contacts
+    for i = 1:length(iChan)
+        Channels(iChan(i)).Loc = contactLocsSorted(:, i);
+    end
+    % Update intraelectrode structure in channel
     % Update electrode contact number
     sSelElec.ContactNumber = size(contactLocsSorted, 2);
     % Assign electrode tip and skull entry
@@ -1533,8 +1530,13 @@ function AddContact()
     end
     % Set the changed electrode properties
     SetElectrodes(iSelElec, sSelElec);    
-    % Align contacts
-    AlignContacts(iDSall, iFigall, 'auto', sSelElec, [], 1, 0, contactLocsSorted);
+    % Update channel data
+    for i = 1:length(iDSall)
+        GlobalData.DataSet(iDSall(i)).Channel = Channels;
+        GlobalData.DataSet(iDSall(i)).Figure(iFigall(i)).SelectedChannels = [GlobalData.DataSet(iDSall(i)).Figure(iFigall(i)).SelectedChannels, iChan];
+    end
+    % Update figures
+    UpdateFigures();
 end
 
 %% ===== REMOVE ELECTRODE =====
