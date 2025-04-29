@@ -1714,8 +1714,8 @@ function RemoveContact()
             end
             % Set the changed electrode properties
             SetElectrodes(iSelElec, sSelElec);
-            % === Update contact names in channel ===
-            [~, iChan] = ismember({sContacts.Name}, {GlobalData.DataSet(iDS).Channel.Name});
+            % Update contact names in channel
+            iChan = find(ismember({GlobalData.DataSet(iDS).Channel.Name}, {sContacts.Name}));
             newContNames  = {};
             for iCont = 1:sSelElec.ContactNumber
                 newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
