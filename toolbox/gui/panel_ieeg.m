@@ -1817,12 +1817,27 @@ function MergeElectrodes()
     sSelElec.Loc(:, 1) = contactLocs(:, 1);
     sSelElec.Loc(:, 2) = contactLocs(:, end);
     SetElectrodes(iSelElec, sSelElec);
-    % Align contacts
-    AlignContacts(iDS, iFig, 'auto', sSelElec, [], 1, 0, contactLocs);
+    % Update channel data
+    sChannel = db_template('channeldesc');
+    sChannel.Type = 'SEEG';
+    sChannel.Group = sSelElec.Name;
+    iChan = [];
+    for i = 1:sSelElec.ContactNumber
+        sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
+        sChannel.Loc = contactLocs(:, i);
+        Channels(end+1) = sChannel;
+        iChan(end+1) = length(Channels);
+    end
+    for i = 1:length(iDS)
+        GlobalData.DataSet(iDS(i)).Channel = Channels;
+        GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
+    end
     % Remove merged electrodes
     RemoveElectrode(sSelElecOld);
     % Select new electrode
     SetSelectedElectrodes(newLabel);
+    % Update figures
+    UpdateFigures();
 end
 
 %% ===== GET ELECTRODE MODELS =====
