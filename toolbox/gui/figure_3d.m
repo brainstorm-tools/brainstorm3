@@ -1274,7 +1274,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             view_timefreq(TfInfo.FileName, 'SingleSensor', SelChan{1});
                         end
                     end
-                % DELETE
+                % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
                     % Set channels as bad
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
