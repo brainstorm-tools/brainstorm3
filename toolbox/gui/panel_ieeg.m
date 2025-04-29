@@ -1739,7 +1739,7 @@ function RemoveContact()
             for iCont = 1:sSelElec(end).ContactNumber
                 newContNames{end+1} = sprintf('%s%d', sSelElec(end).Name, iCont);
             end
-            [GlobalData.DataSet(iDS).Channel(iChan~=0).Name] = newContNames{:};
+            [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
         end
     end
     % Mark channel file as modified (only the first one)
