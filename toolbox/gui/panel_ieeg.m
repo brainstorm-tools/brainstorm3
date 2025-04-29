@@ -1649,10 +1649,10 @@ function RemoveContact()
     end
     % Reset selected contacts
     SetSelectedContacts(0);
-    % Loop on datasets
-    for iDS = unique(iDSall)
-        % If implantation scheme proceed with deleting the selected contacts
-        if isImplantation
+    % If implantation scheme proceed with deleting the selected contacts
+    if isImplantation
+        % Loop on datasets
+        for iDS = unique(iDSall)
             % Loop on contacts to delete
             for iCont = 1:length(sSelCont)
                 % Get contact details from channel file
@@ -1699,27 +1699,30 @@ function RemoveContact()
                 % Remove channels
                 GlobalData.DataSet(iDS).Channel(iChan) = [];
             end
-            % === Update intraelectrode structure in channel ===
-            % Get the updated contacts
-            sContacts = GetContacts(sSelElec.Name);
-            % Update electrode contact number
-            sSelElec.ContactNumber = size(sContacts, 2);
-            % Assign electrode tip and skull entry
-            sSelElec.Loc = [];
-            if sSelElec.ContactNumber >= 1
-                sSelElec.Loc(:,1) = sContacts(1).Loc;
-            end
-            if sSelElec.ContactNumber > 1
-                sSelElec.Loc(:,2) = sContacts(end).Loc;
-            end
-            % Set the changed electrode properties
-            SetElectrodes(iSelElec, sSelElec);
-            % Update contact names in channel
-            iChan = find(ismember({GlobalData.DataSet(iDS).Channel.Name}, {sContacts.Name}));
-            newContNames  = {};
-            for iCont = 1:sSelElec.ContactNumber
-                newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
-            end
+        end
+        % Update intraelectrode structure in channel
+        % Get the updated contacts
+        sContacts = GetContacts(sSelElec.Name);
+        % Update electrode contact number
+        sSelElec.ContactNumber = size(sContacts, 2);
+        % Assign electrode tip and skull entry
+        sSelElec.Loc = [];
+        if sSelElec.ContactNumber >= 1
+            sSelElec.Loc(:,1) = sContacts(1).Loc;
+        end
+        if sSelElec.ContactNumber > 1
+            sSelElec.Loc(:,2) = sContacts(end).Loc;
+        end
+        % Set the changed electrode properties
+        SetElectrodes(iSelElec, sSelElec);
+        % Update contact names in channel
+        iChan = find(ismember({GlobalData.DataSet(iDSall(1)).Channel.Name}, {sContacts.Name}));
+        newContNames  = {};
+        for iCont = 1:sSelElec.ContactNumber
+            newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
+        end
+        % Loop on datasets
+        for iDS = unique(iDSall)
             [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
         end
     end
