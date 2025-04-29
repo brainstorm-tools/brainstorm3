@@ -2915,12 +2915,9 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog, sContactsLoc)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
     global GlobalData;
     % Default values
-    if (nargin < 8) || isempty(sContactsLoc)
-        sContactsLoc = [];
-    end
     if (nargin < 7) || isempty(isProjectEcog)
         isProjectEcog = 1;
     end
@@ -3024,8 +3021,6 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
-                    case 'auto'
-                        Channels(iChan(i)).Loc = sContactsLoc(:, i);
                     case 'lineFit'
                         linePlot.X = [linePlot.X, Channels(iChan(i)).Loc(1)];
                         linePlot.Y = [linePlot.Y, Channels(iChan(i)).Loc(2)];
