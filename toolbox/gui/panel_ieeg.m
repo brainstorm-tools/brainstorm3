@@ -1563,15 +1563,13 @@ function RemoveElectrode(sSelElec)
             return
         end
         % Ask for confirmation
-        if isInteractive
-            if (length(sSelElec) == 1)
-                strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
-            else
-                strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
-            end
-            if ~java_dialog('confirm', strConfirm)
-                return;
-            end
+        if (length(sSelElec) == 1)
+            strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
+        else
+            strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
+        end
+        if ~java_dialog('confirm', strConfirm)
+            return;
         end
     end
     % Loop on datasets
