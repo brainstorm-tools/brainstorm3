@@ -1709,7 +1709,7 @@ function RemoveContact()
             if sSelElec.ContactNumber >= 1
                 sSelElec.Loc(:,1) = sContacts(1).Loc;
             end
-            if sSelElec(end).ContactNumber > 1
+            if sSelElec.ContactNumber > 1
                 sSelElec.Loc(:,2) = sContacts(end).Loc;
             end
             % Set the changed electrode properties
