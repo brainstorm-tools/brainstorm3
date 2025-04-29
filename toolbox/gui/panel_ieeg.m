@@ -354,11 +354,6 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             % Rename selection
             EditElectrodeLabel();
         end
-        % If RIGHT CLICK
-        if (ev.getButton() == 3)
-            % Popup
-            ElecListPanelPopup();
-        end
     end
 
     %% ===== CONTACT LIST CHANGED CALLBACK =====
@@ -983,25 +978,6 @@ function SetSelectedContacts(iSelCont)
     end
     sContacts = GetSelectedContacts();
     SetMriCrosshair(sContacts);
-end
-
-%% ===== ELECTRODE LIST PANEL POP-UP MENU =====
-function ElecListPanelPopup()
-    import java.awt.event.KeyEvent;
-    import javax.swing.KeyStroke;
-    import org.brainstorm.icon.*;
-
-    % Get selected electrodes
-    sSelElec = GetSelectedElectrodes();            
-    % Create popup menu
-    jPopup = java_create('javax.swing.JPopupMenu');
-    if (length(sSelElec) > 1 && ~any(ismember({sSelElec.Type}, {'ECOG'})))
-        jGroupElec = gui_component('MenuItem', jPopup, [], 'Merge electrodes', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@MergeElectrodes));
-        jGroupElec.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
-    end
-
-    % Display menu
-    gui_popup(jPopup);
 end
 
 %% ===== SHOW CONTACTS MENU =====
