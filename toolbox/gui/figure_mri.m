@@ -625,7 +625,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         SetElectrodePosition(hFig);
                     end
-                    % For iEEG: Add contact (TODO: support for ECoG)
+                    % For iEEG: Add contact
                     if gui_brainstorm('isTabVisible', 'iEEG')
                         panel_ieeg('AddContact');
                     end
@@ -1064,7 +1064,7 @@ function DisplayFigurePopup(hFig)
             % Set position
             jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
-            % For iEEG: Add contact (TODO: support for ECoG)
+            % For iEEG: Add contact
             if isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
                 jItem = gui_component('MenuItem', jMenuElec, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));

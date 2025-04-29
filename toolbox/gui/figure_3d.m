@@ -1294,7 +1294,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
                     end
-                    % For iEEG: Remove contacts (TODO: support for ECoG)
+                    % For iEEG: Remove contacts
                     if gui_brainstorm('isTabVisible', 'iEEG')
                         panel_ieeg('RemoveContactHelper');
                     end
@@ -1819,7 +1819,7 @@ function DisplayFigurePopup(hFig)
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
-            % For iEEG: Add/Remove contacts (TODO: support for ECoG)
+            % For iEEG: Add/Remove contacts
             if isequal(Modality, 'SEEG')
                 jItem = gui_component('MenuItem', jMenuChannels, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
