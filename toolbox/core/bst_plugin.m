@@ -341,9 +341,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
-    % === I/O: JSNIRF ===
+    % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
@@ -352,8 +352,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'loadsnirf.m';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'external', '.gitmodules'};
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).RequiredPlugs  = {'easyh5','jsonlab'};
+    PlugDesc(end).RequiredPlugs  = {'easyh5'; 'jsonlab'};
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: JSONLab ===
@@ -367,6 +368,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples', 'images', 'test', '.github', '.gitignore'};
     PlugDesc(end).ReadmeFile     = 'README.rst';
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
@@ -1388,10 +1390,17 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
-            % easyh5 and jsnirfy: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'easyh5') || strcmpi(PlugDesc.Name, 'jsnirfy')
+            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                    TestFilePath = [];
+                end
+            % easyh5: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'easyh5')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
                     TestFilePath = [];
                 end
             end
