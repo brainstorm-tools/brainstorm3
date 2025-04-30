@@ -1294,7 +1294,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                     % For iEEG: Remove contacts
                     if gui_brainstorm('isTabVisible', 'iEEG')
-                        panel_ieeg('RemoveContactHelper');
+                        panel_ieeg('RemoveContact');
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1821,7 +1821,7 @@ function DisplayFigurePopup(hFig)
             if isequal(Modality, 'SEEG')
                 jItem = gui_component('MenuItem', jMenuChannels, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContactHelper'));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
             end
         % Other figures

@@ -369,7 +369,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
-                RemoveContactHelper();
+                RemoveContact();
             case {'s', 'S'}
                 AddContact();
             case ev.VK_ESCAPE
@@ -737,7 +737,7 @@ function UpdateElecProperties(isUpdateModelList)
         valElecLength = [];
     end
     % Update panel
-    gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
+    gui_validate_text(ctrl.jTextNcontacts,     [], [], {0,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
     gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
     gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
@@ -997,7 +997,7 @@ function ShowContactsMenu(jButton)
     if strcmpi(sSelElec(end).Type, 'SEEG')
         jItem = gui_component('MenuItem', jMenu, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContactHelper));
+        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
         jMenu.addSeparator();
     end
@@ -1622,10 +1622,19 @@ function RemoveContact()
     if isempty(iDSall)
         return;
     end
+    if isempty(sSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Remove contact');
+        return
+    end
     % Use last selected electrode if multiple electrodes are selected
     if numel(sSelElec) > 1
         SetSelectedElectrodes(sSelElec(end).Name);
         [sSelElec, iSelElec] = GetSelectedElectrodes();
+    end
+    % Only for SEEG
+    if ~strcmpi(sSelElec.Type, 'SEEG')
+        java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
+        return
     end
     % Check if this is an new implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
@@ -1730,33 +1739,6 @@ function RemoveContact()
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
     % Update figure
     UpdateFigures();
-end
-
-%% ===== HELPER TO REMOVE CONTACT OR ELECTRODE =====
-function RemoveContactHelper()
-    sSelElec = GetSelectedElectrodes();
-    if isempty(sSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Remove contact');
-        return
-    end
-    % Use last selected electrode if multiple electrodes are selected
-    if numel(sSelElec) > 1
-        SetSelectedElectrodes(sSelElec(end).Name);
-        sSelElec = GetSelectedElectrodes();
-    end
-    % Only for SEEG
-    if ~strcmpi(sSelElec.Type, 'SEEG')
-        java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
-        return
-    end
-    sSelCont = GetSelectedContacts();
-    % If every contact of that electrode is selected, remove the whole electrode
-    if numel(sSelCont) == sSelElec.ContactNumber
-        RemoveElectrode();
-    else
-        % Otherwise just remove the highlighted contacts
-        RemoveContact();
-    end
 end
 
 %% ===== MERGE ELECTRODES =====
@@ -3269,6 +3251,9 @@ function SetElectrodeLoc(iLoc, jButton)
         return;
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
+        return;
+    elseif isempty(sSelElec.ContactNumber) ||  sSelElec.ContactNumber < 2
+        bst_error(['Update the number of contacts to construct the electrode "' sSelElec.Name '".'], 'Set electrode position', 0);
         return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);
