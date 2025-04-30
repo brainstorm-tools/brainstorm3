@@ -43,7 +43,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = java_scaled('dimension',20,25);
+    TB_DIM = java_scaled('dimension',18,25);
     
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
@@ -53,6 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Add/remove
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
         gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
         % Button "Select vertex"
         jToolbar.addSeparator();
         jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
@@ -109,10 +110,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 % Contacts list
                 jListCont = java_create('org.brainstorm.list.BstClusterList');
                 jListCont.setBackground(Color(.9,.9,.9));
-                jListCont.setLayoutOrientation(jListCont.HORIZONTAL_WRAP);
+                jListCont.setLayoutOrientation(jListCont.VERTICAL);
                 jListCont.setVisibleRowCount(-1);
                 java_setcb(jListCont, ...
-                    'ValueChangedCallback', @(h,ev)bst_call(@ContListChanged_Callback,h,ev));
+                    'ValueChangedCallback', @(h,ev)bst_call(@ContListChanged_Callback,h,ev), ...
+                    'KeyTypedCallback',     @(h,ev)bst_call(@ContListKeyTyped_Callback,h,ev));
                 jPanelScrollContList = JScrollPane();
                 jPanelScrollContList.getLayout.getViewport.setView(jListCont);
                 jPanelScrollContList.setBorder([]);
@@ -322,12 +324,26 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== ELECTRODE LIST KEY TYPED CALLBACK =====
     function ElecListKeyTyped_Callback(h, ev)
+        % CTRL+M
+        %  Windows: ev.getKeyChar() == 10 (LF)
+        %  Linux:   ev.getKeyChar() == 13 (CR)
+        if ispc
+            ctrlm_value = 10;
+        else
+            ctrlm_value = 13;
+        end
         switch(uint8(ev.getKeyChar()))
             % DELETE
             case {ev.VK_DELETE, ev.VK_BACK_SPACE}
                 RemoveElectrode();
             case ev.VK_ESCAPE
                 SetSelectedElectrodes(0);
+            case {'s', 'S'}
+                AddContact();
+            case ctrlm_value % CTRL+M
+                if ev.getModifiers == 2
+                    MergeElectrodes();
+                end
         end
     end
 
@@ -346,6 +362,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         sContacts = GetSelectedContacts();
         bst_figures('SetSelectedRows', {sContacts.Name});
         SetMriCrosshair(sContacts);
+    end
+
+    %% ===== CONTACT LIST KEY TYPED CALLBACK =====
+    function ContListKeyTyped_Callback(h, ev)
+        switch(uint8(ev.getKeyChar()))
+            % DELETE
+            case {ev.VK_DELETE, ev.VK_BACK_SPACE}
+                RemoveContact();
+            case {'s', 'S'}
+                AddContact();
+            case ev.VK_ESCAPE
+                SetSelectedContacts(0);
+        end
     end
 end
                    
@@ -708,7 +737,7 @@ function UpdateElecProperties(isUpdateModelList)
         valElecLength = [];
     end
     % Update panel
-    gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
+    gui_validate_text(ctrl.jTextNcontacts,     [], [], {0,1024,1},  'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
     gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
     gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
@@ -817,6 +846,9 @@ function sSelContacts = GetSelectedContacts()
     end
     % Get all contacts
     sSelElec  = GetSelectedElectrodes();
+    if isempty(sSelElec)
+        return
+    end
     sContacts = GetContacts(sSelElec(end).Name);
     if isempty(sContacts)
         return
@@ -950,6 +982,8 @@ end
 
 %% ===== SHOW CONTACTS MENU =====
 function ShowContactsMenu(jButton)
+    import java.awt.event.KeyEvent;
+    import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
     % Create popup menu
     jMenu = java_create('javax.swing.JPopupMenu');
@@ -958,6 +992,14 @@ function ShowContactsMenu(jButton)
     if isempty(iSelElec)
         java_dialog('warning', 'No electrode selected.', 'Align contacts');
         return
+    end
+    % Menu: Add/Remove contacts
+    if strcmpi(sSelElec(end).Type, 'SEEG')
+        jItem = gui_component('MenuItem', jMenu, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
+        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+        jMenu.addSeparator();
     end
     % Menu: Default positions
     gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
@@ -1275,6 +1317,11 @@ function sContacts = GetContacts(selectedElecName)
     end
 end
 
+%% ===== SORT CONTACT LOCATIONS BY DISTANCE FROM ORIGIN =====
+function contactLocsSorted= SortContactLocs(contactLocs)
+    [~, sortedIdx] = sort(sum(contactLocs.^2, 1));
+    contactLocsSorted = contactLocs(:, sortedIdx);
+end
 
 %% ===== SET ELECTRODES =====
 % USAGE:  iElec = SetElectrodes(iElec=[], sElect)
@@ -1329,10 +1376,17 @@ function iElec = SetElectrodes(iElec, sElect)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
 end
 
-
 %% ===== ADD ELECTRODE =====
-function AddElectrode()
+function AddElectrode(newLabel)
     global GlobalData;
+    % Parse inputs
+    if nargin < 1 || isempty(newLabel)
+       % Ask user for a new label
+        newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
+        if isempty(newLabel)
+            return;
+        end
+    end
     % Get available electrodes
     [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
@@ -1340,11 +1394,6 @@ function AddElectrode()
         Modality = GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality;
     else
         Modality = 'SEEG';
-    end
-    % Ask user for a new label
-    newLabel = java_dialog('input', 'Electrode label:', 'Add electrode', [], '');
-    if isempty(newLabel)
-        return;
     end
     % Check if label already exists
     if ~isempty(sAllElec) && any(strcmpi({sAllElec.Name}, newLabel))
@@ -1391,32 +1440,115 @@ function AddElectrode()
     SetSelectedElectrodes(iElec);
 end
 
+%% ===== ADD CONTACT =====
+function AddContact()
+    global GlobalData;
+    % Get electrodes
+    [sSelElec, iSelElec, iDSall, iFigall] = GetSelectedElectrodes();
+    if isempty(sSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Add contact');
+        return
+    end
+    % Use last selected electrode if multiple electrodes are selected
+    if numel(sSelElec) > 1
+        SetSelectedElectrodes(sSelElec(end).Name);
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
+    end
+    % Only for SEEG
+    if ~strcmpi(sSelElec.Type, 'SEEG')
+        java_dialog('warning', 'Add contact is only available for SEEG electrodes.', 'Add contact');
+        return
+    end
+    % Get channel data
+    Channels = GlobalData.DataSet(iDSall(1)).Channel;
+    iChan = find(strcmpi({Channels.Group}, sSelElec.Name));
+    if isempty(iChan)
+        java_dialog('warning', ['Set the tip and skull entry for electrode "' sSelElec.Name '"'], 'Add contact');
+        return;
+    end
+    % Get crosshair location from figure
+    XYZ = GetCrosshairLoc('scs');
+    if isempty(XYZ)
+        java_dialog('warning', 'Select a candidate contact from figure', 'Add contact');
+        return;
+    end
+    % Ask for confirmation
+    if ~java_dialog('confirm', ['Add contact to electrode "' sSelElec.Name '"'])
+        return;
+    end
+    % Get contacts for this electrode
+    sContacts = GetContacts(sSelElec.Name);
+    % Add new channel data for the contact
+    sChannel = db_template('channeldesc');
+    sChannel.Name = sprintf('%s%d', sSelElec.Name, size(sContacts, 2)+1);
+    sChannel.Type = 'SEEG';
+    sChannel.Group = sSelElec.Name;
+    Channels = [Channels(1:iChan(end)), sChannel, Channels(iChan(end)+1:end)];
+    iChan(end+1) = iChan(end)+1;
+    Channels(iChan(end)).Loc = XYZ(:);
+    contactLocs = [Channels(iChan).Loc];
+    % Sort contacts (distance from origin)
+    contactLocsSorted = SortContactLocs(contactLocs);
+    % Update with sorted contacts
+    for i = 1:length(iChan)
+        Channels(iChan(i)).Loc = contactLocsSorted(:, i);
+    end
+    % Update intraelectrode structure in channel
+    % Update electrode contact number
+    sSelElec.ContactNumber = size(contactLocsSorted, 2);
+    % Assign electrode tip and skull entry
+    sSelElec.Loc = [];
+    if sSelElec.ContactNumber >= 1
+        sSelElec.Loc(:,1) = contactLocsSorted(:, 1);
+    end
+    if sSelElec.ContactNumber > 1
+        sSelElec.Loc(:,2) = contactLocsSorted(:, end);
+    end
+    % Set the changed electrode properties
+    SetElectrodes(iSelElec, sSelElec);    
+    % Update channel data
+    for i = 1:length(iDSall)
+        GlobalData.DataSet(iDSall(i)).Channel = Channels;
+        GlobalData.DataSet(iDSall(i)).Figure(iFigall(i)).SelectedChannels = [GlobalData.DataSet(iDSall(i)).Figure(iFigall(i)).SelectedChannels, iChan];
+    end
+    % Update figures
+    UpdateFigures();
+end
+
 %% ===== REMOVE ELECTRODE =====
-function RemoveElectrode()
+function RemoveElectrode(sSelElec)
     global GlobalData;
     % Get dataset
     [sElecOld, iDSall, iFigall] = GetElectrodes();
     if isempty(iDSall)
         return;
     end
+    % Parse inputs
+    if nargin < 1
+        sSelElec = [];
+    else
+        [~, iSelElec] = ismember({sSelElec.Name}, {sElecOld.Name});
+    end
     % Check if this is an new implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [fPath, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     isImplantation = ~isempty(strfind(folderName, 'Implantation'));
-    % Get selected electrode
-    [sSelElec, iSelElec] = GetSelectedElectrodes();
-    if isempty(iSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Remove color');
-        return
-    end
-    % Ask for confirmation
-    if (length(sSelElec) == 1)
-        strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
-    else
-        strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
-    end
-    if ~java_dialog('confirm', strConfirm)
-        return;
+    if isempty(sSelElec)
+        % Get selected electrode
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
+        if isempty(iSelElec)
+            bst_error('No electrode selected.', 'Remove electrode', 0);
+            return
+        end
+        % Ask for confirmation
+        if (length(sSelElec) == 1)
+            strConfirm = ['Delete electrode "' sSelElec.Name '"?'];
+        else
+            strConfirm = ['Delete ' num2str(length(sSelElec)) ' electrodes?'];
+        end
+        if ~java_dialog('confirm', strConfirm)
+            return;
+        end
     end
     % Loop on datasets
     for iDS = unique(iDSall)
@@ -1482,6 +1614,198 @@ function RemoveElectrode()
     UpdateFigures();
 end
 
+%% ===== REMOVE CONTACT =====
+function RemoveContact()
+    global GlobalData;
+    % Get selected electrode
+    [sSelElec, iSelElec, iDSall, iFigall] = GetSelectedElectrodes();
+    if isempty(iDSall)
+        return;
+    end
+    if isempty(sSelElec)
+        java_dialog('warning', 'No electrode selected.', 'Remove contact');
+        return
+    end
+    % Use last selected electrode if multiple electrodes are selected
+    if numel(sSelElec) > 1
+        SetSelectedElectrodes(sSelElec(end).Name);
+        [sSelElec, iSelElec] = GetSelectedElectrodes();
+    end
+    % Only for SEEG
+    if ~strcmpi(sSelElec.Type, 'SEEG')
+        java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
+        return
+    end
+    % Check if this is an new implantation folder
+    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
+    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
+    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+    % Get selected contact
+    sSelCont = GetSelectedContacts();
+    if isempty(sSelCont)
+        java_dialog('warning', 'No contact selected.', 'Remove contact');
+        return
+    end
+    % Confirmation text
+    if (length(sSelCont) == 1)
+        strConfirm = ['Delete contact "' sSelCont.Name '"?'];
+    else
+        strConfirm = ['Delete ' num2str(length(sSelCont)) ' contacts in electrode "' sSelElec.Name '"?'];
+    end
+    % Ask for confirmation
+    if ~java_dialog('confirm', strConfirm)
+        return;
+    end
+    % Reset selected contacts
+    SetSelectedContacts(0);
+    % If implantation scheme proceed with deleting the selected contacts
+    if isImplantation
+        % Loop on datasets
+        for iDS = unique(iDSall)
+            % Loop on contacts to delete
+            for iCont = 1:length(sSelCont)
+                % Get contact details from channel file
+                iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, sSelCont(iCont).Name));
+                if isempty(iChan)
+                    continue;
+                end
+                % Loop on figures for this dataset
+                for iFig = iFigall(iDSall == iDS)
+                    % If incorrect figure type
+                    if ~ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
+                        continue;
+                    end
+                    % Get indices in the figure handles
+                    [~, iHandles] = intersect(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                    % Delete graphic handles
+                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hPointEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG,1))
+                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:));
+                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:) = [];
+                    end
+                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hTextEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG,1))
+                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:));
+                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:) = [];
+                    end
+                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
+                        GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
+                    end
+                    % Delete all previously created objects
+                    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+                    delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
+                    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+                    % Update list of displayed channels
+                    iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                    remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
+                    selChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
+                    [~, I] = intersect(remChan, selChan);
+                    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
+                end
+                % Update figure modality
+                UpdateFigureModality(iDS, iFig);
+                % Remove channels
+                GlobalData.DataSet(iDS).Channel(iChan) = [];
+            end
+        end
+        % Update intraelectrode structure in channel
+        % Get the updated contacts
+        sContacts = GetContacts(sSelElec.Name);
+        % Update electrode contact number
+        sSelElec.ContactNumber = size(sContacts, 2);
+        % Assign electrode tip and skull entry
+        sSelElec.Loc = [];
+        if sSelElec.ContactNumber >= 1
+            sSelElec.Loc(:,1) = sContacts(1).Loc;
+        end
+        if sSelElec.ContactNumber > 1
+            sSelElec.Loc(:,2) = sContacts(end).Loc;
+        end
+        % Set the changed electrode properties
+        SetElectrodes(iSelElec, sSelElec);
+        % Update contact names in channel
+        iChan = find(ismember({GlobalData.DataSet(iDSall(1)).Channel.Name}, {sContacts.Name}));
+        newContNames  = {};
+        for iCont = 1:sSelElec.ContactNumber
+            newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
+        end
+        % Loop on datasets
+        for iDS = unique(iDSall)
+            [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
+        end
+    end
+    % Mark channel file as modified (only the first one)
+    GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
+    % Update figure
+    UpdateFigures();
+end
+
+%% ===== MERGE ELECTRODES =====
+function MergeElectrodes()
+    global GlobalData;
+    % Get selected electrodes
+    [sSelElecOld, ~, iDS, iFig] = GetSelectedElectrodes();
+    % Need TWO electrodes
+    if (length(sSelElecOld) < 2)
+        java_dialog('warning', 'You need to select at least two electrodes.', 'Merge selected electrodes');
+        return
+    end
+    % Merge not available for ECOG
+    if any(ismember({sSelElecOld.Type}, {'ECOG'}))
+        java_dialog('warning', 'Merge is not available for ECOG electrodes.', 'Merge selected electrodes');
+        return
+    end
+    % Ask for confirmation
+    if ~java_dialog('confirm', 'Merge selected electrodes?')
+        return
+    end
+    % Get channel data
+    Channels = GlobalData.DataSet(iDS).Channel; 
+    % Find indices of channels belonging to the selected electrodes
+    iChan = ismember({Channels.Group}, {sSelElecOld.Name});
+    % Extract and concatenate contact locations
+    contactLocs = [Channels(iChan).Loc];
+    % Sort contact locations by distance from origin
+    contactLocs = SortContactLocs(contactLocs);
+    % Add new electrode assigning a label to it (appending the word 'merged' to the 1st to-be-merged electrode in the list)
+    newLabel = sprintf('%smerged', sSelElecOld(1).Name);
+    % Add new electrode
+    AddElectrode(newLabel);
+    % Create and select new electrode
+    SetSelectedElectrodes(newLabel);
+    [sSelElec, iSelElec] = GetSelectedElectrodes();
+    if isempty(iSelElec) || length(iSelElec) ~= 1
+        return
+    end
+    % Set electrode tip and skull entry
+    sSelElec.ContactNumber = size(contactLocs, 2);
+    % Set electrode tip and skull entry
+    sSelElec.Loc(:, 1) = contactLocs(:, 1);
+    sSelElec.Loc(:, 2) = contactLocs(:, end);
+    SetElectrodes(iSelElec, sSelElec);
+    % Update channel data
+    sChannel = db_template('channeldesc');
+    sChannel.Type = 'SEEG';
+    sChannel.Group = sSelElec.Name;
+    iChan = [];
+    for i = 1:sSelElec.ContactNumber
+        sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
+        sChannel.Loc = contactLocs(:, i);
+        Channels(end+1) = sChannel;
+        iChan(end+1) = length(Channels);
+    end
+    for i = 1:length(iDS)
+        GlobalData.DataSet(iDS(i)).Channel = Channels;
+        GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
+    end
+    % Remove merged electrodes
+    RemoveElectrode(sSelElecOld);
+    % Select new electrode
+    SetSelectedElectrodes(newLabel);
+    % Update figures
+    UpdateFigures();
+end
 
 %% ===== GET ELECTRODE MODELS =====
 function sModels = GetElectrodeModels()
@@ -1979,6 +2303,7 @@ function UpdateFigures(hFigTarget)
                     GlobalData.DataSet(iDS).Figure(iFig).Handles = figure_mri('PlotElectrodes', iDS, iFig, GlobalData.DataSet(iDS).Figure(iFig).Handles, 1);
                     figure_mri('UpdateVisibleSensors3D', hFig);
                     figure_mri('UpdateVisibleLandmarks', hFig);
+                    UpdatePanel();
                 end
         end
     end
@@ -2601,7 +2926,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
         end
         % Get contacts for this electrode
         iChan = find(strcmpi({Channels.Group}, sElectrodes(iElec).Name));
-        if isempty(iChan)
+        if isempty(iChan) || length(iChan) == 1
             % Add new channels
             if isImplantation
                 sChannel = db_template('channeldesc');
@@ -2612,7 +2937,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                         sChannel.Type = 'ECOG';
                 end
                 sChannel.Group = sElectrodes(iElec).Name;
-                for i = 1:prod(sElectrodes(iElec).ContactNumber)
+                startIdx = 1;
+                if length(iChan) == 1
+                    startIdx = 2;
+                end
+                for i = startIdx:prod(sElectrodes(iElec).ContactNumber)
                     sChannel.Name = sprintf('%s%d', sElectrodes(iElec).Name, i);
                     Channels(end+1) = sChannel;
                     iChan(end+1) = length(Channels);
@@ -2926,6 +3255,9 @@ function SetElectrodeLoc(iLoc, jButton)
         return;
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
+        return;
+    elseif isempty(sSelElec.ContactNumber) ||  sSelElec.ContactNumber < 2
+        bst_error(['Update the number of contacts to construct the electrode "' sSelElec.Name '".'], 'Set electrode position', 0);
         return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
         bst_error('Set the previous reference point (the tip) first.', 'Set electrode position', 0);

@@ -830,12 +830,16 @@ function FigureMouseUpCallback(hFig, varargin)
                     else
                         bst_figures('ToggleSelectedRow', SelChan);
                     end
-                    % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
-                    if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
-                        selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
-                        % Highlight the electrode and contacts
-                        panel_ieeg('SetSelectedElectrodes', selGroup);
+                    % Get current selected channels in the figure
+                    SelChanCur = GetFigSelectedRows(hFig);
+                    % Select intracranial Electrodes and Contacts in iEEG panel
+                    if ~isempty(SelChanCur) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
+                        SelGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+                        panel_ieeg('SetSelectedElectrodes', SelGroup);
                         panel_ieeg('SetSelectedContacts', SelChan);
+                    else
+                        panel_ieeg('SetSelectedContacts', 0);
+                        panel_ieeg('SetSelectedElectrodes', 0);
                     end
                 end
             end
@@ -1219,6 +1223,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         bst_figures('ViewResults', hFig); 
                     end
+                    % For iEEG: Add contact
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('AddContact');
+                    end
                 % CTRL+T : Default topography
                 case 't'
                     if ismember('control', keyEvent.Modifier) 
@@ -1266,6 +1274,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
+                    % Set channels as bad
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
                     if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
@@ -1282,6 +1291,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
+                    end
+                    % For iEEG: Remove contacts
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('RemoveContact');
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1588,7 +1601,9 @@ function DisplayFigurePopup(hFig)
     else
         TfFile = [];
     end
-
+    % Check if IsoSurface exists in the figure
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     
@@ -1802,6 +1817,13 @@ function DisplayFigurePopup(hFig)
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
+            % For iEEG: Add/Remove contacts
+            if isequal(Modality, 'SEEG')
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+            end
         % Other figures
         else
             % Menu "View sensors"
@@ -1997,7 +2019,6 @@ function DisplayFigurePopup(hFig)
         % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
         if gui_brainstorm('isTabVisible', 'iEEG')
             isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
-            isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
             if isIsoSurf && isSelectingCoordinates
                 jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select surface centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
                 isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
