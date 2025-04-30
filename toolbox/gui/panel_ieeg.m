@@ -2926,7 +2926,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
         end
         % Get contacts for this electrode
         iChan = find(strcmpi({Channels.Group}, sElectrodes(iElec).Name));
-        if isempty(iChan)
+        if isempty(iChan) || length(iChan) == 1
             % Add new channels
             if isImplantation
                 sChannel = db_template('channeldesc');
@@ -2937,7 +2937,11 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                         sChannel.Type = 'ECOG';
                 end
                 sChannel.Group = sElectrodes(iElec).Name;
-                for i = 1:prod(sElectrodes(iElec).ContactNumber)
+                startIdx = 1;
+                if length(iChan) == 1
+                    startIdx = 2;
+                end
+                for i = startIdx:prod(sElectrodes(iElec).ContactNumber)
                     sChannel.Name = sprintf('%s%d', sElectrodes(iElec).Name, i);
                     Channels(end+1) = sChannel;
                     iChan(end+1) = length(Channels);
