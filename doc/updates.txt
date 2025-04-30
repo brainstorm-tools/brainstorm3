@@ -1,3 +1,10 @@
+April 2025
+- Process: Apply montages on raw continuous recordings
+- SEEG/ECOG: Improvements for iEEG implantation: Add/remove individual contacts
+- Events: Allow event processes in record panel for Matrix files
+- Events: Add process to uniform event colors in Protocol
+- Distrib: Update neuroimage.usc.edu URLs to HTTPS
+--------------------------------------------------------------
 March 2025
 - Anatomy: Export surface scouts as MRI mask
 - Anatomy: Improved isosurface threshold slider
