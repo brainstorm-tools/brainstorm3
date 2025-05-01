@@ -167,7 +167,6 @@ if isSave
         % Create IsoFile
         MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
         comment = sprintf('isoSurface (ISO_%d)', isoValue);
-        isAppend = 0;
     else
         % Get old IsoValue
         [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
@@ -179,7 +178,6 @@ if isSave
         % Get Comment and update it
         sMeshTmp = load(MeshFile, 'Comment', 'History');
         comment = strrep(sMeshTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
-        isAppend = 1;
     end
     % Set comment
     sMesh.Comment = comment;
@@ -187,7 +185,7 @@ if isSave
     sMesh = bst_history('add', sMesh, 'threshold_ct', ...
                         sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', sMri.FileName, isoValue, isoRange));
     % Save isosurface
-    bst_save(MeshFile, sMesh, 'v7', isAppend);
+    bst_save(MeshFile, sMesh, 'v7');
     % Add isosurface to database
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
