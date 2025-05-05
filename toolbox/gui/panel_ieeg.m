@@ -3256,7 +3256,7 @@ function SetElectrodeLoc(iLoc, jButton)
     elseif (length(sSelElec) > 1)
         bst_error('Multiple electrodes selected.', 'Set electrode position', 0);
         return;
-    elseif isempty(sSelElec.ContactNumber) ||  sSelElec.ContactNumber < 2
+    elseif strcmpi(sSelElec.Type, 'SEEG') && (isempty(sSelElec.ContactNumber) ||  sSelElec.ContactNumber < 2)
         bst_error(['Update the number of contacts to construct the electrode "' sSelElec.Name '".'], 'Set electrode position', 0);
         return;
     elseif (size(sSelElec.Loc, 2) < iLoc-1)
