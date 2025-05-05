@@ -1,4 +1,5 @@
 April 2025
+- Anatomy: Add support for PET volumes
 - Process: Apply montages on raw continuous recordings
 - SEEG/ECOG: Improvements for iEEG implantation: Add/remove individual contacts
 - Events: Allow event processes in record panel for Matrix files
