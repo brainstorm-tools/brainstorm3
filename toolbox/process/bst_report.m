@@ -937,7 +937,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 '<STYLE type="text/css">' 10 ...
                 'h2 {font-size: ' num2str(11 * f) 'px; font-weight: bold; padding-top: 12px; padding-bottom: 12px;}' 10 ...
                 'td {padding: 2px 2px 2px 2px; }' 10 ...
-                '.bord td { border-width: 1px; border-style: solid; border-color: #bbbbbb; background-color: #f2f2f2; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; }' 10 ...
+                '.bord td {border-width: 1px; border-style: solid; border-color: #bbbbbb; background-color: #f2f2f2; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; }' 10 ...
                 '.link {text-decoration: none; color: #0000a0;}' 10 ...
                 '</STYLE>' 10 10 ...
                 '<BODY style="margin: 5px 10px 10px 10px; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; background-color: #e8e8e8;">' 10 ...
@@ -958,8 +958,8 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
         % ===== ERRORS =====
         %if ~isempty(iMessages)
             % Start errors table
-            html = [html sprintf('<H2>%d errors and %d warnings</H2>', length(iErrors), length(iWarnings))];
-            html = [html '<TABLE width="100%" class="bord">'];
+            html = [html sprintf('<H2>%d errors and %d warnings</H2>', length(iErrors), length(iWarnings)) 10];
+            html = [html '<TABLE width="100%" class="bord">' 10];
             % Loop over each error
             prevProcName = [];
             for i = 1:length(iMessages)
@@ -981,20 +981,20 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 strTime   = Reports{iMsg,5};
                 % Process name (only if different as previous)
                 if ~strcmpi(ProcName, prevProcName) || strcmpi(strType, 'process')
-                    html = [html '<TR><TD colspan=4 style="background-color: #D0D0D0;">' ProcName '</TD></TR>'];
+                    html = [html '<TR><TD colspan="4" style="background-color: #D0D0D0;">' ProcName '</TD></TR>'];
                     prevProcName = ProcName;
                 end
                 % Type of message
                 switch lower(strType)
                     case 'warning',  txtColor = '#FFA500';
                     case 'error',    txtColor = '#FF0000';
-                    case 'process',  continue;
+                    case 'process',  html = [html 10]; continue;
                     otherwise,       txtColor = '#000000';
                 end
                 html = [html '<TR><TD><FONT color="' txtColor '">&nbsp;&nbsp;&nbsp;&nbsp;' strType '</FONT></TD>'];
                 % File name
                 if isempty(FileNames) || isempty(FileNames{1})
-                    strFile = '<FONT color=#555555>[No input]</FONT>';
+                    strFile = '<FONT color="#555555">[No input]</FONT>';
                 elseif (length(FileNames) == 1)
                     strFile = PrintFilesList(FileNames, ProtocolInfo, 1);
                 else
@@ -1056,7 +1056,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
         if ~isempty(FilesInit) && ~isequal(FilesInit, {[]})
             html = [html PrintFilesList(FilesInit, ProtocolInfo, 0)];
         else
-            html = [html '<FONT color=#555555>[No input]</FONT><BR>'];
+            html = [html '<FONT color="#555555">[No input]</FONT><BR>'];
         end
         % Final files
         if ~isempty(FilesFinal) && ~isequal(FilesFinal, FilesInit)
@@ -1064,7 +1064,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
             if ~isempty(FilesFinal) && ~isequal(FilesFinal, {[]})
                 html = [html PrintFilesList(FilesFinal, ProtocolInfo, 0)];
             else
-                html = [html '<FONT color=#555555>[No output files]</FONT><BR>'];
+                html = [html '<FONT color="#555555">[No output files]</FONT><BR>'];
             end
         end
         % HTML footer
@@ -1176,14 +1176,14 @@ function str = PrintFilesList(FileNames, ProtocolInfo, isWrap)
         end
         % Display differently the deleted files
         if isDeleted
-            str = [str '<FONT color=#777777>' strFile ' &nbsp;&nbsp;&nbsp;[deleted]</FONT><BR>' 10];
+            str = [str '<FONT color="#777777">' strFile ' &nbsp;&nbsp;&nbsp;[deleted]</FONT><BR>' 10];
         else
             str = [str '<A class="link" href="file://' FileNames{iFile} '">' strFile '</A><BR>' 10];
         end
     end
     % Long lists: just prints the number of files
     if (length(FileNames) > NMAX)
-        str = [str, sprintf('<FONT color=#777777>[%d more files...]</FONT><BR>', length(FileNames)-NMAX)];
+        str = [str, sprintf('<FONT color="#777777">[%d more files...]</FONT><BR>', length(FileNames)-NMAX)];
     end
 end
 
