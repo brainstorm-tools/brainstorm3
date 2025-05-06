@@ -158,8 +158,8 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                 end
             end
         end
-        % Frequency average
-        if OPT.isAvgFreq && strcmpi(ftAllFiles{i}.dimord, 'pos_freq_time') && (size(ftAllFiles{i}.pow,2) > 1)
+        % Frequency average ('isAvgFreq' option only exists for 'timefreq' inputs)
+        if isfield(OPT, 'isAvgFreq') && OPT.isAvgFreq && strcmpi(ftAllFiles{i}.dimord, 'pos_freq_time') && (size(ftAllFiles{i}.pow,2) > 1)
             ftAllFiles{i}.pow  = mean(ftAllFiles{i}.pow, 2);
             ftAllFiles{i}.freq = ftAllFiles{i}.freq(1);
             if (i == 1)
