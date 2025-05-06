@@ -3229,7 +3229,10 @@ end
 % perform line fitting between contacts
 function LineFit(plotLoc, Tag)
     % Get axes handle
-    hFig = bst_figures('GetFiguresByType', '3DViz');
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return;
+    end
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     hCoord = findobj(hAxes, '-depth', 1, 'Tag', Tag);
     if ~isempty(hCoord)
