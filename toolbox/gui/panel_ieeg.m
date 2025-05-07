@@ -1552,10 +1552,10 @@ function RemoveElectrode(sSelElec)
     end
     % Loop on datasets
     for iDS = unique(iDSall)
-        % Loop on electrodes to delete
-        for iElec = 1:length(sSelElec)
-            % If new implantation scheme: delete all the contacts for this electrode
-            if isImplantation
+        % If new implantation scheme: delete all the contacts for this electrode
+        if isImplantation
+            % Loop on electrodes to delete
+            for iElec = 1:length(sSelElec)
                 % Get contacts for this electrode
                 iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, sSelElec(iElec).Name));
                 if isempty(iChan)
