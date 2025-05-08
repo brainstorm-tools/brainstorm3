@@ -259,7 +259,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 return
             end
             % Install/load brainentropy plugin
-            [isInstalled, errMessage] = bst_plugin('Install', 'brainentropy', 1);
+            [isInstalled, errMessage] = bst_plugin('Load', 'brainentropy', 1);
             if ~isInstalled
                 return;
             end
