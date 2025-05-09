@@ -1,5 +1,5 @@
 % Load the events.json file
-eventsJsonFile = 'events.json';
+eventsJsonFile = 'task-FacePerception_events.json';
 
 if exist(eventsJsonFile, 'file')
     disp('Using events.json as input...');
