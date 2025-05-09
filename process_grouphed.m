@@ -1,5 +1,4 @@
 function varargout = process_group_by_hed(varargin)
-    % Process to group events by HED tags in Brainstorm
 
     eval(macro_method);
 end
