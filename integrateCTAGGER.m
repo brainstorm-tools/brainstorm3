@@ -7,11 +7,10 @@ function [dataStruct, tags] = integrateCTAGGER(dataStruct, varargin)
     % Parse input arguments
     p = parseArguments(dataStruct, varargin{:});
     
-    % Step 1: Load JSON
     if ~isempty(p.sidecar) && exist(p.sidecar, 'file')
         tags = fileread(p.sidecar); % Read directly from the file
     else
-        % Hardcoded default JSON with proper formatting for MATLAB
+        % Hardcoded default JSON 
         tags = ['{' ...
                    '"onset":{"Description":"Time at which the event occurred, in seconds.","Units":"seconds"},' ...
                    '"duration":{"Description":"Duration of the event, in seconds.","Units":"seconds"},' ...
@@ -19,10 +18,10 @@ function [dataStruct, tags] = integrateCTAGGER(dataStruct, varargin)
                        '"stimulus":"Event indicating stimulus",' ...
                        '"response":"Event indicating response"' ...
                    '}}' ...
-               '}'];
+               '}'
+               ];
     end
 
-    % Step 2: Pass JSON to CTAGGER
     try
         [tags, canceled] = useCTAGGER(tags);
         
@@ -34,7 +33,6 @@ function [dataStruct, tags] = integrateCTAGGER(dataStruct, varargin)
         error('CTAGGER Error: %s', ME.message);
     end
 
-    % Step 3: Update the data structure
     dataStruct.tags = tags;
     disp('Tagging complete.');
 end
@@ -59,7 +57,6 @@ function [result, canceled] = loadCTAGGER(json)
         error('Error initializing CTAGGER: %s', ME.message);
     end
 
-    % Wait for user interaction
     timeout = 300; % seconds
     tStart = tic;
     while ~notified && toc(tStart) < timeout
@@ -81,10 +78,9 @@ function [result, canceled] = loadCTAGGER(json)
 end
 
 function p = parseArguments(dataStruct, varargin)
-    % Parse input arguments
     parser = inputParser;
     parser.addRequired('dataStruct', @(x) isstruct(x));
-    parser.addParameter('sidecar', '', @ischar); % Add 'sidecar' as a recognized parameter
+    parser.addParameter('sidecar', '', @ischar); 
     parser.parse(dataStruct, varargin{:});
     p = parser.Results;
 end
