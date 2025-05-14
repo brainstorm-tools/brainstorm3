@@ -148,6 +148,11 @@ function jnirs = detectAndFixError(jnirs)
     % Convert all measurementList to be array-of-struct
     if isfield(jnirs.nirs.data , 'measurementList' ) 
         if length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
+
+            if length(jnirs.nirs.data.measurementList.Mod) ~= length(jnirs.nirs.data.measurementList.sourceIndex)
+                warning('Modality is wrongly encoded in the file. Assuming CW');
+                jnirs.nirs.data.measurementList.Mod = repmat({'CW'}, length(jnirs.nirs.data.measurementList.sourceIndex), 1);
+            end
             jnirs.nirs.data.measurementList = soa2aos(jnirs.nirs.data.measurementList);
         end
     elseif isfield(jnirs.nirs.data , 'measurementLists' )
@@ -156,7 +161,12 @@ function jnirs = detectAndFixError(jnirs)
         error('The file doesnt seems to be a valid SNIRF file (missing measurementList or measurementLists)')
     end
     
-
+    % Convert wavelenght to a row vector and round the values
+    if size(jnirs.nirs.probe.wavelengths, 1) == 2 
+        jnirs.nirs.probe.wavelengths = jnirs.nirs.probe.wavelengths';
+    end
+    
+    jnirs.nirs.probe.wavelengths = round(jnirs.nirs.probe.wavelengths);
 end
 
 
@@ -201,11 +211,11 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
     ChannelMat.Comment = 'NIRS-BRS channels';
 
     if isfield(jnirs.nirs.probe, 'wavelengths') && ~isempty(jnirs.nirs.probe.wavelengths)
-        ChannelMat.Nirs.Wavelengths = round(jnirs.nirs.probe.wavelengths);
+        ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
     end
 
     % Get number of channels
-    nChannels    = size(jnirs.nirs.data.measurementList, 2);
+    nChannels    = length(jnirs.nirs.data.measurementList);
     good_channel = true(1,nChannels);
     channel_type = cell(1,nChannels);
     factor       = ones(1, nChannels);
