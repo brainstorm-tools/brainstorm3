@@ -69,6 +69,10 @@ if ~isempty(DisplayUnits)
         elseif ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
+        elseif ~isempty(strfind(DisplayUnits, 'OD'))
+            valFactor = 100;
+            valUnits  = '%';
+            valUnits = sprintf('%s(%s)',strrep(DisplayUnits,'delta ','\Delta'),valUnits);
         elseif ~isempty(strfind(DisplayUnits, 'delta'))
             [valFactor, valUnits] = GetExponent(val);
             valUnits = sprintf('%s(%s)',strrep(DisplayUnits,'delta ','\Delta'),valUnits);
