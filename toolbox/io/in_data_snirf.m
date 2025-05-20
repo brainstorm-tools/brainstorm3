@@ -148,7 +148,6 @@ function jnirs = detectAndFixError(jnirs)
     % Convert all measurementList to be array-of-struct
     if isfield(jnirs.nirs.data , 'measurementList' ) 
         if length(jnirs.nirs.data.measurementList) == 1  && length(jnirs.nirs.data.measurementList.sourceIndex) > 1
-
             if length(jnirs.nirs.data.measurementList.Mod) ~= length(jnirs.nirs.data.measurementList.sourceIndex)
                 warning('Modality is wrongly encoded in the file. Assuming CW');
                 jnirs.nirs.data.measurementList.Mod = repmat({'CW'}, length(jnirs.nirs.data.measurementList.sourceIndex), 1);
