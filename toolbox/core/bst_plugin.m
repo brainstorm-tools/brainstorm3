@@ -609,6 +609,23 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
     
+    % === EVENTS: CTAGGER ===
+    PlugDesc(end+1)              = GetStruct('ctagger');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Events';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/hed-standard/CTagger/archive/main.zip';
+    PlugDesc(end).URLinfo        = 'https://www.hed-resources.org/en/latest/CTaggerGuiTaggingTool.html';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).LoadedFcn      = @Configure;
+    PlugDesc(end).TestFile       = 'CTagger.jar';
+    PlugDesc(end).DeleteFiles    = {'docs', 'gradle', 'src', '.gradle', '.idea' ...
+                                    'build.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat', ...
+                                    'readthedocs.yml', 'settings.gradle', '.codeclimate.yml', '.gitignore'};
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
@@ -862,6 +879,18 @@ function Configure(PlugDesc)
             generateCore();
             % Restore current directory
             cd(curDir);           
+
+        case 'ctagger'
+            % Add .jar file to static classpath
+            if ~exist('TaggerLoader', 'class')
+                jarList = dir(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'CTagger.jar'));
+                jarPath = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, jarList(1).name);
+                disp(['BST> Adding to Java classpath: ' jarPath]);
+                warning off
+                javaaddpathstatic(jarPath);
+                javaaddpath(jarPath);
+                warning on
+            end
     end
 end
 

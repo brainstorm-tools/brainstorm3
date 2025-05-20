@@ -1,9 +1,5 @@
 function [dataStruct, tags] = integrateCTAGGER(dataStruct, varargin)
 
-    jarFile = fullfile(pwd, 'CTagger.jar');
-    if ~ismember(jarFile, javaclasspath('-dynamic'))
-        javaaddpath(jarFile);
-    end
     % Parse input arguments
     p = parseArguments(dataStruct, varargin{:});
     

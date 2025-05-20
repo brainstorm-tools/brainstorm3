@@ -8,6 +8,9 @@ else
     sidecar = '';
 end
 
+% Load CTagger as BST plugin
+bst_plugin('Install', 'ctagger');
+
 %example data structure
 dataStruct.events = struct('onset', {0.5, 1.0, 1.5}, ...
                            'duration', {0.5, 0.5, 0.5}, ...
