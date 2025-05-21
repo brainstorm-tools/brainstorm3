@@ -122,7 +122,7 @@ try
             % restore names.
             RealPointLabels = ChannelMat.HeadPoints.Label;
             for iP = iCardinal
-                ChannelMat.HeadPoints.Label{iP} = ['Tmp-' ChannelMat.HeadPoints.Label(iCardinal)];
+                ChannelMat.HeadPoints.Label{iP} = ['Tmp-' ChannelMat.HeadPoints.Label{iP}];
             end
             for iP = iNas
                 ChannelMat.HeadPoints.Label{iP} = 'NAS';
@@ -153,6 +153,8 @@ try
                 error('Unexpected transformation(s).')
             end
             ChannelMat.TransfEegLabels{iTrans} = 'RawPoints=>Native';
+            % Remove misleading orientation fields
+            ChannelMat = rmfield(ChannelMat, 'SCS');
         elseif numel(iCardinal) >= 3
             % Transform to SCS coordinates
             ChannelMat = channel_detect_type(ChannelMat, 1);

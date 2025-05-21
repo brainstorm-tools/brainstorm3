@@ -184,10 +184,21 @@ end
 
 %% ===== READ POLHEMUS FILE =====
 if ~isempty(pos_file)
-    % Read file
+    % Read file, returns in CTF native
     HeadMat = in_channel_pos(pos_file);
     % Copy head points
     ChannelMat.HeadPoints = HeadMat.HeadPoints;
+    % Copy channel positions for EEG
+    iHeadEegChannels = channel_find(HeadMat.Channel, 'EEG');
+    for ix = 1 : length(iHeadEegChannels)
+        HeadEegChannelName = HeadMat.Channel(iHeadEegChannels(ix)).Name;
+        iChannelEegChannel = channel_find(ChannelMat.Channel, HeadEegChannelName);
+        if ~isempty(iChannelEegChannel) && length(iChannelEegChannel) == 1 && ...
+           strcmpi(ChannelMat.Channel(iChannelEegChannel).Type, 'EEG') && isempty(ChannelMat.Channel(iChannelEegChannel).Loc)
+            ChannelMat.Channel(iChannelEegChannel).Loc = HeadMat.Channel(iHeadEegChannels(ix)).Loc;
+        end
+    end
+
     isAlign = true;
     % Warn if unsure about coordinate system. Should now be converted to "Native" CTF coil-based
     % when HPI points are present when loading the pos file.
