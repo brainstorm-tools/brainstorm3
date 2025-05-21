@@ -153,6 +153,8 @@ try
                 error('Unexpected transformation(s).')
             end
             ChannelMat.TransfEegLabels{iTrans} = 'RawPoints=>Native';
+            % Remove misleading orientation fields
+            ChannelMat = rmfield(ChannelMat, 'SCS');
         elseif numel(iCardinal) >= 3
             % Transform to SCS coordinates
             ChannelMat = channel_detect_type(ChannelMat, 1);
