@@ -1,4 +1,4 @@
-function [MriFileOut, errMsg] = process_pet(MriFile, sSubject, AtlasName, roiName, maskROI, applyMask)
+function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(MriFile, sSubject, AtlasName, roiName, maskROI, applyMask, doProject)
 % PROCESS_PET: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
 %
 % INPUTS:
@@ -8,12 +8,15 @@ function [MriFileOut, errMsg] = process_pet(MriFile, sSubject, AtlasName, roiNam
 %   - roiName   : Name of the ROI for SUVR rescale (string, can be empty)
 %   - maskROI   : Name of the ROI for masking (string, can be empty)
 %   - applyMask : Logical, true to apply mask, false otherwise
+%   - doProject : Logical, true to project PET to surface, false otherwise
 %
 % OUTPUTS:
-%   - MriFileOut : Output MRI file path (string)
-%   - errMsg     : Error message, if any
+%   - MriFileOut    : Output MRI file path (string)
+%   - errMsg        : Error message, if any
+%   - SurfaceFileOut: Output surface file path (string, if projected)
 
 MriFileOut = '';
+SurfaceFileOut = '';
 errMsg = '';
 
 try
@@ -88,13 +91,28 @@ try
     panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
     db_save();
 
-if isfield(sSubject, 'iAnatomy') && ~isempty(sSubject.iAnatomy) && ...
-        isfield(sSubject, 'Anatomy') && length(sSubject.Anatomy) >= sSubject.iAnatomy
-    refMriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-else
-    refMriFile = sSubject.Anatomy(1).FileName;
-end
-view_mri(refMriFile, MriFileOut);
+    % --- Overlay processed PET on subject's default MRI ---
+    if isfield(sSubject, 'iAnatomy') && ~isempty(sSubject.iAnatomy) && ...
+            isfield(sSubject, 'Anatomy') && length(sSubject.Anatomy) >= sSubject.iAnatomy
+        refMriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    else
+        refMriFile = sSubject.Anatomy(1).FileName;
+    end
+    view_mri(refMriFile, MriFileOut);
+
+    % --- Project to surface if requested ---
+    if nargin >= 7 && doProject
+        % Use the same reference MRI as above
+        % Use the subject's name as the condition
+        Condition = 'PET';
+        TimeVector = [];
+        DisplayUnits = '';
+        ProjFrac = [0.1 0.4 0.5];
+        [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, TimeVector, DisplayUnits, ProjFrac);
+        if ~isempty(errProj)
+            errMsg = ['PET processed, but projection failed: ', errProj];
+        end
+    end
 
 catch ME
     errMsg = ME.message;
