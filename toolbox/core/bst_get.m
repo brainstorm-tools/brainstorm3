@@ -116,8 +116,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('SurfaceFileByType',    SurfaceName, SurfaceType) : Find surfaces with given type for subject that also has surface SurfaceName (default only)
 %    - bst_get('SurfaceFileByType',    MriName,     SurfaceType) : Find surfaces with given type for subject that also has MRI MriName  (default only)
 %    - bst_get('SurfaceFileByType',    ...,  ..., isDefaultOnly) : If 0, return all the surfaces of the given type, instead of only the default surface
-%    - bst_get('MriFile',              MriFile)               : Find a MRI in current protocol
-% 
+%    - bst_get('AtlasFile',            AtlasName)               : Find a MRI in current protocol %    - bst_get('MriFile',              MriFile)               : Find a MRI in current protocol
+
 % ====== GUI =================================================================
 %    - bst_get('BstControls')    : Return main Brainstorm GUI structure
 %    - bst_get('BstFrame')       : Return main Brainstorm JFrame
@@ -1313,8 +1313,86 @@ switch contextName
                 return
             end
         end
-        
-        
+
+% ==== ATLAS FILE ====        
+% Usage : atlasNames = bst_get('AtlasFile') % returns cell array of atlas names for current subject
+%         sAtlas = bst_get('AtlasFile', AtlasName) % returns the atlas struct for the given name (case-insensitive)
+%         atlasNames = bst_get('AtlasFile', sSubject/iSubject) % returns atlas names for a specific subject
+%         sAtlas = bst_get('AtlasFile', sSubject/iSubject, AtlasName) % returns the atlas struct for a specific subject and atlas name
+case 'AtlasFile'
+    % No protocol in database
+    if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
+        return;
+    end
+    % Get list of current protocol subjects
+    ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
+    if isempty(ProtocolSubjects)
+        return
+    end
+
+    % Parse inputs
+    if (nargin == 3)
+        SubjectOrStruct = varargin{2};
+        AtlasName = varargin{3};
+        % If sSubject struct is supplied, use it directly
+        if isstruct(SubjectOrStruct) && isfield(SubjectOrStruct, 'Anatomy')
+            sSubject = SubjectOrStruct;
+        else
+            % If iSubject is supplied, get subject struct
+            sSubject = bst_get('Subject', SubjectOrStruct, 1);
+        end
+        if isempty(sSubject) || ~isfield(sSubject, 'Anatomy') || isempty(sSubject.Anatomy)
+            argout1 = [];
+            return;
+        end
+        iAtlas = find(contains({sSubject.Anatomy.FileName}, '_volatlas') & ...
+                      strcmpi({sSubject.Anatomy.Comment}, AtlasName));
+        if ~isempty(iAtlas)
+            argout1 = sSubject.Anatomy(iAtlas(1));
+        else
+            argout1 = [];
+        end
+        return;
+    end
+
+    % Get atlas names for a specific subject (sSubject struct or iSubject index)
+    if (nargin == 2)
+        SubjectOrStruct = varargin{2};
+        % If sSubject struct is supplied, use it directly
+        if isstruct(SubjectOrStruct) && isfield(SubjectOrStruct, 'Anatomy')
+            sSubject = SubjectOrStruct;
+        else
+            % If iSubject is supplied, get subject struct
+            sSubject = bst_get('Subject', SubjectOrStruct, 1);
+        end
+        if isempty(sSubject) || ~isfield(sSubject, 'Anatomy') || isempty(sSubject.Anatomy)
+            argout1 = {};
+            return;
+        end
+        iAtlas = find(contains({sSubject.Anatomy.FileName}, '_volatlas'));
+        if isempty(iAtlas)
+            argout1 = {};
+            return;
+        end
+        atlasNames = {sSubject.Anatomy(iAtlas).Comment};
+        argout1 = atlasNames;
+        return;
+    end
+
+    % If no subject specified, use current subject
+    sSubject = bst_get('Subject');
+    if isempty(sSubject) || ~isfield(sSubject, 'Anatomy') || isempty(sSubject.Anatomy)
+        argout1 = {};
+        return;
+    end
+    iAtlas = find(contains({sSubject.Anatomy.FileName}, '_volatlas'));
+    if isempty(iAtlas)
+        argout1 = {};
+        return;
+    end
+    atlasNames = {sSubject.Anatomy(iAtlas).Comment};
+    argout1 = atlasNames;
+    return;
 %% ==== CHANNEL FILE ====
     % Usage: [sStudy, iStudy, iChannel] = bst_get('ChannelFile', ChannelFile)
     case 'ChannelFile'
