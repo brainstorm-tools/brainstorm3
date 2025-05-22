@@ -2919,9 +2919,9 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             Channels = [];
             return
         end
-        % Check if this is an new implantation folder
-        [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-        isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+        % Check if this is an implantation folder
+        [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
+        isImplantation = strcmpi(folderName, 'implantation');
         % Check if there are channels available
         Channels = GlobalData.DataSet(iDS(1)).Channel;
         if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
@@ -3301,9 +3301,9 @@ function SetElectrodeLoc(iLoc, jButton)
     jButton.setForeground(java.awt.Color(0, 0.8, 0));
     % Get the contact for this electrode
     iChan = find(strcmpi({GlobalData.DataSet(iDS(1)).Channel.Group}, sSelElec.Name));
-    % Check if this is an new implantation folder
-    [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+    % Check if this is an implantation folder
+    [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
+    isImplantation = strcmpi(folderName, 'implantation');
     % Update contact positions
 %     if (~isempty(iChan) || isImplantation) && ...
     if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
