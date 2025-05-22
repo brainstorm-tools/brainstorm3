@@ -1384,7 +1384,7 @@ function AddElectrode(newLabel)
     if isempty(iDS)
         return;
     end
-    % Check if this is an implantation folder
+    % Proceed only if this is an implantation folder
     ChannelFile = GlobalData.DataSet(iDS(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     if ~strcmpi(folderName, 'implantation')
@@ -1457,7 +1457,7 @@ function AddContact()
     if isempty(iDSall)
         return;
     end
-    % Check if this is an implantation folder
+    % Proceed only if this is an implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     if ~strcmpi(folderName, 'implantation')
@@ -1541,7 +1541,7 @@ function RemoveElectrode(sSelElec)
     if isempty(iDSall)
         return;
     end
-    % Check if this is an implantation folder
+    % Proceed only if this is an implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     if ~strcmpi(folderName, 'implantation')
@@ -1639,7 +1639,7 @@ function RemoveContact()
     if isempty(iDSall)
         return;
     end
-    % Check if this is an implantation folder
+    % Proceed only if this is an implantation folder
     ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
     [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
     if ~strcmpi(folderName, 'implantation')
