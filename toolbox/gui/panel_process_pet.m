@@ -40,16 +40,16 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
     jComboROI = gui_component('combobox', jPanelRescale, 'tab', [], {roiList});
     % Set "Cerebellum" as default if it exists
     idxCerebellum = find(strcmpi(roiList, 'Cerebellum'), 1);
-        if ~isempty(idxCerebellum)
-            jComboROI.setSelectedIndex(idxCerebellum - 1); % Java indices start at 0
-        end
-  
+    if ~isempty(idxCerebellum)
+        jComboROI.setSelectedIndex(idxCerebellum - 1); % Java indices start at 0
+    end
+
     jLabelAtlas = gui_component('label', jPanelRescale, 'br', 'Atlas:');
     jComboAtlas = gui_component('combobox', jPanelRescale, 'tab', [], {atlasNames});
     % --- Callback: When atlas changes, update ROI list ---
     java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, iAnatomy));
 
-% ==== MASK PANEL ====
+    % ==== MASK PANEL ====
     jPanelMask = gui_river([2, 2], [0, 10, 10, 10], 'Volume masking');   
     jCheckMask = gui_component('checkbox', jPanelMask, 'br', 'Apply mask');
     jLabelROIMask = gui_component('label', jPanelMask, 'br', 'Mask:');
@@ -59,16 +59,24 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
     jLabelROIMask.setEnabled(false);         % Disabled by default
     java_setcb(jCheckMask, 'ActionPerformedCallback', @(h, ev)SetSelectedAndEnabled(jComboROIMask, jLabelROIMask, jCheckMask.isSelected()));
 
-    % --- Add panel to main layout ---
+   
+    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, iAnatomy));
+
+    % ==== PROJECT TO SURFACE PANEL ====
+    jPanelProject = gui_river([1, 1], [0, 10, 10, 10], 'Surface projection');
+    jCheckProject = gui_component('checkbox', jPanelProject, 'br', 'Project to surface');
+    jCheckProject.setSelected(false);
+
+    % --- Add panels to main layout ---
     jPanelMain.add('br', jPanelRescale);
     jPanelMain.add('br', jPanelMask);
+    jPanelMain.add('br', jPanelProject);
 
     % --- Buttons ---
     jPanelButtons = gui_river([2 0], [0 5 0 5]);
     gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @(h, ev)ButtonCancel_Callback(panelName));
     gui_component('button', jPanelButtons, '', 'OK', [], [], @(h, ev)ButtonOK_Callback(panelName));
     jPanelMain.add('br right', jPanelButtons);
-
 
     % --- Panel Layout ---
     jPanelRescale.doLayout();
@@ -83,6 +91,7 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
                'jComboROI', jComboROI, ...
                'jComboROIMask', jComboROIMask, ...
                'jCheckMask', jCheckMask, ...
+               'jCheckProject', jCheckProject, ...
                'sSubject', sSubject, ...
                'iAnatomy', iAnatomy));
 end
@@ -119,6 +128,7 @@ function ButtonOK_Callback(panelName)
     sSubject = ctrl.sSubject;
     iAnatomy = ctrl.iAnatomy;
     isMaskChecked = ctrl.jCheckMask.isSelected();
+    doProject = ctrl.jCheckProject.isSelected();
 
     bst_progress('start', 'PET Processing', 'Processing PET volume...');
     gui_hide(panelName);
@@ -134,13 +144,16 @@ function ButtonOK_Callback(panelName)
             maskROI = '';
         end
 
-        % Call process_pet pipeline
-        [MriFileOut, errMsg] = process_pet(MriFile, sSubject, atlas, roi, maskROI, isMaskChecked);
+        % Call process_pet pipeline with projection option
+        [MriFileOut, errMsg, SurfaceFileOut] = process_pet(MriFile, sSubject, atlas, roi, maskROI, isMaskChecked, doProject);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
         else
             disp(['Processed MRI saved as: ' MriFileOut]);
+            if doProject && ~isempty(SurfaceFileOut)
+                disp(['Projected surface file: ' SurfaceFileOut]);
+            end
         end
     end
 
