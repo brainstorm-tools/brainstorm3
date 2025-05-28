@@ -851,7 +851,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 case '.eeg',   FileFormat = 'EEG-BRAINAMP';
                 case '.edf',   FileFormat = 'EEG-EDF';
                 case '.set',   FileFormat = 'EEG-EEGLAB';
-                case '.snirf', FileFormat = 'NIRS-SNIRF';    
+                case '.snirf', FileFormat = 'NIRS-SNIRF';   
+                case '.cnt',   FileFormat = 'EEG-ANT-CNT';    
                 otherwise,     FileFormat = [];
             end
             % Import file if file was identified
