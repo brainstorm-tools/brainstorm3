@@ -107,6 +107,8 @@ function Start(varargin)
         if isempty(Digitize.Options.PatientId)
             return;
         end
+        % Normalize PatientId (in order to create a directory out of it)
+        Digitize.Options.PatientId = file_standardize(Digitize.Options.PatientId);
         % Save new ID
         bst_set('DigitizeOptions', Digitize.Options);
         

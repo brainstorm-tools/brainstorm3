@@ -132,6 +132,8 @@ function Start(varargin) %#ok<DEFNU>
         if isempty(PatientId)
             return;
         end
+        % Normalize PatientId (in order to create a directory out of it)
+        PatientId = file_standardize(PatientId);
         % Save the new default patient id
         DigitizeOptions.PatientId = PatientId;      
     
