@@ -58,22 +58,17 @@ else
 end
 bst_progress('stop');
 % Get atlas file for the correct subject
-if ~isempty(sSubject)
-    iAtlas = bst_get('AtlasFile', sSubject, AtlasName);
-else
-    % If no subject context, try to get atlas for current subject
-    iAtlas = bst_get('AtlasFile', AtlasName);
-end
-if isempty(iAtlas) || ~isfield(iAtlas, 'FileName') || isempty(iAtlas.FileName)
+sAtlasMeta = bst_get('AtlasFile', sSubject, AtlasName);
+if isempty(sAtlasMeta) || ~isfield(sAtlasMeta, 'FileName') || isempty(sAtlasMeta.FileName)
     errMsg = ['Atlas "' AtlasName '" not found for the specified subject.'];
     atlasLabels = {};
     return;
 end
 
 % Load the atlas structure
-[sAtlas, ~] = bst_memory('LoadMri', iAtlas.FileName);
+sAtlas = bst_memory('LoadMri', sAtlasMeta.FileName);
 if isempty(sAtlas) || ~isfield(sAtlas, 'Labels') || isempty(sAtlas.Labels)
-    errMsg = ['Failed to load atlas file: ' iAtlas.FileName];
+    errMsg = ['Failed to load atlas file: ' sAtlasMeta.FileName];
     atlasLabels = {};
     return;
 end

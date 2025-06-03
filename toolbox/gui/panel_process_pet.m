@@ -25,7 +25,8 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, PetFile, varargin)
     jPanelRescale = gui_river([2, 2], [0, 10, 10, 10], 'SUVR');
 
     % --- Atlas dropdown ---
-    atlasNames = bst_get('AtlasFile', sSubject);
+    sAtlas = bst_get('AtlasFile', sSubject);
+    atlasNames = {sAtlas.Comment};
     if isempty(atlasNames)
         atlasNames = {'(No atlas found)'};
     end
