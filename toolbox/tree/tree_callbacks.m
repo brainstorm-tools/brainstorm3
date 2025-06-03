@@ -3214,8 +3214,8 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
         gui_component('MenuItem', jMenu, [], 'Realign frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
         % === PET PROCESSING ===
         AddSeparator(jMenu);
-        gui_component('MenuItem', jMenu, [], 'Process volume', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], sSubject, iAnatomy));
-        gui_component('MenuItem', jMenu, [], 'Project to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, sSubject.Anatomy(iAnatomy).FileName, [], 'PET'));
+        gui_component('MenuItem', jMenu, [], 'Process volume', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], sSubject, PetFile));
+        gui_component('MenuItem', jMenu, [], 'Project to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET'));
     end
 end
 

@@ -1,8 +1,8 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(MriFile, sSubject, AtlasName, roiName, maskROI, applyMask, doProject)
+function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, sSubject, AtlasName, roiName, maskROI, applyMask, doProject)
 % PROCESS_PET: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
 %
 % INPUTS:
-%   - MriFile   : Input MRI file path (string)
+%   - PetFile   : PET file path
 %   - sSubject  : Subject structure
 %   - AtlasName : Name of the atlas (e.g., 'ASEG')
 %   - roiName   : Name of the ROI for SUVR rescale (string, can be empty)
@@ -20,8 +20,8 @@ SurfaceFileOut = '';
 errMsg = '';
 
 try
-    % Load MRI structure
-    sMri = in_mri_bst(MriFile);
+    % Load PET file in sMRI structure
+    sMri = in_mri_bst(PetFile);
 
     % --- SUVR Rescale ---
     if ~isempty(roiName)
@@ -50,7 +50,7 @@ try
 
     % --- Save output file manually (like mri_realign) ---
     % Insert fileTag before last underscore
-    [folder, base, ext] = fileparts(file_fullpath(MriFile));
+    [folder, base, ext] = fileparts(file_fullpath(PetFile));
     lastUnderscore = find(base == '_', 1, 'last');
     if ~isempty(lastUnderscore)
         newBase = [base(1:lastUnderscore-1), fileTag, base(lastUnderscore:end)];

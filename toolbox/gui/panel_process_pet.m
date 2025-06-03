@@ -12,7 +12,7 @@ eval(macro_method);
 end
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
+function [bstPanelNew, panelName] = CreatePanel(sSubject, PetFile, varargin)
     panelName = 'panel_process_pet';
     import java.awt.*
     import javax.swing.*
@@ -32,7 +32,7 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
 
     % --- ROI dropdown ---
     if ~isempty(atlasNames) && ~strcmp(atlasNames{1}, '(No atlas found)')
-        roiList = mri_mask(sSubject.Anatomy(iAnatomy).FileName, atlasNames{1});
+        roiList = mri_mask(PetFile, atlasNames{1});
     else
         roiList = {'(No ROI found)'};
     end
@@ -47,7 +47,7 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
     jLabelAtlas = gui_component('label', jPanelRescale, 'br', 'Atlas:');
     jComboAtlas = gui_component('combobox', jPanelRescale, 'tab', [], {atlasNames});
     % --- Callback: When atlas changes, update ROI list ---
-    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, iAnatomy));
+    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile));
 
     % ==== MASK PANEL ====
     jPanelMask = gui_river([2, 2], [0, 10, 10, 10], 'Volume masking');   
@@ -60,7 +60,7 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
     java_setcb(jCheckMask, 'ActionPerformedCallback', @(h, ev)SetSelectedAndEnabled(jComboROIMask, jLabelROIMask, jCheckMask.isSelected()));
 
    
-    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, iAnatomy));
+    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile));
 
     % ==== PROJECT TO SURFACE PANEL ====
     jPanelProject = gui_river([1, 1], [0, 10, 10, 10], 'Surface projection');
@@ -93,15 +93,15 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, iAnatomy, varargin)
                'jCheckMask', jCheckMask, ...
                'jCheckProject', jCheckProject, ...
                'sSubject', sSubject, ...
-               'iAnatomy', iAnatomy));
+               'PetFile', PetFile));
 end
 %% ===== CALLBACK: Atlas changed =====
-function AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, iAnatomy)
+function AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile)
     selectedAtlas = char(jComboAtlas.getSelectedItem());
     if isempty(selectedAtlas) || strcmp(selectedAtlas, '(No atlas found)')
         roiList = {'(No ROI found)'};
     else
-        roiList = mri_mask(sSubject.Anatomy(iAnatomy).FileName, selectedAtlas);
+        roiList = mri_mask(PetFile, selectedAtlas);
         if isempty(roiList)
             roiList = {'(No ROI found)'};
         end
@@ -126,16 +126,14 @@ function ButtonOK_Callback(panelName)
     roi      = char(ctrl.jComboROI.getSelectedItem());
     maskROI  = char(ctrl.jComboROIMask.getSelectedItem());
     sSubject = ctrl.sSubject;
-    iAnatomy = ctrl.iAnatomy;
+    PetFile = ctrl.PetFile;
     isMaskChecked = ctrl.jCheckMask.isSelected();
     doProject = ctrl.jCheckProject.isSelected();
 
     bst_progress('start', 'PET Processing', 'Processing PET volume...');
     gui_hide(panelName);
 
-    if ~isempty(sSubject) && ~isempty(iAnatomy) && isfield(sSubject, 'Anatomy') && length(sSubject.Anatomy) >= iAnatomy
-        MriFile = sSubject.Anatomy(iAnatomy).FileName;
-
+    if ~isempty(sSubject) && ~isempty(PetFile)
         % Prepare options for process_pet
         if isempty(roi) || strcmp(roi, '(No ROI found)')
             roi = '';
@@ -145,7 +143,7 @@ function ButtonOK_Callback(panelName)
         end
 
         % Call process_pet pipeline with projection option
-        [MriFileOut, errMsg, SurfaceFileOut] = process_pet(MriFile, sSubject, atlas, roi, maskROI, isMaskChecked, doProject);
+        [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, sSubject, atlas, roi, maskROI, isMaskChecked, doProject);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
