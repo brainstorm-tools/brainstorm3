@@ -159,20 +159,6 @@ function ButtonOK_Callback(panelName)
     bst_progress('stop');
 end
 
-%% ===== GET PANEL CONTENTS =====
-function s = GetPanelContents()
-    ctrl = bst_get('PanelControls', 'panel_process_pet');
-    s.atlas = char(ctrl.jComboAtlas.getSelectedItem());
-    s.roi   = char(ctrl.jComboROI.getSelectedItem());
-    s.sSubject = ctrl.sSubject;
-    s.iAnatomy = ctrl.iAnatomy;
-    % Example: get MRI file for masking
-    if ~isempty(s.sSubject) && ~isempty(s.iAnatomy)
-        MriFile = s.sSubject.Anatomy(s.iAnatomy).FileName;
-        % Now you can call mri_mask(MriFile, s.atlas, s.roi, 1);
-    end
-end
-
 %% ===== HELPER: Enable/disable ROI mask controls =====
 function SetSelectedAndEnabled(jCombo, jLabel, isEnabled)
     jCombo.setEnabled(isEnabled);
