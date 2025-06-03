@@ -41,6 +41,7 @@ errMsg = '';
 try
     % Load PET file in sMRI structure
     sMri = in_mri_bst(PetFile);
+    orgComment = sMri.Comment;
 
     % --- SUVR Rescale ---
     if ~isempty(roiName)
@@ -80,7 +81,7 @@ try
     MriFileOut = file_short(MriFileOutFull);
 
     % Update comment to be unique
-    sMri.Comment = file_unique([sMri.Comment, fileTag], {sSubject.Anatomy.Comment});
+    sMri.Comment = file_unique([orgComment, fileTag], {sSubject.Anatomy.Comment});
 
     % Add history entry
     if ~isempty(roiName)
