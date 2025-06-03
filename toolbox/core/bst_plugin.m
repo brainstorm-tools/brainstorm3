@@ -28,7 +28,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('Archive',              OutputFile=[ask])    % Archive software environment
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
-%                            bst_plugin('LinkSpmToolbox',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('LinkSpmToolbox',       Action, Toolbox)     % 0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
 %                            bst_plugin('UpdateDescription',    PlugDesc, doDelete=0) % Update plugin description after load
 %
 %
@@ -157,26 +157,11 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1);';
-    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0);';
-    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2);';
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12'');';
+    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''cat12'');';
+    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''cat12'');';
+    PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''cat12'');';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
-
-    % === ANATOMY: PETPVE12 ===
-    PlugDesc(end+1)              = GetStruct('petpve12');
-    PlugDesc(end).Version        = 'latest';
-    PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/GGonEsc/petpve12/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'https://multimodalneuroimaging.wordpress.com/software/';
-    PlugDesc(end).TestFile       = 'tbx_cfg_petpve12.m';
-    PlugDesc(end).ReadmeFile     = 'Contents.m';
-    PlugDesc(end).CompiledStatus = 0;
-    PlugDesc(end).RequiredPlugs  = {'spm12'};
-    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(4);';
-    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(3);';
-    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(5);';
-    PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://github.com/GGonEsc/petpve12/blob/master/help/PETPVE12_manual.pdf'', ''-browser'')'};
 
     % === ANATOMY: CT2MRIREG ===
     PlugDesc(end+1)              = GetStruct('ct2mrireg');
@@ -216,7 +201,24 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
-    
+
+    % === ANATOMY: PETPVE12 ===
+    PlugDesc(end+1)              = GetStruct('petpve12');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/GGonEsc/petpve12/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://multimodalneuroimaging.wordpress.com/software/';
+    PlugDesc(end).TestFile       = 'tbx_cfg_petpve12.m';
+    PlugDesc(end).ReadmeFile     = 'Contents.m';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''petpve12'');';
+    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''petpve12'');';
+    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''petpve12'');';
+    PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''petpve12'');';
+    PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://github.com/GGonEsc/petpve12/blob/master/help/PETPVE12_manual.pdf'', ''-browser'')'};
+
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
@@ -3121,21 +3123,10 @@ end
 %  ===== PLUGIN-SPECIFIC FUNCTIONS ============================================
 %  ============================================================================
 
-%% ===== LINK CAT-SPM =====
+%% ===== LINK TOOLBOX-SPM =====
 % USAGE: bst_plugin('LinkSpmToolbox', Action)               
-%        0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
-%        3=Delete/4=Create/5=Check a symbolic link for PETPVE12 in SPM12 toolbox folder
-function LinkSpmToolbox(Action)
-        % Determine toolbox and action
-    if ismember(Action, [0 1 2])
-        ToolboxName = 'cat12';
-        ActionBase = Action;
-    elseif ismember(Action, [3 4 5])
-        ToolboxName = 'petpve12';
-        ActionBase = Action - 3;
-    else
-        error('Invalid Action code.');
-    end
+%        0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
+function LinkSpmToolbox(Action, ToolboxName)
     % Get SPM12 plugin
     PlugSpm = GetInstalled('spm12');
     if isempty(PlugSpm)
@@ -3146,7 +3137,7 @@ function LinkSpmToolbox(Action)
             error('Plugin SPM12 cannot be loaded.');
         end
     end
-      % Get SPM plugin path
+    % Get SPM plugin path
     if ~isempty(PlugSpm.SubFolder)
         spmToolboxDir = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'toolbox');
     else
@@ -3157,21 +3148,23 @@ function LinkSpmToolbox(Action)
     end
     % Toolbox plugin path
     spmToolboxDirTarget = bst_fullfile(spmToolboxDir, ToolboxName);
+    % Get toolbox plugin
+    PlugToolbox = GetInstalled(ToolboxName);
 
     % Check link
-    if (ActionBase == 2)
+    if (Action == 2)
         % Link exists and works: return here
-        if file_exist(bst_fullfile(spmToolboxDirTarget, [ToolboxName '.m']))
+        if file_exist(bst_fullfile(spmToolboxDirTarget, PlugToolbox.TestFile))
             return;
         % Link doesn't exist: Create it
         else
-            ActionBase = 1;
+            Action = 1;
         end
     end
     % If folder already exists
     if file_exist(spmToolboxDirTarget)
         % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install
-        if (ActionBase == 1) && ~PlugSpm.isManaged
+        if (Action == 1) && ~PlugSpm.isManaged
             error([upper(ToolboxName) ' seems already set up: ' spmToolboxDirTarget]);
         end
         % All the other cases: delete existing toolbox folder
@@ -3187,9 +3180,7 @@ function LinkSpmToolbox(Action)
         end
     end
     % Create new link
-    if (ActionBase == 1)
-        % Get toolbox plugin
-        PlugToolbox = GetInstalled(ToolboxName);
+    if (Action == 1)
         if isempty(PlugToolbox) || ~PlugToolbox.isLoaded
             error(['Plugin ' upper(ToolboxName) ' is not loaded.']);
         end
@@ -3217,6 +3208,8 @@ function LinkSpmToolbox(Action)
         end
     end
 end
+
+
 %% ===== SET PROGRESS LOGO =====
 % USAGE:  SetProgressLogo(PlugDesc/PlugName)  % Set progress bar image
 %         SetProgressLogo([])                 % Remove progress bar image
