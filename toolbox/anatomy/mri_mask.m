@@ -42,13 +42,12 @@ function [atlasLabels, MriFileMask, errMsg, fileTag, binMask] = mri_mask(MriFile
 
 % Defaults
 if nargin < 3, maskRegion = []; end
-if nargin < 4, doMask = 0; end
-if nargin < 5, sSubject = []; end
+if nargin < 4, doMask     =  0; end
+if nargin < 5, sSubject   = []; end
 MriFileMask = [];
-errMsg = '';
-fileTag = '';
-binMask = [];
-isSaving = false;
+errMsg      = '';
+fileTag     = '';
+binMask     = [];
 
 % Progress bar
 isProgress = bst_progress('isVisible');
@@ -68,13 +67,14 @@ if isstruct(MriFile)
 elseif ischar(MriFile)
     sMri = in_mri_bst(MriFile);
     mriFilePath = MriFile;
-    [sSubject, iSubject, iMri] = bst_get('MriFile', MriFile);
+    sSubject = bst_get('MriFile', MriFile);
     isSaving = true;
 else
     bst_progress('stop');
     error('Invalid call.');
 end
 bst_progress('stop');
+
 % Get atlas file for the correct subject
 sAtlasMeta = bst_get('AtlasFile', sSubject, AtlasName);
 if isempty(sAtlasMeta) || ~isfield(sAtlasMeta, 'FileName') || isempty(sAtlasMeta.FileName)
@@ -163,7 +163,7 @@ fileTag = sprintf('_masked_%s_%s', lower(AtlasName), lower(strjoin(maskRegion, '
 
 % ===== SAVE NEW FILE =====
 if isSaving
-   bst_progress('text', 'Saving new file...');
+    bst_progress('text', 'Saving new file...');
     % Get subject and index
     [sSubject, iSubject] = bst_get('MriFile', mriFilePath);
     if isempty(sSubject) || ~isfield(sSubject, 'Anatomy')

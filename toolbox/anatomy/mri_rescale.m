@@ -39,15 +39,14 @@ function [atlasLabels, MriFileRescale, errMsg, fileTag] = mri_rescale(MriFile, A
 
 atlasLabels = {};
 MriFileRescale = [];
-errMsg = '';
 fileTag = '';
 
 try
     % Progress bar
-isProgress = bst_progress('isVisible');
-if ~isProgress
-    bst_progress('start', 'Rescaling', 'Loading input volumes...');
-end
+    isProgress = bst_progress('isVisible');
+    if ~isProgress
+        bst_progress('start', 'Rescaling', 'Loading input volumes...');
+    end
 
     if isstruct(MriFile)
         sMri = MriFile;
@@ -58,13 +57,13 @@ end
         mriFilePath = '';
     elseif ischar(MriFile)
         sMri = in_mri_bst(MriFile);
-        [sSubject, ~, ~] = bst_get('MriFile', MriFile);
+        sSubject = bst_get('MriFile', MriFile);
         mriFilePath = MriFile;
     else
         bst_progress('stop');
         error('Invalid call.');
     end
-bst_progress('stop');
+    bst_progress('stop');
     % Mask region
     [atlasLabels, ~, errMsg, maskFileTag, binMask] = mri_mask(sMri, AtlasName, roiName, 1, sSubject);
   

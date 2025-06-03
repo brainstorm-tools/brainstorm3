@@ -3,7 +3,7 @@ function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Co
 % normals from pial surface to white matter surface and projects the result to
 % the pial surface as a texture.
 % 
-% USAGE:  OutputFile = mri_vol2tess(MriFileSrc, MriFileRef, Condition, TimeVector)
+% USAGE:  OutputFile = mri_vol2tess(MriFileSrc, MriFileRef, Condition, TimeVector, DisplayUnits, ProjFrac)
 %
 % INPUT:
 %    - MriFileSrc : Source MRI file
@@ -51,7 +51,7 @@ if isstruct(MriFileSrc)
     sMriSrc = MriFileSrc;
     sMriRef = MriFileRef;
 else
-    [sSubject, iSubject] = bst_get('MriFile', MriFileSrc);
+    sSubject = bst_get('MriFile', MriFileSrc);
     [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, Condition));
     MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 
@@ -60,14 +60,6 @@ else
 end
 
 Comment = sMriSrc.Comment;
-% Volume type
-volType = 'MRI';
-if ~isempty(strfind(Comment, 'CT'))
-    volType = 'CT';
-end
-if ~isempty(strfind(Comment, 'pet'))
-    volType = 'PET';
-end
 
 if isempty(sMriRef) || isempty(sMriSrc)
     errorMsg = 'MRI files could not be loaded.';
@@ -89,11 +81,8 @@ end
 
 %% ===== LOAD SURFACES =====
 % Find and load pial, mid, and white "low" resolution surfaces from sSubject.Surface 
-pialFile = '';
-midFile = '';
-whiteFile = '';
 
-% Collect all file names
+% Collect all surface file names
 allFiles = {sSubject.Surface.FileName};
 
 % Find indices for each surface type
@@ -149,20 +138,20 @@ else
 end
 
 % === STORE AS REGULAR SOURCE FILE ===
-    ResultsMat = db_template('resultsmat');
-    if size(map, 2) > 1
-        ResultsMat.ImageGridAmp  = map;
-    else
-        ResultsMat.ImageGridAmp  = [map, map];
-    end
-    ResultsMat.ImagingKernel = [];
-    FileType = 'results';
-    % Time vector
-    if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.ImageGridAmp,2))
-        ResultsMat.Time = 0:(size(ResultsMat.ImageGridAmp,2)-1);
-    else
-        ResultsMat.Time = TimeVector;
-    end
+ResultsMat = db_template('resultsmat');
+if size(map, 2) > 1
+    ResultsMat.ImageGridAmp  = map;
+else
+    ResultsMat.ImageGridAmp  = [map, map];
+end
+ResultsMat.ImagingKernel = [];
+FileType = 'results';
+% Time vector
+if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.ImageGridAmp,2))
+    ResultsMat.Time = 0:(size(ResultsMat.ImageGridAmp,2)-1);
+else
+    ResultsMat.Time = TimeVector;
+end
 % Fix identical time points
 if (length(ResultsMat.Time) == 2) && (ResultsMat.Time(1) == ResultsMat.Time(2))
     ResultsMat.Time(2) = ResultsMat.Time(2) + 0.001;
@@ -198,7 +187,7 @@ if ~isProgressBar
     bst_progress('stop');
 end
 %% ====== VISUALIZE RESULT ======= 
-view_surface_data(pialFile, file_short(OutputFile))
+view_surface_data(pialFile, file_short(OutputFile));
 if ~isProgressBar
     bst_progress('stop');
 end

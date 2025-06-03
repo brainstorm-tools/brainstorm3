@@ -167,9 +167,9 @@ function ButtonOK_Callback(panelName)
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
         else
-            disp(['Processed PET saved as: ' MriFileOut]);
+            disp(['Processed PET saved as: ' file_short(MriFileOut)]);
             if doProject && ~isempty(SurfaceFileOut)
-                disp(['Projected surface file: ' SurfaceFileOut]);
+                disp(['Projected surface file: ' file_short(SurfaceFileOut)]);
             end
         end
     end

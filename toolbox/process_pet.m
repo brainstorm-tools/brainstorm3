@@ -80,11 +80,7 @@ try
     MriFileOut = file_short(MriFileOutFull);
 
     % Update comment to be unique
-    if isfield(sSubject, 'Anatomy')
-        sMri.Comment = file_unique([sMri.Comment, fileTag], {sSubject.Anatomy.Comment});
-    else
-        sMri.Comment = [sMri.Comment, fileTag];
-    end
+    sMri.Comment = file_unique([sMri.Comment, fileTag], {sSubject.Anatomy.Comment});
 
     % Add history entry
     if ~isempty(roiName)
