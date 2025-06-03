@@ -1,12 +1,12 @@
 function varargout = panel_process_pet(varargin)
-% PANEL_PROCESS_PET: GUI for PET volume rescaling/masking using atlas ROIs.
+% PANEL_PROCESS_PET: GUI for PET volume rescaling/masking using an anatomical atlas.
 %
 % USAGE: [bstPanelNew, panelName] = panel_process_pet('CreatePanel')
 %
 % This panel allows the user to:
-%   1. Select an atlas (dropdown, populated by bst_get('AtlasFile'))
-%   2. Select an ROI (dropdown, populated by mri_mask([], AtlasName))
-%   3. Optionally rescale or mask a PET volume using the selected ROI
+%   1. Select an anatomical atlas
+%   2. Select a parcellations from such atlas
+%   3. (Optionally) rescale or mask a PET volume using the selected parcellation
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,36 +39,33 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, PetFile, varargin)
 
     % === MAIN LAYOUT ===
     jPanelMain = gui_river([5, 5], [0, 10, 10, 10]);
-    gui_component('label', jPanelMain, 'br', ...
-        sprintf('<HTML><EM>%s</EM><BR></HTML>', sSubject.Name));
     % === RESCALE PANEL ===
     jPanelRescale = gui_river([2, 2], [0, 10, 10, 10], 'SUVR');
-
-    % --- Atlas dropdown ---
+    gui_component('label', jPanelRescale, 'br', ...
+        sprintf('<HTML><FONT color="#777777">%s</FONT><BR><BR></HTML>', '(Standardized uptake value ratio)'));
+    % Atlases
     sAtlas = bst_get('AtlasFile', sSubject);
     atlasNames = {sAtlas.Comment};
     if isempty(atlasNames)
         atlasNames = {'(No atlas found)'};
     end
-
-    % --- ROI dropdown ---
+    % ROIs in Atlas
     if ~isempty(atlasNames) && ~strcmp(atlasNames{1}, '(No atlas found)')
         roiList = mri_mask(PetFile, atlasNames{1});
     else
         roiList = {'(No ROI found)'};
     end
-    jLabelROI = gui_component('label', jPanelRescale, 'br', 'Rescale to:');
+    % --- Atlas dropdown ---
+    gui_component('label', jPanelRescale, 'br', 'Atlas:');
+    jComboAtlas = gui_component('combobox', jPanelRescale, 'tab', [], {atlasNames});
+    % --- ROI dropdown ---
+    gui_component('label', jPanelRescale, 'br', 'Rescale to:');
     jComboROI = gui_component('combobox', jPanelRescale, 'tab', [], {roiList});
     % Set "Cerebellum" as default if it exists
     idxCerebellum = find(strcmpi(roiList, 'Cerebellum'), 1);
     if ~isempty(idxCerebellum)
         jComboROI.setSelectedIndex(idxCerebellum - 1); % Java indices start at 0
     end
-
-    jLabelAtlas = gui_component('label', jPanelRescale, 'br', 'Atlas:');
-    jComboAtlas = gui_component('combobox', jPanelRescale, 'tab', [], {atlasNames});
-    % --- Callback: When atlas changes, update ROI list ---
-    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile));
 
     % ==== MASK PANEL ====
     jPanelMask = gui_river([2, 2], [0, 10, 10, 10], 'Volume masking');   
@@ -80,8 +77,8 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, PetFile, varargin)
     jLabelROIMask.setEnabled(false);         % Disabled by default
     java_setcb(jCheckMask, 'ActionPerformedCallback', @(h, ev)SetSelectedAndEnabled(jComboROIMask, jLabelROIMask, jCheckMask.isSelected()));
 
-   
-    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile));
+    % --- Callback: When atlas changes, update ROI list ---
+    java_setcb(jComboAtlas, 'ActionPerformedCallback', @(h, ev)AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, PetFile));
 
     % ==== PROJECT TO SURFACE PANEL ====
     jPanelProject = gui_river([1, 1], [0, 10, 10, 10], 'Surface projection');
@@ -108,16 +105,17 @@ function [bstPanelNew, panelName] = CreatePanel(sSubject, PetFile, varargin)
     % --- Return panel object ---
     bstPanelNew = BstPanel(panelName, ...
         jPanelMain, ...
-        struct('jComboAtlas', jComboAtlas, ...
-               'jComboROI', jComboROI, ...
+        struct('jComboAtlas',   jComboAtlas, ...
+               'jComboROI',     jComboROI, ...
                'jComboROIMask', jComboROIMask, ...
-               'jCheckMask', jCheckMask, ...
+               'jCheckMask',    jCheckMask, ...
                'jCheckProject', jCheckProject, ...
-               'sSubject', sSubject, ...
-               'PetFile', PetFile));
+               'sSubject',      sSubject, ...
+               'PetFile',       PetFile));
 end
+
 %% ===== CALLBACK: Atlas changed =====
-function AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, sSubject, PetFile)
+function AtlasChanged_Callback(jComboAtlas, jComboROI, jComboROIMask, PetFile)
     selectedAtlas = char(jComboAtlas.getSelectedItem());
     if isempty(selectedAtlas) || strcmp(selectedAtlas, '(No atlas found)')
         roiList = {'(No ROI found)'};
@@ -143,13 +141,13 @@ end
 %% ===== OK BUTTON =====
 function ButtonOK_Callback(panelName)
     ctrl = bst_get('PanelControls', panelName);
-    atlas    = char(ctrl.jComboAtlas.getSelectedItem());
-    roi      = char(ctrl.jComboROI.getSelectedItem());
-    maskROI  = char(ctrl.jComboROIMask.getSelectedItem());
-    sSubject = ctrl.sSubject;
-    PetFile = ctrl.PetFile;
+    atlas         = char(ctrl.jComboAtlas.getSelectedItem());
+    roi           = char(ctrl.jComboROI.getSelectedItem());
+    maskROI       = char(ctrl.jComboROIMask.getSelectedItem());
+    sSubject      = ctrl.sSubject;
+    PetFile       = ctrl.PetFile;
     isMaskChecked = ctrl.jCheckMask.isSelected();
-    doProject = ctrl.jCheckProject.isSelected();
+    doProject     = ctrl.jCheckProject.isSelected();
 
     bst_progress('start', 'PET Processing', 'Processing PET volume...');
     gui_hide(panelName);
@@ -169,7 +167,7 @@ function ButtonOK_Callback(panelName)
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
         else
-            disp(['Processed MRI saved as: ' MriFileOut]);
+            disp(['Processed PET saved as: ' MriFileOut]);
             if doProject && ~isempty(SurfaceFileOut)
                 disp(['Projected surface file: ' SurfaceFileOut]);
             end
