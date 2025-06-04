@@ -41,13 +41,14 @@ end
 
 %% ===== FILES TO IMPORT =====
 % Build the path of the files to import
-MriFilePre     = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'anatomy', 'pre_T1.nii.gz');
-MriFilePost    = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'anatomy', 'post_CT.nii.gz');
-BaselineFile   = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'recordings', 'Baseline.edf');
-IctalFile      = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'recordings', 'ictal_repetitive_spike.edf');
-InterictalFile = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'recordings', 'interictal_spike.edf');
-LvfaFile       = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'recordings', 'LVFA_and_wave.edf');
-ElecPosFile    = fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting', 'Subject01_electrodes_mm.tsv');
+tutorial_dir   = bst_fullfile(tutorial_dir, 'tutorial_seizure_fingerprinting');
+MriFilePre     = bst_fullfile(tutorial_dir, 'anatomy', 'pre_T1.nii.gz');
+MriFilePost    = bst_fullfile(tutorial_dir, 'anatomy', 'post_CT.nii.gz');
+BaselineFile   = bst_fullfile(tutorial_dir, 'recordings', 'Baseline.edf');
+IctalFile      = bst_fullfile(tutorial_dir, 'recordings', 'ictal_repetitive_spike.edf');
+InterictalFile = bst_fullfile(tutorial_dir, 'recordings', 'interictal_spike.edf');
+LvfaFile       = bst_fullfile(tutorial_dir, 'recordings', 'LVFA_and_wave.edf');
+ElecPosFile    = bst_fullfile(tutorial_dir, 'Subject01_electrodes_mm.tsv');
 % Check if the folder contains the required files
 if ~file_exist(BaselineFile)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_seizure_fingerprinting.zip.']);
