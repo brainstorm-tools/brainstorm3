@@ -1,5 +1,5 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, AtlasFile, roiName, maskROI, applyMask, doProject)
-% PROCESS_PET: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
+function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasFile, roiName, maskROI, applyMask, doProject)
+% PET_PROCESS: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
 %
 % INPUTS:
 %   - PetFile   : PET file path

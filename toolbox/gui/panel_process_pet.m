@@ -167,7 +167,7 @@ function ButtonOK_Callback(panelName)
     gui_hide(panelName);
 
     if ~isempty(PetFile)
-        % Prepare options for process_pet
+        % Prepare options for pet_process
         if isempty(roi) || strcmp(roi, '(No ROI found)')
             roi = '';
         end
@@ -179,8 +179,8 @@ function ButtonOK_Callback(panelName)
         sAtlasDb = bst_get('AtlasFile', iSubject, atlas);
         AtlasFile = sAtlasDb.FileName;
 
-        % Call process_pet pipeline with projection option
-        [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, AtlasFile, roi, maskROI, isMaskChecked, doProject);
+        % Call pet_process pipeline with projection option
+        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasFile, roi, maskROI, isMaskChecked, doProject);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
