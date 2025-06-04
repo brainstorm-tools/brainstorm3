@@ -1,4 +1,4 @@
-function [atlasLabels, MriFileRescale, errMsg, fileTag] = mri_rescale(MriFile, AtlasName, roiName, sSubject)
+function [atlasLabels, MriFileRescale, errMsg, fileTag] = mri_rescale(MriFile, AtlasFile, roiName)
 % MRI_RESCALE: Rescale an MRI volume by the mean value of a specified ROI in an atlas.
 %
 % USAGE:
@@ -7,9 +7,8 @@ function [atlasLabels, MriFileRescale, errMsg, fileTag] = mri_rescale(MriFile, A
 %
 % INPUTS:
 %   - MriFile   : MRI file to be rescaled (string or struct)
-%   - AtlasName : Name of the atlas (e.g., 'ASEG', 'DKT', etc.)
+%   - AtlasFile : Atlas file or Atlas structure
 %   - roiName   : Name of the ROI to use for rescaling (string)
-%   - sSubject  : (optional) Subject structure, required if MriFile is a structure
 %
 % OUTPUTS:
 %   - atlasLabels    : Cell array of region names in the atlas
@@ -50,22 +49,27 @@ try
 
     if isstruct(MriFile)
         sMri = MriFile;
-        if nargin < 4 || isempty(sSubject)
-            errMsg = 'sSubject must be provided when using sMri structure as input.';
-            return;
-        end
         mriFilePath = '';
     elseif ischar(MriFile)
         sMri = in_mri_bst(MriFile);
-        sSubject = bst_get('MriFile', MriFile);
         mriFilePath = MriFile;
     else
         bst_progress('stop');
         error('Invalid call.');
     end
+    % Load Atlas
+    if isstruct(AtlasFile)
+        sAtlas = AtlasFile;
+    elseif ischar(AtlasFile)
+        sAtlas = in_mri_bst(AtlasFile);
+    else
+        bst_progress('stop');
+        error('Invalid call.');
+    end
+
     bst_progress('stop');
     % Mask region
-    [atlasLabels, ~, errMsg, maskFileTag, binMask] = mri_mask(sMri, AtlasName, roiName, 1, sSubject);
+    [atlasLabels, ~, errMsg, maskFileTag, binMask] = mri_mask(sMri, sAtlas, roiName, 1);
   
     if ~isempty(errMsg)
         return;
@@ -89,7 +93,7 @@ try
     sMriRescale.Cube = double(sMri.Cube) ./ roiMean;
 
     % Carry over fileTag and append rescale tag before last underscore
-    rescaleTag = sprintf('_rescaled_%s_%s', lower(AtlasName), lower(roiName));
+    rescaleTag = sprintf('_rescaled_%s_%s', lower(sAtlas.Comment), lower(roiName));
     fileTag = [maskFileTag, rescaleTag];
 
     % Carry over history from mri_mask if present
@@ -122,7 +126,7 @@ try
         sMriRescale.Comment = file_unique(sMriRescale.Comment, {sSubject.Anatomy.Comment});
         % Add history entry
         sMriRescale = bst_history('add', sMriRescale, 'rescale', ...
-            sprintf('Rescaled with "%s" (%s)', AtlasName, roiName));
+            sprintf('Rescaled with "%s" (%s)', sAtlas.Comment, roiName));
         % Save new MRI in Brainstorm format
         sMriRescale = out_mri_bst(sMriRescale, MriFileRescaleFull);
         % Register new MRI in subject

@@ -1,10 +1,9 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, sSubject, AtlasName, roiName, maskROI, applyMask, doProject)
+function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, AtlasFile, roiName, maskROI, applyMask, doProject)
 % PROCESS_PET: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
 %
 % INPUTS:
 %   - PetFile   : PET file path
-%   - sSubject  : Subject structure
-%   - AtlasName : Name of the atlas (e.g., 'ASEG')
+%   - AtlasFile : Atlas file path
 %   - roiName   : Name of the ROI for SUVR rescale (string, can be empty)
 %   - maskROI   : Name of the ROI for masking (string, can be empty)
 %   - applyMask : Logical, true to apply mask, false otherwise
@@ -37,15 +36,22 @@ function [MriFileOut, errMsg, SurfaceFileOut] = process_pet(PetFile, sSubject, A
 MriFileOut = '';
 SurfaceFileOut = '';
 errMsg = '';
+if nargin < 6 || isempty(doProject)
+    doProject = 0;
+end
 
 try
+    % Get Subject for PET file
+    [~, iSubject] = bst_get('MriFile', PetFile);
+    % Load Atlas file
+    sAtlas = in_mri_bst(AtlasFile);
     % Load PET file in sMRI structure
     sMri = in_mri_bst(PetFile);
     orgComment = sMri.Comment;
 
     % --- SUVR Rescale ---
     if ~isempty(roiName)
-        [~, sMriRescale, errMsgRescale, fileTagRescale] = mri_rescale(sMri, AtlasName, roiName, sSubject);
+        [~, sMriRescale, errMsgRescale, fileTagRescale] = mri_rescale(sMri, sAtlas, roiName);
         if ~isempty(errMsgRescale)
             errMsg = errMsgRescale;
             return;
@@ -58,7 +64,7 @@ try
 
     % --- Masking (if requested) ---
     if applyMask && ~isempty(maskROI)
-        [~, sMriMasked, errMsgMask, fileTagMask] = mri_mask(sMri, AtlasName, maskROI, 1, sSubject);
+        [~, sMriMasked, errMsgMask, fileTagMask] = mri_mask(sMri, sAtlas, maskROI, 1);
         if ~isempty(errMsgMask)
             errMsg = errMsgMask;
             return;
@@ -81,21 +87,21 @@ try
     MriFileOut = file_short(MriFileOutFull);
 
     % Update comment to be unique
+    sSubject = bst_get('Subject', iSubject);
     sMri.Comment = file_unique([orgComment, fileTag], {sSubject.Anatomy.Comment});
 
     % Add history entry
     if ~isempty(roiName)
-        sMri = bst_history('add', sMri, 'rescale', sprintf('Rescaled with "%s" (%s)', AtlasName, roiName));
+        sMri = bst_history('add', sMri, 'rescale', sprintf('Rescaled with "%s" (%s)', sAtlas.Comment, roiName));
     end
     if applyMask && ~isempty(maskROI)
-        sMri = bst_history('add', sMri, 'mask', sprintf('Masked with "%s" (%s)', AtlasName, maskROI));
+        sMri = bst_history('add', sMri, 'mask', sprintf('Masked with "%s" (%s)', sAtlas.Comment, maskROI));
     end
 
     % Save new MRI in Brainstorm format
     sMri = out_mri_bst(sMri, MriFileOutFull);
 
     % Register new MRI in subject
-    [~, iSubject] = bst_get('Subject', sSubject.Name);
     iAnatomy = length(sSubject.Anatomy) + 1;
     sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
     sSubject.Anatomy(iAnatomy).FileName = MriFileOut;
@@ -117,7 +123,7 @@ try
     view_mri(refMriFile, MriFileOut);
 
     % --- Project to surface if requested ---
-    if nargin >= 7 && doProject
+    if doProject
         % Use the same reference MRI as above
         % Use the subject's name as the condition
         Condition = 'PET';

@@ -1,4 +1,4 @@
-function [atlasLabels, MriFileMask, errMsg, fileTag, binMask] = mri_mask(MriFile, AtlasName, maskRegion, doMask, sSubject)
+function [atlasLabels, MriFileMask, errMsg, fileTag, binMask] = mri_mask(MriFile, AtlasFile, maskRegion, doMask)
 % MRI_MASK: List atlas regions and optionally mask an MRI volume using a selected atlas and region.
 %
 % USAGE:
@@ -8,10 +8,9 @@ function [atlasLabels, MriFileMask, errMsg, fileTag, binMask] = mri_mask(MriFile
 %
 % INPUTS:
 %   - MriFile   : MRI file to be masked (string) or MRI structure (sMri)
-%   - AtlasName : Name of the atlas (e.g., 'ASEG', 'DKT', etc.)
+%   - AtlasFile : Atlas file or Atlas structure
 %   - maskRegion: (optional) Region name or cell array of region names to mask (e.g., 'cerebellum', {'cortex','wm'})
 %   - doMask    : (optional) 1 to perform masking, 0 (default) to only list labels
-%   - sSubject  : (optional) Subject structure, required if MriFile is a structure
 %
 % OUTPUTS:
 %   - atlasLabels : Cell array of region names in the atlas (bilateral names, see below)
@@ -43,7 +42,6 @@ function [atlasLabels, MriFileMask, errMsg, fileTag, binMask] = mri_mask(MriFile
 % Defaults
 if nargin < 3, maskRegion = []; end
 if nargin < 4, doMask     =  0; end
-if nargin < 5, sSubject   = []; end
 MriFileMask = [];
 errMsg      = '';
 fileTag     = '';
@@ -55,41 +53,34 @@ if ~isProgress
     bst_progress('start', 'Masking', 'Loading input volumes...');
 end
 
-% Load MRI and get subject if possible
+% Load MRI
 if isstruct(MriFile)
     sMri = MriFile;
-    if isempty(sSubject)
-        errMsg = 'sSubject must be provided when using sMri structure as input.';
-        return;
-    end
     mriFilePath = '';
     isSaving = false;
 elseif ischar(MriFile)
     sMri = in_mri_bst(MriFile);
     mriFilePath = MriFile;
-    sSubject = bst_get('MriFile', MriFile);
     isSaving = true;
 else
     bst_progress('stop');
     error('Invalid call.');
 end
-bst_progress('stop');
-
-% Get atlas file for the correct subject
-sAtlasMeta = bst_get('AtlasFile', sSubject, AtlasName);
-if isempty(sAtlasMeta) || ~isfield(sAtlasMeta, 'FileName') || isempty(sAtlasMeta.FileName)
-    errMsg = ['Atlas "' AtlasName '" not found for the specified subject.'];
-    atlasLabels = {};
-    return;
+% Load Atlas
+if isstruct(AtlasFile)
+    sAtlas = AtlasFile;
+elseif ischar(AtlasFile)
+    sAtlas = in_mri_bst(AtlasFile);
+else
+    bst_progress('stop');
+    error('Invalid call.');
 end
-
-% Load the atlas structure
-sAtlas = bst_memory('LoadMri', sAtlasMeta.FileName);
 if isempty(sAtlas) || ~isfield(sAtlas, 'Labels') || isempty(sAtlas.Labels)
-    errMsg = ['Failed to load atlas file: ' sAtlasMeta.FileName];
+    errMsg = ['Failed to load atlas file: ' sAtlas.Comment];
     atlasLabels = {};
     return;
 end
+bst_progress('stop');
 
 % Original label names
 labelNames = sAtlas.Labels(:,2);
@@ -144,7 +135,7 @@ else
 end
 
 if isempty(labelIdx)
-    errMsg = ['Region "' strjoin(maskRegion, ', ') '" not found in atlas "' AtlasName '".'];
+    errMsg = ['Region "' strjoin(maskRegion, ', ') '" not found in atlas "' sAtlas.Comment '".'];
     return;
 end
 
@@ -159,7 +150,7 @@ sMriMasked = sMri;
 sMriMasked.Cube(~binMask) = 0;
 
 % File tag
-fileTag = sprintf('_masked_%s_%s', lower(AtlasName), lower(strjoin(maskRegion, '_')));
+fileTag = sprintf('_masked_%s_%s', lower(sAtlas.Comment), lower(strjoin(maskRegion, '_')));
 
 % ===== SAVE NEW FILE =====
 if isSaving
@@ -184,7 +175,7 @@ if isSaving
     sMriMasked.Comment = file_unique([sMri.Comment, fileTag], {sSubject.Anatomy.Comment});
     % Add history entry
     sMriMasked = bst_history('add', sMriMasked, 'mask', ...
-        sprintf('Masked with "%s" (%s)', AtlasName, strjoin(maskRegion, ', ')));
+        sprintf('Masked with "%s" (%s)', sAtlas.Comment, strjoin(maskRegion, ', ')));
     % Save new MRI in Brainstorm format
     sMriMasked = out_mri_bst(sMriMasked, MriFileMaskFull);
     % Register new MRI in subject
