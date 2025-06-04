@@ -57,7 +57,7 @@ SubjectName = 'Subject01';
 
 %% ===== CREATE PROTOCOL =====
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialSeizureFingerprinting1';
+ProtocolName = 'TutorialSeizureFingerprinting';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -74,16 +74,11 @@ bst_report('Start');
 [~, iSubject] = db_add_subject(SubjectName, [], 0, 0);
 % Import MRI volume
 DbMriFilePre  = import_mri(iSubject, MriFilePre, 'ALL', 0, 0, 'pre_T1');
-% Compute the MNI coordinates for MRI volume using 'maff8'
-bst_normalize_mni(DbMriFilePre, 'maff8');
-% Import CT volume
-DbMriFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0, 'post_CT');
-% Register CT to MRI using 'SPM'
-DbMriFilePostReg = mri_coregister(DbMriFilePost, DbMriFilePre, 'spm', 0);
-% Reslice the CT volume
-DbMriFilePostReslice = mri_reslice(DbMriFilePostReg, DbMriFilePre, 'vox2ras', 'vox2ras');
-% Skull strip the MRI volume and apply to the CT
-DbMriFilePostSkullStrip = mri_skullstrip(DbMriFilePostReslice, DbMriFilePre, 'spm');
+% Set fiducials in MRI
+NAS = [104, 207, 85];
+LPA = [ 26, 113, 78];
+RPA = [176, 113, 78];
+figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, [], [], []);
 
 % Process: Segment MRI with CAT12
 bst_process('CallProcess', 'process_segment_cat12', [], [], ...
@@ -94,6 +89,13 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'vol',         0, ... % No volume parcellations
     'extramaps',   0, ... % No additional cortical maps
     'cerebellum',  0);
+
+% Import CT volume
+DbCtFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0, 'post_CT');
+% Register CT to MRI and reslice using 'SPM'
+DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
+% Skull strip the MRI volume and apply to the CT using 'SPM'
+DbCtFilePostSkullStrip = mri_skullstrip(DbCtFilePostRegReslice, DbMriFilePre, 'spm');
 
 %% ===== ACCESS THE RECORDINGS =====
 % Process: Create link to raw file
@@ -106,8 +108,8 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
 bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
     'channelfile', {ElecPosFile, 'BIDS-SCANRAS-MM'}, ...
     'fixunits',    0, ... % No automatic fixing of distance units required
-    'vox2ras',     1, ... % Apply voxel=>subject transformation from the MRI
-    'mrifile',     {file_fullpath(DbMriFilePostSkullStrip), 'BST'});
+    'vox2ras',     2, ... % Apply voxel=>subject transformation and the coregistration transformation
+    'mrifile',     {file_fullpath(DbCtFilePostSkullStrip), 'BST'});
 
 %% ===== REVIEW RECORDINGS =====
 % Process: Power spectrum density (Welch)
