@@ -42,6 +42,14 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
 
     % === MAIN LAYOUT ===
     jPanelMain = gui_river([5, 5], [0, 10, 10, 10]);
+    jPanelMain.setLayout(GridBagLayout());
+    jPanelMain.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
+    % Default constrains
+    c = GridBagConstraints();
+    c.fill    = GridBagConstraints.HORIZONTAL;
+    c.weightx = 1;
+    c.weighty = 0;
+
     % === RESCALE PANEL ===
     jPanelRescale = gui_river([2, 2], [0, 10, 10, 10], 'SUVR');
     gui_component('label', jPanelRescale, 'br', ...
@@ -88,16 +96,20 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     jCheckProject = gui_component('checkbox', jPanelProject, 'br', 'Project to surface');
     jCheckProject.setSelected(false);
 
-    % --- Add panels to main layout ---
-    jPanelMain.add('br', jPanelRescale);
-    jPanelMain.add('br', jPanelMask);
-    jPanelMain.add('br', jPanelProject);
-
     % --- Buttons ---
     jPanelButtons = gui_river([2 0], [0 5 0 5]);
     gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @(h, ev)ButtonCancel_Callback(panelName));
     gui_component('button', jPanelButtons, '', 'OK', [], [], @(h, ev)ButtonOK_Callback(panelName));
-    jPanelMain.add('br right', jPanelButtons);
+
+    % --- Add panels to main layout ---
+    c.gridy = 1;
+    jPanelMain.add(jPanelRescale, c);
+    c.gridy = 2;
+    jPanelMain.add(jPanelMask, c);
+    c.gridy = 3;
+    jPanelMain.add(jPanelProject, c);
+    c.gridy = 4;
+    jPanelMain.add(jPanelButtons, c);
 
     % --- Panel Layout ---
     jPanelRescale.doLayout();
