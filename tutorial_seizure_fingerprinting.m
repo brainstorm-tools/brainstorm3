@@ -129,21 +129,16 @@ bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
 % Process: Set channels type
 % 'MPS16' channel needs to be excluded because for BEM head modeling it lies outside the inner skull
 bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], 'sensortypes', 'MPS16', 'newtype', 'SEEG_NO_LOC');
-% Define events
+% Define event: LVFA & wave and ictal repetitive spike
 sEvt1 = db_template('event');
-sEvt1.label   = 'sEEG onset';
-sEvt1.epochs  = 1;
-sEvt1.channels= [];
-sEvt1.notes   = [];
+sEvt1.label  = 'sEEG onset';
+sEvt1.epochs = 1;
+sEvt1.times  = 15;
+% Define event: Interictal spike
 sEvt2 = db_template('event');
-sEvt2.label   = 'Interictal spike';
-sEvt2.epochs  = 1;
-sEvt2.channels= [];
-sEvt2.notes   = [];
-% LVFA & wave and ictal repetitive spike
-sEvt1.times   = 15;
-% Interictal spike
-sEvt2.times   = 5;
+sEvt2.label  = 'Interictal spike';
+sEvt2.epochs = 1; 
+sEvt2.times  = 5;
 % Process: Events: Import from file
 bst_process('CallProcess', 'process_evt_import', sFilesRaw(2:3), [], ...
     'evtfile', {sEvt1, 'struct'}, ...
