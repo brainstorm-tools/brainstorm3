@@ -235,15 +235,20 @@ sFileInterictalSpikeSrc = bst_process('CallProcess', 'process_inverse_2018', sFi
 % Show the SEEG electrodes
 figure_3d('PlotSensors3D', iDS, iFig);
 % Set Desikan-Killiany as the current atlas
-panel_scout('SetCurrentAtlas', 2);
-% Get atlas
-sAtlas = panel_scout('GetAtlas');
+[~, ~, sSurf] = panel_scout('GetAtlas');
+iAtlas = find(strcmpi('Desikan-Killiany', {sSurf.Atlas.Name}));
+panel_scout('SetCurrentAtlas', iAtlas);
 % Set scout options to display all the scouts
 panel_scout('SetScoutsOptions', 0, 0, 1, 'all', 0.7, 1, 0, 0);
 % Select the scouts in the right hemisphere
-panel_scout('SetSelectedScouts', 2:2:length(sAtlas.Scouts));
+iScoutsR = find(cellfun(@(s) ~isempty(regexp(s, 'R$', 'once')), {sSurf.Atlas(iAtlas).Scouts.Label}));
+panel_scout('SetSelectedScouts', iScoutsR);
 % Create a new atlas from selected scouts
 panel_scout('CreateAtlasSelected', 0, 0);
+% Rename the atlas
+[sAtlas, iAtlas] = panel_scout('GetAtlas');
+sAtlas.Name = 'Desikan-Killiany_RH';
+panel_scout('SetAtlas', [], iAtlas, sAtlas);
 % Subdivide the new atlas to get scouts with 5 cm sq. area each
 panel_scout('SubdivideScouts', 1, 'area', 5);
 % Get the scouts
@@ -290,7 +295,7 @@ bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(1), [], ...
 % Process: Scouts time series: All
 sFileLvfaOnsetScoutTs = bst_process('CallProcess', 'process_extract_scout', sFileLvfaOnsetSrc, [], ...
     'timewindow',     [-15, 15], ...
-    'scouts',         {'Desikan-Killiany_02', {sScouts.Label}}, ...
+    'scouts',         {'Desikan-Killiany_RH', {sScouts.Label}}, ...
     'flatten',        1, ...
     'scoutfunc',      'pca', ...
     'isflip',         1, ...
