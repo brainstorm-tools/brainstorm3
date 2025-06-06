@@ -467,6 +467,19 @@ for iFile = 1 : length(FilesA)
             sInputB = sInputA;
         end
     end
+
+    % mask 
+    mask_a = all( sInputA.Data == 0 , 2);
+    sInputA.RowNames =     sInputA.RowNames(~mask_a);
+    sInputA.Data =     sInputA.Data(~mask_a, :);
+    sInputA.Atlas.Scouts = sInputA.Atlas.Scouts(~mask_a);
+
+    mask_b = all( sInputB.Data == 0 , 2);
+    sInputB.RowNames = sInputB.RowNames(~mask_b);
+    sInputB.Data =     sInputB.Data(~mask_b, :);
+    sInputB.Atlas.Scouts = sInputB.Atlas.Scouts(~mask_b);
+
+
     % Get the sampling frequency
     sfreq = 1 ./ (sInputA.Time(2) - sInputA.Time(1));
     % Round the sampling frequency at 1e6
