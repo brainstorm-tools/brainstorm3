@@ -24,43 +24,34 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 %
 % Outputs:
 %   connectivity      - A x B matrix of spectral Granger causalities from
-%                       source to sink. For each signal pair (a,b) we calculate
-%
-%                                        S_{sink} (f)
-%                  ------------------------------------------------------------
-%                  S_{sink}(f) - |H_{sink, source} (f)|^2 sigma_{source | sink}
-%
-%                       with S_{sink}(f) as the power spectral density of a @ f
-%                            H_{sink, source}(f) as the transfer function @ f
-%                            sigma_{source | sink} as the conditional variance
-%                             of the residual at b given the residual at a,
-%                             calculated using the residual covariance.
+%                       source to sink. 
 %                       By default, GC(a,a) = 0 if Y is empty.
 %                       [C: MX x MY x NF matrix]
 %   pValues           - parametric p-value for corresponding spectral Granger
-%                       causality in mean estimate
+%                       causality in mean estimate (not implemented!)
 %                       [P: MX x MY x NF matrix]
 %   freq              - frequencies corresponding to the previous two metrics
 %                       [F: NF x 1 vector]
 %
-% See also BST_GRANGER, BST_COHERENCE_MVAR.
+% See also BST_GRANGER.
+%
+% Spectral causality measures are evaluated from the spectra of the full
+% and restricted models as:
+%
+%                gc(w) = det(S_restricted(w))/det(S_full(w))
+%
+% see Cohen, Dror, et al. "A general spectral decomposition of causal influences
+% applied to integrated information." Journal of neuroscience methods 330 (2020): 108443
+% for additional information.
 %
 % Call:
 %   connectivity = bst_granger_spectral(X, Y, 200, 10, inputs); % general call
 %   connectivity = bst_granger_spectral(X, [], 200, 30, inputs); % every pair
-%   connectivity = bst_granger_spectral(X, [], 200, 30, inputs); % more variance
 % Parameter examples:
 %   inputs.freq           = 0:0.1:100; % specify desired frequencies
 %   inputs.freqResolution = 0.1; % have a high-point FFT
 %   inputs.nTrials        = 9; % use trial-average covariances in AR estimation
 %   inputs.flagFPE        = true; % use AR model with best information criteria
-
-% Note: for those following Chicharro2012, I have used the equivalence
-%                       sigma_{xx}^(xy) |H_{xx}^(xy) (w)|^2
-%                                       =
-%                S_{xx}(w) - sigma_{yy}^(xy) |H_{xy}^(xy) (w)|^2
-% which follows Geweke1982 instead. As Chicharro notes, it may be better to use his
-% formulation because it separates out instantaneous causality I think.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -81,11 +72,13 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 % =============================================================================@
 %
 % Authors: Sergul Aydore & Syed Ashrafulla, 2012
+% Modified by: Davide Nuzzi, 2021
 
 % reformat to a 2D matrix if necessary, and pull out # of trials
 if ndims(X) == 3
   inputs.nTrials = size(X,3);
   X = reshape(X, size(X, 1), []);
+  Y = reshape(Y, size(Y, 1), []);
 elseif ~isfield(inputs, 'nTrials')
   inputs.nTrials = 1;
 end
@@ -110,7 +103,6 @@ if isfield(inputs, 'standardize') && inputs.standardize
   
   % detrend Y only if it is not empty
   if ~isempty(Y)
-    Y = reshape(Y, size(Y, 1), []); % reshape to 2D matrix first
     for iTrial = 1:inputs.nTrials
       Y(:, (iTrial-1)*nTimes + (1:nTimes)) = Y(:, (iTrial-1)*nTimes + (1:nTimes)) - ( Y(:, (iTrial-1)*nTimes + (1:nTimes)) / detrender ) * detrender;
       Y(:, (iTrial-1)*nTimes + (1:nTimes)) = diag( sqrt(sum(Y(:, (iTrial-1)*nTimes + (1:nTimes)).^2, 2)) ) \ Y(:, (iTrial-1)*nTimes + (1:nTimes));
@@ -157,26 +149,49 @@ if isempty(Y) % auto-causality between signals in X, so we can halve the number 
   for iX = 1:size(X, 1)
     for iY = iX+1 : size(X, 1) % to avoid auto-causality
       
-        % two-variate model for given source
+        % two-variate model
         [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); X(iY, :)], order, inputs.nTrials, inputs.flagFPE);
-        
-        % spectra and power of forward system
-        [spectra, freq, forward] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
 
-        % Geweke-Granger spectral causality from source to sink
-        unrestricted = abs(spectra(1, 1, :)); restriction = forward(1, 2, :); % S_{sink}(f) and |H_{sink, source} (f)|^2, w/ abs to get rid of 1e-16 imag part
-        residualVariance = noiseCovariance(2,2) - noiseCovariance(2, 1) / noiseCovariance(1, 1) * noiseCovariance(1, 2); % partial variance of source
-        restricted = abs(unrestricted) - abs(restriction).^2 * residualVariance; % S_{sink} (f) - |H_{sink, source} (f)|^2 sigma_{source | sink}
-        connectivity(iX, iY, abs(restricted) > 1e-60) = unrestricted(abs(restricted) > 1e-60) ./ restricted(abs(restricted) > 1e-60) - 1;% Geweke-Granger
-        % sigma_{source | sink} = partial covariance which is the formula above (sigma_{source} - rho_{source, sink} / sigma_{sink} * rho_{sink, source})
-
-        % Geweke-Granger spectral causality from sink back to source (to halve the # of MVAR fittings)
-        unrestricted = abs(spectra(2, 2, :)); restriction = forward(2, 1, :); % S_{source}(f) and |H_{source, sink} (f)|^2, w/ abs to get rid of 1e-16 imag part
-        residualVariance = noiseCovariance(1,1) - noiseCovariance(1, 2) / noiseCovariance(2, 2) * noiseCovariance(2, 1); % partial variance of sink
-        restricted = abs(unrestricted) - abs(restriction).^2 * residualVariance; % S_{source} (f) - |H_{source, sink} (f)|^2 sigma_{sink | source}
-        connectivity(iY, iX, abs(restricted) > 1e-60) = unrestricted(abs(restricted) > 1e-60) ./ restricted(abs(restricted) > 1e-60) - 1; % Geweke-Granger
-        % sigma_{sink | source} = partial covariance which is the formula above (sigma_{sink} - rho_{sink, source} / sigma_{source} * rho_{source, sink})
+        % spectra of full model
+        [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
         
+        % data correlations using Yule-Walker (up to high order 50)
+        R = yule_walker_inverse(transfers, noiseCovariance, 50);
+
+        % restricted model iY -> iX
+        
+        % mask for the coefficients of the restricted model
+        mask = ones(2);
+        mask(1,2) = 0;
+        
+        % restricted bivariate model (using masked row-by-row solution of
+        % YW equations)
+        [transfers_restricted,noiseCovariance_restricted] = yule_walker_mask(R, mask);
+      
+         % spectra of restricted system
+        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+
+        % connectivity at each frequence (see Cohen et al., 2020)
+        for n = 1:length(freq)
+            connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+        end
+        
+        % restricted model iX -> iY
+
+        % mask for the coefficients of the restricted model
+        mask = ones(2);
+        mask(2,1) = 0;
+        
+        % restricted bivariate model
+        [transfers_restricted,noiseCovariance_restricted] = yule_walker_mask(R, mask);
+      
+         % spectra of restricted system
+        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+
+        % connectivity at each frequence (see Cohen et al., 2020)
+        for n = 1:length(freq)
+            connectivity(iY, iX, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+        end
     end
     
     % diagonal will equal the maximum of all inflows and outflows for iX, specific to each frequency
@@ -196,22 +211,30 @@ else % we have to use all pairs of signals
       
       if max(abs(X(iX, :) - Y(iY, :))) > eps % by default, if X(sink) = Y(source), the causality is 0 everywhere
 
-        % 2-variate model for given source
+        % two-variate model 
         [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); Y(iY, :)], order, inputs.nTrials, inputs.flagFPE);
-
-        % spectra and power of forward system
-        [spectra, freq, forward] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
-        spectra = abs(spectra(1, 1, :)); % limit to the autospectrum of the sink S_{sink} (f) and take absolute value to rid the 1e-16 imaginary part
-        forward = forward(1, 2, :); % limit to the cross-transfer from source to sink H_{sink, source} (f)
         
-        % partial covariance of residual
-        residualVariance = noiseCovariance(2,2) - noiseCovariance(2,1) / noiseCovariance(1, 1) * noiseCovariance(1, 2);
-        % sigma_{source | sink} = partial covariance which is the formula above (sigma_{source} - rho_{source, sink} / sigma_{sink} * rho_{sink, source})
+        % spectra of full model
+        [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
+      
+        % data correlations using Yule-Walker (up to high order 50)
+        R = yule_walker_inverse(transfers, noiseCovariance, 50);
 
-        % Geweke-Granger spectral causality from source to sink
-        restricted = spectra - abs(forward).^2 * residualVariance; % S_{sink} (f) - |H_{sink, source} (f)|^2 sigma_{source | sink}
-        connectivity(iX, iY, abs(restricted) > 1e-60) = spectra(abs(restricted) > 1e-60) ./ restricted(abs(restricted) > 1e-60) - 1; % Geweke-Granger
+        % mask for the coefficients of the restricted model
+        mask = ones(2);
+        mask(1,2) = 0;
+        
+        % restricted bivariate model (using masked row-by-row solution of YW equations)
+        [transfers_restricted,noiseCovariance_restricted] = yule_walker_mask(R, mask);
+      
+         % spectra of restricted system
+        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
 
+        % connectivity at each frequence (see Cohen et al., 2020)        
+        for n = 1:length(freq)
+            connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+        end
+        
       else % save duplicates to modify later
         
         duplicates(end+1, :) = [iX iY]; %#ok<AGROW>
@@ -243,18 +266,18 @@ pValues = NaN; % no parametric p-values for now
 
 end
 
-%% ======================================================== estimation for multivariate autoregression ========================================================
-function [spectra, freq, forward] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs)
-% BST_MVAR_SPECTRUM     Calculate the parametric spectra of a bivariate system
-%                       with given MVAR coefficients & an estimate of the
-%                       covariance matrix of the innovation (i.e. noise)
-%                       process.
+%% ======================================================== spectra estimation  ========================================================
+function [spectra, freq] = bst_granger_spectral_spectrum(A, Sigma, nFFT, Fs)
+% BST_GRANGER_SPECTRAL_SPECTRUM     Calculate the parametric spectra of a multivariate system
+%                                   with given MVAR coefficients and an estimate of the
+%                                   covariance matrix of the innovation (i.e. noise)
+%                                   process.
 %
 % Inputs:
 %   transfers         - transfer matrices in AR process
-%                       [A: 2 x 2P matrix, P = order]
+%                       [A: N x NP matrix, P = order]
 %   noiseCovariance   - variance of residuals
-%                       [C: 2 x 2 matrix]
+%                       [C: N x N matrix]
 %   nFFT              - number of FFT bins to calculate spectra
 %                       [NF: positive number, usually power of 2]
 %   Fs                - sampling frequency of data
@@ -262,84 +285,40 @@ function [spectra, freq, forward] = bst_granger_spectral_spectrum(transfers, noi
 %
 % Outputs:
 %   spectra           - cross-spectrum between each pair of variables
-%                       [S: 2 x 2 x NF/2 matrix]
+%                       [S: N x N x NF/2 matrix]
 %   freq              - frequencies used based on # of FFT bins
 %                       [F: NF/2 x 1 matrix]
-%   forward           - forward transform in frequency from source to sink
-%                       [H: 2 x 2 x NF/2 matrix]
 %   --> all outputs have length NF/2, ignoring frequenices past Fs/2
-%
 % Call:
 %   spectra = bst_mvar_spectrum(transfers, C, 512, 200); % basic
 %   spectra = bst_mvar_spectrum(transfers, C, 2048, 200); % add FFT interp
-%   [spectra, freq] = bst_mvar_spectrum(transfers, C, 512, 200); % grab freqs
-%   [~, ~, forward] = bst_mvar_spectrum(transfers, C, 64, 200); % causality
-
-% Notes:
-% The DTFT we want is
-% H = I - sum_p C_p e^{-j 2 pi f/Fs p} = sum_p D_p e^{-j 2 pi f/Fs (p-1)} where D_1 = 1 and D_p = -C_{p-1} for p > 1
-% MatLab's FFT provides
-% G = sum_n x_n e^{-j 2 pi (k-1)/N (n-1)}
-% so the matching is p = n and (k-1)/N = f/Fs, after vectorizing H.
 
 % frequencies to estimate cross-spectra
 freq = Fs/2*linspace(0, 1, nFFT/2 + 1);
 freq(end) = [];
 
-%% Inverse of transfer function in frequency
-% Inverse transfer means the transfer function from the sources to the innovations. We calculate this at each frequency.
-% The inverse transfer from source a to innovation b is
-%                1 - \sum_{n=1}^N a_{ab} [n] e^{-j2pi * f * n}
+% get number of variables, fft bins and order of the model
+M = nFFT/2;
+[N,pN] = size(A);
+p = pN/N;
 
-inverse = fft(reshape([eye(2) -transfers], 4, [])', nFFT); % reshape so we can do a vector FFT quickly
-inverse = inverse(1:nFFT/2, :); % restrict to the first symmetric half of the spectrum
+% evaluate the trasfer function and the spectra
+H = complex(zeros(N,N,M));
+spectra = complex(zeros(N,N,M));
 
-%% Forward transfer in autoregressive model
+A_r = reshape(A,[N,N,p]);
+w_vec = 0:pi/(nFFT/2-1):pi;
 
-% pieces of 2x2 inverse
-forward = zeros(2, 2, nFFT/2); % an important caveat is that I did not reshape inverse earlier;
-forward(1,1,:) = inverse(:,4); forward(1,2,:) = -inverse(:,3); % as a result, we have a column-wise index mapping: 4 = (2,2) and 3 = (1,2)
-forward(2,1,:) = -inverse(:,2); forward(2,2,:) = inverse(:,1); % in addition, 2 = (2,1) and 1 = (1,1). then these elements fit the 2x2 matrix inverse
-detInverse = inverse(:,1).*inverse(:,4) - inverse(:,3).*inverse(:,2); % the same thing happens here, using the indexing to avoid a reshape() call
+for n = 1:M
+    e = zeros(p,1);
+    for k = 1:p
+        e(k) = exp(-1i * w_vec(n) * k);
+    end
+    e = permute(repmat(e,[1,N,N]),[2,3,1]);
+    A_w = eye(N) - sum(A_r .* e,3);
+    H(:,:,n) = inv(A_w);
+    spectra(:,:,n) = H(:,:,n) * Sigma * ctranspose(H(:,:,n));   
+end
 
-% normalization by determinant to get inverse
-forward = bst_bsxfun(@rdivide, forward, reshape(detInverse, [1 1 length(freq)])); % complete the inversion by dividing by frequency-dependent determinant
-
-%% Cross-spectrum from forward model
-% The forward transfer is the inverse of the inverse transfer at each frequency f. Denoted H(f), the power spectral density is then HH' at each frequency.
-
-% the loop that we won't use
-% for idxFreq = 1:nFFT
-%   spectra(:, :, idxFreq) = H(:,:,idxFreq) * noiseCovariance * H(:,:,idxFreq)';
-% end
-
-% formula for the matrix multiplication
-spectra(1,1,:) = ... % 1,1 element is H_11 C_11 H_11^* + H_12 C_12 H_11^* + H_11 C_12 H_12^* + H_12 C_22 H_12^* (and I combine the middle two into 2 Re{.})
-  noiseCovariance(1,1) * forward(1,1,:) .* conj(forward(1,1,:)) ...
-  + noiseCovariance(1,2) * real(forward(1,2,:) .* conj(forward(1,1,:))) * 2 ...
-  + noiseCovariance(2,2) * forward(1,2,:) .* conj(forward(1,2,:));
-spectra(1,2,:) = ... % 1,2 element is H_11 C_11 H_21^* + H_12 C_12 H_21^* + H_11 C_12 H_22^* + H_12 C_22 H_22^*
-  noiseCovariance(1,1) * forward(2,1,:) .* conj(forward(1,1,:)) ...
-  + noiseCovariance(1,2) * forward(2,2,:) .* conj(forward(1,1,:)) ...
-  + noiseCovariance(1,2) * forward(2,1,:) .* conj(forward(1,2,:)) ...
-  + noiseCovariance(2,2) * forward(1,2,:) .* conj(forward(1,2,:));
-spectra(2,1,:) = conj(spectra(1,2,:)); % for speed, force the 2,1 element to be the conjugate of the 1,2 element so we have conjugate symmetry
-spectra(2,2,:) = ... % 2,2 element is H_21 C_11 H_21^* + H_22 C_12 H_21^* + H_21 C_12 H_22^* + H_22 C_22 H_22^* (and I combine the middle two into 2 Re{.})
-  noiseCovariance(1,1) * forward(2,1,:) .* conj(forward(2,1,:)) ...
-  + noiseCovariance(1,2) * real(forward(2,2,:) .* conj(forward(2,1,:))) * 2 ...
-  + noiseCovariance(2,2) * forward(2,2,:) .* conj(forward(2,2,:));
-
-%% Normalize for sampling rate, and truncate if necessary
-
-% normalization
-forward = forward / sqrt(Fs);
-spectra = spectra / Fs;
-
-%% Confidence intervals
-% taken from Kay, pp 194-195
-% alpha = 1 - ci;
-% original = -sqrt(2) * erfcinv( 2 * ( 1 - alpha/2) );
-% lower = abs(spectra) * (1 - sqrt(2 * order / nTimes) * original);
-% upper = abs(spectra) * (1 + sqrt(2 * order / nTimes) * original);
 
 end %% <== FUNCTION END
