@@ -1385,9 +1385,7 @@ function AddElectrode(newLabel)
         return;
     end
     % Proceed only if this is an implantation folder
-    ChannelFile = GlobalData.DataSet(iDS(1)).ChannelFile;
-    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    if ~strcmpi(folderName, 'implantation')
+    if ~isImplantationFolder(iDS)
         return;
     end
     % Parse inputs
@@ -1458,9 +1456,7 @@ function AddContact()
         return;
     end
     % Proceed only if this is an implantation folder
-    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
-    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    if ~strcmpi(folderName, 'implantation')
+    if ~isImplantationFolder(iDSall)
         return;
     end
     if isempty(sSelElec)
@@ -1542,9 +1538,7 @@ function RemoveElectrode(sSelElec)
         return;
     end
     % Proceed only if this is an implantation folder
-    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
-    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    if ~strcmpi(folderName, 'implantation')
+    if ~isImplantationFolder(iDSall)
         return;
     end
     % Parse inputs
@@ -1640,9 +1634,7 @@ function RemoveContact()
         return;
     end
     % Proceed only if this is an implantation folder
-    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
-    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    if ~strcmpi(folderName, 'implantation')
+    if ~isImplantationFolder(iDSall)
         return;
     end
     if isempty(sSelElec)
@@ -2920,8 +2912,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             return
         end
         % Check if this is an implantation folder
-        [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-        isImplantation = strcmpi(folderName, 'implantation');
+        isImplantation = isImplantationFolder(iDS);
         % Check if there are channels available
         Channels = GlobalData.DataSet(iDS(1)).Channel;
         if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
@@ -3302,8 +3293,7 @@ function SetElectrodeLoc(iLoc, jButton)
     % Get the contact for this electrode
     iChan = find(strcmpi({GlobalData.DataSet(iDS(1)).Channel.Group}, sSelElec.Name));
     % Check if this is an implantation folder
-    [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-    isImplantation = strcmpi(folderName, 'implantation');
+    isImplantation = isImplantationFolder(iDS);
     % Update contact positions
 %     if (~isempty(iChan) || isImplantation) && ...
     if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
@@ -3753,4 +3743,12 @@ function XYZ = GetCrosshairLoc(cs)
             Handles = bst_figures('GetFigureHandles', hFig);
             XYZ = figure_mri('GetLocation', cs, sMri, Handles);
     end
+end
+
+%% ===== CHECK IF IMPLANTATION FOLDER =====
+function isImplantation = isImplantationFolder(iDS)
+    global GlobalData;
+    [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
+    % Check if folder name starts with 'implantation'
+    isImplantation = strncmpi(folderName, 'implantation', 12);
 end
