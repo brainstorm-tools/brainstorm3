@@ -271,45 +271,13 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
              'ComputeKernel',  1, ...
              'DataTypes',      {{'SEEG'}}));
     
-    % Snapshot: Sensor time series (SPS bipolar montage)
-    hFigTs = view_timeseries(sFileInterictalSpike.FileName, 'SEEG');
-    panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
-    panel_time('SetCurrentTime', 0.041); % First peak of SPS10-SPS11 at 41ms
-    bst_report('Snapshot', hFigTs, sFileInterictalSpike.FileName, 'Sensor time series (SPS bipolar)', [200, 200, 400, 400]);
-    
-    % Snapshot: 2D layout sensor time series
-    hFigTopo = view_topography(sFileInterictalSpike.FileName, 'SEEG', '2DLayout');
-    figure_topo('SetTopoLayoutOptions', 'TimeWindow', [-0.5, 0.5]); % Set time window: -500ms to 500ms
-    panel_time('SetCurrentTime', 0.041);
-    bst_report('Snapshot', hFigTopo, sFileInterictalSpike.FileName, '2D layout sensor time series', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on cortex)
-    hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, sFileInterictalSpikeSrc.FileName);
-    hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
-    panel_surface('SetDataThreshold', hFigSrcCortex, 1, 0.26); % Set amplitude threshold 26%
-    hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcCortex, sFileInterictalSpikeSrc.FileName, 'Sources: Display on cortex', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on 3D MRI)
-    hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileInterictalSpikeSrc.FileName);
-    hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
-    figure_3d('JumpMaximum', hFigSrcMri3d);
-    figure_3d('SetStandardView', hFigSrcMri3d, 'right');
-    hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcMri3d, sFileInterictalSpikeSrc.FileName, 'Sources: Display on 3D MRI', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on MRI Viewer)
-    hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileInterictalSpikeSrc.FileName);
-    Handles = bst_figures('GetFigureHandles', hFigSrcMri);
-    Handles.jRadioRadiological.setSelected(1);
-    Handles.jCheckMipFunctional.setSelected(1);
-    panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.56); % Set amplitude threshold 56%
-    figure_mri('JumpMaximum', hFigSrcMri);
-    bst_report('Snapshot', hFigSrcMri, sFileInterictalSpikeSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
-    close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
-    
+    % Snapshots: Sensor and source time series
+    SnapshotsSensorSourceTimeSeries(sFileInterictalSpike.FileName, sFileInterictalSpikeSrc.FileName, ...
+                              0.041, ...             % First peak of SPS10-SPS11 at 41ms
+                              [-0.5 0.5], ...        % Time window: -500ms to 500ms
+                              [0.26, 0.56], ...      % Data threshold for cortical activations on (Cortex, MRI Viewer)
+                              [200, 200, 400, 400]);
+
     % ===== Create a Desikan-Killiany atlas with scouts only in the right hemisphere ====
     % Load the surface
     [hFig, iDS, iFig] = view_surface_data([], sFileInterictalSpikeSrc.FileName);
@@ -354,44 +322,12 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
              'ComputeKernel',  1, ...
              'DataTypes',      {{'SEEG'}}));
     
-    % Snapshot: Sensor time series (SPS bipolar montage)
-    hFigTs = view_timeseries(sFilesOnset(1).FileName, 'SEEG');
-    panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
-    panel_time('SetCurrentTime', 0.270); % Wave activity at 270ms
-    bst_report('Snapshot', hFigTs, sFilesOnset(1).FileName, 'Sensor time series (SPS bipolar)', [200, 200, 400, 400]);
-    
-    % Snapshot: 2D layout sensor time series
-    hFigTopo = view_topography(sFilesOnset(1).FileName, 'SEEG', '2DLayout');
-    figure_topo('SetTopoLayoutOptions', 'TimeWindow', [-0.5, 0.5]); % Set time window: -500ms to 500ms
-    panel_time('SetCurrentTime', 0.270); % Wave activity at 270ms
-    bst_report('Snapshot', hFigTopo, sFilesOnset(1).FileName, '2D layout sensor time series', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on cortex)
-    hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, sFileLvfaOnsetSrc.FileName);
-    hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
-    panel_surface('SetDataThreshold', hFigSrcCortex, 1, 0.45); % Set amplitude threshold 45%
-    hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcCortex, sFileLvfaOnsetSrc.FileName, 'Sources: Display on cortex', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on 3D MRI)
-    hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileLvfaOnsetSrc.FileName);
-    hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
-    figure_3d('JumpMaximum', hFigSrcMri3d);
-    figure_3d('SetStandardView', hFigSrcMri3d, 'right');
-    hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcMri3d, sFileLvfaOnsetSrc.FileName, 'Sources: Display on 3D MRI', [200, 200, 400, 400]);
-    
-    % Snapshot: Sources (display on MRI Viewer)
-    hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileLvfaOnsetSrc.FileName);
-    Handles = bst_figures('GetFigureHandles', hFigSrcMri);
-    Handles.jRadioRadiological.setSelected(1);
-    Handles.jCheckMipFunctional.setSelected(1);
-    panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.45); % Set amplitude threshold 45%
-    figure_mri('JumpMaximum', hFigSrcMri);
-    bst_report('Snapshot', hFigSrcMri, sFileLvfaOnsetSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
-    close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
+    % Snapshots: Sensor and source time series
+    SnapshotsSensorSourceTimeSeries(sFilesOnset(1).FileName, sFileLvfaOnsetSrc.FileName, ...
+                              0.270, ...        % Wave activity at 270ms
+                              [-0.5 0.5], ...   % Time window: -500ms to 500ms
+                              [0.45, 0.45], ... % Data threshold for cortical activations on (Cortex, MRI Viewer)
+                              [200, 200, 400, 400]);
     
     %% ===== MODELING ICTAL ONSET WITH LVFA (SENSOR SPACE) =====
     % Process: Time-frequency (Morlet wavelets)
@@ -411,39 +347,13 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
              'Method',          'morlet'), ...
         'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
     
-    % Snapshot: Time-frequency maps (all sensors)
-    hFigTfMapAll = view_timefreq(sFilesOnsetBipTf.FileName, 'AllSensors');
-    sOptions = panel_display('GetDisplayOptions');
-    sOptions.Function = 'log'; % Log power
-    sOptions.HighResolution = 1; % Smooth display
-    panel_display('SetDisplayOptions', sOptions);
-    bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
-    sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
-    sColormap.Contrast = 0.49; % Contrast = 49
-    sColormap.Brightness = 0.65; % Brightness = -65
-    sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
-    bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
-    bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
-    bst_report('Snapshot', hFigTfMapAll, sFilesOnsetBipTf.FileName, 'Time-freq map (all sensors)', [200, 200, 600, 500]);
-    
-    % Snapshot: Time-frequency maps (one sensor)
-    hFigTfMap = view_timefreq(sFilesOnsetBipTf.FileName, 'SingleSensor');
-    sOptions = panel_display('GetDisplayOptions');
-    sOptions.RowName = 'SPS8-SPS9';
-    sOptions.Function = 'log';
-    sOptions.HighResolution = 1;
-    panel_display('SetDisplayOptions', sOptions);
-    bst_report('Snapshot', hFigTfMap, sFilesOnsetBipTf.FileName, 'Time-freq map (SPS8-SPS9)', [200, 200, 600, 500]);
-    close([hFigTfMapAll hFigTfMap]);
-    
-    % Power spectrum and time series
-    hFigTf1 = view_spectrum(sFilesOnsetBipTf.FileName, 'Spectrum', 'SPS8-SPS9');
-    hFigTf2 = view_spectrum(sFilesOnsetBipTf.FileName, 'TimeSeries', 'SPS8-SPS9');
-    panel_freq('SetCurrentFreq', 1, 0);
-    panel_time('SetCurrentTime', 0.7735);
-    bst_report('Snapshot', hFigTf1, sFilesOnsetBipTf.FileName, 'Power-spectrum (SPS8-SPS9)', [200, 200, 600, 400]);
-    bst_report('Snapshot', hFigTf2, sFilesOnsetBipTf.FileName, 'Time-series (SPS8-SPS9)', [200, 200, 600, 400]);
-    close([hFigTf1 hFigTf2]);
+    % Snapshots: Sensor time frequency
+    SnapshotsSensorSourceTimeFreq(sFilesOnsetBipTf.FileName, ...
+                                 0.49, ...        % Brightness 49%
+                                 0.65, ...        % Contrast -65%
+                                 0.7735, ...      % Time
+                                 'SPS8-SPS9', ... % Sensor name  
+                                 [200, 200, 600, 400]);
     
     %% ===== MODELING ICTAL ONSET WITH LVFA (SOURCE SPACE) =====
     % Process: Extract scout time series
@@ -482,39 +392,13 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
              'Method',          'morlet'), ...
         'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
     
-    % Snapshot: Time-frequency maps (all sources)
-    hFigTfMapAll = view_timefreq(sFileLvfaOnsetTf.FileName, 'AllSensors');
-    sOptions = panel_display('GetDisplayOptions');
-    sOptions.Function = 'log'; % Log power
-    sOptions.HighResolution = 1; % Smooth display
-    panel_display('SetDisplayOptions', sOptions);
-    bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
-    sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
-    sColormap.Contrast = 0.52; % Contrast = 52
-    sColormap.Brightness = 0.63; % Brightness = -63
-    sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
-    bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
-    bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
-    bst_report('Snapshot', hFigTfMapAll, sFileLvfaOnsetTf.FileName, 'Time-freq map (all sources)', [200, 200, 600, 500]);
-    
-    % Snapshot: Time-frequency maps (one source)
-    hFigTfMap = view_timefreq(sFileLvfaOnsetTf.FileName, 'SingleSensor');
-    sOptions = panel_display('GetDisplayOptions');
-    sOptions.RowName = 'postcentral R.3';
-    sOptions.Function = 'log';
-    sOptions.HighResolution = 1; % Smooth display
-    panel_display('SetDisplayOptions', sOptions);
-    bst_report('Snapshot', hFigTfMap, sFileLvfaOnsetTf.FileName, 'Time-freq map (postcentral R.3)', [200, 200, 600, 500]);
-    close([hFigTfMapAll hFigTfMap]);
-    
-    % Power spectrum and time series
-    hFigTf1 = view_spectrum(sFileLvfaOnsetTf.FileName, 'Spectrum', 'postcentral R.3');
-    hFigTf2 = view_spectrum(sFileLvfaOnsetTf.FileName, 'TimeSeries', 'postcentral R.3');
-    panel_freq('SetCurrentFreq', 1, 0);
-    panel_time('SetCurrentTime', 0.7735);
-    bst_report('Snapshot', hFigTf1, sFileLvfaOnsetTf.FileName, 'Power-spectrum (postcentral R.3)', [200, 200, 600, 400]);
-    bst_report('Snapshot', hFigTf2, sFileLvfaOnsetTf.FileName, 'Time-series (postcentral R.3)', [200, 200, 600, 400]);
-    close([hFigTf1 hFigTf2]);
+    % Snapshots: Source time frequency
+    SnapshotsSensorSourceTimeFreq(sFileLvfaOnsetTf.FileName, ...
+                                 0.52, ...              % Brightness 52%
+                                 0.63, ...              % Contrast -63%
+                                 0.7735, ...            % Time
+                                 'postcentral R.3', ... % Source name  
+                                 [200, 200, 600, 400]);
     
     %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SENSOR SPACE) =====
     % Process: Time-frequency (Morlet wavelets)
@@ -554,7 +438,7 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
     sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
     bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
     bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
-    bst_report('Snapshot', hFigTfMap, sFilesOnsetTf.FileName, 'Time-freq map (PIN5-PIN6)', [200, 200, 600, 500]);
+    bst_report('Snapshot', hFigTfMap, sFilesOnsetTf.FileName, 'Time-freq map (PIN5-PIN6)', [200, 200, 600, 400]);
     close([hFigTs hFigTfMap]);
     
     %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SOURCE SPACE) =====
@@ -606,4 +490,87 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
     end
     
     disp([10 'DEMO> Seizure Fingerpriting tutorial completed' 10]);
+
+    % =================================================================%
+    % ===================== NESTED FUNCTIONS ==========================%
+    % =================================================================%
+    %% ===== SNAPSHOTS: SENSOR AND SOURCE TIME SERIES =====
+    function SnapshotsSensorSourceTimeSeries(SensorFile, SourceFile, Time, TimeWindow, DataThreshold, WinPos)
+        % Snapshot: Sensor time series (SPS bipolar montage)
+        hFigTs = view_timeseries(SensorFile, 'SEEG');
+        panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
+        panel_time('SetCurrentTime', Time);
+        bst_report('Snapshot', hFigTs, SensorFile, 'Sensor time series (SPS bipolar)', WinPos);
+        
+        % Snapshot: 2D layout sensor time series
+        hFigTopo = view_topography(SensorFile, 'SEEG', '2DLayout');
+        figure_topo('SetTopoLayoutOptions', 'TimeWindow', TimeWindow);
+        panel_time('SetCurrentTime', Time);
+        bst_report('Snapshot', hFigTopo, SensorFile, '2D layout sensor time series', WinPos);
+        
+        % Snapshot: Sources (display on cortex)
+        hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, SourceFile);
+        ChannelFile = bst_get('ChannelFileForStudy', SensorFile);
+        hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
+        panel_surface('SetDataThreshold', hFigSrcCortex, 1, DataThreshold(1));
+        hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
+        zoom(hAxes, 1.3);
+        bst_report('Snapshot', hFigSrcCortex, SourceFile, 'Sources: Display on cortex', WinPos);
+        
+        % Snapshot: Sources (display on 3D MRI)
+        hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, SourceFile);
+        hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
+        figure_3d('JumpMaximum', hFigSrcMri3d);
+        figure_3d('SetStandardView', hFigSrcMri3d, 'right');
+        hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
+        zoom(hAxes, 1.3);
+        bst_report('Snapshot', hFigSrcMri3d, SourceFile, 'Sources: Display on 3D MRI', WinPos);
+        
+        % Snapshot: Sources (display on MRI Viewer)
+        hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SourceFile);
+        Handles = bst_figures('GetFigureHandles', hFigSrcMri);
+        Handles.jRadioRadiological.setSelected(1);
+        Handles.jCheckMipFunctional.setSelected(1);
+        panel_surface('SetDataThreshold', hFigSrcMri, 1, DataThreshold(2));
+        figure_mri('JumpMaximum', hFigSrcMri);
+        bst_report('Snapshot', hFigSrcMri, SourceFile, 'Sources: Display on MRI viewer', WinPos);
+        close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
+    end
+    
+    %% ===== SNAPSHOTS: SENSOR AND SOURCE TIME FREQUENCY =====
+    function SnapshotsSensorSourceTimeFreq(SensorSourceFile, Brightness, Contrast, Time, SensorSourceName, WinPos)
+        % Snapshot: Time frequency maps (all sensors/sources)
+        hFigTfMapAll = view_timefreq(SensorSourceFile, 'AllSensors');
+        sOptions = panel_display('GetDisplayOptions');
+        sOptions.Function = 'log'; % Log power
+        sOptions.HighResolution = 1; % Smooth display
+        panel_display('SetDisplayOptions', sOptions);
+        bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
+        sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
+        sColormap.Contrast = Brightness;
+        sColormap.Brightness = Contrast;
+        sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
+        bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
+        bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
+        bst_report('Snapshot', hFigTfMapAll, SensorSourceFile, 'Time frequency map (all)', WinPos);
+        
+        % Snapshot: Time frequency maps (one sensor/source)
+        hFigTfMap = view_timefreq(SensorSourceFile, 'SingleSensor');
+        sOptions = panel_display('GetDisplayOptions');
+        sOptions.RowName = SensorSourceName;
+        sOptions.Function = 'log';
+        sOptions.HighResolution = 1;
+        panel_display('SetDisplayOptions', sOptions);
+        bst_report('Snapshot', hFigTfMap, SensorSourceFile, ['Time frequency map (' SensorSourceName ')'], WinPos);
+        close([hFigTfMapAll hFigTfMap]);
+        
+        % Power spectrum and time series
+        hFigTf1 = view_spectrum(SensorSourceFile, 'Spectrum', SensorSourceName);
+        hFigTf2 = view_spectrum(SensorSourceFile, 'TimeSeries', SensorSourceName);
+        panel_freq('SetCurrentFreq', 1, 0);
+        panel_time('SetCurrentTime', Time);
+        bst_report('Snapshot', hFigTf1, SensorSourceFile, ['Power spectrum (' SensorSourceName ')'], WinPos);
+        bst_report('Snapshot', hFigTf2, SensorSourceFile, ['Time series (' SensorSourceName ')'], WinPos);
+        close([hFigTf1 hFigTf2]);
+    end
 end
