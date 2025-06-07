@@ -69,6 +69,13 @@ gui_brainstorm('DeleteProtocol', ProtocolName);
 gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Start a new report
 bst_report('Start');
+% Reset visualization filters
+panel_filter('SetFilters', 0, [], 0, [], 0, [], 0, 0);
+% Reset colormaps
+bst_colormaps('RestoreDefaults', 'timefreq');
+bst_colormaps('RestoreDefaults', 'source');
+% Hide scouts
+panel_scout('SetScoutShowSelection', 'none');
 
 %% ===== IMPORT MRI VOLUMES =====
 % Create subject
@@ -112,9 +119,17 @@ bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
     'vox2ras',     2, ... % Apply voxel=>subject transformation and the coregistration transformation
     'mrifile',     {file_fullpath(DbCtFilePostSkullStrip), 'BST'});
 
+% Snapshot: SEEG electrodes in MRI slices
+ChannelFile = bst_get('ChannelFileForStudy', sFilesRaw(1).FileName);
+hFigMri3d = view_channels_3d(ChannelFile, 'SEEG', 'anatomy', 1, 0);
+hAxes = findobj(hFigMri3d, 'Tag', 'Axes3D');
+zoom(hAxes, 1.5);
+bst_report('Snapshot', hFigMri3d, ChannelFile, 'SEEG electrodes in 3D MRI slices', [200, 200, 400, 400]);
+close(hFigMri3d);
+
 %% ===== REVIEW RECORDINGS =====
 % Process: Power spectrum density (Welch)
-bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
+sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
     'timewindow',  [], ...
     'win_length',  5, ...
     'win_overlap', 50, ...
@@ -127,6 +142,14 @@ bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
          'Measure',         'magnitude', ...
          'Output',          'all', ...
          'SaveKernel',      0));
+
+% Process: Snapshot: PSD with power line noise
+panel_display('SetDisplayFunction', 'log');
+bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
+    'target',   10, ...  % Frequency spectrum
+    'modality', 6, ...   % SEEG
+    'Comment',  'Power spectrum density');
+
 % Process: Set channels type
 % 'MPS16' channel needs to be excluded because for BEM head modeling it lies outside the inner skull
 bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], 'sensortypes', 'MPS16', 'newtype', 'SEEG_NO_LOC');
@@ -185,6 +208,19 @@ bst_process('CallProcess', 'process_generate_bem', [], [], ...
     'ninner',      1922, ...
     'thickness',   4, ...
     'method',      'brainstorm');
+
+% Snapshot: BEM surfaces
+sSubject = bst_get('Subject', SubjectName);
+BemInnerSkullFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+BemOuterSkullFile = sSubject.Surface(sSubject.iOuterSkull).FileName;
+BemScalpFile      = sSubject.Surface(sSubject.iScalp).FileName;
+hFigSurf = view_surface(BemInnerSkullFile);
+hFigSurf = view_surface(BemOuterSkullFile, [], [], hFigSurf);
+hFigSurf = view_surface(BemScalpFile, [], [], hFigSurf);
+figure_3d('SetStandardView', hFigSurf, 'left'); % Set orientation (left)
+bst_report('Snapshot', hFigSurf, BemInnerSkullFile, 'BEM surfaces', [200, 200, 400, 400]);
+close(hFigSurf);
+
 % Process: Compute head model
 bst_process('CallProcess', 'process_headmodel', sFileInterictalSpike, [], ...
     'comment',     '', ...
@@ -213,6 +249,11 @@ bst_process('CallProcess', 'process_noisecov', sFilesRaw(1), [], ...
     'copycond', 1, ... % Copy to other folders
     'copysubj', 0);
 
+% Process: Snapshot: Noise covariance
+bst_process('CallProcess', 'process_snapshot', sFilesRaw(1), [], ...
+    'target',  3, ...  % Noise covariance
+    'Comment', 'Noise covariance');
+
 %% ===== MODELING INTERICTAL SPIKES =====
 % Process: Compute sources [2018] (SEEG)
 sFileInterictalSpikeSrc = bst_process('CallProcess', 'process_inverse_2018', sFileInterictalSpike, [], ...
@@ -229,6 +270,46 @@ sFileInterictalSpikeSrc = bst_process('CallProcess', 'process_inverse_2018', sFi
          'SnrFixed',       3, ...
          'ComputeKernel',  1, ...
          'DataTypes',      {{'SEEG'}}));
+
+% Snapshot: Sensor time series (SPS bipolar montage)
+hFigTs = view_timeseries(sFileInterictalSpike.FileName, 'SEEG');
+panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
+panel_time('SetCurrentTime', 0.041); % First peak of SPS10-SPS11 at 41ms
+bst_report('Snapshot', hFigTs, sFileInterictalSpike.FileName, 'Sensor time series (SPS bipolar)', [200, 200, 400, 400]);
+
+% Snapshot: 2D layout sensor time series
+hFigTopo = view_topography(sFileInterictalSpike.FileName, 'SEEG', '2DLayout');
+figure_topo('SetTopoLayoutOptions', 'TimeWindow', [-0.5, 0.5]); % Set time window: -500ms to 500ms
+panel_time('SetCurrentTime', 0.041);
+bst_report('Snapshot', hFigTopo, sFileInterictalSpike.FileName, '2D layout sensor time series', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on cortex)
+hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, sFileInterictalSpikeSrc.FileName);
+hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
+panel_surface('SetDataThreshold', hFigSrcCortex, 1, 0.26); % Set amplitude threshold 26%
+hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
+zoom(hAxes, 1.3);
+bst_report('Snapshot', hFigSrcCortex, sFileInterictalSpikeSrc.FileName, 'Sources: Display on cortex', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on 3D MRI)
+hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileInterictalSpikeSrc.FileName);
+hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
+figure_3d('JumpMaximum', hFigSrcMri3d);
+figure_3d('SetStandardView', hFigSrcMri3d, 'right');
+hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
+zoom(hAxes, 1.3);
+bst_report('Snapshot', hFigSrcMri3d, sFileInterictalSpikeSrc.FileName, 'Sources: Display on 3D MRI', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on MRI Viewer)
+hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileInterictalSpikeSrc.FileName);
+Handles = bst_figures('GetFigureHandles', hFigSrcMri);
+Handles.jRadioRadiological.setSelected(1);
+Handles.jCheckMipFunctional.setSelected(1);
+panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.56); % Set amplitude threshold 56%
+figure_mri('JumpMaximum', hFigSrcMri);
+bst_report('Snapshot', hFigSrcMri, sFileInterictalSpikeSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
+close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
+
 % ===== Create a Desikan-Killiany atlas with scouts only in the right hemisphere ====
 % Load the surface
 [hFig, iDS, iFig] = view_surface_data([], sFileInterictalSpikeSrc.FileName);
@@ -273,9 +354,48 @@ sFileLvfaOnsetSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesOns
          'ComputeKernel',  1, ...
          'DataTypes',      {{'SEEG'}}));
 
+% Snapshot: Sensor time series (SPS bipolar montage)
+hFigTs = view_timeseries(sFilesOnset(1).FileName, 'SEEG');
+panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
+panel_time('SetCurrentTime', 0.270); % Wave activity at 270ms
+bst_report('Snapshot', hFigTs, sFilesOnset(1).FileName, 'Sensor time series (SPS bipolar)', [200, 200, 400, 400]);
+
+% Snapshot: 2D layout sensor time series
+hFigTopo = view_topography(sFilesOnset(1).FileName, 'SEEG', '2DLayout');
+figure_topo('SetTopoLayoutOptions', 'TimeWindow', [-0.5, 0.5]); % Set time window: -500ms to 500ms
+panel_time('SetCurrentTime', 0.270); % Wave activity at 270ms
+bst_report('Snapshot', hFigTopo, sFilesOnset(1).FileName, '2D layout sensor time series', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on cortex)
+hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, sFileLvfaOnsetSrc.FileName);
+hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
+panel_surface('SetDataThreshold', hFigSrcCortex, 1, 0.45); % Set amplitude threshold 45%
+hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
+zoom(hAxes, 1.3);
+bst_report('Snapshot', hFigSrcCortex, sFileLvfaOnsetSrc.FileName, 'Sources: Display on cortex', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on 3D MRI)
+hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileLvfaOnsetSrc.FileName);
+hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
+figure_3d('JumpMaximum', hFigSrcMri3d);
+figure_3d('SetStandardView', hFigSrcMri3d, 'right');
+hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
+zoom(hAxes, 1.3);
+bst_report('Snapshot', hFigSrcMri3d, sFileLvfaOnsetSrc.FileName, 'Sources: Display on 3D MRI', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on MRI Viewer)
+hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileLvfaOnsetSrc.FileName);
+Handles = bst_figures('GetFigureHandles', hFigSrcMri);
+Handles.jRadioRadiological.setSelected(1);
+Handles.jCheckMipFunctional.setSelected(1);
+panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.45); % Set amplitude threshold 45%
+figure_mri('JumpMaximum', hFigSrcMri);
+bst_report('Snapshot', hFigSrcMri, sFileLvfaOnsetSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
+close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
+
 %% ===== MODELING ICTAL ONSET WITH LVFA (SENSOR SPACE) =====
 % Process: Time-frequency (Morlet wavelets)
-bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(1), [], ...
+sFilesOnsetBipTf = bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(1), [], ...
     'sensortypes', 'SEEG', ...
     'edit',        struct(...
          'Comment',         'Power,1-100Hz', ...
@@ -291,8 +411,42 @@ bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(1), [], ...
          'Method',          'morlet'), ...
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
+% Snapshot: Time-frequency maps (all sensors)
+hFigTfMapAll = view_timefreq(sFilesOnsetBipTf.FileName, 'AllSensors');
+sOptions = panel_display('GetDisplayOptions');
+sOptions.Function = 'log'; % Log power
+sOptions.HighResolution = 1; % Smooth display
+panel_display('SetDisplayOptions', sOptions);
+bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
+sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
+sColormap.Contrast = 0.49; % Contrast = 49
+sColormap.Brightness = 0.65; % Brightness = -65
+sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
+bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
+bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
+bst_report('Snapshot', hFigTfMapAll, sFilesOnsetBipTf.FileName, 'Time-freq map (all sensors)', [200, 200, 600, 500]);
+
+% Snapshot: Time-frequency maps (one sensor)
+hFigTfMap = view_timefreq(sFilesOnsetBipTf.FileName, 'SingleSensor');
+sOptions = panel_display('GetDisplayOptions');
+sOptions.RowName = 'SPS8-SPS9';
+sOptions.Function = 'log';
+sOptions.HighResolution = 1;
+panel_display('SetDisplayOptions', sOptions);
+bst_report('Snapshot', hFigTfMap, sFilesOnsetBipTf.FileName, 'Time-freq map (SPS8-SPS9)', [200, 200, 600, 500]);
+close([hFigTfMapAll hFigTfMap]);
+
+% Power spectrum and time series
+hFigTf1 = view_spectrum(sFilesOnsetBipTf.FileName, 'Spectrum', 'SPS8-SPS9');
+hFigTf2 = view_spectrum(sFilesOnsetBipTf.FileName, 'TimeSeries', 'SPS8-SPS9');
+panel_freq('SetCurrentFreq', 1, 0);
+panel_time('SetCurrentTime', 0.7735);
+bst_report('Snapshot', hFigTf1, sFilesOnsetBipTf.FileName, 'Power-spectrum (SPS8-SPS9)', [200, 200, 600, 400]);
+bst_report('Snapshot', hFigTf2, sFilesOnsetBipTf.FileName, 'Time-series (SPS8-SPS9)', [200, 200, 600, 400]);
+close([hFigTf1 hFigTf2]);
+
 %% ===== MODELING ICTAL ONSET WITH LVFA (SOURCE SPACE) =====
-% Process: Scouts time series: All
+% Process: Extract scout time series
 sFileLvfaOnsetScoutTs = bst_process('CallProcess', 'process_extract_scout', sFileLvfaOnsetSrc, [], ...
     'timewindow',     [-15, 15], ...
     'scouts',         {'Desikan-Killiany_RH', {sScouts.Label}}, ...
@@ -305,8 +459,14 @@ sFileLvfaOnsetScoutTs = bst_process('CallProcess', 'process_extract_scout', sFil
     'addrowcomment',  1, ...
     'addfilecomment', []);
 
-% Process: Time-frequency (Morlet wavelets)
-bst_process('CallProcess', 'process_timefreq', sFileLvfaOnsetScoutTs, [], ...
+% Snapshot: Scout time series
+bst_process('CallProcess', 'process_snapshot', sFileLvfaOnsetScoutTs, [], ...
+    'target',   5, ...  % Data
+    'modality', 6, ...  % SEEG
+    'Comment',  'Scout time series (matrix)');
+
+%% Process: Time-frequency (Morlet wavelets)
+sFileLvfaOnsetTf = bst_process('CallProcess', 'process_timefreq', sFileLvfaOnsetScoutTs, [], ...
     'sensortypes', 'SEEG', ...
     'edit',        struct(...
          'Comment',         'Power,1-100Hz', ...
@@ -322,9 +482,43 @@ bst_process('CallProcess', 'process_timefreq', sFileLvfaOnsetScoutTs, [], ...
          'Method',          'morlet'), ...
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
+% Snapshot: Time-frequency maps (all sources)
+hFigTfMapAll = view_timefreq(sFileLvfaOnsetTf.FileName, 'AllSensors');
+sOptions = panel_display('GetDisplayOptions');
+sOptions.Function = 'log'; % Log power
+sOptions.HighResolution = 1; % Smooth display
+panel_display('SetDisplayOptions', sOptions);
+bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
+sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
+sColormap.Contrast = 0.52; % Contrast = 52
+sColormap.Brightness = 0.63; % Brightness = -63
+sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
+bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
+bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
+bst_report('Snapshot', hFigTfMapAll, sFileLvfaOnsetTf.FileName, 'Time-freq map (all sources)', [200, 200, 600, 500]);
+
+% Snapshot: Time-frequency maps (one source)
+hFigTfMap = view_timefreq(sFileLvfaOnsetTf.FileName, 'SingleSensor');
+sOptions = panel_display('GetDisplayOptions');
+sOptions.RowName = 'postcentral R.3';
+sOptions.Function = 'log';
+sOptions.HighResolution = 1; % Smooth display
+panel_display('SetDisplayOptions', sOptions);
+bst_report('Snapshot', hFigTfMap, sFileLvfaOnsetTf.FileName, 'Time-freq map (postcentral R.3)', [200, 200, 600, 500]);
+close([hFigTfMapAll hFigTfMap]);
+
+% Power spectrum and time series
+hFigTf1 = view_spectrum(sFileLvfaOnsetTf.FileName, 'Spectrum', 'postcentral R.3');
+hFigTf2 = view_spectrum(sFileLvfaOnsetTf.FileName, 'TimeSeries', 'postcentral R.3');
+panel_freq('SetCurrentFreq', 1, 0);
+panel_time('SetCurrentTime', 0.7735);
+bst_report('Snapshot', hFigTf1, sFileLvfaOnsetTf.FileName, 'Power-spectrum (postcentral R.3)', [200, 200, 600, 400]);
+bst_report('Snapshot', hFigTf2, sFileLvfaOnsetTf.FileName, 'Time-series (postcentral R.3)', [200, 200, 600, 400]);
+close([hFigTf1 hFigTf2]);
+
 %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SENSOR SPACE) =====
 % Process: Time-frequency (Morlet wavelets)
-bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(2), [], ...
+sFilesOnsetTf = bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(2), [], ...
     'sensortypes', 'PIN5-PIN6', ...
     'edit',        struct(...
          'Comment',         'Power,1-100Hz', ...
@@ -340,9 +534,32 @@ bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(2), [], ...
          'Method',          'morlet'), ...
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
+% Snapshot: Sensor time series (PIN bipolar montage)
+hFigTs = view_timeseries(sFilesOnsetBip(2).FileName, 'SEEG');
+panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': PIN (orig)[tmp]']);
+panel_time('SetCurrentTime', 7.7325); % High frequency activity
+bst_report('Snapshot', hFigTs, sFilesOnsetBip(2).FileName, 'Sensor time series (PIN bipolar)', [200, 200, 400, 400]);
+
+% Snapshot: Time-frequency maps (one sensor)
+hFigTfMap = view_timefreq(sFilesOnsetTf.FileName, 'SingleSensor');
+sOptions = panel_display('GetDisplayOptions');
+sOptions.RowName = 'PIN5-PIN6';
+sOptions.Function = 'log';
+sOptions.HighResolution = 1; % Smooth display
+panel_display('SetDisplayOptions', sOptions);
+bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
+sColormap = bst_colormaps('GetColormap', hFigTfMap);
+sColormap.Contrast = 0.23; % Contrast = 23
+sColormap.Brightness = 0.60; % Brightness = -60
+sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
+bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
+bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
+bst_report('Snapshot', hFigTfMap, sFilesOnsetTf.FileName, 'Time-freq map (PIN5-PIN6)', [200, 200, 600, 500]);
+close([hFigTs hFigTfMap]);
+
 %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SOURCE SPACE) =====
 % Process: Compute sources [2018] (SEEG)
-bst_process('CallProcess', 'process_inverse_2018', sFilesOnset(2), [], ...
+sFilesOnsetSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesOnset(2), [], ...
     'output',  1, ...  % Kernel only: shared
     'inverse', struct(...
          'Comment',        '', ...
@@ -356,6 +573,29 @@ bst_process('CallProcess', 'process_inverse_2018', sFilesOnset(2), [], ...
          'SnrFixed',       3, ...
          'ComputeKernel',  1, ...
          'DataTypes',      {{'SEEG'}}));
+
+% Snapshot: Sensor time series (PIN)
+hFigTs = view_timeseries(sFilesOnset(2).FileName, 'SEEG');
+panel_time('SetCurrentTime', 9.719); % Repetitive spiking from 9.719s
+bst_report('Snapshot', hFigTs, sFilesOnset(2).FileName, 'Sensor time series (PIN)', [200, 200, 400, 400]);
+
+% Snapshot: Sources (display on MRI Viewer)
+hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFilesOnsetSrc.FileName);
+Handles = bst_figures('GetFigureHandles', hFigSrcMri);
+Handles.jRadioRadiological.setSelected(1);
+Handles.jCheckMipFunctional.setSelected(1);
+panel_filter('SetFilters', 1, 55, 1, 5);
+sColormap = bst_colormaps('GetColormap', hFigSrcMri);
+sColormap.MaxMode  = 'custom';
+sColormap.MinValue = 0;
+sColormap.MaxValue = 2;
+bst_colormaps('SetColormap', 'source', sColormap); % Save the changes in colormap
+bst_colormaps('FireColormapChanged', 'source'); % Update the colormap in figures
+panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.33); % Set amplitude threshold 33%
+figure_mri('JumpMaximum', hFigSrcMri);
+bst_report('Snapshot', hFigSrcMri, sFilesOnsetSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
+% Close figures
+close(hFigSrcMri);
 
 %% ===== SAVE AND DISPLAY REPORT =====
 ReportFile = bst_report('Save', []);
