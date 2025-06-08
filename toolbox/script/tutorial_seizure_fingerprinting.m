@@ -561,6 +561,8 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
         sOptions.Function = 'log';
         sOptions.HighResolution = 1;
         panel_display('SetDisplayOptions', sOptions);
+        panel_freq('SetCurrentFreq', 1, 0);
+        panel_time('SetCurrentTime', Time);
         bst_report('Snapshot', hFigTfMap, SensorSourceFile, ['Time frequency map (' SensorSourceName ')'], WinPos);
         close([hFigTfMapAll hFigTfMap]);
         
