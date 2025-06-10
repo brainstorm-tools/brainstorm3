@@ -122,9 +122,7 @@ bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
 % Snapshot: SEEG electrodes in MRI slices
 ChannelFile = bst_get('ChannelFileForStudy', sFilesRaw(1).FileName);
 hFigMri3d = view_channels_3d(ChannelFile, 'SEEG', 'anatomy', 1, 0);
-hAxes = findobj(hFigMri3d, 'Tag', 'Axes3D');
-zoom(hAxes, 1.5);
-bst_report('Snapshot', hFigMri3d, ChannelFile, 'SEEG electrodes in 3D MRI slices', [200, 200, 400, 400]);
+bst_report('Snapshot', hFigMri3d, ChannelFile, 'SEEG electrodes in 3D MRI slices');
 close(hFigMri3d);
 
 %% ===== REVIEW RECORDINGS =====
@@ -152,7 +150,9 @@ bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
 
 % Process: Set channels type
 % 'MPS16' channel needs to be excluded because for BEM head modeling it lies outside the inner skull
-bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], 'sensortypes', 'MPS16', 'newtype', 'SEEG_NO_LOC');
+bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], ...
+    'sensortypes', 'MPS16', ...
+    'newtype',     'SEEG_NO_LOC');
 % Define event: LVFA & wave and ictal repetitive spike
 sEvt1 = db_template('event');
 sEvt1.label  = 'sEEG onset';
@@ -193,10 +193,10 @@ sFileInterictalSpike = bst_process('CallProcess', 'process_import_data_event', s
     'baseline',      'all', ... % Remove DC offset: All recordings
     'blsensortypes', 'SEEG');   % Sensor types to remove DC offset
 % ===== Bipolar Montage =====
-MontageName = [SubjectName, ': SEEG (bipolar 2)[tmp]'];
+MontageSeegBipName = [SubjectName, ': SPS (bipolar 2)[tmp]'];
 % Apply montage (create new folders)
 sFilesOnsetBip = bst_process('CallProcess', 'process_montage_apply', sFilesOnset, [], ...
-    'montage',    MontageName, ...
+    'montage',    MontageSeegBipName, ...
     'createchan', 1);
 
 %% ===== HEAD MODELING =====
@@ -218,7 +218,7 @@ hFigSurf = view_surface(BemInnerSkullFile);
 hFigSurf = view_surface(BemOuterSkullFile, [], [], hFigSurf);
 hFigSurf = view_surface(BemScalpFile, [], [], hFigSurf);
 figure_3d('SetStandardView', hFigSurf, 'left'); % Set orientation (left)
-bst_report('Snapshot', hFigSurf, BemInnerSkullFile, 'BEM surfaces', [200, 200, 400, 400]);
+bst_report('Snapshot', hFigSurf, BemInnerSkullFile, 'BEM surfaces');
 close(hFigSurf);
 
 % Process: Compute head model
