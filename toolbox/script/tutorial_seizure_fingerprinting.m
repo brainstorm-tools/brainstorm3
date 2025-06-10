@@ -5,7 +5,7 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
 %     https://neuroimage.usc.edu/brainstorm/Tutorials/SeizureFingerprinting
 %
 % INPUTS: 
-%    - tutorial_dir : Directory where the SubjectCMC.zip file has been unzipped
+%    - tutorial_dir : Directory where the tutorial_seizure_fingerprinting.zip file has been unzipped
 %    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
@@ -77,12 +77,12 @@ bst_colormaps('RestoreDefaults', 'source');
 % Hide scouts
 panel_scout('SetScoutShowSelection', 'none');
 
-%% ===== IMPORT MRI VOLUMES =====
+%% ===== IMPORT MRI AND CT VOLUMES =====
 % Create subject
 [~, iSubject] = db_add_subject(SubjectName, [], 0, 0);
 % Import MRI volume
 DbMriFilePre  = import_mri(iSubject, MriFilePre, 'ALL', 0, 0, 'pre_T1');
-% Set fiducials in MRI
+% Set fiducials in MRI coordinates
 NAS = [104, 207, 85];
 LPA = [ 26, 113, 78];
 RPA = [176, 113, 78];
@@ -99,10 +99,10 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'cerebellum',  0);
 
 % Import CT volume
-DbCtFilePost = import_mri(iSubject, MriFilePost, 'ALL', 0, 0, 'post_CT');
-% Register CT to MRI and reslice using 'SPM'
+DbCtFilePost = import_mri(iSubject, CtFilePost, 'ALL', 0, 0, 'post_CT');
+% Register and reslice CT to reference MRI using 'SPM'
 DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
-% Skull strip the MRI volume and apply to the CT using 'SPM'
+% Skull strip the CT volume using 'SPM'
 DbCtFilePostSkullStrip = mri_skullstrip(DbCtFilePostRegReslice, DbMriFilePre, 'spm');
 
 %% ===== ACCESS THE RECORDINGS =====
@@ -280,7 +280,7 @@ SnapshotsSensorSourceTimeSeries(sFileInterictalSpike.FileName, sFileInterictalSp
 
 % ===== Create a Desikan-Killiany atlas with scouts only in the right hemisphere ====
 % Load the surface
-[hFig, iDS, iFig] = view_surface_data([], sFileInterictalSpikeSrc.FileName);
+[hFigSurf, iDS, iFig] = view_surface_data([], sFileInterictalSpikeSrc.FileName);
 % Show the SEEG electrodes
 figure_3d('PlotSensors3D', iDS, iFig);
 % Set Desikan-Killiany as the current atlas
@@ -303,7 +303,7 @@ panel_scout('SubdivideScouts', 1, 'area', 5);
 % Get the scouts
 sScouts = panel_scout('GetScouts');
 % Close the figure
-close(hFig);
+close(hFigSurf);
 
 %% ===== MODELING ICTAL WAVE =====
 % Process: Compute sources [2018] (SEEG)
