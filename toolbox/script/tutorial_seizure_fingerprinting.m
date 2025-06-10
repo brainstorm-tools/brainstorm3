@@ -271,12 +271,15 @@ sFileInterictalSpikeSrc = bst_process('CallProcess', 'process_inverse_2018', sFi
          'ComputeKernel',  1, ...
          'DataTypes',      {{'SEEG'}}));
 
-% Snapshots: Sensor and source time series
-SnapshotsSensorSourceTimeSeries(sFileInterictalSpike.FileName, sFileInterictalSpikeSrc.FileName, ...
-                          0.041, ...             % First peak of SPS10-SPS11 at 41ms
-                          [-0.5 0.5], ...        % Time window: -500ms to 500ms
-                          [0.26, 0.56], ...      % Data threshold for cortical activations on (Cortex, MRI Viewer)
-                          [200, 200, 400, 400]);
+% Interictal: Snapshots
+Time       = 0.041;        % First peak of SPS10-SPS11 at 41ms
+TimeWindow = [-0.5 0.5];   % Time window: -500ms to 500ms
+DataThresh = 0.26;         % Source threshold (percentage)
+GetSnapshotSensorTimeSeries(sFileInterictalSpike.FileName, MontageSeegBipName, Time, TimeWindow);
+GetSnapshotSensor2DLayout(sFileInterictalSpike.FileName, Time, TimeWindow);
+GetSnapshotsSources(sFileInterictalSpikeSrc.FileName, 'srf3d', Time, DataThresh);
+GetSnapshotsSources(sFileInterictalSpikeSrc.FileName, 'mri3d', Time, DataThresh);
+GetSnapshotsSources(sFileInterictalSpikeSrc.FileName, 'mri2d', Time, DataThresh);
 
 % ===== Create a Desikan-Killiany atlas with scouts only in the right hemisphere ====
 % Load the surface
@@ -323,11 +326,15 @@ sFileLvfaOnsetSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesOns
          'DataTypes',      {{'SEEG'}}));
 
 % Snapshots: Sensor and source time series
-SnapshotsSensorSourceTimeSeries(sFilesOnset(1).FileName, sFileLvfaOnsetSrc.FileName, ...
-                          0.270, ...        % Wave activity at 270ms
-                          [-0.5 0.5], ...   % Time window: -500ms to 500ms
-                          [0.45, 0.45], ... % Data threshold for cortical activations on (Cortex, MRI Viewer)
-                          [200, 200, 400, 400]);
+Time       = 0.270;        % % Wave activity at 270ms
+TimeWindow = [-0.5 0.5];   % Time window: -500ms to 500ms
+DataThresh = 0.45;         % Source threshold (percentage)
+GetSnapshotSensorTimeSeries(sFilesOnset.FileName, MontageSeegBipName, Time, TimeWindow);
+GetSnapshotSensor2DLayout(sFilesOnset.FileName, Time, TimeWindow);
+GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'srf3d', Time, DataThresh);
+GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'mri3d', Time, DataThresh);
+GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'mri2d', Time, DataThresh);
+
 
 %% ===== MODELING ICTAL ONSET WITH LVFA (SENSOR SPACE) =====
 % Process: Time-frequency (Morlet wavelets)
@@ -419,10 +426,7 @@ sFilesOnsetTf = bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(2)
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
 % Snapshot: Sensor time series (PIN bipolar montage)
-hFigTs = view_timeseries(sFilesOnsetBip(2).FileName, 'SEEG');
-panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': PIN (orig)[tmp]']);
-panel_time('SetCurrentTime', 7.7325); % High frequency activity
-bst_report('Snapshot', hFigTs, sFilesOnsetBip(2).FileName, 'Sensor time series (PIN bipolar)', [200, 200, 400, 400]);
+GetSnapshotSensorTimeSeries(sFilesOnsetBip(2).FileName, [SubjectName ': PIN (orig)[tmp]'], 7.7325);
 
 % Snapshot: Time-frequency maps (one sensor)
 hFigTfMap = view_timefreq(sFilesOnsetTf.FileName, 'SingleSensor');
@@ -458,28 +462,24 @@ sFilesOnsetSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesOnset(
          'ComputeKernel',  1, ...
          'DataTypes',      {{'SEEG'}}));
 
+% Set freq filters
+panel_filter('SetFilters', 1, 55, 1, 5, 0, [], 0, 0);
+% Set colormap for sources
+sColormapSrc = bst_colormaps('GetColormap', 'source');
+sColormapSrc.MaxMode  = 'custom';
+sColormapSrc.MinValue = 0;
+sColormapSrc.MaxValue = 2e-8;
+bst_colormaps('SetColormap', 'source', sColormapSrc); % Save the changes in colormap
 % Snapshot: Sensor time series (PIN)
-hFigTs = view_timeseries(sFilesOnset(2).FileName, 'SEEG');
-panel_time('SetCurrentTime', 9.719); % Repetitive spiking from 9.719s
-bst_report('Snapshot', hFigTs, sFilesOnset(2).FileName, 'Sensor time series (PIN)', [200, 200, 400, 400]);
-
+Time       = 9.719;
+TimeWindow = [-0.5, 0.5] + Time;
+DataThresh = 0.33;
+GetSnapshotSensorTimeSeries(sFilesOnset(2).FileName, [SubjectName ': PIN (orig)[tmp]'], Time, TimeWindow);
 % Snapshot: Sources (display on MRI Viewer)
-hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFilesOnsetSrc.FileName);
-Handles = bst_figures('GetFigureHandles', hFigSrcMri);
-Handles.jRadioRadiological.setSelected(1);
-Handles.jCheckMipFunctional.setSelected(1);
-panel_filter('SetFilters', 1, 55, 1, 5);
-sColormap = bst_colormaps('GetColormap', hFigSrcMri);
-sColormap.MaxMode  = 'custom';
-sColormap.MinValue = 0;
-sColormap.MaxValue = 2;
-bst_colormaps('SetColormap', 'source', sColormap); % Save the changes in colormap
-bst_colormaps('FireColormapChanged', 'source'); % Update the colormap in figures
-panel_surface('SetDataThreshold', hFigSrcMri, 1, 0.33); % Set amplitude threshold 33%
-figure_mri('JumpMaximum', hFigSrcMri);
-bst_report('Snapshot', hFigSrcMri, sFilesOnsetSrc.FileName, 'Sources: Display on MRI viewer', [200, 200, 400, 400]);
-% Close figures
-close(hFigSrcMri);
+GetSnapshotsSources(sFilesOnsetSrc.FileName, 'mri2d', Time, DataThresh);
+% Reset freq filters and colormap for sources
+panel_filter('SetFilters', 0, [], 0, [], 0, [], 0, 0);
+bst_colormaps('RestoreDefaults', 'source');
 
 %% ===== SAVE AND DISPLAY REPORT =====
 ReportFile = bst_report('Save', []);
@@ -494,47 +494,75 @@ disp([10 'DEMO> Seizure Fingerpriting tutorial completed' 10]);
 % =================================================================%
 % ===================== NESTED FUNCTIONS ==========================%
 % =================================================================%
-%% ===== SNAPSHOTS: SENSOR AND SOURCE TIME SERIES =====
-function SnapshotsSensorSourceTimeSeries(SensorFile, SourceFile, Time, TimeWindow, DataThreshold, WinPos)
-    % Snapshot: Sensor time series (SPS bipolar montage)
-    hFigTs = view_timeseries(SensorFile, 'SEEG');
-    panel_montage('SetCurrentMontage', hFigTs, [SubjectName ': SPS (bipolar 2)[tmp]']);
+%% ===== SNAPSHOTS: SENSOR TIME SERIES =====
+function GetSnapshotSensorTimeSeries(SensorFile, MontageName, Time, TimeWindow)
+    if nargin < 4
+        TimeWindow = [];
+    end
+    % Figure: Sensor time series (set montage)
+    hFig = view_timeseries(SensorFile, 'SEEG');
+    panel_montage('SetCurrentMontage', hFig, MontageName);
+    if ~isempty(TimeWindow)
+        h1 = findobj(hFig, 'Tag','AxesGraph','-or','Tag','AxesEventsBar');
+        xlim(h1, TimeWindow);
+    end
     panel_time('SetCurrentTime', Time);
-    bst_report('Snapshot', hFigTs, SensorFile, 'Sensor time series (SPS bipolar)', WinPos);
-    
+    bst_report('Snapshot', hFig, SensorFile, 'Sensor time series (SPS bipolar)', [200, 200, 400, 400]);
+    close(hFig);
+end
+
+%% ===== SNAPSHOTS: SENSOR TIME SERIES =====
+function GetSnapshotSensor2DLayout(SensorFile, Time, TimeWindow)
     % Snapshot: 2D layout sensor time series
-    hFigTopo = view_topography(SensorFile, 'SEEG', '2DLayout');
+    hFig = view_topography(SensorFile, 'SEEG', '2DLayout');
     figure_topo('SetTopoLayoutOptions', 'TimeWindow', TimeWindow);
     panel_time('SetCurrentTime', Time);
-    bst_report('Snapshot', hFigTopo, SensorFile, '2D layout sensor time series', WinPos);
-    
-    % Snapshot: Sources (display on cortex)
-    hFigSrcCortex = view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, SourceFile);
-    ChannelFile = bst_get('ChannelFileForStudy', SensorFile);
-    hFigSrcCortex = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcCortex, 1);
-    panel_surface('SetDataThreshold', hFigSrcCortex, 1, DataThreshold(1));
-    hAxes = findobj(hFigSrcCortex, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcCortex, SourceFile, 'Sources: Display on cortex', WinPos);
-    
-    % Snapshot: Sources (display on 3D MRI)
-    hFigSrcMri3d = view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, SourceFile);
-    hFigSrcMri3d = view_channels(ChannelFile, 'SEEG', 0, 0, hFigSrcMri3d, 1);
-    figure_3d('JumpMaximum', hFigSrcMri3d);
-    figure_3d('SetStandardView', hFigSrcMri3d, 'right');
-    hAxes = findobj(hFigSrcMri3d, 'Tag', 'Axes3D');
-    zoom(hAxes, 1.3);
-    bst_report('Snapshot', hFigSrcMri3d, SourceFile, 'Sources: Display on 3D MRI', WinPos);
-    
-    % Snapshot: Sources (display on MRI Viewer)
-    hFigSrcMri = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, SourceFile);
-    Handles = bst_figures('GetFigureHandles', hFigSrcMri);
-    Handles.jRadioRadiological.setSelected(1);
-    Handles.jCheckMipFunctional.setSelected(1);
-    panel_surface('SetDataThreshold', hFigSrcMri, 1, DataThreshold(2));
-    figure_mri('JumpMaximum', hFigSrcMri);
-    bst_report('Snapshot', hFigSrcMri, SourceFile, 'Sources: Display on MRI viewer', WinPos);
-    close([hFigTs hFigTopo hFigSrcCortex hFigSrcMri3d hFigSrcMri]);
+    bst_report('Snapshot', hFig, SensorFile, '2D layout sensor time series', [200, 200, 400, 400]);
+    close(hFig);
+end
+
+%% ===== SNAPSHOTS: SOURCES =====
+function GetSnapshotsSources(SourceFile, FigType, Time, DataThreshold)
+    [sStudy, iStudy] = bst_get('AnyFile', SourceFile);
+    % Get MRI reference
+    if ~isempty(regexp(FigType, '^mri', 'once'))
+        sSubjectFig = bst_get('Subject', sStudy.BrainStormSubject);
+        MriFile = sSubjectFig.Anatomy(sSubjectFig.iAnatomy).FileName;
+    end
+    % Get ChannelFile
+    if ~isempty(regexp(FigType, '3d$', 'once'))
+        ChanFile = bst_get('ChannelForStudy', iStudy);
+    end
+
+    switch FigType
+        % Display sources on its default surface (cortex)
+        case 'srf3d'
+            hFig = view_surface_data([], SourceFile);
+            panel_time('SetCurrentTime', Time);
+            hFig = view_channels(ChanFile.FileName, 'SEEG', 0, 0, hFig, 1);
+            panel_surface('SetDataThreshold', hFig, 1, DataThreshold);
+            displayStr = 'cortex';
+
+        % Display sources on display on 3D MRI
+        case 'mri3d'
+            hFig = view_surface_data(MriFile, SourceFile);
+            panel_time('SetCurrentTime', Time);
+            hFig = view_channels(ChanFile.FileName, 'SEEG', 0, 0, hFig, 1);
+            figure_3d('JumpMaximum', hFig);
+            figure_3d('SetStandardView', hFig, 'right');
+            displayStr = '3D MRI';
+
+        % Display sources on MRI Viewer
+        case 'mri2d'
+            hFig = view_mri(MriFile, SourceFile);
+            panel_time('SetCurrentTime', Time);
+            bst_figures('GetFigureHandles', hFig);
+            figure_mri('JumpMaximum', hFig);
+            displayStr = 'MRI viewer';
+    end
+    panel_surface('SetDataThreshold', hFig, 1, DataThreshold);
+    bst_report('Snapshot', hFig, SourceFile, ['Sources: Display on ' displayStr], [200, 200, 400, 400]);
+    close(hFig);
 end
 
 %% ===== SNAPSHOTS: SENSOR AND SOURCE TIME FREQUENCY =====
