@@ -330,7 +330,7 @@ Time       = 0.270;        % % Wave activity at 270ms
 TimeWindow = [-0.5 0.5];   % Time window: -500ms to 500ms
 DataThresh = 0.45;         % Source threshold (percentage)
 GetSnapshotSensorTimeSeries(sFilesOnset(1).FileName, [SubjectName, ': SPS (bipolar 2)[tmp]'], Time, TimeWindow);
-GetSnapshotSensor2DLayout(sFilesOnset.FileName, Time, TimeWindow);
+GetSnapshotSensor2DLayout(sFilesOnset(1).FileName, Time, TimeWindow);
 GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'srf3d', Time, DataThresh);
 GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'mri3d', Time, DataThresh);
 GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'mri2d', Time, DataThresh);
