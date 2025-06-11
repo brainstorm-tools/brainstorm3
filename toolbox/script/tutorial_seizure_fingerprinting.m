@@ -193,7 +193,7 @@ sFileInterictalSpike = bst_process('CallProcess', 'process_import_data_event', s
     'baseline',      'all', ... % Remove DC offset: All recordings
     'blsensortypes', 'SEEG');   % Sensor types to remove DC offset
 % ===== Bipolar Montage =====
-MontageSeegBipName = [SubjectName, ': SPS (bipolar 2)[tmp]'];
+MontageSeegBipName = [SubjectName, ': SEEG (bipolar 2)[tmp]'];
 % Apply montage (create new folders)
 sFilesOnsetBip = bst_process('CallProcess', 'process_montage_apply', sFilesOnset, [], ...
     'montage',    MontageSeegBipName, ...
@@ -275,7 +275,7 @@ sFileInterictalSpikeSrc = bst_process('CallProcess', 'process_inverse_2018', sFi
 Time       = 0.041;        % First peak of SPS10-SPS11 at 41ms
 TimeWindow = [-0.5 0.5];   % Time window: -500ms to 500ms
 DataThresh = 0.26;         % Source threshold (percentage)
-GetSnapshotSensorTimeSeries(sFileInterictalSpike.FileName, MontageSeegBipName, Time, TimeWindow);
+GetSnapshotSensorTimeSeries(sFileInterictalSpike.FileName, [SubjectName, ': SPS (bipolar 2)[tmp]'], Time, TimeWindow);
 GetSnapshotSensor2DLayout(sFileInterictalSpike.FileName, Time, TimeWindow);
 GetSnapshotsSources(sFileInterictalSpikeSrc.FileName, 'srf3d', Time, DataThresh);
 GetSnapshotsSources(sFileInterictalSpikeSrc.FileName, 'mri3d', Time, DataThresh);
@@ -329,7 +329,7 @@ sFileLvfaOnsetSrc = bst_process('CallProcess', 'process_inverse_2018', sFilesOns
 Time       = 0.270;        % % Wave activity at 270ms
 TimeWindow = [-0.5 0.5];   % Time window: -500ms to 500ms
 DataThresh = 0.45;         % Source threshold (percentage)
-GetSnapshotSensorTimeSeries(sFilesOnset.FileName, MontageSeegBipName, Time, TimeWindow);
+GetSnapshotSensorTimeSeries(sFilesOnset(1).FileName, [SubjectName, ': SPS (bipolar 2)[tmp]'], Time, TimeWindow);
 GetSnapshotSensor2DLayout(sFilesOnset.FileName, Time, TimeWindow);
 GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'srf3d', Time, DataThresh);
 GetSnapshotsSources(sFileLvfaOnsetSrc.FileName, 'mri3d', Time, DataThresh);
