@@ -58,7 +58,7 @@ SubjectName = 'Subject01';
 
 %% ===== CREATE PROTOCOL =====
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialSeizureFingerprinting';
+ProtocolName = 'TutorialSeizureFingerprintingRC';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -354,13 +354,13 @@ sFilesOnsetBipTf = bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip
          'Method',          'morlet'), ...
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
-% Snapshots: Sensor time frequency
-SnapshotsSensorSourceTimeFreq(sFilesOnsetBipTf.FileName, ...
-                             0.49, ...        % Brightness 49%
-                             0.65, ...        % Contrast -65%
-                             0.7735, ...      % Time
-                             'SPS8-SPS9', ... % Sensor name  
-                             [200, 200, 600, 400]);
+
+% Snapshots: timefrequency map for sensor
+Brightness = 0.65;      % Brightness -65%
+Contrast   = 0.49;      % Contrast    49%
+TFpoint    = [0.6, 65]; % TimeFreq point [s, Hz]
+GetSnapshotTimeFreq(sFilesOnsetBipTf.FileName, 'AllSensors', TFpoint, 0, Brightness, Contrast);
+GetSnapshotTimeFreq(sFilesOnsetBipTf.FileName,  'SPS8-SPS9', TFpoint, 1, Brightness, Contrast);
 
 %% ===== MODELING ICTAL ONSET WITH LVFA (SOURCE SPACE) =====
 % Process: Extract scout time series
@@ -404,13 +404,12 @@ sFileLvfaOnsetTf = bst_process('CallProcess', 'process_timefreq', sFileLvfaOnset
          'Method',          'morlet'), ...
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
-% Snapshots: Source time frequency
-SnapshotsSensorSourceTimeFreq(sFileLvfaOnsetTf.FileName, ...
-                             0.52, ...              % Brightness 52%
-                             0.63, ...              % Contrast -63%
-                             0.7735, ...            % Time
-                             'postcentral R.3', ... % Source name  
-                             [200, 200, 600, 400]);
+% Snapshots: Time-frequency map for scouts
+Brightness = 0.65;      % Brightness -65%
+Contrast   = 0.49;      % Contrast    49%
+TFpoint    = [0.6, 65]; % TimeFreq point [s, Hz]
+GetSnapshotTimeFreq(sFileLvfaOnsetTf.FileName, 'AllSensors',      TFpoint, 0, Brightness, Contrast);
+GetSnapshotTimeFreq(sFileLvfaOnsetTf.FileName, 'postcentral R.3', TFpoint, 1, Brightness, Contrast);
 
 %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SENSOR SPACE) =====
 % Process: Time-frequency (Morlet wavelets)
@@ -431,24 +430,14 @@ sFilesOnsetTf = bst_process('CallProcess', 'process_timefreq', sFilesOnsetBip(2)
     'normalize2020', 'multiply2020');  % Spectral flattening: Multiply output power values by frequency
 
 % Snapshot: Sensor time series (PIN bipolar montage)
-GetSnapshotSensorTimeSeries(sFilesOnsetBip(2).FileName, [SubjectName ': PIN (orig)[tmp]'], 7.7325);
+Time = 7.7325;
+GetSnapshotSensorTimeSeries(sFilesOnsetBip(2).FileName, [SubjectName ': PIN (orig)[tmp]'], Time);
 
 % Snapshot: Time-frequency maps (one sensor)
-hFigTfMap = view_timefreq(sFilesOnsetTf.FileName, 'SingleSensor');
-sOptions = panel_display('GetDisplayOptions');
-sOptions.RowName = 'PIN5-PIN6';
-sOptions.Function = 'log';
-sOptions.HighResolution = 1; % Smooth display
-panel_display('SetDisplayOptions', sOptions);
-bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
-sColormap = bst_colormaps('GetColormap', hFigTfMap);
-sColormap.Contrast = 0.23; % Contrast = 23
-sColormap.Brightness = 0.60; % Brightness = -60
-sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
-bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
-bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
-bst_report('Snapshot', hFigTfMap, sFilesOnsetTf.FileName, 'Time-freq map (PIN5-PIN6)', [200, 200, 600, 400]);
-close([hFigTs hFigTfMap]);
+Brightness = 0.60; % Brightness  -60%
+Contrast   = 0.23; % Contrast     23%
+TFpoint    = [Time, 25]; % TimeFreq point [s, Hz]
+GetSnapshotTimeFreq(sFilesOnsetTf.FileName, 'PIN5-PIN6', TFpoint, 1, Brightness, Contrast);
 
 %% ===== MODELING ICTAL ONSET WITH REPETITIVE SPIKING (SOURCE SPACE) =====
 % Process: Compute sources [2018] (SEEG)
@@ -497,7 +486,7 @@ end
 disp([10 'DEMO> Seizure Fingerpriting tutorial completed' 10]);
 
 % =================================================================%
-% ===================== NESTED FUNCTIONS ==========================%
+% ===================== SNAPSHOTS FUNCTIONS =======================%
 % =================================================================%
 %% ===== SNAPSHOTS: SENSOR TIME SERIES =====
 function GetSnapshotSensorTimeSeries(SensorFile, MontageName, Time, TimeWindow)
@@ -570,42 +559,52 @@ function GetSnapshotsSources(SourceFile, FigType, Time, DataThreshold)
     close(hFig);
 end
 
-%% ===== SNAPSHOTS: SENSOR AND SOURCE TIME FREQUENCY =====
-function SnapshotsSensorSourceTimeFreq(SensorSourceFile, Brightness, Contrast, Time, SensorSourceName, WinPos)
+%% ===== SNAPSHOTS: TIME-FREQUENCY =====
+function GetSnapshotTimeFreq(TimefreqFile, RowName, TimeFreqPoint, doSlices, Brightness, Contrast)
+    WinPos = [200, 200, 600, 400];
+    if nargin < 4 || isempty(doSlices)
+        doSlices = 0;
+    end
+    % TimeFreq display mode
+    DisplayMode = 'SingleSensor';
+    if strcmpi(RowName, 'AllSensors')
+        DisplayMode = RowName;
+    end
     % Snapshot: Time frequency maps (all sensors/sources)
-    hFigTfMapAll = view_timefreq(SensorSourceFile, 'AllSensors');
+    hFigTF = view_timefreq(TimefreqFile, DisplayMode);
     sOptions = panel_display('GetDisplayOptions');
-    sOptions.Function = 'log'; % Log power
+    sOptions.Function = 'log';   % Log power
     sOptions.HighResolution = 1; % Smooth display
+    if ~strcmpi(RowName, 'AllSensors')
+        sTimefreq = in_bst_timefreq(TimefreqFile, 0, 'RowNames');
+        iRow = ~cellfun(@isempty, regexp(sTimefreq.RowNames, ['^' RowName]));
+        sOptions.RowName = sTimefreq.RowNames{iRow};
+    end
     panel_display('SetDisplayOptions', sOptions);
     bst_colormaps('SetColormapAbsolute', 'timefreq', 0); % Turn off absolute value
-    sColormap = bst_colormaps('GetColormap', hFigTfMapAll);
-    sColormap.Contrast = Brightness;
-    sColormap.Brightness = Contrast;
-    sColormap = bst_colormaps('ApplyColormapModifiers', sColormap); % Apply modifiers (for brightness and contrast)
-    bst_colormaps('SetColormap', 'timefreq', sColormap); % Save the changes in colormap
-    bst_colormaps('FireColormapChanged', 'timefreq'); % Update the colormap in figures
-    bst_report('Snapshot', hFigTfMapAll, SensorSourceFile, 'Time frequency map (all)', WinPos);
-    
-    % Snapshot: Time frequency maps (one sensor/source)
-    hFigTfMap = view_timefreq(SensorSourceFile, 'SingleSensor');
-    sOptions = panel_display('GetDisplayOptions');
-    sOptions.RowName = SensorSourceName;
-    sOptions.Function = 'log';
-    sOptions.HighResolution = 1;
-    panel_display('SetDisplayOptions', sOptions);
-    panel_freq('SetCurrentFreq', 1, 0);
-    panel_time('SetCurrentTime', Time);
-    bst_report('Snapshot', hFigTfMap, SensorSourceFile, ['Time frequency map (' SensorSourceName ')'], WinPos);
-    close([hFigTfMapAll hFigTfMap]);
-    
-    % Power spectrum and time series
-    hFigTf1 = view_spectrum(SensorSourceFile, 'Spectrum', SensorSourceName);
-    hFigTf2 = view_spectrum(SensorSourceFile, 'TimeSeries', SensorSourceName);
-    panel_freq('SetCurrentFreq', 1, 0);
-    panel_time('SetCurrentTime', Time);
-    bst_report('Snapshot', hFigTf1, SensorSourceFile, ['Power spectrum (' SensorSourceName ')'], WinPos);
-    bst_report('Snapshot', hFigTf2, SensorSourceFile, ['Time series (' SensorSourceName ')'], WinPos);
-    close([hFigTf1 hFigTf2]);
+    sColormap = bst_colormaps('GetColormap', hFigTF);
+    sColormap.Contrast = Contrast;
+    sColormap.Brightness = Brightness;
+    % Apply modifiers (for brightness and contrast)
+    sColormap = bst_colormaps('ApplyColormapModifiers', sColormap);
+    % Save the changes in colormap
+    bst_colormaps('SetColormap', 'timefreq', sColormap);
+    % Update the colormap in figures
+    bst_colormaps('FireColormapChanged', 'timefreq');
+    % Select Time-Frequency point
+    if length(TimeFreqPoint) == 2
+        panel_time('SetCurrentTime', TimeFreqPoint(1));
+        panel_freq('SetCurrentFreq', TimeFreqPoint(2), 0);
+    end
+    bst_report('Snapshot', hFigTF, TimefreqFile, ['Time frequency map (' RowName ')'], WinPos);
+    % Power time series and power spectrum from TF representation
+    if doSlices && length(TimeFreqPoint) == 2 && ~strcmpi(RowName, 'AllSensors')
+        hFigT = view_spectrum(TimefreqFile, 'TimeSeries', sOptions.RowName);
+        hFigF = view_spectrum(TimefreqFile, 'Spectrum',   sOptions.RowName);
+        bst_report('Snapshot', hFigF, TimefreqFile, ['Time series (' RowName ')'], WinPos);
+        bst_report('Snapshot', hFigT, TimefreqFile, ['Power spectrum (' RowName ')'], WinPos);
+        close([hFigT hFigF]);
+    end
+    close(hFigTF);
 end
 end
