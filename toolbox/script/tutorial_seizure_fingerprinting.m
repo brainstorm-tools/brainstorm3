@@ -28,6 +28,7 @@ function tutorial_seizure_fingerprinting(tutorial_dir, reports_dir)
 %
 % Authors: Chinmay Chinara, 2025
 %          Yash Shashank Vakilna, 2025
+%          Raymundo Cassani, 2025
 
 %% ===== PARSE INPUTS =====
 % Output folder for reports
@@ -58,7 +59,7 @@ SubjectName = 'Subject01';
 
 %% ===== CREATE PROTOCOL =====
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialSeizureFingerprintingRC';
+ProtocolName = 'TutorialSeizureFingerprinting';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -105,6 +106,15 @@ DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
 % Skull strip the CT volume using 'SPM'
 DbCtFilePostSkullStrip = mri_skullstrip(DbCtFilePostRegReslice, DbMriFilePre, 'spm');
 
+%% ===== CREATE SEEG CONTACT IMPLANTATION =====
+iStudyImplantation = db_add_condition(SubjectName, 'Implantation');
+% Import locations and convert to subject coordinate system (SCS)
+ImplantationChannelFile = import_channel(iStudyImplantation, ElecPosFile, 'BIDS-SCANRAS-MM', 1, 0, 1, 0, 2, DbCtFilePostSkullStrip);
+% Snapshot: SEEG electrodes in MRI slices
+hFigMri3d = view_channels_3d(ImplantationChannelFile, 'SEEG', 'anatomy', 1, 0);
+bst_report('Snapshot', hFigMri3d, ImplantationChannelFile, 'SEEG electrodes in 3D MRI slices');
+close(hFigMri3d);
+
 %% ===== ACCESS THE RECORDINGS =====
 % Process: Create link to raw file
 sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
@@ -114,16 +124,9 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'channelalign',   0);
 % Process: Add EEG positions
 bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
-    'channelfile', {ElecPosFile, 'BIDS-SCANRAS-MM'}, ...
+    'channelfile', {ImplantationChannelFile, 'BST'}, ...
     'fixunits',    0, ... % No automatic fixing of distance units required
-    'vox2ras',     2, ... % Apply voxel=>subject transformation and the coregistration transformation
-    'mrifile',     {file_fullpath(DbCtFilePostSkullStrip), 'BST'});
-
-% Snapshot: SEEG electrodes in MRI slices
-ChannelFile = bst_get('ChannelFileForStudy', sFilesRaw(1).FileName);
-hFigMri3d = view_channels_3d(ChannelFile, 'SEEG', 'anatomy', 1, 0);
-bst_report('Snapshot', hFigMri3d, ChannelFile, 'SEEG electrodes in 3D MRI slices');
-close(hFigMri3d);
+    'vox2ras',     0);    % Do not use the voxel=>subject transformation, already in SCS
 
 %% ===== REVIEW RECORDINGS =====
 % Process: Power spectrum density (Welch)
