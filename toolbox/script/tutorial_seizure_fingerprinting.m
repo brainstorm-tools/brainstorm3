@@ -75,6 +75,8 @@ panel_filter('SetFilters', 0, [], 0, [], 0, [], 0, 0);
 % Reset colormaps
 bst_colormaps('RestoreDefaults', 'timefreq');
 bst_colormaps('RestoreDefaults', 'source');
+% Set the current time series display mode to 'column'
+bst_set('TSDisplayMode', 'column');
 % Hide scouts
 panel_scout('SetScoutShowSelection', 'none');
 
