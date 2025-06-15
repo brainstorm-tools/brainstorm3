@@ -151,6 +151,8 @@ if isempty(pBar)
     pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2), ...
            jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
     pBar.jWindow.setLocation(pos(1), pos(2));
+
+    pBar.Values = struct('Minimum', 0, 'Maximum',100, 'Value',0 );
     % Save progress bar
     GlobalData.Program.ProgressBar = pBar;
 end
@@ -183,10 +185,10 @@ switch (lower(commandName))
             pBar.jProgressBar.setIndeterminate(1);
             pBar.jProgressBar.setStringPainted(0);
             % Set progress bar bounds
-            pBar.jProgressBar.setMinimum(0);
-            pBar.jProgressBar.setMaximum(100);
+            pBar.jProgressBar.setMinimum(0); pBar.Values.Minimum = 0;
+            pBar.jProgressBar.setMaximum(100); pBar.Values.Maximum = 100;
             % Set initial value to start
-            pBar.jProgressBar.setValue(0);
+            pBar.jProgressBar.setValue(0);  pBar.Values.Value = 0;
             
         % Call: bst_progress(''start'', title, msg, start, stop)
         elseif ((nargin == 5) && ischar(varargin{2}) && ischar(varargin{3}) && isnumeric(varargin{4}) && isnumeric(varargin{5}))
@@ -208,10 +210,10 @@ switch (lower(commandName))
                 valStop  = 100;
             end
             % Set progress bar bounds
-            pBar.jProgressBar.setMinimum(valStart);
-            pBar.jProgressBar.setMaximum(valStop);
+            pBar.jProgressBar.setMinimum(valStart); GlobalData.Program.ProgressBar.Values.Minimum = valStart;
+            pBar.jProgressBar.setMaximum(valStop);  GlobalData.Program.ProgressBar.Values.Maximum = valStop;
             % Set initial value to start
-            pBar.jProgressBar.setValue(valStart);
+            pBar.jProgressBar.setValue(valStart); GlobalData.Program.ProgressBar.Values.Value = valStart;
             
         else
             error(['Usage : bst_progress(''start'', title, comment) ' 10 '        bst_progress(''start'', title, comment, valStart, valStop)']);
@@ -254,9 +256,10 @@ switch (lower(commandName))
             error('Usage : bst_progress(''inc'', valInc)');
         end
         % Get current value
-        curValue = pBar.jProgressBar.getValue();
+        curValue = GlobalData.Program.ProgressBar.Values.Value;
         % Get the incremented progress bar position
-        newVal = min(curValue + valInc, pBar.jProgressBar.getMaximum());
+        newVal = min(curValue + valInc, GlobalData.Program.ProgressBar.Values.Maximum);
+        GlobalData.Program.ProgressBar.Values.Value = newVal;
         pBar.jProgressBar.setValue(newVal);
         
     % ==== SET POSITION ====
