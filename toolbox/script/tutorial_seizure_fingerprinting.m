@@ -510,7 +510,7 @@ function GetSnapshotSensorTimeSeries(SensorFile, MontageName, Time, TimeWindow)
     close(hFig);
 end
 
-%% ===== SNAPSHOTS: SENSOR TIME SERIES =====
+%% ===== SNAPSHOTS: SENSOR 2D LAYOUT TIME SERIES =====
 function GetSnapshotSensor2DLayout(SensorFile, Time, TimeWindow)
     % Snapshot: 2D layout sensor time series
     hFig = view_topography(SensorFile, 'SEEG', '2DLayout');
@@ -520,7 +520,7 @@ function GetSnapshotSensor2DLayout(SensorFile, Time, TimeWindow)
     close(hFig);
 end
 
-%% ===== SNAPSHOTS: SOURCES =====
+%% ===== SNAPSHOTS: SOURCES TIME SLICE =====
 function GetSnapshotsSources(SourceFile, FigType, Time, DataThreshold)
     [sStudy, iStudy] = bst_get('AnyFile', SourceFile);
     % Get MRI reference
