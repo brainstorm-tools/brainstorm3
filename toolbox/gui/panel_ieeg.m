@@ -1379,6 +1379,15 @@ end
 %% ===== ADD ELECTRODE =====
 function AddElectrode(newLabel)
     global GlobalData;
+    % Get available electrodes
+    [sAllElec, iDS, iFig] = GetElectrodes();
+    if isempty(iDS)
+        return;
+    end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDS)
+        return;
+    end
     % Parse inputs
     if nargin < 1 || isempty(newLabel)
        % Ask user for a new label
@@ -1387,8 +1396,6 @@ function AddElectrode(newLabel)
             return;
         end
     end
-    % Get available electrodes
-    [sAllElec, iDS, iFig] = GetElectrodes();
     % Get modality
     if ~isempty(iFig) && ~isempty(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality)
         Modality = GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality;
@@ -1445,6 +1452,13 @@ function AddContact()
     global GlobalData;
     % Get electrodes
     [sSelElec, iSelElec, iDSall, iFigall] = GetSelectedElectrodes();
+    if isempty(iDSall)
+        return;
+    end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDSall)
+        return;
+    end
     if isempty(sSelElec)
         java_dialog('warning', 'No electrode selected.', 'Add contact');
         return
@@ -1523,16 +1537,16 @@ function RemoveElectrode(sSelElec)
     if isempty(iDSall)
         return;
     end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDSall)
+        return;
+    end
     % Parse inputs
     if nargin < 1
         sSelElec = [];
     else
         [~, iSelElec] = ismember({sSelElec.Name}, {sElecOld.Name});
     end
-    % Check if this is an new implantation folder
-    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
-    [fPath, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
     if isempty(sSelElec)
         % Get selected electrode
         [sSelElec, iSelElec] = GetSelectedElectrodes();
@@ -1554,52 +1568,49 @@ function RemoveElectrode(sSelElec)
     for iDS = unique(iDSall)
         % Loop on electrodes to delete
         for iElec = 1:length(sSelElec)
-            % If new implantation scheme: delete all the contacts for this electrode
-            if isImplantation
-                % Get contacts for this electrode
-                iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, sSelElec(iElec).Name));
-                if isempty(iChan)
+            % Get contacts for this electrode
+            iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Group}, sSelElec(iElec).Name));
+            if isempty(iChan)
+                continue;
+            end
+            % Loop on figures for this dataset
+            for iFig = iFigall(iDSall == iDS)
+                % If incorrect figure type
+                if ~ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
                     continue;
                 end
-                % Loop on figures for this dataset
-                for iFig = iFigall(iDSall == iDS)
-                    % If incorrect figure type
-                    if ~ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
-                        continue;
-                    end
-                    % Get indices in the figure handles
-                    [tmp, iHandles] = intersect(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
-                    % Delete graphic handles
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hPointEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG,1))
-                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:));
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:) = [];
-                    end
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hTextEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG,1))
-                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:));
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:) = [];
-                    end
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
-                    end
-                    % Delete all previously created objects
-                    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-                    delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
-                    % Update list of displayed channels
-                    iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
-                    remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
-                    selChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
-                    [tmp, I, J] = intersect(remChan, selChan);
-                    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
+                % Get indices in the figure handles
+                [tmp, iHandles] = intersect(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                % Delete graphic handles
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hPointEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG,1))
+                    delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:));
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:) = [];
                 end
-                % Update figure modality
-                UpdateFigureModality(iDS, iFig);
-                % Remove channels
-                GlobalData.DataSet(iDS).Channel(iChan) = [];
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hTextEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG,1))
+                    delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:));
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:) = [];
+                end
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
+                end
+                % Delete all previously created objects
+                hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+                delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+                % Update list of displayed channels
+                iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
+                selChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
+                [tmp, I, J] = intersect(remChan, selChan);
+                GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
             end
+            % Update figure modality
+            UpdateFigureModality(iDS, iFig);
+            % Remove channels
+            GlobalData.DataSet(iDS).Channel(iChan) = [];
             % Remove electrode line fitting
             delete(findobj(hFig, 'Tag', sSelElec(iElec).Name));
         end
@@ -1622,6 +1633,10 @@ function RemoveContact()
     if isempty(iDSall)
         return;
     end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDSall)
+        return;
+    end
     if isempty(sSelElec)
         java_dialog('warning', 'No electrode selected.', 'Remove contact');
         return
@@ -1636,10 +1651,6 @@ function RemoveContact()
         java_dialog('warning', 'Remove contacts is only available for SEEG electrodes.', 'Remove contact');
         return
     end
-    % Check if this is an new implantation folder
-    ChannelFile = GlobalData.DataSet(iDSall(1)).ChannelFile;
-    [~, folderName] = bst_fileparts(bst_fileparts(ChannelFile));
-    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
     % Get selected contact
     sSelCont = GetSelectedContacts();
     if isempty(sSelCont)
@@ -1658,82 +1669,79 @@ function RemoveContact()
     end
     % Reset selected contacts
     SetSelectedContacts(0);
-    % If implantation scheme proceed with deleting the selected contacts
-    if isImplantation
-        % Loop on datasets
-        for iDS = unique(iDSall)
-            % Loop on contacts to delete
-            for iCont = 1:length(sSelCont)
-                % Get contact details from channel file
-                iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, sSelCont(iCont).Name));
-                if isempty(iChan)
+    % Loop on datasets
+    for iDS = unique(iDSall)
+        % Loop on contacts to delete
+        for iCont = 1:length(sSelCont)
+            % Get contact details from channel file
+            iChan = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, sSelCont(iCont).Name));
+            if isempty(iChan)
+                continue;
+            end
+            % Loop on figures for this dataset
+            for iFig = iFigall(iDSall == iDS)
+                % If incorrect figure type
+                if ~ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
                     continue;
                 end
-                % Loop on figures for this dataset
-                for iFig = iFigall(iDSall == iDS)
-                    % If incorrect figure type
-                    if ~ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'MriViewer', '3DViz', 'Topography'})
-                        continue;
-                    end
-                    % Get indices in the figure handles
-                    [~, iHandles] = intersect(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
-                    % Delete graphic handles
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hPointEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG,1))
-                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:));
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:) = [];
-                    end
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hTextEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG,1))
-                        delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:));
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:) = [];
-                    end
-                    if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
-                        GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
-                    end
-                    % Delete all previously created objects
-                    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-                    delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
-                    delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
-                    % Update list of displayed channels
-                    iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
-                    remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
-                    selChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
-                    [~, I] = intersect(remChan, selChan);
-                    GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
+                % Get indices in the figure handles
+                [~, iHandles] = intersect(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                % Delete graphic handles
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hPointEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG,1))
+                    delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:));
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.hPointEEG(iHandles,:) = [];
                 end
-                % Update figure modality
-                UpdateFigureModality(iDS, iFig);
-                % Remove channels
-                GlobalData.DataSet(iDS).Channel(iChan) = [];
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hTextEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG,1))
+                    delete(GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:));
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.hTextEEG(iHandles,:) = [];
+                end
+                if ~isempty(iHandles) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'LocEEG') && (max(iHandles) <= size(GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG,1))
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles.LocEEG(iHandles,:) = [];
+                end
+                % Delete all previously created objects
+                hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+                delete(findobj(hFig, 'Tag', 'ElectrodeGrid'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeSelect'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeDepth'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeWire'));
+                delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
+                % Update list of displayed channels
+                iSelChan = setdiff(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels, iChan);
+                remChan = {GlobalData.DataSet(iDS).Channel(setdiff(1:length(GlobalData.DataSet(iDS).Channel), iChan)).Name};
+                selChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
+                [~, I] = intersect(remChan, selChan);
+                GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels = I(:)';
             end
+            % Update figure modality
+            UpdateFigureModality(iDS, iFig);
+            % Remove channels
+            GlobalData.DataSet(iDS).Channel(iChan) = [];
         end
-        % Update intraelectrode structure in channel
-        % Get the updated contacts
-        sContacts = GetContacts(sSelElec.Name);
-        % Update electrode contact number
-        sSelElec.ContactNumber = size(sContacts, 2);
-        % Assign electrode tip and skull entry
-        sSelElec.Loc = [];
-        if sSelElec.ContactNumber >= 1
-            sSelElec.Loc(:,1) = sContacts(1).Loc;
-        end
-        if sSelElec.ContactNumber > 1
-            sSelElec.Loc(:,2) = sContacts(end).Loc;
-        end
-        % Set the changed electrode properties
-        SetElectrodes(iSelElec, sSelElec);
-        % Update contact names in channel
-        iChan = find(ismember({GlobalData.DataSet(iDSall(1)).Channel.Name}, {sContacts.Name}));
-        newContNames  = {};
-        for iCont = 1:sSelElec.ContactNumber
-            newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
-        end
-        % Loop on datasets
-        for iDS = unique(iDSall)
-            [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
-        end
+    end
+    % Update intraelectrode structure in channel
+    % Get the updated contacts
+    sContacts = GetContacts(sSelElec.Name);
+    % Update electrode contact number
+    sSelElec.ContactNumber = size(sContacts, 2);
+    % Assign electrode tip and skull entry
+    sSelElec.Loc = [];
+    if sSelElec.ContactNumber >= 1
+        sSelElec.Loc(:,1) = sContacts(1).Loc;
+    end
+    if sSelElec.ContactNumber > 1
+        sSelElec.Loc(:,2) = sContacts(end).Loc;
+    end
+    % Set the changed electrode properties
+    SetElectrodes(iSelElec, sSelElec);
+    % Update contact names in channel
+    iChan = find(ismember({GlobalData.DataSet(iDSall(1)).Channel.Name}, {sContacts.Name}));
+    newContNames  = {};
+    for iCont = 1:sSelElec.ContactNumber
+        newContNames{end+1} = sprintf('%s%d', sSelElec.Name, iCont);
+    end
+    % Loop on datasets
+    for iDS = unique(iDSall)
+        [GlobalData.DataSet(iDS).Channel(iChan).Name] = newContNames{:};
     end
     % Mark channel file as modified (only the first one)
     GlobalData.DataSet(iDSall(1)).isChannelModified = 1;
@@ -2903,9 +2911,8 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             Channels = [];
             return
         end
-        % Check if this is an new implantation folder
-        [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-        isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+        % Check if this is an implantation folder
+        isImplantation = isImplantationFolder(iDS);
         % Check if there are channels available
         Channels = GlobalData.DataSet(iDS(1)).Channel;
         if isempty(GlobalData.DataSet(iDS(1)).IntraElectrodes)
@@ -3285,9 +3292,8 @@ function SetElectrodeLoc(iLoc, jButton)
     jButton.setForeground(java.awt.Color(0, 0.8, 0));
     % Get the contact for this electrode
     iChan = find(strcmpi({GlobalData.DataSet(iDS(1)).Channel.Group}, sSelElec.Name));
-    % Check if this is an new implantation folder
-    [fPath, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
-    isImplantation = ~isempty(strfind(folderName, 'Implantation'));
+    % Check if this is an implantation folder
+    isImplantation = isImplantationFolder(iDS);
     % Update contact positions
 %     if (~isempty(iChan) || isImplantation) && ...
     if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
@@ -3737,4 +3743,12 @@ function XYZ = GetCrosshairLoc(cs)
             Handles = bst_figures('GetFigureHandles', hFig);
             XYZ = figure_mri('GetLocation', cs, sMri, Handles);
     end
+end
+
+%% ===== CHECK IF IMPLANTATION FOLDER =====
+function isImplantation = isImplantationFolder(iDS)
+    global GlobalData;
+    [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
+    % Check if folder name starts with 'implantation'
+    isImplantation = strncmpi(folderName, 'implantation', 12);
 end
