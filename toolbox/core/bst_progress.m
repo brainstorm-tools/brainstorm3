@@ -152,7 +152,8 @@ if isempty(pBar)
            jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
     pBar.jWindow.setLocation(pos(1), pos(2));
 
-    pBar.Values = struct('Minimum', 0, 'Maximum',100, 'Value',0 );
+    pBar.Values = struct('Minimum', 0, 'Maximum', 100, 'Value', 0, 'LastUpdate', 0);
+);
     % Save progress bar
     GlobalData.Program.ProgressBar = pBar;
 end
@@ -284,6 +285,7 @@ switch (lower(commandName))
         if (curValue ~= newVal)
             newVal = min(newVal, GlobalData.Program.ProgressBar.Values.Maximum);
             GlobalData.Program.ProgressBar.Values.Value = newVal;
+            GlobalData.Program.ProgressBar.Values.LastUpdate = newVal;
             pBar.jProgressBar.setValue(newVal);
         end
         
