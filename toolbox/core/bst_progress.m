@@ -279,17 +279,18 @@ switch (lower(commandName))
             error('Usage : bst_progress(''set'', pos)');
         end
         % Get current value
-        curValue = pBar.jProgressBar.getValue();
+        curValue = GlobalData.Program.ProgressBar.Values.Value;
         % Get the incremented progress bar position
         if (curValue ~= newVal)
-            newVal = min(newVal, pBar.jProgressBar.getMaximum());
+            newVal = min(newVal, GlobalData.Program.ProgressBar.Values.Maximum);
+            GlobalData.Program.ProgressBar.Values.Value = newVal;
             pBar.jProgressBar.setValue(newVal);
         end
         
     % ==== GET POSITION ====
     case 'get'
         % Get the incremented progress bar position
-        pBar = pBar.jProgressBar.getValue();
+        pBar = GlobalData.Program.ProgressBar.Values.Value;
         
     % ==== SET TEXT ====
     case 'text'
@@ -373,9 +374,9 @@ switch (lower(commandName))
         pBarParams.Title = pBar.jWindow.getTitle().toCharArray';
         pBarParams.Msg = pBar.jLabel.getText().toCharArray';
         pBarParams.isIndeterminate = pBar.jProgressBar.isIndeterminate();
-        pBarParams.Value = pBar.jProgressBar.getValue();
-        pBarParams.Min = pBar.jProgressBar.getMinimum();
-        pBarParams.Max = pBar.jProgressBar.getMaximum();
+        pBarParams.Value = GlobalData.Program.ProgressBar.Values.Value;
+        pBarParams.Min = GlobalData.Program.ProgressBar.Values.Minimum; 
+        pBarParams.Max = GlobalData.Program.ProgressBar.Values.Maximum;
         pBar = pBarParams;
 
     % ==== SET BAR PARAMETERS ====
