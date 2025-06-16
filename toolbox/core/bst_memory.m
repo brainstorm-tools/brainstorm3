@@ -2392,6 +2392,8 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 end
             elseif ~iscell(RowNames) && ~iscell(AllRows)
                 iFound = find(AllRows == RowNames(i), 1);
+            elseif iscell(RowNames) && ~iscell(AllRows)
+                iFound = find(AllRows == str2double(RowNames{i}), 1);
             else
                 iFound = [];
             end
