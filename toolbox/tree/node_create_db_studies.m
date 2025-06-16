@@ -165,7 +165,10 @@ end
 isRaw = find(listRaw);
 isNonRaw = find(~listRaw);
 % Get list of noraw "Implantation" conditions
-isImplantation  = strncmpi([ProtocolStudies.Study(isNonRaw).Condition], 'implantation', 12);
+isImplantation = [];
+if ~isempty(isNonRaw)
+    isImplantation  = strncmpi([ProtocolStudies.Study(isNonRaw).Condition], 'implantation', 12);
+end
 isNonRawImplant = isNonRaw(isImplantation);
 isNonRaw        = isNonRaw(~isImplantation);
 % Sort studies by Condition (Implantation, Raw, Non-raw after)
