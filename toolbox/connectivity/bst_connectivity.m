@@ -1078,9 +1078,8 @@ for iFile = 1 : length(FilesA)
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
             CleanExit; return;
     end
-    % Replace any NaN values with zeros
+    % Replace Inf values with zeros
     if isnumeric(R)
-        R(isnan(R)) = 0;
         R(isinf(R)) = 0;
     end
     
