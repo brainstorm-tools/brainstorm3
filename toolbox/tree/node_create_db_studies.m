@@ -164,10 +164,18 @@ for i = 1:length(ProtocolStudies.Study)
 end
 isRaw = find(listRaw);
 isNonRaw = find(~listRaw);
-% Sort studies by Condition (raw first, non-raw after)
-[tmp__, iStudiesSortedRaw] = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isRaw).Condition}, 'UniformOutput', 0));
-[tmp__, iStudiesSortedNonRaw] = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0));
-iStudiesSorted = [isRaw(iStudiesSortedRaw), isNonRaw(iStudiesSortedNonRaw)];
+% Get list of noraw "Implantation" conditions
+isImplantation = [];
+if ~isempty(isNonRaw)
+    isImplantation  = strncmpi([ProtocolStudies.Study(isNonRaw).Condition], 'implantation', 12);
+end
+isNonRawImplant = isNonRaw(isImplantation);
+isNonRaw        = isNonRaw(~isImplantation);
+% Sort studies by Condition (Implantation, Raw, Non-raw after)
+[tmp__, iStudiesSortedImplant] = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRawImplant).Condition}, 'UniformOutput', 0));
+[tmp__, iStudiesSortedRaw]     = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isRaw).Condition},           'UniformOutput', 0));
+[tmp__, iStudiesSortedNonRaw]  = sort_nat(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition},        'UniformOutput', 0));
+iStudiesSorted = [isNonRawImplant(iStudiesSortedImplant), isRaw(iStudiesSortedRaw), isNonRaw(iStudiesSortedNonRaw)];
 % Check for database inconsistency
 if (length(iStudiesSorted) ~= length(ProtocolStudies.Study))
     bst_error(['There are structure errors in this protocol, please reload it.' 10 '=> Right click on protocol node > Reload.'], 'Update database explorer', 0);

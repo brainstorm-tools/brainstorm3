@@ -1618,7 +1618,10 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
             [hLegend, hLegendObjects] = legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
         else
             disp('BST> Error: Number of legend entries do not match the number of lines. Ignoring...');
+            [hLegend, hLegendObjects] = legend('off');
         end
+    else
+        [hLegend, hLegendObjects] = legend('off');
     end
 end
 
