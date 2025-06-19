@@ -1033,8 +1033,10 @@ function [DataPair, isStat] = LoadConnectivityData(hFig, Options)
     end
 
     % Zero-out the diagonal because its useless
-    M = M - diag(diag(M));
-    
+    M(logical(eye(size(M)))) = 0;
+    % Replace NaN values with Inf to test for symmetry
+    ixNan = isnan(M);
+    M(ixNan) = Inf;
     % If the matrix is symetric and Not directional
     if (isequal(M, M') && ~IsDirectionalData(hFig))
         % We don't need the upper half
@@ -1042,6 +1044,8 @@ function [DataPair, isStat] = LoadConnectivityData(hFig, Options)
             M(i, i:end) = 0;
         end
     end
+    % Restore NaNs
+    M(ixNan) = NaN;
     
     % === THRESHOLD ===
     if ~isStat && ((size(M, 1) * size(M, 2)) > MaximumNumberOfData)
