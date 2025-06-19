@@ -747,6 +747,9 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
     if ~isfield(sResults, 'SurfaceFile')
         sResults.SurfaceFile = [];
     end
+    if ~isfield(sResults, 'Std')
+        sResults.Std = [];
+    end
     if ~isfield(sResults, 'DisplayUnits')
         sResults.DisplayUnits = [];
     end
