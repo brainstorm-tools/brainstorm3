@@ -1,16 +1,19 @@
-function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Condition, TimeVector, DisplayUnits, ProjFrac)
+function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac)
 % MRI_VOL2TESS: Estimates average voxel intensities along the surface
 % normals from pial surface to white matter surface and projects the result to
 % the pial surface as a texture.
 % 
-% USAGE:  OutputFile = mri_vol2tess(MriFileSrc, MriFileRef, Condition, TimeVector, DisplayUnits, ProjFrac)
+% USAGE:  OutputFile = mri_vol2tess(MriFileSrc, MriFileRef, Condition, DisplayUnits, ProjFrac)
 %
 % INPUT:
 %    - MriFileSrc : Source MRI file
 %    - MriFileRef : Reference MRI file
 %    - Condition  : Condition name for the projection
-%    - TimeVector : Time vector for the results
-%    - DisplayUnits: 
+%    - DisplayUnits:  Units of projected data for display
+%    - ProjFrac   : Weights for depth-weighted projection of data,
+%                   give as a 3-element vector for white matter, mid and 
+%                   pial surface, respectively (default: [0.1 0.8 0.1])
+%                 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -35,9 +38,8 @@ function [OutputFile, errorMsg] = mri_interp_vol2tess(MriFileSrc, MriFileRef, Co
 %% ===== INITIALIZATION =====
 errorMsg = '';
 OutputFile = '';
-if nargin < 6, ProjFrac = [0.1 0.8 0.]; end
-if nargin < 5, DisplayUnits = []; end
-if nargin < 4, TimeVector = []; end
+if nargin < 5, ProjFrac = [0.1 0.8 0.1]; end
+if nargin < 4, DisplayUnits = []; end
 if nargin < 3, Condition = []; end
 
 %% ===== LOAD ANATOMY AND CHECKS =====
@@ -146,12 +148,7 @@ else
 end
 ResultsMat.ImagingKernel = [];
 FileType = 'results';
-% Time vector
-if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.ImageGridAmp,2))
-    ResultsMat.Time = 0:(size(ResultsMat.ImageGridAmp,2)-1);
-else
-    ResultsMat.Time = TimeVector;
-end
+ResultsMat.Time = 0:(size(ResultsMat.ImageGridAmp,2)-1);
 % Fix identical time points
 if (length(ResultsMat.Time) == 2) && (ResultsMat.Time(1) == ResultsMat.Time(2))
     ResultsMat.Time(2) = ResultsMat.Time(2) + 0.001;

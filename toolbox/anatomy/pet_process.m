@@ -127,10 +127,9 @@ try
         % Use the same reference MRI as above
         % Use the subject's name as the condition
         Condition = 'PET';
-        TimeVector = [];
         DisplayUnits = '';
         ProjFrac = [0.1 0.4 0.5];
-        [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, TimeVector, DisplayUnits, ProjFrac);
+        [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, DisplayUnits, ProjFrac);
         if ~isempty(errProj)
             errMsg = ['PET processed, but projection failed: ', errProj];
         end
