@@ -911,12 +911,19 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             isModifiedData = 0;
                             % Loop to find matching channels
                             for iChanBids = 1:size(ChanInfo,1)
-                                % Look for corresponding channel in Brainstorm channel file
-                                iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
-                                if isempty(iChanBst)
-                                    iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                % Update EEG channel names for FIF files
+                                if strcmpi(FileFormat, 'FIF') && strcmpi(ChanInfo{iChanBids, 2}, 'EEG')
+                                    ChannelMat.Channel(iChanBids).Name = ChanInfo{iChanBids, 1};
+                                    iChanBst = iChanBids;
+                                    isModifiedChan = 1;
+                                else
+                                    % Look for corresponding channel in Brainstorm channel file
+                                    iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                     if isempty(iChanBst)
-                                        continue;
+                                        iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                        if isempty(iChanBst)
+                                            continue;
+                                        end
                                     end
                                 end
                                 % Copy type
