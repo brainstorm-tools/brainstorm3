@@ -240,7 +240,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         isMeg = isCtf || isElekta;
         isEeg = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', sInputs(iInput).ChannelTypes);
         isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
-        if ~isMeg && ~isEeg
+        isNirs    = ismember('NIRS', sInputs(iInput).ChannelTypes);
+
+        if ~isMeg && ~isEeg && ~isNirs
             disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
             continue;
         end
@@ -401,6 +403,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 taskName = ExtractCtfTaskname(sFile);
             elseif isElekta
                 taskName = ExtractFifTaskname(sFile);
+            else
+                tokens = regexp(rawName,'task-([a-zA-Z0-9]+)','tokens');
+                taskName = tokens{1}{1};
             end
             
             % Otherwise, extract task name from condition
@@ -468,6 +473,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         elseif isEeg
             metadata = addField(metadata, 'EEGReference', eegReference);
+        elseif isNirs
+            % Extract Optode Identities
+            [isrcs, idets] = nst_unformat_channels({ChannelMat.Channel(strcmp({ChannelMat.Channel.Type},'NIRS')).Name});
+            
+            metadata = addField(metadata, 'NIRSChannelCount',     length(isrcs));
+            metadata = addField(metadata, 'NIRSSourceOptodeCount',  length(unique(isrcs)));
+            metadata = addField(metadata, 'NIRSDetectorOptodeCount',length(unique(idets)));
+            
         end
 
         % Extract format-specific metadata
@@ -488,6 +501,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isEeg
             modFolder = 'eeg';
             modSuffix = '_eeg';
+        elseif isNirs 
+            modFolder = 'nirs';
+            modSuffix = '_nirs';  
         else
             modFolder = 'data';
             modSuffix = [];
@@ -503,6 +519,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             rawExt = '.ds';
         elseif isEeg && ~isEegBids
             rawExt = '.eeg';
+        elseif isNirs 
+            rawExt = '.snirf';
         end
         newPath = bst_fullfile(megFolder, [newName, rawExt]);
         if exist(newPath, 'file') == 0 || overwrite
@@ -526,6 +544,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Convert unsupported formats to EDF.
                 disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
+            elseif isNirs 
+                export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
+                
+                % Export optodes coordinates
+                out_channel_bids(sInput.ChannelFile, bst_fullfile(megFolder, [prefix '_optodes.tsv']), 0.01, [], isNirs);
             else
                 % Copy raw data file
                 file_copy(sFile.filename, newPath);
@@ -550,6 +573,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             % Create session TSV file
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
+
+            % Create event TSV
+            tsvEventsFile = bst_fullfile(megFolder, [prefixTask, taskName, '_events.tsv']);
+            out_events_bids(sFile, tsvEventsFile);
         end
         
         bst_progress('inc', 1);
