@@ -89,9 +89,32 @@ for iEvt = 1:length(uniqueEvt)
     events(iEvt).label  = uniqueEvt{iEvt};
     events(iEvt).epochs = ones(1, length(iMrk));
     events(iEvt).times  = [onsets{:}];
-    % Convert latencies from the first sample in the file to the real timing 
-    % See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
-    events(iEvt).times = events(iEvt).times + sFile.prop.times(1);
+
+
+    % ===== TIME OFFSET =====
+    isAddOffset = 1;
+    if isInteractive
+        % Convert latencies from the first sample in the file to the real timing 
+        % See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+
+        if (sFile.prop.times(1) ~= 0)
+            res = java_dialog('question', ['The raw data file starts at ' num2str(sFile.prop.times(1)) ' sec.' 10 10 ...
+                                          'Is this offset already added to these events?' 10 10],...
+                                          'Import events', [], {'Yes', 'Add Offset','Cancel'},'Yes');
+            if isempty(res) || strcmpi(res, 'Cancel')
+                bst_progress('stop');
+                return;
+            elseif strcmpi(res, 'Yes')
+                isAddOffset = 0;
+            end
+        end
+    end
+
+    % Add a column for time
+    if isAddOffset
+        events(iEvt).times = events(iEvt).times + sFile.prop.times(1);
+    end
+  
     % Extended events if durations are defined for all the markers
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
