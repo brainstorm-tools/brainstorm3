@@ -105,7 +105,7 @@ if isempty(newEvents)
         case 'BESA'
             newEvents = in_events_besa(sFile, EventFile);
         case 'BIDS'
-            newEvents = in_events_bids(sFile, EventFile);
+            newEvents = in_events_bids(sFile, EventFile, isInteractive);
         case 'BRAINAMP'
             newEvents = in_events_brainamp(sFile, ChannelMat, EventFile);
         case 'BST'

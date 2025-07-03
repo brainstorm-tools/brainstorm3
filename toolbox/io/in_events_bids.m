@@ -1,4 +1,4 @@
-function events = in_events_bids(sFile, EventFile)
+function events = in_events_bids(sFile, EventFile, isInteractive)
 % IN_EVENTS_BIDS: Read a BIDS _events.tsv file (columns "onset", "duration", "trial_type").
 %
 % OUTPUT:
@@ -26,6 +26,11 @@ function events = in_events_bids(sFile, EventFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2019-2022
+
+% Parse inputs
+if (nargin < 3) || isempty(isInteractive)
+    isInteractive = 1;
+end
 
 % Read tsv file
 % https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
