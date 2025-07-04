@@ -457,7 +457,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 EventNames{end + 1} = event;
             end
         end
-        
+        %% Prepare coordinate structure
+        coorddata = struct();
+        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'ScanRAS');
+        coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+        coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
@@ -546,9 +550,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
             elseif isNirs 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
-                
-                % Export optodes coordinates
-                out_channel_bids(sInput.ChannelFile, bst_fullfile(megFolder, [prefix '_optodes.tsv']), 0.01, [], isNirs);
+                export_channel(sInput.ChannelFile,  bst_fullfile(megFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                % Exports in Scanras format in mm units, future will add
+                % options. MAKE SURE TO USE export_channel, NOT
+                % out_channel_bids!!!
             else
                 % Copy raw data file
                 file_copy(sFile.filename, newPath);
@@ -574,9 +579,13 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
 
-            % Create event TSV
+            % Create event TSV file
             tsvEventsFile = bst_fullfile(megFolder, [prefixTask, taskName, '_events.tsv']);
             out_events_bids(sFile, tsvEventsFile);
+
+            % Create coordinates JSON
+            jsonCoord = bst_fullfile(megFolder, [prefix '_coordsystem.json']);
+            CreateMegJson(jsonCoord, coorddata);  % Something is going wrong with CreateMegJson and its likely I'm inputing the wrong data, cant tell how though.
         end
         
         bst_progress('inc', 1);
