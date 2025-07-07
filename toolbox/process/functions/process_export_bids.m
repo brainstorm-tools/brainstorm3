@@ -586,7 +586,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
             % Create coordinates JSON
             jsonCoord = bst_fullfile(megFolder, [prefix '_coordsystem.json']);
-            CreateMegJson(jsonCoord, coorddata);  % Something is going wrong with CreateMegJson and its likely I'm inputing the wrong data, cant tell how though.
+            CreateMegJson(jsonCoord, coorddata);
         end
         
         bst_progress('inc', 1);
