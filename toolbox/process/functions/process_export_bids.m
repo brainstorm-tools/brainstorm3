@@ -551,6 +551,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isNirs 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
                 export_channel(sInput.ChannelFile,  bst_fullfile(megFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                export_channel(sInput.ChannelFile, bst_fullfile(megFolder, [prefix '_channel.tsv']), 'BIDS-NIRS-channel', 0);
                 % Exports in Scanras format in mm units, future will add
                 % options. MAKE SURE TO USE export_channel, NOT
                 % out_channel_bids!!!
