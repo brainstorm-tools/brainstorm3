@@ -1,3 +1,25 @@
+April 2025
+- Anatomy: Add support for PET volumes
+- Process: Apply montages on raw continuous recordings
+- SEEG/ECOG: Improvements for iEEG implantation: Add/remove individual contacts
+- Events: Allow event processes in record panel for Matrix files
+- Events: Add process to uniform event colors in Protocol
+- Distrib: Update neuroimage.usc.edu URLs to HTTPS
+--------------------------------------------------------------
+March 2025
+- Anatomy: Export surface scouts as MRI mask
+- Anatomy: Improved isosurface threshold slider
+- TimeFreq: Correct sign of imaginary part in complex TF computed with Hilbert
+- Distrib: Improved detection of write permissions in Windows symlinks
+--------------------------------------------------------------
+February 2025
+- Anatomy: Import MRI BESA volumes and surfaces
+- Anatomy: Export surfaces as STL files
+- Process: Add frequency band support to process PSD features
+- Process: Add z-score output to process Compare to normative PSD
+- Process: GUI, handle nested controller-classes in process options
+- Distrib: Compilation with Matlab 2025a
+--------------------------------------------------------------
 December 2024
 - Anatomy: Copy/Paste scout operations
 - Anatomy: Scalp scouts from sensor positions

@@ -61,7 +61,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
             else
                 Comment = [];
             end
-            % Call tess_isohead(iSubject, nVertices, erodeFactor, fillFactor)
+        % Call tess_isohead(iSubject, nVertices, erodeFactor, fillFactor)
         else
             bgLevel = [];
             Comment = [];

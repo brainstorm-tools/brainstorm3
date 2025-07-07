@@ -27,7 +27,8 @@ function varargout = process_test_normative( varargin )
 % =============================================================================@
 %
 % Authors: Pauline Amrouche, 2024
-%          Raymundo Cassani, 2024
+%          Raymundo Cassani, 2024-2025
+%          Lindsey Power,    2024
 
 eval(macro_method);
 end
@@ -52,22 +53,42 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.islog.Comment       = 'Use log10 values';
     sProcess.options.islog.Type          = 'checkbox';
     sProcess.options.islog.Value         = 1;
+
+    % Options: Normal distribution
+    sProcess.options.istest.Comment    = 'Perform deviation test (otherwise return z-scores)';
+    sProcess.options.istest.Type       = 'checkbox';
+    sProcess.options.istest.Value      = 1;
+    sProcess.options.istest.Controller = 'Test';
+
+    % Options: Test section title
+    sProcess.options.test_title.Comment  = '<BR><B><U>Deviation test </U></B>:';
+    sProcess.options.test_title.Type     = 'label';
+    sProcess.options.test_title.Class    = 'Test';
+
     % Options : Select deviation level
     sProcess.options.devlevel.Comment    = 'Deviation level (range 0-1):';
     sProcess.options.devlevel.Type       = 'value';
     sProcess.options.devlevel.Value      = {0.05, '', 2};
+    sProcess.options.devlevel.Class      = 'Test';
+
     % Options: Normal distribution
     sProcess.options.isnormal.Comment    = 'Assume normal distribution of residuals';
     sProcess.options.isnormal.Type       = 'checkbox';
     sProcess.options.isnormal.Value      = 0;
     sProcess.options.isnormal.Controller = 'Normal';
-    % Options : Shapiro-Wilk test for normality
+    sProcess.options.isnormal.Class      = 'Test';
+
+    % Options: Shapiro-Wilk test for normality
     sProcess.options.shapiro.Comment     = 'Test for normality of residuals (Shapiro-Wilk)';
     sProcess.options.shapiro.Type        = 'checkbox';
     sProcess.options.shapiro.Value       = 1;
     sProcess.options.shapiro.Class       = 'Normal';
-    % Options: Frequency definition
+
     % === Frequency output
+    % Options: Frequency definition title
+    sProcess.options.freq_title.Comment    = '<BR><B><U>Frequency definition</U></B>:';
+    sProcess.options.freq_title.Type       = 'label';
+    % Options: Frequency definition
     sProcess.options.freqout.Comment   = {'Same as input', 'Frequency range', 'Frequency bands', 'Frequency definition:'; ...
                                           'input', 'range', 'bands', ''};
     sProcess.options.freqout.Type      = 'radio_linelabel';
@@ -104,6 +125,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB)  %#ok<DEFNU>
     OPTIONS.FreqRange     = sProcess.options.freqrange.Value{1};
     OPTIONS.FreqBands     = sProcess.options.freqbands.Value;
     OPTIONS.DevLevel      = sProcess.options.devlevel.Value{1};
+    OPTIONS.IsTest        = sProcess.options.istest.Value;
     OPTIONS.IsNormal      = sProcess.options.isnormal.Value;
     OPTIONS.TestNormality = sProcess.options.shapiro.Value;
 
@@ -218,7 +240,14 @@ function comment = GetComment(tfMat, options)
     if ~isempty(comment_suffix)
         comment_suffix = ['| ' comment_suffix];
     end
-    comment = sprintf('comp. to norm: devLevel (%.2f) %s', options.DevLevel, comment_suffix);
+    % Deviation test performed
+    if options.IsTest
+        test_suffix = sprintf('devLevel (%.2f) %s', options.DevLevel);
+    else
+        test_suffix = sprintf('z-scores');
+    end
+    % Build comment
+    comment = sprintf('comp. to norm: %s %s', test_suffix, comment_suffix);
 end
 
 
@@ -381,15 +410,24 @@ end
 function timefreqMat = CompareToNormDistrib(timefreqMat, normDistrib, options)
     % Compute the z-scores
     z_scores = (squeeze(timefreqMat.TF) - normDistrib.norm_means) ./ normDistrib.norm_stds;
-    % Identify z_scores that are significantly different from the normative distribution
-    if options.IsNormal
-        signif = abs(z_scores) > normDistrib.norm_percentile;
+    if options.IsTest
+        % Identify z_scores that are significantly different from the normative distribution
+        if options.IsNormal
+            signif_neg = (z_scores < -(normDistrib.norm_percentile))*(-1);
+            signif_pos = (z_scores > normDistrib.norm_percentile);
+        else
+            signif_neg = (z_scores < normDistrib.percentiles(:, :, 1))*(-1);
+            signif_pos = (z_scores > normDistrib.percentiles(:, :, 2));
+        end
+        outValue = signif_neg + signif_pos;
+        outUnit  = 'significant deviation';
     else
-        signif = (z_scores < normDistrib.percentiles(:, :, 1)) | (z_scores > normDistrib.percentiles(:, :, 2));
+        outValue = z_scores;
+        outUnit  = 'z';
     end
     % Restore time dimenstion
-    signif = permute(signif, [1,3,2]);
-    timefreqMat.TF = signif;
+    timefreqMat.TF = permute(outValue, [1,3,2]);
+    timefreqMat.DisplayUnits = outUnit;
 end
 
 
@@ -397,13 +435,17 @@ end
 function output = SaveData(sInputA, sInputsB, tfMat, options)
     % Add comment, change filename and save
     tfMat.ColormapType = 'stat2';
-
+    tfMat.Measure      = 'other';
     % Get file comment from options
     tfMat.Comment = GetComment(tfMat, options);
 
     % History
     tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('File compared to normative: %s', sInputA.FileName));
-    tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('devLevel = %.2f, isNorm = %d, isLog10 = %d', options.DevLevel, options.IsNormal, options.IsLog));
+    if options.IsTest
+        tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('devLevel = %.2f, isNorm = %d, isLog10 = %d', options.DevLevel, options.IsNormal, options.IsLog));
+    else
+        tfMat = bst_history('add', tfMat, 'comp2norm', sprintf('z-scores, isLog10 = %d', options.IsLog));
+    end
     % History: List files used for normative
     tfMat = bst_history('add', tfMat, 'comp2norm', 'List of files used for normative distribution:');
     for i = 1:length(sInputsB)

@@ -173,12 +173,22 @@ else
     TfInfo.RowName = AllRows(1);
 end
 % Default function
+TfMethod  = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
+TfMeasure = lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure);
 if isEphysFile
     TfInfo.Function = 'power';
     TfInfo.DisplayMeasure = 0;
     TfInfo.DisableHideEdgeEffects = 1;
 elseif ~isempty(Function)
     TfInfo.Function = Function;
+elseif ismember(TfMethod, {'morlet', 'hilbert'})
+    % Use last chosen display function, but only if supported by this measure
+    lastDisplayFun = lower(bst_get('LastTfDisplayFunction'));
+    if ~isempty(lastDisplayFun) && ~(strcmp(lastDisplayFun, 'phase') && ismember(TfMeasure, {'power', 'magnitude', 'log'}))
+        TfInfo.Function = lastDisplayFun;
+    else
+        TfInfo.Function = 'power';
+    end
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end

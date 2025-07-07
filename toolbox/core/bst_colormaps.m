@@ -389,7 +389,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                                 % For Data: use the modality instead
                                 if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
                                     DataType = upper(ColormapInfo.Type);
-                                    % sLORETA: Do not use regular source scaling (pAm)
+                                % sLORETA: Do not use regular source scaling (pAm)
                                 elseif strcmpi(DataType, 'Source')
                                     if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                         DataType = 'sLORETA';

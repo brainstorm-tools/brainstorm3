@@ -68,7 +68,13 @@ function OutputFiles = Run(sProcess, sInputs)
     SensorTypes = sProcess.options.sensortypes.Value;
     BandPass = sProcess.options.bandpass.Value{1};
     PhaseBin = sProcess.options.phaseBin.Value{1};
-    
+    % Check if the signal processing toolbox is available
+    if bst_get('UseSigProcToolbox')
+        hilbert_fcn = @hilbert;
+    else
+        hilbert_fcn = @oc_hilbert;
+    end
+
     % ===== PROCESS FILES =====
     % Check how many event groups we're processing
     listComments = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
@@ -154,7 +160,7 @@ function OutputFiles = Run(sProcess, sInputs)
             % Compute the phase
             angle_filtered_F = zeros(size(filtered_F));
             for iChannel = 1:size(filtered_F,1)
-                angle_filtered_F(iChannel,:) = angle(hilbert(filtered_F(iChannel,:)));
+                angle_filtered_F(iChannel,:) = angle(transpose(hilbert_fcn(transpose(filtered_F(iChannel,:)))));
             end
 
             for iNeuron = 1:length(neuronLabels)

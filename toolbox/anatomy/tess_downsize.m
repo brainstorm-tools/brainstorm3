@@ -119,7 +119,7 @@ if isempty(Method)
     end
     % Identify textured surfaces (color info is present) and show available methods for them
     VarInfo = whos('-file',file_fullpath(TessFile), 'Color');
-    if all(VarInfo.size ~= 0)
+    if ~isempty(VarInfo) && all(VarInfo.size ~= 0)
         methods_str = methods_str(1); % Inhomogeneous mesh
     end
     % Ask method

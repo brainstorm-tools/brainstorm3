@@ -91,7 +91,11 @@ end
 % Copy default options to OPTIONS structure (do not replace defined values)
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Check if the signal processing toolbox is available
-UseSigProcToolbox = bst_get('UseSigProcToolbox');
+if bst_get('UseSigProcToolbox')
+    hilbert_fcn = @hilbert;
+else
+    hilbert_fcn = @oc_hilbert;
+end
 
 
 % ===== PARSE INPUTS =====
@@ -583,11 +587,7 @@ for iData = 1:length(Data)
                 Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', isMirror, isRelax);
                 % Fband = process_bandpass('Compute', F, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
                 % Apply Hilbert transform
-                if UseSigProcToolbox
-                    TF(:,:,iBand) = hilbert(Fband')';
-                else
-                    TF(:,:,iBand) = oc_hilbert(Fband')';
-                end
+                TF(:,:,iBand) = transpose(hilbert_fcn(transpose(Fband)));
             end
             
         % Multitaper
@@ -862,6 +862,11 @@ end
         FileMat.Options.MorletFwhmTc    = OPTIONS.MorletFwhmTc;
         FileMat.Options.ClusterFuncTime = OPTIONS.ClusterFuncTime;
         FileMat.Options.PowerUnits      = OPTIONS.PowerUnits;
+        % Add extra PSD options
+        if strcmpi(OPTIONS.Method, 'psd')
+            FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
+            FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
+        end
         % Compute edge effects mask
         if ismember(OPTIONS.Method, {'hilbert', 'morlet'})
             FileMat.TFmask = process_timefreq('GetEdgeEffectMask', FileMat.Time, FileMat.Freqs, FileMat.Options);
@@ -883,8 +888,20 @@ end
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
             if strcmpi(OPTIONS.Method, 'hilbert') && ~isempty(OPTIONS.TimeBands)
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
-            elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd')
+            elseif strcmpi(OPTIONS.Method, 'morlet')
                 [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+            elseif strcmpi(OPTIONS.Method, 'psd')
+                if isempty(FileMat.Std) || ~strcmpi(OPTIONS.WinFunc, 'mean+std')
+                    [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+                % Apply time and frequency bands on STD data
+                else
+                    FileMat2 = FileMat;
+                    FileMat2.TF = FileMat2.Std;
+                    [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+                    [FileMat2, Messages] = process_tf_bands('Compute', FileMat2, FreqBands, OPTIONS.TimeBands);
+                    FileMat.Std = FileMat2.TF;
+                    clear FileMat2;
+                end
             elseif strcmpi(OPTIONS.Method, 'mtmconvol') && ~isempty(OPTIONS.TimeBands)
                 FileMat.TimeBands = OPTIONS.TimeBands;
             end
@@ -894,21 +911,6 @@ end
                 else
                     error('Unknow error while processing time or frequency bands.');
                 end
-            end
-        end
-
-        % Add extra PSD options
-        if strcmpi(OPTIONS.Method, 'psd')
-            FileMat.Options.isRelativePSD   = OPTIONS.IsRelative;
-            FileMat.Options.WindowFunction  = OPTIONS.WinFunc;
-            % Apply time and frequency bands on TFbis
-            if (~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)) && ~isempty(FileMat.Std)
-                FileMat2 = FileMat;
-                FileMat2.TF = FileMat.Std;
-                FileMat2.Freqs = OPTIONS.Freqs;
-                [FileMat2, Messages] = process_tf_bands('Compute', FileMat2, FreqBands, OPTIONS.TimeBands);
-                FileMat.Std = FileMat2.TF;
-                clear FileMat2;
             end
         end
         

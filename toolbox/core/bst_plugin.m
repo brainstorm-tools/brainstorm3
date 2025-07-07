@@ -263,7 +263,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro.zip';
+    PlugDesc(end).URLzip         = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro.zip';
     PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
     PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
     PlugDesc(end).CompiledStatus = 1;
@@ -298,7 +298,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('axion');
     PlugDesc(end).Version        = '1.0';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=AxionBioSystems.zip';
+    PlugDesc(end).URLzip         = 'https://neuroimage.usc.edu/bst/getupdate.php?d=AxionBioSystems.zip';
     PlugDesc(end).URLinfo        = 'https://www.axionbiosystems.com/products/software/neural-module';
     PlugDesc(end).TestFile       = 'AxisFile.m';
     % PlugDesc(end).ReadmeFile     = 'README.md';
@@ -341,9 +341,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).UnloadPlugs    =  {'iso2mesh'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
-    % === I/O: JSNIRF ===
+    % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
@@ -352,9 +352,22 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'loadsnirf.m';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).DeleteFiles    = {'external', '.gitmodules'};
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).RequiredPlugs  = {'easyh5'};
+    PlugDesc(end).RequiredPlugs  = {'easyh5'; 'jsonlab'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
+
+    % === I/O: JSONLab ===
+    PlugDesc(end+1)              = GetStruct('jsonlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsonlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neurojson.org/jsonlab';
+    PlugDesc(end).TestFile       = 'savejson.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples', 'images', 'test', '.github', '.gitignore'};
+    PlugDesc(end).ReadmeFile     = 'README.rst';
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
@@ -369,7 +382,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadedFcn      = @Configure;
-    % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
+    % Stable version: https://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
     % === I/O: NEUROELECTRICS ===
     PlugDesc(end+1)              = GetStruct('neuroelectrics');
@@ -414,7 +427,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('plexon');
     PlugDesc(end).Version        = '1.8.4';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+    PlugDesc(end).URLzip         = 'https://plexon-prod.s3.amazonaws.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
     PlugDesc(end).TestFile       = 'plx_info.m';
     PlugDesc(end).ReadmeFile     = 'Change Log.txt';
@@ -987,7 +1000,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'duneuro'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
+                str = bst_webread('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
            case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
@@ -1377,10 +1390,17 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
                     TestFilePath = [];
                 end
-            % easyh5 and jsnirfy: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'easyh5') || strcmpi(PlugDesc.Name, 'jsnirfy')
+            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                    TestFilePath = [];
+                end
+            % easyh5: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'easyh5')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
                     TestFilePath = [];
                 end
             end
@@ -1746,7 +1766,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     
     % === SHOW PLUGIN INFO ===
     % Log install
-    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
+    bst_webread(['https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar

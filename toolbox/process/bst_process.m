@@ -1374,6 +1374,9 @@ function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
         if isfield(sOutput, 'RowNames') && ~isempty(sOutput.RowNames)
             ExtraMat = rmfield(ExtraMat, 'RowNames');
         end
+        if isfield(sOutput, 'TimeBands') && ~isempty(sOutput.TimeBands)
+            ExtraMat = rmfield(ExtraMat, 'TimeBands');
+        end
         if isfield(sOutput, 'Freqs') && ~isempty(sOutput.Freqs)
             ExtraMat = rmfield(ExtraMat, 'Freqs');
         end

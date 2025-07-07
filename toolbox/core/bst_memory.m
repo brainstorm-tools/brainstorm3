@@ -1570,6 +1570,11 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if any(TimefreqFile == '$')
         TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
     end
+    % Is connectivity timefreq?
+    isConnect = 0;
+    if regexp(TimefreqFile, '_connect[n|1]', 'once')
+        isConnect = 1;
+    end
     % Get file information
     [sStudy, iTf, ChannelFile, FileType, sItem] = GetFileInfo(TimefreqFile);
     TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'DataType');
@@ -1768,7 +1773,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     % ===== REMOVE NAN =====
     % Replace NaN values with 0, and add them to the mask
     iNan = find(isnan(TimefreqMat.TF));
-    if ~isempty(iNan)
+    if ~isempty(iNan) && ~isConnect
         disp(sprintf('BST> Error: There are %d abnormal NaN values in this file, check the computation process.', length(iNan)));
         TimefreqMat.TF(iNan) = 0;
     end
@@ -2392,6 +2397,8 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 end
             elseif ~iscell(RowNames) && ~iscell(AllRows)
                 iFound = find(AllRows == RowNames(i), 1);
+            elseif iscell(RowNames) && ~iscell(AllRows)
+                iFound = find(AllRows == str2double(RowNames{i}), 1);
             else
                 iFound = [];
             end

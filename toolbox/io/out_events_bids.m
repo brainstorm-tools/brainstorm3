@@ -22,17 +22,20 @@ function out_events_bids( sFile, EventsFile )
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2024
+%          Raymundo Cassani, 2025
 
 % Concatenate all the events together
 allTime = zeros(2,0);
 allInd = [];
+% Convert event real timing (Brainstorm) to onset (latencies) from the first sample in the file
+% See specs: https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
 for i = 1:length(sFile.events)
     % Simple events
     if (size(sFile.events(i).times, 1) == 1)
-        allTime = [allTime, [sFile.events(i).times; 0*sFile.events(i).times]];
+        allTime = [allTime, [sFile.events(i).times - sFile.prop.times(1); 0*sFile.events(i).times]];
     % Extented events
     elseif (size(sFile.events(i).times, 1) == 2)
-        allTime = [allTime, sFile.events(i).times];
+        allTime = [allTime, sFile.events(i).times - sFile.prop.times(1)];
     end
     allInd = [allInd, repmat(i, 1, size(sFile.events(i).times,2))];
 end
@@ -41,6 +44,7 @@ end
 % Apply sorting to both arrays
 allTime = allTime(:,iSort);
 allInd  = allInd(iSort);
+
 
 % Save file (ascii)
 fout = fopen(EventsFile, 'w');

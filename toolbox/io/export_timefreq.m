@@ -101,7 +101,7 @@ if isempty(OutputFile)
     
 % Guess file format based on its extension
 elseif isempty(FileFormat)
-    [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
+    [BstPath, BstBase, BstExt] = bst_fileparts(OutputFile);
     switch lower(BstExt)
         case '.txt',   FileFormat = 'ASCII-SPC';
         case '.csv',   FileFormat = 'ASCII-CSV-HDR';

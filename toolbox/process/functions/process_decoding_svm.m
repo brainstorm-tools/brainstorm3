@@ -153,8 +153,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Channel files for all inputs  must have the same list of channels
     uniqueChannelFiles = unique({sInputs.ChannelFile});
+    channelMatRef = in_bst_channel(uniqueChannelFiles{1});
     if length(uniqueChannelFiles) > 1
-        channelMatRef = in_bst_channel(uniqueChannelFiles{1});
         channelNamesRef = {channelMatRef.Channel.Name};
         for iChannelFile = 2 : length(uniqueChannelFiles)
             channelMatTest = in_bst_channel(uniqueChannelFiles{iChannelFile});

@@ -55,7 +55,7 @@ italMoinMoin = ['''', ''''];
 % ===== NUMBER OF USERS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
     % Extract values
     dates = textscan(str, '%d %d');
     dates = double([dates{1}, dates{2}]);
@@ -76,7 +76,7 @@ end
 % ===== LOG ANALYSIS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
     % Replace actions ['i' and 'j'] with 'x' so it is not read as imaginary in textscan
     str = strrep(str, 'i', 'x');
     str = strrep(str, 'j', 'x');
@@ -109,7 +109,7 @@ end
 % ===== NUMBER OF FORUM POSTS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
     % Extract values
     dates = textscan(str, '%d %d');
     dates = double([dates{1}, dates{2}]);

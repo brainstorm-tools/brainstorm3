@@ -48,12 +48,18 @@ else
     Xc = X;
     Yc = Y;
 end
+% Identify flat signals
+iFlatX = all(X == X(:,1), 2);
+iFlatY = all(Y == Y(:,1), 2);
 % Normalize the rows of all the signals 
 % (to avoid rounding errors in case of values with radically different values)
 Xc = normr(Xc);
 Yc = normr(Yc);
 % Correlation coefficients
 R = Xc * Yc';
+% Set correlation coefficient with flat signals to NaN
+R(iFlatX, :) = NaN;
+R(:, iFlatY) = NaN;
 % % Set the diagonal to zero
 % if isequal(X,Y)
 %     R = R - diag(diag(R));
