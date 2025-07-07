@@ -459,7 +459,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         %% Prepare coordinate structure
         coorddata = struct();
-        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'ScanRAS');
+        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'CapTrak'); % Make sure it isnt CapRAS
         coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
         coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
         %% Prepare metadata structure
@@ -551,7 +551,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isNirs 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
                 export_channel(sInput.ChannelFile,  bst_fullfile(megFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
-                export_channel(sInput.ChannelFile, bst_fullfile(megFolder, [prefix '_channel.tsv']), 'BIDS-NIRS-channel', 0);
+                export_channel(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), 'BIDS-NIRS-channel', 0);
                 % Exports in Scanras format in mm units, future will add
                 % options. MAKE SURE TO USE export_channel, NOT
                 % out_channel_bids!!!
