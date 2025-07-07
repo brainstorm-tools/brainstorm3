@@ -175,7 +175,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
             elseif isPrevJsonLandmarks
                 fprintf('Replacing previous MRI landmark coordinates for subject %s.\n', sSubjects.Subject(iSub).Name);
             end
-            % Remove field if empty.
+            % Remove field if empty. There are no other anat landmark fields in MRI json (as opposed to MEG, see below).
             if isempty(sMriJson.AnatomicalLandmarkCoordinates)
                 sMriJson = rmfield(sMriJson, 'AnatomicalLandmarkCoordinates');
             end
@@ -380,9 +380,12 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                 if isempty(strfind(sMegJson.FiducialsDescription, AddFidDescrip))
                     sMegJson.FiducialsDescription = strtrim([sMegJson.FiducialsDescription, AddFidDescrip]);
                 end
-                % Remove field if empty, though should not really happen.
+                % Remove fields if anat coords empty, though should not really happen.
                 if isempty(sMegJson.AnatomicalLandmarkCoordinates)
-                    sMegJson = rmfield(sMegJson, 'AnatomicalLandmarkCoordinates');
+                    AnatLandmarkFields = {'AnatomicalLandmarkCoordinates', 'AnatomicalLandmarkCoordinateSystem', 'AnatomicalLandmarkCoordinateUnits', 'AnatomicalLandmarkCoordinateSystemDescription'};
+                    isFieldFound = ismember(AnatLandmarkFields, fieldnames(sMriJson));
+                    sMriJson = rmfield(sMriJson, AnatLandmarkFields(isFieldFound));
+                    warning('No anat landmark coordinates in %s\n', MegList.CoordJson{iChan});
                 end
                 WriteJson(MegList.CoordJson{iChan}, sMegJson);
                 iOutMeg = iOutMeg + 1;

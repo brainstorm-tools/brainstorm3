@@ -52,7 +52,7 @@ function sProcess = GetDescription()
     sProcess.options.format.Type = 'combobox';
     sProcess.options.format.Comment = 'For reset option, specify the channel file format:';
     sProcess.options.format.Value = {1, FileFormatsChan(:, 2)'};
-    sProcess.options.format.Class = 'Reset';
+    % sProcess.options.format.Class = 'Reset';
     sProcess.options.head.Type    = 'checkbox';
     sProcess.options.head.Comment = 'Adjust head position to median location - CTF only.';
     sProcess.options.head.Value   = 0;
@@ -70,7 +70,7 @@ function sProcess = GetDescription()
     sProcess.options.tolerance.Value   = {0, '%', 0};
     sProcess.options.tolerance.Class = 'Refine';
     sProcess.options.scs.Type    = 'checkbox';
-    sProcess.options.scs.Comment = 'Replace MRI nasion and ear points with digitized landmarks (cannot undo).';
+    sProcess.options.scs.Comment = 'Replace MRI nasion and ear points with digitized landmarks (cannot undo). <BR>Requires selecting channel file format above.';
     sProcess.options.scs.Value   = 0;
     sProcess.options.remove.Type    = 'checkbox';
     sProcess.options.remove.Comment = 'Remove selected adjustments (if present) instead of adding them.';
@@ -279,7 +279,7 @@ function OutputFiles = Run(sProcess, sInputs)
         if ~sProcess.options.remove.Value && sProcess.options.scs.Value
             % This is now a subfunction in this process
             [~, isCancel, isError] = channel_align_scs(sInputs(iFile).ChannelFile, eye(4), ...
-                true, false, sInputs(iFile), sProcess); % interactive warnings but no confirmation
+                false, false, sInputs(iFile), sProcess); % interactive warnings but no confirmation
             % Head surface was unloaded from memory, in case we want to display "after" figure.
             % TODO Maybe modify like channel_align_auto to take in and return ChannelMat.
             if isError
@@ -1476,18 +1476,23 @@ function [isError, Message] = ResetChannelFiles(ChannelMatSrc, sSubject, isConfi
         end
         % Progress bar
         bst_progress('start', 'Reset channel files', 'Updating other studies...');
-        strMsg = '';
+        strMsg = [sInput.ChannelFile 10];
         strErr = '';
         for iChan = 1:numel(ChannelFiles)
             ChannelFile = ChannelFiles{iChan};
             % Load channel file
             ChannelMat = in_bst_channel(ChannelFile);
             % Reset & save
-            [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, NewChannelFiles, sInput, sProcess);
+            % Need correct sInput for each study here, not the "source" study. Only 3 fields used.
+            [sStudyTmp, iStudy] = bst_get('ChannelFile', ChannelFile);
+            sInputTmp.FileName = sStudyTmp(1).Data.FileName; % for report only
+            sInputTmp.iStudy = iStudy; % this is the study getting reset
+            sInputTmp.ChannelFile = ChannelFile; % this is the file being read
+            [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, NewChannelFiles, sInputTmp, sProcess);
             if isError
-                strErr = [strErr, ChannelFile, 10]; %#ok<AGROW>
+                strErr = [strErr ChannelFile 10]; %#ok<AGROW>
             else
-                strMsg = [strMsg, ChannelFile, 10]; %#ok<AGROW>
+                strMsg = [strMsg ChannelFile 10]; %#ok<AGROW>
                 bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
             end
         end
