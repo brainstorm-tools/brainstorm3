@@ -581,7 +581,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
 
             % Create event TSV file
-            tsvEventsFile = bst_fullfile(megFolder, [prefixTask, taskName, '_events.tsv']);
+            tsvEventsFile = bst_fullfile(megFolder, strrep(newPath, [modSuffix '.snirf'], '_events.tsv'));
             out_events_bids(sFile, tsvEventsFile);
 
             % Create coordinates JSON
