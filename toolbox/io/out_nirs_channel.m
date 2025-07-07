@@ -40,12 +40,11 @@ WavelengthNominal = {};
 Units = {};
 for i = 1:length(BstMat.Channel)
     tokens = regexp(BstMat.Channel(i).Name, 'S([0-9]+)D([0-9]+)WL([0-9]+)', 'tokens');
-
    if ~isempty(tokens)
        Name{end+1} = strrep(BstMat.Channel(i).Name, ' ', '_');
-       Type{end+1} = BstMat.Channel(i).Type;
+       Type{end+1} = strrep(BstMat.Channel(i).Type, 'NIRS', 'NIRSCWAMPLITUDE'); % Included in loop to later add other options
        Source{end+1} = sprintf('S%s', tokens{1}{1}); 
-       Detector{end+1} = sprintf('S%s', tokens{1}{2}); 
+       Detector{end+1} = sprintf('D%s', tokens{1}{2}); 
        WavelengthNominal{end+1} =  tokens{1}{3}; 
        Units{end+1} = 'V';
    end
