@@ -991,7 +991,8 @@ end % GeoMedian
 
 function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMri)
     % Flag if auto or manual registration performed, and if MRI fids updated. Print to command
-    % window for now, if no output arguments.
+    % window for now, if no output arguments. Also make sure to update ChannelMat.SCS if outputting
+    % ChannelMat.
     AlignType = [];
     isMriUpdated = [];
     isMriMatch = [];
@@ -1099,11 +1100,15 @@ function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = Che
             end
         end
     else
+        if nargout > 4
+            % Update SCS for consistency.
+            % Get the three fiducials in the head points
+            ChannelMat = UpdateChannelMatScs(ChannelMat);
+        end
         isMriUpdated = false;
         isMriMatch = false;
         isSessionMatch = false;
     end
-
 end
 
 
@@ -1318,8 +1323,8 @@ end
 % Check if already adjusted
 sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 % This Check function also updates ChannelMat.SCS with the saved (possibly previously adjusted) head
-% points. (We don't consider isMriMatch here because we still have to apply the provided
-% Transformation.)
+% points IF isMriUpdated. (We don't consider isMriMatch here because we still have to apply the
+% provided Transformation.)
 [~, isMriUpdated, ~, ~, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMriOld);
 % Get user confirmation
 if isMriUpdated

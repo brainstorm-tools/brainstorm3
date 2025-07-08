@@ -896,22 +896,23 @@ function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
         isCancel = false;
-        % Get new positions
-        [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
-        % Load original channel file
-        ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
-
+        strTitle = 'Align sensors';
+        strType  = 'sensor';
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
             SaveChanges = 1;
         else
-            [SaveChanges, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
-                'Would you like to save changes? ' 10 10], 'Align sensors');
+            [SaveChanges, isCancel] = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
+                'Would you like to save changes? ' 10 10], strTitle);
         end
         % Don't close figure if cancelled.
         if isCancel
             return;
         end
+        % Get new positions
+        [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
+        % Load original channel file
+        ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
         % Report (in command window) max head and sensor displacements from changes.
         if SaveChanges || gChanAlign.isHeadPoints
             process_adjust_coordinates('CheckCurrentAdjustments', ChannelMat, ChannelMatOrig);
