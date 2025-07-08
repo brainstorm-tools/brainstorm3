@@ -87,6 +87,7 @@ for i = 1:length(iProtocols)
         isReload = 1;
     end
 
+    bst_splash('hide');
     % ===== SAVE =====
     % Reload protocol
     if isReload
