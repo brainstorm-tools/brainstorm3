@@ -2383,15 +2383,19 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     % === UNLOAD PLUGIN ===
     % Do not modify path in compiled mode
     if ~bst_iscompiled()
-        matlabPath = str_split(path, pathsep);
         % Remove plugin folder and subfolders from path
         allSubFolders = str_split(genpath(PlugPath), pathsep);
         for i = 1:length(allSubFolders)
-            if ismember(allSubFolders{i}, matlabPath)
-                rmpath(allSubFolders{i});
-                if isVerbose
-                    disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
-                end
+            isWarningOn = warning('query','MATLAB:rmpath:DirNotFound');
+            warning('off','MATLAB:rmpath:DirNotFound');
+
+            rmpath(allSubFolders{i});
+            if isVerbose
+                disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
+            end
+
+            if strcmp(isWarningOn.state, 'on')
+                warning('on','MATLAB:rmpath:DirNotFound');
             end
         end
     end
