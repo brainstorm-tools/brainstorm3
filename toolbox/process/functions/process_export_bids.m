@@ -220,7 +220,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors);
+    % Create dataset_description.json
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors, sInputs.FileType);
+    
     firstAcq = [];
     lastAcq = [];
     StimChannelNames = {};
@@ -770,7 +772,7 @@ function CreateMegJson(jsonFile, metadata)
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite, description, authors)
+function CreateDatasetDescription(parentFolder, overwrite, description, authors, FileType)
     if nargin < 3
         description = struct();
     end
@@ -783,6 +785,13 @@ function CreateDatasetDescription(parentFolder, overwrite, description, authors)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
+    [typetokens, typematch] = regexp(FileType,'raw|derivative', 'tokens', 'match');
+    if length(typematch)==1
+        description = addField(description, 'DatasetType', FileType);
+    else    
+        warning('FileType must be either raw or derivative. For backwards compatibility, the default value is "raw".'); % Using BIDS warning here.
+        description = addField(description, 'DatasetType', 'raw');
+    end
     description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     
     fid = fopen(jsonFile, 'wt');
