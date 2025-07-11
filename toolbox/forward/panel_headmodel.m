@@ -133,11 +133,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         % Checkbox
         jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ');
         jCheckMethodNIRS.setSelected(0);
-        jCheckMethodNIRS.setEnabled(0)
-        % Label
-        gui_component('Label', jPanelMethod, 'tab hfill', ['<HTML><FONT color="#777777">To compute head model for NIRS, use process:<BR>' ...
-                                                           'NIRS > Sources > Compute head model from fluence<BR>' ...
-                                                           '(NIRSTORM plugin is required)']);
+
     end
     % Attach sub panel to NewPanel
     jPanelNew.add('br hfill', jPanelMethod);
@@ -348,12 +344,8 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     % Check that at least one modality is available
-    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
-        if isNirs
-            errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
-        else
-            errMessage = 'No valid sensor types to estimate a head model.';
-        end
+    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg && ~isNirs
+        errMessage = 'No valid sensor types to estimate a head model.';
         return;
     end
     % Check if the first subject has a "Source model" atlas
