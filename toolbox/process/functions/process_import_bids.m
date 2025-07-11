@@ -911,12 +911,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             isModifiedData = 0;
                             % Loop to find matching channels
                             for iChanBids = 1:size(ChanInfo,1)
-                                % Update EEG channel names for FIF files
-                                if strcmpi(FileFormat, 'FIF') && strcmpi(ChanInfo{iChanBids, 2}, 'EEG')
-                                    ChannelMat.Channel(iChanBids).Name = ChanInfo{iChanBids, 1};
-                                    iChanBst = iChanBids;
-                                    isModifiedChan = 1;
-                                else
+                                if ~isempty(regexp(ChanInfo{iChanBids, 2}, 'MEG', 'once'))                                    
                                     % Look for corresponding channel in Brainstorm channel file
                                     iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                     if isempty(iChanBst)
@@ -925,6 +920,12 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                             continue;
                                         end
                                     end
+                                % For non-MEG channels make _channels.tsv (BIDS metadata) as authoritative
+                                % i.e. update the channel names as found in _channels.tsv for all non-MEG channels
+                                else
+                                    ChannelMat.Channel(iChanBids).Name = ChanInfo{iChanBids, 1};
+                                    iChanBst = iChanBids;
+                                    isModifiedChan = 1;
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
