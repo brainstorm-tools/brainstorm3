@@ -220,7 +220,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors);
+    % Create dataset_description.json
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors, sInputs.FileType);
+    
     firstAcq = [];
     lastAcq = [];
     StimChannelNames = {};
@@ -240,7 +242,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         isMeg = isCtf || isElekta;
         isEeg = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', sInputs(iInput).ChannelTypes);
         isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
-        if ~isMeg && ~isEeg
+        isNirs    = ismember('NIRS', sInputs(iInput).ChannelTypes);
+
+        if ~isMeg && ~isEeg && ~isNirs
             disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
             continue;
         end
@@ -401,6 +405,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 taskName = ExtractCtfTaskname(sFile);
             elseif isElekta
                 taskName = ExtractFifTaskname(sFile);
+            else
+                tokens = regexp(rawName,'task-([a-zA-Z0-9]+)','tokens');
+                taskName = tokens{1}{1};
             end
             
             % Otherwise, extract task name from condition
@@ -452,7 +459,11 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 EventNames{end + 1} = event;
             end
         end
-        
+        %% Prepare coordinate structure
+        coorddata = struct();
+        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
+        coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+        coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
@@ -468,6 +479,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         elseif isEeg
             metadata = addField(metadata, 'EEGReference', eegReference);
+        elseif isNirs
+            % Extract Optode Identities
+            [isrcs, idets] = nst_unformat_channels({ChannelMat.Channel(strcmp({ChannelMat.Channel.Type},'NIRS')).Name});
+            
+            metadata = addField(metadata, 'NIRSChannelCount',     length(isrcs));
+            metadata = addField(metadata, 'NIRSSourceOptodeCount',  length(unique(isrcs)));
+            metadata = addField(metadata, 'NIRSDetectorOptodeCount',length(unique(idets)));
+            
         end
 
         % Extract format-specific metadata
@@ -488,6 +507,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isEeg
             modFolder = 'eeg';
             modSuffix = '_eeg';
+        elseif isNirs 
+            modFolder = 'nirs';
+            modSuffix = '_nirs';  
         else
             modFolder = 'data';
             modSuffix = [];
@@ -503,6 +525,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             rawExt = '.ds';
         elseif isEeg && ~isEegBids
             rawExt = '.eeg';
+        elseif isNirs 
+            rawExt = '.snirf';
         end
         newPath = bst_fullfile(megFolder, [newName, rawExt]);
         if exist(newPath, 'file') == 0 || overwrite
@@ -526,6 +550,13 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Convert unsupported formats to EDF.
                 disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
+            elseif isNirs 
+                export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
+                export_channel(sInput.ChannelFile,  bst_fullfile(megFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                export_channel(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), 'BIDS-NIRS-channel', 0);
+                % Exports in Scanras format in mm units, future will add
+                % options. MAKE SURE TO USE export_channel, NOT
+                % out_channel_bids!!!
             else
                 % Copy raw data file
                 file_copy(sFile.filename, newPath);
@@ -550,6 +581,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             % Create session TSV file
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
+
+            % Create event TSV file
+            tsvEventsFile = strrep(newPath, [modSuffix '.snirf'], '_events.tsv');
+            out_events_bids(sFile, tsvEventsFile);
+
+            % Create coordinates JSON
+            jsonCoord = bst_fullfile(megFolder, [prefix '_coordsystem.json']);
+            CreateMegJson(jsonCoord, coorddata);
         end
         
         bst_progress('inc', 1);
@@ -733,7 +772,7 @@ function CreateMegJson(jsonFile, metadata)
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite, description, authors)
+function CreateDatasetDescription(parentFolder, overwrite, description, authors, FileType)
     if nargin < 3
         description = struct();
     end
@@ -746,6 +785,13 @@ function CreateDatasetDescription(parentFolder, overwrite, description, authors)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
+    [typetokens, typematch] = regexp(FileType,'raw|derivative', 'tokens', 'match');
+    if length(typematch)==1
+        description = addField(description, 'DatasetType', FileType);
+    else    
+        warning('FileType must be either raw or derivative. For backwards compatibility, the default value is "raw".'); % Using BIDS warning here.
+        description = addField(description, 'DatasetType', 'raw');
+    end
     description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     
     fid = fopen(jsonFile, 'wt');
