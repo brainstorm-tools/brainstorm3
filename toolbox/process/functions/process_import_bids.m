@@ -861,26 +861,6 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
                 OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
-                % Add electrodes positions if available
-                if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
-                    % Subject T1 coordinates (space-ScanRAS)
-                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-SCANRAS-'))
-                        % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
-                        % after importing the files, as these transformation were not available in the BIDS dataset
-                        isVox2ras = 2;
-                    % Or MNI coordinates (space-IXI549Space or other MNI space)
-                    else
-                        isVox2ras = 0;
-                    end
-                    % Import electrode positions
-                    % Note: this does not work if channel names different in data and metadata - see note in the function header
-                    bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
-                        'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
-                        'fixunits',    0, ...
-                        'vox2ras',     isVox2ras, ...
-                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
-                        'fiducials',   allMeegElecFiducials{iFile});
-                end
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
                 if isempty(iLast)
@@ -931,13 +911,21 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             isModifiedData = 0;
                             % Loop to find matching channels
                             for iChanBids = 1:size(ChanInfo,1)
-                                % Look for corresponding channel in Brainstorm channel file
-                                iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
-                                if isempty(iChanBst)
-                                    iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                if ~isempty(regexp(ChanInfo{iChanBids, 2}, 'MEG', 'once'))                                    
+                                    % Look for corresponding channel in Brainstorm channel file
+                                    iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                     if isempty(iChanBst)
-                                        continue;
+                                        iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                        if isempty(iChanBst)
+                                            continue;
+                                        end
                                     end
+                                % For non-MEG channels make _channels.tsv (BIDS metadata) as authoritative
+                                % i.e. update the channel names as found in _channels.tsv for all non-MEG channels
+                                else
+                                    ChannelMat.Channel(iChanBids).Name = ChanInfo{iChanBids, 1};
+                                    iChanBst = iChanBids;
+                                    isModifiedChan = 1;
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
@@ -991,6 +979,27 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end                   
                 end
 
+                % Add electrodes positions if available
+                if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
+                    % Subject T1 coordinates (space-ScanRAS)
+                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-SCANRAS-'))
+                        % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
+                        % after importing the files, as these transformation were not available in the BIDS dataset
+                        isVox2ras = 2;
+                    % Or MNI coordinates (space-IXI549Space or other MNI space)
+                    else
+                        isVox2ras = 0;
+                    end
+                    % Import electrode positions
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
+                    bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
+                        'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
+                        'fixunits',    0, ...
+                        'vox2ras',     isVox2ras, ...
+                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
+                        'fiducials',   allMeegElecFiducials{iFile});
+                end
+                
                 % === MEG.JSON ===
                 % Get _meg.json next to the recordings file
                 MegFile = [baseName, '_meg.json'];
