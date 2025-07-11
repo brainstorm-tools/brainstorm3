@@ -85,7 +85,8 @@ Def_OPTIONS = struct(...
     'EEGMethod',          'eeg_3sphereberg', ...
     'ECOGMethod',         'openmeeg', ...
     'SEEGMethod',         'openmeeg', ...
-    'HeadCenter',         [],...
+    'NIRSMethod',         'import', ...
+    'HeadCenter',         [],  ...
     'Radii',              [.88 .93 1],...
     'Conductivity',       [.33 .0042 .33],...
     'SourceSpaceOptions', [], ...
@@ -150,6 +151,8 @@ iRef  = good_channel(OPTIONS.Channel,[],'MEG REF');
 iEeg  = good_channel(OPTIONS.Channel,[],'EEG');
 iEcog = good_channel(OPTIONS.Channel,[],'ECOG');
 iSeeg = good_channel(OPTIONS.Channel,[],'SEEG');
+iNirs = good_channel(OPTIONS.Channel,[],'NIRS');
+
 % If no channels available for one type: ignore method
 if isempty(iMeg)
     OPTIONS.MEGMethod = '';
@@ -172,7 +175,12 @@ if isempty(iSeeg)
 elseif isempty(OPTIONS.SEEGMethod)
     iSeeg = [];
 end
-if isempty(OPTIONS.EEGMethod) && isempty(OPTIONS.MEGMethod) && isempty(OPTIONS.ECOGMethod) && isempty(OPTIONS.SEEGMethod)
+if isempty(iNirs)
+    OPTIONS.NIRSMethod = '';
+elseif isempty(OPTIONS.NIRSMethod)
+    iNirs = [];
+end
+if isempty(OPTIONS.EEGMethod) && isempty(OPTIONS.MEGMethod) && isempty(OPTIONS.ECOGMethod) && isempty(OPTIONS.SEEGMethod) && isempty(OPTIONS.NIRSMethod)
     errMessage = 'Nothing to process...';
     OPTIONS = [];
     return;
@@ -199,12 +207,12 @@ OPTIONS.iMeg  = [iMeg iRef];
 OPTIONS.iEeg  = iEeg;
 OPTIONS.iEcog = iEcog;
 OPTIONS.iSeeg = iSeeg;
-    
+OPTIONS.iNirs = iNirs;
 
 %% ===== OUTPUT FILENAME ===========================================================================
 %  =================================================================================================
 % Get all methods
-allMethods = unique({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
+allMethods = unique({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod, OPTIONS.NIRSMethod});
 allMethods(cellfun(@isempty, allMethods)) = [];
 % Build default comment
 if isempty(OPTIONS.Comment)
@@ -579,8 +587,17 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
     end
 else
     Param = [];
-end    
-% Check for errors: NaN values in the Gain matrix
+end   
+
+%% ===== COMPUTE: NIRSTORM HEADMODELS =====
+
+% Todo 
+
+
+
+
+
+%% Check for errors: NaN values in the Gain matrix
 if (nnz(isnan(Gain(iEeg,:))) > 0)  && ~isempty(OPTIONS.EEGMethod)  || ...
    (nnz(isnan(Gain(iMeg,:))) > 0)  && ~isempty(OPTIONS.MEGMethod)  || ...
    (nnz(isnan(Gain(iEcog,:))) > 0) && ~isempty(OPTIONS.ECOGMethod) || ...
@@ -625,6 +642,7 @@ SaveHeadModel = struct(...
     'EEGMethod',     OPTIONS.EEGMethod, ...
     'ECOGMethod',    OPTIONS.ECOGMethod, ...
     'SEEGMethod',    OPTIONS.SEEGMethod, ...
+    'NIRSMethod',    OPTIONS.NIRSMethod, ...
     'Gain',          Gain, ...                   % FT 11-Jan-10: Remove "single"
     'Comment',       OPTIONS.Comment, ...
     'HeadModelType', OPTIONS.HeadModelType, ...
@@ -645,5 +663,4 @@ end
 bst_progress('stop');
 bst_progress('removeimage');
 
-
-
+end
