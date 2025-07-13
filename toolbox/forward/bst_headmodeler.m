@@ -412,12 +412,12 @@ else
     end
 end
 % Check for any sensor located "inside" the inner skull (that shouldn't be there)
-allLoc = [OPTIONS.Channel([iMeg iEeg]).Loc];
+allLoc = [OPTIONS.Channel([iMeg iEeg, iNirs]).Loc];
 if ~isempty(allLoc)
     iVertInside = find(inpolyhd(allLoc, sSurfInner.Vertices, sSurfInner.Faces));
     % Warning if there are some sensors inside
     if ~isempty(iVertInside)
-        errMessage = ['Some EEG or MEG sensors are located inside the brain volume.' 10 ...
+        errMessage = ['Some EEG, MEG  or NIRS sensors are located inside the brain volume.' 10 ...
                       'You should check the positions of the sensors and the type of the channels.' 10 10 ...
                       'Position: Right-click on the channel file > MRI registration > Edit.' 10 ...
                       'Type: Right-click on the channel file > Edit channel file.'];
@@ -590,10 +590,38 @@ else
 end   
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
+if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
 
-% Todo 
+    % recover subject name
+    tmp = strsplit(OutSurfaceFile, '/');
+    subjectName = tmp{1};
+    
+    sSubject = bst_get('Subject', subjectName);
 
+    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
 
+    % Subject Informations 
+    OPTIONS.SubjectName         = subjectName;
+    OPTIONS.MriFile             = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    OPTIONS.VoronoiFile         = voronoi_fn;
+    OPTIONS.CortexFile          = sSubject.Surface(sSubject.iCortex ).FileName;
+
+    % Use defined options : 
+    OPTIONS.FluenceFolder       = '/Users/edelaire1/Documents/Project/wMEM-fnirs/data/nirstorm_tutorial_2024/derivatives/Fluences/sub-01';
+    OPTIONS.smoothing_method    = 'geodesic_dist';
+    OPTIONS.smoothing_fwhm      = 10;
+    
+
+    [gain_nirs, error_message, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+
+    Gain(iNirs,:) = gain_nirs(iNirs, :);
+
+    Param = struct('FluenceFolder',    OPTIONS.FluenceFolder , ...
+                   'smoothing_method', OPTIONS.smoothing_method, ...
+                    'smoothing_fwhm',  OPTIONS.smoothing_fwhm);
+else
+    Param = [];
+end   
 
 
 
@@ -601,7 +629,9 @@ end
 if (nnz(isnan(Gain(iEeg,:))) > 0)  && ~isempty(OPTIONS.EEGMethod)  || ...
    (nnz(isnan(Gain(iMeg,:))) > 0)  && ~isempty(OPTIONS.MEGMethod)  || ...
    (nnz(isnan(Gain(iEcog,:))) > 0) && ~isempty(OPTIONS.ECOGMethod) || ...
-   (nnz(isnan(Gain(iSeeg,:))) > 0) && ~isempty(OPTIONS.SEEGMethod)
+   (nnz(isnan(Gain(iSeeg,:))) > 0) && ~isempty(OPTIONS.SEEGMethod) || ...
+   (nnz(isnan(Gain(iNirs,:))) > 0) && ~isempty(OPTIONS.NIRSMethod)
+
     errMessage = ['An unknown error occurred in the computation of the head model:' 10 ...
                   'NaN values found for valid sensors in the Gain matrix'];
     OPTIONS = [];
