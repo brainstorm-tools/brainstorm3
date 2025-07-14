@@ -113,6 +113,20 @@ if ~isfield(inputs, 'rho') || isempty(inputs.rho)
   inputs.rho = 50;
 end
 
+% Handle flat signals
+nX = size(X, 1);
+connectivity_out  = zeros(nX);
+connectivityV_out = zeros(nX);
+iFlatX = all(X == X(:,1), 2);
+X = X(~iFlatX, :);
+if ~isempty(Y)
+    nY = size(Y, 1);
+    connectivity_out  = zeros(nX, nY);
+    connectivityV_out = zeros(nX, nY);
+    iFlatY = all(Y == Y(:,1), 2);
+    Y = Y(~iFlatY, :);
+end
+
 % dimensions of the signals
 nX = size(X, 1);
 if ndims(X) == 3
@@ -336,3 +350,20 @@ pValueV = 1 - gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inp
 % = gamcdf(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1), (2 * inputs.lag)/2 = inputs.lag, 2)
 % = gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1) / 2, inputs.lag)
 % note: if connectivityV = 0 (auto-causality or two of the same signals) then this formula evalutes pValueV = 1 which is desired (no significant causality)
+
+% Complete connecitivy matrixes GC for flat signals
+if isempty(Y)
+    if any(iFlatX)
+        connectivity_out(~iFlatX, ~iFlatX)  = connectivity;
+        connectivityV_out(~iFlatX, ~iFlatX) = connectivityV;
+        connectivity  = connectivity_out;
+        connectivityV = connectivityV_out;
+    end
+else
+    if any(iFlatX) || any(iFlatY)
+        connectivity_out(~iFlatX, ~iFlatY)  = connectivity;
+        connectivityV_out(~iFlatX, ~iFlatY) = connectivityV;
+        connectivity  = connectivity_out;
+        connectivityV = connectivityV_out;
+    end
+end
