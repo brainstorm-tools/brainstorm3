@@ -83,6 +83,15 @@ GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs        = Freqs;
 GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames     = RowNames;
 GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits = DisplayUnits;
 GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality     = Modality;
+% Scout: remove FOOOF information from new iTimefreq.
+% Because per-vertex FOOOF models are not, and should not, be aggregated in scouts
+if strcmpi(Modality, 'scout')
+    tmp = GlobalData.DataSet(iDS).Timefreq(iTimefreq);
+    if isfield(tmp, 'Options')  && isfield(tmp.Options, 'FOOOF')
+        tmp.Options = rmfield(tmp.Options, 'FOOOF');
+        GlobalData.DataSet(iDS).Timefreq(iTimefreq) = tmp;
+    end
+end
 
 % Display the new dataset with regular function
 [hFig, iDS, iFig] = view_spectrum(TfFile, DisplayMode, [], 1);
