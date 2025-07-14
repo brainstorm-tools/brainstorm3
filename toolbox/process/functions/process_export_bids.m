@@ -464,6 +464,15 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
         coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
         coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
+        SCSfields = fieldnames(ChannelMat.SCS);
+        field_to_keep = {'LPA', 'NAS', 'RPA'};        
+        SCSprint = struct()
+        field_to_remove = setdiff(SCSfields, field_to_keep);
+        SCSprint = rmfield(ChannelMat.SCS, field_to_remove);
+        coorddata = addField(coorddata, 'FiducialsCoordinates', SCSprint);
+        coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm'); % assumed scale for now
+        coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'SCANRAS'); % using the same values as the coords system.
+        coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
