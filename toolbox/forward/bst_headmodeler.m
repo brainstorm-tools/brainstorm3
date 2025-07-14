@@ -592,13 +592,18 @@ end
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
 
-    % recover subject name
+    isOk= bst_plugin('Install', 'nirstorm');
+    if ~isOk
+        errMessage = 'NIRSTORM is required to compute nirs head model';
+        return;
+    end
+
+    % Recover subject name
     tmp = strsplit(OutSurfaceFile, '/');
     subjectName = tmp{1};
     
-    sSubject = bst_get('Subject', subjectName);
-
-    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+    sSubject    = bst_get('Subject', subjectName);
+    voronoi_fn  = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
 
     % Subject Informations 
     OPTIONS.SubjectName         = subjectName;
@@ -610,7 +615,13 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     sOptions = gui_show_dialog('Volume source grid', @panel_headmodel_nirstorm);
     OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
 
-    [gain_nirs, error_message, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+    [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+
+    if  ~isempty(warning_message)
+        for iMessage = 1:length(warning_message)
+            warning(warning_message{iMessage});
+        end
+    end
 
     Gain(iNirs,:) = gain_nirs(iNirs, :);
 
@@ -620,8 +631,6 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
 else
     Param = [];
 end   
-
-
 
 %% Check for errors: NaN values in the Gain matrix
 if (nnz(isnan(Gain(iEeg,:))) > 0)  && ~isempty(OPTIONS.EEGMethod)  || ...

@@ -121,7 +121,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     ctrl = bst_get('PanelControls', 'HeadModelNirsOptions');
 
     s = GetDefaultOption();
-    s.FluenceFolder = ctrl.jDataSource.getText();
+    s.FluenceFolder = char(ctrl.jDataSource.getText());
     
     if  ctrl.jRadioGeodesic.isSelected()
         s.smoothing_method = 'geodesic_dist';
