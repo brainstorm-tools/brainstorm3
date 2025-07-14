@@ -29,7 +29,7 @@ end
 
 
 %% ===== CREATE PANEL =====
-function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>  
+function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>  
 
 
     panelName = 'HeadModelNirsOptions';
@@ -41,8 +41,11 @@ function [bstPanelNew, panelName] = CreatePanel()  %#ok<DEFNU>
     jPanelNew = gui_river();
 
     % Default  options
-    OPTIONS = GetDefaultOption();
-
+    if nargin >= 1 && isfield(sProcess,'options') && ~isempty(sProcess.options) && isfield(sProcess.options, 'nirstorm') && ~isempty(sProcess.options.nirstorm)
+        OPTIONS = sProcess.options.nirstorm.Value;
+    else
+        OPTIONS = GetDefaultOption();
+    end
     jPanelOptions = gui_river([4,4], [3,15,10,10], 'Options');
     gui_component('label', jPanelOptions, '', 'Fluence Data Source: ', [], [], [], []);
     jDataSource = gui_component('text', jPanelOptions, 'tab', OPTIONS.FluenceFolder, [], [], [], []);

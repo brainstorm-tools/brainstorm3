@@ -612,9 +612,17 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     OPTIONS.CortexFile          = sSubject.Surface(sSubject.iCortex ).FileName;
 
     % Use defined options : 
-    sOptions = gui_show_dialog('Volume source grid', @panel_headmodel_nirstorm);
-    OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
-
+    if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
+        sOptions = gui_show_dialog('Volume source grid', @panel_headmodel_nirstorm);
+        if isempty(sOptions)
+            errMessage = 'Canceled by user.';
+            OPTIONS = [];
+            return;
+        end
+    
+        OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
+    end
+    
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
 
     if  ~isempty(warning_message)
