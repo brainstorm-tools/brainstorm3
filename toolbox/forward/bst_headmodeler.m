@@ -607,10 +607,8 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     OPTIONS.CortexFile          = sSubject.Surface(sSubject.iCortex ).FileName;
 
     % Use defined options : 
-    OPTIONS.FluenceFolder       = '/Users/edelaire1/Documents/Project/wMEM-fnirs/data/nirstorm_tutorial_2024/derivatives/Fluences/sub-01';
-    OPTIONS.smoothing_method    = 'geodesic_dist';
-    OPTIONS.smoothing_fwhm      = 10;
-    
+    sOptions = gui_show_dialog('Volume source grid', @panel_headmodel_nirstorm);
+    OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
 
     [gain_nirs, error_message, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
 
