@@ -456,31 +456,6 @@ function UpdatePanel()
 end
 
 
-%% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
-% Recursively generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
-function elecLabels = GenerateElecLabels(maxLabelCount)
-    elecLabels = cell(1, maxLabelCount);
-    for labelNum = 1:maxLabelCount
-        elecLabels{labelNum} = NumToText(labelNum);
-    end
-end
-
-% Helper function for the recursive generation of names
-% Converts a positive integer 'labelNum' to text 'labelText'
-% e.g. 1 -> 'A', ..., 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
-function labelText = NumToText(labelNum)
-    if labelNum <= 26
-        % Base case: a single letter.
-        labelText = char('A' + labelNum - 1);
-    else
-        % Recursively generate multi-letter labels
-        labelNum  = labelNum - 1;
-        remainder = mod(labelNum, 26);
-        quotient  = floor(labelNum / 26);
-        labelText = [NumToText(quotient) char('A' + remainder)];
-    end
-end
-
 %% ===== UPDATE ELECTRODE LIST =====
 function UpdateElecList()
     import org.brainstorm.list.*;
@@ -3909,4 +3884,29 @@ function isImplantation = isImplantationFolder(iDS)
     [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
     % Check if folder name starts with 'implantation'
     isImplantation = strncmpi(folderName, 'implantation', 12);
+end
+
+%% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
+% Recursively generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
+function elecLabels = GenerateElecLabels(maxLabelCount)
+    elecLabels = cell(1, maxLabelCount);
+    for labelNum = 1:maxLabelCount
+        elecLabels{labelNum} = NumToText(labelNum);
+    end
+end
+
+% Helper function for the recursive generation of names
+% Converts a positive integer 'labelNum' to text 'labelText'
+% e.g. 1 -> 'A', ..., 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
+function labelText = NumToText(labelNum)
+    if labelNum <= 26
+        % Base case: a single letter.
+        labelText = char('A' + labelNum - 1);
+    else
+        % Recursively generate multi-letter labels
+        labelNum  = labelNum - 1;
+        remainder = mod(labelNum, 26);
+        quotient  = floor(labelNum / 26);
+        labelText = [NumToText(quotient) char('A' + remainder)];
+    end
 end
