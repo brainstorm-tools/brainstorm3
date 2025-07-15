@@ -475,7 +475,6 @@ function SeegAutoContactLocalize(Method)
     % Get subject
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     
-    % Process as per the method
     switch lower(Method)
         case 'gardel'
             % Initialize GARDEL
@@ -531,11 +530,11 @@ function SeegAutoContactLocalize(Method)
                 contactLocsScs = cs_convert(sCt, 'voxel', 'scs', contactLocsDetected);
                 % Sort contacts (distance from origin)
                 contactLocsSorted = SortContactLocs(contactLocsScs');
-                % Set model as blank (TODO: add layer for model detection)
+                % Set model as blank (user can manually update it from GUI)
                 sSelElec.Model = '';
                 % Set electrode contact number
                 sSelElec.ContactNumber = size(contactLocsSorted, 2);
-                % Set contact spacing as blank (TODO: update contact spacing based on the model detected)
+                % Set contact spacing as blank (user can manually update it from GUI)
                 sSelElec.ContactSpacing = '';
                 % Set electrode tip and skull entry
                 sSelElec.Loc(:, 1) = contactLocsSorted(:, 1);
