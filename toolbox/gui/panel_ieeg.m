@@ -2542,26 +2542,22 @@ function SeegAutoContactLocalize(Method)
                 % Show progress
                 progressPrc = round(100 .* iElec ./ size(elecDetected, 1));
                 bst_progress('set', progressPrc);
-                % Extract contacts for current electrode
-                contactLocsDetected = elecDetected{iElec};
+                % Transform contact coordinates: VOXEL => SCS
+                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', elecDetected{iElec});
+                % Sort contacts (distance from SCS origin)
+                contactLocsScs = SortContactLocs(contactLocsScs');
                 % Add electrode assigning a name to it
                 AddElectrode(elecNames{iElec});
                 % Get selected electrode structure
                 [sSelElec, iSelElec] = GetSelectedElectrodes();
-                % Transform coordinates: VOXEL => SCS
-                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', contactLocsDetected);
-                % Sort contacts (distance from origin)
-                contactLocsSorted = SortContactLocs(contactLocsScs');
-                % Set model as blank (user can manually update it from GUI)
+                % Default model and contact spacing
                 sSelElec.Model = '';
-                % Set electrode contact number
-                sSelElec.ContactNumber = size(contactLocsSorted, 2);
-                % Set contact spacing as blank (user can manually update it from GUI)
-                sSelElec.ContactSpacing = '';
-                % Set electrode tip and skull entry
-                sSelElec.Loc(:, 1) = contactLocsSorted(:, 1);
-                sSelElec.Loc(:, 2) = contactLocsSorted(:, end);
-                % Set the changed electrode properties
+                sSelElec.ContactSpacing = [];
+                % Set electrode contacts
+                sSelElec.ContactNumber = size(contactLocsScs, 2);
+                sSelElec.Loc(:, 1) = contactLocsScs(:, 1);   % Tip
+                sSelElec.Loc(:, 2) = contactLocsScs(:, end); % Skull entry
+                % Update electrode properties
                 SetElectrodes(iSelElec, sSelElec);
                 % Update channel data
                 sChannel = db_template('channeldesc');
@@ -2570,7 +2566,7 @@ function SeegAutoContactLocalize(Method)
                 iChan = [];
                 for i = 1:sSelElec.ContactNumber
                     sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
-                    sChannel.Loc = contactLocsSorted(:, i);
+                    sChannel.Loc = contactLocsScs(:, i);
                     Channels(end+1) = sChannel;
                     iChan(end+1) = length(Channels);
                 end
