@@ -510,8 +510,8 @@ function SeegAutoContactLocalize(Method)
             bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
             bst_plugin('SetProgressLogo', 'gardel');           
             sCt = bst_memory('LoadMri', CtFile);
-            voxelSizeCt = struct('pixdim', sCt.Voxsize);
-            elecDetected = elec_auto_segmentation(sCt.Cube, voxelSizeCt, isoValue);
+            sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
+            elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
             % Generate a list of electrode labels based on the number of electrodes detected
             elecNames = GenerateElecLabels(size(elecDetected, 1));
            
