@@ -455,118 +455,6 @@ function UpdatePanel()
     UpdateContactList('SCS');
 end
 
-%% ===== SEEG: AUTOMATIC CONTACT LOCALIZATION =====
-function SeegAutoContactLocalize(Method)
-    global GlobalData
-    % Parse input
-    if nargin < 1 || isempty(Method)
-        % Set GARDEL as default method
-        Method = 'Gardel';
-    end
-    % Get all electrodes
-    [sAllElec, iDS, iFig] = GetElectrodes();
-    if isempty(iDS)
-        return;
-    end
-    % Proceed only if this is an implantation folder
-    if ~isImplantationFolder(iDS)
-        return;
-    end
-    % Get subject
-    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
-    
-    switch lower(Method)
-        case 'gardel'
-            % Initialize GARDEL
-            isInstalled = bst_plugin('Install', 'gardel');
-            if ~isInstalled
-                bst_progress('stop');
-                return;
-            end            
-            % Add disclaimer to users that 'Auto -> GARDEL' feature maybe subject to inaccuracies
-            if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
-                                        'image resolution, anatomical variations, and registration errors. <BR>' ...
-                                        'Please verify the results carefully. <BR><BR>' ...
-                                        'This will also reset any previous implantations present.<BR><BR>' ...
-                                        'Do you want to continue?'], 'Auto detect SEEG electrodes')
-                return;
-            end 
-            % Reset implantation by removing the electrodes
-            if ~isempty(sAllElec)
-                RemoveElectrode(sAllElec);
-            end
-            % Get updated channel data
-            Channels = GlobalData.DataSet(iDS).Channel;
-            % Get CT file and IsoValue
-            iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
-            if isempty(iIsoSrf)
-                return;
-            end
-            [CtFile, isoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrf).FileName);
-            if isempty(isoValue) || isempty(CtFile)
-                return;
-            end     
-            % Call GARDEL automatic localization pipeline
-            bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
-            bst_plugin('SetProgressLogo', 'gardel');           
-            sCt = bst_memory('LoadMri', CtFile);
-            sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
-            elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
-            % Generate a list of electrode labels based on the number of electrodes detected
-            elecNames = GenerateElecLabels(size(elecDetected, 1));
-           
-            % Loop through detected electrodes
-            for iElec = 1:size(elecDetected, 1)
-                % Show progress
-                progressPrc = round(100 .* iElec ./ size(elecDetected, 1));
-                bst_progress('set', progressPrc);
-                % Extract contacts for current electrode
-                contactLocsDetected = elecDetected{iElec};
-                % Add electrode assigning a name to it
-                AddElectrode(elecNames{iElec});        
-                % Get selected electrode structure
-                [sSelElec, iSelElec] = GetSelectedElectrodes(); 
-                % Transform coordinates: VOXEL => SCS
-                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', contactLocsDetected);
-                % Sort contacts (distance from origin)
-                contactLocsSorted = SortContactLocs(contactLocsScs');
-                % Set model as blank (user can manually update it from GUI)
-                sSelElec.Model = '';
-                % Set electrode contact number
-                sSelElec.ContactNumber = size(contactLocsSorted, 2);
-                % Set contact spacing as blank (user can manually update it from GUI)
-                sSelElec.ContactSpacing = '';
-                % Set electrode tip and skull entry
-                sSelElec.Loc(:, 1) = contactLocsSorted(:, 1);
-                sSelElec.Loc(:, 2) = contactLocsSorted(:, end);  
-                % Set the changed electrode properties
-                SetElectrodes(iSelElec, sSelElec);              
-                % Update channel data
-                sChannel = db_template('channeldesc');
-                sChannel.Type = 'SEEG';
-                sChannel.Group = sSelElec.Name;
-                iChan = [];
-                for i = 1:sSelElec.ContactNumber
-                    sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
-                    sChannel.Loc = contactLocsSorted(:, i);
-                    Channels(end+1) = sChannel;
-                    iChan(end+1) = length(Channels);
-                end
-                for i = 1:length(iDS)
-                    GlobalData.DataSet(iDS(i)).Channel = Channels;
-                    GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
-                end
-                % Update figures
-                UpdateFigures();
-            end
-            
-        otherwise
-            bst_error(['Invalid method: ' Method], 'Auto localize SEEG contacts');
-            return;
-    end
-    % Stop process box
-    bst_progress('stop');
-end
 
 %% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
 % Recursively generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
@@ -2613,6 +2501,119 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
     end
 end
 
+
+%% ===== SEEG: AUTOMATIC CONTACT LOCALIZATION =====
+function SeegAutoContactLocalize(Method)
+    global GlobalData
+    % Parse input
+    if nargin < 1 || isempty(Method)
+        % Set GARDEL as default method
+        Method = 'Gardel';
+    end
+    % Get all electrodes
+    [sAllElec, iDS, iFig] = GetElectrodes();
+    if isempty(iDS)
+        return;
+    end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDS)
+        return;
+    end
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+
+    switch lower(Method)
+        case 'gardel'
+            % Initialize GARDEL
+            isInstalled = bst_plugin('Install', 'gardel');
+            if ~isInstalled
+                bst_progress('stop');
+                return;
+            end
+            % Add disclaimer to users that 'Auto -> GARDEL' feature maybe subject to inaccuracies
+            if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
+                                        'image resolution, anatomical variations, and registration errors. <BR>' ...
+                                        'Please verify the results carefully. <BR><BR>' ...
+                                        'This will also reset any previous implantations present.<BR><BR>' ...
+                                        'Do you want to continue?'], 'Auto detect SEEG electrodes')
+                return;
+            end
+            % Reset implantation by removing the electrodes
+            if ~isempty(sAllElec)
+                RemoveElectrode(sAllElec);
+            end
+            % Get updated channel data
+            Channels = GlobalData.DataSet(iDS).Channel;
+            % Get CT file and IsoValue
+            iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
+            if isempty(iIsoSrf)
+                return;
+            end
+            [CtFile, isoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrf).FileName);
+            if isempty(isoValue) || isempty(CtFile)
+                return;
+            end
+            % Call GARDEL automatic localization pipeline
+            bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
+            bst_plugin('SetProgressLogo', 'gardel');
+            sCt = bst_memory('LoadMri', CtFile);
+            sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
+            elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
+            % Generate a list of electrode labels based on the number of electrodes detected
+            elecNames = GenerateElecLabels(size(elecDetected, 1));
+
+            % Loop through detected electrodes
+            for iElec = 1:size(elecDetected, 1)
+                % Show progress
+                progressPrc = round(100 .* iElec ./ size(elecDetected, 1));
+                bst_progress('set', progressPrc);
+                % Extract contacts for current electrode
+                contactLocsDetected = elecDetected{iElec};
+                % Add electrode assigning a name to it
+                AddElectrode(elecNames{iElec});
+                % Get selected electrode structure
+                [sSelElec, iSelElec] = GetSelectedElectrodes();
+                % Transform coordinates: VOXEL => SCS
+                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', contactLocsDetected);
+                % Sort contacts (distance from origin)
+                contactLocsSorted = SortContactLocs(contactLocsScs');
+                % Set model as blank (user can manually update it from GUI)
+                sSelElec.Model = '';
+                % Set electrode contact number
+                sSelElec.ContactNumber = size(contactLocsSorted, 2);
+                % Set contact spacing as blank (user can manually update it from GUI)
+                sSelElec.ContactSpacing = '';
+                % Set electrode tip and skull entry
+                sSelElec.Loc(:, 1) = contactLocsSorted(:, 1);
+                sSelElec.Loc(:, 2) = contactLocsSorted(:, end);
+                % Set the changed electrode properties
+                SetElectrodes(iSelElec, sSelElec);
+                % Update channel data
+                sChannel = db_template('channeldesc');
+                sChannel.Type = 'SEEG';
+                sChannel.Group = sSelElec.Name;
+                iChan = [];
+                for i = 1:sSelElec.ContactNumber
+                    sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
+                    sChannel.Loc = contactLocsSorted(:, i);
+                    Channels(end+1) = sChannel;
+                    iChan(end+1) = length(Channels);
+                end
+                for i = 1:length(iDS)
+                    GlobalData.DataSet(iDS(i)).Channel = Channels;
+                    GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
+                end
+                % Update figures
+                UpdateFigures();
+            end
+
+        otherwise
+            bst_error(['Invalid method: ' Method], 'Auto localize SEEG contacts');
+            return;
+    end
+    % Stop process box
+    bst_progress('stop');
+end
     
                               
 %% =================================================================================
