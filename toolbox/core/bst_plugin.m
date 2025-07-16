@@ -184,9 +184,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'code/GARDEL.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).RequiredPlugs    = {'spm12'};
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).InstalledFcn    = {};
+    PlugDesc(end).InstalledFcn   = {};
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
     
     % === ANATOMY: ISO2MESH ===
