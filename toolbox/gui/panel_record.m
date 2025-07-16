@@ -143,6 +143,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events));
         gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents));
+        jMenu.addSeparator();
+        gui_component('MenuItem', jMenu, [], 'Import HEDs from File', IconLoader.ICON_EEG_NEW, [], @(h,ev)CallProcessOnRaw('process_evt_importhed'));
+        gui_component('MenuItem', jMenu, [], 'Export HEDs to File',    IconLoader.ICON_SAVE,      [], @(h,ev)CallProcessOnRaw('process_evt_exporthed'));
+        jMenu.addSeparator();
+
 
         % EVENT TYPES
         jMenu = gui_component('Menu', jMenuBar, [], 'Events', IconLoader.ICON_MENU, [], [], 11);
@@ -153,7 +158,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)CallWithAccelerator(@EventTypeToggleVisible));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
+        gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
+
+        % ——— HED TAGGING ———
+        gui_component('MenuItem', jMenu, [], 'Add HED from CTAGGER',     IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_hedtagger'));
+        gui_component('MenuItem', jMenu, [], 'Uniform protocol event HEDs', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_uniformhed'));
+
+        jMenu.addSeparator();
+
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
             gui_component('MenuItem', jMenuSort, [], 'By time', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('time')));
@@ -1085,6 +1098,9 @@ function ReloadRecordings(isForced)
         end
         % Get epoch indice
         iEpoch = ctrl.jSpinnerEpoch.getValue();
+        if iEpoch <= 0
+            return
+        end
         Time = GlobalData.FullTimeWindow.Epochs(iEpoch).Time;
         % Get new time window
         iStart = double(ctrl.jSliderStart.getValue());
@@ -1149,7 +1165,9 @@ function ReloadRecordings(isForced)
     % Refresh time panel
     panel_time('UpdatePanel');
     % Reload recordings matrix from raw file
-    bst_memory('LoadRecordingsMatrix', iDS);
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        bst_memory('LoadRecordingsMatrix', iDS);
+    end
     % Replot all figures
     bst_figures('ReloadFigures', [], 1, 1);
     % Flushes the display updates
@@ -2705,7 +2723,14 @@ function CallProcessOnRaw(ProcessName)
     % Save current modifications
     SaveModifications(iDS);
     % Get filename
-    DataFile = GlobalData.DataSet(iDS).DataFile;
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        DataFile = GlobalData.DataSet(iDS).DataFile;
+    else
+        % Look for open figures
+        for iMat = 1:length(GlobalData.DataSet(iDS).Matrix)
+            DataFile = file_fullpath(GlobalData.DataSet(iDS).Matrix(iMat).FileName);
+        end
+    end
     % File time
     if isRaw
         FileTimeVector = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time;
