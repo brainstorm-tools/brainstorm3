@@ -179,7 +179,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('gardel');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
     PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/GARDEL_Brainstorm/gardel-GARDEL_Brainstorm.zip';
     PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
