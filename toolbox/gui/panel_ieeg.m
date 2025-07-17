@@ -3883,7 +3883,7 @@ function isImplantation = isImplantationFolder(iDS)
 end
 
 %% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
-% Recursively generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
+% Generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
 function elecLabels = GenerateElecLabels(maxLabelCount)
     elecLabels = cell(1, maxLabelCount);
     for labelNum = 1:maxLabelCount
