@@ -3895,14 +3895,15 @@ end
 % Converts a positive integer 'labelNum' to text 'labelText'
 % e.g. 1 -> 'A', ..., 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
 function labelText = NumToText(labelNum)
-    if labelNum <= 26
+    nChars = 26; % 'A' to 'Z'
+    if labelNum <= nChars
         % Base case: a single letter.
         labelText = char('A' + labelNum - 1);
     else
         % Recursively generate multi-letter labels
         labelNum  = labelNum - 1;
-        remainder = mod(labelNum, 26);
-        quotient  = floor(labelNum / 26);
+        remainder = mod(labelNum, nChars);
+        quotient  = floor(labelNum / nChars);
         labelText = [NumToText(quotient) char('A' + remainder)];
     end
 end
