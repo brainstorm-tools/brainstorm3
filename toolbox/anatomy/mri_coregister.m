@@ -88,12 +88,14 @@ switch lower(Method)
     % ===== METHOD: SPM =====
     case 'spm'
         % Initialize SPM
-        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-        if ~isInstalled
-            if ~isProgress
-                bst_progress('stop');
+        if ~bst_iscompiled
+            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+            if ~isInstalled
+                if ~isProgress
+                    bst_progress('stop');
+                end
+                return;
             end
-            return;
         end
         bst_plugin('SetProgressLogo', 'spm12');
         

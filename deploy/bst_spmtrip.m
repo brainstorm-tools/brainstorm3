@@ -7,7 +7,10 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 %
 % Brainstorm features using external SPM functions:
 %  - Anatomy: Import MRI > DICOM converter
-%  - Anatomy: Import MRI > MRI coregistration (SPM)
+%  - Anatomy: Import MRI > MNI normalization (SPM 'segment' method)
+%  - Anatomy: Import MRI > MRI coregistration (SPM) and reslice (SPM)
+%  - Anatomy: Import MRI > MRI realign (SPM)
+%  - Anatomy: Import MRI > MRI skul stripping (SPM)
 %  - Input: Read SPM .mat/.dat recordings
 %  - Output: Save SPM .mat/.dat recordings
 %  - Process1: Import > Import anatomy > Generate SPM canonical surfaces

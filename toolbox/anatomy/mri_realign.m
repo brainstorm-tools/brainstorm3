@@ -109,13 +109,15 @@ if ~isempty(Method)
 
         % ===== METHOD: SPM ALIGN =====
         case 'spm_realign'
-            % Initialize SPM
-            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-            if ~isInstalled
-                if ~isProgress
-                    bst_progress('stop');
+            if ~bst_iscompiled
+                % Initialize SPM
+                [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+                if ~isInstalled
+                    if ~isProgress
+                        bst_progress('stop');
+                    end
+                    return;
                 end
-                return;
             end
             bst_plugin('SetProgressLogo', 'spm12');
     
