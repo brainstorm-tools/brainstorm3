@@ -42,7 +42,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
+    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
+    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',18,25);
     
     % ===== TOOLBAR =====
@@ -73,6 +75,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Menu: Contacts
         jToolbar.addSeparator();
         jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+    
+    % ===== BOTTOM TOOLBAR =====
+    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
+        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
+        jToolbarBottom.setPreferredSize(TB_DIM);
+        jToolbarBottom.setOpaque(0);
+        % Menu: Auto (Automatic contact localization)
+        jMenuAuto = gui_component('Menu', jMenuBarBottom, [], 'Auto', IconLoader.ICON_MENU, 'Automatic contact localization', [], 11);
+        % Menu: GARDEL
+        jMenuGardel = gui_component('MenuItem', jMenuAuto, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL: automatic contact localization', @(h,ev)bst_call(@SeegAutoContactLocalize, 'Gardel'));
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -225,6 +237,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
                                   'jMenuContacts',       jMenuContacts, ...
+                                  'jMenuAuto',           jMenuAuto, ...
+                                  'jMenuGardel',         jMenuGardel, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
                                   'jRadioMri',           jRadioMri, ...
@@ -397,7 +411,7 @@ function UpdatePanel()
         return;
     end
     % Get current figure
-    [hFigall,~,iDSall] = bst_figures('GetCurrentFigure');
+    [hFigall, iFigall, iDSall] = bst_figures('GetCurrentFigure');
     if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
         gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
@@ -413,6 +427,12 @@ function UpdatePanel()
             ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
         else
             panel_coordinates('SetCentroidSelection', 0);
+        end
+        % Enable 'GARDEL' button IFF modality is SEEG
+        if strcmpi(GlobalData.DataSet(iDSall).Figure(iFigall).Id.Modality, 'SEEG')
+            gui_enable(ctrl.jMenuGardel, 1);
+        else
+            gui_enable(ctrl.jMenuGardel, 0);
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
@@ -2456,6 +2476,115 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
     end
 end
 
+
+%% ===== SEEG: AUTOMATIC CONTACT LOCALIZATION =====
+function SeegAutoContactLocalize(Method)
+    global GlobalData
+    % Parse input
+    if nargin < 1 || isempty(Method)
+        % Set GARDEL as default method
+        Method = 'Gardel';
+    end
+    % Get all electrodes
+    [sAllElec, iDS, iFig] = GetElectrodes();
+    if isempty(iDS)
+        return;
+    end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDS)
+        return;
+    end
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+
+    switch lower(Method)
+        case 'gardel'
+            % Initialize GARDEL
+            isInstalled = bst_plugin('Install', 'gardel');
+            if ~isInstalled
+                bst_progress('stop');
+                return;
+            end
+            % Add disclaimer to users that 'Auto -> GARDEL' feature maybe subject to inaccuracies
+            if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
+                                        'image resolution, anatomical variations, and registration errors. <BR>' ...
+                                        'Please verify the results carefully. <BR><BR>' ...
+                                        'This will also reset any previous implantations present.<BR><BR>' ...
+                                        'Do you want to continue?'], 'Auto detect SEEG electrodes')
+                return;
+            end
+            % Reset implantation by removing the electrodes
+            if ~isempty(sAllElec)
+                RemoveElectrode(sAllElec);
+            end
+            % Get updated channel data
+            Channels = GlobalData.DataSet(iDS).Channel;
+            % Get CT file and IsoValue
+            iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
+            if isempty(iIsoSrf)
+                return;
+            end
+            [CtFile, isoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrf).FileName);
+            if isempty(isoValue) || isempty(CtFile)
+                return;
+            end
+            % Call GARDEL automatic localization pipeline
+            bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
+            bst_plugin('SetProgressLogo', 'gardel');
+            sCt = bst_memory('LoadMri', CtFile);
+            sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
+            elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
+            % Generate a list of electrode labels based on the number of electrodes detected
+            elecNames = GenerateElecLabels(size(elecDetected, 1));
+
+            % Loop through detected electrodes
+            for iElec = 1:size(elecDetected, 1)
+                % Show progress
+                progressPrc = round(100 .* iElec ./ size(elecDetected, 1));
+                bst_progress('set', progressPrc);
+                % Transform contact coordinates: VOXEL => SCS
+                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', elecDetected{iElec});
+                % Sort contacts (distance from SCS origin)
+                contactLocsScs = SortContactLocs(contactLocsScs');
+                % Add electrode assigning a name to it
+                AddElectrode(elecNames{iElec});
+                % Get selected electrode structure
+                [sSelElec, iSelElec] = GetSelectedElectrodes();
+                % Default model and contact spacing
+                sSelElec.Model = '';
+                sSelElec.ContactSpacing = [];
+                % Set electrode contacts
+                sSelElec.ContactNumber = size(contactLocsScs, 2);
+                sSelElec.Loc(:, 1) = contactLocsScs(:, 1);   % Tip
+                sSelElec.Loc(:, 2) = contactLocsScs(:, end); % Skull entry
+                % Update electrode properties
+                SetElectrodes(iSelElec, sSelElec);
+                % Update channel data
+                sChannel = db_template('channeldesc');
+                sChannel.Type = 'SEEG';
+                sChannel.Group = sSelElec.Name;
+                iChan = [];
+                for i = 1:sSelElec.ContactNumber
+                    sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
+                    sChannel.Loc = contactLocsScs(:, i);
+                    Channels(end+1) = sChannel;
+                    iChan(end+1) = length(Channels);
+                end
+                for i = 1:length(iDS)
+                    GlobalData.DataSet(iDS(i)).Channel = Channels;
+                    GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
+                end
+                % Update figures
+                UpdateFigures();
+            end
+
+        otherwise
+            bst_error(['Invalid method: ' Method], 'Auto localize SEEG contacts');
+            return;
+    end
+    % Stop process box
+    bst_progress('stop');
+end
     
                               
 %% =================================================================================
@@ -3751,4 +3880,30 @@ function isImplantation = isImplantationFolder(iDS)
     [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
     % Check if folder name starts with 'implantation'
     isImplantation = strncmpi(folderName, 'implantation', 12);
+end
+
+%% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
+% Generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
+function elecLabels = GenerateElecLabels(maxLabelCount)
+    elecLabels = cell(1, maxLabelCount);
+    for labelNum = 1:maxLabelCount
+        elecLabels{labelNum} = NumToText(labelNum);
+    end
+end
+
+% Helper function for the recursive generation of names
+% Converts a positive integer 'labelNum' to text 'labelText'
+% e.g. 1 -> 'A', ..., 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
+function labelText = NumToText(labelNum)
+    nChars = 26; % 'A' to 'Z'
+    if labelNum <= nChars
+        % Base case: a single letter.
+        labelText = char('A' + labelNum - 1);
+    else
+        % Recursively generate multi-letter labels
+        labelNum  = labelNum - 1;
+        remainder = mod(labelNum, nChars);
+        quotient  = floor(labelNum / nChars);
+        labelText = [NumToText(quotient) char('A' + remainder)];
+    end
 end
