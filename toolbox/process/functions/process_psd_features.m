@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Compute PSD features';
+    sProcess.Comment     = 'Compute power spectra statistics';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 482;
@@ -39,6 +39,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 1;
+    % Process description
+    sProcess.options.label1.Comment = ['This process computes statistics for power spectra<BR>' ...
+                                       'which are obtained for each time window'];
+    sProcess.options.label1.Type    = 'label';
     % Options: Time window
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
@@ -72,29 +76,32 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'MEG, EEG';
     sProcess.options.sensortypes.InputTypes = {'raw','data'};
-    % Options: Extract mean
-    sProcess.options.mean.Comment = 'Extract mean';
-    sProcess.options.mean.Type    = 'checkbox';
-    sProcess.options.mean.Value   = 1;
-    % Options: Extract std
-    sProcess.options.std.Comment = 'Extract std';
-    sProcess.options.std.Type    = 'checkbox';
-    sProcess.options.std.Value   = 1;
-    % Options: Extract coefficient of variation
-    sProcess.options.cv.Comment = 'Extract cv';
-    sProcess.options.cv.Type    = 'checkbox';
-    sProcess.options.cv.Value   = 1;
     % Options: Compute relative power
     sProcess.options.relative.Comment = 'Use relative power';
     sProcess.options.relative.Type    = 'checkbox';
     sProcess.options.relative.Value   = 0;
+    % Options: Time-freq
+    sProcess.options.edit.Comment = {'panel_timefreq_options', ' Power spectrum options: '};
+    sProcess.options.edit.Type    = 'editpref';
+    sProcess.options.edit.Value   = [];
     % Separator
     sProcess.options.sep.Type     = 'label';
     sProcess.options.sep.Comment  = '  ';
-    % Options: Time-freq
-    sProcess.options.edit.Comment = {'panel_timefreq_options', ' PSD options: '};
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = [];
+    % Statistics across window power spectra
+    sProcess.options.label2.Comment = '<B>Statistics for power spectra:</B>';
+    sProcess.options.label2.Type    = 'label';
+    % Options: Extract mean
+    sProcess.options.mean.Comment = 'mean (<B>&mu;</B>, same as PSD with Welch''s method)';
+    sProcess.options.mean.Type    = 'checkbox';
+    sProcess.options.mean.Value   = 1;
+    % Options: Extract std
+    sProcess.options.std.Comment = 'standard deviation (<B>&sigma;</B>)';
+    sProcess.options.std.Type    = 'checkbox';
+    sProcess.options.std.Value   = 1;
+    % Options: Extract coefficient of variation
+    sProcess.options.cv.Comment = 'coefficient of variation (<B>&sigma; / &mu;</B>)';
+    sProcess.options.cv.Type    = 'checkbox';
+    sProcess.options.cv.Value   = 1;
 end
 
 

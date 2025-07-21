@@ -2303,6 +2303,8 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
         else
             updateVal = newVal;
         end
+        % Replace string arrays (if any) with char vectors
+        updateVal = bst_str2char(updateVal);
         % Save the finale value
         sProcess.options.(varargin{i}).Value = updateVal;
     end

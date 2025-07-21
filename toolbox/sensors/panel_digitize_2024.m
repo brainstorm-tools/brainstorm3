@@ -107,6 +107,8 @@ function Start(varargin)
         if isempty(Digitize.Options.PatientId)
             return;
         end
+        % Normalize PatientId (in order to create a directory out of it)
+        Digitize.Options.PatientId = file_standardize(Digitize.Options.PatientId);
         % Save new ID
         bst_set('DigitizeOptions', Digitize.Options);
         
@@ -1485,9 +1487,9 @@ function isOk = CreateSerialConnection()
                 end
             elseif strcmp(Digitize.Options.UnitType,'patriot')
                 % Request input from stylus
-                writeline(Digitize.SerialConnection,'L1,1\r');
+                writeline(Digitize.SerialConnection,'L1,1');
                 % Set units to centimeters
-                writeline(Digitize.SerialConnection,'U1\r');
+                writeline(Digitize.SerialConnection,'U1');
             end
             pause(0.2);
         catch %#ok<CTCH>

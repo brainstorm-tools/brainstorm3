@@ -324,6 +324,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                         bst_progress('stop');
                         return;
                     end
+                else
+                    isReslice = 0;
                 end
 
             % Ask for PET processing
