@@ -551,6 +551,16 @@ function SetIsoValue(isoValue)
     ctrl.jSliderSurfIsoValue.setValue(isoValue);
 end
 
+%% ===== GET SLIDER ISOVALUE =====
+function isoValue = GetIsoValue()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    if isempty(ctrl)
+        return;
+    end 
+    isoValue = ctrl.jSliderSurfIsoValue.getValue();
+end
+
 %% ===== SCROLL MRI CUTS =====
 function ScrollMriCuts(hFig, direction, value) %#ok<DEFNU>
     % Get Mri and figure Handles
