@@ -441,14 +441,18 @@ function SliderCallback(hObject, event, target)
                 return;
             end
             % Get new isoValue from the slider
-            isoValue = jSlider.getValue();
-            % Remove the old IsoSurface, generate, and load the new one
-            RemoveSurface(hFig, iSurface);
-            bst_memory('UnloadSurface', isosurfFile);
+            newIsoValue = jSlider.getValue();
+            % Update the IsoSurface
             colorBak = TessInfo(iSurface).AnatomyColor;
-            tess_isosurface(ctFile, isoValue);
+            sCt = bst_memory('LoadMri', ctFile);
+            [Vertices, Faces] = tess_isosurface(sCt, newIsoValue);
+            TessInfo(iSurface).hPatch.Vertices = Vertices;
+            TessInfo(iSurface).hPatch.Faces = Faces;
+            TessInfo(iSurface).nVertices = size(Vertices, 1);
+            TessInfo(iSurface).nFaces = size(Faces, 1);
+            setappdata(hFig, 'Surface', TessInfo);
             SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
-            UpdatePanel();
+            SetIsoValue(newIsoValue);
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -2779,4 +2783,47 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
             end
         end
     end
+end
+
+%% ===== SAVE ISOSURFACE =====
+function [MeshFile, iSurface] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRange)
+    % Get subject
+    [sSubject, iSubject] = bst_get('MriFile', ctFile);
+    % Find tess_isosurface file computed using the same CT volume
+    iIsoSurfForThisCt = 0;
+    iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
+    for ix = 1 : length(iIsoSrfs)
+        ctFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
+        if strcmp(ctFileIso, ctFile)
+            iIsoSurfForThisCt = iIsoSrfs(ix);
+        end
+    end
+    % Create or Overwrite tess_isosurface file
+    if iIsoSurfForThisCt == 0
+        % Create output filenames
+        SurfaceDir = bst_fileparts(file_fullpath(ctFile));
+        % Create IsoFile
+        MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+        comment = sprintf('isoSurface (ISO_%d)', isoValue);
+    else
+        % Get old IsoValue
+        [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
+        % Overwrite the updated fields, do not delete the file
+        MeshFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
+        % Force to be the newest isosurface
+        sSubject.Surface(iIsoSurfForThisCt) = [];
+        bst_set('Subject', iSubject, sSubject);
+        % Get Comment and update it
+        sIsoSrfTmp = load(MeshFile, 'Comment', 'History');
+        comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
+    end
+    % Set comment
+    sIsoSrf.Comment = comment;
+    % Set history
+    sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
+                        sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, isoValue, isoRange));
+    % Save isosurface
+    bst_save(MeshFile, sIsoSrf, 'v7');
+    % Add isosurface to database
+    iSurface = db_add_surface(iSubject, MeshFile, sIsoSrf.Comment);
 end
