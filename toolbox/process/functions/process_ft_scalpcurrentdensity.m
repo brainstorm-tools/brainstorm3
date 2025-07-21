@@ -42,8 +42,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.SubGroup    = 'Standardize';
     sProcess.Index       = 310;
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'raw'};
-    sProcess.OutputTypes = {'raw'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 1;
@@ -123,23 +123,29 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
 
     % ===== CALL FIELDTRIP FUNCTION =====
-    % Convert 'raw' input to FieldTrip 'ft_datatype_raw' structure. Only for given SensorTypes
+    % Convert 'raw' or 'data' input to FieldTrip 'ft_datatype_raw' structure. Only for given SensorTypes
     [ftData, DataMat, ChannelMat, iChannels] = out_fieldtrip_data(sInput.FileName, sInput.ChannelFile, SensorTypes, 0);
-    sFileIn = DataMat.F;
-    % Stop if there are projectors that have not being applied
-    if isfield(ChannelMat, 'Projector') && numel(ChannelMat.Projector)
-        pendingProjectors = any([ChannelMat.Projector.Status] ~= 2);
-        if pendingProjectors > 0
-            errMsg = sprintf(['Data file has %d SSP/ICA projectors that have been computed but not yet applied.\n' ...
-                              'If they exist, projectors must be applied before using this method.'], pendingProjectors);
-            bst_report('Error', sProcess, sInput, errMsg);
-            return
+    isRaw = strcmpi(sInput.FileType, 'raw');
+    if isRaw
+        % Stop if there are projectors that have not being applied
+        if isfield(ChannelMat, 'Projector') && numel(ChannelMat.Projector)
+            pendingProjectors = any([ChannelMat.Projector.Status] ~= 2);
+            if pendingProjectors > 0
+                errMsg = sprintf(['Data file has %d SSP/ICA projectors that have been computed but not yet applied.\n' ...
+                                  'If they exist, projectors must be applied before using this method.'], pendingProjectors);
+                bst_report('Error', sProcess, sInput, errMsg);
+                return
+            end
         end
+        % Data structure
+        sFileIn = DataMat.F;
+        % Original signals (all channels)
+        [sMat, matName] = in_bst(sInput.FileName, [], 1, 1, 'no', 0);
+        F = sMat.(matName);
+    else
+        % Original signals (all channels)
+        F = DataMat.F;
     end
-
-    % Load entire 'raw' file
-    [sMat, matName] = in_bst(sInput.FileName, [], 1, 1, 'no', 0);
-    F = sMat.(matName);
 
     % Prepare options according to method chosen
     scdcfg.method = Method;
@@ -168,28 +174,35 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     F(iChannels, :) = scdData.trial{1};
     
     % ===== SAVE RESULTS =====
-    % New folder name
-    newCondition = [sInput.Condition, '_scd'];
-    % Get new condition name
-    ProtocolInfo = bst_get('ProtocolInfo');
-    newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
-    % Output file name derives from the condition name
-    [~, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
-    rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
-    % Full output filename
-    RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
-    % Get input study (to copy the creation date)
-    sInputStudy = bst_get('AnyFile', sInput.FileName);
-    % Get new condition name
-    [~, ConditionName] = bst_fileparts(newStudyPath, 1);
-    % Create output condition
-    iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName, [], sInputStudy.DateOfStudy);
-    % Get output study
-    sOutputStudy = bst_get('Study', iOutputStudy);
-    % Full file name
-    MatFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' rawBaseOut '.mat']);
-    % Create an empty Brainstorm-binary file
-    sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
+    if isRaw
+        % New folder name
+        newCondition = [sInput.Condition, '_scd'];
+        % Get new condition name
+        ProtocolInfo = bst_get('ProtocolInfo');
+        newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
+        % Output file name derives from the condition name
+        [~, rawBaseOut, rawBaseExt] = bst_fileparts(newStudyPath);
+        rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
+        % Full output filename
+        RawFileOut = bst_fullfile(newStudyPath, [rawBaseOut '.bst']);
+        % Get input study (to copy the creation date)
+        sInputStudy = bst_get('AnyFile', sInput.FileName);
+        % Get new condition name
+        [~, ConditionName] = bst_fileparts(newStudyPath, 1);
+        % Create output condition
+        iOutputStudy = db_add_condition(sInput.SubjectName, ConditionName, [], sInputStudy.DateOfStudy);
+        % Get output study
+        sOutputStudy = bst_get('Study', iOutputStudy);
+        % Full file name
+        MatFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' rawBaseOut '.mat']);
+        % Create an empty Brainstorm-binary file
+        sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
+    else
+        % Create output filename
+        [fPath, fBase, fExt] = bst_fileparts(file_fullpath(sInput.FileName));
+        MatFile = file_unique(bst_fullfile(fPath, [fBase '_scd', fExt]));
+        iOutputStudy = sInput.iStudy;
+    end
 
     % Add history comment
     switch Method
@@ -202,14 +215,19 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.Comment = [DataMat.Comment ' | scd'];
 
     % ===== SAVE THE RESULTS =====
-    % Set Output sFile structure
-    DataMat.F = sFileOut;
-    % Save new link to raw .mat file
+    if isRaw
+        % Set Output sFile structure
+        DataMat.F = sFileOut;
+        % Create new channel file
+        db_set_channel(iOutputStudy, ChannelMat, 2, 0);
+        % Write block
+        out_fwrite(sFileOut, ChannelMat, 1, [], [], F);
+    else
+        % Signals in data structure
+        DataMat.F = F;
+    end
+    % Save on disk (wither new link to raw .mat file, or data .mat)
     bst_save(MatFile, DataMat, 'v6');
-    % Create new channel file
-    db_set_channel(iOutputStudy, ChannelMat, 2, 0);
-    % Write block
-    out_fwrite(sFileOut, ChannelMat, 1, [], [], F);
     % Register in BST database
     db_add_data(iOutputStudy, MatFile, DataMat);
     OutputFiles{1} = MatFile;
