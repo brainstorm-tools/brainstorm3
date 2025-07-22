@@ -3390,86 +3390,125 @@ end
 
 %% ===== SMOOTH SURFACE =====
 function SurfaceSmooth_Callback(TessFile)
-    % Unload surface file
-    bst_memory('UnloadSurface', TessFile);
-    bst_progress('start', 'Smooth surface', 'Processing file...');
-    % Save current modifications
-    panel_scout('SaveModifications');
-    % Load surface file
-    TessMat = in_tess_bst(TessFile, 0);
-    % Ask for user confirmation
-    isConfirm = java_dialog('confirm', [...
-        'Warning: This operation will move vertices on the surface.' 10 10 ...
-        'If you run it, you have to delete and recalculate the' 10 ...
-        'headmodels and source files calculated using this surface.' 10 10 ...
-        'Run the surface smoothing now?' 10 10], ...
-        'Smooth surface');
-    if ~isConfirm
-        bst_progress('stop');
-        return;
-    end
-    % Smooth file
-    % defaut parameters
-    smoothingMethods = {'laplacianhc','laplacian','lowpass'};
-    userIteration = 5;  
-    userAlpha = 0.5;
-    userMethod = 1;
-    % Some recommendation for curious user 
-    % | Goal (laplacianhc)      | iter  | alpha (typical) |
-    % | ----------------------- | ----- | --------------- |
-    % | Light denoise           | 3–5   | 0.3–0.6         |
-    % | Moderate smooth         | 8–15  | 0.2–0.4         |
-    % | Heavy smooth (careful!) | 20–50 | 0.1–0.3         |
-    % [check smoothsurf of iso2mesh for more information]
-    % Ask user for parameters
-    res = java_dialog('input', {'Smoothing parameter: [0, 1] (0 strong, 1 weak)', 'Iteration:', ...
-        'Method: (1) laplacianhc (default), (2) laplacian, (3) lowpass'}, ...
-        'Smooth surface', [], ...
-        {sprintf('%1.2f', userAlpha), sprintf('%d', userIteration), sprintf('%d', userMethod)});
-    % Read user input
-    userIteration = str2double(res{2});
-    userAlpha = str2double(res{1});
-    userMethod = str2double(res{3});
-    % Install/load iso2mesh plugin  if needed
-    [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', 1);
-    if ~isInstalled
-        errMsg = [errMsg, errInstall];
-        return;
-    end  
-    % Create new surface
-    newTessMat = db_template('surfacemat');
-    % run the smoothing
-    newTessMat.Vertices = sms(TessMat.Vertices,TessMat.Faces, userIteration , userAlpha, smoothingMethods{userMethod});
-    
-    NewComment = TessMat.Comment;
-    % Build new filename and Comment
-    [filepath, filebase, fileext] = bst_fileparts(file_fullpath(TessFile));
-    % Add a tag
-    NewTessFile = file_unique(bst_fullfile(filepath, sprintf('%s%s', filebase, fileext)));
-    NewComment  = sprintf('%s_%s', NewComment, 'Smooth');
-    newTessMat.Comment  = NewComment;
-    % History
-    if isfield(TessMat, 'History')
-        newTessMat = bst_history('add', newTessMat, 'Smooth',...
-            ['Smooth surface: Method: '  res{3} ', Iteration: ' res{2} ', Alpha: ' res{1}] );
-    end
-    newTessMat.Faces    = TessMat.Faces;
-    % Atlas
-    newTessMat.Atlas  = TessMat.Atlas;
-    newTessMat.iAtlas = TessMat.iAtlas;
-    if isfield(TessMat, 'Reg')
-        newTessMat.Reg = TessMat.Reg;
-    end
-    % Save smoothed surface file
-    bst_save(NewTessFile, newTessMat, 'v7');
-    % Make output filename relative
-    NewTessFile = file_short(NewTessFile);
-    % Get subject
-    [sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
-    % Register this file in Brainstorm database
-    db_add_surface(iSubject, NewTessFile, NewComment);
-    % Close progresss bar
+% Unload surface file
+bst_memory('UnloadSurface', TessFile);
+bst_progress('start', 'Smooth surface', 'Processing file...');
+% Save current modifications
+panel_scout('SaveModifications');
+% Load surface file
+TessMat = in_tess_bst(TessFile, 0);
+% Ask for user confirmation
+isConfirm = java_dialog('confirm', [...
+    'Warning: This operation will move vertices on the surface.' 10 10 ...
+    'If you run it, you have to delete and recalculate the' 10 ...
+    'headmodels and source files calculated using this surface.' 10 10 ...
+    'Run the surface smoothing now?' 10 10], ...
+    'Smooth surface');
+if ~isConfirm
     bst_progress('stop');
+    return;
+end
+
+methods_str = {...
+    ['<HTML><B><U> Brainstorm method:</U></B><BR>' ...
+    '&nbsp;&nbsp;&nbsp;| - Standard Laplacian smoothing — fast and simple, may shrink mesh.<BR>' ...
+    '&nbsp;&nbsp;&nbsp;| -  Calls the <CODE>tess_smooth.m</CODE> function.'], ...
+    ['<HTML><B> iso2mesh method:</B><BR>' ...
+    '&nbsp;&nbsp;&nbsp;| - Curvature-aware smoothing that preserves mesh shape.<BR>' ...
+    '&nbsp;&nbsp;&nbsp;| - Calls the <CODE>sms</CODE> function with selectable methods.'], ...
+    };
+
+% Ask method
+selectedMethod = java_dialog('radio', 'Select the smoothing method:', 'Resample surface', [], methods_str, 1);
+if isempty(selectedMethod)
+    return
+end
+
+% Create new surface
+newTessMat = db_template('surfacemat');
+% Select corresponding method name
+switch (selectedMethod)
+    case 1,  MethodId = 'brainstorm smoothing';
+        % defaut parameters
+        userIteration = 1;
+        useSmoothWeighting = 0.5; % scalar smooth weighting parameter (0-1 less-more smoothing)
+        isKeepSize = 1;
+        % [check smoothsurf of iso2mesh for more information]
+        % Ask user for parameters
+        res = java_dialog('input', {'Smooth weighting: [0, 1] (0 less, 1 strong)', 'Iteration: ( number of times to apply the smoothing)'}, ...
+            'Smooth surface', [], ...
+            {sprintf('%1.2f', useSmoothWeighting), sprintf('%d', userIteration)});
+        % Read user input
+        useSmoothWeighting = str2double(res{1});
+        userIteration = str2double(res{2});
+ 
+        % run the sms smoothing
+        newTessMat.Vertices = tess_smooth(TessMat.Vertices, useSmoothWeighting, userIteration, TessMat.VertConn, isKeepSize, TessMat.Faces);
+        % tag to add in the history file    
+        MethodTag = ['Method: ' MethodId ', Iteration: ' res{2} ', Smooth Weighting: ' res{1}];
+    case 2,  MethodId = 'iso2mesh smoothing';
+        % defaut parameters
+        smoothingMethods = {'laplacianhc','laplacian','lowpass'};
+        userIteration = 5;
+        userAlpha = 0.5;
+        userMethod = 1;
+        % Some recommendation for curious user
+        % | Goal (laplacianhc)      | iter  | alpha (typical) |
+        % | ----------------------- | ----- | --------------- |
+        % | Light denoise           | 3–5   | 0.3–0.6         |
+        % | Moderate smooth         | 8–15  | 0.2–0.4         |
+        % | Heavy smooth (careful!) | 20–50 | 0.1–0.3         |
+        % [check smoothsurf of iso2mesh for more information]
+        % Ask user for parameters
+        res = java_dialog('input', {'Smoothing parameter: [0, 1] (0 strong, 1 weak)', 'Iteration:', ...
+            'Method: (1) laplacianhc (default), (2) laplacian, (3) lowpass'}, ...
+            'Smooth surface', [], ...
+            {sprintf('%1.2f', userAlpha), sprintf('%d', userIteration), sprintf('%d', userMethod)});
+        % Read user input
+        userIteration = str2double(res{2});
+        userAlpha = str2double(res{1});
+        userMethod = str2double(res{3});
+        % Install/load iso2mesh plugin  if needed
+        [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', 1);
+        if ~isInstalled
+            errMsg = [errMsg, errInstall];
+            return;
+        end
+        % run the sms smoothing
+        newTessMat.Vertices = sms(TessMat.Vertices,TessMat.Faces, userIteration , userAlpha, smoothingMethods{userMethod}); 
+        % tag to add in the history file    
+        MethodTag = ['Method: ' MethodId ': ' smoothingMethods{userMethod} ', Iteration: ' res{2} ', Smooth Alpha: ' res{1}];
+end
+
+NewComment = TessMat.Comment;
+% Build new filename and Comment
+[filepath, filebase, fileext] = bst_fileparts(file_fullpath(TessFile));
+% Add a tag
+NewTessFile = file_unique(bst_fullfile(filepath, sprintf('%s%s', filebase, fileext)));
+NewComment  = sprintf('%s_%s', NewComment, 'Smooth');
+newTessMat.Comment  = NewComment;
+% History
+if isfield(TessMat, 'History')
+    newTessMat = bst_history('add', newTessMat, 'Smooth',...
+        ['Smooth surface: ' MethodTag] );
+end
+newTessMat.Faces    = TessMat.Faces;
+% Atlas
+newTessMat.Atlas  = TessMat.Atlas;
+newTessMat.iAtlas = TessMat.iAtlas;
+if isfield(TessMat, 'Reg')
+    newTessMat.Reg = TessMat.Reg;
+end
+% Save smoothed surface file
+bst_save(NewTessFile, newTessMat, 'v7');
+% Make output filename relative
+NewTessFile = file_short(NewTessFile);
+% Get subject
+[sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
+% Register this file in Brainstorm database
+db_add_surface(iSubject, NewTessFile, NewComment);
+% Close progresss bar
+bst_progress('stop');
 end
 
 %% ===== EXTRACT ENVELOPE =====
