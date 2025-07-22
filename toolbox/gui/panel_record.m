@@ -162,6 +162,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Duplicate groups', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@EventTypesDuplicate));
         gui_component('MenuItem', jMenu, [], 'Convert to simple event', [], [], @(h,ev)bst_call(@EventConvertToSimple));
         gui_component('MenuItem', jMenu, [], 'Convert to extended event', [], [], @(h,ev)bst_call(@EventConvertToExtended));
+        gui_component('MenuItem', jMenu, [], 'Set channel info', IconLoader.ICON_CHANNEL, [], @(h,ev)CallProcessOnRaw('process_evt_channelinfo'));        
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'));
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
