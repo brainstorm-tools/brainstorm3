@@ -298,6 +298,10 @@ end
 
 % Merge channels for simultaneous channelwise events
 for iEvt = 1:length(sFile.events)
+    if isempty(sFile.events(iEvt).channels)
+        % Noting to merge
+        continue
+    end
     iOcc = find(~cellfun(@isempty, sFile.events(iEvt).channels));
     if numel(iOcc) < 2
         % Noting to merge
