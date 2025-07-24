@@ -1181,6 +1181,8 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         [~, ChannelMat] = cs_compute(ChannelMat, 'scs');
     end
     % Do the same with head coils, used when exporting coregistration to BIDS
+    % Also, if only the head coils were digitized and no anatomical points, use these as SCS, which
+    % is what Brainstorm will implicitly use as SCS coordinates to align with the MRI anyway.
     iHpiN = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-N'));
     iHpiL = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-L'));
     iHpiR = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-R'));
@@ -1193,18 +1195,33 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
         TmpChanMat = ChannelMat;
         TmpChanMat.SCS = ChannelMat.Native;
         % cs_compute doesn't change coordinates, only adds the R,T,Origin fields
+        % Digitized points are normally saved in Native coordinates, and converted to SCS if anat
+        % fids present. This transformation would then go back from SCS to Native.
         [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
         ChannelMat.Native = TmpChanMat.SCS;
-        % Now apply the transform to the digitized anat fiducials. These are not used anywhere yet,
-        % only the transform, but might as well be consistent and save the same points as in .SCS
-        % (digitized anat fids). Still in meters, not cm, despite actual native CTF being in cm.
-        ChannelMat.Native.NAS(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.NAS'; 1];
-        ChannelMat.Native.LPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.LPA'; 1];
-        ChannelMat.Native.RPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.RPA'; 1];
+        % If SCS missing (no anat points), Native matches SCS. Explicitly save SCS, which is missing
+        % from initial import.
+        if ~isfield(ChannelMat, 'SCS') || ~isfield(ChannelMat.SCS, 'NAS') || isempty(ChannelMat.SCS.NAS)
+            ChannelMat.SCS = ChannelMat.Native;
+        else
+            % Now apply the transform to the digitized anat fiducials. These are not used anywhere yet,
+            % only the transform, but might as well be consistent and save the same points as in .SCS
+            % (digitized anat fids). Still in meters, not cm, despite actual native CTF being in cm.
+            ChannelMat.Native.NAS(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.NAS'; 1];
+            ChannelMat.Native.LPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.LPA'; 1];
+            ChannelMat.Native.RPA(:) = [ChannelMat.Native.R, ChannelMat.Native.T] * [ChannelMat.SCS.RPA'; 1];
+        end
     else
-        % Missing digitized MEG head coils, probably the anatomical points are actually coils.
-        disp('BST> Missing digitized MEG head coils, assuming NAS/LPA/RPA are actually head coils.');
-        ChannelMat.Native = ChannelMat.SCS;
+        if ~isempty(iNas) && ~isempty(iLpa) && ~isempty(iRpa)
+            % Missing digitized MEG head coils, probably the anatomical points are actually coils.
+            % No study, subject or file name available to print here.
+            disp('BST> Missing digitized MEG head coils (in channel file), assuming NAS/LPA/RPA are actually head coils, but they should be renamed.');
+            ChannelMat.Native = ChannelMat.SCS;
+        else
+            ChannelMat.Native.R = [];
+            ChannelMat.Native.T = [];
+            disp('BST> No digitized fiducials, neither anatomical nor MEG head coils.');
+        end
     end
 end
 
@@ -1361,6 +1378,8 @@ elseif isConfirm
         return;
     end
 end
+%% TEMPORARY BYPASS OF EEG POP-UP
+if isConfirm 
 % If EEG, warn that only linear transformation would be saved this way.
 if ~isempty([good_channel(ChannelMat.Channel, [], 'EEG'), good_channel(ChannelMat.Channel, [], 'SEEG'), good_channel(ChannelMat.Channel, [], 'ECOG')])
     [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will only save' 10 ...
@@ -1370,6 +1389,7 @@ if ~isempty([good_channel(ChannelMat.Channel, [], 'EEG'), good_channel(ChannelMa
         isCancel = true;
         return;
     end
+end
 end
 
 % Convert digitized fids to MRI SCS coordinates.

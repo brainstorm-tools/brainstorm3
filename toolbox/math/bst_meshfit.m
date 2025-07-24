@@ -45,6 +45,7 @@ function [R, T, newP, distFinal] = bst_meshfit(Vertices, Faces, P, Outliers)
 
 % Coordinates are in m.
 PenalizeInside = true;
+SquareDistCost = false;
 if nargin < 4 || isempty(Outliers)
     Outliers = 0;
 end
@@ -117,10 +118,14 @@ end
             %quiver3(FaceVertices(:,1,1), FaceVertices(:,2,1), FaceVertices(:,3,1), FaceNormals(:,1,1), FaceNormals(:,2,1), FaceNormals(:,3,1));
             %scatter3(Points(1,1),Points(1,2),Points(1,3));
             iSquare = isInside & Dist > 0.001;
-            Dist(iSquare) = Dist(iSquare).^2 *1e3; % factor for "squaring mm"
+            Dist(iSquare) = Dist(iSquare).^2 *1e3; % factor for "squaring in mm units"
             iOutside = find(~isInside);
         end
-        Cost = sum(Dist);
+        if SquareDistCost
+            Cost = sum(Dist.^2);
+        else
+            Cost = sum(Dist);
+        end
         for iP = 1:Outliers
             if PenalizeInside 
                 % Only remove outside points.
@@ -130,7 +135,11 @@ end
                 [MaxD, iMaxD] = max(Dist);
                 Dist(iMaxD) = 0;
             end
-            Cost = Cost - MaxD;
+            if SquareDistCost
+                Cost = Cost - MaxD.^2;
+            else
+                Cost = Cost - MaxD;
+            end
         end
     end
 

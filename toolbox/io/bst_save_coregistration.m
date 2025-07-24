@@ -1,5 +1,6 @@
-function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjects, isBids)
+function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjects, isBids, RecreateMegCoordJson)
     % Save MRI-MEG coregistration info in imported raw BIDS dataset, or MRI fiducials only if not BIDS.
+    % IMPORTANT: isSuccess currently not working, can often be true despite skipping studies or subjects.
     %
     %   [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjects, isBids=<detect>)
     % 
@@ -9,12 +10,19 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
     % The points used are the anatomical fiducials marked in Brainstorm on the MRI
     % that define the Brainstorm subject coordinate system (SCS).
     %
+    % RecreateMegCoordJson: if true, this file will be deleted and recreated with
+    % BidsBuildRecordingFiles before adding coregistration info to it (was added because fiducial
+    % descriptions were updated).
+    %
     % If the raw data is not BIDS, the anatomical fiducials are saved in a
     % fiducials.m file next to the raw MRI file, in Brainstorm MRI coordinates.
     %
     % Discussion about saving MRI-MEG coregistration in BIDS:
     % https://groups.google.com/g/bids-discussion/c/BeyUeuNGl7I
 
+    if nargin < 3 || isempty(RecreateMegCoordJson)
+        RecreateMegCoordJson = false;
+    end
     if nargin < 2 || isempty(isBids)
         isBids = [];
     end
@@ -38,6 +46,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
     BidsRoot = '';
     for iOutSub = 1:nSub
         iSub = iSubjects(iOutSub);
+        fprintf('%3d %s\n', iSub, sSubjects.Subject(iSub).Name);
         % Get anatomical file.
         if ~contains(sSubjects.Subject(iSub).Anatomy(sSubjects.Subject(iSub).iAnatomy).Comment, 'MRI', 'ignorecase', true) && ...
                 ~contains(sSubjects.Subject(iSub).Anatomy(sSubjects.Subject(iSub).iAnatomy).Comment, 't1w', 'ignorecase', true)
@@ -89,29 +98,30 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
             end
             MriJsonFile = fullfile(MriPath, [MriName, '.json']);
             if ~exist(MriJsonFile, 'file')
-                warning('Imported anatomy BIDS json file not found. Skipping subject %s.', sSubjects.Subject(iSub).Name);
-                continue;
-            end
-            % Make backup in derivatives folder.
-            BakMriJsonFile = replace(MriJsonFile, BidsRoot, fullfile(BidsRoot, 'derivatives'));
-            if ~exist(BakMriJsonFile, 'file')
-                BakFolder = fileparts(BakMriJsonFile);
-                if ~exist(BakFolder, 'dir')
-                    [isOk, Msg] = mkdir(BakFolder);
-                    if ~isOk, warning(Msg); end
+                warning('Imported anatomy BIDS json file not found for subject %s. Creating new file.', sSubjects.Subject(iSub).Name);
+                sMriJson = struct();
+            else
+                sMriJson = bst_jsondecode(MriJsonFile, false);
+                % Make backup in derivatives folder.
+                BakMriJsonFile = replace(MriJsonFile, BidsRoot, fullfile(BidsRoot, 'derivatives'));
+                if ~exist(BakMriJsonFile, 'file')
+                    BakFolder = fileparts(BakMriJsonFile);
                     if ~exist(BakFolder, 'dir')
-                        warning('Unable to create backup folder %s. Skipping subject %s.', BakFolder, sSubjects.Subject(iSub).Name);
+                        [isOk, Msg] = mkdir(BakFolder);
+                        if ~isOk, warning(Msg); end
+                        if ~exist(BakFolder, 'dir')
+                            warning('Unable to create backup folder %s. Skipping subject %s.', BakFolder, sSubjects.Subject(iSub).Name);
+                            continue;
+                        end
+                    end
+                    [isOk, Msg] = copyfile(MriJsonFile, BakMriJsonFile);
+                    if ~isOk, warning(Msg); end
+                    if ~exist(BakMriJsonFile, 'file')
+                        warning('Unable to back up anatomy BIDS json file. Skipping subject %s.', sSubjects.Subject(iSub).Name);
                         continue;
                     end
                 end
-                [isOk, Msg] = copyfile(MriJsonFile, BakMriJsonFile);
-                if ~isOk, warning(Msg); end
-                if ~exist(BakMriJsonFile, 'file')
-                    warning('Unable to back up anatomy BIDS json file. Skipping subject %s.', sSubjects.Subject(iSub).Name);
-                    continue;
-                end
             end
-            sMriJson = bst_jsondecode(MriJsonFile, false);
             % We ignore other fiducials after the 3 we use for coregistration.
             % These were likely not placed well, only automatically by initial
             % linear template alignment.
@@ -186,6 +196,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
             end
 
 
+            % --------------------------------------------------------------------------------------
             % MEG _coordsystem.json
             % Save MRI anatomical landmarks in SCS coordinates and link to MRI.
             % This includes coregistration refinement using head points, if used.
@@ -202,7 +213,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
             % Get a list of: (studies >) channel files and (linked original MEG recordings >) json.
             % For each unique json, update with first channel file, and check consistency of each
             % additional channel file.
-            MegList = table('Size', [0, 2], 'VariableNames', {'CoordJson', 'Channel'}, 'VariableTypes', {'char', 'char'});
+            MegList = table('Size', [0, 3], 'VariableNames', {'CoordJson', 'Channel', 'Recording'}, 'VariableTypes', {'char', 'char', 'char'});
             for iStudy = 1:numel(sStudies)
                 % Try to find the first link to raw file in this study.
                 isLinkToRaw = false;
@@ -218,22 +229,22 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                 end
                 Recording = load(file_fullpath(sStudies(iStudy).Data(iData).FileName));
                 Recording = Recording.F.filename;
-                % Skip if original MEG file not found.
-                if ~exist(Recording, 'file')
-                    warning('Missing original raw MEG file. Skipping study %s.', Recording);
-                    continue;
-                end
                 % Skip empty-room noise recordings
                 if contains(Recording, 'sub-emptyroom') || contains(Recording, 'task-noise')
                     % No warning, just skip.
                     continue;
                 end
+                % Skip if original MEG file not found.
+                if ~exist(Recording, 'file')
+                    warning('Missing original raw MEG file. Skipping study %s.', Recording);
+                    continue;
+                end
 
                 % Find MEG _coordsystem.json, should be 1 per session.
-                [MegPath, ~, MegExt] = fileparts(Recording);
-                if strcmpi(MegExt, '.meg4')
-                    MegPath = fileparts(MegPath);
+                if strcmpi(Recording(end-4:end), '.meg4')
+                    Recording = fileparts(Recording);
                 end
+                MegPath = fileparts(Recording);
                 MegCoordJsonFile = dir(fullfile(MegPath, '*_coordsystem.json'));
                 % Skip if MEG json file not found, or more than one.
                 if isempty(MegCoordJsonFile)
@@ -245,7 +256,7 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                 end
                 % Add to be processed.
                 MegList(end+1, :) = {fullfile(MegCoordJsonFile.folder, MegCoordJsonFile.name), ...
-                    sStudies(iStudy).Channel.FileName}; %#ok<AGROW>
+                    sStudies(iStudy).Channel.FileName, Recording}; %#ok<AGROW>
             end
 
             % Sort and unique table rows
@@ -268,7 +279,19 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                 % Native coordinates. Here we just use the transformation, as we want the MRI anat
                 % fids, not the digitized ones (which can be different if another session).
                 ChannelMat = process_adjust_coordinates('UpdateChannelMatScs', ChannelMat);
-
+                % If no digitization, native transformation will be missing. Could warn and use
+                % identity, assuming MRI fids actually match the head coils, not anatomical points.
+                % But we would still need to modify the descriptions to indicate the points are
+                % coils, which can only be true if there was no previous session with points - and
+                % we should therefore check that. For now, just warn and move on.
+                % TODO: button to display initial MEG coils as fid points on coreg edit figure.
+                if ~isfield(ChannelMat, 'Native')
+                    %warning('Could not get native transformation, which possibly indicates missing digitized head points. Assuming that MRI fiducials are then actually head coils and not anatomical points, as is customary without digitized points. %s', MegList.Channel{iChan});
+                    %ChanNativeTransf = [eye(3) zeros(3,1)];
+                    warning('Could not get native transformation, which possibly indicates missing digitized head points. For single session, coregistration could be saved with head coils on MRI, but this is not yet implemented here. %s', MegList.Channel{iChan});
+                    continue;
+                end
+                    
                 % If same json as previous, just check consistency and continue.
                 if iChan > 1 && strcmp(MegList.CoordJson{iChan}, MegList.CoordJson{iChan-1})
                     % Verify that SCS>Native transformation matches previous channel file for
@@ -279,21 +302,15 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     continue;
                 end
 
+                % TEMPORARY HACK: we've only coregistered the first session for each subject so far.
+                % Skip other sessions.
+                if iChan > 1 % implies not first session here
+                    % Skipping other sessions.
+                    break;
+                end
+
                 % New json, store SCS>Native transformation to compare with next channel files in this session.
                 ChanNativeTransf = [ChannelMat.Native.R, ChannelMat.Native.T];
-
-                % If no digitization, native transformation will be empty. Warn and use identity,
-                % assuming MRI fids actually match the head coils, not anatomical points.
-                % But we would still need to modify the descriptions to indicate the points are
-                % coils, which can only be true if there was no previous session with points - and we
-                % should therefore check that.
-                % For now, just warn and move on.
-                if isempty(ChanNativeTransf)
-                    %warning('Could not get native transformation, which possibly indicates missing digitized head points. Assuming that MRI fiducials are then actually head coils and not anatomical points, as is customary without digitized points. %s', MegList.Channel{iChan});
-                    %ChanNativeTransf = [eye(3) zeros(3,1)];
-                    warning('Could not get native transformation, which possibly indicates missing digitized head points. For single session, coregistration could be saved with head coils on MRI, but this is not yet implemented here. %s', MegList.Channel{iChan});
-                    continue;
-                end
 
                 % Convert MRI fids from (possibly adjusted) SCS to Native, and m to cm.
                 for iFid = 1:3
@@ -304,24 +321,27 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                 end
 
                 % Check MRI-digitized anat fids match, and prepare values.
+                % The description here will be appended to what already describes the coils and anat
+                % fids, which should explain cases when one or the other are missing.  The wording
+                % added here is valid for these cases, though this could be slightly confusing (yet
+                % should be inconsequential).
                 [~, isMriUpdated, isMriMatch, isSessionMatch] = process_adjust_coordinates('CheckPrevAdjustments', ChannelMat, sMri);
-                if isMriUpdated && isMriMatch % implies session matches
-                    AddFidDescrip = ' The anatomical landmarks saved here match those in the associated T1w image (see IntendedFor field). They correspond to the anatomical landmarks from the digitized head points, averaged if measured more than once. Coregistration with the T1w image was performed with Brainstorm before defacing, initially with an automatic procedure fitting head points to the scalp surface, but often adjusted manually, and validated with pictures of MEG head coils on the participant. As such, these landmarks and the corresponding alignment should be preferred.';
-                elseif ~isSessionMatch
-                    % We still use the sMri fids, whether they were updated (different session) or not.
-                    AddFidDescrip = ' The anatomical landmarks saved here match those in the associated T1w image (see IntendedFor field). They do not correspond to the digitized landmarks from this session. Coregistration with the T1w image was performed with Brainstorm before defacing, initially with an automatic procedure fitting head points to the scalp surface, but often adjusted manually, and validated with pictures of MEG head coils on the participant. As such, these landmarks and the corresponding alignment should be preferred.';
-                elseif ~isMriMatch && isSessionMatch % practically implies isMriUpdated
+                if ~isMriUpdated
+                    % For now we skip if the mri was not updated, as this is our workflow for coreg.
+                    warning('MRI landmarks have not been updated. This is unexpected in our current workflow and should be verified. Study %s.', Recording);
+                    %continue; % Don't skip, we had one participant where the initial fids were good!
+                end
+                if ~isMriMatch && isSessionMatch 
                     % The sMri and digitized anat fids match in terms of shape, but they are not
                     % aligned. Probably some other alignment was performed after updating the sMri.
                     % This is unexpected and should be checked.
-                    warning('MRI and digitized anat fids are from the same session, but not aligned. This is unexpected and should be verified. Skipping study %s.', Recording.F.filename);
+                    warning('MRI and digitized anat fids are from the same session, but not aligned. This is unexpected and should be verified. Skipping study %s.', Recording);
                     continue;
                 end
                 IntendedForMri = strrep(ImportedFile, [BidsRoot filesep], 'bids::');
 
-                % Update MEG json file.
-                sMegJson = bst_jsondecode(MegList.CoordJson{iChan});
-                % Make backup in derivatives folder.
+                % Make backup in derivatives folder. May not be very useful since it can be
+                % recreated easily except for coreg data which is not yet saved.
                 BakMegJsonFile = replace(MegList.CoordJson{iChan}, BidsRoot, fullfile(BidsRoot, 'derivatives'));
                 if ~exist(BakMegJsonFile, 'file')
                     BakFolder = fileparts(BakMegJsonFile);
@@ -340,6 +360,51 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                         continue;
                     end
                 end
+                % Load existing json
+                sMegJson = bst_jsondecode(MegList.CoordJson{iChan});
+                % Update MEG json file.
+                % Possibly fully recreate the content, e.g. if descriptions were updated.
+                if RecreateMegCoordJson
+                    % EEG may not be present in all runs, so check if it was there
+                    if isfield(sMegJson, 'EEGCoordinateSystem')
+                        isEeg = true;
+                    else
+                        isEeg = false;
+                    end
+                    [~, BidsInfo] = BidsParseRecordingName(MegList.Recording{iChan}, [], false);
+                    sMegJson = BidsBuildRecordingFiles(MegList.Recording{iChan}, BidsInfo, [], false); % Don't save, will just output structure.
+                    % Keep only content of _coordsystem.json
+                    sMegJson = sMegJson.CoordSystem;
+                    if ~isfield(sMegJson, 'EEGCoordinateSystem') && isEeg
+                        % Double check digitized points are present, but should be the case.
+                        if ~isfield(sMegJson, 'DigitizedHeadPointsCoordinateSystem')
+                            warning('EEG were present, but no head points when trying to recreate %s', MegList.CoordJson{iChan});
+                        else
+                            % Add back
+                            sMegJson.EEGCoordinateSystem = sMegJson.DigitizedHeadPointsCoordinateSystem;
+                            sMegJson.EEGCoordinateUnits = sMegJson.DigitizedHeadPointsCoordinateUnits;
+                            sMegJson.EEGCoordinateSystemDescription = sMegJson.DigitizedHeadPointsCoordinateSystemDescription;
+                        end
+                    end
+                end
+                % Check if the coreg was done with anat or coils, before adding or modifying anat.
+                isAnatFids = isfield(sMegJson, 'AnatomicalLandmarkCoordinates');
+                if isMriMatch % implies session matches
+                    if isAnatFids
+                        LandmarkDescrip = 'They correspond to digitized landmarks from this session. ';
+                    else
+                        LandmarkDescrip = 'They correspond to digitized head coils from this session, as no anatomical landmarks were digitized. They are still named NAS/LPA/RPA for consistency throughout this dataset, therefore simplifying importing coregistration info. ';
+                    end
+                elseif ~isSessionMatch
+                    % We still use the sMri fids, whether they were updated (different session) or not.
+                    LandmarkDescrip = 'They correspond to a set of digitized landmarks from another session, used for coregistration for this subject. They are usually anatomical points, but sometimes head coils in older data. ';
+                end
+                AddFidDescrip = [' The anatomical landmarks saved here match those in the associated T1w image (see IntendedFor field). ', ...
+                    LandmarkDescrip, ...
+                    'Coregistration with the T1w image was performed with Brainstorm before defacing, ', ...
+                    'initially with an automatic procedure fitting head points to the scalp surface, but ', ...
+                    'often adjusted manually, and validated with pictures of MEG head coils on the participant when available. ', ...
+                    'As such, these landmarks and the corresponding alignment should be preferred.'];
                 % Remove previous coordinates, though for MEG it may never get saved unless it's filled below.
                 % Still good practice in case it was done wrong previously (e.g. bad field names)
                 % Set empty instead of removing field, so that it keeps its order. Could use
@@ -369,15 +434,25 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     Fid = BstFids{iFid};
                     sMegJson.AnatomicalLandmarkCoordinates.(Fid) = sMriNative.SCS.(Fid);
                 end
-                sMegJson.AnatomicalLandmarkCoordinateSystem = 'CTF';
-                sMegJson.AnatomicalLandmarkCoordinateUnits = 'cm';
-                %sMegJson.AnatomicalLandmarkCoordinateSystemDescription = 'Based on the digitized locations of the head coils. The origin is exactly between the left ear head coil (coilL near LPA) and the right ear head coil (coilR near RPA); the X-axis goes towards the nasion head coil (coilN near NAS); the Y-axis goes approximately towards coilL, orthogonal to X and in the plane spanned by the 3 head coils; the Z-axis goes approximately towards the vertex, orthogonal to X and Y';
-                %sMegJson.HeadCoilCoordinateSystemDescription = sMegJson.AnatomicalLandmarkCoordinateSystemDescription;
+                if ~isfield(sMegJson, 'HeadCoilCoordinateSystem')
+                    warning('No head coils when trying to copy for anat landmark system fields %s', MegList.CoordJson{iChan});
+                else
+                    sMegJson.AnatomicalLandmarkCoordinateSystem = sMegJson.HeadCoilCoordinateSystem;
+                    sMegJson.AnatomicalLandmarkCoordinateUnits = sMegJson.HeadCoilCoordinateUnits;
+                    sMegJson.AnatomicalLandmarkCoordinateSystemDescription = sMegJson.HeadCoilCoordinateSystemDescription;
+                end
+                % System descriptions are saved in BidsBuildRecordingFiles.                
+                
                 if ~isfield(sMegJson, 'FiducialsDescription')
                     sMegJson.FiducialsDescription = '';
                 end
                 % Append description, if not already there.
                 if isempty(strfind(sMegJson.FiducialsDescription, AddFidDescrip))
+                    % Remove possibly inaccurate description of anat fids from other session.
+                    if ~isSessionMatch
+                        % This regexp matches the given words, followed by max number of non-period characters, then a period (escaped) '\.', and 0 or 1 space ' ?'
+                        sMegJson.FiducialsDescription = regexprep(sMegJson.FiducialsDescription, 'The anatomical landmarks[^.]*\. ?', '');
+                    end
                     sMegJson.FiducialsDescription = strtrim([sMegJson.FiducialsDescription, AddFidDescrip]);
                 end
                 % Remove fields if anat coords empty, though should not really happen.
@@ -387,10 +462,20 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     sMriJson = rmfield(sMriJson, AnatLandmarkFields(isFieldFound));
                     warning('No anat landmark coordinates in %s\n', MegList.CoordJson{iChan});
                 end
+                % Reorder fields according to this full list of all possible fields.
+                CoordJsonFields = {'MEGCoordinateSystem', 'MEGCoordinateUnits', 'MEGCoordinateSystemDescription', ...
+                    'EEGCoordinateSystem', 'EEGCoordinateUnits', 'EEGCoordinateSystemDescription', ...
+                    'DigitizedHeadPoints', 'DigitizedHeadPointsCoordinateSystem', 'DigitizedHeadPointsCoordinateUnits', 'DigitizedHeadPointsCoordinateSystemDescription', ...
+                    'HeadCoilCoordinates', 'HeadCoilCoordinateSystem', 'HeadCoilCoordinateUnits', 'HeadCoilCoordinateSystemDescription', ...
+                    'AnatomicalLandmarkCoordinates', 'AnatomicalLandmarkCoordinateSystem', 'AnatomicalLandmarkCoordinateUnits', 'AnatomicalLandmarkCoordinateSystemDescription', ...
+                    'FiducialsDescription', 'IntendedFor'};
+                % But we must give a matching list, no extras.
+                sMegJson = orderfields(sMegJson, CoordJsonFields(ismember(CoordJsonFields, fieldnames(sMegJson))));
+                % Save
                 WriteJson(MegList.CoordJson{iChan}, sMegJson);
                 iOutMeg = iOutMeg + 1;
                 OutFilesMeg{iOutSub}{iOutMeg} = MegList.CoordJson{iChan};
-            end
+            end % channel file (studies/sessions) loop
         else
             % Not BIDS, save in fiducials.m file.
             FidsFile = fullfile(bst_fileparts(ImportedFile), 'fiducials.m');

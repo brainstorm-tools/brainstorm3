@@ -1443,7 +1443,7 @@ end
 
 %% ===== DELETE HEADPOINTS =====
 function RemoveHeadpoints(varargin)
-    global GlobalData gChanAlign;
+    global gChanAlign;
     if isempty(gChanAlign.HeadPointsMarkersSel)
         % Nothing to do
         return
