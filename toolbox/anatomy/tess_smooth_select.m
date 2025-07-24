@@ -66,7 +66,7 @@ panel_scout('SaveModifications');
 % Methods and their parameters {name, description, defValue}
 paramFields.brainstorm_laplacian = {'a',           'Scalar smooth weighting (0-1 less-more smoothing)', '0.5'; ...
                                     'nIterations', 'Number of times to apply the smoothing',            '5'};
-paramFields.iso2mesh_laplacianhc = {'alpha',       'Smoothing parameter: [0, 1] (0 strong, 1 weak)',    '0.5'; ...
+paramFields.iso2mesh_laplacianhc = {'alpha',       'Smoothing parameter: (0-1 less-more smoothing)',    '0.5'; ...
                                     'iter',        'Number of times to apply the smoothing',            '5'};
 paramFields.iso2mesh_laplacian   = paramFields.iso2mesh_laplacianhc;
 paramFields.iso2mesh_lowpass     = paramFields.iso2mesh_laplacianhc;
@@ -174,8 +174,11 @@ switch Method
             bst_error('Plugin "iso2mesh" not available.');
         end
 
+        % Adapt the arguments for sms smoothing function
+        iso2meshArgMethod = split(Method,'_');
+        iso2meshArgAlpha = 1 - Params.alpha; % Brainstorm uses alpha directly; iso2mesh expects its complement (1 - alpha)
         % Some recommendation for curious user
-        % | Goal (laplacianhc)      | iter  | alpha (typical) |
+        % | Goal (iso2mesh methods) | iter  | alpha (typical) |
         % | ----------------------- | ----- | --------------- |
         % | Light denoise           | 3–5   | 0.3–0.6         |
         % | Moderate smooth         | 8–15  | 0.2–0.4         |
@@ -183,8 +186,7 @@ switch Method
         % [check smoothsurf of iso2mesh for more information]
 
         % Run the sms smoothing
-        iso2meshArgMethod = split(Method,'_');
-        newTessMat.Vertices = sms(TessMat.Vertices, TessMat.Faces, Params.iter, Params.alpha, iso2meshArgMethod{2});
+        newTessMat.Vertices = sms(TessMat.Vertices, TessMat.Faces, Params.iter, iso2meshArgAlpha, iso2meshArgMethod{2});
 end
 % Tag to add in the history file
 MethodTag = ['Method: ' Method];
