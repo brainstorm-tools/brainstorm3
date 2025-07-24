@@ -132,7 +132,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelScrollContList.setBorder([]);
 
                 jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollElecList, jPanelScrollContList);
-                jSplitEvt.setResizeWeight(0.2);
+                jSplitEvt.setResizeWeight(0.4);
                 jSplitEvt.setDividerSize(4);
                 jSplitEvt.setBorder([]);
                 jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
