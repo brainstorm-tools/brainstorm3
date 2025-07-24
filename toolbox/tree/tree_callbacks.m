@@ -3373,8 +3373,9 @@ function SurfaceClean_Callback(TessFile, isRemove)
     end
     % History
     if isfield(TessMat, 'History')
-        newTessMat = bst_history('add', newTessMat, 'clean', 'Remove interpolations');
+        newTessMat.History = TessMat.History;
     end
+    newTessMat = bst_history('add', newTessMat, 'clean', 'Remove interpolations');
     % Save cleaned surface file
     bst_save(TessFile, newTessMat, 'v7');
     % Close progresss bar
