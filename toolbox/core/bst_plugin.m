@@ -644,21 +644,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
-    % === sEEG: MIA ===
-    PlugDesc(end+1)              = GetStruct('mia');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'sEEG';
-    PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).AutoLoad       = 1;
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
-    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).TestFile       = 'process_mia_export_db.m';
-    PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-
     % === sEEG: GARDEL ===
     PlugDesc(end+1)              = GetStruct('gardel');
     PlugDesc(end).Version        = 'latest';
@@ -683,7 +668,22 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
                                     'code/electrodes_profiles.json', 'code/GARDEL User Manual_V2.docx', 'code/GARDEL User Manual_V2.pdf', 'code/GARDEL.fig', ...
                                     'code/GARDEL.m', 'code/GARDELv2_bis.prj', 'code/MontageAnyWaveGardel.m', 'code/newtabMarsAtlas_SAM_2016.csv', ...
                                     'code/save_bipolar_with_region.m', 'code/single_subj_T1.nii', 'code/VepFreeSurferColorLut.txt', 'code/write_localisations.m'};
-    
+
+    % === sEEG: MIA ===
+    PlugDesc(end+1)              = GetStruct('mia');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_mia_export_db.m';
+    PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
