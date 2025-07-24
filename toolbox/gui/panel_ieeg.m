@@ -42,49 +42,45 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % Create tools panel
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
-    jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
     TB_DIM = java_scaled('dimension',20,25);
     
-    % ===== TOOLBAR =====
-    jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
-        jToolbar = gui_component('Toolbar', jMenuBar);
-        jToolbar.setPreferredSize(TB_DIM);
-        jToolbar.setOpaque(0);
+    % ===== TOOLBAR ELECTRODES =====
+    jMenuBarE = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
+        jToolbarE = gui_component('Toolbar', jMenuBarE);
+        jToolbarE.setPreferredSize(TB_DIM);
+        jToolbarE.setOpaque(0);
         % Add/remove
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
-        % Button "Select vertex"
-        jToolbar.addSeparator();
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
-        % Button "Select surface centroid"
-        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
         % Set color
-        jToolbar.addSeparator();
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
+        jToolbarE.addSeparator();
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
         % Show/Hide
-        jButtonShow = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_DISPLAY, TB_DIM}, 'Show/hide selected electrodes', @(h,ev)bst_call(@SetElectrodeVisible, ev.getSource().isSelected()));
+        jButtonShow = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_DISPLAY, TB_DIM}, 'Show/hide selected electrodes', @(h,ev)bst_call(@SetElectrodeVisible, ev.getSource().isSelected()));
         jButtonShow.setSelected(1);
         % Set display mode
-        jToolbar.addSeparator();
+        jToolbarE.addSeparator();
         jButtonGroup = ButtonGroup();
-        jRadioDispDepth  = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SEEG_DEPTH,  jButtonGroup, TB_DIM}, 'Display contacts as SEEG electrodes/ECOG strips', @(h,ev)bst_call(@SetDisplayMode, 'depth'));
-        jRadioDispSphere = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SEEG_SPHERE, jButtonGroup, TB_DIM}, 'Display contacts as spheres', @(h,ev)bst_call(@SetDisplayMode, 'sphere'));
-        % Menu: Contacts
-        jToolbar.addSeparator();
-        jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
-    
-    % ===== BOTTOM TOOLBAR =====
-    jMenuBarBottom = gui_component('MenuBar', jPanelBottom, BorderLayout.SOUTH);
-        jToolbarBottom = gui_component('Toolbar', jMenuBarBottom);
-        jToolbarBottom.setPreferredSize(TB_DIM);
-        jToolbarBottom.setOpaque(0);
-        % Menu: Auto (Automatic contact localization)
-        jMenuAuto = gui_component('Menu', jMenuBarBottom, [], 'Auto', IconLoader.ICON_MENU, 'Automatic contact localization', [], 11);
-        % Menu: GARDEL
-        jMenuGardel = gui_component('MenuItem', jMenuAuto, [], 'GARDEL', IconLoader.ICON_SEEG_DEPTH, 'GARDEL: automatic contact localization', @(h,ev)bst_call(@SeegAutoContactLocalize, 'Gardel'));
+        jRadioDispDepth  = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_SEEG_DEPTH,  jButtonGroup, TB_DIM}, 'Display contacts as SEEG electrodes/ECOG strips', @(h,ev)bst_call(@SetDisplayMode, 'depth'));
+        jRadioDispSphere = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_SEEG_SPHERE, jButtonGroup, TB_DIM}, 'Display contacts as spheres', @(h,ev)bst_call(@SetDisplayMode, 'sphere'));
+        % Menu: Electrodes
+        jToolbarE.addSeparator();
+        jMenuElectrodes = gui_component('ToolbarButton', jToolbarE, [], 'Electrodes', IconLoader.ICON_MENU, '', @(h,ev)ShowElectrodesMenu(ev.getSource()), []);
+
+    % ===== TOOLBAR CONTACTS =====
+    jMenuBarC = gui_component('MenuBar', jPanelTop, BorderLayout.SOUTH);
+        jToolbarC = gui_component('Toolbar', jMenuBarC);
+        jToolbarC.setPreferredSize(TB_DIM);
+        jToolbarC.setOpaque(0);
+        % Button "Select vertex"
+        jButtonSelect = gui_component('ToolbarToggle', jToolbarC, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        % Button "Select surface centroid"
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbarC, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        % Buttons "Add" and "Remove" contacts
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_EVT_OCCUR_ADD, TB_DIM}, 'Add SEEG contact', @(h,ev)bst_call(@AddContact));
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_EVT_OCCUR_DEL, TB_DIM}, 'Remove SEEG contacts', @(h,ev)bst_call(@RemoveContact));
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -229,16 +225,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            jPanelNew, ...
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
-                                  'jToolbar',            jToolbar, ...
+                                  'jToolbarE',           jToolbarE, ...
+                                  'jToolbarC',           jToolbarC, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonCentroid',     jButtonCentroid, ...
                                   'jButtonShow',         jButtonShow, ...
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
-                                  'jMenuContacts',       jMenuContacts, ...
-                                  'jMenuAuto',           jMenuAuto, ...
-                                  'jMenuGardel',         jMenuGardel, ...
+                                  'jMenuElectrodes',     jMenuElectrodes, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
                                   'jRadioMri',           jRadioMri, ...
@@ -413,7 +408,8 @@ function UpdatePanel()
     % Get current figure
     [hFigall, iFigall, iDSall] = bst_figures('GetCurrentFigure');
     if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
         ctrl.jButtonCentroid.setEnabled(0);
@@ -428,15 +424,10 @@ function UpdatePanel()
         else
             panel_coordinates('SetCentroidSelection', 0);
         end
-        % Enable 'GARDEL' button IFF modality is SEEG
-        if strcmpi(GlobalData.DataSet(iDSall).Figure(iFigall).Id.Modality, 'SEEG')
-            gui_enable(ctrl.jMenuGardel, 1);
-        else
-            gui_enable(ctrl.jMenuGardel, 0);
-        end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -1000,37 +991,49 @@ function SetSelectedContacts(iSelCont)
     SetMriCrosshair(sContacts);
 end
 
-%% ===== SHOW CONTACTS MENU =====
-function ShowContactsMenu(jButton)
+
+%% ===== SHOW ELECTRODES MENU =====
+function ShowElectrodesMenu(jButton)
+    global GlobalData
     import java.awt.event.KeyEvent;
     import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
     % Create popup menu
     jMenu = java_create('javax.swing.JPopupMenu');
     % Get selected electrode
-    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
-    if isempty(iSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Align contacts');
-        return
-    end
-    % Menu: Add/Remove contacts
-    if strcmpi(sSelElec(end).Type, 'SEEG')
-        jItem = gui_component('MenuItem', jMenu, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
-        jMenu.addSeparator();
-    end
-    % Menu: Default positions
-    gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
-    % Menu: Export select atlas
-    if strcmpi(sSelElec(1).Type, 'ECOG')
-        gui_component('MenuItem', jMenu, [], 'Project on inner skull', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'innerskull'));
-        gui_component('MenuItem', jMenu, [], 'Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
+    [sSelElec, ~, iDS, iFig] = GetSelectedElectrodes();
+    % Menu: Default positions for selected electrodes
+    iItemProjDeflt = gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
+    % ECOG Project contacts from selected electrodes
+    jMenu.addSeparator();
+    jItemProjEcog1 = gui_component('MenuItem', jMenu, [], '(ECOG) Project on inner skull', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'innerskull'));
+    jItemProjEcog2 = gui_component('MenuItem', jMenu, [], '(ECOG) Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
+    % SEEG Project contacts from selected electrodes
+    jMenu.addSeparator();
+    jItemProjSeeg1 = gui_component('MenuItem', jMenu, [], '(SEEG) Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
+    jItemProjSeeg2 = gui_component('MenuItem', jMenu, [], '(SEEG) Show/Hide line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
+    if isempty(sSelElec)
+        iItemProjDeflt.setEnabled(0);
+        jItemProjEcog1.setEnabled(0);
+        jItemProjEcog2.setEnabled(0);
+        jItemProjSeeg1.setEnabled(0);
+        jItemProjSeeg2.setEnabled(0);
+    elseif strcmpi(sSelElec(1).Type, 'ECOG')
+        jItemProjSeeg1.setEnabled(0);
+        jItemProjSeeg2.setEnabled(0);
     elseif strcmpi(sSelElec(1).Type, 'SEEG')
-        gui_component('MenuItem', jMenu, [], 'Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
-        gui_component('MenuItem', jMenu, [], 'Show/Hide line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
+        jItemProjEcog1.setEnabled(0);
+        jItemProjEcog2.setEnabled(0);
     end
+    % Menu: Auto localization
+    jMenu.addSeparator();
+    % Menu: Auto (Automatic contact localization)
+    jMenuAuto = gui_component('Menu', jMenu, [], 'Automatic localization', IconLoader.ICON_CHANNEL_LABEL);
+        % GARDEL
+        jItemGardel = gui_component('MenuItem', jMenuAuto, [], 'GARDEL', IconLoader.ICON_ALLCOMP, 'GARDEL: automatic contact localization', @(h,ev)bst_call(@SeegAutoContactLocalize, 'Gardel'));
+        if ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality, 'SEEG')
+            jItemGardel.setEnabled(0);
+        end
     % Menu: Save modifications
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS(1)));
@@ -1041,7 +1044,6 @@ function ShowContactsMenu(jButton)
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
-
 
 
 %% ===== GET COLOR TABLE =====
