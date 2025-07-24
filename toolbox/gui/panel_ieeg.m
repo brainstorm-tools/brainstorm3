@@ -45,7 +45,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelBottom = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
     jPanelNew.add(jPanelBottom, BorderLayout.SOUTH);
-    TB_DIM = java_scaled('dimension',18,25);
+    TB_DIM = java_scaled('dimension',20,25);
     
     % ===== TOOLBAR =====
     jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
