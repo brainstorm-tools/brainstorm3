@@ -43,17 +43,17 @@ if (nargin < 2) || isempty(Method)
 end
 
 MultipleFiles = [];
-% USAGE: tess_smooth_wrapper(TessMat, ...)
+% USAGE: tess_smooth_select(TessMat, ...)
 if isstruct(TessFile)
     TessMat  = TessFile;
     TessFile = [];
-% USAGE: tess_smooth_wrapper({TessFile1, TessFile2}, ...)
+% USAGE: tess_smooth_select({TessFile1, TessFile2}, ...)
 elseif iscell(TessFile)
     if (length(TessFile) > 1)
         MultipleFiles = TessFile;
     end
     TessFile = TessFile{1};
-% USAGE: tess_smooth_wrapper(TessFile, ...)
+% USAGE: tess_smooth_select(TessFile, ...)
 elseif ischar(TessFile)
     TessFile = file_short(TessFile);
     TessMat = [];
@@ -139,7 +139,7 @@ end
 %% ===== PROCESS MULTIPLE FILES =====
 if ~isempty(MultipleFiles)
     for i = 1:length(MultipleFiles)
-        NewTessFile = tess_smooth_wrapper(MultipleFiles{i}, Method, Params);
+        NewTessFile = tess_smooth_select(MultipleFiles{i}, Method, Params);
     end
     return
 end
@@ -189,7 +189,7 @@ end
 % Tag to add in the history file
 MethodTag = ['Method: ' Method];
 for iParam = 1 : size(paramFields.(Method), 1)
-    MethodTag = [MethodTag ', ' paramFields.(Method){iParam, 1} ': ' res{iParam}];
+    MethodTag = [MethodTag ', ' paramFields.(Method){iParam, 1} ': ' num2str(Params.(paramFields.(Method){iParam, 1}))];
 end
 % Complete missing fields
 NewComment = [TessMat.Comment, '_smooth'];
