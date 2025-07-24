@@ -644,6 +644,31 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
+    % === sEEG: GARDEL ===
+    PlugDesc(end+1)              = GetStruct('gardel');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/GARDEL_Brainstorm/gardel-GARDEL_Brainstorm.zip';
+    PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
+    PlugDesc(end).TestFile       = 'code/Functions/elec_auto_segmentation.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn   = {};
+    PlugDesc(end).DeleteFiles    = {'gardel_splash.png', 'gardel_splash_480x480.png', 'gardel_splash480x480.svg', ...
+                                    'code/Functions/associate_matter.m', 'code/Functions/associate_region.m', 'code/Functions/BN_colorlut2complete_descr.m', ...
+                                    'code/Functions/coregistration.m', 'code/Functions/find_parsing_json.m', 'code/Functions/First_SPM_reorientation.m', ...
+                                    'code/Functions/make_bids_filename.m', 'code/Functions/new_brainmasking_to_be_compiled.m', 'code/Functions/NEW_SEG2.m', ...
+                                    'code/Functions/open_electrodes_file.m', 'code/Functions/open_nii_anatomical_convention.m', 'code/Functions/plot_brain.m', ...
+                                    'code/Functions/read_BNatlas.m', 'code/Functions/read_fscolorlut.m', 'code/Functions/Segmentation.asv', 'code/Functions/stlwrite.m', ...
+                                    'code/Functions/write_coordsystem_json.m', 'code/Functions/write2Brainstorm.m', 'code/Functions/write2MNI.m', ...
+                                    'code/toolboxes/NIFTI_dataViewer', 'code/toolboxes/freezeColors', 'code/toolboxes/dicm2nii', ...
+                                    'code/.gitkeep', 'code/BN_Atlas_246_LUT_sam.txt', 'code/CTthresholdGUI.fig', 'code/CTthresholdGUI.m', 'code/electrode_creation.m', ...
+                                    'code/electrodes_profiles.json', 'code/GARDEL User Manual_V2.docx', 'code/GARDEL User Manual_V2.pdf', 'code/GARDEL.fig', ...
+                                    'code/GARDEL.m', 'code/GARDELv2_bis.prj', 'code/MontageAnyWaveGardel.m', 'code/newtabMarsAtlas_SAM_2016.csv', ...
+                                    'code/save_bipolar_with_region.m', 'code/single_subj_T1.nii', 'code/VepFreeSurferColorLut.txt', 'code/write_localisations.m'};
+
     % === sEEG: MIA ===
     PlugDesc(end+1)              = GetStruct('mia');
     PlugDesc(end).Version        = 'github-master';
@@ -653,12 +678,12 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-    
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
