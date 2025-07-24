@@ -51,8 +51,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToolbarE.setPreferredSize(TB_DIM);
         jToolbarE.setOpaque(0);
         % Add/remove
-        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
-        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_SEEG_DEPTH_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_SEEG_DEPTH_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
         gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
         % Set color
         jToolbarE.addSeparator();
@@ -79,8 +79,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Button "Select surface centroid"
         jButtonCentroid = gui_component('ToolbarToggle', jToolbarC, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
         % Buttons "Add" and "Remove" contacts
-        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_EVT_OCCUR_ADD, TB_DIM}, 'Add SEEG contact', @(h,ev)bst_call(@AddContact));
-        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_EVT_OCCUR_DEL, TB_DIM}, 'Remove SEEG contacts', @(h,ev)bst_call(@RemoveContact));
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_SEEG_SPHERE_PLUS, TB_DIM}, 'Add SEEG contact', @(h,ev)bst_call(@AddContact));
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_SEEG_SPHERE_MINUS, TB_DIM}, 'Remove SEEG contacts', @(h,ev)bst_call(@RemoveContact));
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
