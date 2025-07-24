@@ -473,7 +473,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 end
                 OPTIONS.nVertices = str2double(OPTIONS.nVertices);
             end
-            % If there are fiducials define: record these, to use them when importing FreeSurfer (or other) segmentations
+            % If there are fiducials defined: record these, to use them when importing FreeSurfer (or other) segmentations
             if ~isempty(SubjectFidMriFile{iSubj})
                 sMriFid = in_mri(SubjectFidMriFile{iSubj}, 'ALL', 0);
             else
@@ -751,10 +751,24 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                             if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
-                                if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+                                % Quick bug fix: Only check first file for now if array
+                                if iscell(sCoordsystem.IntendedFor)
+                                    sCoordsystem.IntendedFor = sCoordsystem.IntendedFor{1};
+                                end
+                                % Resolve BIDS URI
+                                if strncmp(sCoordsystem.IntendedFor, 'bids:', 5)
+                                    [sCoordsystem.IntendedFor, msg] = DecodeBidsUri(sCoordsystem.IntendedFor, BidsDir);
+                                    if ~isempty(msg)
+                                        Messages = [Messages 10 msg];
+                                    end
+                                else
+                                    % Assume it's a relative path.
+                                    sCoordsystem.IntendedFor = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
+                                end
+                                if file_exist(sCoordsystem.IntendedFor)
                                     % Check whether the IntendedFor files is already imported as a volume
                                     if ~isempty(MriMatchOrigImport)
-                                        iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
+                                        iMriImported = find(cellfun(@(c)file_compare(c, sCoordsystem.IntendedFor), MriMatchOrigImport(:,1)));
                                     else
                                         iMriImported = [];
                                     end
@@ -903,16 +917,17 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     if strcmp(fExt,'.snirf')
-                          ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
-                          ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
-                          ChanInfo(:,2)  = ChanInfo_tmp(:,2);
-                          ChanInfo(:,4)  = ChanInfo_tmp(:,6);
-                          for i = 1:size(ChanInfo,1)
-                             ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
-                             ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
-                          end   
-                     else    
-                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                        ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+                        ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
+                        ChanInfo(:,2)  = ChanInfo_tmp(:,2);
+                        ChanInfo(:,4)  = ChanInfo_tmp(:,6);
+                        for i = 1:size(ChanInfo,1)
+                            ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
+                            ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
+                        end
+                    else
+                        % Silence warnings for missing columns that are not required.
+                        ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     end  
 
                     % Try to add info to the existing Brainstorm channel file
@@ -1304,3 +1319,29 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
     end
 end
 
+
+%% ===== CONVERT TO/FROM BIDS URI =====
+% This function is limited to the current BIDS dataset. BIDS URIs can in principle point to other
+% named datasets, including e.g. under derivatives, which would be defined in the
+% dataset_description.json file. For now we just warn if such a dataset name is used in the URI.
+function [OutFile, Msg] = DecodeBidsUri(InFile, BidsDir)
+    % See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+    Msg = '';
+    if ~strncmp(InFile, 'bids:', 5)
+        % Nothing to do.
+        OutFile = InFile;
+        return;
+    end
+    % Check for dataset-name
+    DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
+    DatasetName = DatasetName{1};
+    if ~isempty(DatasetName)
+        Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
+        disp(['BIDS> Warning: ' Msg]);
+    end
+
+    % Note: BIDS uses forward slashes independently of OS. So use forward here to avoid mixing.
+    % There should not be a slash after bids::, but check anyway.
+    OutFile = regexprep(InFile, 'bids:[^:]*:/?', [BidsDir '/']);
+end
+    
