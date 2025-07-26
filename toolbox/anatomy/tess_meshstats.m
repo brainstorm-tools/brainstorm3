@@ -63,7 +63,7 @@ hFig = [];
 % Convert to millimeter for convenience
 tessData.Vertices = 1000 .* tessData.Vertices;
 
-if meshType == 2 && TissueID > 1 % This loop is only for FEM mesh with multiple tissues
+if (meshType == 2) && (length(TissueID) > 1) % This loop is only for FEM mesh with multiple tissues
     % Loop over the tissues
     for iTissue = 1:length(TissueID)
         iTissueID = find(tessData.Tissue == TissueID(iTissue));
