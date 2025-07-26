@@ -156,12 +156,12 @@ if  meshType == 1
     bst_progress('text', 'Computing area of faces...');
     fieldName = 'MeshArea';
     measureUnit = 'mm2';
-    measureType = 'Face area';
+    measureType = 'Triangle Face Area';
 elseif  meshType == 2
     bst_progress('text', 'Computing volume of elements...');
     fieldName = 'MeshVolume';
     measureUnit = 'mm3';
-    measureType = 'Element volume';
+    measureType = 'Tetra Element Volume';
 end
 voli = elemvolume(tessData.Vertices, tessData.Elements); % can be either volume or area
 MeshStat.FullModel.([fieldName 'Max']) = max(voli);
@@ -170,6 +170,21 @@ MeshStat.FullModel.([fieldName 'Std']) = std(voli);
 MeshStat.FullModel.([fieldName 'Mean']) = mean(voli);
 MeshStat.FullModel.([fieldName 'Sum']) = sum(voli);
 
+if (meshType == 1)
+    % 4. Add the volume of the closed surface fromed by the triangle faces
+    % Method 1: %  divergence theorem
+    volume = 0;
+    for iElem = 1:size(tessData.Elements, 1)
+        v1 = tessData.Vertices(tessData.Elements(iElem,1), :);
+        v2 = tessData.Vertices(tessData.Elements(iElem,2), :);
+        v3 = tessData.Vertices(tessData.Elements(iElem,3), :);
+        volume = volume + dot(v1, cross(v2, v3)); 
+    end
+    volume = abs(volume) / 6 ;
+    MeshStat.FullModel.VolumeClosedSurface = volume;
+    % % Method 2: %  based on iso2mesh (require generating FEM mesh and the sum elem vol => not recommended )
+    % volume = surfvolume(tessData.Vertices,tessData.Elements);
+end
 % Visualization
 if isDisplay
     bst_progress('text', 'Visualisation...');
@@ -188,11 +203,17 @@ if isDisplay
     
     subplot(3,1,3)
     histogram(voli,nbins);
-    xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
-                                                                                                         MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum'])))
+    if  meshType == 1
+        xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f | [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
+            MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
 
-    % Close all the figures at once
-    set(hFig, 'DeleteFcn', @(h,ev)delete(setdiff(hFig,h)));
+    elseif  meshType == 2
+        xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
+            MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum'])))
+
+    end
+% Close all the figures at once
+set(hFig, 'DeleteFcn', @(h,ev)delete(setdiff(hFig,h)));
 end
 
 bst_progress('stop');
