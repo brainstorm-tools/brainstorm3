@@ -60,7 +60,7 @@ if isfield(tessData, 'Faces')
     end
     meshType = 'surface_triangle';
     tessData.Elements = tessData.Faces; % adapting the variable
-    measureType = 'Triangle Face Area';
+    measureType = 'Triangle area';
     measureFieldName   = 'MeshArea';
     measureUnit = 'mm2';
 
@@ -71,7 +71,7 @@ elseif isfield(tessData, 'Elements')
     end
     meshType = 'volume_tetrahedron';
     TissueID = unique(tessData.Tissue);
-    measureType = 'Tetra Element Volume';
+    measureType = 'Tetrahedron volume';
     measureFieldName  = 'MeshVolume';
     measureUnit = 'mm3';
 end
@@ -146,7 +146,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
 
             subplot(3,1,3)
             histogram(voli,nbins);
-            xlabel(sprintf('Element volume (mm3):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', tstat.MeshVolumeMean, tstat.MeshVolumeStd, tstat.MeshVolumeMin, tstat.MeshVolumeMax, tstat.MeshVolumeSum))
+            xlabel(sprintf('Tetrahedron volume (mm3):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', tstat.MeshVolumeMean, tstat.MeshVolumeStd, tstat.MeshVolumeMin, tstat.MeshVolumeMax, tstat.MeshVolumeSum))
             drawnow
         end
     end
