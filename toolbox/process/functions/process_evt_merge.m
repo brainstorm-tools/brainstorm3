@@ -160,6 +160,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         return;
     end
 
+    % Original events, 'events' structure may be modified to allow merge
+    eventsOrg = events;
     % Inialize new event group
     newEvent = events(iEvents(1));
     newEvent.label      = NewName;
@@ -229,7 +231,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end
-    
+    % Return events to its original state
+    events = eventsOrg;
     % Remove merged events
     if isDelete
         events(iEvents) = [];

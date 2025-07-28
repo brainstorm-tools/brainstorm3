@@ -1983,46 +1983,10 @@ function EventTypesMerge()
     end
     % Get ALL events (ignore current epoch)
     events = GetEvents([], 1);
-    
-    % Inialize new event group
-    newEvent = events(iEvents(1));
-    newEvent.label    = newLabel;
-    newEvent.times    = [events(iEvents).times];
-    newEvent.epochs   = [events(iEvents).epochs];
-    % Reaction time, notes, channels: only if all the events have them
-    if all(~cellfun(@isempty, {events(iEvents).channels}))
-        newEvent.channels = [events(iEvents).channels];
-    else
-        newEvent.channels = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).notes}))
-        newEvent.notes = [events(iEvents).notes];
-    else
-        newEvent.notes = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
-        newEvent.reactTimes = [events(iEvents).reactTimes];
-    else
-        newEvent.reactTimes = [];
-    end
-    % Sort by samples indices, and remove redundant values
-    [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
-    newEvent.times    = newEvent.times(:,iSort);
-    newEvent.epochs   = newEvent.epochs(iSort);
-    if ~isempty(newEvent.channels)
-        newEvent.channels = newEvent.channels(iSort);
-    end
-    if ~isempty(newEvent.notes)
-        newEvent.notes = newEvent.notes(iSort);
-    end
-    if ~isempty(newEvent.reactTimes)
-        newEvent.reactTimes = newEvent.reactTimes(iSort);
-    end
-    
-    % Remove merged events
-    events(iEvents) = [];
-    % Add new event
-    events(end + 1) = newEvent;
+
+    % Call process_evt_merge
+    events = process_evt_merge('Compute', '', events, {events(iEvents).label}, newLabel, 1);
+
     % Update dataset
     SetEvents(events);
     % Update events list
