@@ -535,48 +535,8 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         return
     end
     
-    % ===== MATLAB < 2014b =====
-    if (bst_get('MatlabVersion') < 804)
-        % Define OpenGL options
-        switch DisableOpenGL
-            case 0
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'hardware';
-                end
-                FigureRenderer = 'opengl';
-            case 1
-                OpenGLMode = 'neverselect';
-                FigureRenderer = 'zbuffer';
-            case 2
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'software';
-                end
-                FigureRenderer = 'opengl';
-        end
-        % Configure OpenGL
-        try
-            opengl(OpenGLMode);
-        catch
-            isOpenGL = 0;
-        end
-        % Check that OpenGL is running
-        s = opengl('data');
-        if isempty(s) || isempty(s.Version)
-            isOpenGL = 0;
-        end
-        % Figure types for which the OpenGL renderer is used
-        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
-    elseif  bst_get('MatlabVersion') >= 2402
+    % ===== MATLAB >= 2024b =====
+    if (bst_get('MatlabVersion') >= 2402)
         s = rendererinfo();
         if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
             isOpenGL = 1;
@@ -587,11 +547,11 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         else
             isOpenGL = 0;
         end
-        
         % Figure types for which the OpenGL renderer is used
         figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
-    % ===== MATLAB >= 2014b MATLAB < 2024b=====
-    else
+
+    % ===== MATLAB >= 2014b and MATLAB < 2024b =====
+    elseif (bst_get('MatlabVersion') >= 804)
         % Start OpenGL
         s = opengl('data');
         if isempty(s) || isempty(s.Version)
@@ -635,6 +595,48 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         end
         % Figure types for which the OpenGL renderer is used
         figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+
+    % ===== MATLAB < 2014b =====
+    else
+        % Define OpenGL options
+        switch DisableOpenGL
+            case 0
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'hardware';
+                end
+                FigureRenderer = 'opengl';
+            case 1
+                OpenGLMode = 'neverselect';
+                FigureRenderer = 'zbuffer';
+            case 2
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'software';
+                end
+                FigureRenderer = 'opengl';
+        end
+        % Configure OpenGL
+        try
+            opengl(OpenGLMode);
+        catch
+            isOpenGL = 0;
+        end
+        % Check that OpenGL is running
+        s = opengl('data');
+        if isempty(s) || isempty(s.Version)
+            isOpenGL = 0;
+        end
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
     end
     
     % Add comment if not running Brainstorm
