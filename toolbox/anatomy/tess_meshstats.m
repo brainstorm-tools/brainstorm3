@@ -183,19 +183,11 @@ MeshStat.FullModel.([fieldName 'Std']) = std(voli);
 MeshStat.FullModel.([fieldName 'Mean']) = mean(voli);
 MeshStat.FullModel.([fieldName 'Sum']) = sum(voli);
 
-if (meshType == 1)
-    % 4. Add the volume of the closed surface fromed by the triangle faces
-    % Method 1: %  divergence theorem
-    volume = 0;
-    for iElem = 1:size(tessData.Elements, 1)
-        v1 = tessData.Vertices(tessData.Elements(iElem,1), :);
-        v2 = tessData.Vertices(tessData.Elements(iElem,2), :);
-        v3 = tessData.Vertices(tessData.Elements(iElem,3), :);
-        volume = volume + dot(v1, cross(v2, v3)); 
-    end
-    volume = abs(volume) / 6 ;
-    MeshStat.FullModel.VolumeClosedSurface = volume;
-    % % Method 2: %  based on iso2mesh (require generating FEM mesh and the sum elem vol => not recommended )
+if strcmpi(meshType, 'surface_triangle')
+    % 4. Add the volume of the closed surface formed by the triangle faces
+    % Method 1: Divergence theorem
+    MeshStat.FullModel.VolumeClosedSurface = stlVolumeNormals(tessData.Vertices', tessData.Faces');
+    % % Method 2: Based on iso2mesh (require generating FEM mesh and the sum elem vol => not recommended )
     % volume = surfvolume(tessData.Vertices,tessData.Elements);
 end
 % Visualization
