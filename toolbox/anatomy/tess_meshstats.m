@@ -45,7 +45,7 @@ if ~isInstalled
 end
 
 % Get data in database
-bst_progress('start', 'Mesh Stats', 'Loading file...');
+bst_progress('start', 'Mesh statistics', 'Loading file...');
 FullFile = file_fullpath(tessFile);
 tessData = load(FullFile);
 
@@ -118,7 +118,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         % Visualization
         if isDisplay
             bst_progress('text', sprintf('Visualisation... [%d/%d]', iTissue, length(TissueID)));
-            hFig(end+1) = figure('Name', ['Mesh stat: ' tessData.TissueLabels{iTissue}], 'NumberTitle', 'off');
+            hFig(end+1) = figure('Name', ['Mesh statistics: ' tessData.TissueLabels{iTissue}], 'NumberTitle', 'off');
 
             nbins = 30;
             subplot(3,1,1)
@@ -205,7 +205,7 @@ if isDisplay
     if strcmpi(meshType, 'volume_tetrahedron')
         strAllTissues = ': all tissues combined';
     end
-    hFig(end+1) = figure('Name', ['Mesh stat' strAllTissues], 'NumberTitle', 'off');
+    hFig(end+1) = figure('Name', ['Mesh statistics' strAllTissues], 'NumberTitle', 'off');
     
     nbins = 30;
     subplot(3,1,1)
