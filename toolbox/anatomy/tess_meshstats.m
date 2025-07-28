@@ -49,6 +49,9 @@ bst_progress('start', 'Mesh statistics', 'Loading file...');
 FullFile = file_fullpath(tessFile);
 tessData = load(FullFile);
 
+% Common fields
+EdgeLengthUnit = 'mm';
+MeshQualityUnit = '%';
 % Type of mesh
 if isfield(tessData, 'Faces')
     % Check type of mesh: accept only tetrahedral
@@ -57,6 +60,10 @@ if isfield(tessData, 'Faces')
     end
     meshType = 'surface_triangle';
     tessData.Elements = tessData.Faces; % adapting the variable
+    measureType = 'Triangle Face Area';
+    measureFieldName   = 'MeshArea';
+    measureUnit = 'mm2';
+
 elseif isfield(tessData, 'Elements')
     % Check type of mesh: accept only tetrahedral
     if (size(tessData.Elements,2) ~= 4)
@@ -64,6 +71,9 @@ elseif isfield(tessData, 'Elements')
     end
     meshType = 'volume_tetrahedron';
     TissueID = unique(tessData.Tissue);
+    measureType = 'Tetra Element Volume';
+    measureFieldName  = 'MeshVolume';
+    measureUnit = 'mm3';
 end
 
 % Display results in figures if no variable in output
@@ -90,6 +100,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         tstat.EdgeLengthStd = std(EdgeLength);
         tstat.EdgeLengthMean = mean(EdgeLength);
         tstat.EdgeLengthRMS = rms(EdgeLength);
+        tstat.EdgeLengthUnit = EdgeLengthUnit;
 
         % 2. Mesh quality: Joe-Liu mesh quality metric (0-1)
         %  quality: a vector of the same length as size(elem,1), with
@@ -103,6 +114,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         tstat.MeshQualityMin = min(quality);
         tstat.MeshQualityStd = std(quality);
         tstat.MeshQualityMean = mean(quality);
+        tstat.MeshQualityUnit = MeshQuality;
 
         % 3. Volume of elem
         bst_progress('text', sprintf('Computing volume of elements...  [%d/%d]', iTissue, length(TissueID)));
@@ -112,6 +124,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         tstat.MeshVolumeStd = std(voli);
         tstat.MeshVolumeMean = mean(voli);
         tstat.MeshVolumeSum = sum(voli);
+        tstat.MeshVolumeUnit = measureUnit;
 
         MeshStat.(tessData.TissueLabels{iTissue}) = tstat;
 
@@ -152,6 +165,7 @@ MeshStat.FullModel.EdgeLengthMin = min(EdgeLength);
 MeshStat.FullModel.EdgeLengthStd = std(EdgeLength);
 MeshStat.FullModel.EdgeLengthMean = mean(EdgeLength);
 MeshStat.FullModel.EdgeLengthRMS = rms(EdgeLength);
+MeshStat.FullModel.EdgeLengthUnit = EdgeLengthUnit;
 
 % 2. Mesh quality: Joe-Liu mesh quality metric (0-100)
 bst_progress('text', 'Computing mesh quality...');
@@ -160,28 +174,24 @@ MeshStat.FullModel.MeshQualityMax = max(quality);
 MeshStat.FullModel.MeshQualityMin = min(quality);
 MeshStat.FullModel.MeshQualityStd = std(quality);
 MeshStat.FullModel.MeshQualityMean = mean(quality);
+MeshStat.FullModel.MeshQualityUnit = MeshQualityUnit;
 
 % 3. Volume/Area of elem/face
 switch meshType
     case 'surface_triangle'
         strProgress = 'Computing area of faces...';
-        measureUnit = 'mm2';
-        measureType = 'Triangle Face Area';
-        fieldName   = 'MeshArea';
-
     case 'volume_tetrahedron'
         strProgress = 'Computing volume of elements...';
-        measureUnit = 'mm3';
-        measureType = 'Tetra Element Volume';
-        fieldName   = 'MeshVolume';
+
 end
 bst_progress('text', strProgress);
 voli = elemvolume(tessData.Vertices, tessData.Elements); % can be either volume or area
-MeshStat.FullModel.([fieldName 'Max']) = max(voli);
-MeshStat.FullModel.([fieldName 'Min']) = min(voli);
-MeshStat.FullModel.([fieldName 'Std']) = std(voli);
-MeshStat.FullModel.([fieldName 'Mean']) = mean(voli);
-MeshStat.FullModel.([fieldName 'Sum']) = sum(voli);
+MeshStat.FullModel.([measureFieldName 'Max']) = max(voli);
+MeshStat.FullModel.([measureFieldName 'Min']) = min(voli);
+MeshStat.FullModel.([measureFieldName 'Std']) = std(voli);
+MeshStat.FullModel.([measureFieldName 'Mean']) = mean(voli);
+MeshStat.FullModel.([measureFieldName 'Sum']) = sum(voli);
+MeshStat.FullModel.([measureFieldName 'Unit']) = measureUnit;
 
 if strcmpi(meshType, 'surface_triangle')
     % 4. Add the volume of the closed surface formed by the triangle faces
@@ -214,12 +224,12 @@ if isDisplay
     histogram(voli,nbins);
     switch meshType
         case 'surface_triangle'
-            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
-                MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
+                MeshStat.FullModel.([measureFieldName 'Min']), MeshStat.FullModel.([measureFieldName 'Max']), MeshStat.FullModel.([measureFieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
 
         case 'volume_tetrahedron'
-            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
-                MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum'])))
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
+                MeshStat.FullModel.([measureFieldName 'Min']), MeshStat.FullModel.([measureFieldName 'Max']), MeshStat.FullModel.([measureFieldName 'Sum'])))
     end
 % Close all the figures at once
 set(hFig, 'DeleteFcn', @(h,ev)delete(setdiff(hFig,h)));
