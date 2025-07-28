@@ -49,17 +49,21 @@ bst_progress('start', 'Mesh Stats', 'Loading file...');
 FullFile = file_fullpath(tessFile);
 tessData = load(FullFile);
 
-% Check if the data is Surface Mesh or FEM tetrahedral mesh
+% Type of mesh
 if isfield(tessData, 'Faces')
-    meshType = 1; % 'Surface Triangle';
-    tessData.Elements =  tessData.Faces; % adapting the variable
+    % Check type of mesh: accept only tetrahedral
+    if (size(tessData.Vertices, 2) ~= 3)
+        error('This option is available for surface triangular meshes only.');
+    end
+    meshType = 'surface_triangle';
+    tessData.Elements = tessData.Faces; % adapting the variable
 elseif isfield(tessData, 'Elements')
-    meshType = 2; % 'Volume Tetrahedral';
-    TissueID = unique(tessData.Tissue);
     % Check type of mesh: accept only tetrahedral
     if (size(tessData.Elements,2) ~= 4)
         error('This option is available for FEM tetrahedral meshes only.');
     end
+    meshType = 'volume_tetrahedron';
+    TissueID = unique(tessData.Tissue);
 end
 
 % Display results in figures if no variable in output
@@ -68,8 +72,8 @@ hFig = [];
 
 % Convert to millimeter for convenience
 tessData.Vertices = 1000 .* tessData.Vertices;
-
-if (meshType == 2) && (length(TissueID) > 1) % This loop is only for FEM mesh with multiple tissues
+% This loop is only for FEM mesh with multiple tissues
+if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
     % Loop over the tissues
     for iTissue = 1:length(TissueID)
         iTissueID = find(tessData.Tissue == TissueID(iTissue));
@@ -158,17 +162,20 @@ MeshStat.FullModel.MeshQualityStd = std(quality);
 MeshStat.FullModel.MeshQualityMean = mean(quality);
 
 % 3. Volume/Area of elem/face
-if  meshType == 1
-    bst_progress('text', 'Computing area of faces...');
-    fieldName = 'MeshArea';
-    measureUnit = 'mm2';
-    measureType = 'Triangle Face Area';
-elseif  meshType == 2
-    bst_progress('text', 'Computing volume of elements...');
-    fieldName = 'MeshVolume';
-    measureUnit = 'mm3';
-    measureType = 'Tetra Element Volume';
+switch meshType
+    case 'surface_triangle'
+        strProgress = 'Computing area of faces...';
+        measureUnit = 'mm2';
+        measureType = 'Triangle Face Area';
+        fieldName   = 'MeshArea';
+
+    case 'volume_tetrahedron'
+        strProgress = 'Computing volume of elements...';
+        measureUnit = 'mm3';
+        measureType = 'Tetra Element Volume';
+        fieldName   = 'MeshVolume';
 end
+bst_progress('text', strProgress);
 voli = elemvolume(tessData.Vertices, tessData.Elements); % can be either volume or area
 MeshStat.FullModel.([fieldName 'Max']) = max(voli);
 MeshStat.FullModel.([fieldName 'Min']) = min(voli);
@@ -194,7 +201,11 @@ end
 % Visualization
 if isDisplay
     bst_progress('text', 'Visualisation...');
-    hFig(end+1) = figure('Name', 'Mesh stat: all tissues combined', 'NumberTitle', 'off');
+    strAllTissues = '';
+    if strcmpi(meshType, 'volume_tetrahedron')
+        strAllTissues = ': all tissues combined';
+    end
+    hFig(end+1) = figure('Name', ['Mesh stat' strAllTissues], 'NumberTitle', 'off');
     
     nbins = 30;
     subplot(3,1,1)
@@ -209,14 +220,14 @@ if isDisplay
     
     subplot(3,1,3)
     histogram(voli,nbins);
-    if  meshType == 1
-        xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f | [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
-            MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
+    switch meshType
+        case 'surface_triangle'
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
+                MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
 
-    elseif  meshType == 2
-        xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
-            MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum'])))
-
+        case 'volume_tetrahedron'
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([fieldName 'Mean']), MeshStat.FullModel.([fieldName 'Std']),...
+                MeshStat.FullModel.([fieldName 'Min']), MeshStat.FullModel.([fieldName 'Max']), MeshStat.FullModel.([fieldName 'Sum'])))
     end
 % Close all the figures at once
 set(hFig, 'DeleteFcn', @(h,ev)delete(setdiff(hFig,h)));
