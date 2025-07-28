@@ -224,7 +224,7 @@ if isDisplay
     histogram(voli,nbins);
     switch meshType
         case 'surface_triangle'
-            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f [Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f/n[Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
                 MeshStat.FullModel.([measureFieldName 'Min']), MeshStat.FullModel.([measureFieldName 'Max']), MeshStat.FullModel.([measureFieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
 
         case 'volume_tetrahedron'
