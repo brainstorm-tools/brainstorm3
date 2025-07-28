@@ -56,7 +56,7 @@ MeshQualityUnit = '%';
 if isfield(tessData, 'Faces')
     % Check type of mesh: accept only tetrahedral
     if (size(tessData.Vertices, 2) ~= 3)
-        error('This option is available for surface triangular meshes only.');
+        error('This option is available only for surface triangular meshes.');
     end
     meshType = 'surface_triangle';
     tessData.Elements = tessData.Faces; % adapting the variable
@@ -67,7 +67,7 @@ if isfield(tessData, 'Faces')
 elseif isfield(tessData, 'Elements')
     % Check type of mesh: accept only tetrahedral
     if (size(tessData.Elements,2) ~= 4)
-        error('This option is available for FEM tetrahedral meshes only.');
+        error('This option is available only for FEM tetrahedral meshes.');
     end
     meshType = 'volume_tetrahedron';
     TissueID = unique(tessData.Tissue);
