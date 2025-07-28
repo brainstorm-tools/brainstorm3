@@ -576,8 +576,21 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         end
         % Figure types for which the OpenGL renderer is used
         figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+    elseif  bst_get('MatlabVersion') >= 2402
+        s = rendererinfo();
+        if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
+            isOpenGL = 1;
+            s.Software = 0;
+        elseif strcmp(s.GraphicsRenderer,  'OpenGL Software')
+            isOpenGL = 1;
+            s.Software = 1;
+        else
+            isOpenGL = 0;
+        end
         
-    % ===== MATLAB >= 2014b =====
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+    % ===== MATLAB >= 2014b MATLAB < 2024b=====
     else
         % Start OpenGL
         s = opengl('data');
