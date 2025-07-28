@@ -1,15 +1,21 @@
 function MeshStat = tess_meshstats(tessFile)
-% FEM_MESHSTATS: Computes and display mesh stats.
+% TESS_MESHSTATS: Compute and display statistics for:
+%  - Surface triangular meshes, and
+%  - Volume tetrahedral meshes
 %
 % INPUTS:
-%    - SurfaceFile : Relative or Full file path to a Braistorm surface file (including FEM mesh)
+%    - SurfaceFile : Relative or Full file path to a Braistorm surface file, either:
+%                    - triangular: head, skull, cortex, etc. Or
+%                    - tetrahedral: FEM mesh
+%
 % OUTPUTS: 
-%    - MeshStat : Matlab structure that contains all mesh stqtistics (edge length, elem volum/Face surface and mesh quality)
+%    - MeshStat : Matlab structure that contains all mesh statistics:
+%                 (edge length, elem volum/Face surface and mesh quality)
 %
 % DEPENDENCIES:
-%    This function require the iso2mesh toolbox
-%    This function is an extended version of fem_meshstats to include
-%    surface meshes
+%    This function requires the iso2mesh toolbox
+%    This function replaces fem_meshstats, extends support to triangular meshes
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
