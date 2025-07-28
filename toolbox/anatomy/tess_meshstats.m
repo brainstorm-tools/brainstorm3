@@ -1,4 +1,4 @@
-function MeshStat = fem_meshstats(FemFile)
+function MeshStat = tess_meshstats(FemFile)
 % FEM_MESHSTATS: Computes and display FEM mesh volume (tetrahedral only).
 %
 % INPUTS:
