@@ -39,9 +39,9 @@ function MeshStat = tess_meshstats(tessFile)
 
 % Install/load iso2mesh plugin
 isInteractive = 1;
-[isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
 if ~isInstalled
-    error('Plugin "iso2mesh" not available.');
+    error(['Could not install or load plugin: iso2mesh' 10 errMsg]);
 end
 
 % Get data in database
