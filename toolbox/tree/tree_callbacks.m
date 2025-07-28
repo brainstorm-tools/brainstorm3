@@ -1264,6 +1264,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Remove interpolations', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 0));
                         gui_component('MenuItem', jPopup, [], 'Clean surface',         IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 1));
                         gui_component('MenuItem', jPopup, [], 'Smooth surface', IconLoader.ICON_RECYCLE, [], @(h,ev)tess_smooth_select(filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)tess_meshstats(filenameFull));
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'Import texture', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources([], filenameFull));
                     end
