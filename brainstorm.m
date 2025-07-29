@@ -98,11 +98,15 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
     % Add Brainstorm JARs to classpath
-    if usejava('jvm')
+    MSG = javachk('jvm');
+    if isempty(MSG)
         javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
         javaaddpath(BstJar);
     else
-        error('Brainstorm cannot be started without java.')
+        disp('');
+        disp('BST> Error: Brainstorm cannot be started without Java.');
+        disp(MSG.message);
+        rethrow(MSG);
     end
 end
 
