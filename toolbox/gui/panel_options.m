@@ -519,7 +519,7 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
     
     % ===== MATLAB >= 2022a =====
     if (bst_get('MatlabVersion') >= 912)
-        % From 2022a, rendererinfo() can be called with arguments, and it is recommended over opengl()
+        % From 2022a, rendererinfo() can be called without arguments, and it is recommended over opengl()
         s = rendererinfo();
         % New JS MATLAB Desktop (Started from R2023a)
         if isJSDesktop()
