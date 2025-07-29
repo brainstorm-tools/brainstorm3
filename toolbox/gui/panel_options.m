@@ -535,8 +535,9 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         return
     end
     
-    % ===== MATLAB >= 2024b =====
-    if (bst_get('MatlabVersion') >= 2402)
+    % ===== MATLAB >= 2022a =====
+    if (bst_get('MatlabVersion') >= 912)
+        % From 2022a, rendererinfo() can be called with arguments, and it is recommended over opengl()
         s = rendererinfo();
         if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
             isOpenGL = 1;
@@ -550,7 +551,7 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         % Figure types for which the OpenGL renderer is used
         figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
 
-    % ===== MATLAB >= 2014b and MATLAB < 2024b =====
+    % ===== MATLAB >= 2014b and MATLAB < 2022a =====
     elseif (bst_get('MatlabVersion') >= 804)
         % Start OpenGL
         s = opengl('data');
