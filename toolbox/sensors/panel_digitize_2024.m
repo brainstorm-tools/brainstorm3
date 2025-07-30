@@ -85,7 +85,19 @@ function Start(varargin)
     Digitize.Type = DigitizerType;
     switch DigitizerType
         case 'Digitize'
-            % Do nothing
+            % Warning for Simulation mode
+            if Digitize.Options.isSimulate
+                options_dialog = {'Yes', 'No'};
+                res = java_dialog('question', ...
+                    ['<HTML>Simulation mode is <B>ON</B><BR>', ...
+                    'All incoming data is <B>simulated</B> and <B>not</B> from the actual digitizer device. <BR><BR>' ...
+                    'Do you want to turn <B>OFF</B> the Simulation mode?</HTML>'], 'Digitizer', [], ...
+                    options_dialog, options_dialog{2});
+                if strcmpi(res, options_dialog{1})
+                    SetSimulate(0);
+                    bst_call(@panel_digitize_2024, 'Start');
+                end
+            end
         case '3DScanner'
             % Do nothing
         otherwise

@@ -110,6 +110,20 @@ function Start(varargin) %#ok<DEFNU>
         return;
     end
 
+    % Warning for Simulation mode
+    if strcmpi(DigitizerType, 'Digitize') && DigitizeOptions.isSimulate
+        options_dialog = {'Yes', 'No'};
+        res = java_dialog('question', ...
+            ['<HTML>Simulation mode is <B>ON</B><BR>', ...
+            'All incoming data is <B>simulated</B> and <B>not</B> from the actual digitizer device. <BR><BR>' ...
+            'Do you want to turn <B>OFF</B> the Simulation mode?</HTML>'], 'Digitizer', [], ...
+            options_dialog, options_dialog{2});
+        if strcmpi(res, options_dialog{1})
+            SetSimulate(0);
+            bst_call(@panel_digitize, 'Start');
+        end
+    end
+
     % ===== PREPARE DATABASE =====
     % If no protocol: exit
     if (bst_get('iProtocol') <= 0)
