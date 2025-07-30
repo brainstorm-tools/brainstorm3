@@ -87,8 +87,7 @@ function Start(varargin)
         case 'Digitize'
             % Do nothing
         case '3DScanner'
-            % Simulate
-            SetSimulate(1);
+            % Do nothing
         otherwise
             bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
             return
@@ -1517,8 +1516,8 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     
-    % Simulate: Generate random points
-    if Digitize.Options.isSimulate
+    % Simulate or 3DScanner: Do not read serial connection
+    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         % Increment current point index
         Digitize.iPoint = Digitize.iPoint + 1;
         if Digitize.iPoint > numel(Digitize.Points)
@@ -1541,6 +1540,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                 end
             end
         else
+            % Generate random points
             Digitize.Points(Digitize.iPoint).Loc = rand(1,3) * .15 - .075;
         end
 
