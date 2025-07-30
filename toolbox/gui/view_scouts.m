@@ -355,7 +355,7 @@ for iResFile = 1:length(ResultsFiles)
             % Get meaningful tags in the results file name (without folders)
             TestResFile = file_resolve_link(ResultsFiles{iResFile});
             [tmp, TestTags] = bst_fileparts(TestResFile);
-            % Do not flip sign for statistics, norms or NIRS source maps
+            % Do not flip sign for statistics, norms, NIRS or BOLD source maps
 
             isBOLD = ~isempty(strfind(TestTags, 'bold')) || ...
                       ( isfield( GlobalData.DataSet(iDS).Results(iResult), 'DisplayUnits') && strcmpi(GlobalData.DataSet(iDS).Results(iResult).DisplayUnits, 'BOLD'));
