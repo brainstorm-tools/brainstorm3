@@ -86,8 +86,14 @@ function sInput = Run(sProcess, sInput, method) %#ok<DEFNU>
             'This method is based on a fft-based low-pass filter, followed by a spline interpolation.' 10 ...
             'Make sure you remove the DC offset before resampling; EEGLAB function does not work well when the signals are not centered.']);
     end
+
     % Resample
+    oldTimeVector = sInput.TimeVector;
     [sInput.A, sInput.TimeVector] = Compute(sInput.A, sInput.TimeVector, NewFreq, method);
+    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
+        sInput.Std = Compute(sInput.Std, oldTimeVector, NewFreq, method);
+    end
+
     % Update file
     sInput.CommentTag = sprintf('resample(%dHz)', round(NewFreq));
     sInput.HistoryComment = sprintf('Resample from %0.2f Hz to %0.2f Hz (%s)', OldFreq, NewFreq, method);
