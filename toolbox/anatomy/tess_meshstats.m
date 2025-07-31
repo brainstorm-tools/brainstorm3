@@ -114,7 +114,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         tstat.MeshQualityMin = min(quality);
         tstat.MeshQualityStd = std(quality);
         tstat.MeshQualityMean = mean(quality);
-        tstat.MeshQualityUnit = MeshQuality;
+        tstat.MeshQualityUnit = MeshQualityUnit;
 
         % 3. Volume of elem
         bst_progress('text', sprintf('Computing volume of elements...  [%d/%d]', iTissue, length(TissueID)));
