@@ -142,7 +142,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
 
             subplot(3,1,2)
             histogram(quality,nbins);
-            title('Mesh quality (%%)');
+            title('Mesh quality (%)');
             xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', tstat.MeshQualityMean, tstat.MeshQualityStd, tstat.MeshQualityMin, tstat.MeshQualityMax))
             drawnow
 
@@ -221,7 +221,7 @@ if isDisplay
 
     subplot(3,1,2)
     histogram(quality,nbins);
-    title('Mesh quality (%%)');
+    title('Mesh quality (%)');
     xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', MeshStat.FullModel.MeshQualityMean, MeshStat.FullModel.MeshQualityStd, MeshStat.FullModel.MeshQualityMin, MeshStat.FullModel.MeshQualityMax))
     drawnow
     
