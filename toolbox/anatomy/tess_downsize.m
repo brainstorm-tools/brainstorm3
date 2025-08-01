@@ -2,9 +2,12 @@ function [NewTessFile, iSurface, I, J] = tess_downsize( TessFile, newNbVertices,
 % TESS_DOWNSIZE: Reduces the number of vertices in a surface file.
 %
 % USAGE:  [NewTessFile, iSurface, I, J] = tess_downsize(TessFile, newNbVertices=[ask], Method=[ask]);
+%         [NewTessMat, iSurface, I, J] = tess_downsize(TessMat, newNbVertices=[ask], Method=[ask]);
 % 
 % INPUT: 
 %    - TessFile      : Full path to surface file to decimate
+%    - TessMat       : Already loaded surface structure, a structure is returned in that case and no
+%                      file is saved.
 %    - newNbVertices : Desired number of vertices
 %    - Method        : {'reducepatch', 'reducepatch_subdiv', 'iso2mesh', 'iso2mesh_project'}
 % OUTPUT:
@@ -56,11 +59,17 @@ iSurface = [];
 I = [];
 J = [];
 
+% Surface structure now accepted as input
+isTessInput = isstruct(TessFile);
 
 %% ===== ASK FOR MISSING OPTIONS =====
 % Get the number of vertices
-VarInfo = whos('-file',file_fullpath(TessFile),'Vertices');
-oldNbVertices = VarInfo.size(1);
+if isTessInput
+    oldNbVertices = size(TessFile.Vertices, 1);
+else
+    VarInfo = whos('-file',file_fullpath(TessFile),'Vertices');
+    oldNbVertices = VarInfo.size(1);
+end
 % If new number of vertices was not provided: ask user
 if isempty(newNbVertices)
     % Ask user the new number of vertices
@@ -82,6 +91,9 @@ if (newNbVertices >= oldNbVertices)
     return;
 end
 
+% Check if Lidar Toolbox is installed (requires image processing + computer vision)
+isLidarToolbox = exist('surfaceMesh', 'file') == 2;
+
 % Ask for resampling method
 if isempty(Method)
     % Downsize methods strings
@@ -99,6 +111,12 @@ if isempty(Method)
         %           '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh but possible <U>topological problems</U><BR>' ...
         %           '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subject co-registration']},
 
+    if isLidarToolbox
+        methods_str{end+1} = ...
+                       ['<HTML><B>Matlab''s simplify, from Lidar Toolbox:</B><BR>' ...
+                        '&nbsp;&nbsp;&nbsp;| - Possibly better at preserving shape topology than reducepatch<BR>' ...
+                        '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'];
+    end
     % Identify textured surfaces (color info is present) and show available methods for them
     VarInfo = whos('-file',file_fullpath(TessFile), 'Color');
     if ~isempty(VarInfo) && all(VarInfo.size ~= 0)
@@ -114,7 +132,8 @@ if isempty(Method)
         case 1,  Method = 'reducepatch';
         case 2,  Method = 'reducepatch_subdiv';
         case 3,  Method = 'iso2mesh';
-        case 4,  Method = 'iso2mesh_project';
+        case 4,  Method = 'simplify';
+        % case 4,  Method = 'iso2mesh_project';
     end
 end
 
@@ -128,16 +147,26 @@ if ~isempty(MultipleFiles)
 end
     
 %% ===== LOAD FILE =====
-% Progress bar
-bst_progress('start', 'Resample surface', 'Loading file...');
-% Load file
-TessMat = in_tess_bst(TessFile);
-% Prepare variables
+if isTessInput
+    TessMat = TessFile;
+    if ~isfield(TessMat, 'Comment')
+        TessMat.Comment = 'iso head';
+    end
+else
+    % Progress bar
+    bst_progress('start', 'Resample surface', 'Loading file...');
+    % Load file
+    TessMat = in_tess_bst(TessFile);
+    % Prepare variables
+end
 TessMat.Faces    = double(TessMat.Faces);
 TessMat.Vertices = double(TessMat.Vertices);
-TessMat.Color    = double(TessMat.Color);
+if isfield(TessMat, 'Color')
+    TessMat.Color = double(TessMat.Color);
+else
+    TessMat.Color = [];
+end
 dsFactor = newNbVertices / size(TessMat.Vertices, 1); 
-
 
 %% ===== RESAMPLE =====
 bst_progress('start', 'Resample surface', ['Resampling surface: ' TessMat.Comment '...']);
@@ -422,8 +451,29 @@ switch (Method)
         NewTessMat.Faces    = Faces;
         NewTessMat.Vertices = Vertices;
         MethodTag = '_iso2mesh_proj';
+
+    % ===== SIMPLIFY =====
+    % Matlab's Lidar Toolbox simplify (since R2022b)
+    case 'simplify'
+        if ~isLidarToolbox
+            fprintf('BST>tess_downsize method "simplify" requires Matlab''s Lidar Toolbox, which was not found.\n');
+        end
+        % Create mesh object
+        oMesh = surfaceMesh(TessMat.Vertices, TessMat.Faces);
+
+        % Reduce number of vertices
+        simplify(oMesh, 'TargetNumFaces', (newNbVertices - 2) * 2); % no output variable for this toolbox!
+        NewTessMat.Faces = oMesh.Faces;
+        NewTessMat.Vertices = oMesh.Vertices;
+
 end
 
+if isTessInput
+    % This should go after "remove folded faces" if that step was desired... skipping for now for
+    % tess_isohead as it does its own checks and corrections.
+    NewTessFile = NewTessMat;
+    return;
+end
 
 %% ===== REMOVE FOLDED FACES =====
 % Find equal faces
@@ -540,15 +590,18 @@ end
 
 
 %% ===== UPDATE DATABASE =====
-% Save downsized surface file
-bst_save(NewTessFile, NewTessMat, 'v7');
-% Make output filename relative
-NewTessFile = file_short(NewTessFile);
-% Get subject
-[sSubject, iSubject] = bst_get('SurfaceFile', TessFile);
-% Register this file in Brainstorm database
-iSurface = db_add_surface(iSubject, NewTessFile, NewComment);
-
+% Save downsized surface file, or return structure
+if isTessInput
+    NewTessFile = NewTessMat;
+else
+    bst_save(NewTessFile, NewTessMat, 'v7');
+    % Make output filename relative
+    NewTessFile = file_short(NewTessFile);
+    % Get subject
+    [~, iSubject] = bst_get('SurfaceFile', TessFile);
+    % Register this file in Brainstorm database
+    iSurface = db_add_surface(iSubject, NewTessFile, NewComment);
+end
 % Close progress bar
 bst_progress('stop');
 
