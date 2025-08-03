@@ -195,7 +195,7 @@ switch (lower(action))
                     case 'fem',        SurfaceType = 'FEM';
                     case 'other',      SurfaceType = 'Other';
                 end
-                if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
+                if ~bst_get('ReadOnly') && (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
                     % Set it as subject default
                     db_surface_default(iSubject, SurfaceType, iSurface);
                 % Else, this item is already marked : display it in surface viewer
