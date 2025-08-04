@@ -2426,19 +2426,27 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         iGroupChan = iGroupChan(I);
         % Default color
         iColor = mod(iGroup-1, length(ColorTable)) + 1;
-        newElec.Color = ColorTable(iColor,:);
+        if isempty(newElec.Color)
+            newElec.Color = ColorTable(iColor,:);
+        end
         % Try to get positions of the electrode: 2 contacts minimum with positions
         if strcmpi(Modality, 'SEEG') && (length(iGroupChan) >= 2) && all(cellfun(@(c)and(size(c,2) == 1, ~isequal(c,[0;0;0])), {ChannelMat.Channel(iMod(iGroupChan)).Loc}))
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
             % Get all channels locations for this electrode
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
             % Detect average spacing between adjacent contacts (precision: 0.000001)
-            newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
-            
+            contactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
+            contactSpacing = bst_round(contactSpacing, 6);
+            if isempty(newElec.ContactSpacing)
+                newElec.ContactSpacing = contactSpacing;
+            end
+
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
@@ -2453,11 +2461,13 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLocFix = sum(bst_bsxfun(@times, W, orient), 2);
             ElecLocFix = bst_bsxfun(@times, ElecLocFix, orient);
             ElecLocFix = bst_bsxfun(@plus, ElecLocFix, M);
-
-            % Set tip: Compute the position of the first contact
-            newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * newElec.ContactSpacing * orient)';
-            % Set entry point: last contact is good enough
-            newElec.Loc(:,2) = ElecLocFix(end,:)';
+            % Set tip and entry if required
+            if isempty(newElec.Loc) || (size(newElec.Loc, 1) ~=3 && size(newElec.Loc, 2) ~=newElec.ContactNumber)
+                % Set tip: Compute the position of the first contact
+                newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * contactSpacing * orient)';
+                % Set entry point: last contact is good enough
+                newElec.Loc(:,2) = ElecLocFix(end,:)';
+            end
 
             % Duplicate to set orientation and fixed position for all the channels of the strip
             ChanOrient(iMod(iGroupChan),:) = repmat(orient, length(iGroupChan), 1);
@@ -2465,15 +2475,20 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         % SEEG with no locations
         elseif strcmpi(Modality, 'SEEG')
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
         elseif strcmpi(Modality, 'ECOG')
-            % Guess format of the ECOG device
-            switch (length(iGroupChan))
-                case 12,   newElec.ContactNumber = [6, 2];
-                case 16,   newElec.ContactNumber = [8, 2];
-                case 32,   newElec.ContactNumber = [8, 4];
-                case 64,   newElec.ContactNumber = [8, 8];
-                otherwise, newElec.ContactNumber = length(iGroupChan);
+            if isempty(newElec.ContactNumber) || prod(newElec.ContactNumber) ~= length(iGroupChan)
+                % Guess format of the ECOG device
+                switch (length(iGroupChan))
+                    case 12,   newElec.ContactNumber = [6, 2];
+                    case 16,   newElec.ContactNumber = [8, 2];
+                    case 32,   newElec.ContactNumber = [8, 4];
+                    case 64,   newElec.ContactNumber = [8, 8];
+                    otherwise, newElec.ContactNumber = length(iGroupChan);
+                end
             end
         end
         % Add to existing list of electrodes
