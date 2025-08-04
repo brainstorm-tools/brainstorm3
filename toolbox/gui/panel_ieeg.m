@@ -98,7 +98,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jButtonGroupCoord = ButtonGroup();
                 jRadioScs   = gui_component('radio', jPanelModelCoord, 'br', 'SCS ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('SCS'));
                 jRadioScs.setSelected(1);
-                jRadioMri   = gui_component('radio', jPanelModelCoord, '',   'MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
+                jRadioMri   = gui_component('radio', jPanelModelCoord, '', 'Def. MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
                 jRadioWorld = gui_component('radio', jPanelModelCoord, '', 'World ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('World'));
                 jRadioMni   = gui_component('radio', jPanelModelCoord, '',   'MNI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MNI'));
                 jPanelElecList.add(jPanelModelCoord, BorderLayout.NORTH);
@@ -565,6 +565,7 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
         sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        % Get default MRI for Subject
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
         sMri = bst_memory('LoadMri', MriFile);
         contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), [sContacts.Loc]') * 1000;
