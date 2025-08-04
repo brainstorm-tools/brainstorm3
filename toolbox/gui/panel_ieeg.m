@@ -822,8 +822,10 @@ function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     if isempty(hFig) || isempty(sSelContacts)
         return
     end
-    % Update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
+    for ix = 1 : length(hFig)
+        % Update the cross-hair position on the MRI
+        figure_mri('SetLocation', 'scs', hFig(ix), [], [sSelContacts(end).Loc]);
+    end
 end
 
 %% ===== GET SELECTED ELECTRODES =====
@@ -3794,8 +3796,12 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
     end
 
-    % If MRI Viewer is open don't open another one
-    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    % If MRI Viewer with requested MRI is open don't open another one
+    if length(MriFiles) == 1
+        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, [], 'MriViewer', '');
+    else
+        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, MriFiles{2}, 'MriViewer', '');
+    end
     if ~isempty(hFig)
         return
     end
