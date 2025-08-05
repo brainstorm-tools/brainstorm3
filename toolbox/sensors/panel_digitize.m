@@ -93,15 +93,9 @@ function Start(varargin) %#ok<DEFNU>
         surfaceFile = varargin{4};
     end
     Digitize.Type = DigitizerType;
-    switch DigitizerType
-        case 'Digitize'
-            % Do nothing
-        case '3DScanner'
-            % Simulate
-            SetSimulate(1);
-        otherwise
-            bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
-            return
+    if ~ismember(DigitizerType, {'Digitize', '3DScanner'})
+        bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
+        return
     end
 
     % Get Digitize options
@@ -114,6 +108,20 @@ function Start(varargin) %#ok<DEFNU>
             bst_call(@panel_digitize_2024, 'Start');
         end
         return;
+    end
+
+    % Warning for Simulation mode
+    if strcmpi(DigitizerType, 'Digitize') && DigitizeOptions.isSimulate
+        options_dialog = {'Yes', 'No'};
+        res = java_dialog('question', ...
+            ['<HTML>Simulation mode is <B>ON</B><BR>', ...
+            'All incoming data is <B>simulated</B> and <B>not</B> from the actual digitizer device. <BR><BR>' ...
+            'Do you want to turn <B>OFF</B> the Simulation mode?</HTML>'], 'Digitizer', [], ...
+            options_dialog, options_dialog{2});
+        if strcmpi(res, options_dialog{1})
+            SetSimulate(0);
+            bst_call(@panel_digitize, 'Start');
+        end
     end
 
     % ===== PREPARE DATABASE =====
@@ -1956,8 +1964,8 @@ function BytesAvailable_Callback(h, ev)
     % Get digitizer options
     DigitizeOptions = bst_get('DigitizeOptions');
 
-    % Simulate: Generate random points
-    if DigitizeOptions.isSimulate
+    % Simulate or 3DScanner: Do not read serial connection
+    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         if strcmpi(Digitize.Type, '3DScanner')
             % Get current 3D figure
             [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');
@@ -1977,6 +1985,7 @@ function BytesAvailable_Callback(h, ev)
             Digitize.hFig = hFig;
             Digitize.iDS = iDS;
         else
+            % Generate points
             switch (Digitize.Mode)
                 case 1,     pointCoord = [.08 0 -.01];
                 case 2,     pointCoord = [-.01 .07 0];

@@ -195,7 +195,7 @@ switch (lower(action))
                     case 'fem',        SurfaceType = 'FEM';
                     case 'other',      SurfaceType = 'Other';
                 end
-                if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
+                if ~bst_get('ReadOnly') && (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
                     % Set it as subject default
                     db_surface_default(iSubject, SurfaceType, iSurface);
                 % Else, this item is already marked : display it in surface viewer
@@ -1263,6 +1263,8 @@ switch (lower(action))
                         end
                         gui_component('MenuItem', jPopup, [], 'Remove interpolations', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 0));
                         gui_component('MenuItem', jPopup, [], 'Clean surface',         IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 1));
+                        gui_component('MenuItem', jPopup, [], 'Smooth surface', IconLoader.ICON_RECYCLE, [], @(h,ev)tess_smooth_select(filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)tess_meshstats(filenameFull));
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'Import texture', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources([], filenameFull));
                     end
@@ -1296,7 +1298,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_meshstats, filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
                     AddSeparator(jPopup);
@@ -3373,8 +3375,9 @@ function SurfaceClean_Callback(TessFile, isRemove)
     end
     % History
     if isfield(TessMat, 'History')
-        newTessMat = bst_history('add', newTessMat, 'clean', 'Remove interpolations');
+        newTessMat.History = TessMat.History;
     end
+    newTessMat = bst_history('add', newTessMat, 'clean', 'Remove interpolations');
     % Save cleaned surface file
     bst_save(TessFile, newTessMat, 'v7');
     % Close progresss bar

@@ -43,36 +43,44 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew = gui_component('Panel');
     jPanelTop = gui_component('Panel');
     jPanelNew.add(jPanelTop, BorderLayout.NORTH);
-    TB_DIM = java_scaled('dimension',18,25);
+    TB_DIM = java_scaled('dimension',20,25);
     
-    % ===== TOOLBAR =====
-    jMenuBar = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
-        jToolbar = gui_component('Toolbar', jMenuBar);
-        jToolbar.setPreferredSize(TB_DIM);
-        jToolbar.setOpaque(0);
+    % ===== TOOLBAR ELECTRODES =====
+    jMenuBarE = gui_component('MenuBar', jPanelTop, BorderLayout.NORTH);
+        jToolbarE = gui_component('Toolbar', jMenuBarE);
+        jToolbarE.setPreferredSize(TB_DIM);
+        jToolbarE.setOpaque(0);
         % Add/remove
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
-        % Button "Select vertex"
-        jToolbar.addSeparator();
-        jButtonSelect = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
-        % Button "Select surface centroid"
-        jButtonCentroid = gui_component('ToolbarToggle', jToolbar, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_SEEG_DEPTH_PLUS, TB_DIM}, 'Add new electrode', @(h,ev)bst_call(@AddElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_SEEG_DEPTH_MINUS, TB_DIM}, 'Remove selected electrodes', @(h,ev)bst_call(@RemoveElectrode));
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_FUSION, TB_DIM}, 'Merge selected electrodes', @(h,ev)bst_call(@MergeElectrodes));
         % Set color
-        jToolbar.addSeparator();
-        gui_component('ToolbarButton', jToolbar,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
+        jToolbarE.addSeparator();
+        gui_component('ToolbarButton', jToolbarE,[],[], {IconLoader.ICON_COLOR_SELECTION, TB_DIM}, 'Select color for selected electrodes', @(h,ev)bst_call(@EditElectrodeColor));
         % Show/Hide
-        jButtonShow = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_DISPLAY, TB_DIM}, 'Show/hide selected electrodes', @(h,ev)bst_call(@SetElectrodeVisible, ev.getSource().isSelected()));
+        jButtonShow = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_DISPLAY, TB_DIM}, 'Show/hide selected electrodes', @(h,ev)bst_call(@SetElectrodeVisible, ev.getSource().isSelected()));
         jButtonShow.setSelected(1);
         % Set display mode
-        jToolbar.addSeparator();
+        jToolbarE.addSeparator();
         jButtonGroup = ButtonGroup();
-        jRadioDispDepth  = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SEEG_DEPTH,  jButtonGroup, TB_DIM}, 'Display contacts as SEEG electrodes/ECOG strips', @(h,ev)bst_call(@SetDisplayMode, 'depth'));
-        jRadioDispSphere = gui_component('ToolbarToggle', jToolbar, [], [], {IconLoader.ICON_SEEG_SPHERE, jButtonGroup, TB_DIM}, 'Display contacts as spheres', @(h,ev)bst_call(@SetDisplayMode, 'sphere'));
-        % Menu: Contacts
-        jToolbar.addSeparator();
-        jMenuContacts = gui_component('ToolbarButton', jToolbar, [], 'Contacts', IconLoader.ICON_MENU, '', @(h,ev)ShowContactsMenu(ev.getSource()), []);
+        jRadioDispDepth  = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_SEEG_DEPTH,  jButtonGroup, TB_DIM}, 'Display contacts as SEEG electrodes/ECOG strips', @(h,ev)bst_call(@SetDisplayMode, 'depth'));
+        jRadioDispSphere = gui_component('ToolbarToggle', jToolbarE, [], [], {IconLoader.ICON_SEEG_SPHERE, jButtonGroup, TB_DIM}, 'Display contacts as spheres', @(h,ev)bst_call(@SetDisplayMode, 'sphere'));
+        % Menu: Electrodes
+        jToolbarE.addSeparator();
+        jMenuElectrodes = gui_component('ToolbarButton', jToolbarE, [], 'Electrodes', IconLoader.ICON_MENU, '', @(h,ev)ShowElectrodesMenu(ev.getSource()), []);
+
+    % ===== TOOLBAR CONTACTS =====
+    jMenuBarC = gui_component('MenuBar', jPanelTop, BorderLayout.SOUTH);
+        jToolbarC = gui_component('Toolbar', jMenuBarC);
+        jToolbarC.setPreferredSize(TB_DIM);
+        jToolbarC.setOpaque(0);
+        % Button "Select vertex"
+        jButtonSelect = gui_component('ToolbarToggle', jToolbarC, [], '', IconLoader.ICON_SCOUT_NEW, 'Select surface point', @(h,ev)panel_coordinates('SetSelectionState', ev.getSource.isSelected()));
+        % Button "Select surface centroid"
+        jButtonCentroid = gui_component('ToolbarToggle', jToolbarC, [], '', IconLoader.ICON_GOOD, 'Select surface centroid', @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+        % Buttons "Add" and "Remove" contacts
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_SEEG_SPHERE_PLUS, TB_DIM}, 'Add SEEG contact', @(h,ev)bst_call(@AddContact));
+        gui_component('ToolbarButton', jToolbarC,[],[], {IconLoader.ICON_SEEG_SPHERE_MINUS, TB_DIM}, 'Remove SEEG contacts', @(h,ev)bst_call(@RemoveContact));
 
     % ===== PANEL MAIN =====
     jPanelMain = gui_component('Panel');
@@ -90,7 +98,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jButtonGroupCoord = ButtonGroup();
                 jRadioScs   = gui_component('radio', jPanelModelCoord, 'br', 'SCS ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('SCS'));
                 jRadioScs.setSelected(1);
-                jRadioMri   = gui_component('radio', jPanelModelCoord, '',   'MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
+                jRadioMri   = gui_component('radio', jPanelModelCoord, '', 'Def. MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
                 jRadioWorld = gui_component('radio', jPanelModelCoord, '', 'World ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('World'));
                 jRadioMni   = gui_component('radio', jPanelModelCoord, '',   'MNI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MNI'));
                 jPanelElecList.add(jPanelModelCoord, BorderLayout.NORTH);
@@ -120,7 +128,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelScrollContList.setBorder([]);
 
                 jSplitEvt = JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jPanelScrollElecList, jPanelScrollContList);
-                jSplitEvt.setResizeWeight(0.2);
+                jSplitEvt.setResizeWeight(0.4);
                 jSplitEvt.setDividerSize(4);
                 jSplitEvt.setBorder([]);
                 jPanelElecList.add(jSplitEvt, BorderLayout.CENTER);
@@ -217,14 +225,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                            jPanelNew, ...
                            struct('jPanelMain',          jPanelMain, ...
                                   'jPanelElecList',      jPanelElecList, ...
-                                  'jToolbar',            jToolbar, ...
+                                  'jToolbarE',           jToolbarE, ...
+                                  'jToolbarC',           jToolbarC, ...
                                   'jPanelElecOptions',   jPanelElecOptions, ...
                                   'jButtonSelect',       jButtonSelect, ...
                                   'jButtonCentroid',     jButtonCentroid, ...
                                   'jButtonShow',         jButtonShow, ...
                                   'jRadioDispDepth',     jRadioDispDepth, ...
                                   'jRadioDispSphere',    jRadioDispSphere, ...
-                                  'jMenuContacts',       jMenuContacts, ...
+                                  'jMenuElectrodes',     jMenuElectrodes, ...
                                   'jListElec',           jListElec, ...
                                   'jListCont',           jListCont, ...
                                   'jRadioMri',           jRadioMri, ...
@@ -397,9 +406,10 @@ function UpdatePanel()
         return;
     end
     % Get current figure
-    [hFigall,~,iDSall] = bst_figures('GetCurrentFigure');
+    [hFigall, iFigall, iDSall] = bst_figures('GetCurrentFigure');
     if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 1);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
         ctrl.jButtonCentroid.setEnabled(0);
@@ -416,7 +426,8 @@ function UpdatePanel()
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbar], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -554,6 +565,7 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
         sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        % Get default MRI for Subject
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
         sMri = bst_memory('LoadMri', MriFile);
         contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), [sContacts.Loc]') * 1000;
@@ -810,8 +822,10 @@ function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     if isempty(hFig) || isempty(sSelContacts)
         return
     end
-    % Update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
+    for ix = 1 : length(hFig)
+        % Update the cross-hair position on the MRI
+        figure_mri('SetLocation', 'scs', hFig(ix), [], [sSelContacts(end).Loc]);
+    end
 end
 
 %% ===== GET SELECTED ELECTRODES =====
@@ -980,37 +994,49 @@ function SetSelectedContacts(iSelCont)
     SetMriCrosshair(sContacts);
 end
 
-%% ===== SHOW CONTACTS MENU =====
-function ShowContactsMenu(jButton)
+
+%% ===== SHOW ELECTRODES MENU =====
+function ShowElectrodesMenu(jButton)
+    global GlobalData
     import java.awt.event.KeyEvent;
     import javax.swing.KeyStroke;
     import org.brainstorm.icon.*;
     % Create popup menu
     jMenu = java_create('javax.swing.JPopupMenu');
     % Get selected electrode
-    [sSelElec, iSelElec, iDS, iFig] = GetSelectedElectrodes();
-    if isempty(iSelElec)
-        java_dialog('warning', 'No electrode selected.', 'Align contacts');
-        return
-    end
-    % Menu: Add/Remove contacts
-    if strcmpi(sSelElec(end).Type, 'SEEG')
-        jItem = gui_component('MenuItem', jMenu, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)bst_call(@AddContact));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
-        jItem = gui_component('MenuItem', jMenu, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)bst_call(@RemoveContact));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
-        jMenu.addSeparator();
-    end
-    % Menu: Default positions
-    gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
-    % Menu: Export select atlas
-    if strcmpi(sSelElec(1).Type, 'ECOG')
-        gui_component('MenuItem', jMenu, [], 'Project on inner skull', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'innerskull'));
-        gui_component('MenuItem', jMenu, [], 'Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
+    [sSelElec, ~, iDS, iFig] = GetSelectedElectrodes();
+    % Menu: Default positions for selected electrodes
+    iItemProjDeflt = gui_component('MenuItem', jMenu, [], 'Use default positions', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'default'));
+    % ECOG Project contacts from selected electrodes
+    jMenu.addSeparator();
+    jItemProjEcog1 = gui_component('MenuItem', jMenu, [], '(ECOG) Project on inner skull', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'innerskull'));
+    jItemProjEcog2 = gui_component('MenuItem', jMenu, [], '(ECOG) Project on cortex',      IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@ProjectContacts, iDS(1), iFig(1), 'cortexmask'));
+    % SEEG Project contacts from selected electrodes
+    jMenu.addSeparator();
+    jItemProjSeeg1 = gui_component('MenuItem', jMenu, [], '(SEEG) Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
+    jItemProjSeeg2 = gui_component('MenuItem', jMenu, [], '(SEEG) Show/Hide line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
+    if isempty(sSelElec)
+        iItemProjDeflt.setEnabled(0);
+        jItemProjEcog1.setEnabled(0);
+        jItemProjEcog2.setEnabled(0);
+        jItemProjSeeg1.setEnabled(0);
+        jItemProjSeeg2.setEnabled(0);
+    elseif strcmpi(sSelElec(1).Type, 'ECOG')
+        jItemProjSeeg1.setEnabled(0);
+        jItemProjSeeg2.setEnabled(0);
     elseif strcmpi(sSelElec(1).Type, 'SEEG')
-        gui_component('MenuItem', jMenu, [], 'Project on electrode', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'project'));
-        gui_component('MenuItem', jMenu, [], 'Show/Hide line fit through contacts', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@AlignContacts, iDS, iFig, 'lineFit'));
+        jItemProjEcog1.setEnabled(0);
+        jItemProjEcog2.setEnabled(0);
     end
+    % Menu: Auto localization
+    jMenu.addSeparator();
+    % Menu: Auto (Automatic contact localization)
+    jMenuAuto = gui_component('Menu', jMenu, [], 'Automatic localization', IconLoader.ICON_CHANNEL_LABEL);
+        % GARDEL
+        jItemGardel = gui_component('MenuItem', jMenuAuto, [], 'GARDEL', IconLoader.ICON_ALLCOMP, 'GARDEL: automatic contact localization', @(h,ev)bst_call(@SeegAutoContactLocalize, 'Gardel'));
+        if ~strcmpi(GlobalData.DataSet(iDS(1)).Figure(iFig(1)).Id.Modality, 'SEEG')
+            jItemGardel.setEnabled(0);
+        end
     % Menu: Save modifications
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS(1)));
@@ -1021,7 +1047,6 @@ function ShowContactsMenu(jButton)
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
-
 
 
 %% ===== GET COLOR TABLE =====
@@ -2401,19 +2426,27 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         iGroupChan = iGroupChan(I);
         % Default color
         iColor = mod(iGroup-1, length(ColorTable)) + 1;
-        newElec.Color = ColorTable(iColor,:);
+        if isempty(newElec.Color)
+            newElec.Color = ColorTable(iColor,:);
+        end
         % Try to get positions of the electrode: 2 contacts minimum with positions
         if strcmpi(Modality, 'SEEG') && (length(iGroupChan) >= 2) && all(cellfun(@(c)and(size(c,2) == 1, ~isequal(c,[0;0;0])), {ChannelMat.Channel(iMod(iGroupChan)).Loc}))
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
             % Get all channels locations for this electrode
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
             % Detect average spacing between adjacent contacts (precision: 0.000001)
-            newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
-            
+            contactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
+            contactSpacing = bst_round(contactSpacing, 6);
+            if isempty(newElec.ContactSpacing)
+                newElec.ContactSpacing = contactSpacing;
+            end
+
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
@@ -2428,11 +2461,13 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLocFix = sum(bst_bsxfun(@times, W, orient), 2);
             ElecLocFix = bst_bsxfun(@times, ElecLocFix, orient);
             ElecLocFix = bst_bsxfun(@plus, ElecLocFix, M);
-
-            % Set tip: Compute the position of the first contact
-            newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * newElec.ContactSpacing * orient)';
-            % Set entry point: last contact is good enough
-            newElec.Loc(:,2) = ElecLocFix(end,:)';
+            % Set tip and entry if required
+            if isempty(newElec.Loc) || (size(newElec.Loc, 1) ~=3 && size(newElec.Loc, 2) ~=newElec.ContactNumber)
+                % Set tip: Compute the position of the first contact
+                newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * contactSpacing * orient)';
+                % Set entry point: last contact is good enough
+                newElec.Loc(:,2) = ElecLocFix(end,:)';
+            end
 
             % Duplicate to set orientation and fixed position for all the channels of the strip
             ChanOrient(iMod(iGroupChan),:) = repmat(orient, length(iGroupChan), 1);
@@ -2440,15 +2475,20 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         % SEEG with no locations
         elseif strcmpi(Modality, 'SEEG')
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
         elseif strcmpi(Modality, 'ECOG')
-            % Guess format of the ECOG device
-            switch (length(iGroupChan))
-                case 12,   newElec.ContactNumber = [6, 2];
-                case 16,   newElec.ContactNumber = [8, 2];
-                case 32,   newElec.ContactNumber = [8, 4];
-                case 64,   newElec.ContactNumber = [8, 8];
-                otherwise, newElec.ContactNumber = length(iGroupChan);
+            if isempty(newElec.ContactNumber) || prod(newElec.ContactNumber) ~= length(iGroupChan)
+                % Guess format of the ECOG device
+                switch (length(iGroupChan))
+                    case 12,   newElec.ContactNumber = [6, 2];
+                    case 16,   newElec.ContactNumber = [8, 2];
+                    case 32,   newElec.ContactNumber = [8, 4];
+                    case 64,   newElec.ContactNumber = [8, 8];
+                    otherwise, newElec.ContactNumber = length(iGroupChan);
+                end
             end
         end
         % Add to existing list of electrodes
@@ -2456,6 +2496,115 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
     end
 end
 
+
+%% ===== SEEG: AUTOMATIC CONTACT LOCALIZATION =====
+function SeegAutoContactLocalize(Method)
+    global GlobalData
+    % Parse input
+    if nargin < 1 || isempty(Method)
+        % Set GARDEL as default method
+        Method = 'Gardel';
+    end
+    % Get all electrodes
+    [sAllElec, iDS, iFig] = GetElectrodes();
+    if isempty(iDS)
+        return;
+    end
+    % Proceed only if this is an implantation folder
+    if ~isImplantationFolder(iDS)
+        return;
+    end
+    % Get subject
+    sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+
+    switch lower(Method)
+        case 'gardel'
+            % Initialize GARDEL
+            isInstalled = bst_plugin('Install', 'gardel');
+            if ~isInstalled
+                bst_progress('stop');
+                return;
+            end
+            % Add disclaimer to users that 'Auto -> GARDEL' feature maybe subject to inaccuracies
+            if ~java_dialog('confirm', ['<HTML><B>Gardel:</B> This method may be subject to inaccuracies due to <BR>' ...
+                                        'image resolution, anatomical variations, and registration errors. <BR>' ...
+                                        'Please verify the results carefully. <BR><BR>' ...
+                                        'This will also reset any previous implantations present.<BR><BR>' ...
+                                        'Do you want to continue?'], 'Auto detect SEEG electrodes')
+                return;
+            end
+            % Reset implantation by removing the electrodes
+            if ~isempty(sAllElec)
+                RemoveElectrode(sAllElec);
+            end
+            % Get updated channel data
+            Channels = GlobalData.DataSet(iDS).Channel;
+            % Get CT file and IsoValue
+            iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}), 1);
+            if isempty(iIsoSrf)
+                return;
+            end
+            [CtFile, isoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrf).FileName);
+            if isempty(isoValue) || isempty(CtFile)
+                return;
+            end
+            % Call GARDEL automatic localization pipeline
+            bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
+            bst_plugin('SetProgressLogo', 'gardel');
+            sCt = bst_memory('LoadMri', CtFile);
+            sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
+            elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
+            % Generate a list of electrode labels based on the number of electrodes detected
+            elecNames = GenerateElecLabels(size(elecDetected, 1));
+
+            % Loop through detected electrodes
+            for iElec = 1:size(elecDetected, 1)
+                % Show progress
+                progressPrc = round(100 .* iElec ./ size(elecDetected, 1));
+                bst_progress('set', progressPrc);
+                % Transform contact coordinates: VOXEL => SCS
+                contactLocsScs = cs_convert(sCt, 'voxel', 'scs', elecDetected{iElec});
+                % Sort contacts (distance from SCS origin)
+                contactLocsScs = SortContactLocs(contactLocsScs');
+                % Add electrode assigning a name to it
+                AddElectrode(elecNames{iElec});
+                % Get selected electrode structure
+                [sSelElec, iSelElec] = GetSelectedElectrodes();
+                % Default model and contact spacing
+                sSelElec.Model = '';
+                sSelElec.ContactSpacing = [];
+                % Set electrode contacts
+                sSelElec.ContactNumber = size(contactLocsScs, 2);
+                sSelElec.Loc(:, 1) = contactLocsScs(:, 1);   % Tip
+                sSelElec.Loc(:, 2) = contactLocsScs(:, end); % Skull entry
+                % Update electrode properties
+                SetElectrodes(iSelElec, sSelElec);
+                % Update channel data
+                sChannel = db_template('channeldesc');
+                sChannel.Type = 'SEEG';
+                sChannel.Group = sSelElec.Name;
+                iChan = [];
+                for i = 1:sSelElec.ContactNumber
+                    sChannel.Name = sprintf('%s%d', sSelElec.Name, i);
+                    sChannel.Loc = contactLocsScs(:, i);
+                    Channels(end+1) = sChannel;
+                    iChan(end+1) = length(Channels);
+                end
+                for i = 1:length(iDS)
+                    GlobalData.DataSet(iDS(i)).Channel = Channels;
+                    GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels = [GlobalData.DataSet(iDS(i)).Figure(iFig(i)).SelectedChannels, iChan];
+                end
+                % Update figures
+                UpdateFigures();
+            end
+
+        otherwise
+            bst_error(['Invalid method: ' Method], 'Auto localize SEEG contacts');
+            return;
+    end
+    % Stop process box
+    bst_progress('stop');
+end
     
                               
 %% =================================================================================
@@ -3662,8 +3811,12 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
     end
 
-    % If MRI Viewer is open don't open another one
-    hFig = bst_figures('GetFiguresByType', 'MriViewer');
+    % If MRI Viewer with requested MRI is open don't open another one
+    if length(MriFiles) == 1
+        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, [], 'MriViewer', '');
+    else
+        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, MriFiles{2}, 'MriViewer', '');
+    end
     if ~isempty(hFig)
         return
     end
@@ -3751,4 +3904,30 @@ function isImplantation = isImplantationFolder(iDS)
     [~, folderName] = bst_fileparts(bst_fileparts(GlobalData.DataSet(iDS(1)).ChannelFile));
     % Check if folder name starts with 'implantation'
     isImplantation = strncmpi(folderName, 'implantation', 12);
+end
+
+%% ===== GENERATE ELECTRODE LABELS (FOR AUTOMATIC ELECTRODE LABELING) =====
+% Generate 'maxLabelCount' labels in the order: A, B, C, ... Z, AA, AB, AC, ...
+function elecLabels = GenerateElecLabels(maxLabelCount)
+    elecLabels = cell(1, maxLabelCount);
+    for labelNum = 1:maxLabelCount
+        elecLabels{labelNum} = NumToText(labelNum);
+    end
+end
+
+% Helper function for the recursive generation of names
+% Converts a positive integer 'labelNum' to text 'labelText'
+% e.g. 1 -> 'A', ..., 26 -> 'Z', 27 -> 'AA', 28 -> 'AB', ...
+function labelText = NumToText(labelNum)
+    nChars = 26; % 'A' to 'Z'
+    if labelNum <= nChars
+        % Base case: a single letter.
+        labelText = char('A' + labelNum - 1);
+    else
+        % Recursively generate multi-letter labels
+        labelNum  = labelNum - 1;
+        remainder = mod(labelNum, nChars);
+        quotient  = floor(labelNum / nChars);
+        labelText = [NumToText(quotient) char('A' + remainder)];
+    end
 end

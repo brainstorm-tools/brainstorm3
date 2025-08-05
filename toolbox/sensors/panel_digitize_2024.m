@@ -85,10 +85,21 @@ function Start(varargin)
     Digitize.Type = DigitizerType;
     switch DigitizerType
         case 'Digitize'
-            % Do nothing
+            % Warning for Simulation mode
+            if Digitize.Options.isSimulate
+                options_dialog = {'Yes', 'No'};
+                res = java_dialog('question', ...
+                    ['<HTML>Simulation mode is <B>ON</B><BR>', ...
+                    'All incoming data is <B>simulated</B> and <B>not</B> from the actual digitizer device. <BR><BR>' ...
+                    'Do you want to turn <B>OFF</B> the Simulation mode?</HTML>'], 'Digitizer', [], ...
+                    options_dialog, options_dialog{2});
+                if strcmpi(res, options_dialog{1})
+                    SetSimulate(0);
+                    bst_call(@panel_digitize_2024, 'Start');
+                end
+            end
         case '3DScanner'
-            % Simulate
-            SetSimulate(1);
+            % Do nothing
         otherwise
             bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
             return
@@ -1517,8 +1528,8 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     % Get controls
     ctrl = bst_get('PanelControls', 'Digitize');
     
-    % Simulate: Generate random points
-    if Digitize.Options.isSimulate
+    % Simulate or 3DScanner: Do not read serial connection
+    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         % Increment current point index
         Digitize.iPoint = Digitize.iPoint + 1;
         if Digitize.iPoint > numel(Digitize.Points)
@@ -1541,6 +1552,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
                 end
             end
         else
+            % Generate random points
             Digitize.Points(Digitize.iPoint).Loc = rand(1,3) * .15 - .075;
         end
 

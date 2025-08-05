@@ -160,6 +160,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         return;
     end
 
+    % Original events, 'events' structure may be modified to allow merge
+    eventsOrg = events;
     % Inialize new event group
     newEvent = events(iEvents(1));
     newEvent.label      = NewName;
@@ -183,7 +185,7 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         % Expand empty notes if needed
         for ie = 1 : length(iEvents)
             if isempty(events(iEvents(ie)).notes)
-                events(iEvents(ie)).notes = cell(1, size(events(iEvents(ie)).notes, 2));
+                events(iEvents(ie)).notes = cell(1, size(events(iEvents(ie)).times, 2));
             end
         end
         newEvent.notes = [events(iEvents).notes];
@@ -194,7 +196,7 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         % Expand empty reactTimes if needed
         for ie = 1 : length(iEvents)
             if isempty(events(iEvents(ie)).reactTimes)
-                events(iEvents(ie)).reactTimes = zeros(1, size(events(iEvents(ie)).reactTimes, 2));
+                events(iEvents(ie)).reactTimes = zeros(1, size(events(iEvents(ie)).times, 2));
             end
         end
         newEvent.reactTimes = [events(iEvents).reactTimes];
@@ -229,7 +231,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end
-    
+    % Return events to its original state
+    events = eventsOrg;
     % Remove merged events
     if isDelete
         events(iEvents) = [];
