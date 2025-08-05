@@ -302,12 +302,12 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     continue;
                 end
 
-                % TEMPORARY HACK: we've only coregistered the first session for each subject so far.
+                % TODO, TEMPORARY HACK: we've only coregistered the first session for each subject so far.
                 % Skip other sessions.
-                if iChan > 1 % implies not first session here
-                    % Skipping other sessions.
-                    break;
-                end
+                % if iChan > 1 % implies not first session here
+                %     % Skipping other sessions.
+                %     break;
+                % end
 
                 % New json, store SCS>Native transformation to compare with next channel files in this session.
                 ChanNativeTransf = [ChannelMat.Native.R, ChannelMat.Native.T];
