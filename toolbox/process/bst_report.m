@@ -722,6 +722,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         % Set figure size
         if ~isempty(winPos)
             set(hFig(i), 'Position', winPos);
+            pause(0.2);
         end
         % Redraw figure
         figure(hFig(i));
