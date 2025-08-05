@@ -30,13 +30,15 @@ function varargout = bst_report( varargin )
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
-%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
+%         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectimage', ConnectNFile, Comment, Time=start, Freq=0);
 %         bst_report('Snapshot', 'connectgraph', ConnectNFile, Comment, Threshold, Time=start, Freq=0);
-%         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
+%         bst_report('Snapshot', jFrame,         AnyFile,      Comment, WinPos=[200,200,400,250])
+%         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
 %
 % NOTES: 
 %    - sProcess can be replaced by the name of the process function
@@ -163,6 +165,7 @@ end
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectimage', ConnectFile,  Comment, Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectgraph', ConnectFile,  Comment, Threshold=0, Time=start, Freq=0)
+%         bst_report('Snapshot', jFrame,         AnyFile,      Comment, WinPos=[200,200,400,250])
 %         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
 %
 % Optional output img is a cell array of cell arrays with image(s) data for each FileName
@@ -201,8 +204,8 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Hide brainstorm window
     if bst_get('isGUI')
-        jFrame = bst_get('BstFrame');
-        jFrame.setVisible(0);
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(0);
     end
     % Hide progress bar
     isProgress = bst_progress('isVisible');
@@ -214,12 +217,15 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     imgLegend = {};
     % If the first argument is a figure handle
     if ~ischar(SnapType)
-        if all(ishandle(SnapType))
+        if all(isgraphics(SnapType))
             hFig = SnapType;
             SnapType = 'figure';
             if (length(varargin) >= 1)
                 winPos = varargin{1};
             end
+        elseif isa(SnapType, 'javax.swing.JFrame') || all(arrayfun(@(x) isa(x, 'javax.swing.JFrame'), SnapType))
+            jFrame = SnapType;
+            SnapType = 'jframe';
         else
             return;
         end
@@ -676,9 +682,29 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
                 if ~isempty(Orient)
                     figure_3d('SetStandardView', hFig, Orient);
                 end
-                
+
+            case 'jframe'
+                for i = 1 : length(jFrame)
+                    % Get as image from jFrame
+                    jFrame(i).setVisible(1);
+                    jFrame(i).setExtendedState(0);  % Restore if minimized (0 = NORMAL)
+                    jFrame(i).toFront();
+                    jFrame(i).setAlwaysOnTop(true);
+                    pause(0.2);
+                    % Java coordinates: [left top width height]
+                    javaPosition = [jFrame(i).getLocation().getX(), jFrame(i).getLocation().getY(), ...
+                                    jFrame(i).getSize().getWidth(), jFrame(i).getSize().getHeight()];
+                    % Matlab coordinates [left bottom width height]
+                    matlabPosition = javaPosition;
+                    screenSize = get(0,'ScreenSize'); % screen_height = screenSize(4)
+                    matlabPosition(2) = screenSize(4) - (javaPosition(2) + javaPosition(4));
+                    [imgs{i}, ~] = getscreen(matlabPosition);
+                end
+                hFig = [];
+
             case 'figure'
                 % Nothing to do
+
             otherwise
                 hFig = [];
         end
@@ -690,9 +716,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         Error('process_snapshot', ['"' SnapType '" "' FileName '"'], strErr);
         hFig = [];
     end
-    % Output images
-    imgs = cell(1, length(hFig));
-    % If a figure was created
+    % Get images from figures
     for i = 1:length(hFig)
         drawnow;
         % Set figure size
@@ -708,16 +732,16 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         else
             img = out_figure_image(hFig(i));
         end
-        % Add image to report
-        Add('image', Comment, FileName, img);
-        % Append images (only if requested)
-        if nargout > 0
-            imgs{i} = img;
-        end
+        % Append images
+        imgs{i} = img;
         % Close figure
         if ~strcmpi(SnapType, 'figure')
             close(hFig(i));
         end
+    end
+    % Add images to report
+    for i = 1:length(imgs)
+        Add('image', Comment, FileName, imgs{i});
     end
     % Restore scouts
     if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
@@ -725,7 +749,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Restore Brainstorm window
     if bst_get('isGUI')
-        jFrame.setVisible(1);
+        jBstFrame.setVisible(1);
     end
     % Restore progress bar
     if isProgress
