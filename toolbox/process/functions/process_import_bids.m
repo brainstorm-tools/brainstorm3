@@ -473,7 +473,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 end
                 OPTIONS.nVertices = str2double(OPTIONS.nVertices);
             end
-            % If there are fiducials define: record these, to use them when importing FreeSurfer (or other) segmentations
+            % If there are fiducials defined: record these, to use them when importing FreeSurfer (or other) segmentations
             if ~isempty(SubjectFidMriFile{iSubj})
                 sMriFid = in_mri(SubjectFidMriFile{iSubj}, 'ALL', 0);
             else
@@ -533,7 +533,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         errorMsg = [errorMsg, 10, errMsg];
                     end
                     % Generate head surface
-                    tess_isohead(iSubject, 10000, 0, 2);
+                    tess_isohead(iSubject, 15000, 0, 0);
                 else
                     MrisToRegister{end+1} = BstMriFile;
                 end
@@ -751,6 +751,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                             if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                                % Quick bug fix: Only check first file for now if array
+                                if iscell(sCoordsystem.IntendedFor)
+                                    sCoordsystem.IntendedFor = sCoordsystem.IntendedFor{1};
+                                end
                                 if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
                                     % Check whether the IntendedFor files is already imported as a volume
                                     if ~isempty(MriMatchOrigImport)

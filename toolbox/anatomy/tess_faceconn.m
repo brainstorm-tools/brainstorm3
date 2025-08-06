@@ -1,12 +1,15 @@
-function [VertFacesConn, FaceConn] = tess_faceconn(Faces)
+function [VertFacesConn, FaceConn] = tess_faceconn(Faces, nVert)
 % TESS_FACECONN: Computes faces connectivity.
 %
-% USAGE:  [VertFacesConn, FaceConn] = tess_faceconn(Faces);
+% USAGE:  [VertFacesConn, FaceConn] = tess_faceconn(Faces, nVert=1);
 % 
 % INPUT:
 %     - Faces    : Nx3 double matrix
+%     - nVert    : Number of vertices that a pair of faces need to share to be considered connected.
+%                  nVert=1 by default, but for finding only edge-adjacent faces, use 2.
 % OUTPUT:
-%     - FacesConn : sparse matrix [nVertices x nFaces]
+%     - VertFacesConn : sparse matrix [nVertices x nFaces]
+%     - FacesConn     : sparse matrix [nFaces x nFaces]
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,6 +31,11 @@ function [VertFacesConn, FaceConn] = tess_faceconn(Faces)
 %
 % Authors: Anand Joshi, Dimitrios Pantazis, November 2007
 %          Francois Tadel, 2008-2010
+%          Marc Lalancette, 2025
+
+if nargin < 2 || isempty(nVert)
+    nVert = 1;
+end
 
 % Check matrices orientation
 if (size(Faces, 2) ~= 3)
@@ -43,7 +51,7 @@ VertFacesConn = sparse(rowno,colno,data);
 
 % Build FacesConn
 if (nargout > 1)
-    FaceConn = (VertFacesConn' * VertFacesConn) > 0;
+    FaceConn = (VertFacesConn' * VertFacesConn) >= nVert;
 end
 
 
