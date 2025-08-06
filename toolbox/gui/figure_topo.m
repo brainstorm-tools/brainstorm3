@@ -922,12 +922,44 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     LabelRows = {};
     LabelRowsRef = [];
     plotSize = [];
-    % SEEG/ECOG: DO no use real positions
+    % SEEG/ECOG: Do no use real positions, create a 2D grid to place time-series (or spectra)
     if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
+        % Positions are [row X, col Y], both negative, so they are in the [-X,-Y] quadrant
         [X, Y, LabelRows, LabelRowsRef] = GetSeeg2DPositions(Channel, GlobalData.DataSet(iDS).IntraElectrodes);
-        maxX = max(abs(X));
-        maxY = max(abs(Y));
-        plotSize = [0.8/maxX, 0.8/maxY];
+        % Translate 2D positions to [+X,+Y] quadrant
+        X = (X - min(X) + 1); % Vertical  positions in grid
+        Y = (Y - min(Y) + 1); % Horizonal positions in grid
+        maxX = max(X);        % Rows
+        maxY = max(Y);        % Columns
+
+        % Compute plot size, and their XY location (center or plot)
+        useSpace = [0.9, 0.9]; % Plots use only 90% of plot (5% of space for UDLR margins)
+        % |--- A ---|-B-|--- A ---|-B-|...|--- A ---| = 90 %
+        % |----- C -----|----- C -----|...|-- C-B --|
+        % A = plotSize
+        % B = plotGapFrc * plotSize
+        % C = plotStep = plotSize * (1+plotGapFrc)
+        plotGapFrc = [0.2, 0.2];  % Gap = 20% of plot size in both directions
+        % Normalized plotSize
+        plotSize = useSpace ./ [((1 + plotGapFrc(1)) * maxX - plotGapFrc(1)), ...
+                                ((1 + plotGapFrc(2)) * maxY - plotGapFrc(2))];
+        % Plot step: separation between same corner in consequitive plots
+        plotStep = plotSize .* (1 + plotGapFrc);
+        % Positions to normalized locations
+        % |--- A ---|-B-|--- A ---|-B-|...|--- A ---|       = 90%
+        % |----- C -----|----- C -----|...|----- C -----|   = nElements*(1.2*A)
+        X = X * plotStep(1);
+        Y = Y * plotStep(2);
+        % Remove plotGap and halfPlot, so coordinates represent the center of plot
+        % |--- A ---|-B-|--- A ---|-B-|...|--- A ---|       = 90%
+        % |----- C -----|----- C -----|...|----- C -----|   = nElements*(1.2*A)
+        % |--- ^ ---|-B-|--- ^ ---|-B-|...|--- ^ ---|       = 90% (^ means center of A)
+        X = X - 0.5*plotSize(1) - plotGapFrc(1)*plotSize(1);
+        Y = Y - 0.5*plotSize(2) - plotGapFrc(2)*plotSize(2);
+        % Add offsets for margins
+        % |-5%-|--- ^ ---|-B-|--- ^ ---|-B-|...|--- ^ ---|-5%-| = 100%
+        X = X + (1-useSpace(1)) / 2;
+        Y = Y + (1-useSpace(2)) / 2;
     % 2D Projection
     elseif all(Vertices(:,3) < 0.0001)
         X = Vertices(:,1);
@@ -948,10 +980,11 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         else
             plotSize = [0.05, 0.05];
         end
+        % Normalize positions between 0 and 1
+        X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;
+        Y = (Y - min(Y)) ./ (max(Y) - min(Y)) .* (1-plotSize(2)*2) + plotSize(2);
     end
-    % Normalize positions between 0 and 1
-    X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;
-    Y = (Y - min(Y)) ./ (max(Y) - min(Y)) .* (1-plotSize(2)*2) + plotSize(2);
+
     % Get display factor
     DispFactor = PlotHandles.DisplayFactor; % * figure_timeseries('GetDefaultFactor', GlobalData.DataSet(iDS).Figure(iFig).Id.Modality);
     
