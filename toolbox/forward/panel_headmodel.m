@@ -131,13 +131,14 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     % === NIRS ===
     if isNirs
         % Checkbox
-        jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ');
+        jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ', [], [], @UpdateComment);
         jCheckMethodNIRS.setSelected(0);
-        jCheckMethodNIRS.setEnabled(0)
-        % Label
-        gui_component('Label', jPanelMethod, 'tab hfill', ['<HTML><FONT color="#777777">To compute head model for NIRS, use process:<BR>' ...
-                                                           'NIRS > Sources > Compute head model from fluence<BR>' ...
-                                                           '(NIRSTORM plugin is required)']);
+         % Combobox
+        jComboMethodNIRS = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
+        jComboMethodNIRS.addItem(BstListItem('import', '', 'Import from MCXlab', []));
+    else
+        jCheckMethodNIRS = [];
+        jComboMethodNIRS = [];
     end
     % Attach sub panel to NewPanel
     jPanelNew.add('br hfill', jPanelMethod);
@@ -163,8 +164,10 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
                   'jCheckMethodECOG',    jCheckMethodECOG, ...
                   'jComboMethodECOG',    jComboMethodECOG, ...
                   'jCheckMethodSEEG',    jCheckMethodSEEG, ...
-                  'jComboMethodSEEG',    jComboMethodSEEG ...
-                 );
+                  'jComboMethodSEEG',    jComboMethodSEEG, ...
+                  'jCheckMethodNIRS',    jCheckMethodNIRS, ...
+                  'jComboMethodNIRS',    jComboMethodNIRS);
+
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
 
@@ -197,6 +200,8 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         isEegSel  = isEeg && jCheckMethodEEG.isSelected();
         isEcogSel = isEcog && jCheckMethodECOG.isSelected();
         isSeegSel = isSeeg && jCheckMethodSEEG.isSelected();
+        isNirsSel = isNirs && jCheckMethodNIRS.isSelected();
+
         % MEG/EEG Combobox
         if isMeg
             jComboMethodMEG.setEnabled(isMegSel);
@@ -210,6 +215,10 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         if isSeeg
             jComboMethodSEEG.setEnabled(isSeegSel);
         end
+        if isNirs
+            jComboMethodNIRS.setEnabled(isNirsSel);
+        end
+
         % Get current methods for EEG and MEG
         allMethods = {};
         if isMegSel
@@ -223,6 +232,9 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         end
         if isSeegSel
             allMethods{end+1} = char(jComboMethodSEEG.getSelectedItem.getName());
+        end
+        if isNirsSel
+            allMethods{end+1} = char(jComboMethodNIRS.getSelectedItem.getName());
         end
         allMethods = unique(allMethods);
         allMethods(cellfun(@isempty,allMethods)) = [];
@@ -291,6 +303,16 @@ function s = GetPanelContents() %#ok<DEFNU>
     else
         s.SEEGMethod = '';
     end
+    if ~isempty(ctrl.jCheckMethodSEEG) && ctrl.jCheckMethodSEEG.isSelected()
+        s.SEEGMethod = char(ctrl.jComboMethodSEEG.getSelectedItem.getType());
+    else
+        s.SEEGMethod = '';
+    end
+    if ~isempty(ctrl.jCheckMethodNIRS) && ctrl.jCheckMethodNIRS.isSelected()
+        s.NIRSMethod = char(ctrl.jComboMethodNIRS.getSelectedItem.getType());
+    else
+        s.NIRSMethod = '';
+    end
     s.SaveFile = 1;
 end
 
@@ -338,6 +360,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     isEeg = 0;
     isEcog = 0;
     isSeeg = 0;
+    isNirs = 0;
     for i = 1:length(sStudies)
         if ~isempty(sStudies(i).Channel)
             isMeg  = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'MEG'));
@@ -348,12 +371,8 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     % Check that at least one modality is available
-    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
-        if isNirs
-            errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
-        else
-            errMessage = 'No valid sensor types to estimate a head model.';
-        end
+    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg && ~isNirs
+        errMessage = 'No valid sensor types to estimate a head model.';
         return;
     end
     % Check if the first subject has a "Source model" atlas
@@ -389,6 +408,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     end
     if ~isSeeg || ~isfield(sMethod, 'SEEGMethod')
         sMethod.SEEGMethod = '';
+    end
+    if ~isNirs || ~isfield(sMethod, 'NIRSMethod')
+        sMethod.NIRSMethod = '';
     end
     % List all methods
     allMethods = unique({sMethod.MEGMethod, sMethod.EEGMethod, sMethod.ECOGMethod, sMethod.SEEGMethod});
@@ -467,6 +489,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
         OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
         OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
+        OPTIONS.iNirs = good_channel(OPTIONS.Channel, [], 'NIRS');
 
         % ===== BEST FITTING SPHERE =====
         % BestFittingSphere : .HeadCenter, .Radii, .Conductivity
@@ -721,6 +744,8 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             newHeadModel.EEGMethod     = OPTIONS.EEGMethod;
             newHeadModel.ECOGMethod    = OPTIONS.ECOGMethod;
             newHeadModel.SEEGMethod    = OPTIONS.SEEGMethod;
+            newHeadModel.NIRSMethod    = OPTIONS.NIRSMethod;
+
             % Update Study structure
             iHeadModel = length(sStudy.HeadModel) + 1;
             sStudy.HeadModel(iHeadModel) = newHeadModel;
