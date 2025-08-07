@@ -922,6 +922,9 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     LabelRows = {};
     LabelRowsRef = [];
     plotSize = [];
+    % Plots use only 90% of plot (thus 5% of space for UDLR margins)
+    useSpace = [0.9, 0.9];
+    % Compute size of plots, and their XY location (center of plot)
     % SEEG/ECOG: Do no use real positions, create a 2D grid to place time-series (or spectra)
     if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
         % Positions are [row X, col Y], both negative, so they are in the [-X,-Y] quadrant
@@ -932,8 +935,6 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         maxX = max(X);        % Rows
         maxY = max(Y);        % Columns
 
-        % Compute plot size, and their XY location (center or plot)
-        useSpace = [0.9, 0.9]; % Plots use only 90% of plot (5% of space for UDLR margins)
         % |--- A ---|-B-|--- A ---|-B-|...|--- A ---| = 90 %
         % |----- C -----|----- C -----|...|-- C-B --|
         % A = plotSize
@@ -968,21 +969,28 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     else
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
     end
-    % Zoom factor: size of each signal depends on the number of signals
+    % Zoom factor: size of each signal depends on minimum distance between plots
     if isempty(plotSize)
-        if strcmpi(Channel(selChan(1)).Type, 'NIRS')
-            nPlots = length(selChan) ./ length(unique({Channel(selChan).Group}));
-        else
-            nPlots = length(selChan);
-        end
-        if (nPlots < 60)
-            plotSize = [0.05, 0.044] .* sqrt(120 ./ nPlots);
-        else
-            plotSize = [0.05, 0.05];
-        end
         % Normalize positions between 0 and 1
-        X = (X - min(X)) ./ (max(X) - min(X)) .* (1-plotSize(1))   + plotSize(1) ./ 2;
-        Y = (Y - min(Y)) ./ (max(Y) - min(Y)) .* (1-plotSize(2)*2) + plotSize(2);
+        X = (X - min(X)) ./ (max(X) - min(X));
+        Y = (Y - min(Y)) ./ (max(Y) - min(Y));
+        % Find practical plotSize: half of 15-percentile of distances between plot positions
+        GridPts = [X,Y];
+        GridPts = unique(GridPts, 'rows');
+        Tri = delaunayTriangulation(GridPts);
+        edges = Tri.edges;
+        edgesDists = sqrt(sum((GridPts(edges(:,1),:) - GridPts(edges(:,2), :)).^2, 2));
+        dist = bst_prctile(edgesDists, 15);
+        plotSize = 0.5 * dist * [1, 1];
+        % Normalize positions: positions range [o, 0.9 - plotSize]
+        X = X * (useSpace - plotSize(1));
+        Y = Y * (useSpace - plotSize(2));
+        % Add offset of half plot: positions range [plotSize/2 , 0.9-plotSize/2]
+        X = X + 0.5*plotSize(1);
+        Y = Y + 0.5*plotSize(2);
+        % Add offsets for margins: positions range [0.05+plotSize/2 , 0.95-plotSize/2]
+        X = X + (1-useSpace) / 2;
+        Y = Y + (1-useSpace) / 2;
     end
 
     % Get display factor
