@@ -1175,7 +1175,7 @@ function UpdateSurfaceProperties()
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
     if isIsoSurface
-        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        [~, isoValue, isoRange] = GetIsosurfaceParams(TessInfo(iSurface).SurfaceFile);
         ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);
@@ -2803,7 +2803,7 @@ function [IsoSrfFile, iIsoSrf] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRa
     iIsoSurfForThisCt = 0;
     iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
     for ix = 1 : length(iIsoSrfs)
-        ctFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
+        ctFileIso = GetIsosurfaceParams(sSubject.Surface(iIsoSrfs(ix)).FileName);
         if strcmp(ctFileIso, ctFile)
             iIsoSurfForThisCt = iIsoSrfs(ix);
         end
@@ -2817,7 +2817,7 @@ function [IsoSrfFile, iIsoSrf] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRa
         comment = sprintf('isoSurface (ISO_%d)', isoValue);
     else
         % Get old IsoValue
-        [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
+        [~, oldIsoValue] = GetIsosurfaceParams(sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Overwrite the updated fields, do not delete the file
         IsoSrfFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Force to be the newest isosurface
