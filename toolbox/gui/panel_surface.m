@@ -2796,7 +2796,7 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
 end
 
 %% ===== SAVE ISOSURFACE =====
-function [MeshFile, iSurface] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRange)
+function [IsoSrfFile, iIsoSrf] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRange)
     % Get subject
     [sSubject, iSubject] = bst_get('MriFile', ctFile);
     % Find tess_isosurface file computed using the same CT volume
@@ -2813,18 +2813,18 @@ function [MeshFile, iSurface] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRan
         % Create output filenames
         SurfaceDir = bst_fileparts(file_fullpath(ctFile));
         % Create IsoFile
-        MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+        IsoSrfFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
         comment = sprintf('isoSurface (ISO_%d)', isoValue);
     else
         % Get old IsoValue
         [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Overwrite the updated fields, do not delete the file
-        MeshFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
+        IsoSrfFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
         % Force to be the newest isosurface
         sSubject.Surface(iIsoSurfForThisCt) = [];
         bst_set('Subject', iSubject, sSubject);
         % Get Comment and update it
-        sIsoSrfTmp = load(MeshFile, 'Comment', 'History');
+        sIsoSrfTmp = load(IsoSrfFile, 'Comment', 'History');
         comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
     end
     % Set comment
@@ -2833,7 +2833,7 @@ function [MeshFile, iSurface] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRan
     sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
                         sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, isoValue, isoRange));
     % Save isosurface
-    bst_save(MeshFile, sIsoSrf, 'v7');
+    bst_save(IsoSrfFile, sIsoSrf, 'v7');
     % Add isosurface to database
-    iSurface = db_add_surface(iSubject, MeshFile, sIsoSrf.Comment);
+    iIsoSrf = db_add_surface(iSubject, IsoSrfFile, sIsoSrf.Comment);
 end
