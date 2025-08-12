@@ -453,6 +453,9 @@ function SliderCallback(hObject, event, target)
             TessInfo(iSurface).nFaces = size(Faces, 1);
             setappdata(hFig, 'Surface', TessInfo);
             SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
+            % Update vertices and faces values in panel
+            ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
+            ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
             SetIsoValue(newIsoValue);
             
         case 'DataAlpha'
