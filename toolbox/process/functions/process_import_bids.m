@@ -1351,9 +1351,8 @@ function [OutFile, Msg] = DecodeBidsUri(InFile, BidsDir)
             disp(['BIDS> Warning: ' Msg]);
         end
     end
-
-    % Note: BIDS uses forward slashes independently of OS. So use forward here to avoid mixing.
     % There should not be a slash after bids::, but check anyway.
-    OutFile = regexprep(InFile, 'bids:[^:]*:/?', [BidsDir '/']);
+    OutFile = regexprep(InFile, 'bids:[^:]*:/?', '');
+    OutFile = bst_fullfile(BidsDir, OutFile);
 end
     
