@@ -1344,8 +1344,12 @@ function [OutFile, Msg] = DecodeBidsUri(InFile, BidsDir)
     DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
     DatasetName = DatasetName{1};
     if ~isempty(DatasetName)
-        Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
-        disp(['BIDS> Warning: ' Msg]);
+        % Get BIDS dataset name from BIDS dir
+        [~, currentDatasetName] = bst_fileparts(BidsDir);
+        if ~strcmp(currentDatasetName, DatasetName)
+            Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
+            disp(['BIDS> Warning: ' Msg]);
+        end
     end
 
     % Note: BIDS uses forward slashes independently of OS. So use forward here to avoid mixing.
