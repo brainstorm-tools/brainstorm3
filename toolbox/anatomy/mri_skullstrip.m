@@ -223,7 +223,7 @@ if ~isempty(MriFileSrc)
     % Update subject structure
     bst_set('Subject', iSubject, sSubject);
     % Refresh tree
-    panel_protocols('UpdateNode', 'Subject', iSubject);
+    db_reload_subjects(iSubject);
     panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
     % Save database
     db_save();
