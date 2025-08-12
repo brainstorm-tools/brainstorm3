@@ -633,8 +633,8 @@ end
 function SetShowSulci(hFig, iSurfaces, status)
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
-    % If FEM tetrahedral mesh or Isosurface: always skip this call
-    if any(strcmpi({TessInfo(iSurfaces).Name}, 'FEM')) || any(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo(iSurfaces).SurfaceFile}))
+    % If FEM tetrahedral mesh: always skip this call
+    if any(strcmpi({TessInfo(iSurfaces).Name}, 'FEM'))
         return;
     end
     % Process all surfaces
