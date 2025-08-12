@@ -2649,8 +2649,8 @@ function SetSurfaceSmooth(hFig, iSurf, value, isSave)
     end
     % Get surface description
     TessInfo = getappdata(hFig, 'Surface');
-    % If FEM tetrahedral mesh, ignore this call
-    if strcmpi(TessInfo(iSurf).Name, 'FEM')
+    % If FEM tetrahedral mesh or Isosurface, ignore this call
+    if strcmpi(TessInfo(iSurf).Name, 'FEM') || ~isempty(regexp(TessInfo(iSurf).SurfaceFile, 'tess_isosurface', 'match'))
         return;
     end
     % Update surface smooth
