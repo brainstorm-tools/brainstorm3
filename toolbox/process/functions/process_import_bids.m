@@ -883,18 +883,17 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     if strcmp(fExt,'.snirf')
-                          ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
-                          ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
-                          ChanInfo(:,2)  = ChanInfo_tmp(:,2);
-                          ChanInfo(:,4)  = ChanInfo_tmp(:,6);
-                          for i = 1:size(ChanInfo,1)
-                             ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
-                             ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
-                          end   
-                     else    
-                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                        ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+                        ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
+                        ChanInfo(:,2)  = ChanInfo_tmp(:,2);
+                        ChanInfo(:,4)  = ChanInfo_tmp(:,6);
+                        for i = 1:size(ChanInfo,1)
+                            ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
+                            ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
+                        end
+                    else
+                        ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
                     end  
-
                     % Try to add info to the existing Brainstorm channel file
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
