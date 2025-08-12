@@ -94,7 +94,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             java_setcb(jSliderSurfAlpha, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfAlpha, jLabelSurfAlpha, 1));
 
             % Smooth title
-            gui_component('label', jPanelSurfaceOptions, 'br', 'Smooth:');
+            jLabelSurfSmoothTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Smooth:');
             % Smooth slider 
             jSliderSurfSmoothValue = JSlider(0, 100, 0);
             jSliderSurfSmoothValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
@@ -226,6 +226,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jSliderSurfAlpha',       jSliderSurfAlpha, ...
                                   'jLabelSurfAlpha',        jLabelSurfAlpha, ...
                                   'jButtonSurfColor',       jButtonSurfColor, ...
+                                  'jLabelSurfSmoothTitle',  jLabelSurfSmoothTitle, ...
                                   'jLabelSurfSmoothValue',  jLabelSurfSmoothValue, ...
                                   'jSliderSurfSmoothValue', jSliderSurfSmoothValue, ...
                                   'jLabelSurfIsoValueTitle',jLabelSurfIsoValueTitle, ...
@@ -441,14 +442,21 @@ function SliderCallback(hObject, event, target)
                 return;
             end
             % Get new isoValue from the slider
-            isoValue = jSlider.getValue();
-            % Remove the old IsoSurface, generate, and load the new one
-            RemoveSurface(hFig, iSurface);
-            bst_memory('UnloadSurface', isosurfFile);
+            newIsoValue = jSlider.getValue();
+            % Update the IsoSurface
             colorBak = TessInfo(iSurface).AnatomyColor;
-            tess_isosurface(ctFile, isoValue);
+            sCt = bst_memory('LoadMri', ctFile);
+            [Vertices, Faces] = tess_isosurface(sCt, newIsoValue);
+            TessInfo(iSurface).hPatch.Vertices = Vertices;
+            TessInfo(iSurface).hPatch.Faces = Faces;
+            TessInfo(iSurface).nVertices = size(Vertices, 1);
+            TessInfo(iSurface).nFaces = size(Faces, 1);
+            setappdata(hFig, 'Surface', TessInfo);
             SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
-            UpdatePanel();
+            % Update vertices and faces values in panel
+            ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
+            ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
+            SetIsoValue(newIsoValue);
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -545,6 +553,16 @@ function SetIsoValue(isoValue)
     end 
     ctrl.jLabelSurfIsoValue.setText(sprintf('%d', isoValue));
     ctrl.jSliderSurfIsoValue.setValue(isoValue);
+end
+
+%% ===== GET SLIDER ISOVALUE =====
+function isoValue = GetIsoValue()
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    if isempty(ctrl)
+        return;
+    end 
+    isoValue = ctrl.jSliderSurfIsoValue.getValue();
 end
 
 %% ===== SCROLL MRI CUTS =====
@@ -1153,21 +1171,27 @@ function UpdateSurfaceProperties()
     % Surface color
     surfColor = TessInfo(iSurface).AnatomyColor(2, :);
     ctrl.jButtonSurfColor.setBackground(java.awt.Color(surfColor(1),surfColor(2),surfColor(3)));
-    % Surface smoothing ALPHA
-    ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
-    ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    % Surface smoothing ALPHA (disable for Isosurface)
+    gui_enable([ctrl.jSliderSurfSmoothValue, ctrl.jLabelSurfSmoothTitle, ctrl.jLabelSurfSmoothValue], ~isIsoSurface, 0);
+    if ~isIsoSurface
+        ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
+        ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    end
     % Show/hide isoSurface thresholding
     ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
     if isIsoSurface
-        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        [~, isoValue, isoRange] = GetIsosurfaceParams(TessInfo(iSurface).SurfaceFile);
         ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);
     end
-    % Show sulci button
-    ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
+    % Show sulci button (disable for Isosurface)
+    gui_enable(ctrl.jButtonSurfSulci, ~isIsoSurface, 0);
+    if ~isIsoSurface
+        ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
+    end
     % Show surface edges button
     ctrl.jButtonSurfEdge.setSelected(TessInfo(iSurface).SurfShowEdges);
     
@@ -2698,8 +2722,6 @@ function SetSurfaceColor(hFig, iSurf, colorCortex, colorSulci)
     if (bst_get('GuiLevel') >= 0)
         ctrl.jButtonSurfColor.setBackground(java.awt.Color(colorCortex(1), colorCortex(2), colorCortex(3)));
     end
-    % Update panel controls
-    UpdateSurfaceProperties();
     % Update color display on the surface
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
@@ -2779,4 +2801,47 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
             end
         end
     end
+end
+
+%% ===== SAVE ISOSURFACE =====
+function [IsoSrfFile, iIsoSrf] = SaveIsosurface(sIsoSrf, ctFile, isoValue, isoRange)
+    % Get subject
+    [sSubject, iSubject] = bst_get('MriFile', ctFile);
+    % Find tess_isosurface file computed using the same CT volume
+    iIsoSurfForThisCt = 0;
+    iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
+    for ix = 1 : length(iIsoSrfs)
+        ctFileIso = GetIsosurfaceParams(sSubject.Surface(iIsoSrfs(ix)).FileName);
+        if strcmp(ctFileIso, ctFile)
+            iIsoSurfForThisCt = iIsoSrfs(ix);
+        end
+    end
+    % Create or Overwrite tess_isosurface file
+    if iIsoSurfForThisCt == 0
+        % Create output filenames
+        SurfaceDir = bst_fileparts(file_fullpath(ctFile));
+        % Create IsoFile
+        IsoSrfFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+        comment = sprintf('isoSurface (ISO_%d)', isoValue);
+    else
+        % Get old IsoValue
+        [~, oldIsoValue] = GetIsosurfaceParams(sSubject.Surface(iIsoSurfForThisCt).FileName);
+        % Overwrite the updated fields, do not delete the file
+        IsoSrfFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
+        % Force to be the newest isosurface
+        sSubject.Surface(iIsoSurfForThisCt) = [];
+        bst_set('Subject', iSubject, sSubject);
+        % Get Comment and update it
+        sIsoSrfTmp = load(IsoSrfFile, 'Comment', 'History');
+        comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
+    end
+    % Set comment
+    sIsoSrf.Comment = comment;
+    % Set history
+    sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
+                        sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, isoValue, isoRange));
+    % Save isosurface
+    bst_save(IsoSrfFile, sIsoSrf, 'v7');
+    % Add isosurface to database
+    iIsoSrf = db_add_surface(iSubject, IsoSrfFile, sIsoSrf.Comment);
 end
