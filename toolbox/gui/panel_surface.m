@@ -2719,8 +2719,6 @@ function SetSurfaceColor(hFig, iSurf, colorCortex, colorSulci)
     if (bst_get('GuiLevel') >= 0)
         ctrl.jButtonSurfColor.setBackground(java.awt.Color(colorCortex(1), colorCortex(2), colorCortex(3)));
     end
-    % Update panel controls
-    UpdateSurfaceProperties();
     % Update color display on the surface
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
