@@ -644,6 +644,31 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
+    % === sEEG: GARDEL ===
+    PlugDesc(end+1)              = GetStruct('gardel');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/GARDEL_Brainstorm/gardel-GARDEL_Brainstorm.zip';
+    PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
+    PlugDesc(end).TestFile       = 'code/Functions/elec_auto_segmentation.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn   = {};
+    PlugDesc(end).DeleteFiles    = {'gardel_splash.png', 'gardel_splash_480x480.png', 'gardel_splash480x480.svg', ...
+                                    'code/Functions/associate_matter.m', 'code/Functions/associate_region.m', 'code/Functions/BN_colorlut2complete_descr.m', ...
+                                    'code/Functions/coregistration.m', 'code/Functions/find_parsing_json.m', 'code/Functions/First_SPM_reorientation.m', ...
+                                    'code/Functions/make_bids_filename.m', 'code/Functions/new_brainmasking_to_be_compiled.m', 'code/Functions/NEW_SEG2.m', ...
+                                    'code/Functions/open_electrodes_file.m', 'code/Functions/open_nii_anatomical_convention.m', 'code/Functions/plot_brain.m', ...
+                                    'code/Functions/read_BNatlas.m', 'code/Functions/read_fscolorlut.m', 'code/Functions/Segmentation.asv', 'code/Functions/stlwrite.m', ...
+                                    'code/Functions/write_coordsystem_json.m', 'code/Functions/write2Brainstorm.m', 'code/Functions/write2MNI.m', ...
+                                    'code/toolboxes/NIFTI_dataViewer', 'code/toolboxes/freezeColors', 'code/toolboxes/dicm2nii', ...
+                                    'code/.gitkeep', 'code/BN_Atlas_246_LUT_sam.txt', 'code/CTthresholdGUI.fig', 'code/CTthresholdGUI.m', 'code/electrode_creation.m', ...
+                                    'code/electrodes_profiles.json', 'code/GARDEL User Manual_V2.docx', 'code/GARDEL User Manual_V2.pdf', 'code/GARDEL.fig', ...
+                                    'code/GARDEL.m', 'code/GARDELv2_bis.prj', 'code/MontageAnyWaveGardel.m', 'code/newtabMarsAtlas_SAM_2016.csv', ...
+                                    'code/save_bipolar_with_region.m', 'code/single_subj_T1.nii', 'code/VepFreeSurferColorLut.txt', 'code/write_localisations.m'};
+
     % === sEEG: MIA ===
     PlugDesc(end+1)              = GetStruct('mia');
     PlugDesc(end).Version        = 'github-master';
@@ -653,12 +678,12 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-    
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
@@ -1033,7 +1058,8 @@ end
 %% ===== IS GITHUB MASTER ======
 % Returns 1 if the URL is a github master/main branch
 function isMaster = isGithubMaster(URLzip)
-    isMaster = ~isempty(strfind(URLzip, 'https://github.com/')) && (~isempty(strfind(URLzip, 'master.zip')) || ~isempty(strfind(URLzip, 'main.zip')));
+    isMaster = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+               (strMatchEdge(URLzip, 'master.zip', 'end') || strMatchEdge(URLzip, 'main.zip', 'end'));
 end
 
 
@@ -1209,6 +1235,12 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
         % Theoretical plugin path
         PlugName = SearchPlugs(iSearch).Name;
         PlugPath = bst_fullfile(UserPluginsDir, PlugName);
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
         % Check if test function is available in the Matlab path
         TestFilePath = GetTestFilePath(SearchPlugs(iSearch));
         % If installed software found in Matlab path
@@ -1218,7 +1250,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug) = SearchPlugs(iSearch);
             PlugDesc(iPlug).isLoaded = 1;
             % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
-            if ~isempty(strfind(TestFilePath, PlugPath))
+            if strMatchEdge(TestFilePath, PlugPath, 'start')
                 PlugDesc(iPlug).isManaged = 1;
             % Process compiled together with Brainstorm
             elseif isCompiled && ~isempty(strfind(TestFilePath, ['.brainstorm' filesep 'plugins' filesep PlugName]))
@@ -1374,33 +1406,33 @@ function TestFilePath = GetTestFilePath(PlugDesc)
             % FieldTrip: Ignore if found embedded in SPM12
             if strcmpi(PlugDesc.Name, 'fieldtrip')
                 p = which('spm.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % SPM12: Ignore if found embedded in ROAST or in FieldTrip
             elseif strcmpi(PlugDesc.Name, 'spm12')
                 p = which('roast.m');
                 q = which('ft_defaults.m');
-                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % Iso2mesh: Ignore if found embedded in ROAST
             elseif strcmpi(PlugDesc.Name, 'iso2mesh')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
             elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
                 p = which('iso2meshver.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % easyh5: Ignore if found embedded in iso2mesh or jsonlab
             elseif strcmpi(PlugDesc.Name, 'easyh5')
                 p = which('iso2meshver.m');
                 q = which('savejson.m');
-                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             end
@@ -2209,7 +2241,13 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     TestFilePath = GetTestFilePath(PlugDesc);
     if ~isempty(TestFilePath)
         PlugDesc.isLoaded = 1;
-        PlugDesc.isManaged = ~isempty(strfind(which(PlugDesc.TestFile), PlugPath));
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
+        PlugDesc.isManaged = strMatchEdge(which(PlugDesc.TestFile), PlugPath, 'start');
         if PlugDesc.isManaged
             PlugDesc.Path = PlugPath;
         else
@@ -2257,6 +2295,12 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
     if ~isCompiled
+        % Handle case symbolic link
+        try
+            PlugHomeDir = builtin('_canonicalizepath', PlugHomeDir);
+        catch
+            % Nothing here
+        end
         addpath(PlugHomeDir);
         if isVerbose
             disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
@@ -3224,4 +3268,17 @@ end
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
     pluginNames = { 'duneuro', 'mcxlab-cuda'};
+end
+
+%% ===== MATCH STRING EDGES =====
+% Check if a string 'strA' starts (or ends) with string B
+function result = strMatchEdge(a, b, edge)
+    b = regexptranslate('escape', b);
+    if strcmpi(edge, 'start')
+        result = ~isempty(regexp(a, ['^', b], 'once'));
+    elseif strcmpi(edge, 'end')
+        result = ~isempty(regexp(a, [b, '$'], 'once'));
+    else
+        result = 0;
+    end
 end

@@ -173,10 +173,12 @@ try
             
         % SPM12 SEGMENT 
         case 'segment'
-            % Initialize SPM
-            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-            if ~isInstalled
-                return;
+            if ~bst_iscompiled
+                % Initialize SPM
+                [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+                if ~isInstalled
+                    return;
+                end
             end
             % Progress bar
             bst_progress('text', 'Running SPM batch... (see command window)');
