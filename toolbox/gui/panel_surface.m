@@ -94,7 +94,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             java_setcb(jSliderSurfAlpha, 'StateChangedCallback',  @(h,ev)SliderQuickPreview(jSliderSurfAlpha, jLabelSurfAlpha, 1));
 
             % Smooth title
-            gui_component('label', jPanelSurfaceOptions, 'br', 'Smooth:');
+            jLabelSurfSmoothTitle = gui_component('label', jPanelSurfaceOptions, 'br', 'Smooth:');
             % Smooth slider 
             jSliderSurfSmoothValue = JSlider(0, 100, 0);
             jSliderSurfSmoothValue.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
@@ -226,6 +226,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jSliderSurfAlpha',       jSliderSurfAlpha, ...
                                   'jLabelSurfAlpha',        jLabelSurfAlpha, ...
                                   'jButtonSurfColor',       jButtonSurfColor, ...
+                                  'jLabelSurfSmoothTitle',  jLabelSurfSmoothTitle, ...
                                   'jLabelSurfSmoothValue',  jLabelSurfSmoothValue, ...
                                   'jSliderSurfSmoothValue', jSliderSurfSmoothValue, ...
                                   'jLabelSurfIsoValueTitle',jLabelSurfIsoValueTitle, ...
@@ -1167,9 +1168,12 @@ function UpdateSurfaceProperties()
     % Surface color
     surfColor = TessInfo(iSurface).AnatomyColor(2, :);
     ctrl.jButtonSurfColor.setBackground(java.awt.Color(surfColor(1),surfColor(2),surfColor(3)));
-    % Surface smoothing ALPHA
-    ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
-    ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    % Surface smoothing ALPHA (disable for Isosurface)
+    gui_enable([ctrl.jSliderSurfSmoothValue, ctrl.jLabelSurfSmoothTitle, ctrl.jLabelSurfSmoothValue], ~isIsoSurface, 0);
+    if ~isIsoSurface
+        ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
+        ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
+    end
     % Show/hide isoSurface thresholding
     ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
