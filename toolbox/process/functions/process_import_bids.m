@@ -755,15 +755,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 if iscell(sCoordsystem.IntendedFor)
                                     sCoordsystem.IntendedFor = sCoordsystem.IntendedFor{1};
                                 end
-                                % Resolve BIDS URI
-                                if strncmp(sCoordsystem.IntendedFor, 'bids:', 5)
-                                    [sCoordsystem.IntendedFor, msg] = DecodeBidsUri(sCoordsystem.IntendedFor, BidsDir);
-                                    if ~isempty(msg)
-                                        Messages = [Messages 10 msg];
-                                    end
-                                else
-                                    % Assume it's a relative path.
-                                    sCoordsystem.IntendedFor = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
+                                % Get full filepath for sCoordsystem.IntendedFor (which can given as either relative or BIDS URI)
+                                [sCoordsystem.IntendedFor, msg] = ResolveBidsUri(sCoordsystem.IntendedFor, BidsDir);
+                                if ~isempty(msg)
+                                    Messages = [Messages 10 msg];
                                 end
                                 if file_exist(sCoordsystem.IntendedFor)
                                     % Check whether the IntendedFor files is already imported as a volume
@@ -1328,17 +1323,21 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
 end
 
 
-%% ===== CONVERT TO/FROM BIDS URI =====
-% This function is limited to the current BIDS dataset. BIDS URIs can in principle point to other
-% named datasets, including e.g. under derivatives, which would be defined in the
-% dataset_description.json file. For now we just warn if such a dataset name is used in the URI.
-function [OutFile, Msg] = DecodeBidsUri(InFile, BidsDir)
-    % See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+%% ===== RESOLVE RELATIVE PATH AND BIDS URI =====
+% Resolve full filepath using URI scheme: bids:[<dataset-name>]:<relative-path>
+%
+% BIDS URIs can in principle point to other named datasets, including e.g:
+% under derivatives, which would be defined in the dataset_description.json file.
+%
+% For now, this function is limited to the current BIDS dataset.
+% A warn is shown if such a dataset name is used in the URI.
+% See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
     Msg = '';
-    if ~strncmp(InFile, 'bids:', 5)
-        % Nothing to do.
-        OutFile = InFile;
-        return;
+    if ~strncmp(InFile, 'bids:', 5) || strncmp(InFile, 'bids::', 6)
+        % Assume it is a relative path to BIDS dir
+        OutFile = bst_fullfile(BidsDir, InFile);
+        return
     end
     % Check for dataset-name
     DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
