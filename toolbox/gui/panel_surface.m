@@ -1184,8 +1184,11 @@ function UpdateSurfaceProperties()
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);
     end
-    % Show sulci button
-    ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
+    % Show sulci button (disable for Isosurface)
+    gui_enable(ctrl.jButtonSurfSulci, ~isIsoSurface, 0);
+    if ~isIsoSurface
+        ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
+    end
     % Show surface edges button
     ctrl.jButtonSurfEdge.setSelected(TessInfo(iSurface).SurfShowEdges);
     
