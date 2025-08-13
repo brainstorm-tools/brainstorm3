@@ -152,7 +152,6 @@ iEeg  = good_channel(OPTIONS.Channel,[],'EEG');
 iEcog = good_channel(OPTIONS.Channel,[],'ECOG');
 iSeeg = good_channel(OPTIONS.Channel,[],'SEEG');
 iNirs = good_channel(OPTIONS.Channel,[],'NIRS');
-
 % If no channels available for one type: ignore method
 if isempty(iMeg)
     OPTIONS.MEGMethod = '';
@@ -208,6 +207,7 @@ OPTIONS.iEeg  = iEeg;
 OPTIONS.iEcog = iEcog;
 OPTIONS.iSeeg = iSeeg;
 OPTIONS.iNirs = iNirs;
+
 
 %% ===== OUTPUT FILENAME ===========================================================================
 %  =================================================================================================
@@ -589,6 +589,7 @@ else
     Param = [];
 end   
 
+
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
 
@@ -619,20 +620,15 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
             OPTIONS = [];
             return;
         end
-    
         OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
     end
-    
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
-
     if  ~isempty(warning_message)
         for iMessage = 1:length(warning_message)
             warning(warning_message{iMessage});
         end
     end
-
     Gain(iNirs,:) = gain_nirs(iNirs, :);
-
     Param = struct('FluenceFolder',    OPTIONS.FluenceFolder , ...
                    'smoothing_method', OPTIONS.smoothing_method, ...
                     'smoothing_fwhm',  OPTIONS.smoothing_fwhm);
