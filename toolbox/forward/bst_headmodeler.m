@@ -592,29 +592,30 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-
-    isOk= bst_plugin('Install', 'nirstorm');
-    if ~isOk
-        errMessage = 'NIRSTORM is required to compute nirs head model';
-        return;
+    % Check NIRSTORM plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'nirstorm');
+    if ~isInstalled
+        error(['NIRSTORM plugin is required to compute NIRS head model' 10 errMsg]);
     end
-
-    % Recover subject name
-    tmp = strsplit(OutSurfaceFile, '/');
-    subjectName = tmp{1};
-    
-    sSubject    = bst_get('Subject', subjectName);
-    voronoi_fn  = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
-
+    % Check version, update if needed
+    PlugDesc = bst_plugin('GetInstalled','nirstorm');
+    if bst_plugin('CompareVersions', PlugDesc.Version, '0.9.1') < 0
+        if PlugDesc.isManaged
+            bst_plugin('Uninstall', 'nirstorm', 0, 0);
+            bst_plugin('Install',   'nirstorm');
+        end
+    end
+    % Get Subject
+    sSubject = bst_get('SurfaceFile', OutSurfaceFile);
+    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
     % Subject Informations 
-    OPTIONS.SubjectName         = subjectName;
-    OPTIONS.MriFile             = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    OPTIONS.VoronoiFile         = voronoi_fn;
-    OPTIONS.CortexFile          = sSubject.Surface(sSubject.iCortex ).FileName;
-
-    % Use defined options : 
+    OPTIONS.SubjectName = sSubject.Name;
+    OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    OPTIONS.VoronoiFile = voronoi_fn;
+    OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    % Use defined options
     if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
-        sOptions = gui_show_dialog('Volume source grid', @panel_headmodel_nirstorm);
+        sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);
         if isempty(sOptions)
             errMessage = 'Canceled by user.';
             OPTIONS = [];
@@ -622,6 +623,7 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         end
         OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
     end
+    % Compute head model
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
     if  ~isempty(warning_message)
         for iMessage = 1:length(warning_message)
@@ -631,7 +633,7 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     Gain(iNirs,:) = gain_nirs(iNirs, :);
     Param = struct('FluenceFolder',    OPTIONS.FluenceFolder , ...
                    'smoothing_method', OPTIONS.smoothing_method, ...
-                    'smoothing_fwhm',  OPTIONS.smoothing_fwhm);
+                   'smoothing_fwhm',   OPTIONS.smoothing_fwhm);
 else
     Param = [];
 end   
