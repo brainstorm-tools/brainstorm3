@@ -71,6 +71,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.seeg.Comment = '   - SEEG method:';
     sProcess.options.seeg.Type    = 'combobox';
     sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
+    % Option: NIRS headmodel
+    sProcess.options.nirs.Comment = '   - NIRS method:';
+    sProcess.options.nirs.Type    = 'combobox';
+    sProcess.options.nirs.Value   = {1, {'<none>', 'Import from MCXlab'}};
+
     % Options: OpenMEEG Options
     sProcess.options.openmeeg.Comment = {'panel_openmeeg', 'OpenMEEG options: '};
     sProcess.options.openmeeg.Type    = 'editpref';
@@ -79,6 +84,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
     sProcess.options.duneuro.Type    = 'editpref';
     sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');
+    % Options: NIRSTORM Options
+    sProcess.options.nirstorm.Comment = {'panel_headmodel_nirstorm', 'NIRSTORM options: '};
+    sProcess.options.nirstorm.Type    = 'editpref';
+    sProcess.options.nirstorm.Value   = panel_headmodel_nirstorm('GetDefaultOption');
     % Options: Channel file  (used for scripts when data files are not available)
     sProcess.options.channelfile.Comment = 'Channel file: ';
     sProcess.options.channelfile.Type    = 'text';
@@ -98,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     isOpenMEEG = 0;
     isDuneuro = 0;
+    isNIRSTORM = 0;
     % == MEG options ==
     if isfield(sProcess.options, 'meg') && isfield(sProcess.options.meg, 'Value') && iscell(sProcess.options.meg.Value)
         switch (sProcess.options.meg.Value{1})
@@ -140,6 +150,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     else
         sMethod.SEEGMethod = '';
+    end
+    % == NIRS options ==
+    if isfield(sProcess.options, 'nirs') && isfield(sProcess.options.nirs, 'Value') && iscell(sProcess.options.nirs.Value)
+        switch (sProcess.options.nirs.Value{1})
+            case 1,  sMethod.NIRSMethod = '';
+            case 2,  sMethod.NIRSMethod = 'import'; isNIRSTORM = 1;
+        end
+    else
+        sMethod.NIRSMethod = '';
     end
     % Source space options
     switch (sProcess.options.sourcespace.Value)
@@ -200,6 +219,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_set('DuneuroOptions', sProcess.options.duneuro.Value);
         else
             bst_report('Error', sProcess, [], 'DUNEuro options are not defined.');
+            return;
+        end
+    end
+    % Copy NIRSTORM options to OPTIONS structure
+    if isNIRSTORM
+        if ~isempty(sProcess.options.nirstorm.Value)
+            sMethod = struct_copy_fields(sMethod, sProcess.options.nirstorm.Value, 1);
+            bst_set('NIRSTORMOptions', sProcess.options.nirstorm.Value);
+        else
+            bst_report('Error', sProcess, [], 'NIRSTORM options are not defined.');
             return;
         end
     end
