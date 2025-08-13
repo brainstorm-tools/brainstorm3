@@ -1,7 +1,7 @@
 function varargout = panel_headmodel(varargin)
 % PANEL_HEADMODEL: Computation of forward model (GUI).
 % 
-% USAGE:     bstPanel = panel_headmodel('CreatePanel',      isMeg, isEeg, isEcog, isSeeg, isMixed)
+% USAGE:     bstPanel = panel_headmodel('CreatePanel',      isMeg, isEeg, isEcog, isSeeg, isMixed, isNirs)
 %         OutputFiles = panel_headmodel('ComputeHeadModel', iStudies, sMethod)
 
 % @=============================================================================
@@ -132,7 +132,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     if isNirs
         % Checkbox
         jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ', [], [], @UpdateComment);
-        jCheckMethodNIRS.setSelected(0);
+        jCheckMethodNIRS.setSelected(1);
          % Combobox
         jComboMethodNIRS = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodNIRS.addItem(BstListItem('import', '', 'Import from MCXlab', []));
