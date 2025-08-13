@@ -166,8 +166,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
                   'jCheckMethodSEEG',    jCheckMethodSEEG, ...
                   'jComboMethodSEEG',    jComboMethodSEEG, ...
                   'jCheckMethodNIRS',    jCheckMethodNIRS, ...
-                  'jComboMethodNIRS',    jComboMethodNIRS);
-
+                 );
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
 
@@ -295,11 +294,6 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.ECOGMethod = char(ctrl.jComboMethodECOG.getSelectedItem.getType());
     else
         s.ECOGMethod = '';
-    end
-    if ~isempty(ctrl.jCheckMethodSEEG) && ctrl.jCheckMethodSEEG.isSelected()
-        s.SEEGMethod = char(ctrl.jComboMethodSEEG.getSelectedItem.getType());
-    else
-        s.SEEGMethod = '';
     end
     if ~isempty(ctrl.jCheckMethodSEEG) && ctrl.jCheckMethodSEEG.isSelected()
         s.SEEGMethod = char(ctrl.jComboMethodSEEG.getSelectedItem.getType());
