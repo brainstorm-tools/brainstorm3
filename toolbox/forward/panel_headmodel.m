@@ -201,7 +201,6 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         isEcogSel = isEcog && jCheckMethodECOG.isSelected();
         isSeegSel = isSeeg && jCheckMethodSEEG.isSelected();
         isNirsSel = isNirs && jCheckMethodNIRS.isSelected();
-
         % MEG/EEG Combobox
         if isMeg
             jComboMethodMEG.setEnabled(isMegSel);
@@ -218,7 +217,6 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         if isNirs
             jComboMethodNIRS.setEnabled(isNirsSel);
         end
-
         % Get current methods for EEG and MEG
         allMethods = {};
         if isMegSel
@@ -745,7 +743,6 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             newHeadModel.ECOGMethod    = OPTIONS.ECOGMethod;
             newHeadModel.SEEGMethod    = OPTIONS.SEEGMethod;
             newHeadModel.NIRSMethod    = OPTIONS.NIRSMethod;
-
             % Update Study structure
             iHeadModel = length(sStudy.HeadModel) + 1;
             sStudy.HeadModel(iHeadModel) = newHeadModel;
