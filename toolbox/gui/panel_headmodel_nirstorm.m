@@ -30,16 +30,12 @@ end
 
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>  
-
-
     panelName = 'HeadModelNirsOptions';
-
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
     % Create main main panel
     jPanelNew = gui_river();
-
     % Default  options
     if nargin >= 1 && isfield(sProcess,'options') && ~isempty(sProcess.options) && isfield(sProcess.options, 'nirstorm') && ~isempty(sProcess.options.nirstorm)
         OPTIONS = sProcess.options.nirstorm.Value;
@@ -47,18 +43,23 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         OPTIONS = GetDefaultOption();
     end
     jPanelOptions = gui_river([4,4], [3,15,10,10], 'Options');
-    gui_component('label', jPanelOptions, '', 'Fluence Data Source: ', [], [], [], []);
+    % Fluence data source
+    gui_component('label', jPanelOptions, '', '<HTML><B>Fluence data source (path or URL)</B></HTML>', [], [], [], []);
     jDataSource = gui_component('text', jPanelOptions, 'tab', OPTIONS.FluenceFolder, [], [], [], []);
     jPanelOptions.add('br hfill', jDataSource);
-
-    gui_component('label', jPanelOptions, 'br', 'Smoothing Method: ', [], [], [], []);
+    gui_component('label', jPanelOptions, 'br');
+    gui_component('label', jPanelOptions, 'br');
+    % Smoothing method
+    gui_component('label', jPanelOptions, 'br', '<HTML><B>Smoothing method</B></HTML>', [], [], [], []);
     jGroupRadio = ButtonGroup();
-    jRadioGeodesic = gui_component('radio', jPanelOptions, [], '<html><B> Geodesic</B> <FONT color="#777777">(recommended)</FONT></html>', jGroupRadio, [], [], []);
+    jRadioGeodesic = gui_component('radio', jPanelOptions, 'br', '<HTML>Geodesic (recommended)</HTML>', jGroupRadio, [], [], []);
     jRadioGeodesic.setSelected(strcmp(OPTIONS.smoothing_method, 'geodesic_dist'))
-    jRadioSurfstat = gui_component('radio', jPanelOptions, [], '<html><FONT color="#777777">Before 2023 (not recommended)</FONT></html>', jGroupRadio, [], [], []);
+    jRadioSurfstat = gui_component('radio', jPanelOptions, 'br', '<HTML><FONT color="#777777">Before 2023 (not recommended)</FONT></HTML>', jGroupRadio, [], [], []);
     jRadioSurfstat.setSelected(strcmp(OPTIONS.smoothing_method, 'surfstat_before_2023'))
-
-    gui_component('label', jPanelOptions, 'br', 'Spatial smoothing FWHM: ', [], [], [], []);
+    gui_component('label', jPanelOptions, 'br');
+    gui_component('label', jPanelOptions, 'br');
+    % Spatial smoothing
+    gui_component('label', jPanelOptions, 'br', '<HTML><B>Spatial smoothing FWHM</B></HTML>', [], [], [], []);
     jSmoothingFwhm = gui_component('text', jPanelOptions, 'tab', num2str(OPTIONS.smoothing_fwhm), [], [], [], []);
     jPanelOptions.add('br hfill', jSmoothingFwhm);
 
@@ -71,12 +72,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== PANEL CREATION =====
     % Return a mutex to wait for panel close
     bst_mutex('create', panelName);
-    
-    ctrl = struct(      'jDataSource',  jDataSource, ...
-                        'jSmoothingFwhm', jSmoothingFwhm, ...
-                        'jRadioGeodesic', jRadioGeodesic, ...
-                        'jRadioSurfstat', jRadioSurfstat );
-
+    ctrl = struct('jDataSource',    jDataSource, ...
+                  'jSmoothingFwhm', jSmoothingFwhm, ...
+                  'jRadioGeodesic', jRadioGeodesic, ...
+                  'jRadioSurfstat', jRadioSurfstat );
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
 
    
@@ -106,15 +105,13 @@ end
 %% =================================================================================
 %  === EXTERNAL CALLBACKS ==========================================================
 %  =================================================================================   
-
+%% ===== GET DEFAULT OPTIONS =====
 function s = GetDefaultOption()
-
-    % Use defined options : 
+    % Use defined options
     s = struct();
-    s.FluenceFolder       = 'https://neuroimage.usc.edu/resources/nst_data/fluence/';
-    s.smoothing_method    = 'geodesic_dist';
-    s.smoothing_fwhm      = 10;
-    
+    s.FluenceFolder    = 'https://neuroimage.usc.edu/resources/nst_data/fluence/';
+    s.smoothing_method = 'geodesic_dist';
+    s.smoothing_fwhm   = 10;
 end
 
 
@@ -122,21 +119,19 @@ end
 function s = GetPanelContents() %#ok<DEFNU>
     % Get panel controls
     ctrl = bst_get('PanelControls', 'HeadModelNirsOptions');
-
     s = GetDefaultOption();
+    % Fluence data source
     s.FluenceFolder = char(ctrl.jDataSource.getText());
-    
-    if  ctrl.jRadioGeodesic.isSelected()
+    % Smoothing method
+    if ctrl.jRadioGeodesic.isSelected()
         s.smoothing_method = 'geodesic_dist';
     elseif ctrl.jRadioSurfstat.isSelected()
         s.smoothing_method = 'surfstat_before_2023';
     else
         error('You must select a smoothing method');
     end
-
+    % Spatial smoothing
     s.smoothing_fwhm = str2double(ctrl.jSmoothingFwhm.getText());
-
-
 end
 
 
