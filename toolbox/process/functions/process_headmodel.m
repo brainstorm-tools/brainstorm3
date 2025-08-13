@@ -71,7 +71,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.seeg.Comment = '   - SEEG method:';
     sProcess.options.seeg.Type    = 'combobox';
     sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
-    % Option: SEEG headmodel
+    % Option: NIRS headmodel
     sProcess.options.nirs.Comment = '   - NIRS method:';
     sProcess.options.nirs.Type    = 'combobox';
     sProcess.options.nirs.Value   = {1, {'<none>', 'Import from MCXlab'}};
@@ -84,11 +84,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
     sProcess.options.duneuro.Type    = 'editpref';
     sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');
-    % Options: nirstorm Options
+    % Options: NIRSTORM Options
     sProcess.options.nirstorm.Comment = {'panel_headmodel_nirstorm', 'NIRSTORM options: '};
     sProcess.options.nirstorm.Type    = 'editpref';
     sProcess.options.nirstorm.Value   = panel_headmodel_nirstorm('GetDefaultOption');
-        
     % Options: Channel file  (used for scripts when data files are not available)
     sProcess.options.channelfile.Comment = 'Channel file: ';
     sProcess.options.channelfile.Type    = 'text';
@@ -156,12 +155,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if isfield(sProcess.options, 'nirs') && isfield(sProcess.options.nirs, 'Value') && iscell(sProcess.options.nirs.Value)
         switch (sProcess.options.nirs.Value{1})
             case 1,  sMethod.NIRSMethod = '';
-            case 2,  sMethod.NIRSMethod = 'import';     isNIRSTORM = 1;
+            case 2,  sMethod.NIRSMethod = 'import'; isNIRSTORM = 1;
         end
     else
         sMethod.NIRSMethod = '';
     end
-
     % Source space options
     switch (sProcess.options.sourcespace.Value)
         case 1,  sMethod.HeadModelType = 'surface';
