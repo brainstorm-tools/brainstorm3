@@ -465,7 +465,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Get camera position
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
-    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+    TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
         return
     end
@@ -482,16 +482,22 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
     
     % ===== GET SELECTION ON THE CLOSEST SURFACE =====
-    % Get the closest point for all the surfaces and patches
+    % List of patches and surfaces they belong
     hPatch = [TessInfo(iAcceptableTess).hPatch];
     hPatch = hPatch(ishandle(hPatch));
+    iTess  = [];
+    for i = 1 : length(iAcceptableTess)
+        iTess = [iTess, repmat(iAcceptableTess(i), 1, length(TessInfo(iAcceptableTess(i)).hPatch))];
+    end
     patchDist = zeros(1,length(hPatch));
+    % Get the closest point for all the surfaces and patches
     for i = 1:length(hPatch)
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
             % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
+                sSurf = bst_memory('LoadSurface', TessInfo(iTess(i)).SurfaceFile);
                 VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
                 vout{i} = mean(sSurf.Vertices(VertexList(:), :))'; % SCS of the centroid
                 vi{i} = []; % No surface vertex associated to centroid
@@ -514,14 +520,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     pout   = pout{iClosestPatch};
     vout   = vout{iClosestPatch};
     vi     = vi{iClosestPatch};
-
-    % Find to which surface this tesselation belongs
-    for i = 1:length(TessInfo)
-        if any(TessInfo(i).hPatch == hPatch);
-            iTess = i;
-            break;
-        end
-    end
+    iTess  = iTess(iClosestPatch);
 end
 
 %% ===== SET CENTROID SELECTION =====
