@@ -2178,6 +2178,8 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             % Update surface color
             figure_callback(hFig, 'UpdateSurfaceColor', hFig, iTess);
         end
+        % Get updated figure's appdata (surface list)
+        TessInfo = getappdata(hFig, 'Surface');
     end
     
     % ===== CONFIGURE COLORBAR =====
