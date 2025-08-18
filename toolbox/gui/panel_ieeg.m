@@ -408,11 +408,10 @@ function UpdatePanel()
     % Get current figure
     [hFigall, iFigall, iDSall] = bst_figures('GetCurrentFigure');
     if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 1);
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE, ctrl.jToolbarC], 1);
+        ctrl.jButtonCentroid.setEnabled(0);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
-        ctrl.jButtonCentroid.setEnabled(0);
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
         isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
@@ -420,14 +419,13 @@ function UpdatePanel()
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
-            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
+            panel_coordinates('SetCentroidSelection', isSelectingCentroid);
         else
             panel_coordinates('SetCentroidSelection', 0);
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 0);
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE, ctrl.jToolbarC], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -812,6 +810,33 @@ function UpdateElecProperties(isUpdateModelList)
     ctrl.jButtonShow.setSelected(isSelected);
     % Save selected electrodes
     ctrl.jLabelSelectElec.setText(num2str(iSelElec));
+end
+
+
+%% ===== UPDATE ISCENTROID BUTTON =====
+function UpdateIsCentriodButton(isSelected)
+    % Disabled = Gray (either ON or OFF)
+    % ON       = Selected and GREEN
+    % OFF      = Non-selected and RED
+    import org.brainstorm.icon.*;
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl)
+        return;
+    end
+    ctrl.jButtonCentroid.setSelected(isSelected);
+    % Change icon depending of isSelected
+    if isSelected
+        compIcon = IconLoader.ICON_GOOD;
+    else
+        compIcon = IconLoader.ICON_BAD;
+    end
+    InterfaceScaling = bst_get('InterfaceScaling');
+    if (InterfaceScaling ~= 100)
+        ctrl.jButtonCentroid.setIcon(IconLoader.scaleIcon(compIcon, InterfaceScaling / 100));
+    else
+        ctrl.jButtonCentroid.setIcon(compIcon);
+    end
 end
 
 

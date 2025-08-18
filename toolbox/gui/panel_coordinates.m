@@ -525,15 +525,13 @@ end
 
 %% ===== SET CENTROID SELECTION =====
 function SetCentroidSelection(isSelected)
+    import org.brainstorm.icon.*;
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return;
     end
     setappdata(hFig, 'isSelectingCentroid', isSelected);
-    ctrl = bst_get('PanelControls', 'iEEG');
-    if ~isempty(ctrl)
-        ctrl.jButtonCentroid.setSelected(isSelected);
-    end
+    panel_ieeg('UpdateIsCentriodButton', isSelected);
 end
 
 %% ===== FIND CENTROID OF A MESH BLOB =====
