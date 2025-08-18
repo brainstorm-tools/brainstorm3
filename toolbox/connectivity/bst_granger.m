@@ -179,16 +179,16 @@ if isempty(Y) % auto-causality
         
         % source = iY, sink = iX
         minOrder = min([restOrder(iX) unOrder]); 
-        connectivity(iX, iY) = restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1;
+        connectivity(iX, iY) = max(0, restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1);
         
         % source = iX, sink = iY
         minOrder = min([restOrder(iY) unOrder]);
-        connectivity(iY, iX) = restCovFull(iY, minOrder+1) / unCovFull(2, 2, minOrder+1) - 1;
+        connectivity(iY, iX) = max(0, restCovFull(iY, minOrder+1) / unCovFull(2, 2, minOrder+1) - 1);
         
       else % by default, bst_mvar sends the result of the single model of given order into the "Full" variables
         
-        connectivity(iX, iY) = restCovFull(iX) / unCovFull(1, 1) - 1; % source = iY, sink = iX
-        connectivity(iY, iX) = restCovFull(iY) / unCovFull(2, 2) - 1; % source = iX, sink = iY
+        connectivity(iX, iY) = max(0, restCovFull(iX) / unCovFull(1, 1) - 1); % source = iY, sink = iX
+        connectivity(iY, iX) = max(0, restCovFull(iY) / unCovFull(2, 2) - 1); % source = iX, sink = iY
         
       end
       
@@ -247,9 +247,9 @@ else % cross-causality
         % causality in mean: Geweke-Granger, i.e. restricted variance / unrestricted variance - 1
         if inputs.flagFPE % get the minimum order of the two models estimated
           minOrder = min([restOrder(iX) unOrder]); 
-          connectivity(iX, iY) = restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1;
+          connectivity(iX, iY) = max(0, restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1);
         else % by default, bst_mvar sends the result of the single model of given order into the "Full" variables
-          connectivity(iX, iY) = restCovFull(iX) / unCovFull(1, 1) - 1;
+          connectivity(iX, iY) = max(0, restCovFull(iX) / unCovFull(1, 1) - 1);
         end
 
         % causality in variance
