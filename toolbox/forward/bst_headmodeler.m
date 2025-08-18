@@ -24,6 +24,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %         - 'openmeeg'        : OpenMEEG forward model
 %     .SEEGMethod:    'openmeeg' and 'duneuro'  
 %     .ECOGMethod:    'openmeeg' and 'duneuro' 
+%     .NIRSMethod:    'import'
 %
 %     ======= METHODS OPTIONS =============================================
 %     OpenMEEG: see bst_openmeeg

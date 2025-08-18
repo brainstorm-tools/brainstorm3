@@ -134,7 +134,3 @@ function s = GetPanelContents() %#ok<DEFNU>
     s.smoothing_fwhm = str2double(ctrl.jSmoothingFwhm.getText());
 end
 
-
-
-
-
