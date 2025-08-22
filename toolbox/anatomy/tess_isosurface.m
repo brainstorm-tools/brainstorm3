@@ -130,16 +130,6 @@ end
 %% ===== CREATE SURFACE =====
 % Compute isosurface
 bst_progress('start', 'Generate thresholded isosurface from CT', 'Creating isosurface...');
-% Find tess_isosurface file computed using the same CT volume
-iIsoSurfForThisCt = 0;
-iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
-for ix = 1 : length(iIsoSrfs)
-    CtFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
-    if strcmp(CtFileIso, CtFile)
-        iIsoSurfForThisCt = iIsoSrfs(ix);
-    end
-end
-
 [sMesh.Faces, sMesh.Vertices] = mri_isosurface(sMri.Cube, isoValue);
 bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
@@ -162,6 +152,15 @@ if isSave
     bst_progress('text', 'Saving file...');
     % Create output filenames
     SurfaceDir = bst_fileparts(file_fullpath(CtFile));
+    % Find tess_isosurface file computed using the same CT volume
+    iIsoSurfForThisCt = 0;
+    iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
+    for ix = 1 : length(iIsoSrfs)
+        CtFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
+        if strcmp(CtFileIso, CtFile)
+            iIsoSurfForThisCt = iIsoSrfs(ix);
+        end
+    end
     % Create or Overwrite tess_isosurface file
     if iIsoSurfForThisCt == 0
         % Create IsoFile
