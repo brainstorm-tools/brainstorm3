@@ -436,11 +436,6 @@ function SliderCallback(hObject, event, target)
                     return;
                 end
             end
-            % Ask user if they want to proceed
-            if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', dialogTitle)
-                SetIsoValue(isoValue);
-                return;
-            end
             % Get new isoValue from the slider
             newIsoValue = jSlider.getValue();
             % Update the IsoSurface
