@@ -894,23 +894,6 @@ function DeleteFigure(hFigure, varargin)
         if gui_brainstorm('isTabVisible', 'Dipoles')
         	panel_dipoles('UpdatePanel');
         end
-        % Save updated Isosurface (if any)
-        TessInfo = getappdata(hFigure, 'Surface');
-        iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {TessInfo.SurfaceFile}), 1);
-        if ~isempty(iIsoSrf)
-            % Get old isovalue
-            [ctFile, oldIsoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iIsoSrf).SurfaceFile);
-            % Get new isovalue
-            newIsoValue = panel_surface('GetIsoValue');
-            % If there is change in isoValue update the database
-            if newIsoValue ~= oldIsoValue
-                if java_dialog('confirm', ['The Isosurface threshold was modified.' 10 'Save changes ?'], 'Save Isosurface')
-                    sIsoSrf.Vertices = TessInfo(iIsoSrf).hPatch.Vertices;
-                    sIsoSrf.Faces    = TessInfo(iIsoSrf).hPatch.Faces;
-                    panel_surface('SaveIsosurface', sIsoSrf, ctFile, newIsoValue, isoRange);
-                end
-            end
-        end
     end
 
     % Delete graphic object
