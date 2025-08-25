@@ -605,6 +605,9 @@ for iFile = 1 : length(FilesA)
                             % [sink x source] = bst_granger(sink, source, ...)
                             R = bst_granger(sInputB.Data, sInputA.Data, OPTIONS.GrangerOrder, inputs);
                         end
+                        % 'bst_granger' returns  (restVar/unrestVar) - 1
+                        % Report R as log(restVar/unrestVar)
+                        R = log(R + 1);
                         % Granger function returns a connectivity matrix [sink x source] = [to x from] => Needs to be transposed
                         R = R';
                         % Comment
@@ -630,6 +633,9 @@ for iFile = 1 : length(FilesA)
                         else
                             [R, ~, OPTIONS.Freqs] = bst_granger_spectral(sInputB.Data, sInputA.Data, sfreq, OPTIONS.GrangerOrder, inputs);
                         end
+                        % 'bst_granger_spectral' returns  (restVar/unrestVar) - 1
+                        % Report R as log(restVar/unrestVar)
+                        R = log(R + 1);
                         R = permute(R, [2 1 3]);
                     end
 
