@@ -669,7 +669,9 @@ for iFile = 1 : length(FilesA)
                         if ~isempty(X)
                             % Model order to use, Akaike information criteria
                             [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR');
+                            OPTIONS.GrangerOrderAic = moAIC;
                             Message = sprintf('Model order to be used (found with AIC): %d', moAIC);
+                            disp(Message);
                             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                             % Fit VAR model
                             [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
@@ -756,7 +758,9 @@ for iFile = 1 : length(FilesA)
                             R_valid = NaN(size(X, 1)-1, 1);
                             % Model order to use, Akaike information criteria
                             [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR');
+                            OPTIONS.GrangerOrderAic = moAIC;
                             Message = sprintf('Model order to be used (found with AIC): %d', moAIC);
+                            disp(Message);
                             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                             % Fit VAR model
                             [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
@@ -813,9 +817,9 @@ for iFile = 1 : length(FilesA)
                     grangerMethodStr = '(MVGC)';
                 end
                 if isConnNN
-                    Comment = sprintf('SpGranger %d(%1.1fHz)', grangerMethodStr, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
+                    Comment = sprintf('SpGranger %s(%1.1fHz)', grangerMethodStr, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
                 else
-                    Comment = sprintf('SpGranger %d(%s,%1.1fHz)', grangerMethodStr, OPTIONS.GrangerDir, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
+                    Comment = sprintf('SpGranger %s(%s,%1.1fHz)', grangerMethodStr, OPTIONS.GrangerDir, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
                 end
             end
             
