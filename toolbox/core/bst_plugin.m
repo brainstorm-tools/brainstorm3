@@ -520,6 +520,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'mtrf'};
     PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
 
+    % === STATISTICS: MVGC ===
+    PlugDesc(end+1)              = GetStruct('mvgc');
+    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).TestFile       = 'startup.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
+    PlugDesc(end).LoadedFcn      = 'cd(fullfile(PlugDesc.Path)); startup;';
+
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
     PlugDesc(end).Version        = 'github-master';
