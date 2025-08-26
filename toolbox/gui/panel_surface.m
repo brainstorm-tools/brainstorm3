@@ -1175,10 +1175,8 @@ function UpdateSurfaceProperties()
     ctrl.jButtonSurfColor.setBackground(java.awt.Color(surfColor(1),surfColor(2),surfColor(3)));
     % Surface smoothing ALPHA (disable for Isosurface)
     gui_enable([ctrl.jSliderSurfSmoothValue, ctrl.jLabelSurfSmoothTitle, ctrl.jLabelSurfSmoothValue], ~isIsoSurface, 0);
-    if ~isIsoSurface
-        ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
-        ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
-    end
+    ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
+    ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
     % Show/hide isoSurface thresholding
     ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
@@ -1191,9 +1189,7 @@ function UpdateSurfaceProperties()
     end
     % Show sulci button (disable for Isosurface)
     gui_enable(ctrl.jButtonSurfSulci, ~isIsoSurface, 0);
-    if ~isIsoSurface
-        ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
-    end
+    ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
     % Show surface edges button
     ctrl.jButtonSurfEdge.setSelected(TessInfo(iSurface).SurfShowEdges);
     
