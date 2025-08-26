@@ -363,6 +363,7 @@ end
 %  =================================================================================
 %% ===== SLIDERS CALLBACKS =====
 function SliderCallback(hObject, event, target)
+    global GlobalData;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Surface');
     if isempty(ctrl)
@@ -417,9 +418,12 @@ function SliderCallback(hObject, event, target)
 
         case 'SurfIsoValue'
             isosurfFile = TessInfo(iSurface).SurfaceFile;
+            % Get loaded surface from memory
+            [~, iSurf] = bst_memory('LoadSurface', isosurfFile);
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
             if isoValue == jSlider.getValue()
+                GlobalData.Surface(iSurf).isSurfaceModified = 0;
                 return
             end
             sSubject = bst_get('MriFile', ctFile);
@@ -452,6 +456,9 @@ function SliderCallback(hObject, event, target)
             ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
             ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
             SetIsoValue(newIsoValue);
+            GlobalData.Surface(iSurf).Vertices = Vertices;
+            GlobalData.Surface(iSurf).Faces = Faces;
+            GlobalData.Surface(iSurf).isSurfaceModified = 1;
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -2795,5 +2802,44 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
                 isoRange = str2double(ctEntries{iEntries(end)}{1}(3:4));
             end
         end
+    end
+end
+
+%% ===== SAVE MODIFICATIONS =====
+function SaveModifications()
+    global GlobalData;
+    % Loop on all the loaded surfaces
+    for iSurf = 1:length(GlobalData.Surface)
+        % If the surface was not modified: skip
+        if ~GlobalData.Surface(iSurf).isSurfaceModified
+            continue;
+        end
+        % Get the surface file
+        SurfaceFile = file_fullpath(GlobalData.Surface(iSurf).FileName);
+        % Update isovalue for isosurface
+        if ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match'))
+            disp(['BST> Saving updated isovalue for IsoSurface: ' GlobalData.Surface(iSurf).FileName]);             
+            % Get current isovalue from panel
+            newIsoValue = GetIsoValue();
+            % Get CT file, isoValue and isorange used to generate the isosurface file
+            [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(GlobalData.Surface(iSurf).FileName);
+            % Update the fields for the IsoSurface mesh structure
+            % Set vertices and faces
+            sIsoSrf.Vertices = GlobalData.Surface(iSurf).Vertices;
+            sIsoSrf.Faces    = GlobalData.Surface(iSurf).Faces;
+            % Get and update comment and history
+            sIsoSrfTmp = load(SurfaceFile, 'Comment', 'History');
+            comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(newIsoValue));
+            sIsoSrf.Comment = comment;
+            sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
+                                sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, newIsoValue, isoRange));
+            % Save isosurface
+            bst_save(SurfaceFile, sIsoSrf, 'v7');
+            % Reload the subject
+            [~, iSubject] = bst_get('MriFile', ctFile);
+            db_reload_subjects(iSubject);
+        end
+        % Reset the modified state
+        GlobalData.Surface(iSurf).isSurfaceModified = 0;
     end
 end
