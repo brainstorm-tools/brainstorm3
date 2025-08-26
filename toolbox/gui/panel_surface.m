@@ -418,8 +418,8 @@ function SliderCallback(hObject, event, target)
 
         case 'SurfIsoValue'
             isosurfFile = TessInfo(iSurface).SurfaceFile;
-            % Get loaded surface from memory
-            [~, iSurf] = bst_memory('LoadSurface', isosurfFile);
+            % Get loaded isosurface index from memory
+            [~, iSurf] = bst_memory('GetSurface', isosurfFile);
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
             if isoValue == jSlider.getValue()
