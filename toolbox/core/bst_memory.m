@@ -3467,7 +3467,6 @@ function UnloadSurface(SurfaceFiles, isCloseFig)
         end
         % Save modifications to the surfaces
         panel_scout('SaveModifications');
-        panel_surface('SaveModifications');
         % Check if surface is already loaded
         [sSurf, iSurf] = GetSurface(SurfaceFiles{i});
         % If surface is not loaded: skip

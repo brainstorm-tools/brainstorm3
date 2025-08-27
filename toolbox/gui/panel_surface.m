@@ -423,6 +423,7 @@ function SliderCallback(hObject, event, target)
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
             if isoValue == jSlider.getValue()
+                % No modifications done to isosurface
                 GlobalData.Surface(iSurf).isSurfaceModified = 0;
                 return
             end
@@ -455,8 +456,7 @@ function SliderCallback(hObject, event, target)
             % Update vertices and faces values in panel
             ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
             ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
-            GlobalData.Surface(iSurf).Vertices = Vertices;
-            GlobalData.Surface(iSurf).Faces = Faces;
+            % Mark surface as modified
             GlobalData.Surface(iSurf).isSurfaceModified = 1;
             
         case 'DataAlpha'
@@ -2800,8 +2800,8 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     end
 end
 
-%% ===== SAVE MODIFICATIONS =====
-function SaveModifications()
+%% ===== SAVE MODIFICATIONS FROM FIGURE =====
+function SaveModificationsFromFigure(hFig)
     global GlobalData;
     % Loop on all the loaded surfaces
     for iSurf = 1:length(GlobalData.Surface)
@@ -2809,27 +2809,27 @@ function SaveModifications()
         if ~GlobalData.Surface(iSurf).isSurfaceModified
             continue;
         end
-        % Get the surface file
-        SurfaceFile = file_fullpath(GlobalData.Surface(iSurf).FileName);
-        % Update isovalue for isosurface
-        if ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match'))
-            disp(['BST> Saving updated isovalue for IsoSurface: ' GlobalData.Surface(iSurf).FileName]);             
+        SurfaceFile = GlobalData.Surface(iSurf).FileName;
+        % Update isovalue and related surface properties in isosurface
+        if ~isempty(hFig) && ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match')) 
+            disp(['BST> Saving modifications in isosurface: ' SurfaceFile]);             
+            % Get and update vertices and faces
+            TessInfo = getappdata(hFig, 'Surface');
+            iSurface = getappdata(hFig, 'iSurface');
+            sIsoSrf.Vertices = TessInfo(iSurface).hPatch.Vertices;
+            sIsoSrf.Faces    = TessInfo(iSurface).hPatch.Faces;
+            % Get CT file, isoValue and isorange used to generate the isosurface file
+            [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(SurfaceFile);
             % Get current isovalue from panel
             newIsoValue = GetIsoValue();
-            % Get CT file, isoValue and isorange used to generate the isosurface file
-            [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(GlobalData.Surface(iSurf).FileName);
-            % Update the fields for the IsoSurface mesh structure
-            % Set vertices and faces
-            sIsoSrf.Vertices = GlobalData.Surface(iSurf).Vertices;
-            sIsoSrf.Faces    = GlobalData.Surface(iSurf).Faces;
             % Get and update comment and history
-            sIsoSrfTmp = load(SurfaceFile, 'Comment', 'History');
+            sIsoSrfTmp = load(file_fullpath(SurfaceFile), 'Comment', 'History');
             comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(newIsoValue));
             sIsoSrf.Comment = comment;
             sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
                                 sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, newIsoValue, isoRange));
             % Save isosurface
-            bst_save(SurfaceFile, sIsoSrf, 'v7');
+            bst_save(file_fullpath(SurfaceFile), sIsoSrf, 'v7');
             % Reload the subject
             [~, iSubject] = bst_get('MriFile', ctFile);
             db_reload_subjects(iSubject);
