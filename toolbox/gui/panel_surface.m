@@ -455,7 +455,6 @@ function SliderCallback(hObject, event, target)
             % Update vertices and faces values in panel
             ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
             ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
-            SetIsoValue(newIsoValue);
             GlobalData.Surface(iSurf).Vertices = Vertices;
             GlobalData.Surface(iSurf).Faces = Faces;
             GlobalData.Surface(iSurf).isSurfaceModified = 1;
