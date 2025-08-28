@@ -878,8 +878,6 @@ function DeleteFigure(hFigure, varargin)
     end
     % If the figure is a 3DViz figure
     if ishandle(hFigure) && isappdata(hFigure, 'Surface')
-        % Save modifications in surface
-        panel_surface('SaveModificationsFromFigure', hFigure);
         % Signals the "Surfaces" and "Scouts" panel that a figure was closed
         panel_surface('UpdatePanel');
         % Remove scouts references
