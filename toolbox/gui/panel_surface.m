@@ -467,6 +467,14 @@ function SliderCallback(hObject, event, target)
                 setappdata(hFigs(ix), 'Surface', TessInfo);
                 SetSurfaceColor(hFigs(ix), iSurface, colorBak(2,:), colorBak(1,:));
             end
+            % Update the loaded IsoSurface
+            GlobalData.Surface(iSurf).Vertices    = Vertices;
+            GlobalData.Surface(iSurf).Faces       = Faces;
+            GlobalData.Surface(iSurf).VertConn    = tess_vertconn(Vertices, Faces);
+            GlobalData.Surface(iSurf).VertNormals = tess_normals(Vertices, Faces, GlobalData.Surface(iSurf).VertConn);
+            GlobalData.Surface(iSurf).VertArea    = tess_area(Vertices, Faces);
+            GlobalData.Surface(iSurf).SulciMap    = tess_sulcimap(GlobalData.Surface(iSurf));
+            GlobalData.Surface(iSurf).Comment     = num2str(newIsoValue);
             GlobalData.Surface(iSurf).isSurfaceModified = 1;
             
         case 'DataAlpha'
