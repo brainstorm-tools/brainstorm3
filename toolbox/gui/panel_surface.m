@@ -1155,11 +1155,9 @@ function UpdateSurfaceProperties()
     end
     % If surface is sliced MRI
     isAnatomy = strcmpi(TessInfo(iSurface).Name, 'Anatomy');
-    if ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'isosurface', 'match'))
-        isIsoSurface = 1;
-    else
-        isIsoSurface = 0;
-    end
+    isFem     = strcmpi(TessInfo(iSurface).Name, 'FEM');
+    isCortex  = strcmpi(TessInfo(iSurface).Name, 'Cortex');
+    isIsoSurf = ~isempty(regexp(TessInfo(iSurface).SurfaceFile, 'isosurface', 'match'));
 
     % ==== Surface properties ====
     % Number of vertices
@@ -1172,22 +1170,24 @@ function UpdateSurfaceProperties()
     % Surface color
     surfColor = TessInfo(iSurface).AnatomyColor(2, :);
     ctrl.jButtonSurfColor.setBackground(java.awt.Color(surfColor(1),surfColor(2),surfColor(3)));
-    % Surface smoothing ALPHA (disable for Isosurface)
-    gui_enable([ctrl.jSliderSurfSmoothValue, ctrl.jLabelSurfSmoothTitle, ctrl.jLabelSurfSmoothValue], ~isIsoSurface, 0);
+    % Surface smoothing ALPHA
+    ctrl.jSliderSurfSmoothValue.setVisible(~isFem && ~isIsoSurf);
+    ctrl.jLabelSurfSmoothTitle.setVisible(~isFem && ~isIsoSurf );
+    ctrl.jLabelSurfSmoothValue.setVisible(~isFem && ~isIsoSurf);
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
     % Show/hide isoSurface thresholding
-    ctrl.jSliderSurfIsoValue.setVisible(isIsoSurface);
-    ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurface);
-    ctrl.jLabelSurfIsoValue.setVisible(isIsoSurface);
-    if isIsoSurface
-        [~, isoValue, isoRange] = GetIsosurfaceParams(TessInfo(iSurface).SurfaceFile);
+    ctrl.jSliderSurfIsoValue.setVisible(isIsoSurf);
+    ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurf);
+    ctrl.jLabelSurfIsoValue.setVisible(isIsoSurf);
+    if isIsoSurf
+        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
         ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);
     end
-    % Show sulci button (disable for Isosurface)
-    gui_enable(ctrl.jButtonSurfSulci, ~isIsoSurface, 0);
+    % Show sulci button
+    gui_enable(ctrl.jButtonSurfSulci, isCortex, 0);
     ctrl.jButtonSurfSulci.setSelected(TessInfo(iSurface).SurfShowSulci);
     % Show surface edges button
     ctrl.jButtonSurfEdge.setSelected(TessInfo(iSurface).SurfShowEdges);
@@ -2199,6 +2199,8 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             % Update surface color
             figure_callback(hFig, 'UpdateSurfaceColor', hFig, iTess);
         end
+        % Get updated figure's appdata (surface list)
+        TessInfo = getappdata(hFig, 'Surface');
     end
     
     % ===== CONFIGURE COLORBAR =====

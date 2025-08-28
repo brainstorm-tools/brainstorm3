@@ -473,7 +473,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 end
                 OPTIONS.nVertices = str2double(OPTIONS.nVertices);
             end
-            % If there are fiducials define: record these, to use them when importing FreeSurfer (or other) segmentations
+            % If there are fiducials defined: record these, to use them when importing FreeSurfer (or other) segmentations
             if ~isempty(SubjectFidMriFile{iSubj})
                 sMriFid = in_mri(SubjectFidMriFile{iSubj}, 'ALL', 0);
             else
@@ -751,10 +751,19 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                             if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
-                                if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+                                % Quick bug fix: Only check first file for now if array
+                                if iscell(sCoordsystem.IntendedFor)
+                                    sCoordsystem.IntendedFor = sCoordsystem.IntendedFor{1};
+                                end
+                                % Get full filepath for sCoordsystem.IntendedFor (which can given as either relative or BIDS URI)
+                                [sCoordsystem.IntendedFor, msg] = ResolveBidsUri(sCoordsystem.IntendedFor, BidsDir);
+                                if ~isempty(msg)
+                                    Messages = [Messages 10 msg];
+                                end
+                                if file_exist(sCoordsystem.IntendedFor)
                                     % Check whether the IntendedFor files is already imported as a volume
                                     if ~isempty(MriMatchOrigImport)
-                                        iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
+                                        iMriImported = find(cellfun(@(c)file_compare(c, sCoordsystem.IntendedFor), MriMatchOrigImport(:,1)));
                                     else
                                         iMriImported = [];
                                     end
@@ -883,18 +892,18 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     if strcmp(fExt,'.snirf')
-                          ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
-                          ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
-                          ChanInfo(:,2)  = ChanInfo_tmp(:,2);
-                          ChanInfo(:,4)  = ChanInfo_tmp(:,6);
-                          for i = 1:size(ChanInfo,1)
-                             ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
-                             ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
-                          end   
-                     else    
-                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                        ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+                        ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
+                        ChanInfo(:,2)  = ChanInfo_tmp(:,2);
+                        ChanInfo(:,4)  = ChanInfo_tmp(:,6);
+                        for i = 1:size(ChanInfo,1)
+                            ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
+                            ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
+                        end
+                    else
+                        % Silence warnings for missing columns that are not required.
+                        ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     end  
-
                     % Try to add info to the existing Brainstorm channel file
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
@@ -1313,3 +1322,36 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
     end
 end
 
+
+%% ===== RESOLVE RELATIVE PATH AND BIDS URI =====
+% Resolve full filepath using URI scheme: bids:[<dataset-name>]:<relative-path>
+%
+% BIDS URIs can in principle point to other named datasets, including e.g:
+% under derivatives, which would be defined in the dataset_description.json file.
+%
+% For now, this function is limited to the current BIDS dataset.
+% A warn is shown if such a dataset name is used in the URI.
+% See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
+    Msg = '';
+    if ~strncmp(InFile, 'bids:', 5) || strncmp(InFile, 'bids::', 6)
+        % Assume it is a relative path to BIDS dir
+        OutFile = bst_fullfile(BidsDir, InFile);
+        return
+    end
+    % Check for dataset-name
+    DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
+    DatasetName = DatasetName{1};
+    if ~isempty(DatasetName)
+        % Get BIDS dataset name from BIDS dir
+        [~, currentDatasetName] = bst_fileparts(BidsDir);
+        if ~strcmp(currentDatasetName, DatasetName)
+            Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
+            disp(['BIDS> Warning: ' Msg]);
+        end
+    end
+    % There should not be a slash after bids::, but check anyway.
+    OutFile = regexprep(InFile, 'bids:[^:]*:/?', '');
+    OutFile = bst_fullfile(BidsDir, OutFile);
+end
+    
