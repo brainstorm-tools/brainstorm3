@@ -422,7 +422,9 @@ function SliderCallback(hObject, event, target)
             [~, iSurf] = bst_memory('GetSurface', isosurfFile);
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
-            if isoValue == jSlider.getValue()
+            % Get new isoValue from the slider
+            newIsoValue = jSlider.getValue();
+            if isoValue == newIsoValue
                 % No modifications done to isosurface
                 GlobalData.Surface(iSurf).isSurfaceModified = 0;
                 return
@@ -441,22 +443,26 @@ function SliderCallback(hObject, event, target)
                     return;
                 end
             end
-            % Get new isoValue from the slider
-            newIsoValue = jSlider.getValue();
-            % Update the IsoSurface
-            colorBak = TessInfo(iSurface).AnatomyColor;
+            % Compute new isosurface mesh
             sCt = bst_memory('LoadMri', ctFile);
             [Vertices, Faces] = tess_isosurface(sCt, newIsoValue);
-            TessInfo(iSurface).hPatch.Vertices = Vertices;
-            TessInfo(iSurface).hPatch.Faces = Faces;
-            TessInfo(iSurface).nVertices = size(Vertices, 1);
-            TessInfo(iSurface).nFaces = size(Faces, 1);
-            setappdata(hFig, 'Surface', TessInfo);
-            SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
+            nVertices = size(Vertices, 1);
+            nFaces    = size(Faces, 1);
             % Update vertices and faces values in panel
-            ctrl.jLabelNbVertices.setText(sprintf('%d', TessInfo(iSurface).nVertices));
-            ctrl.jLabelNbFaces.setText(sprintf('%d', TessInfo(iSurface).nFaces));
-            % Mark isosurface as modified
+            ctrl.jLabelNbVertices.setText(sprintf('%d', nVertices));
+            ctrl.jLabelNbFaces.setText(sprintf('%d', nFaces));
+            % Update for all figures using this surface
+            hFigs = bst_figures('GetFigureWithSurface', isosurfFile);
+            for ix = 1 : length(hFigs)
+                [iSurface, TessInfo] = GetSurface(hFigs(ix), isosurfFile, []);
+                colorBak = TessInfo(iSurface).AnatomyColor;
+                TessInfo(iSurface).hPatch.Vertices = Vertices;
+                TessInfo(iSurface).hPatch.Faces = Faces;
+                TessInfo(iSurface).nVertices = nVertices;
+                TessInfo(iSurface).nFaces = nFaces;
+                setappdata(hFigs(ix), 'Surface', TessInfo);
+                SetSurfaceColor(hFigs(ix), iSurface, colorBak(2,:), colorBak(1,:));
+            end
             GlobalData.Surface(iSurf).isSurfaceModified = 1;
             
         case 'DataAlpha'
