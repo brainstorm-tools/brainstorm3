@@ -422,6 +422,9 @@ function SliderCallback(hObject, event, target)
             [~, iSurf] = bst_memory('GetSurface', isosurfFile);
             % Get CT file and IsoValue used to generate the isosurface file
             [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
+            if GlobalData.Surface(iSurf).isSurfaceModified
+                isoValue = TessInfo(iSurface).SurfIsoValue;
+            end
             % Get new isoValue from the slider
             newIsoValue = jSlider.getValue();
             if isoValue == newIsoValue
@@ -457,9 +460,10 @@ function SliderCallback(hObject, event, target)
                 [iSurface, TessInfo] = GetSurface(hFigs(ix), isosurfFile, []);
                 colorBak = TessInfo(iSurface).AnatomyColor;
                 TessInfo(iSurface).hPatch.Vertices = Vertices;
-                TessInfo(iSurface).hPatch.Faces = Faces;
-                TessInfo(iSurface).nVertices = nVertices;
-                TessInfo(iSurface).nFaces = nFaces;
+                TessInfo(iSurface).hPatch.Faces    = Faces;
+                TessInfo(iSurface).nVertices       = nVertices;
+                TessInfo(iSurface).nFaces          = nFaces;
+                TessInfo(iSurface).SurfIsoValue    = newIsoValue;
                 setappdata(hFigs(ix), 'Surface', TessInfo);
                 SetSurfaceColor(hFigs(ix), iSurface, colorBak(2,:), colorBak(1,:));
             end
@@ -1188,7 +1192,10 @@ function UpdateSurfaceProperties()
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurf);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurf);
     if isIsoSurf
-        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        [~, isoValue, isoRange] = GetIsosurfaceParams(TessInfo(iSurface).SurfaceFile);
+        if TessInfo(iSurface).SurfIsoValue ~= 0
+            isoValue = TessInfo(iSurface).SurfIsoValue;
+        end
         ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);

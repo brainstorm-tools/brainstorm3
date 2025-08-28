@@ -1046,6 +1046,7 @@ switch lower(structureName)
             'SurfShowEdges',           0, ...    % Toggle oon/off surface edges display
             'AnatomyColor',            anatomyColor, ... % RGB color for sulci map encoding
             'SurfSmoothValue',         0, ...
+            'SurfIsoValue',            0, ...
             'Data',                    [], ...   % MEG, EEG or current density for overlay to anatomy (needs to be compatible in size with FaceVertexCdata patch property)
             'DataMinMax',              [], ...   % Minimum and maximum of the DataSource.FileName file
             'DataWmat',                [], ...   % Interpolation matrix (transformation to map Data on hPatch surface) 

@@ -909,7 +909,7 @@ function DeleteFigure(hFigure, varargin)
         else
             bst_memory('UnloadAll');
         end
-    end   
+    end
     % Update layout
     if ~NoLayout
         gui_layout('Update');
