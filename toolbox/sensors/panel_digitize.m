@@ -180,8 +180,10 @@ function Start(varargin) %#ok<DEFNU>
     end
     
     % Start Serial Connection
-    if ~CreateSerialConnection()
-        return;
+    if strcmpi(Digitize.Type, 'Digitize')
+        if ~CreateSerialConnection()
+            return;
+        end
     end
     
     % ===== CREATE CONDITION =====

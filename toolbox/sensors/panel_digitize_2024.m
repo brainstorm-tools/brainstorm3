@@ -155,8 +155,11 @@ function Start(varargin)
 
     % ===== INITIALIZE CONNECTION =====
     % Start Serial Connection
-    if ~CreateSerialConnection()
-        return;
+    if strcmpi(Digitize.Type, 'Digitize')
+        % Start Serial Connection
+        if ~CreateSerialConnection()
+            return;
+        end
     end
     
     % ===== CREATE CONDITION =====
