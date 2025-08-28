@@ -564,10 +564,11 @@ end
 
 %% ===== GET SLIDER ISOVALUE =====
 function isoValue = GetIsoValue()
+    isoValue = [];
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Surface');
     if isempty(ctrl)
-        return;
+        return
     end 
     isoValue = ctrl.jSliderSurfIsoValue.getValue();
 end
