@@ -2824,41 +2824,54 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     end
 end
 
-%% ===== SAVE MODIFICATIONS FROM FIGURE =====
-function SaveModificationsFromFigure(hFig)
+%% ===== SAVE SURFACE MODIFICATIONS =====
+function SaveModifications()
     global GlobalData;
     % Loop on all the loaded surfaces
     for iSurf = 1:length(GlobalData.Surface)
+        % Skip surfaces generated on the fly (view_surface_matrix)
+        if ~isempty(GlobalData.Surface(iSurf).FileName) && (GlobalData.Surface(iSurf).FileName(1) == '#')
+            continue;
+        end
         % If the surface was not modified: skip
         if ~GlobalData.Surface(iSurf).isSurfaceModified
             continue;
         end
         SurfaceFile = GlobalData.Surface(iSurf).FileName;
-        % Update isovalue and related surface properties in isosurface
-        if ~isempty(hFig) && ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match')) 
-            disp(['BST> Saving modifications in isosurface: ' SurfaceFile]);             
-            % Get and update vertices and faces
-            TessInfo = getappdata(hFig, 'Surface');
-            iSurface = getappdata(hFig, 'iSurface');
-            sIsoSrf.Vertices = TessInfo(iSurface).hPatch.Vertices;
-            sIsoSrf.Faces    = TessInfo(iSurface).hPatch.Faces;
-            % Get CT file, isoValue and isorange used to generate the isosurface file
-            [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(SurfaceFile);
-            % Get current isovalue from panel
-            newIsoValue = GetIsoValue();
-            % Get and update comment and history
-            sIsoSrfTmp = load(file_fullpath(SurfaceFile), 'Comment', 'History');
-            comment = strrep(sIsoSrfTmp.Comment, num2str(oldIsoValue), num2str(newIsoValue));
-            sIsoSrf.Comment = comment;
-            sIsoSrf = bst_history('add', sIsoSrf, 'threshold_ct', ...
-                                sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', ctFile, newIsoValue, isoRange));
-            % Save isosurface
-            bst_save(file_fullpath(SurfaceFile), sIsoSrf, 'v7');
-            % Reload the subject
-            [~, iSubject] = bst_get('MriFile', ctFile);
-            db_reload_subjects(iSubject);
+        disp(['BST> Saving modified surface: ' SurfaceFile]);
+
+        switch lower(GlobalData.Surface(iSurf).Name)
+            case 'other'
+                % Specific handling for IsoSurfaces
+                if ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match'))
+                    % Ask user if they want to proceed
+                    if ~java_dialog('confirm', ['Save new threshold for isosurface file: ' 10 10 SurfaceFile], 'Change threshold IsoSurface')
+                        GlobalData.Surface(iSurf).isSurfaceModified = 0;
+                        return
+                    end
+                    % Modified data to be saved
+                    s.Vertices    = GlobalData.Surface(iSurf).Vertices;
+                    s.Faces       = GlobalData.Surface(iSurf).Faces;
+                    s.VertConn    = GlobalData.Surface(iSurf).VertConn;
+                    s.VertNormals = GlobalData.Surface(iSurf).VertNormals;
+                    s.VertArea    = GlobalData.Surface(iSurf).VertArea;
+                    s.SulciMap    = GlobalData.Surface(iSurf).SulciMap;
+                    newIsoValue   = GlobalData.Surface(iSurf).Comment;
+                    % Get parameters from original file (not the loaded)
+                    [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(SurfaceFile);
+                    sIsoSrfOrg = load(file_fullpath(SurfaceFile), 'Comment', 'History');
+                    s.Comment   = strrep(sIsoSrfOrg.Comment, num2str(oldIsoValue), newIsoValue);
+                    s.History   = sIsoSrfOrg.History;
+                    % Update History
+                    s = bst_history('add', s, 'threshold_ct', ...
+                                sprintf('Thresholded CT: %s threshold = %s minVal = %d maxVal = %d', ctFile, newIsoValue, isoRange));
+                    % Save isosurface
+                    bst_save(file_fullpath(SurfaceFile), s, 'v7');
+                    % Reload the subject
+                    [~, iSubject] = bst_get('MriFile', ctFile);
+                    db_reload_subjects(iSubject);
+                end
         end
-        % Reset the modified state
         GlobalData.Surface(iSurf).isSurfaceModified = 0;
     end
 end
