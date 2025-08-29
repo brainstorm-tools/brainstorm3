@@ -841,7 +841,7 @@ function DeleteFigure(hFigure, varargin)
     end
     
     % Check if surfaces were modified
-    if ~isempty(GlobalData.Surface) && any([GlobalData.Surface.isAtlasModified])
+    if ~isempty(GlobalData.Surface) && any([GlobalData.Surface.isAtlasModified, GlobalData.Surface.isSurfaceModified])
         % Force unload of the anatomy
         isKeepAnatomy = 0;
     end

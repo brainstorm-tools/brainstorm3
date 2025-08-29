@@ -3297,8 +3297,8 @@ end
 function SmoothSurface(hFig, iTess, smoothValue)
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
-    % Ignore MRI slices
-    if ismember(TessInfo(iTess).Name, {'Anatomy', 'FEM'})
+    % Ignore for MRI slices, FEM tetrahedral mesh and IsoSurface
+    if ismember(TessInfo(iTess).Name, {'Anatomy', 'FEM'}) || ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_isosurface', 'match'))
         return
     end
     % Get surfaces vertices
