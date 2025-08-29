@@ -42,28 +42,53 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         OPTIONS = GetDefaultOption();
     end
-    jPanelOptions = gui_river([4,4], [3,15,10,10], 'Options');
-    % Fluence data source
-    gui_component('label', jPanelOptions, '', '<HTML><B>Fluence data source (path or URL)</B></HTML>', [], [], [], []);
-    jDataSource = gui_component('text', jPanelOptions, 'tab', OPTIONS.FluenceFolder, [], [], [], []);
-    jPanelOptions.add('br hfill', jDataSource);
-    gui_component('label', jPanelOptions, 'br');
-    gui_component('label', jPanelOptions, 'br');
-    % Smoothing method
-    gui_component('label', jPanelOptions, 'br', '<HTML><B>Smoothing method</B></HTML>', [], [], [], []);
+    % Fluence data source panel
+    jPanelSource = gui_river([4,4], [3,15,10,10], 'Fluence data source');
+    jButtonGroupSrc = ButtonGroup();
+    jRadioUrl = gui_component('radio', jPanelSource, 'br', 'URL', jButtonGroupSrc, [], @(h,ev)UpdatePanel(), []);
+    jRadioDir = gui_component('radio', jPanelSource, [], 'Path', jButtonGroupSrc, [], @(h,ev)UpdatePanel(), []);
+    % Panel to hold URL or Dir panels
+    jPanelInput = java_create('javax.swing.JPanel');
+    jPanelInput.setLayout(GridBagLayout());
+    c = GridBagConstraints();
+    c.fill    = GridBagConstraints.HORIZONTAL;
+    c.weightx = 1;
+    c.weighty = 0;
+    c.gridx   = 0;
+    c.gridy   = 0;
+    % URL panel
+    jPanelUrl = gui_river([4,4], [5,5,5,5], '');
+    jTextUrl = gui_component('text', [], '', 'https://neuroimage.usc.edu/resources/nst_data/fluence/MRI__Colin27_4NIRS/', [], [], [], []);
+    jPanelUrl.add('hfill', jTextUrl);
+    % Dir panel
+    LastUsedDirs = bst_get('LastUsedDirs');
+    jPanelDir = gui_river([4,4], [5,5,5,5], '');
+    jTextDir = gui_component('text', [], '', LastUsedDirs.ImportData, [], [], [], []);
+    jPanelDir.add('hfill', jTextDir);
+    gui_component('button', jPanelDir, '', '...', [],[], @(h,ev)PickDir_Callback());
+    % Add in same place, but URL panel (default) is added at the last, so it is shown on top of Dir panel
+    jPanelInput.add(jPanelDir, c);
+    jPanelInput.add(jPanelUrl, c);
+    jPanelSource.add('br hfill', jPanelInput);
+    jPanelNew.add('br hfill', jPanelSource);
+    % Default: URL
+    jRadioUrl.setSelected(1);
+    jPanelDir.setVisible(0);
+    % Smoothing panel
+    % method
+    jPanelSmooth = gui_river([4,4], [3,15,10,10], 'Spatial smoothing');
     jGroupRadio = ButtonGroup();
-    jRadioGeodesic = gui_component('radio', jPanelOptions, 'br', '<HTML>Geodesic (recommended)</HTML>', jGroupRadio, [], [], []);
+    jRadioGeodesic = gui_component('radio', jPanelSmooth, 'br', '<HTML>Geodesic (recommended)</HTML>', jGroupRadio, [], [], []);
     jRadioGeodesic.setSelected(strcmp(OPTIONS.smoothing_method, 'geodesic_dist'))
-    jRadioSurfstat = gui_component('radio', jPanelOptions, 'br', '<HTML><FONT color="#777777">Before 2023 (not recommended)</FONT></HTML>', jGroupRadio, [], [], []);
+    jRadioSurfstat = gui_component('radio', jPanelSmooth, 'br', '<HTML><FONT color="#777777">Before 2023 (not recommended)</FONT></HTML>', jGroupRadio, [], [], []);
     jRadioSurfstat.setSelected(strcmp(OPTIONS.smoothing_method, 'surfstat_before_2023'))
-    gui_component('label', jPanelOptions, 'br');
-    gui_component('label', jPanelOptions, 'br');
-    % Spatial smoothing
-    gui_component('label', jPanelOptions, 'br', '<HTML><B>Spatial smoothing FWHM</B></HTML>', [], [], [], []);
-    jSmoothingFwhm = gui_component('text', jPanelOptions, 'tab', num2str(OPTIONS.smoothing_fwhm), [], [], [], []);
-    jPanelOptions.add('br hfill', jSmoothingFwhm);
-
-    jPanelNew.add('br hfill', jPanelOptions);
+    gui_component('label', jPanelSmooth, 'br');
+    gui_component('label', jPanelSmooth, 'br');
+    % fwhm
+    gui_component('label', jPanelSmooth, '', 'FWHM: ', [], [], [], []);
+    jSmoothingFwhm = gui_component('text', jPanelSmooth, 'tab', num2str(OPTIONS.smoothing_fwhm), [], [], [], []);
+    gui_component('label', jPanelSmooth, '', 'mm', [], [], [], []);
+    jPanelNew.add('br hfill', jPanelSmooth);
 
     % ===== VALIDATION BUTTONS =====
     gui_component('button', jPanelNew, 'br right', 'Cancel', [], [], @ButtonCancel_Callback, []);
@@ -72,7 +97,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % ===== PANEL CREATION =====
     % Return a mutex to wait for panel close
     bst_mutex('create', panelName);
-    ctrl = struct('jDataSource',    jDataSource, ...
+    ctrl = struct('jRadioUrl',      jRadioUrl, ...
+                  'jRadioDir',      jRadioDir, ...
+                  'jTextUrl',       jTextUrl, ...
+                  'jTextDir',       jTextDir, ...
                   'jSmoothingFwhm', jSmoothingFwhm, ...
                   'jRadioGeodesic', jRadioGeodesic, ...
                   'jRadioSurfstat', jRadioSurfstat );
@@ -96,7 +124,25 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
 
 %% ===== UPDATE PANEL =====
     function UpdatePanel(varargin)
+        % Fluence data source
+        if jRadioUrl.isSelected()
+            jPanelDir.setVisible(0);
+            jPanelUrl.setVisible(1);
+        elseif jRadioDir.isSelected()
+            jPanelUrl.setVisible(0);
+            jPanelDir.setVisible(1);
+        end
+    end
 
+%% ====== PICK DIR =====
+    function PickDir_Callback()
+        LastUsedDirs = bst_get('LastUsedDirs');
+        strFluenceDir = java_getfile('open', 'Select fluence directory', LastUsedDirs.ImportData, 'single', 'dirs', {{'*'}, 'Fluence directory', 'directory'}, 0);
+        if ~isempty(strFluenceDir)
+            jTextDir.setText(strFluenceDir);
+            LastUsedDirs.ImportData = strFluenceDir;
+            bst_set('LastUsedDirs', LastUsedDirs);
+        end
     end
 end
 
@@ -121,7 +167,13 @@ function s = GetPanelContents() %#ok<DEFNU>
     ctrl = bst_get('PanelControls', 'HeadModelNirsOptions');
     s = GetDefaultOption();
     % Fluence data source
-    s.FluenceFolder = char(ctrl.jDataSource.getText());
+    if ctrl.jRadioUrl.isSelected()
+        s.FluenceFolder = char(ctrl.jTextUrl.getText());
+    elseif ctrl.jRadioDir.isSelected()
+        s.FluenceFolder = char(ctrl.jTextDir.getText());
+    else
+        error('You must select a source for fluence data');
+    end
     % Smoothing method
     if ctrl.jRadioGeodesic.isSelected()
         s.smoothing_method = 'geodesic_dist';
