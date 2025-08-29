@@ -320,6 +320,7 @@ end
 %         |- EEGMethod     : {'eeg_3sphereberg', 'openmeeg', ''}
 %         |- ECOGMethod    : {'openmeeg', ''}
 %         |- SEEGMethod    : {'openmeeg', ''}
+%         |- NIRSMethod    : {'import', ''}
 %         |- HeadModelType : {'volume', 'surface'}
 %         |- Comment       : String [optional]
 %         |- Interactive   : {0,1}, if 0, does everything by default and does not shoe any message
