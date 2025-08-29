@@ -23,6 +23,7 @@ function varargout = panel_headmodel_nirstorm(varargin)
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2025
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
