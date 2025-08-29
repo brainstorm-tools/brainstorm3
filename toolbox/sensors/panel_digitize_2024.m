@@ -155,11 +155,8 @@ function Start(varargin)
 
     % ===== INITIALIZE CONNECTION =====
     % Start Serial Connection
-    if strcmpi(Digitize.Type, 'Digitize')
-        % Start Serial Connection
-        if ~CreateSerialConnection()
-            return;
-        end
+    if ~CreateSerialConnection()
+        return;
     end
     
     % ===== CREATE CONDITION =====
@@ -303,11 +300,11 @@ function [bstPanelNew, panelName] = CreatePanel()
     gui_component('MenuItem', jMenu, [], 'Start over', IconLoader.ICON_RELOAD, [], @(h,ev)bst_call(@ResetDataCollection, 1), []);
     gui_component('MenuItem', jMenu, [], 'Edit settings...', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
     gui_component('MenuItem', jMenu, [], 'Switch to Digitize "legacy"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
-    if ~strcmpi(Digitize.Type, '3DScanner')
+    if strcmpi(Digitize.Type, 'Digitize')
         gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     end
     jMenu.addSeparator();
-    if exist('bst_headtracking', 'file') && ~strcmpi(Digitize.Type, '3DScanner')
+    if exist('bst_headtracking', 'file') && strcmpi(Digitize.Type, 'Digitize')
         gui_component('MenuItem', jMenu, [], 'Start head tracking', IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
@@ -364,7 +361,7 @@ function [bstPanelNew, panelName] = CreatePanel()
     
     % ===== OTHER BUTTONS =====
     jPanelMisc = gui_river([5,4], [10,4,4,4]);
-        if ~strcmpi(Digitize.Type, '3DScanner') 
+        if strcmpi(Digitize.Type, 'Digitize')
             jButtonCollectPoint = gui_component('button', jPanelMisc, 'br', 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
         else
             jButtonCollectPoint = gui_component('label', jPanelMisc, 'hfill', ''); % spacing
@@ -1149,7 +1146,7 @@ function PlotCoordinate(isAdd)
         figure_3d('ViewSensors', Digitize.hFig, 1, 1, 0, 'EEG');
     end
     % Hide template head surface
-    if ~strcmpi(Digitize.Type, '3DScanner')
+    if strcmpi(Digitize.Type, 'Digitize')
         panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
     end
 end
@@ -1424,8 +1421,8 @@ function isOk = CreateSerialConnection()
     global Digitize 
     isOk = 0;
     while ~isOk
-        % Simulation: exit
-        if Digitize.Options.isSimulate
+        % Simulation or 3DScanner: exit
+        if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
             isOk = 1;
             return;
         end
@@ -1611,7 +1608,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     end
 
     % Transform coordinates
-    if ~isempty(Digitize.Transf) && ~strcmpi(Digitize.Type, '3DScanner')
+    if ~isempty(Digitize.Transf) && strcmpi(Digitize.Type, 'Digitize')
         Digitize.Points(Digitize.iPoint).Loc = [Digitize.Points(Digitize.iPoint).Loc 1] * Digitize.Transf';
     end
     % Update coordinates list only when there is no updating of selected point
