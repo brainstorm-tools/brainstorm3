@@ -1127,8 +1127,8 @@ function ManualCollect_Callback()
 
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
-    % Simulation: call the callback directly
-    if DigitizeOptions.isSimulate
+    % Simulation or 3DScanner: call the callback directly
+    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else

@@ -851,8 +851,8 @@ function ManualCollect_Callback()
     global Digitize
     ctrl = bst_get('PanelControls', 'Digitize');
     ctrl.jButtonCollectPoint.setEnabled(0);
-    % Simulation: call the callback directly
-    if Digitize.Options.isSimulate
+    % Simulation or 3DScanner: call the callback directly
+    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
