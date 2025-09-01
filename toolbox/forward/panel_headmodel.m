@@ -194,6 +194,16 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         elseif ~isMeg && isEeg && ~isEcog && ~isSeeg
             jCheckMethodEEG.setSelected(1);
         end
+        
+        % Disable NIRS for volumetric head model
+        if ~jRadioGridSurface.isSelected()
+            jCheckMethodNIRS.setSelected(0);
+            jCheckMethodNIRS.setEnabled(0);
+        else
+            jCheckMethodNIRS.setSelected(isNirs);
+            jCheckMethodNIRS.setEnabled(1);
+        end
+
         % MEG/EEG Checkbox
         isMegSel  = isMeg && jCheckMethodMEG.isSelected();
         isEegSel  = isEeg && jCheckMethodEEG.isSelected();
@@ -215,7 +225,10 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         end
         if isNirs
             jComboMethodNIRS.setEnabled(isNirsSel);
+        elseif isNirs && ~jRadioGridSurface.isSelected() 
+            jComboMethodNIRS.setSelected(isNirsSel);
         end
+
         % Get current methods for EEG and MEG
         allMethods = {};
         if isMegSel
