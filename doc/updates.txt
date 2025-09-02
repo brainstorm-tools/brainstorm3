@@ -1,3 +1,18 @@
+August 2025
+- Anatomy: Skull stripping MRI/CT/PET and diff-size coregistered volumes
+- BIDS: Resolve BIDS URI for same Dataset
+- Connectivity: MVGC method (recommended) for Time and Freq Granger causality
+- DB: Bugfix, keep default anatomies for moved or copied Subject
+- DB: Update: include 'NIRSmethod' field in Study.HeadModel struct
+- iEEG: Improvements and bugfix for iEEG panel
+- IO: Extended support for XDF files
+- IO: Bugfix for Axion files
+- Reports: Support screenshots of jFrame windows
+- Viz: Improved 2D-Layout plot positioning for MEG, EEG, NIRS, ECOG and SEEG
+- Viz: Show all pairs for AxB connectivity metrics
+- Distrib: Brainstorm compilation fetches latest brainstorm.jar
+- Distrib: Script to run the ECOG tutorial
+--------------------------------------------------------------
 July 2025
 - Anatomy: Prefer sform over qform if both are present in NIfTI files
 - Anatomy: Allow non-interactive call for tess_force_envelop
