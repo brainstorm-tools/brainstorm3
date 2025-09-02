@@ -230,10 +230,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         end
         if isNirs
             jComboMethodNIRS.setEnabled(isNirsSel);
-        elseif isNirs && ~jRadioGridSurface.isSelected() 
-            jComboMethodNIRS.setSelected(isNirsSel);
         end
-
         % Get current methods for EEG and MEG
         allMethods = {};
         if isMegSel
