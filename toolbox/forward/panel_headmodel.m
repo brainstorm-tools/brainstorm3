@@ -189,10 +189,16 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     %% ===== UPDATE COMMENT =====
     function UpdateComment(varargin)
         % Force to have at least one modality selected
-        if isMeg && ~isEeg && ~isEcog && ~isSeeg
+        if isMeg && ~isEeg && ~isEcog && ~isSeeg && ~isNirs
             jCheckMethodMEG.setSelected(1);
-        elseif ~isMeg && isEeg && ~isEcog && ~isSeeg
+        elseif isEeg && ~isMeg && ~isEcog && ~isSeeg && ~isNirs
             jCheckMethodEEG.setSelected(1);
+        elseif isEcog && ~isMeg && ~isEeg && ~isSeeg && ~isNirs
+            jCheckMethodECOG.setSelected(1);
+        elseif isSeeg && ~isMeg && ~isEeg && ~isEcog && ~isNirs
+            jCheckMethodSEEG.setSelected(1);
+        elseif isNirs && ~isMeg && ~isEeg && ~isEcog && ~isSeeg
+            jCheckMethodNIRS.setSelected(1);
         end
         
         % Disable NIRS for volumetric head model
