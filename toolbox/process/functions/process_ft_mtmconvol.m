@@ -75,6 +75,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mt_taper.Type    = 'combobox_label';
     sProcess.options.mt_taper.Value   = {'dpss', {'dpss', 'hanning', 'rectwin', 'sine'; ...
                                                   'dpss', 'hanning', 'rectwin', 'sine'}};
+    sProcess.options.mt_taper.Controller.dpss = 'ModFreq';
+    sProcess.options.mt_taper.Controller.sine = 'ModFreq';
     % Options: Frequencies
     sProcess.options.mt_frequencies.Comment = 'Frequencies (start:step:stop): ';
     sProcess.options.mt_frequencies.Type    = 'text';
@@ -83,6 +85,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mt_freqmod.Comment = 'Modulation factor: ';
     sProcess.options.mt_freqmod.Type    = 'value';
     sProcess.options.mt_freqmod.Value   = {10, ' ', 0};
+    sProcess.options.mt_freqmod.Class   = 'ModFreq';
     % Options: Time resolution
     sProcess.options.mt_timeres.Comment = 'Time resolution: ';
     sProcess.options.mt_timeres.Type    = 'value';

@@ -578,6 +578,12 @@ end
 Xinput = [zeros(size(Xinput,1),nMargin), Xinput, zeros(size(Xinput,1),nMargin)];
 
 
+% Use the signal processing toolbox?
+if bst_get('UseSigProcToolbox')
+    hilbert_fcn = @hilbert;
+else
+    hilbert_fcn = @oc_hilbert;
+end
 
 % ==== SETTING THE PARAMETERS OF THE FILTERS ====
 if nHighFreqs > 1 %strcmp(Mode,'map')
@@ -622,7 +628,7 @@ for ifreq=1:nFa
     Xnested = Xnested(:,nMargin-nHilMar+1:end-nMargin+nHilMar);               % Removing part of the margin
     
     % Hilbert transform
-    Z = hilbert(Xnested')';
+    Z = transpose(hilbert_fcn(transpose(Xnested)));
     
     % Phase and envelope detection
     nestedEnv_total = abs(Z);             % Envelope of nested frequency rhythms
@@ -718,7 +724,7 @@ for ifreq=1:nFa
         end        
         Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        
         % Hilbert transform
-        Z = hilbert(Xnesting')';        
+        Z = transpose(hilbert_fcn(transpose(Xnesting)));
         % Phase detection
         nestingPh = angle(Z-repmat(mean(Z,2),1,size(Z,2)));    % Phase of nesting frequency        
         nestingPh = nestingPh(:,nHilMar:fix(winLen*sRate)+nHilMar-1);              % Removing the margin

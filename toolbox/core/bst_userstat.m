@@ -55,7 +55,7 @@ italMoinMoin = ['''', ''''];
 % ===== NUMBER OF USERS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
     % Extract values
     dates = textscan(str, '%d %d');
     dates = double([dates{1}, dates{2}]);
@@ -76,7 +76,10 @@ end
 % ===== LOG ANALYSIS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+    % Replace actions ['i' and 'j'] with 'x' so it is not read as imaginary in textscan
+    str = strrep(str, 'i', 'x');
+    str = strrep(str, 'j', 'x');
     % Extract values
     c = textscan(str, '%02d%02d%c');
     dates = double([c{1}, c{2}]);
@@ -85,26 +88,28 @@ if isempty(PlugName)
     % Create histograms
     iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
     [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
-    % Look for all dates in the current year (exclude current month)
-    year = 2023;
-    iAvg = find((xUpdate >= year) & (xUpdate < year+1));
+    % Look for all dates in last 12 months (exclude current month)
+    t = datetime('today');
+    finRollAvg = t.Year + ((t.Month -1) ./12);
+    iniRollAvg = finRollAvg - 1;
+    iAvg = find((xUpdate >= iniRollAvg) & (xUpdate < finRollAvg));
     % Remove invalid data
     iBad = ((nUpdate < 100) | (nUpdate > 4000));
     nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
     % Plot number of downloads
     [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
                [2005, max(xUpdate(1:end-1))], [], ...
-               sprintf('Downloads per month: Avg(%d)=%d', year, round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+               sprintf('Downloads per month: 12-month Avg=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
                [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
     % String for MoinMoin website
-    fprintf('Number of software downloads per month: (average %d = %s%d/month%s)\r', year, boldMoinMoin, round(mean(nUpdate(iAvg))), boldMoinMoin);
+    fprintf('Number of software downloads per month: (12-month average = %s%d/month%s)\r', boldMoinMoin, round(mean(nUpdate(iAvg))), boldMoinMoin);
 end
 
 
 % ===== NUMBER OF FORUM POSTS =====
 if isempty(PlugName)
     % Read list of users
-    str = bst_webread('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+    str = bst_webread('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
     % Extract values
     dates = textscan(str, '%d %d');
     dates = double([dates{1}, dates{2}]);

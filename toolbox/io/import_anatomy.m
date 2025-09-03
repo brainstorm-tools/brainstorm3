@@ -84,6 +84,8 @@ switch (FileFormat)
         errorMsg = import_anatomy_hcp_v3(iSubject, AnatDir, isInteractive);
     case 'SimNIBS'
         errorMsg = import_anatomy_simnibs(iSubject, AnatDir, nVertices, isInteractive, sFid, 0);
+    case 'BESA-MRI'
+        errorMsg = import_anatomy_besa(iSubject, AnatDir, nVertices, isInteractive, sFid);
 end
 % Handling errors in automatic mode
 if isAuto && ~isempty(errorMsg)

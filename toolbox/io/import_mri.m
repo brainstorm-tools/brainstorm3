@@ -1,5 +1,5 @@
 function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
-% IMPORT_MRI: Import a volume file (MRI, Atlas, CT, etc) in a subject of the Brainstorm database
+% IMPORT_MRI: Import a volume file (MRI, Atlas, CT, PET, etc) in a subject of the Brainstorm database
 % 
 % USAGE: [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
@@ -74,6 +74,9 @@ end
 volType = 'MRI';
 if ~isempty(strfind(Comment, 'CT'))
     volType = 'CT';
+end
+if ~isempty(strfind(Comment, 'PET'))
+    volType = 'PET';
 end
 % Get node comment from filename
 if ~isempty(strfind(Comment, 'Import'))
@@ -153,21 +156,25 @@ isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
 end
-% MNI / Atlas / CT ?
+% MNI / Atlas / CT / PET?
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 isCt    = strcmpi(volType, 'CT');
+isPet   = strcmpi(volType, 'PET');
 % Tag for CT volume
 if isCt
     tagVolType = '_volct';
     isAtlas = 0;
+elseif isPet
+    tagVolType = '_volpet';
+    isAtlas = 0;    
 else
     tagVolType = '';
 end
 
 % Load MRI
 isNormalize = 0;
-sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
+sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize, isPet || isCt);
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -188,7 +195,7 @@ end
 
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-if isempty(Labels) && ~iscell(MriFile) && ~isCt
+if isempty(Labels) && ~iscell(MriFile) && ~isCt && ~isPet
     Labels = mri_getlabels(MriFile, sMri, isAtlas);
 end
 % Save labels in the file structure
@@ -231,6 +238,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         errMsg = '';
     % Regular coregistration options between volumes
     else
+        % Backup history (import)
+        tmpHistory.History = sMri.History;
+        sMri.History = [];
         % If some transformation where made to the intial volume: apply them to the new one ?
         if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), {'permute', 'flipdim'}))
             isApplyTransformation = java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], ['Import ', volType]);
@@ -261,78 +271,126 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         refSize = size(sMriRef.Cube(:,:,:,1));
         newSize = size(sMri.Cube(:,:,:,1));
         isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
+        nFrames = size(sMri.Cube, 4);
+
+        % ==== ASK OPERATIONS FOR VOLUME ====
         % Ask what operation to perform with this MRI
         if isInteractive
-            % Initialize list of options to register this new MRI with the existing one
-            strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
-            cellOptions = {};
-            % Register with the SPM
-            strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (requires SPM toolbox).'];
-            cellOptions{end+1} = 'SPM';
-            % Register with the MNI transformation
-            strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
-            cellOptions{end+1} = 'MNI';
-            if isCt
-                % Register with the ct2mrireg plugin
-                strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC ct2mrireg plugin.'];
-                cellOptions{end+1} = 'CT2MRI';
-            end
-            % Skip registration
-            strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
-            cellOptions{end+1} = 'Ignore';
-            % Ask user to make a choice
-            RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
+            if ~isPet
+                % Initialize list of options to register this new MRI with the existing one
+                strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
+                cellOptions = {};
+                % Register with the SPM
+                strOptions = [strOptions, '<BR>- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;Coregister the two volumes with SPM (uses SPM plugin).'];
+                cellOptions{end+1} = 'SPM';
+                if isCt
+                    % Register with the ct2mrireg plugin
+                    strOptions = [strOptions, '<BR>- <U><B>CT2MRI</B></U>:&nbsp;&nbsp;&nbsp;Coregister using USC CT2MRI plugin.'];
+                    cellOptions{end+1} = 'CT2MRI';
+                end
+                % Register with the MNI transformation
+                strOptions = [strOptions, '<BR>- <U><B>MNI</B></U>:&nbsp;&nbsp;&nbsp;Compute the MNI transformation for both volumes (inaccurate).'];
+                cellOptions{end+1} = 'MNI';
+                % Skip registration
+                strOptions = [strOptions, '<BR>- <U><B>Ignore</B></U>:&nbsp;&nbsp;&nbsp;The two volumes are already registered.'];
+                cellOptions{end+1} = 'Ignore';
+                % Ask user to make a choice
+                RegMethod = java_dialog('question', [strOptions '<BR><BR></HTML>'], ['Import ', volType], [], cellOptions, 'Reg+reslice');
+                % User aborted the import
+                if isempty(RegMethod)
+                    sMri = [];
+                    bst_progress('stop');
+                    return;
+                end
+                % === ASK RESLICE ===
+                if (~strcmpi(RegMethod, 'Ignore') || ...
+                        (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+                        isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
+                        ~isResliceDisabled))
+                    % If the volumes don't have the same size, add a warning
+                    if ~isSameSize
+                        strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
+                    else
+                        strSizeWarn = [];
+                    end
+                    % Ask to reslice
+                    [isReslice, isCancel]= java_dialog('confirm', [...
+                        '<HTML><B>Reslice the volume?</B><BR><BR>' ...
+                        ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
+                        strSizeWarn ...
+                        '<BR><BR></HTML>'], ['Import ', volType]);
+                    % User aborted the process
+                    if isCancel
+                        bst_progress('stop');
+                        return;
+                    end
+                else
+                    isReslice = 0;
+                end
 
-        % In non-interactive mode: ignore if possible, or use the first option available
-        else
-            RegMethod = 'Ignore';
-        end
-        % User aborted the import
-        if isempty(RegMethod)
-            sMri = [];
-            bst_progress('stop');
-            return;
-        end
-
-        % === ASK RESLICE ===
-        if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
-             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
-             ~isResliceDisabled))
-            % If the volumes don't have the same size, add a warning
-            if ~isSameSize
-                strSizeWarn = '<BR>The two volumes have different sizes: if you answer no here, <BR>you will not be able to overlay them in the same figure.';
+            % Ask for PET processing
             else
-                strSizeWarn = [];
+                % Collect user inputs
+                petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames, 1);
+                if isempty(petopts)  % User aborted the import
+                    sMri = [];
+                    bst_progress('stop');
+                    return;
+                end
+                % Realign, smooth and aggregate
+                [sMri, petImportFileTag] = mri_realign(sMri, petopts.align, petopts.fwhm, petopts.aggregate); % FWHM == 0 => no smoothing
+                tmpHistory.History = sMri.History;
+                % Registration method
+                RegMethod = petopts.register;
+                % Reslice
+                isReslice = petopts.reslice;
             end
-            % Ask to reslice
-            isReslice = java_dialog('confirm', [...
-                '<HTML><B>Reslice the volume?</B><BR><BR>' ...
-                ['This operation rewrites the new ', volType, ' to match the alignment, <BR>size and resolution of the original volume.'] ...
-                strSizeWarn ...
-                '<BR><BR></HTML>'], ['Import ', volType]);
-        % In non-interactive mode: never reslice
+        % In non-interactive mode
         else
+            % Registration: ignore if possible, or use the first option available
+            RegMethod = 'Ignore';
+            % Reslice: never reslice
             isReslice = 0;
         end
 
-        % === REGISTRATION ===
-        switch (RegMethod)
-            case 'MNI'
+        % Check that reference volume has set fiducials for reslicing
+        if isReslice && (~isfield(sMriRef, 'SCS') || ~isfield(sMriRef.SCS, 'R') || ~isfield(sMriRef.SCS, 'T') || isempty(sMriRef.SCS.R) || isempty(sMriRef.SCS.T))
+            errMsg = 'Reslice: No SCS transformation available for the reference volume. Set the fiducials first.';
+            RegMethod = ''; % Registration will not be performed
+        end
+
+        % === ASK SKULL STRIPPING ===
+        if isInteractive && isCt && (strcmpi(RegMethod, 'SPM') || strcmpi(RegMethod, 'CT2MRI'))
+            % Ask if the user wants to mask out region outside skull in CT
+            [MaskMethod, isCancel] = java_dialog('question', ['<HTML><B>Perform skull stripping on the CT volume?</B><BR>' ...
+                                                            'This removes non-brain tissues (skull, scalp, fat, and other head tissues) from the CT volume.<BR><BR>' ...
+                                                            'Which method do you want to proceed with?<BR><BR>' ...
+                                                            '- <U><B>SPM</B></U>:&nbsp;&nbsp;&nbsp;SPM Tissue Segmentation (uses SPM plugin)<BR>' ...
+                                                            '- <U><B>BrainSuite</B></U>:&nbsp;&nbsp;&nbsp;Brain Surface Extractor (requires BrainSuite installed)<BR>' ...
+                                                            '- <U><B>Skip</B></U>:&nbsp;&nbsp;&nbsp;Proceed without skull stripping<BR><BR></HTML>'], ...
+                                                            'Import CT', [], {'SPM', 'BrainSuite', 'Skip'}, '');
+            % User aborted the process
+            if isCancel
+                bst_progress('stop');
+                return;
+            end
+        else
+            % In non-interactive mode: never do skull stripping
+            MaskMethod = 'Skip';
+        end
+
+        % === REGISTRATION AND RESLICING ===
+        switch lower(RegMethod)
+            case 'mni'
                 % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice, isAtlas);
-            case 'SPM'
+            case 'spm'
                 % Register the new MRI on the existing one using SPM + RESLICE
                 [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
-            case 'CT2MRI'
-                % Ask if the user wants to mask out region outside skull in CT
-                isMask = java_dialog('confirm', [...
-                    '<HTML><B>Clean the CT volume?</B><BR><BR>' ...
-                    'This operation cleans the CT to exclude any thing outside the skull.' ...
-                    '<BR><BR></HTML>'], 'Import CT');
-                % Register the CT to excisting MRI using USC's ct2mrireg plugin
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, 0, isMask);
-            case 'Ignore'
+            case 'ct2mri'
+                % Register the CT to existing MRI using USC's CT2MRI plugin + RESLICE
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'ct2mri', isReslice, isAtlas);
+            case 'ignore'
                 if isReslice
                     % Register the new MRI on the existing one using the transformation in the input files (files already registered)
                     [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
@@ -350,18 +408,61 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                     sMri.SCS = sMriRef.SCS;
                     %sMri.NCS = sMriRef.NCS;
                 end
+            otherwise
+                % Do nothing
         end
-    end
-    % Stop in case of error
-    if ~isempty(errMsg)
-        if isInteractive
-            bst_error(errMsg, [RegMethod ' MRI'], 0);
-            sMri = [];
-            bst_progress('stop');
-            return;
-        else
-            error(errMsg);
+        % Stop in case of error
+        if ~isempty(errMsg)
+            if isInteractive
+                bst_error(errMsg, [RegMethod ' MRI'], 0);
+                sMri = [];
+                bst_progress('stop');
+                return;
+            else
+                error(errMsg);
+            end
         end
+        % === SKULL STRIPPING ===
+        switch lower(MaskMethod)
+            case 'spm'
+                [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'spm');
+            case 'brainsuite'
+                [sMri, errMsg, maskFileTag] = mri_skullstrip(sMri, sMriRef, 'brainsuite');
+            case 'skip'
+                % Do nothing
+                maskFileTag = '';
+        end
+        fileTag = [fileTag, maskFileTag];
+        % Add tag for PET (realign, smooth, aggregate)
+        if isPet
+            fileTag = [petImportFileTag, fileTag];
+        end
+        % Stop in case of error
+        if ~isempty(errMsg)
+            if isInteractive
+                bst_error(errMsg, [MaskMethod ' brain mask MRI'], 0);
+                sMri = [];
+                bst_progress('stop');
+                return;
+            else
+                error(errMsg);
+            end
+        end
+        % Add history entry (co-registration)
+        if ~isempty(RegMethod) && ~strcmpi(RegMethod, 'Ignore')
+            % Co-registration
+            sMri = bst_history('add', sMri, 'resample', ['MRI co-registered on default file (' RegMethod '): ' refMriFile]);
+        end
+        % Add history entry (reslice)
+        if isReslice || isMni
+            sMri = bst_history('add', sMri, 'resample', ['MRI resliced to default file: ' refMriFile]);
+        end
+        % Add history entry (skull stripping)
+        if ~isempty(maskFileTag)
+            sMri = bst_history('add', sMri, 'resample', ['Skull stripping with "' MaskMethod '" using on default file: ' refMriFile]);
+        end
+        % Add back history entry (import)
+        sMri.History = [tmpHistory.History; sMri.History];
     end
 end
 
@@ -421,7 +522,7 @@ sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
 sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
-if isempty(sSubject.iAnatomy)
+if isempty(sSubject.iAnatomy) && ~isCt && ~isPet && ~isAtlas
     sSubject.iAnatomy = iAnatomy;
 end
 % Default subject
@@ -433,7 +534,7 @@ else
 end
 bst_set('ProtocolSubjects', ProtocolSubjects);
 % Save first MRI as permanent default
-if (iAnatomy == 1)
+if (iAnatomy == 1) && ~isCt && ~isPet && ~isAtlas
     db_surface_default(iSubject, 'Anatomy', iAnatomy, 0);
 end
 

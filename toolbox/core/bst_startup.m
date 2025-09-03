@@ -1,4 +1,4 @@
-function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
+function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir, TemplateName)
 % BST_STARTUP: Start a new Brainstorm Session.
 %
 % USAGE:  bst_startup(BrainstormHomeDir, GuiLevel=1, BrainstormDbDir=[])
@@ -7,6 +7,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 %    - BrainstormHomeDir : Path to the brainstorm3 folder
 %    - GuiLevel          : -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - BrainstormDbDir   : Database folder to use by default in this session
+%    - TemplateName      : Default anatomy template
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -34,6 +35,9 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % Parse inputs
 if (nargin < 3) || isempty(BrainstormDbDir)
     BrainstormDbDir = [];
+end
+if (nargin < 4) || isempty(TemplateName)
+    TemplateName = '';
 end
 % If version is too old
 MatlabVersion = bst_get('MatlabVersion');
@@ -201,7 +205,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 5.02;
+CurrentDbVersion = 5.03;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -435,6 +439,11 @@ if (GuiLevel >= 0)
 end
 
 
+%% ===== USER-DEFINED PLUGINS =====
+% Print information about user-defined plugins
+bst_plugin('GetSupported', [], 1);
+
+
 %% ===== LOAD PLUGINS =====
 % Get installed plugins
 [InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
@@ -470,10 +479,9 @@ panel_process_select('ParseProcessFolder', 1);
 
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
-% Download ICBM152 template if missing (e.g. when cloning from GitHub)
+% Download ICBM152 template if missing
 TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
-if ~isCompiled && ~exist(TemplateDir, 'file')
-    TemplateName = 'ICBM152_2023b';
+if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
     isSkipTemplate = 0;
     % Template file
     ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);
@@ -481,7 +489,7 @@ if ~isCompiled && ~exist(TemplateDir, 'file')
     if ~exist(ZipFile, 'file')
         disp('BST> Downloading ICBM152 template...');
         % Download file
-        errMsg = gui_brainstorm('DownloadFile', ['http://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
+        errMsg = gui_brainstorm('DownloadFile', ['https://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
         % Error message
         if ~isempty(errMsg)
             disp(['BST> Error: Could not download template: ' errMsg]);

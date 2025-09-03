@@ -189,8 +189,8 @@ for iGroup = 1:nGroup
         ResultsFile = ResultsGroups{iGroup}{iFile};
         if isInteractive
             bst_progress('inc', 1);
+            bst_progress('text', sprintf('Processing file #%d/%d: %s', iFile, nFile, ResultsFile));
         end
-        bst_progress('text', sprintf('Processing file #%d/%d: %s', iFile, nFile, ResultsFile));
         
         % ===== OUTPUT STUDY =====
         % Get source study

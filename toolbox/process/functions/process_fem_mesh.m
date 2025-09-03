@@ -56,8 +56,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh<BR>', ...
                                        '<B>SimNIBS 3.x</B>:<BR>Call SimNIBS/headreco to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
                                        '<B>SimNIBS 4.x</B>:<BR>Call SimNIBS/charm to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
-                                       '<B>FieldTrip</B>:<BR> Call FieldTrip to create hexahedral mesh of the <B>T1 MRI</B>.'; ...
-                                       'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'fieldtrip'};
+                                       '<B>FieldTrip</B>:<BR> Call FieldTrip to create hexahedral mesh of the <B>T1 MRI</B>.', ...
+                                       '<B>Zeffiro</B>:<BR> Call Zeffiro to create a tetrahedral mesh from the <B>BEM surfaces<BR>'; ...
+                                       'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'fieldtrip', 'zeffiro'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
     % Iso2mesh options: 
@@ -108,6 +109,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.zneck.Comment = 'Cut neck below MNI Z coordinate (0=disable): ';
     sProcess.options.zneck.Type    = 'value';
     sProcess.options.zneck.Value   = {OPTIONS.Zneck, '', 0};
+    % Zeffiro options:
+    sProcess.options.opt4.Comment = '<BR><B>Zeffiro options</B>: ';
+    sProcess.options.opt4.Type    = 'label';
+    % Zeffiro options: Mesh resolution [Add more Zef option TODO by Zef team]
+    sProcess.options.zefMeshResolution.Comment = 'Mesh resolution (edge mm): ';
+    sProcess.options.zefMeshResolution.Type    = 'value';
+    sProcess.options.zefMeshResolution.Value   = {OPTIONS.ZefMeshResolution, '', 3};
+    % Zeffiro options:Use GPU
+    sProcess.options.zefUseGPU.Comment = 'Use GPU for Zeffiro mesh generation';
+    sProcess.options.zefUseGPU.Type    = 'checkbox';
+    sProcess.options.zefUseGPU.Value   = OPTIONS.ZefUseGPU;
+    % Zeffiro options:Use GPU
+    sProcess.options.zefAdvancedInterface.Comment = 'Use Zeffiro advanced interface';
+    sProcess.options.zefAdvancedInterface.Type    = 'checkbox';
+    sProcess.options.zefAdvancedInterface.Value   = OPTIONS.ZefAdvancedInterface;
+    
 end
 
 
@@ -141,7 +158,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Method
     OPTIONS.Method = sProcess.options.method.Value;
-    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh-2021','iso2mesh','brain2mesh','simnibs3','simnibs4','fieldtrip'})
+    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh-2021','iso2mesh','brain2mesh','simnibs3','simnibs4','fieldtrip','zeffiro'})
         bst_report('Error', sProcess, [], 'Invalid method.');
         return
     end
@@ -190,6 +207,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid downsampling factor.');
         return
     end
+    % Zeffiro: Mesh resolution -Edge Length-
+    OPTIONS.ZefMeshResolution = sProcess.options.zefMeshResolution.Value{1};
+    if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 1) || (OPTIONS.ZefMeshResolution > 4.5)
+        bst_report('Error', sProcess, [], 'Invalid Mesh resolution value, please use value [1 - 4.5] mm.');
+        return
+    end
+    % Zeffiro: Use the GPU -Edge Length-
+    OPTIONS.ZefUseGPU = sProcess.options.zefUseGPU.Value;
+    % Zeffiro: Use the zef Advanced Interface
+    OPTIONS.ZefAdvancedInterface = sProcess.options.zefAdvancedInterface.Value;
     
     % Call processing function
     [isOk, errMsg] = Compute(iSubject, [], 0, OPTIONS);
@@ -207,18 +234,21 @@ end
 %% ===== DEFAULT OPTIONS =====
 function OPTIONS = GetDefaultOptions()
     OPTIONS = struct(...
-        'Method',         'iso2mesh-2021', ... % {'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'roast', 'fieldtrip'}
-        'MeshType',       'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
-        'MaxVol',         0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
-        'KeepRatio',      100, ...             % iso2mesh: Percentage of elements kept (1-100%)
-        'BemFiles',       [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
-        'MergeMethod',    'mergemesh', ...     % iso2mesh: {'mergemesh', 'mergesurf'} Function used to merge the meshes
-        'VertexDensity',  0.5, ...             % SimNIBS: [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
-        'NbVertices',     15000, ...           % SimNIBS: Number of vertices for the cortex surface
-        'isEegCaps',      0, ...               % SimNIBS: If 1, import the default EEG caps generated by SimNIBS
-        'NodeShift',      0.3, ...             % FieldTrip: [0 - 0.49] Improves the geometrical properties of the mesh
-        'Downsample',     3, ...               % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
-        'Zneck',          -115);               % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
+        'Method',               'iso2mesh-2021', ... % {'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'roast', 'fieldtrip'}
+        'MeshType',             'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
+        'MaxVol',               0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
+        'KeepRatio',            100, ...             % iso2mesh: Percentage of elements kept (1-100%)
+        'BemFiles',             [], ...              % iso2mesh: List of layers to use for meshing (if not specified, use the files selected in the database 
+        'MergeMethod',          'mergemesh', ...     % iso2mesh: {'mergemesh', 'mergesurf'} Function used to merge the meshes
+        'VertexDensity',        0.5, ...             % SimNIBS: [0.1 - X] setting the vertex density (nodes per mm2)  of the surface meshes
+        'NbVertices',           15000, ...           % SimNIBS: Number of vertices for the cortex surface
+        'isEegCaps',            0, ...               % SimNIBS: If 1, import the default EEG caps generated by SimNIBS
+        'NodeShift',            0.3, ...             % FieldTrip: [0 - 0.49] Improves the geometrical properties of the mesh
+        'Downsample',           3, ...               % FieldTrip: Integer, Downsampling factor to apply to the volumes before meshing
+        'Zneck',                -115, ...            % Input T1/T2: Cut volumes below neck (MNI Z-coordinate)
+        'ZefMeshResolution',    3, ...               % Zeffiro: mesh resolution: size of the element edge in mm
+        'ZefUseGPU',            0, ...               % Zeffiro: If 1, use GPU for mesh generation
+        'ZefAdvancedInterface', 0);                  % Zeffireo: If 1, open the BST-Zeffiro advance interface
 end
 
 
@@ -941,7 +971,181 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             newelem = meshreorient(no, el(:,1:4));
             elem = [newelem elem(:,5)];
             node = no; % need to updates the new list         
-            
+     
+        case 'zeffiro'
+            % Notes:
+            % This case follows mainly the same steps as Iso2mesh cases,
+            % with adaptation of the data with Zef Interface
+            % Some advantage compare to the other methods:
+            % - Source code in matlab, and no external binary dependencies
+            % - Ability to use the GPU and Parallel toolboxes
+            % - Can support intersected meshes and avoid errors observed
+            % with other methods [example: defaced head + inner +...]
+            % - Check the https://github.com/sampsapursiainen/zeffiro_interface/wiki
+            % - Possible issues: very rare instabilities due to unknow issues
+            %                  : when using low resolution >4.5mm hole in the meshes 
+
+            % Install/load iso2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'zeffiro', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
+            end
+            % Get the Zeffiro folder
+            PlugDesc = bst_plugin('GetInstalled', 'zeffiro');
+            bst_plugin('SetProgressLogo', 'zeffiro');
+            % Use the BST Zef Interface or the advanced Zef Interface
+            if ~OPTIONS.ZefAdvancedInterface
+                % If surfaces are not passed in input: get default surfaces
+                % Zeffiro require inverse order ... from outer to inner (not as the other methods)
+                bst_progress('text', 'Loading data...');
+                if isempty(OPTIONS.BemFiles)
+                    if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
+                        OPTIONS.BemFiles = {...
+                            sSubject.Surface(sSubject.iScalp).FileName, ...
+                            sSubject.Surface(sSubject.iOuterSkull).FileName, ...
+                            sSubject.Surface(sSubject.iInnerSkull).FileName};
+                        TissueLabels = {'scalp', 'skull', 'brain'};
+                    else
+                        errMsg = [errMsg, 'Method "' OPTIONS.Method '" requires three surfaces: head, inner skull and outer skull.' 10 ...
+                            'Create them with process "Generate BEM surfaces" first.'];
+                        return;
+                    end
+                    % If surfaces are given: get their labels and sort from inner to outer
+                else
+                    % Get tissue label
+                    for iBem = 1:length(OPTIONS.BemFiles)
+                        [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
+                        if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
+                            TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
+                        else
+                            TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
+                        end
+                    end
+                    % Sort from inner to outer [For Zeffiro this order will be reverted]
+                    iSort = [];
+                    iOther = 1:length(OPTIONS.BemFiles);
+                    for label = {'white', 'gray', 'csf', 'skull', 'scalp'}
+                        iLabel = find(strcmpi(label{1}, TissueLabels));
+                        iSort = [iSort, iLabel];
+                        iOther(iLabel) = NaN;
+                    end
+                    % flip will reverse the order of the surfaces
+                    iSort = flip([iSort, iOther(~isnan(iOther))]);
+                    OPTIONS.BemFiles = OPTIONS.BemFiles(iSort);
+                    TissueLabels = TissueLabels(iSort);
+                    % If there is a CSF layer but nothing inside: rename into BRAIN
+                    if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
+                        TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
+                    end
+                end
+                % Load surfaces file and assign the names to Zef
+                bst_progress('text', 'Loading surfaces...');
+                bemMerge = {}; bemComment = {};
+                disp(' ');
+                nBem = length(OPTIONS.BemFiles);
+                for iBem = 1:nBem
+                    disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
+                    BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
+                    bemComment{iBem} = BemMat.Comment;
+                end
+
+                % ===== CALL ZEFFIRO FROM HERE =====
+                bst_progress('text', 'Calling Zeffiro FEM Mesh Generation...');
+                disp('Now Calling Zeffiro FEM Mesh Generation ...');
+                % basic options ==> that can be used from Brainstorm
+                % ===== WRITE ZEF SETTING FILE =====
+                % documentation : https://github.com/sampsapursiainen/zeffiro_interface/wiki/Finite-Element-Mesh-generation
+                % Get the Zef folder path for brainstorm utilities
+                bst2zefInterface = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, '+utilities', '+brainstorm2zef');
+                % General setting :
+                % Open the setting file file
+                settingFile = fullfile(bst2zefInterface, '+m', 'zef_bst_import_settings.m');
+                fid = fopen(settingFile, 'wt+');
+                fprintf(fid, 'zef = zef_add_bounding_box(zef);\n');
+                % zef.exclude_box: include the bounding box in the mesh => default no ==>1
+                fprintf(fid, 'zef.exclude_box = %d;\n', 1);
+                % max_surface_face_count : default 1: fit to the input mesh, if <1:coraser, if >1 finer
+                % can be tuned from the advanced parameters (recomended is 0.5)
+                fprintf(fid, 'zef.max_surface_face_count = %d;\n', 0.5);
+                fprintf(fid, 'zef.mesh_smoothing_on = %d;\n', 1);
+                % this option smooth all the volum using the Taubin algo
+                % for advanced users.
+                fprintf(fid, 'zef.mesh_resolution = %d;\n', OPTIONS.ZefMeshResolution);
+                % unit is mm; the coarsest value is 4.5mm. value [minValue = 1.3  maxValue = 4.5]mm
+                % doc: https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0290715
+                % IT MAY GO TO 1mm, Fernando will check that, depends on the zef.ini parameters
+                % see here: plugins\zeffiro\zeffiro_interface-main_development_branch\profile\zeffiro_interface.ini
+                % CHANGE THE LINE 6: 100 TO 20 if any issue
+                % Level of parallelization in mesh labeling,100,parallel_vectors,number
+                % Level of parallelization in mesh labeling,20,parallel_vectors,number
+                fprintf(fid, 'zef.use_gpu = %d;\n', OPTIONS.ZefUseGPU);
+                % default is 0, require the GPU hardware and the toolbox
+                % To change at the zef.ini : in line 11: when GPU is off, CPU is used,
+                % if GPU is set to 0, then a CPU is used, require parallel toolbox
+                % it uses 4 cpu per default ==> advanced options
+                % Parallel threads in CPU forward computing,4,parallel_processes,number
+                % Check zeffiro_interface.ini
+                % Refinement
+                fprintf(fid, 'zef.refinement_on = %d;\n', 1); %
+                % boolean value to refine the mesh ==> default 1, => set to 1 for BST users
+                % Other function to check
+                % edit zef_init_forward_and_inverse_options.m
+                % edit zef_open_forward_and_inverse_options.m
+                fprintf(fid, 'zef.refinement_surface_on = %d;\n', 1);
+                % Activat the refinement of the surface, default 1, set to 1 in for BST users
+                % wiki page of the refienement:https://github.com/sampsapursiainen/zeffiro_interface/wiki/Finite-Element-Mesh-generation
+                fprintf(fid, 'import_compartment_list_aux = zef_get_active_compartments(zef);\n'); % list of the compartement
+                fprintf(fid, 'import_compartment_list_aux = import_compartment_list_aux(end-%d:end-1);\n', nBem);
+                % Take the outer most from  end-%d:end-1, end is the bounding box, do not include for BST users
+                % List of the active compartment
+                fprintf(fid, 'import_compartment_list_aux = import_compartment_list_aux(:)'';\n');
+                fprintf(fid, 'zef.refinement_surface_compartments = [-1 import_compartment_list_aux];\n');
+                % -1 : refine all the compartement that have the sources [Not used here]
+                % in this case it will also refine the labeld tissue in import_compartment_list_aux indexes
+                fprintf(fid, 'zef_mesh_tool;\n'); % set the other options to default
+                fclose(fid);
+                % ===== WRITE BrainStorm2Zeffiro IMPORT FILE (BST to Zef Interface) =====
+                % Get temp folder
+                TmpDir = bst_get('BrainstormTmpDir', 1, 'zeffiro');
+                % writeZefFile() ==> Need to discuss with Sampsa
+                ZefFile = fullfile(TmpDir, 'BrainStorm2Zeffiro_import.zef');
+                fid = fopen(ZefFile, 'wt+');
+                bemComment = bemComment(:)'; % from outer to inner
+                for iBem = 1:nBem
+                    fprintf(fid, ...
+                        'type,segmentation,name,%s,database,bst,tag,%s,parameter_name,sigma,parameter_value,0.33,invert,1 \n',...
+                        bemComment{iBem}, bemComment{iBem});
+                end
+                fprintf(fid,'type,script,filename,utilities.brainstorm2zef.m.zef_bst_import_settings \n');
+                fclose(fid);
+
+                % ===== Run Zeffiro Mesh =====
+                % ==> Check with Sampsa
+                % https://github.com/sampsapursiainen/zeffiro_interface/blob/master/%2Bexamples/zef_meshing_example.m
+                zef = zeffiro_interface('start_mode','nodisplay','import_to_new_project',...
+                    ZefFile, 'run_script','zef = zef_create_finite_element_mesh(zef);','exit_zeffiro', 1);
+                % outpts conversion: 
+                node = zef.nodes;
+                elem = [zef.tetra zef.domain_labels];
+                TissueLabels = zef.name_tags(1:end-1);
+            else % use advanced Zeffiro Interface
+                bst_progress('text', 'Opening Zeffiro Advanced Panel...');
+                pause(2); % some time to display the progress bar. 
+                % Advanced option ==> that will be used from Zef side
+                % Zef team is developing this interface within the Zef repo
+                % Get the Zef folder path for brainstorm utilities
+                zefPath = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
+                utilities.brainstorm2zef.m.zef_bst_plugin_start(zefPath)
+                % Sampsa team : export back the output to brainstorm db
+                % import the data from the Zef outputs and ad to bst database
+                % add some information to the History field from the Zef codes
+                
+                % Return success
+                isOk = 1;
+                return
+            end
+
         otherwise
             errMsg = [errMsg, 'Invalid method "' OPTIONS.Method '".'];
             return;
@@ -1100,9 +1304,9 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Get default options
     OPTIONS = GetDefaultOptions();
     OPTIONS.BemFiles = BemFiles;
-    % If BEM surfaces are selected, the only possible method is "iso2mesh"
+    % If BEM surfaces are selected, the possible methods are "iso2mesh" or  "zeffiro"
     if ~isempty(BemFiles) && iscell(BemFiles)
-        FemMethods = {'Iso2mesh-2021','Iso2mesh'};
+        FemMethods = {'Iso2mesh-2021','Iso2mesh', 'Zeffiro'};
         DefMethod = 'Iso2mesh-2021';
     % More than 2 MRI selected: error
     elseif (length(iMris) > 2)
@@ -1118,7 +1322,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         DefMethod = 'SimNIBS4';
     % Otherwise: Use the defaults from the folder: Ask for method to use
     else
-        FemMethods = {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip'};
+        FemMethods = {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip', 'Zeffiro'};
         DefMethod = 'Iso2mesh-2021';
     end
     
@@ -1161,7 +1365,10 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                     strQuestion = [strQuestion, ...
                         '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
                         '<FONT COLOR="#707070"><I>FieldTrip is downloaded automatically as a plugin.</I></FONT><BR><BR>'];
-            end
+                case 'Zeffiro'
+                    strQuestion = [strQuestion, ...
+                        '<B>Zeffiro</B>:<BR>Call Zeffiro to create a tetrahedral mesh from the <B>BEM surfaces.<BR>' ...
+                        '<FONT COLOR="#707070"><I>Zeffiro is downloaded automatically as a plugin.</I></FONT><BR><BR>'];           end
         end
         % Ask the user to select a method
         res = java_dialog('question', strQuestion, 'FEM mesh generation method', [], FemMethods, DefMethod);
@@ -1277,6 +1484,43 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             
         case 'roast'
             % No extra options for now
+            OPTIONS.MeshType =  'tetrahedral';
+
+        case 'zeffiro'
+            % Ask user for the Zeffiro Option here
+            advancedZefMsg = 'Would you like to use the advanced interface for Zeffiro mesh generation?';
+            [res, isCancel] = java_dialog('question', [advancedZefMsg 10 ' This will open the advanced Zeffiro panel '], 'Zeffiro FEM Mesh Interface');           
+            if isCancel || isempty(res)
+                return
+            end
+            if strcmpi(res, 'yes')
+                OPTIONS.ZefAdvancedInterface = 1;
+
+            else  % use 'Brainstorm Basic Options'
+                OPTIONS.ZefAdvancedInterface = 0;
+                % Get mesh resolution
+                [res, isCancel] = java_dialog('input', 'Mesh Resolution (edge length) in [mm]:', 'Zeffiro FEM mesh', [], num2str(OPTIONS.ZefMeshResolution));
+                if isCancel || isempty(res)
+                    return
+                end
+                OPTIONS.ZefMeshResolution = str2num(res);
+                % Check the values
+                if isempty(OPTIONS.ZefMeshResolution) || (OPTIONS.ZefMeshResolution < 1) || (OPTIONS.ZefMeshResolution > 4.5)
+                    errMsg = ['Invalid Mesh resolution value.' 10 'Please use value from this interval [1 - 4.5] mm.'];
+                    java_dialog('msgbox', ['Warning: ' errMsg]);
+                    return;
+                end
+                % Use GPU?
+                [res, isCancel] = java_dialog('question', 'Use GPU for mesh computation?', 'Zeffiro FEM mesh');           
+                if isCancel || isempty(res)
+                    return
+                end
+                if strcmpi(res, 'yes')
+                    OPTIONS.ZefUseGPU = 1;
+                else
+                    OPTIONS.ZefUseGPU = 0;
+                end
+            end
             OPTIONS.MeshType =  'tetrahedral';
     end
 

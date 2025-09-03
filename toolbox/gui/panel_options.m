@@ -135,8 +135,8 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
         jCheckUseSigProc = gui_component('CheckBox', jPanelProc, 'br', 'Use Signal Processing Toolbox (Matlab)',    [], '<HTML>If selected, some processes will use the Matlab''s Signal Processing Toolbox functions.<BR>Else, use only the basic Matlab function.', []);
-        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in Mb (default: 100Mb): ', [], [], []);
-        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in megabytes.<BR>Ensure this does not exceed the available RAM in your computer.';
+        jBlockSizeLabel = gui_component('Label',  jPanelProc, 'br', 'Memory block size in MiB (default: 100 MiB): ', [], [], []);
+        blockSizeTooltip = '<HTML>Maximum size of data blocks to be read in memory, in Mebibytes.<BR>Ensure this does not exceed the available RAM in your computer.';
         jBlockSize = gui_component('Text',  jPanelProc, [], '', [], [], []);
         jBlockSizeLabel.setToolTipText(blockSizeTooltip);
         jBlockSize.setToolTipText(blockSizeTooltip);
@@ -156,11 +156,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jPanelBottom = gui_river();
     jPanelNew.add('br hfill', jPanelBottom);
     % MEMORY
-    [MaxVar, TotalMem] = bst_get('SystemMemory');
-    if ~isempty(MaxVar) && ~isempty(TotalMem)
+    [TotalMem, AvailableMem] = bst_get('SystemMemory');
+    if ~isempty(AvailableMem) && ~isempty(TotalMem)
         % Display memory info
         jPanelMem = gui_river([0 0], [0 15 8 15]);
-        labelBottom = sprintf('Max variable size: %d Mb       Memory available: %d Mb', MaxVar, TotalMem);
+        labelBottom = sprintf('Memory total: %d MiB       Memory available: %d MiB', TotalMem, AvailableMem);
         jPanelLeft.add('br hfill', jPanelMem);
     else
         labelBottom = '';
@@ -516,69 +516,42 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
     DisableOpenGL = bst_get('DisableOpenGL');
     isOpenGL = 1;
     isUnixWarning = 0;
-
-    % ===== New JS MATLAB Desktop (Beta in R2023a and R2023b) =====
-    if isJSDesktop()
-        info = rendererinfo();
-        switch info.Details.HardwareSupportLevel
-            case 'Full'
-                disp('hardware');
-            case 'Basic'
-                disp('hardware');
-                disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
-            otherwise
-                disp('software');
-                disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
-        end
-        % OpenGL is always available on New Desktop
-        DisableOpenGL = 0;
-        return
-    end
     
-    % ===== MATLAB < 2014b =====
-    if (bst_get('MatlabVersion') < 804)
-        % Define OpenGL options
-        switch DisableOpenGL
-            case 0
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'hardware';
-                end
-                FigureRenderer = 'opengl';
-            case 1
-                OpenGLMode = 'neverselect';
-                FigureRenderer = 'zbuffer';
-            case 2
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'software';
-                end
-                FigureRenderer = 'opengl';
+    % ===== MATLAB >= 2022a =====
+    if (bst_get('MatlabVersion') >= 912)
+        % From 2022a, rendererinfo() can be called without arguments, and it is recommended over opengl()
+        s = rendererinfo();
+        % New JS MATLAB Desktop (Started from R2023a)
+        if isJSDesktop()
+            switch s.Details.HardwareSupportLevel
+                case 'Full'
+                    disp('hardware');
+                case 'Basic'
+                    disp('hardware');
+                    disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
+                otherwise
+                    disp('software');
+                    disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
+            end
+            % OpenGL is always available on New Desktop
+            DisableOpenGL = 0;
+            return
+        else
+            if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
+                isOpenGL = 1;
+                s.Software = 0;
+            elseif strcmp(s.GraphicsRenderer,  'OpenGL Software')
+                isOpenGL = 1;
+                s.Software = 1;
+            else
+                isOpenGL = 0;
+            end
+            % Figure types for which the OpenGL renderer is used
+            figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
         end
-        % Configure OpenGL
-        try
-            opengl(OpenGLMode);
-        catch
-            isOpenGL = 0;
-        end
-        % Check that OpenGL is running
-        s = opengl('data');
-        if isempty(s) || isempty(s.Version)
-            isOpenGL = 0;
-        end
-        % Figure types for which the OpenGL renderer is used
-        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
-        
-    % ===== MATLAB >= 2014b =====
-    else
+
+    % ===== MATLAB >= 2014b and MATLAB < 2022a =====
+    elseif (bst_get('MatlabVersion') >= 804)
         % Start OpenGL
         s = opengl('data');
         if isempty(s) || isempty(s.Version)
@@ -622,6 +595,48 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         end
         % Figure types for which the OpenGL renderer is used
         figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+
+    % ===== MATLAB < 2014b =====
+    else
+        % Define OpenGL options
+        switch DisableOpenGL
+            case 0
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'hardware';
+                end
+                FigureRenderer = 'opengl';
+            case 1
+                OpenGLMode = 'neverselect';
+                FigureRenderer = 'zbuffer';
+            case 2
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'software';
+                end
+                FigureRenderer = 'opengl';
+        end
+        % Configure OpenGL
+        try
+            opengl(OpenGLMode);
+        catch
+            isOpenGL = 0;
+        end
+        % Check that OpenGL is running
+        s = opengl('data');
+        if isempty(s) || isempty(s.Version)
+            isOpenGL = 0;
+        end
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
     end
     
     % Add comment if not running Brainstorm
@@ -757,11 +772,10 @@ end
 
 %% ===== Check if running in New JS MATLAB Desktop =====
 function TF = isJSDesktop()
-
     % Fastest way to check for New JS Desktop is with undocumented
     % "feature" command. If this command fails to run properly, it is safe
-    % to expect MATLAB is NOT running with New JS Desktop. 
-    % This may need changes in R2024a or newer.
+    % to expect MATLAB is NOT running with New JS Desktop.
+    % Available from 2022a
     try
         TF = feature('webui');
     catch

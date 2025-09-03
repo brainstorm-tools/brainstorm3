@@ -292,6 +292,7 @@ function SetSelectionState(isSelected)
             TessInfo = getappdata(hFig, 'Surface');
             if ~isempty(TessInfo)
                 setappdata(hFig, 'isSelectingCoordinates', 1);
+                setappdata(hFig, 'isSelectingCentroid', 0);
                 set(hFig, 'Pointer', 'cross');
             end
         end
@@ -304,8 +305,13 @@ function SetSelectionState(isSelected)
         % Exit 3DViz figures from SelectingCorticalSpot mode
         for hFig = hFigures
             set(hFig, 'Pointer', 'arrow');
+            setappdata(hFig, 'isSelectingCentroid', 0);
             setappdata(hFig, 'isSelectingCoordinates', 0);      
         end
+    end
+    % Update iEEG panel
+    if ~isempty(ctrl2)
+        panel_ieeg('UpdatePanel');
     end
 end
 
@@ -331,7 +337,6 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
     end
     if (nargin < 2) || isempty(AcceptMri)
         AcceptMri = 1;
-        isCentroid = 0;
     end
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
@@ -364,7 +369,7 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
             else
                 scsLoc = vout';
             end
-            plotLoc = vout;
+            plotLoc = vout';
             iVertex = vi;
             % Get value
             if ~isempty(TessInfo(iTess).Data)
@@ -431,8 +436,9 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'Tag',             'ptCoordinates');
     % Update "Coordinates" panel
     UpdatePanel();
-    % Open MRI viewer for SEEG
-    if isCentroid
+    % Update MRI viewer (if open)
+    hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
+    if ~isempty(hFigMri)
         ViewInMriViewer();
     end
 end
@@ -441,12 +447,11 @@ end
 %% ===== POINT SELECTION: Surface detection =====
 function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, SurfacesType, isCentroid)     
     % Parse inputs
-    if (nargin < 3)
+    if (nargin < 3) || isempty(isCentroid)
         isCentroid = 0;
     end
     if (nargin < 2)
         SurfacesType = [];
-        isCentroid = 0;
     end
     iTess = [];
     pout = {};
@@ -460,12 +465,15 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Get camera position
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
-    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+    TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
         return
     end
 
     % === CHECK SURFACE TYPE ===
+    if isCentroid
+        SurfacesType = 'Other';
+    end
     % Keep only surfaces that are of the required type
     if ~isempty(SurfacesType)
         iAcceptableTess = find(strcmpi({TessInfo.Name}, SurfacesType));
@@ -474,18 +482,24 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
     
     % ===== GET SELECTION ON THE CLOSEST SURFACE =====
-    % Get the closest point for all the surfaces and patches
+    % List of patches and surfaces they belong
     hPatch = [TessInfo(iAcceptableTess).hPatch];
     hPatch = hPatch(ishandle(hPatch));
+    iTess  = [];
+    for i = 1 : length(iAcceptableTess)
+        iTess = [iTess, repmat(iAcceptableTess(i), 1, length(TessInfo(iAcceptableTess(i)).hPatch))];
+    end
     patchDist = zeros(1,length(hPatch));
+    % Get the closest point for all the surfaces and patches
     for i = 1:length(hPatch)
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
             % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
+                sSurf = bst_memory('LoadSurface', TessInfo(iTess(i)).SurfaceFile);
                 VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
-                vout{i} = mean(sSurf.Vertices(VertexList(:), :)); % SCS of the centroid
+                vout{i} = mean(sSurf.Vertices(VertexList(:), :))'; % SCS of the centroid
                 vi{i} = []; % No surface vertex associated to centroid
             end
         else
@@ -506,14 +520,18 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     pout   = pout{iClosestPatch};
     vout   = vout{iClosestPatch};
     vi     = vi{iClosestPatch};
+    iTess  = iTess(iClosestPatch);
+end
 
-    % Find to which surface this tesselation belongs
-    for i = 1:length(TessInfo)
-        if any(TessInfo(i).hPatch == hPatch);
-            iTess = i;
-            break;
-        end
+%% ===== SET CENTROID SELECTION =====
+function SetCentroidSelection(isSelected)
+    import org.brainstorm.icon.*;
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return;
     end
+    setappdata(hFig, 'isSelectingCentroid', isSelected);
+    panel_ieeg('UpdateIsCentriodButton', isSelected);
 end
 
 %% ===== FIND CENTROID OF A MESH BLOB =====

@@ -625,6 +625,10 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         SetElectrodePosition(hFig);
                     end
+                    % For iEEG: Add contact
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('AddContact');
+                    end
                 % CTRL+E : Set electrode labels visible
                 case 'e'
                     if ismember('control', keyEvent.Modifier)
@@ -874,7 +878,7 @@ function ButtonView3DHead_Callback(hFig)
         sMri.SCS.RPA = [1, 0.5, 0.5] .* size(sMri.Cube) .* sMri.Voxsize;
         [Transf, sMri] = cs_compute(sMri, 'scs');
         % Generate head surface
-        [Vertices, Faces] = tess_isohead(sMri, 20000, 0, 0, '');
+        [Vertices, Faces] = tess_isohead(sMri, 20000, 0, 0, [], '');
         % Convert coordinates back to MRI (mm) so that the head surface doesn't have
         % to be updated when we move fiducials
         Vertices = cs_convert(sMri, 'scs', 'mri', Vertices) * 1000;
@@ -1060,6 +1064,11 @@ function DisplayFigurePopup(hFig)
             % Set position
             jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
+            % For iEEG: Add contact
+            if isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
+                jItem = gui_component('MenuItem', jMenuElec, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
+            end
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
             gui_component('MenuItem', jMenuElec, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)panel_ieeg('LoadElectrodes', hFig, GlobalData.DataSet(iDS).ChannelFile, 'SEEG'));
         elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'ECOG')
@@ -2276,7 +2285,7 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
     if Handles.isEeg
         % Hide all the points that we will never show
         iEegHide = Handles.HiddenChannels;
-        iEegShow = setdiff(1:length(Handles.hPointEEG), iEegHide);
+        iEegShow = setdiff(1:size(Handles.hPointEEG,1), iEegHide);
         if ~isempty(iEegHide)
             set(Handles.hPointEEG(iEegHide(:),:), 'Visible', 'off');
         end

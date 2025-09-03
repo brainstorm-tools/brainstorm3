@@ -12,12 +12,14 @@ function varargout = bst_report( varargin )
 %         bst_report('Save',    sInputs,   ReportFile=[])
 %         bst_report('Save',    FileNames, ReportFile=[])
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
+%         bst_report('Reset')
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
-%         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
+%         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1, isOnlyText=0)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory', isUserConfirm=1)
+%         bst_report('PrintToHtml', Reports, isFullReport=1, isOnlyText=0)
 % 
 %         bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
@@ -28,13 +30,15 @@ function varargout = bst_report( varargin )
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
-%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
+%         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectimage', ConnectNFile, Comment, Time=start, Freq=0);
 %         bst_report('Snapshot', 'connectgraph', ConnectNFile, Comment, Threshold, Time=start, Freq=0);
-%         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
+%         bst_report('Snapshot', jFrame,         AnyFile,      Comment, WinPos=[200,200,400,250])
+%         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
 %
 % NOTES: 
 %    - sProcess can be replaced by the name of the process function
@@ -66,15 +70,18 @@ end
 
 %% ===== START =====
 function Start(sInputs)
-    global GlobalData;
     % If there were no inputs
     if (nargin < 1) || isempty(sInputs)
         sInputs = [];
     end
     % Reset current report
-    GlobalData.ProcessReports.Reports = {};
+    Reset();
     % Get current protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
+    % Get Brainstorm version
+    bstVersion = bst_get('Version');
+    % Add Brainstorm version
+    Add('version', [], [], bstVersion.Version);
     % Add start entry
     Add('start', [], sInputs, ProtocolInfo);
 end
@@ -89,7 +96,7 @@ function Add(strType, sProcess, sInputs, strMsg)
         return;
     end
     if isempty(GlobalData.ProcessReports.Reports) || ~iscell(GlobalData.ProcessReports.Reports) || (size(GlobalData.ProcessReports.Reports,2) ~= 5)
-        GlobalData.ProcessReports.Reports = {};
+        Reset();
     end
     % No input
     if isempty(strType)
@@ -158,6 +165,7 @@ end
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectimage', ConnectFile,  Comment, Time=start, Freq=0)
 %         bst_report('Snapshot', 'connectgraph', ConnectFile,  Comment, Threshold=0, Time=start, Freq=0)
+%         bst_report('Snapshot', jFrame,         AnyFile,      Comment, WinPos=[200,200,400,250])
 %         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
 %
 % Optional output img is a cell array of cell arrays with image(s) data for each FileName
@@ -189,8 +197,6 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         end
         return;
     end
-    % Use short file name
-    FileName = file_short(FileName);
     % Get current window layout
     curLayout = bst_get('Layout', 'WindowManager');
     if ~isempty(curLayout)
@@ -198,8 +204,8 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Hide brainstorm window
     if bst_get('isGUI')
-        jFrame = bst_get('BstFrame');
-        jFrame.setVisible(0);
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(0);
     end
     % Hide progress bar
     isProgress = bst_progress('isVisible');
@@ -211,12 +217,15 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     imgLegend = {};
     % If the first argument is a figure handle
     if ~ischar(SnapType)
-        if all(ishandle(SnapType))
+        if all(isgraphics(SnapType))
             hFig = SnapType;
             SnapType = 'figure';
             if (length(varargin) >= 1)
                 winPos = varargin{1};
             end
+        elseif isa(SnapType, 'javax.swing.JFrame') || all(arrayfun(@(x) isa(x, 'javax.swing.JFrame'), SnapType))
+            jFrame = SnapType;
+            SnapType = 'jframe';
         else
             return;
         end
@@ -225,6 +234,10 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     ScoutsOptions = panel_scout('GetScoutsOptions');
     if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
         panel_scout('SetScoutShowSelection', 'none');
+    end
+    % Use short file name
+    if ~isempty(FileName)
+        FileName = file_short(FileName);
     end
                 
     % Show figures
@@ -669,9 +682,29 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
                 if ~isempty(Orient)
                     figure_3d('SetStandardView', hFig, Orient);
                 end
-                
+
+            case 'jframe'
+                for i = 1 : length(jFrame)
+                    % Get as image from jFrame
+                    jFrame(i).setVisible(1);
+                    jFrame(i).setExtendedState(0);  % Restore if minimized (0 = NORMAL)
+                    jFrame(i).toFront();
+                    jFrame(i).setAlwaysOnTop(true);
+                    pause(0.2);
+                    % Java coordinates: [left top width height]
+                    javaPosition = [jFrame(i).getLocation().getX(), jFrame(i).getLocation().getY(), ...
+                                    jFrame(i).getSize().getWidth(), jFrame(i).getSize().getHeight()];
+                    % Matlab coordinates [left bottom width height]
+                    matlabPosition = javaPosition;
+                    screenSize = get(0,'ScreenSize'); % screen_height = screenSize(4)
+                    matlabPosition(2) = screenSize(4) - (javaPosition(2) + javaPosition(4));
+                    [imgs{i}, ~] = getscreen(matlabPosition);
+                end
+                hFig = [];
+
             case 'figure'
                 % Nothing to do
+
             otherwise
                 hFig = [];
         end
@@ -680,17 +713,16 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         strErr = bst_error();
         disp(['BST_REPORT> ERROR:' 10 strErr]);
         % Log error message
-        Error('process_snapshot', FileName, strErr);
+        Error('process_snapshot', ['"' SnapType '" "' FileName '"'], strErr);
         hFig = [];
     end
-    % Output images
-    imgs = cell(1, length(hFig));
-    % If a figure was created
+    % Get images from figures
     for i = 1:length(hFig)
         drawnow;
         % Set figure size
         if ~isempty(winPos)
             set(hFig(i), 'Position', winPos);
+            pause(0.2);
         end
         % Redraw figure
         figure(hFig(i));
@@ -701,16 +733,16 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
         else
             img = out_figure_image(hFig(i));
         end
-        % Add image to report
-        Add('image', Comment, FileName, img);
-        % Append images (only if requested)
-        if nargout > 0
-            imgs{i} = img;
-        end
+        % Append images
+        imgs{i} = img;
         % Close figure
         if ~strcmpi(SnapType, 'figure')
             close(hFig(i));
         end
+    end
+    % Add images to report
+    for i = 1:length(imgs)
+        Add('image', Comment, FileName, imgs{i});
     end
     % Restore scouts
     if ~isempty(ScoutsOptions) && ~strcmpi(ScoutsOptions.showSelection, 'none')
@@ -718,7 +750,7 @@ function img = Snapshot(SnapType, FileName, Comment, varargin)
     end
     % Restore Brainstorm window
     if bst_get('isGUI')
-        jFrame.setVisible(1);
+        jBstFrame.setVisible(1);
     end
     % Restore progress bar
     if isProgress
@@ -775,7 +807,7 @@ function ReportFile = Save(sInputs, ReportFile)
     ReportMat.Reports = GlobalData.ProcessReports.Reports;
     bst_save(ReportFile, ReportMat, 'v7');
     % Reset 
-    GlobalData.ProcessReports.Reports = {};
+    Reset();
 end
 
 
@@ -847,9 +879,12 @@ end
 
 
 %% ===== PRINT TO HTML =====
-function html = PrintToHtml(Reports, isFullReport)
+function html = PrintToHtml(Reports, isFullReport, isOnlyText)
     html = '';
     % If no inputs: nothing to export
+    if (nargin < 3) || isempty(isOnlyText)
+        isOnlyText = 0;
+    end
     if (nargin < 2) || isempty(isFullReport)
         isFullReport = 1;
     end
@@ -858,13 +893,14 @@ function html = PrintToHtml(Reports, isFullReport)
     end
     
     % ===== LIST EVENTS =====
+    iVersion  = find(strcmpi(Reports(:,1), 'version'), 1);
     iStart    = find(strcmpi(Reports(:,1), 'start'), 1);
     iStop     = find(strcmpi(Reports(:,1), 'stop'), 1);
     iProcess  = find(strcmpi(Reports(:,1), 'process'));
     iErrors   = find(strcmpi(Reports(:,1), 'error'));
     iWarnings = find(strcmpi(Reports(:,1), 'warning'));
     iImages   = find(strcmpi(Reports(:,1), 'image'));
-    iMessages = setdiff(1:size(Reports,1), [iStart(:); iStop(:); iImages(:)]');
+    iMessages = setdiff(1:size(Reports,1), [iVersion(:); iStart(:); iStop(:); iImages(:)]');
     
     % Start tag
     FilesInit = {};
@@ -916,153 +952,178 @@ function html = PrintToHtml(Reports, isFullReport)
         end
     end
 
-    % ===== HEADER ====
-    % Get interface scaling
-    f = bst_get('InterfaceScaling') / 100;
-    % HTML header
-    html = ['<HTML>' 10 ...
-            '<STYLE type="text/css">' 10 ...
-            'h2 {font-size: ' num2str(11 * f) 'px; font-weight: bold; padding-top: 12px; padding-bottom: 12px;}' 10 ...
-            'td {padding: 2px 2px 2px 2px; }' 10 ...
-            '.bord td { border-width: 1px; border-style: solid; border-color: #bbbbbb; background-color: #f2f2f2; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; }' 10 ...
-            '.link {text-decoration: none; color: #0000a0;}' 10 ...
-            '</STYLE>' 10 10 ...
-            '<BODY style="margin: 5px 10px 10px 10px; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; background-color: #e8e8e8;">' 10 ...
-            '<TITLE>Brainstorm process report</TITLE>' 10];
-    % Elapsed time
-    if ~isempty(iStart) && ~isempty(iStop)
-        % Get time elapsed between start and stop
-        eTime = datevec(datenum(Reports{iStop,5}) - datenum(Reports{iStart,5}));
-        % Format elapsed time
-        strElapsed = [];
-        if (eTime(3) > 0)
-            strElapsed = [strElapsed num2str(eTime(3)) 'd '];
+    % Report version: HTML with images
+    if ~isOnlyText
+        % ===== HEADER ====
+        % Get interface scaling
+        f = bst_get('InterfaceScaling') / 100;
+        % HTML header
+        html = ['<HTML>' 10 ...
+                '<STYLE type="text/css">' 10 ...
+                'h2 {font-size: ' num2str(11 * f) 'px; font-weight: bold; padding-top: 12px; padding-bottom: 12px;}' 10 ...
+                'td {padding: 2px 2px 2px 2px; }' 10 ...
+                '.bord td {border-width: 1px; border-style: solid; border-color: #bbbbbb; background-color: #f2f2f2; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; }' 10 ...
+                '.link {text-decoration: none; color: #0000a0;}' 10 ...
+                '</STYLE>' 10 10 ...
+                '<BODY style="margin: 5px 10px 10px 10px; font: normal ' num2str(8 * f) 'px Verdana, Arial, Helvetica, sans-serif; background-color: #e8e8e8;">' 10 ...
+                '<TITLE>Brainstorm process report</TITLE>' 10];
+        % Brainstorm version
+        if ~isempty(iVersion)
+            html = [html '<B>Brainstorm version:</B> ' Reports{iVersion,4} '<BR><BR>'];
         end
-        if (eTime(4) > 0)
-            strElapsed = [strElapsed num2str(eTime(4)) 'h '];
+        % Elapsed time
+        if ~isempty(iStart) && ~isempty(iStop)
+            % Get elapsed time string 'Xd Xh Xm Xs'
+            strElapsed = GetElapsedStr(Reports, iStart, iStop);
+            % Time line
+            strElapsed = [strElapsed '</TD></TR>' 10];
+            html = [html 'Start: ' Reports{iStart,5} ' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Elapsed: ' strElapsed];
         end
-        if (eTime(5) > 0)
-            strElapsed = [strElapsed num2str(eTime(5)) 'm '];
-        end
-        % Time line
-        strElapsed = [strElapsed num2str(eTime(6)) 's</TD></TR>' 10];
-        html = [html 'Start: ' Reports{iStart,5} ' &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Elapsed: ' strElapsed];
-    end
-
-    % ===== ERRORS =====
-    %if ~isempty(iMessages)
-        % Start errors table
-        html = [html sprintf('<H2>%d errors and %d warnings</H2>', length(iErrors), length(iWarnings))];
-        html = [html '<TABLE width="100%" class="bord">'];
-        % Loop over each error
-        prevProcName = [];
-        for i = 1:length(iMessages)
-            iMsg = iMessages(i);
-            % Get entry values
-            strType  = Reports{iMsg,1};
-            if ~isempty(Reports{iMsg,2})
-                ProcName = func2str(Reports{iMsg,2}.Function);
-            else
-                ProcName = 'Unknown process';
-            end
-            % Skip process_snapshot (already displayed at the end)
-            if strcmpi(strType, 'process') && strcmpi(ProcName, 'process_snapshot')
-                continue;
-            end
-            % Get messages to display
-            FileNames = GetFilesList(Reports{iMsg,3}, 1);
-            strMsg    = Reports{iMsg,4};
-            strTime   = Reports{iMsg,5};
-            % Process name (only if different as previous)
-            if ~strcmpi(ProcName, prevProcName) || strcmpi(strType, 'process')
-                html = [html '<TR><TD colspan=4 style="background-color: #D0D0D0;">' ProcName '</TD></TR>'];
-                prevProcName = ProcName;
-            end
-            % Type of message
-            switch lower(strType)
-                case 'warning',  txtColor = '#FFA500';
-                case 'error',    txtColor = '#FF0000';
-                case 'process',  continue;
-                otherwise,       txtColor = '#000000';
-            end
-            html = [html '<TR><TD><FONT color="' txtColor '">&nbsp;&nbsp;&nbsp;&nbsp;' strType '</FONT></TD>'];
-            % File name
-            if isempty(FileNames) || isempty(FileNames{1})
-                strFile = '<FONT color=#555555>[No input]</FONT>';
-            elseif (length(FileNames) == 1)
-                strFile = PrintFilesList(FileNames, ProtocolInfo, 1);
-            else
-                strFile = [num2str(length(FileNames)) ' files [...]'];
-            end
-            html = [html '<TD>' strFile '</TD>'];
-            % Error message
-            html = [html '<TD>' strrep(char(strMsg),char(10),'<BR>') '</TD>'];
-            % Time
-            html = [html '<TD>' strTime '</TD>'];
-            % End line
-            html = [html '</TR>' 10];
-        end
-    %end    
-    % Close errors table
-    html = [html '</TABLE>' 10 10];
     
-    % ===== IMAGES =====
-    if ~isempty(iImages)
-        html = [html '<H2>Snapshots</H2>' 10];
-        % Create Base64 encoder
-        encoder = sun.misc.BASE64Encoder();
-        % Loop on all the images
-        for i = 1:length(iImages)
-            iMsg      = iImages(i);
-            Comment   = Reports{iMsg,2};
-            FileNames = GetFilesList(Reports{iMsg,3}, 1);
-            imgRgb    = Reports{iMsg,4};
-            % Convert RGB in 255 to Java color integer
-            sz = size( imgRgb );
-            imgRgb = double(imgRgb) / 255;
-            imgRgb = transpose( reshape( permute( imgRgb, [3 2 1] ), [sz(3) sz(1)*sz(2)] ) );
-            imgInt = typecast(bitshift( uint32( 255 ), 24 ), 'int32') + ...
-                     typecast(bitshift( uint32( 255*imgRgb(:,1) ), 16 ), 'int32') + ...
-                     typecast(bitshift( uint32( 255*imgRgb(:,2) ), 8 ), 'int32') + ...
-                     typecast(bitshift( uint32( 255*imgRgb(:,3) ), 0 ), 'int32');
-            % Create an image (BufferedImage)
-            jImage = java.awt.image.BufferedImage(sz(2), sz(1), java.awt.image.BufferedImage.TYPE_INT_ARGB);
-            jImage.setRGB(0, 0, sz(2), sz(1), imgInt(:), 0, sz(2));
-            % Convert image to PNG
-            jByteStream = java.io.ByteArrayOutputStream();
-            javax.imageio.ImageIO.write(jImage, 'png', jByteStream);
-            % Encode PNG image in Base64
-            jStringImage = encoder.encode(jByteStream.toByteArray());
-            % Display image in HTML
-            html = [html, Comment];
-            if ~isempty(FileNames)
-                html = [html, '  --  ' 10, PrintFilesList(FileNames, ProtocolInfo, 1)];
-            else
-                html = [html, '<BR>'];
+        % ===== ERRORS =====
+        %if ~isempty(iMessages)
+            % Start errors table
+            html = [html sprintf('<H2>%d errors and %d warnings</H2>', length(iErrors), length(iWarnings)) 10];
+            html = [html '<TABLE width="100%" class="bord">' 10];
+            % Loop over each error
+            prevProcName = [];
+            for i = 1:length(iMessages)
+                iMsg = iMessages(i);
+                % Get entry values
+                strType  = Reports{iMsg,1};
+                if ~isempty(Reports{iMsg,2})
+                    ProcName = func2str(Reports{iMsg,2}.Function);
+                else
+                    ProcName = 'Unknown process';
+                end
+                % Skip process_snapshot (already displayed at the end)
+                if strcmpi(strType, 'process') && strcmpi(ProcName, 'process_snapshot')
+                    continue;
+                end
+                % Get messages to display
+                FileNames = GetFilesList(Reports{iMsg,3}, 1);
+                strMsg    = Reports{iMsg,4};
+                strTime   = Reports{iMsg,5};
+                % Process name (only if different as previous)
+                if ~strcmpi(ProcName, prevProcName) || strcmpi(strType, 'process')
+                    html = [html '<TR><TD colspan="4" style="background-color: #D0D0D0;">' ProcName '</TD></TR>'];
+                    prevProcName = ProcName;
+                end
+                % Type of message
+                switch lower(strType)
+                    case 'warning',  txtColor = '#FFA500';
+                    case 'error',    txtColor = '#FF0000';
+                    case 'process',  html = [html 10]; continue;
+                    otherwise,       txtColor = '#000000';
+                end
+                html = [html '<TR><TD><FONT color="' txtColor '">&nbsp;&nbsp;&nbsp;&nbsp;' strType '</FONT></TD>'];
+                % File name
+                if isempty(FileNames) || isempty(FileNames{1})
+                    strFile = '<FONT color="#555555">[No input]</FONT>';
+                elseif (length(FileNames) == 1)
+                    strFile = PrintFilesList(FileNames, ProtocolInfo, 1);
+                else
+                    strFile = [num2str(length(FileNames)) ' files [...]'];
+                end
+                html = [html '<TD>' strFile '</TD>'];
+                % Error message
+                html = [html '<TD>' strrep(char(strMsg),char(10),'<BR>') '</TD>'];
+                % Time
+                html = [html '<TD>' strTime '</TD>'];
+                % End line
+                html = [html '</TR>' 10];
             end
-            html = [html, '<IMG src="data:image/png;base64,' char(jStringImage) '" /><BR><BR>'];
+        %end    
+        % Close errors table
+        html = [html '</TABLE>' 10 10];
+        
+        % ===== IMAGES =====
+        if ~isempty(iImages)
+            html = [html '<H2>Snapshots</H2>' 10];
+            % Create Base64 encoder
+            encoder = sun.misc.BASE64Encoder();
+            % Loop on all the images
+            for i = 1:length(iImages)
+                iMsg      = iImages(i);
+                Comment   = Reports{iMsg,2};
+                FileNames = GetFilesList(Reports{iMsg,3}, 1);
+                imgRgb    = Reports{iMsg,4};
+                % Convert RGB in 255 to Java color integer
+                sz = size( imgRgb );
+                imgRgb = double(imgRgb) / 255;
+                imgRgb = transpose( reshape( permute( imgRgb, [3 2 1] ), [sz(3) sz(1)*sz(2)] ) );
+                imgInt = typecast(bitshift( uint32( 255 ), 24 ), 'int32') + ...
+                         typecast(bitshift( uint32( 255*imgRgb(:,1) ), 16 ), 'int32') + ...
+                         typecast(bitshift( uint32( 255*imgRgb(:,2) ), 8 ), 'int32') + ...
+                         typecast(bitshift( uint32( 255*imgRgb(:,3) ), 0 ), 'int32');
+                % Create an image (BufferedImage)
+                jImage = java.awt.image.BufferedImage(sz(2), sz(1), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                jImage.setRGB(0, 0, sz(2), sz(1), imgInt(:), 0, sz(2));
+                % Convert image to PNG
+                jByteStream = java.io.ByteArrayOutputStream();
+                javax.imageio.ImageIO.write(jImage, 'png', jByteStream);
+                % Encode PNG image in Base64
+                jStringImage = encoder.encode(jByteStream.toByteArray());
+                % Display image in HTML
+                html = [html, Comment];
+                if ~isempty(FileNames)
+                    html = [html, '  --  ' 10, PrintFilesList(FileNames, ProtocolInfo, 1)];
+                else
+                    html = [html, '<BR>'];
+                end
+                html = [html, '<IMG src="data:image/png;base64,' char(jStringImage) '" /><BR><BR>'];
+            end
         end
-    end
-    
-    % ===== ALL FILES =====
-    % Initial files
-    html = [html '<H2>Initial files</H2>' 10];
-    if ~isempty(FilesInit) && ~isequal(FilesInit, {[]})
-        html = [html PrintFilesList(FilesInit, ProtocolInfo, 0)];
-    else
-        html = [html '<FONT color=#555555>[No input]</FONT><BR>'];
-    end
-    % Final files
-    if ~isempty(FilesFinal) && ~isequal(FilesFinal, FilesInit)
-        html = [html '<H2>Final files</H2>' 10];
-        if ~isempty(FilesFinal) && ~isequal(FilesFinal, {[]})
-            html = [html PrintFilesList(FilesFinal, ProtocolInfo, 0)];
+        
+        % ===== ALL FILES =====
+        % Initial files
+        html = [html '<H2>Initial files</H2>' 10];
+        if ~isempty(FilesInit) && ~isequal(FilesInit, {[]})
+            html = [html PrintFilesList(FilesInit, ProtocolInfo, 0)];
         else
-            html = [html '<FONT color=#555555>[No output files]</FONT><BR>'];
+            html = [html '<FONT color="#555555">[No input]</FONT><BR>'];
+        end
+        % Final files
+        if ~isempty(FilesFinal) && ~isequal(FilesFinal, FilesInit)
+            html = [html '<H2>Final files</H2>' 10];
+            if ~isempty(FilesFinal) && ~isequal(FilesFinal, {[]})
+                html = [html PrintFilesList(FilesFinal, ProtocolInfo, 0)];
+            else
+                html = [html '<FONT color="#555555">[No output files]</FONT><BR>'];
+            end
+        end
+        % HTML footer
+        html = [html '</BODY></HTML>'];
+
+    % Report version: Only text
+    else
+        % Brainstorm version
+        if ~isempty(iVersion)
+            html = [html 'Brainstorm version: ' Reports{iVersion,4} 10 10];
+        end        
+        % Elapsed time
+        if ~isempty(iStart) && ~isempty(iStop)
+            % Get elapsed time string 'Xd Xh Xm Xs'
+            strElapsed = GetElapsedStr(Reports, iStart, iStop);
+            html = [html 'Start: ' Reports{iStart,5} '        Elapsed: ' strElapsed 10 10];
+        end
+        % Errors and warnings
+        html = [html sprintf('%d errors and %d warnings', length(iErrors), length(iWarnings)) 10 10];
+        % Entries
+        for iEntry = 1:size(Reports,1)
+            if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
+                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}, repmat(' ', 1, 7-length(Reports{iEntry,1}))];
+                if ~isempty(Reports{iEntry,2})
+                    if isstruct(Reports{iEntry,2})
+                        html = [html, 9, ' - ' func2str(Reports{iEntry,2}.Function)];
+                    elseif ischar(Reports{iEntry,2})
+                        html = [html, 9, ' - ' Reports{iEntry,2}];
+                    end
+                end
+                html = [html, 10];
+            end
         end
     end
-    % HTML footer
-    html = [html '</BODY></HTML>'];
 end
 
 
@@ -1140,14 +1201,14 @@ function str = PrintFilesList(FileNames, ProtocolInfo, isWrap)
         end
         % Display differently the deleted files
         if isDeleted
-            str = [str '<FONT color=#777777>' strFile ' &nbsp;&nbsp;&nbsp;[deleted]</FONT><BR>' 10];
+            str = [str '<FONT color="#777777">' strFile ' &nbsp;&nbsp;&nbsp;[deleted]</FONT><BR>' 10];
         else
             str = [str '<A class="link" href="file://' FileNames{iFile} '">' strFile '</A><BR>' 10];
         end
     end
     % Long lists: just prints the number of files
     if (length(FileNames) > NMAX)
-        str = [str, sprintf('<FONT color=#777777>[%d more files...]</FONT><BR>', length(FileNames)-NMAX)];
+        str = [str, sprintf('<FONT color="#777777">[%d more files...]</FONT><BR>', length(FileNames)-NMAX)];
     end
 end
 
@@ -1344,6 +1405,9 @@ function ClearHistory(isUserConfirm)
     end
     % Get all the available reports
     ProtocolInfo = bst_get('ProtocolInfo');
+    if isempty(ProtocolInfo)
+        return
+    end
     ProtocolName = file_standardize(ProtocolInfo.Comment);
     reportsDir = bst_get('UserReportsDir');
     % If directory exists
@@ -1368,15 +1432,15 @@ function Recall(target)
         return
     end
     % Get the start and process entries
-    iStart   = strcmpi(Reports(:,1), 'start');
-    iProcess = strcmpi(Reports(:,1), 'process');
+    iStart   = find(strcmpi(Reports(:,1), 'start'), 1);
+    iProcess = find(strcmpi(Reports(:,1), 'process'));
     if isempty(iStart) || isempty(iProcess)
         return;
     end
     % Process bar
     bst_progress('start', 'Process history', 'Loading pipeline...');
     % Get the input files
-    FileNames = GetFilesList(Reports{iStart(1),3}, 0);
+    FileNames = GetFilesList(Reports{iStart,3}, 0);
     % Get the processes
     sProcesses = [Reports{iProcess,2}];
     
@@ -1587,9 +1651,12 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
 end
 
 %% ===== SEND EMAIL =====
-% USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
-function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
+% USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1, isOnlyText=0)
+function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport, isOnlyText)
     % Parse inputs
+    if (nargin < 6) || isempty(isOnlyText)
+        isOnlyText = 0;
+    end
     if (nargin < 5) || isempty(isFullReport)
         isFullReport = 1;
     end
@@ -1613,41 +1680,22 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     if ~bst_verlessthan(901)
         restArgs{end+1} = weboptions('CertificateFilename','');
     end
-    % Full report: prepare and send
-    if isFullReport
-        html = PrintToHtml(Reports, isFullReport);
-        restArgs{10} = html;
-        try
-            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
-        catch ME
-            % Try to send as compact report if Error413: "Request Entity Too Large"
-            if ~isempty(strfind(lower(ME.identifier), 'http413'))
-                isFullReport = 0;
-            else
+    % Prepare report and send it
+    html = PrintToHtml(Reports, isFullReport, isOnlyText);
+    restArgs{10} = html;
+    try
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+    catch ME
+        % Try to send as OnlyText report if Error413: "Request Entity Too Large"
+        if ~isempty(strfind(lower(ME.identifier), 'http413')) && ~isOnlyText
+            html = PrintToHtml(Reports, isFullReport, 1);
+            restArgs{10} = html;
+            try
+                resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
+            catch
                 resp = 'bad';
             end
-        end
-    end
-    % Compact report: prepare and send
-    if ~isFullReport
-        html = '';
-        for iEntry = 1:size(Reports,1)
-            if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
-                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
-                if ~isempty(Reports{iEntry,2})
-                    if isstruct(Reports{iEntry,2})
-                        html = [html, 9, ' - ' func2str(Reports{iEntry,2}.Function)];
-                    elseif ischar(Reports{iEntry,2})
-                        html = [html, 9, ' - ' Reports{iEntry,2}];
-                    end
-                end
-                html = [html, 10];
-            end
-        end
-        restArgs{10} = html;
-        try
-            resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', restArgs{:});
-        catch
+        else
             resp = 'bad';
         end
     end
@@ -1655,4 +1703,33 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     isOk = isequal(resp, 'ok');
 end
 
+%% == GET ELAPSED TIME ===
+function strElapsed = GetElapsedStr(Reports, iStart, iStop)
+    strElapsed = '';
+    if nargin < 3 || isempty(Reports) || isempty(iStart) || isempty(iStop)
+        return
+    end
+    % Get time elapsed between start and stop
+    eTime = datevec(datenum(Reports{iStop,5}) - datenum(Reports{iStart,5}));
+    % Format elapsed time
+    strElapsed = [];
+    if (eTime(3) > 0)
+        strElapsed = [strElapsed num2str(eTime(3)) 'd '];
+    end
+    if (eTime(4) > 0)
+        strElapsed = [strElapsed num2str(eTime(4)) 'h '];
+    end
+    if (eTime(5) > 0)
+        strElapsed = [strElapsed num2str(eTime(5)) 'm '];
+    end
+    % Time line
+    strElapsed = [strElapsed num2str(eTime(6)) 's'];
+end
+
+%% ===== RESET CURRENT REPORT =====
+% USAGE:  bst_report('Reset')
+function Reset()
+    global GlobalData;
+    GlobalData.ProcessReports.Reports = {};
+end
 

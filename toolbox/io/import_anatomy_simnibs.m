@@ -234,7 +234,7 @@ end
 %% ===== IMPORT FEM MESH =====
 bst_progress('start', 'Import SimNIBS folder', 'Importing FEM mesh...');
 % Reload updated T1
-sMriT1 = in_mri_bst(T1File);
+sMriT1 = bst_memory('LoadMri', T1File);
 % Import FEM mesh
 FemMat = in_tess(MshFile, upper(Version), sMriT1); %  this could be loaded to bst as it is
 FemMat.Comment = sprintf('FEM %dV (simnibs, %d layers)', length(FemMat.Vertices), length(FemMat.TissueLabels));

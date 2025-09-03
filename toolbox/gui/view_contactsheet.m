@@ -407,9 +407,10 @@ function [img, TessInfo, iTess] = GetImage(hFig)
     img = out_figure_image(hFig);
     % Get MRI information from figure
     TessInfo = getappdata(hFig, 'Surface');
-    iTess = strcmpi('Anatomy', {TessInfo.Name});
-    if isempty(iTess)
-        TessInfo = [];
+    if isempty(TessInfo)
+        iTess = [];
+    else
+        iTess = strcmpi('Anatomy', {TessInfo.Name});
     end
 end
 

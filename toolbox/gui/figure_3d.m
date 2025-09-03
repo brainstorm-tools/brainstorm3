@@ -125,6 +125,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
+    setappdata(hFig, 'isSelectingCentroid',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -545,6 +546,7 @@ function FigureMouseUpCallback(hFig, varargin)
     hAxes       = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     isSelectingCorticalSpot = getappdata(hFig, 'isSelectingCorticalSpot');
     isSelectingCoordinates  = getappdata(hFig, 'isSelectingCoordinates');
+    isSelectingCentroid     = getappdata(hFig, 'isSelectingCentroid');
     TfInfo = getappdata(hFig, 'Timefreq');
     
     % Remove mouse appdata (to stop movements first)
@@ -614,15 +616,9 @@ function FigureMouseUpCallback(hFig, varargin)
             % Selecting from Coordinates or iEEG panels
             if gui_brainstorm('isTabVisible', 'Coordinates') || gui_brainstorm('isTabVisible', 'iEEG')
                 if gui_brainstorm('isTabVisible', 'iEEG')
-                    % For SEEG, making sure centroid calculation for plotting contacts is active
-                    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSurface', hFig, [], 'Other');
-                    if ~isempty(sSurf)
-                        iIsoSurf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSurf.FileName}));
-                        if ~isempty(iIsoSurf)
-                            panel_coordinates('SelectPoint', hFig, 0, 1);
-                        else
-                            panel_coordinates('SelectPoint', hFig);
-                        end
+                    % Allow toggle between centroid/surface point selection
+                    if isSelectingCentroid
+                        panel_coordinates('SelectPoint', hFig, 0, 1);
                     else
                         panel_coordinates('SelectPoint', hFig);
                     end
@@ -834,12 +830,16 @@ function FigureMouseUpCallback(hFig, varargin)
                     else
                         bst_figures('ToggleSelectedRow', SelChan);
                     end
-                    % If there are intra electrodes defined, and if the channels are SEEG/ECOG: try to select the electrode in panel_ieeg
-                    if ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
-                        selGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
-                        % Highlight the electrode and contacts
-                        panel_ieeg('SetSelectedElectrodes', selGroup);
+                    % Get current selected channels in the figure
+                    SelChanCur = GetFigSelectedRows(hFig);
+                    % Select intracranial Electrodes and Contacts in iEEG panel
+                    if ~isempty(SelChanCur) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes) && all(~cellfun(@isempty, {GlobalData.DataSet(iDS).Channel(iSelChan).Group}))
+                        SelGroup = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+                        panel_ieeg('SetSelectedElectrodes', SelGroup);
                         panel_ieeg('SetSelectedContacts', SelChan);
+                    else
+                        panel_ieeg('SetSelectedContacts', 0);
+                        panel_ieeg('SetSelectedElectrodes', 0);
                     end
                 end
             end
@@ -973,7 +973,7 @@ end
 
 %% ===== KEYBOARD CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)   
-    global GlobalData TimeSliderMutex;
+    global GlobalData TimeSliderMutex Digitize;
     % Prevent multiple executions
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
     set([hFig hAxes], 'BusyAction', 'cancel');
@@ -1094,7 +1094,19 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case 'a'
                     if ismember('control', keyEvent.Modifier)
                     	ViewAxis(hFig);
-                    end 
+                    end
+                % C : Collect point
+                case 'c'
+                    % for 3DScanner
+                    if gui_brainstorm('isTabVisible', 'Digitize') && strcmpi(Digitize.Type, '3DScanner')
+                        % Get Digitize options
+                        DigitizeOptions = bst_get('DigitizeOptions');
+                        panel_fun = @panel_digitize;
+                        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+                            panel_fun = @panel_digitize_2024;
+                        end
+                        panel_fun('ManualCollect_Callback');
+                    end
                 % CTRL+D : Dock figure
                 case 'd'
                     if ismember('control', keyEvent.Modifier)
@@ -1211,6 +1223,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         bst_figures('ViewResults', hFig); 
                     end
+                    % For iEEG: Add contact
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('AddContact');
+                    end
                 % CTRL+T : Default topography
                 case 't'
                     if ismember('control', keyEvent.Modifier) 
@@ -1258,6 +1274,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     end
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
+                    % Set channels as bad
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
                     if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
@@ -1274,6 +1291,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
                         % Reset selection
                         bst_figures('SetSelectedRows', []);
+                    end
+                    % For iEEG: Remove contacts
+                    if gui_brainstorm('isTabVisible', 'iEEG')
+                        panel_ieeg('RemoveContact');
                     end
                 % ESCAPE: RESET SELECTION
                 case 'escape'
@@ -1580,7 +1601,9 @@ function DisplayFigurePopup(hFig)
     else
         TfFile = [];
     end
-
+    % Check if IsoSurface exists in the figure
+    isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
+    
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     
@@ -1794,6 +1817,13 @@ function DisplayFigurePopup(hFig)
             % Configure 3D electrode display
             jMenuChannels.addSeparator();
             gui_component('MenuItem', jMenuChannels, [], 'Configure display', IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodesConfig(hFig));
+            % For iEEG: Add/Remove contacts
+            if isequal(Modality, 'SEEG')
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Add SEEG contact', IconLoader.ICON_PLUS, [], @(h,ev)panel_ieeg('AddContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'Remove SEEG contacts', IconLoader.ICON_MINUS, [], @(h,ev)panel_ieeg('RemoveContact'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0));
+            end
         % Other figures
         else
             % Menu "View sensors"
@@ -1986,6 +2016,16 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('checkboxmenuitem', jPopup, [], 'Get coordinates...', IconLoader.ICON_SCOUT_NEW, [], @GetCoordinates);
         jItem.setSelected(panel_coordinates('GetSelectionState'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, KeyEvent.CTRL_MASK));
+        % ==== MENU: TOGGLE BETWEEN CENTROID/SURFACE POINT SELECTION ====
+        if gui_brainstorm('isTabVisible', 'iEEG')
+            isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+            if isIsoSurf && isSelectingCoordinates
+                jItem = gui_component('checkboxmenuitem', jPopup, [], 'Select surface centroid', [], [], @(h,ev)panel_coordinates('SetCentroidSelection', ev.getSource.isSelected()));
+                isSelectingCentroid = getappdata(hFig, 'isSelectingCentroid');
+                jItem.setSelected(isSelectingCentroid);
+                jPopup.addSeparator();
+            end
+        end
     end
     
     % ==== MENU: SNAPSHOT ====
@@ -2808,12 +2848,17 @@ function UpdateSurfaceColor(hFig, iTess)
             SulciMap = zeros(TessInfo(iTess).nVertices, 1);
         end
         % Compute RGB values
-        FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
-                                           TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
-                                           DataSurf, ...                                  % Data: values map
-                                           TessInfo(iTess).DataLimitValue, ...            % Data: limit value
-                                           TessInfo(iTess).DataAlpha,...                  % Data: transparency
-                                           sColormap);                                    % Colormap
+        if ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_textured', 'match'))
+            FaceVertexCdata = TessInfo(iTess).AnatomyColor(TessInfo(iTess).nVertices+1:end, :);
+        else
+            FaceVertexCdata = BlendAnatomyData(SulciMap, ...                                  % Anatomy: Sulci map
+                                               TessInfo(iTess).AnatomyColor([1,end], :), ...  % Anatomy: color
+                                               DataSurf, ...                                  % Data: values map
+                                               TessInfo(iTess).DataLimitValue, ...            % Data: limit value
+                                               TessInfo(iTess).DataAlpha,...                  % Data: transparency
+                                               sColormap);                                    % Colormap
+        end
+
         % Edge display : on/off
         if ~TessInfo(iTess).SurfShowEdges
             EdgeColor = 'none';
@@ -4783,6 +4828,24 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+%% ===== GET LOCATION FROM 3D FIGURE =====
+function XYZ = GetLocation(cs, hFig)
+    XYZ = [];
+    CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
+    isSelectingCoordinates = getappdata(hFig, 'isSelectingCoordinates');
+    % Exit early if required data is missing or selection is inactive
+    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI) || ~isSelectingCoordinates
+        return;
+    end
+    % Determine which coordinate set to return based on input
+    keysCs = {'MNI','MRI','SCS','Voxel','World'};
+    iCs = find(strcmpi(cs, keysCs));
+    if isempty(iCs)
+        bst_error(sprintf('Invalid coordinate system: %s', cs), 'Get location (3D)');
+        return;
+    end
+    XYZ = CoordinatesSelector.(keysCs{iCs});
+end
 
 %% ===== SET LOCATION MRI =====
 function SetLocationMri(hFig, cs, XYZ)
