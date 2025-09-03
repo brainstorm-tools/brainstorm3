@@ -649,7 +649,7 @@ switch (lower(action))
                     gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
 
                     % === MRI SEGMENTATION ===
-                    fcnMriSegment(jPopup, sSubject, iSubject, [], 0, 0);
+                    fcnMriSegment(jPopup, sSubject, iSubject, [], 0, 0, 0);
                     % === DEFACE MRI ===
                     gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
                     % === SEEG/ECOG ===
