@@ -248,7 +248,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         if isNirsSel
             allMethods{end+1} = char(jComboMethodNIRS.getSelectedItem.getName());
         end
-        allMethods = unique(allMethods);
+        allMethods = unique(allMethods, 'stable');
         allMethods(cellfun(@isempty,allMethods)) = [];
         % Build comment
         Comment = '';
