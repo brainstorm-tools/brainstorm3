@@ -420,14 +420,16 @@ function SliderCallback(hObject, event, target)
             isosurfFile = TessInfo(iSurface).SurfaceFile;
             % Get loaded isosurface index from memory
             [~, iSurf] = bst_memory('GetSurface', isosurfFile);
-            % Get CT file and IsoValue used to generate the isosurface file
-            [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
-            if GlobalData.Surface(iSurf).isSurfaceModified
-                isoValue = TessInfo(iSurface).SurfIsoValue;
+            % Get CT file and original IsoValue used to generate the isosurface file
+            [ctFile, orgIsoValue] = GetIsosurfaceParams(isosurfFile);
+            if ~GlobalData.Surface(iSurf).isSurfaceModified
+                currentIsoValue = orgIsoValue;
+            else
+                currentIsoValue = TessInfo(iSurface).SurfIsoValue;
             end
             % Get new isoValue from the slider
             newIsoValue = jSlider.getValue();
-            if isoValue == newIsoValue
+            if currentIsoValue == newIsoValue
                 % No modifications done to isosurface
                 GlobalData.Surface(iSurf).isSurfaceModified = 0;
                 return
@@ -436,13 +438,13 @@ function SliderCallback(hObject, event, target)
             dialogTitle = 'Change threshold IsoSurface';
             if isempty(sSubject)
                 bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), dialogTitle);
-                SetIsoValue(isoValue);
+                SetIsoValue(currentIsoValue);
                 return;
             else
                 subjectFile = getappdata(hFig, 'SubjectFile');
                 if ~strcmp(subjectFile, sSubject.FileName)
                     bst_error('Subject for CT and IsoSurface is not the same', dialogTitle);
-                    SetIsoValue(isoValue);
+                    SetIsoValue(currentIsoValue);
                     return;
                 end
             end
@@ -475,7 +477,7 @@ function SliderCallback(hObject, event, target)
             GlobalData.Surface(iSurf).VertArea    = tess_area(Vertices, Faces);
             GlobalData.Surface(iSurf).SulciMap    = tess_sulcimap(GlobalData.Surface(iSurf));
             GlobalData.Surface(iSurf).Comment     = num2str(newIsoValue);
-            GlobalData.Surface(iSurf).isSurfaceModified = 1;
+            GlobalData.Surface(iSurf).isSurfaceModified = orgIsoValue ~= newIsoValue;
             
         case 'DataAlpha'
             % Update value in Surface array
