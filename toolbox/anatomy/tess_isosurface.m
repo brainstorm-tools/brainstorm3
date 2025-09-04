@@ -152,34 +152,10 @@ if isSave
     bst_progress('text', 'Saving file...');
     % Create output filenames
     SurfaceDir = bst_fileparts(file_fullpath(CtFile));
-    % Find tess_isosurface file computed using the same CT volume
-    iIsoSurfForThisCt = 0;
-    iIsoSrfs = find(cellfun(@(x) ~isempty(regexp(x, 'tess_isosurface', 'match')), {sSubject.Surface.FileName}));
-    for ix = 1 : length(iIsoSrfs)
-        CtFileIso = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSrfs(ix)).FileName);
-        if strcmp(CtFileIso, CtFile)
-            iIsoSurfForThisCt = iIsoSrfs(ix);
-        end
-    end
-    % Create or Overwrite tess_isosurface file
-    if iIsoSurfForThisCt == 0
-        % Create IsoFile
-        MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
-        comment = sprintf('isoSurface (ISO_%d)', isoValue);
-    else
-        % Get old IsoValue
-        [~, oldIsoValue] = panel_surface('GetIsosurfaceParams', sSubject.Surface(iIsoSurfForThisCt).FileName);
-        % Overwrite the updated fields, do not delete the file
-        MeshFile = file_fullpath(sSubject.Surface(iIsoSurfForThisCt).FileName);
-        % Force to be the newest isosurface
-        sSubject.Surface(iIsoSurfForThisCt) = [];
-        bst_set('Subject', iSubject, sSubject);
-        % Get Comment and update it
-        sMeshTmp = load(MeshFile, 'Comment', 'History');
-        comment = strrep(sMeshTmp.Comment, num2str(oldIsoValue), num2str(isoValue));
-    end
+    % Create tess_isosurface file
+    MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
     % Set comment
-    sMesh.Comment = comment;
+    sMesh.Comment = file_unique(sprintf('isoSurface (ISO_%d)', isoValue), {sSubject.Surface.Comment});
     % Set history
     sMesh = bst_history('add', sMesh, 'threshold_ct', ...
                         sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', sMri.FileName, isoValue, isoRange));
