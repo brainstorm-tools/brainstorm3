@@ -1,7 +1,7 @@
 function varargout = panel_headmodel(varargin)
 % PANEL_HEADMODEL: Computation of forward model (GUI).
 % 
-% USAGE:     bstPanel = panel_headmodel('CreatePanel',      isMeg, isEeg, isEcog, isSeeg, isMixed)
+% USAGE:     bstPanel = panel_headmodel('CreatePanel',      isMeg, isEeg, isEcog, isSeeg, isMixed, isNirs)
 %         OutputFiles = panel_headmodel('ComputeHeadModel', iStudies, sMethod)
 
 % @=============================================================================
@@ -131,13 +131,14 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     % === NIRS ===
     if isNirs
         % Checkbox
-        jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ');
-        jCheckMethodNIRS.setSelected(0);
-        jCheckMethodNIRS.setEnabled(0)
-        % Label
-        gui_component('Label', jPanelMethod, 'tab hfill', ['<HTML><FONT color="#777777">To compute head model for NIRS, use process:<BR>' ...
-                                                           'NIRS > Sources > Compute head model from fluence<BR>' ...
-                                                           '(NIRSTORM plugin is required)']);
+        jCheckMethodNIRS = gui_component('CheckBox', jPanelMethod, 'br', 'NIRS: ', [], [], @UpdateComment);
+        jCheckMethodNIRS.setSelected(1);
+         % Combobox
+        jComboMethodNIRS = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
+        jComboMethodNIRS.addItem(BstListItem('import', '', 'Import from MCXlab', []));
+    else
+        jCheckMethodNIRS = [];
+        jComboMethodNIRS = [];
     end
     % Attach sub panel to NewPanel
     jPanelNew.add('br hfill', jPanelMethod);
@@ -163,7 +164,8 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
                   'jCheckMethodECOG',    jCheckMethodECOG, ...
                   'jComboMethodECOG',    jComboMethodECOG, ...
                   'jCheckMethodSEEG',    jCheckMethodSEEG, ...
-                  'jComboMethodSEEG',    jComboMethodSEEG ...
+                  'jCheckMethodNIRS',    jCheckMethodNIRS, ...
+                  'jComboMethodNIRS',    jComboMethodNIRS ...
                  );
     % Create the BstPanel object that is returned by the function
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
@@ -187,16 +189,32 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
     %% ===== UPDATE COMMENT =====
     function UpdateComment(varargin)
         % Force to have at least one modality selected
-        if isMeg && ~isEeg && ~isEcog && ~isSeeg
+        if isMeg && ~isEeg && ~isEcog && ~isSeeg && ~isNirs
             jCheckMethodMEG.setSelected(1);
-        elseif ~isMeg && isEeg && ~isEcog && ~isSeeg
+        elseif isEeg && ~isMeg && ~isEcog && ~isSeeg && ~isNirs
             jCheckMethodEEG.setSelected(1);
+        elseif isEcog && ~isMeg && ~isEeg && ~isSeeg && ~isNirs
+            jCheckMethodECOG.setSelected(1);
+        elseif isSeeg && ~isMeg && ~isEeg && ~isEcog && ~isNirs
+            jCheckMethodSEEG.setSelected(1);
+        elseif isNirs && ~isMeg && ~isEeg && ~isEcog && ~isSeeg
+            jCheckMethodNIRS.setSelected(1);
+        end
+        % Disable NIRS for other than surface head model
+        if isNirs
+            if jRadioGridVolume.isSelected() || jRadioGridMixed.isSelected()
+                jCheckMethodNIRS.setSelected(0);
+                jCheckMethodNIRS.setEnabled(0);
+            else
+                jCheckMethodNIRS.setEnabled(1);
+            end
         end
         % MEG/EEG Checkbox
         isMegSel  = isMeg && jCheckMethodMEG.isSelected();
         isEegSel  = isEeg && jCheckMethodEEG.isSelected();
         isEcogSel = isEcog && jCheckMethodECOG.isSelected();
         isSeegSel = isSeeg && jCheckMethodSEEG.isSelected();
+        isNirsSel = isNirs && jCheckMethodNIRS.isSelected();
         % MEG/EEG Combobox
         if isMeg
             jComboMethodMEG.setEnabled(isMegSel);
@@ -209,6 +227,9 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         end
         if isSeeg
             jComboMethodSEEG.setEnabled(isSeegSel);
+        end
+        if isNirs
+            jComboMethodNIRS.setEnabled(isNirsSel);
         end
         % Get current methods for EEG and MEG
         allMethods = {};
@@ -224,7 +245,10 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         if isSeegSel
             allMethods{end+1} = char(jComboMethodSEEG.getSelectedItem.getName());
         end
-        allMethods = unique(allMethods);
+        if isNirsSel
+            allMethods{end+1} = char(jComboMethodNIRS.getSelectedItem.getName());
+        end
+        allMethods = unique(allMethods, 'stable');
         allMethods(cellfun(@isempty,allMethods)) = [];
         % Build comment
         Comment = '';
@@ -291,6 +315,11 @@ function s = GetPanelContents() %#ok<DEFNU>
     else
         s.SEEGMethod = '';
     end
+    if ~isempty(ctrl.jCheckMethodNIRS) && ctrl.jCheckMethodNIRS.isSelected()
+        s.NIRSMethod = char(ctrl.jComboMethodNIRS.getSelectedItem.getType());
+    else
+        s.NIRSMethod = '';
+    end
     s.SaveFile = 1;
 end
 
@@ -306,6 +335,7 @@ end
 %         |- EEGMethod     : {'eeg_3sphereberg', 'openmeeg', ''}
 %         |- ECOGMethod    : {'openmeeg', ''}
 %         |- SEEGMethod    : {'openmeeg', ''}
+%         |- NIRSMethod    : {'import', ''}
 %         |- HeadModelType : {'volume', 'surface'}
 %         |- Comment       : String [optional]
 %         |- Interactive   : {0,1}, if 0, does everything by default and does not shoe any message
@@ -338,6 +368,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     isEeg = 0;
     isEcog = 0;
     isSeeg = 0;
+    isNirs = 0;
     for i = 1:length(sStudies)
         if ~isempty(sStudies(i).Channel)
             isMeg  = any(strcmpi(sStudies(i).Channel.DisplayableSensorTypes, 'MEG'));
@@ -348,12 +379,8 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     % Check that at least one modality is available
-    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg
-        if isNirs
-            errMessage = ['To compute head model for NIRS, use process:' 10 'NIRS > Sources > Compute head model from fluence' 10 'NIRSTORM plugin is required'];
-        else
-            errMessage = 'No valid sensor types to estimate a head model.';
-        end
+    if ~isMeg && ~isEeg && ~isEcog && ~isSeeg && ~isNirs
+        errMessage = 'No valid sensor types to estimate a head model.';
         return;
     end
     % Check if the first subject has a "Source model" atlas
@@ -389,6 +416,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     end
     if ~isSeeg || ~isfield(sMethod, 'SEEGMethod')
         sMethod.SEEGMethod = '';
+    end
+    if ~isNirs || ~isfield(sMethod, 'NIRSMethod')
+        sMethod.NIRSMethod = '';
     end
     % List all methods
     allMethods = unique({sMethod.MEGMethod, sMethod.EEGMethod, sMethod.ECOGMethod, sMethod.SEEGMethod});
@@ -467,6 +497,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
         OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
         OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
+        OPTIONS.iNirs = good_channel(OPTIONS.Channel, [], 'NIRS');
 
         % ===== BEST FITTING SPHERE =====
         % BestFittingSphere : .HeadCenter, .Radii, .Conductivity
@@ -721,6 +752,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             newHeadModel.EEGMethod     = OPTIONS.EEGMethod;
             newHeadModel.ECOGMethod    = OPTIONS.ECOGMethod;
             newHeadModel.SEEGMethod    = OPTIONS.SEEGMethod;
+            newHeadModel.NIRSMethod    = OPTIONS.NIRSMethod;
             % Update Study structure
             iHeadModel = length(sStudy.HeadModel) + 1;
             sStudy.HeadModel(iHeadModel) = newHeadModel;
