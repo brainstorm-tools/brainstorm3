@@ -1322,6 +1322,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     % ===== PLOT OBJECT =====
     % Get file type (tessalation or MRI)
     fileType = file_gettype(surfaceFile);
+    updateColor = 0;
     % === TESSELATION ===
     if any(strcmpi(fileType, {'cortex','scalp','innerskull','outerskull','tess'}))
         % === LOAD SURFACE ===
@@ -1340,9 +1341,11 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         else
             TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
         end
-        % Set transparency for isosurface
+        % Set default transparency and color for isosurface
         if ~isempty(regexp(surfaceFile, 'tess_isosurface', 'match'))
             TessInfo(iTess).SurfAlpha = 0.6;
+            TessInfo(iTess).AnatomyColor = [1;1]*[0.75, 0.75, 0.85];
+            updateColor = 1;
         end
 
         % === PLOT SURFACE ===
@@ -1469,6 +1472,9 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     setappdata(hFig, 'iSurface', iTess);
     % Automatically set transparencies (to view different layers at the same time)
     SetAutoTransparency(hFig);
+    if updateColor
+        UpdateSurfaceColormap(hFig, iTess);
+    end
     % Close progress bar
     drawnow;
     if isNewProgressBar
