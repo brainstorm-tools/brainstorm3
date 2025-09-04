@@ -320,40 +320,40 @@ function DisplaySpec(sfreq)
     strFilter2 = [strFilter2 'Transient (full): <B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Transient (99% energy): <B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Sampling frequency: <B>', num2str(sfreq), ' Hz</B><BR>'];
-    strFilter2 = [strFilter2 'Frequency resolution: <B>' num2str(dF, '%1.3f') ' Hz</B><BR>'];
+    strFilter2 = [strFilter2 'Frequency resolution: <B>' num2str(dF, '%1.5f') ' Hz</B><BR>'];
     
     hFig = HFilterDisplay(Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
 
 end
 
 function hFig = HFilterDisplay(Hf,Freqs,Ht,t,transient,strFilter1,strFilter2,XFreqLim)
-% Display filter specs and responses without Java components
+% Display filter specs and responses using uifigure and uilabel (with HTML)
 
 % Progress bar
 bst_progress('start', 'Filter specifications', 'Updating graphs...');
 
 % Get existing specification figure
-hFig = findobj(0, 'Type', 'Figure', 'Tag', 'FilterSpecs');
-if isempty(hFig)
-    hFig = figure(...
-        'MenuBar',     'none', ...
-        'Toolbar',     'figure', ...
-        'NumberTitle', 'off', ...
+hFig = findobj('Type', 'Figure', 'Tag', 'FilterSpecs');
+if isempty(hFig) || ~isa(hFig, 'matlab.ui.Figure')
+    hFig = uifigure(...
         'Name',        sprintf('Filter properties'), ...
         'Tag',         'FilterSpecs', ...
-        'Units',       'Pixels');
+        'Units',       'pixels', ...
+        'Position',    [100 100 800 600], ...
+        'AutoResizeChildren',   'off' , ...
+        'ResizeFcn',   @ResizeCallback);
 else
     clf(hFig);
     figure(hFig);
 end
 
 % Plot frequency response
-hAxesFreqz = axes('Units', 'pixels', 'Parent', hFig, 'Tag', 'AxesFreqz');
+hAxesFreqz = uiaxes('Parent', hFig, 'Tag', 'AxesFreqz');
 Hf_db = 20.*log10(abs(Hf));
 plot(hAxesFreqz, Freqs, Hf_db);
 
 % Plot impulse response
-hAxesImpz = axes('Units', 'pixels', 'Parent', hFig, 'Tag', 'AxesImpz');
+hAxesImpz = uiaxes('Parent', hFig, 'Tag', 'AxesImpz');
 plot(hAxesImpz, t, Ht);
 
 % Add Axes limits
@@ -386,34 +386,32 @@ text(hAxesImpz, transient .* 1.1, YLimImpz(2), '99% energy', ...
     'HorizontalAlignment', 'left');
 hold(hAxesImpz, 'off');
 
-% Display left panel (filter info)
-hLabel1 = uicontrol('Style', 'text', ...
-    'Parent', hFig, ...
-    'String', strip_tags(strFilter1), ...
-    'Units', 'pixels', ...
+% Display left panel (filter info) with HTML
+hLabel1 = uilabel(hFig, ...
+    'Text', strFilter1, ...
+    'Interpreter', 'html', ...
     'HorizontalAlignment', 'left', ...
     'FontSize', bst_get('FigFont'), ...
     'Tag', 'Label1', ...
-    'BackgroundColor', get(hFig, 'Color') );
+    'BackgroundColor', hFig.Color);
 
-% Display right panel (filter info)
-hLabel2 = uicontrol('Style', 'text', ...
-    'Parent', hFig, ...
-    'String', strip_tags(strFilter2), ...
-    'Units', 'pixels', ...
+% Display right panel (filter info) with HTML
+hLabel2 = uilabel(hFig, ...
+    'Text', strFilter2, ...
+    'Interpreter', 'html', ...
     'HorizontalAlignment', 'left', ...
     'FontSize', bst_get('FigFont'), ...
     'Tag', 'Label2', ...
-    'BackgroundColor', get(hFig, 'Color'));
+    'BackgroundColor', hFig.Color);
 
 % Set resize function
-set(hFig, 'ResizeFcn', @ResizeCallback);
 ResizeCallback(hFig);
+set(hFig, 'ResizeFcn', @ResizeCallback);
 
 bst_progress('stop');
 
-    function ResizeCallback(hFig, ~)
-        figpos = get(hFig, 'Position');
+   function ResizeCallback(hFig, ~)
+        figpos = hFig.Position;
         textH = 110;        % Text Height
         marginL = 70;
         marginR = 30;
@@ -421,16 +419,10 @@ bst_progress('stop');
         marginB = 50;
         axesH = round((figpos(4) - textH) ./ 2);
         % Position axes
-        set(hAxesFreqz, 'Position', max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hAxesImpz,  'Position', max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hLabel1,    'Position', max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]));
-        set(hLabel2,    'Position', max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]));
+        hAxesFreqz.Position = max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]);
+        hAxesImpz.Position  = max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]);
+        hLabel1.Position    = max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]);
+        hLabel2.Position    = max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]);
     end
 
-end
-
-function out = strip_tags(str)
-% Remove HTML tags and convert <BR> to newline for display in uicontrol
-out = regexprep(str, '<[bB][rR]\s*/?>', sprintf('\n')); % Replace <BR> with newline
-out = regexprep(out, '<[^>]*>', ''); % Remove other HTML tags
 end
