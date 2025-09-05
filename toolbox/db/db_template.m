@@ -810,7 +810,8 @@ switch lower(structureName)
             'Vertices',       [], ...  % 2D Layout
             'SelChan',        [], ...  % 2D Layout
             'BoxesCenters',   [], ...  % 2D Layout
-            'LinesColor',     []);     % 2D Layout
+            'LinesColor',     [], ...
+            'hHeadLines',     []);     % 2D Layout
     case 'displayhandles3dviz'
         template = struct(...
             'hSensorMarkers', [], ...

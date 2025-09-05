@@ -1705,8 +1705,11 @@ function DisplayFigurePopup(hFig)
         jItem.setSelected(TopoLayoutOptions.ShowLegend);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
         jItem.setSelected(TopoLayoutOptions.FlipYAxis);
-        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show head lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
-        jItem.setSelected(TopoLayoutOptions.FlipYAxis);
+        if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG', 'MEG', 'NIRS'})
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show head lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ShowHeadLines', ~TopoLayoutOptions.ShowHeadLines));
+            jItem.setSelected(TopoLayoutOptions.ShowHeadLines);
+        end
+
         jPopup.addSeparator();
     end
     
