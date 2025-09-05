@@ -13,7 +13,8 @@ function [TessMat, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelL
 % OUTPUT:
 %     - TessMat:  Brainstorm tesselation structure with fields:
 %         |- Vertices : {[3 x nbVertices] double}, in millimeters
-%         |- Faces    : {[nbFaces x 3] double}
+%         |- Faces    : {[nbFaces x 3] double}                         (optional, volume meshes do not have 'Faces')
+%         |- Color    : {[nColors x 3] double}, normalized between 0-1 (optional, not all surfaces have color info)
 %         |- Comment  : {information string}
 
 % @=============================================================================
@@ -93,6 +94,8 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
+        case '.srf'
+            FileFormat = 'BESA-SRF';
     end
 end
 % If format was not detected
@@ -217,7 +220,11 @@ switch (FileFormat)
             T = sMri.Header.info.mat(1:3,4)' - 1;
             TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, T / 1000);            
         end
-        
+    
+    case 'WFTOBJ'
+        TessMat = in_tess_wftobj(TessFile);
+        isConvertScs = 0;
+
     case 'MRI-MASK'
         [TessMat, Labels] = in_tess_mrimask(TessFile, 0, SelLabels);
         
@@ -233,6 +240,11 @@ switch (FileFormat)
         
     case 'NWB'
         TessMat = in_tess_nwb(TessFile);
+
+    case 'BESA-SRF'
+        TessMat = in_tess_besa(TessFile);
+        TessMat.Vertices = TessMat.Vertices .* sMri.Voxsize ./ 1000;
+
 end
 % If an error occurred: return
 if isempty(TessMat)
@@ -272,6 +284,13 @@ end
 
 %% ===== COMMENT =====
 % Add a comment field to the TessMat structure.
+if ~isempty(sMri)
+    % Get the current subject
+    sSubject = bst_get('MriFile', sMri.FileName);
+    % Unique comment
+    fileBase = file_unique(fileBase, {sSubject.Surface.Comment});
+end
+
 % If various tesselations were loaded from one file
 if (length(TessMat) > 1)
     for iTess = 1:length(TessMat)

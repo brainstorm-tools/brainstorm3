@@ -115,6 +115,7 @@ if (nargin < 2) || isempty(isoValue)
     % Get new value isoValue
     isoValue = round(str2double(res));
 end
+isoRange = double(round([sMri.Histogram.whiteLevel, sMri.Histogram.intensityMax]));
 
 % Check parameters values
 % isoValue cannot be < 0 as there cannot be negative intensity in the CT
@@ -148,25 +149,19 @@ sMesh.Vertices = cs_convert(sMri, 'mri', 'scs', sMesh.Vertices ./ 1000);
 
 %% ===== SAVE FILES =====
 if isSave
-    bst_progress('text', 'Saving new file...');
+    bst_progress('text', 'Saving file...');
     % Create output filenames
-    ProtocolInfo = bst_get('ProtocolInfo');
-    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(CtFile));
-    % Get the mesh file
-    MeshFile  = bst_fullfile(SurfaceDir, 'tess_isosurface.mat');
-
-    % Replace existing isoSurface surface (tess_isosurface.mat)
-    [sSubjectTmp, iSubjectTmp, iSurfaceTmp] = bst_get('SurfaceFile', MeshFile);
-    if ~isempty(iSurfaceTmp)
-        file_delete(file_fullpath(MeshFile), 1);
-        sSubjectTmp.Surface(iSurfaceTmp) = [];
-        bst_set('Subject', iSubjectTmp, sSubjectTmp);
-    end
-    
+    SurfaceDir = bst_fileparts(file_fullpath(CtFile));
+    % Create tess_isosurface file
+    MeshFile = file_unique(bst_fullfile(SurfaceDir, 'tess_isosurface.mat'));
+    % Set comment
+    sMesh.Comment = file_unique(sprintf('isoSurface (ISO_%d)', isoValue), {sSubject.Surface.Comment});
+    % Set history
+    sMesh = bst_history('add', sMesh, 'threshold_ct', ...
+                        sprintf('Thresholded CT: %s threshold = %d minVal = %d maxVal = %d', sMri.FileName, isoValue, isoRange));
     % Save isosurface
-    sMesh.Comment = sprintf('isoSurface (ISO_%d)', isoValue);
-    sMesh = bst_history('add', sMesh, 'threshold_ct', 'CT thresholded isosurface generated with Brainstorm');
     bst_save(MeshFile, sMesh, 'v7');
+    % Add isosurface to database
     iSurface = db_add_surface(iSubject, MeshFile, sMesh.Comment);
     % Display mesh with 3D orthogonal slices of the default MRI
     MriFile = sSubject.Anatomy(1).FileName;

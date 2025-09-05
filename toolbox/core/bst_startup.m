@@ -205,7 +205,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 5.02;
+CurrentDbVersion = 5.03;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -489,7 +489,7 @@ if ~isCompiled && ~exist(TemplateDir, 'file') && ~isempty(TemplateName)
     if ~exist(ZipFile, 'file')
         disp('BST> Downloading ICBM152 template...');
         % Download file
-        errMsg = gui_brainstorm('DownloadFile', ['http://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
+        errMsg = gui_brainstorm('DownloadFile', ['https://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
         % Error message
         if ~isempty(errMsg)
             disp(['BST> Error: Could not download template: ' errMsg]);

@@ -98,6 +98,8 @@ switch upper(FileFormat)
         out_tess_off(TessMat, OutputFile);
     case 'TRI'
         out_tess_tri(TessMat, OutputFile);
+    case 'STL'
+        out_tess_stl(TessMat, OutputFile);
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
 end

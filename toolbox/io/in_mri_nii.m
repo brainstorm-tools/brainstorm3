@@ -1,7 +1,7 @@
 function [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 % IN_MRI_NII: Reads a structural NIfTI/Analyze MRI.
 %
-% USAGE:  [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[]);
+% USAGE:  [sMri, vox2ras, tReorient] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[ask]);
 %
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
@@ -65,14 +65,17 @@ switch(lower(extension))
         hdr = nifti_read_hdr(fid, isReadMulti);
         if isempty(hdr), disp(sprintf('in_mri_nii : Error reading header file')); return; end
         % If there is some scaling needed: ask user what to do
-        if isempty(isScale) && (hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_slope==1 && hdr.nifti.scl_inter==0)
-            isScale = java_dialog('confirm', ...
-                ['A scaling is available in this volume:' 10 ...
-                 sprintf('%f * values + %f', hdr.nifti.scl_slope, hdr.nifti.scl_inter), 10 ...
-                 'This would save the file in float instead of integers.' 10 10, ...
-                 'Do you want to apply it to the volume now?' 10 10], 'NIfTI scaling');
-        else
-            isScale = 0;
+        if isempty(isScale)
+            % Rescaling is not needed if the slope==1 and intersect==0
+            if(hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_slope==1 && hdr.nifti.scl_inter==0)
+                isScale = java_dialog('confirm', ...
+                    ['A scaling is available in this volume:' 10 ...
+                    sprintf('%f * values + %f', hdr.nifti.scl_slope, hdr.nifti.scl_inter), 10 ...
+                    'This would save the file in float instead of integers.' 10 10, ...
+                    'Do you want to apply it to the volume now?' 10 10], 'NIfTI scaling');
+            else
+                isScale = 0;
+            end
         end
         % Read image (3D matrix)
         fseek(fid, double(hdr.dim.vox_offset), 'bof');
@@ -112,6 +115,12 @@ sMri.Cube    = data;
 sMri.Voxsize = Voxsize;
 sMri.Comment = 'MRI';
 sMri.Header  = hdr;
+% Transformation info
+if ~isempty(hdr.nifti.vox2ras)
+    sMri = bst_history('add', sMri, 'vox2ras', sprintf(['"%s" transformation, %s %d. ' ...
+        'See fields "[sq]form" and "[sq]form_code" in "Hearder.nifti" for more info.'], ...
+        hdr.nifti.vox2ras_type, [hdr.nifti.vox2ras_type, '_code'], hdr.nifti.([hdr.nifti.vox2ras_type, '_code'])));
+end
 
 % ===== NIFTI ORIENTATION =====
 % Apply orientation to the volume
@@ -337,21 +346,18 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         P0 = [x y z]';
         nifti.qform = [qMdc*D P0; 0 0 0 1];
 
-        % Build final transformation matrix
-        % For SFORM, accept only NIFTI_XFORM_ALIGNED_ANAT (2)
-        if (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3)) && ~isequal(nifti.sform(1:3,1:3),eye(3))
+        % Build final vos2ras transformation matrix
+        % Try SFORM, accept if different from NIFTI_XFORM_UNKNOWN (0)
+        if (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
+            nifti.vox2ras_type = 'sform';
             nifti.vox2ras = nifti.sform;
-        elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3)) && ~isequal(nifti.qform(1:3,1:3),eye(3))
-            nifti.vox2ras = nifti.qform;
-        % Same thing, but accept identity rotations
-        elseif (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
-            nifti.vox2ras = nifti.sform;
+        % Try QFORM, accept if different from NIFTI_XFORM_UNKNOWN (0)
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
+            nifti.vox2ras_type = 'qform';
             nifti.vox2ras = nifti.qform;
-        % Last chance: accept other SFORM codes
-        elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform)
-            nifti.vox2ras = nifti.sform;
+        % SFORM and QFORM = NIFTI_XFORM_UNKNOWN (0)
         else
+            nifti.vox2ras_type = 'none';
             nifti.vox2ras = [];
         end
     end

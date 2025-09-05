@@ -57,6 +57,34 @@ if ~wasBstRunning
     brainstorm nogui
 end
 isGUI = bst_get('isGUI');
+% Check that current 'brainstorm.jar' is the latest
+if ~bst_check_internet()
+    error('COMPILE> Brainstorm compile requres internet connection.');
+else
+    BstJar   = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstorm.jar');
+    BstJarGH = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstormGH.jar');
+    bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJarGH);
+    fid1 = fopen(BstJar,   'rb');
+    fid2 = fopen(BstJarGH, 'rb');
+    data1 = fread(fid1, inf, '*uint8');
+    data2 = fread(fid2, inf, '*uint8');
+    fclose(fid1);
+    fclose(fid2);
+    delete(BstJarGH);
+    if ~isequal(data1, data2)
+        % Create file to indicate that brainstorm.jar should be deleted one next Brainstorm startup
+        UpdateFile = fullfile(bst_get('BrainstormHomeDir'), 'java', 'outdated_jar.txt');
+        fid = fopen(UpdateFile, 'w');
+        fwrite(fid, ['delete(''' BstJar ''');']);
+        fclose(fid);
+        % === RESTART MATLAB ===
+        h = msgbox(['Brainstorm compilation could not verify the latest brainstorm.jar' 10 10 ...
+                    'Matlab will now close.' 10 ...
+                    'Restart Matlab and run brainstorm.m to update brainstorm.jar' 10 10], 'Compile');
+        waitfor(h);
+        exit;
+    end
+end
 % Delete current default anatomy and download it
 templateDir = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'anatomy');
 if exist(templateDir, 'dir')
@@ -170,6 +198,9 @@ if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     if ~isempty(bst_plugin('GetInstalled', 'cat12'))
         bst_plugin('LinkCatSpm', 0);
     end
+    % Unload FieldTrip and SPM plugins
+    bst_plugin('Unload', 'fieldtrip');
+    bst_plugin('Unload', 'spm12');
     % Extract functions to compile from SPM and Fieldtrip
     bst_spmtrip(SpmDir, FieldTripDir, spmtripDir);
     % Add to Matlab path

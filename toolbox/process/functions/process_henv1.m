@@ -32,7 +32,7 @@ function sProcess = GetDescription()
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 685;
-    sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % === Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};

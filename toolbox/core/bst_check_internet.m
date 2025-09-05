@@ -25,7 +25,7 @@ function [isOk, onlineRel] = bst_check_internet()
 isOk = 0;
 onlineRel = [];
 % Read version from Brainstorm website
-str = bst_webread('http://neuroimage.usc.edu/bst/getversion.php');
+str = bst_webread('https://neuroimage.usc.edu/bst/getversion.php');
 if (length(str) < 20)
     return;
 end

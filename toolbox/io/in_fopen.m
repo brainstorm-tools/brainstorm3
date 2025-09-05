@@ -193,6 +193,8 @@ switch (FileFormat)
         DataMat = in_data_ascii(DataFile);
     case 'EEG-CARTOOL'
         DataMat = in_data_cartool(DataFile);
+    case {'EEG-EDF-FT'}
+        [DataMat, ChannelMat] = in_data_edf_ft(DataFile);
     case 'EEG-ERPCENTER'
         DataMat = in_data_erpcenter(DataFile);
     case 'EEG-ERPLAB'

@@ -353,6 +353,23 @@ if (CurrentDbVersion < 5.02)
     disp('BST> Database update: Done.');
 end
 
+%% ===== UPDATES: 2-Sep-2025 =====
+% Function to update structure
+    function sStudy = AddNirsMethod(sStudy)
+    if ~isempty(sStudy.HeadModel)
+        [sStudy.HeadModel.NIRSMethod] = deal('');
+    else
+        sStudy.Data = repmat(db_template('headmodel'), 0);
+    end
+end
+% Modification: Add 'NIRSMethod' to the Headmodel structure
+if (CurrentDbVersion < 5.03) && ~isempty(ProtocolsListStudies) && ~isfield(ProtocolsListStudies(1).AnalysisStudy.HeadModel, 'NIRSMethod')
+    disp('BST> Database structure: Adding NIRS method definition to headmodel structure...');
+    ApplyToDatabase(@AddNirsMethod);
+    disp('BST> Database structure: Done.');
+    % Reset all the saved options
+    bst_set('ProcessOptions', []);
+end
 
 %% ===== JUST BEFORE RETURNING TO STARTUP FUNCTION =====
 % Save the new database version

@@ -7,7 +7,10 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 %
 % Brainstorm features using external SPM functions:
 %  - Anatomy: Import MRI > DICOM converter
-%  - Anatomy: Import MRI > MRI coregistration (SPM)
+%  - Anatomy: Import MRI > MNI normalization (SPM 'segment' method)
+%  - Anatomy: Import MRI > MRI coregistration (SPM) and reslice (SPM)
+%  - Anatomy: Import MRI > MRI realign (SPM)
+%  - Anatomy: Import MRI > MRI skul stripping (SPM)
 %  - Input: Read SPM .mat/.dat recordings
 %  - Output: Save SPM .mat/.dat recordings
 %  - Process1: Import > Import anatomy > Generate SPM canonical surfaces
@@ -53,10 +56,12 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 
 % ===== SPM STANDALONE =====
 if ~exist(fullfile(SpmDir, 'Contents.txt'), 'file') || ~exist(fullfile(fileparts(SpmDir), 'standalone'), 'file')
+    bst_plugin('Load', 'spm12');
     disp('SPMTRIP> Compiling SPM...');
     spm eeg;
     spm quit;
     spm_make_standalone();
+    bst_plugin('Unload', 'spm12');
 end
 
 % ===== REQUIRED FUNCTIONS =====
@@ -258,7 +263,7 @@ warning off
 rmpath(genpath(OutputDir));
 warning on
 % Initalize FieldTrip
-addpath(FieldTripDir);
+bst_plugin('Load', 'fieldtrip');
 ft_defaults;
 if ~exist('contains', 'builtin')
     addpath(fullfile(FieldTripDir, 'compat', 'matlablt2016b'));

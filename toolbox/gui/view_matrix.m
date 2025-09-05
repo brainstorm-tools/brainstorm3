@@ -65,6 +65,7 @@ if strcmpi(file_gettype(MatFile), 'pmatrix')
     % Add tag in the figure appdata
     StatInfo.StatFile    = MatFile;
     StatInfo.DisplayMode = DisplayMode;
+    Modality = 'stat';
 
 % Regular matrix file
 else
@@ -77,6 +78,13 @@ else
         Value = bst_memory('FilterLoadedData', Value, sfreq);
     end
     StatInfo = [];
+    Modality = [];
+end
+% Colormap type
+if isfield(sMat, 'ColormapType') && ~isempty(sMat.ColormapType)
+    ColormapType = sMat.ColormapType;
+else
+    ColormapType = [];
 end
 % Display units
 if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
@@ -104,7 +112,7 @@ switch lower(DisplayMode)
             AxesLabels = sMat.Comment;
             LinesLabels = sMat.Description;
         end
-        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
+        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], Modality, AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
         
     case 'image'
         % Load file
@@ -136,8 +144,7 @@ switch lower(DisplayMode)
         end
         % Create the image volume: [N1 x N2 x Ntime x Nfreq]
         M = reshape(Value, size(Value,1), 1, size(Value,2), 1);
-        % Show the image
-        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], DimLabels, MatFile, hFig, [], 1, '$freq');
+        [hFig, iDS, iFig] = view_image_reg(M, Labels, [1,3], DimLabels, MatFile, hFig, ColormapType, 1, '$freq', DisplayUnits);
         % Add stat info in the file
         if ~isempty(StatInfo)
             setappdata(hFig, 'StatInfo', StatInfo);
@@ -147,70 +154,34 @@ switch lower(DisplayMode)
         setappdata(hFig, 'ReloadCall', ReloadCall);
         
     case 'table'
-        ViewTable(Value, sMat.Description, sMat.Time, MatFile);
-        
+        % Progress bar
+        bst_progress('start', 'View data as table', 'Loading data...');
+        % Values as cell of char verctors
+        ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
+        % Define column headers
+        if (size(sMat.Description,2) == size(Value,2))
+            headers = sMat.Description(1,:);
+            firstHeader = ' ';
+        elseif (length(sMat.Time) == size(Value,2))
+            headers = cellstr(num2str(sMat.Time(:)))';
+            firstHeader = 'Time';
+        else
+            headers = [];
+        end
+        % Add row descriptions as first column
+        isRowTitle = (size(sMat.Description,1) == size(Value,1));
+        if isRowTitle
+            ValueCell = cat(2, sMat.Description(:,1), ValueCell);
+            if ~isempty(headers)
+                headers = cat(2, firstHeader, headers);
+            end
+        end
+        % View table
+        view_table(ValueCell, headers, MatFile);
+        bst_progress('stop');
+
     otherwise
         error('Unknown display mode.');
 end
 end
-
-
-%% ===== VIEW TABLE =====
-function ViewTable(Data, Description, Time, wndTitle)
-    import java.awt.*;
-    import javax.swing.*;
-    import javax.swing.table.*;
-    import org.brainstorm.icon.*;
-    % Progress bar
-    bst_progress('start', 'View data as table', 'Loading data...');
-    % Create figure
-    jFrame = java_create('javax.swing.JFrame', 'Ljava.lang.String;', wndTitle);
-    % Set icon
-    jFrame.setIconImage(IconLoader.ICON_APP.getImage());
-    % Create cell matrix of strings to display
-    rows = reshape(cellstr(num2str(Data(:))), size(Data,1), size(Data,2));
-    % Define column headers 
-    if (size(Description,2) == size(Data,2))
-        colTitle = Description(1,:);
-        firstCol = ' ';
-    elseif (length(Time) == size(Data,2))
-        colTitle = cellstr(num2str(Time(:)))';
-        firstCol = 'Time';
-    else
-        colTitle = [];
-    end
-    % Add row descriptions
-    isRowTitle = (size(Description,1) == size(Data,1));
-    if isRowTitle
-        rows = cat(2, Description(:,1), rows);
-        if ~isempty(colTitle)
-            colTitle = cat(2, firstCol, colTitle);
-        end
-    end
-    % Create tabel model
-    model = DefaultTableModel(size(rows,1), size(rows,2));
-    for i = 1:size(rows)
-        model.insertRow(i-1, rows(i,:));
-    end
-    % Create table
-    jTable = JTable(model);
-    jTable.setEnabled(0);
-    jTable.setAutoResizeMode( JTable.AUTO_RESIZE_OFF );
-    jTable.getTableHeader.setReorderingAllowed(0);
-    % Set columns titles
-    for iCol = 1:length(colTitle)
-        % jTable.getColumnModel().getColumn(iCol-1).setPreferredWidth(50);
-        jTable.getColumnModel().getColumn(iCol-1).setHeaderValue(colTitle{iCol});
-    end
-    % Create scroll panel
-    jScroll = JScrollPane(jTable);
-    jScroll.setBorder([]);
-    jFrame.getContentPane.add(jScroll, BorderLayout.CENTER);
-    % Show window
-    jFrame.pack();
-    jFrame.show();
-    bst_progress('stop');
-end   
-
-
 

@@ -332,6 +332,9 @@ for iFile = 1:length(RawFiles)
         NewMat.Time        = sFileOut.prop.times;
         NewMat.DataType    = 'raw';
         NewMat.Device      = sFileOut.device;
+        if ~isempty(DataMat) && isfield(DataMat(iSes),'DisplayUnits')
+            NewMat.DisplayUnits = DataMat(iSes).DisplayUnits;
+        end
         % Compumedics: add start time to the file comment
         if strcmpi(sFileOut.format, 'EEG-COMPUMEDICS-PFS') && isfield(sFileOut.header, 'rda_startstr') && ~isempty(sFileOut.header.rda_startstr)
             NewMat.Comment = [NewMat.Comment ' [' sFileOut.header.rda_startstr ']'];

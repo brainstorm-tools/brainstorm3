@@ -95,7 +95,9 @@ function Comment = FormatComment(sProcess)
     if ~isempty(sProcess.options.plvmethod.Value)
         iMethod = find(strcmpi(sProcess.options.plvmethod.Comment(2,:), sProcess.options.plvmethod.Value));
         if ~isempty(iMethod)
-            Comment = str_striptag(sProcess.options.plvmethod.Comment{1,iMethod});
+            method_str = str_striptag(sProcess.options.plvmethod.Comment{1,iMethod});
+            connect_str = regexp(sProcess.Comment, '[1|N|A]x[N|B].*$', 'match');
+            Comment = [method_str, ' ', connect_str{1}];
         else
             Comment = sProcess.Comment;
         end

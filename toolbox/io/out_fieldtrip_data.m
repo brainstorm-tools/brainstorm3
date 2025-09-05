@@ -128,9 +128,11 @@ if isTimelock
 %     if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
 %         ftData.var = DataMat.Std(iChannels,:);
 %     end
+
 % Raw structure: see ft_datatype_raw.m
 else
     ftData.trial{1} = F;
+    ftData.time{1} = DataMat.Time;
 end
 
 % ===== CHANNEL INFO =====

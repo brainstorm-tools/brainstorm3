@@ -22,6 +22,7 @@ function varargout = process_montage_apply( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2014-2019
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -36,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 307;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/MontageEditor';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.InputTypes  = {'raw', 'data'};
+    sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
@@ -46,9 +47,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.montage.Type    = 'montage';
     sProcess.options.montage.Value   = '';
     % === NEW CHANNEL FILE
-    sProcess.options.createchan.Comment = 'Create new folders';
-    sProcess.options.createchan.Type    = 'checkbox';
-    sProcess.options.createchan.Value   = 1;
+    sProcess.options.createchan.Comment    = 'Create new folders';
+    sProcess.options.createchan.Type       = 'checkbox';
+    sProcess.options.createchan.Value      = 1;
+    sProcess.options.createchan.InputTypes = {'data'};
+    % === APPLY CTF COMPENSATION
+    sProcess.options.usectfcomp.Comment    = 'Use CTF compensation';
+    sProcess.options.usectfcomp.Type       = 'checkbox';
+    sProcess.options.usectfcomp.Value      = 1;
+    sProcess.options.usectfcomp.InputTypes = {'raw'};
+    % === APPLY SSP/ICA PROJECTORS
+    sProcess.options.usessp.Comment    = 'Use SSP/ICA projectors';
+    sProcess.options.usessp.Type       = 'checkbox';
+    sProcess.options.usessp.Value      = 1;
+    sProcess.options.usessp.InputTypes = {'raw'};
 end
 
 
@@ -63,7 +75,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned variables
     OutputFiles = {};
     % Options
-    isCreateChan = (sProcess.options.createchan.Value == 1);
+    isCreateChan = ~isfield('createchan', sProcess.options) || (sProcess.options.createchan.Value == 1);
+    isUseCtfComp =  isfield('usectfcomp', sProcess.options) && (sProcess.options.usectfcomp.Value == 1);
+    isUseSsp     =  isfield('usessp', sProcess.options) && (sProcess.options.usessp.Value == 1);
     MontageName  = sProcess.options.montage.Value;
     % Get a simpler montage name (for automatic SEEG montages)
     strMontage = MontageName;
@@ -84,6 +98,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get subject for the channel file
         sStudyChan = bst_get('ChannelFile', allChanFiles{iChan});
         sSubject = bst_get('Subject', sStudyChan.BrainStormSubject, 1);
+        isRaw = strncmp(sStudyChan.Name, '@raw', 4);
         % Load channel file 
         ChannelMat = in_bst_channel(allChanFiles{iChan});
         % Update automatic montages
@@ -106,7 +121,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % If not creating a new channel file: montage output has to be compatible with curent channel structure
         isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
-        if ~isCreateChan && ~isCompatibleChan
+        if ~isCreateChan && (~isCompatibleChan || isRaw)
             bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);
             return;
         end
@@ -140,17 +155,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 bst_report('Error', sProcess, sInputs, ['The montage "' sMontage.Name '" changes the names of the channels, it requires the creation of new folders.']);
                 return;
             end
-            % Apply montage
-            if isCreateChan
-                DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
-                % Compute channel flag
-                ChannelFlag = ones(size(DataMat.F,1),1);
-                isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
-                ChannelFlag(isChanBad) = -1;
-            else
-                DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
-                ChannelFlag = DataMat.ChannelFlag;
-            end
 
             % Get output study
             if isCreateChan
@@ -176,8 +180,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Create condition
                     iStudyOut = db_add_condition(sSubjectOut.Name, sInputs(iInput).Condition, 1);
                 else
-                    % Output condition name
+                    % Output Condition name must be unique for raw files
                     ConditionOut = [sInputs(iInput).Condition, '_', file_standardize(strrep(strMontage, '''', 'p'))];
+                    if isRaw
+                        % Get conditions for this subject
+                        sSubjStudies = bst_get('StudyWithSubject', sStudyChan.BrainStormSubject, 'intra_subject', 'default_study');
+                        ConditionOut = file_unique(ConditionOut, [sSubjStudies.Condition]);
+                    end
                     % Get output condition
                     [sStudyOut, iStudyOut] = bst_get('StudyWithCondition', [sSubject.Name '/' ConditionOut]);
                     % Create condition
@@ -250,23 +259,130 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             else
                 iStudyOut = sInputs(iInput).iStudy;
             end
-
             % Get output study
             sStudyOut = bst_get('Study', iStudyOut);
-            % Edit data structure
-            DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
-            DataMat.ChannelFlag = ChannelFlag;
-            DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
-            % New filename
-            [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
-            NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
-            NewDataFile = file_unique(NewDataFile);
-            % Save new data file
-            bst_save(NewDataFile, DataMat, 'v6');
-            % Add file to database
-            db_add_data(iStudyOut, NewDataFile, DataMat);
-            % Add file to list of returned files
-            OutputFiles{end+1} = NewDataFile;
+
+            % Apply montage
+            if isRaw
+                % Channel file in new Study
+                sChannelOut = bst_get('ChannelForStudy', iStudyOut);
+                ChannelMatOut = in_bst_channel(sChannelOut.FileName);
+                % Full output filename derives from the condition name
+                studyOutPath = bst_fileparts(file_fullpath(sStudyOut.FileName));
+                [~, rawBaseOut] = bst_fileparts(studyOutPath);
+                rawBaseOut = strrep(rawBaseOut, '@raw', '');
+                RawFileOut = bst_fullfile(studyOutPath, [rawBaseOut '.bst']);
+                % Full mat file name
+                MatFile = bst_fullfile(studyOutPath, ['data_0raw_' rawBaseOut '.mat']);
+                % Load data file
+                DataMat = in_bst_data(sInputs(1).FileName, 'F', 'ChannelFlag', 'Time');
+                sFileIn = DataMat.F;
+                % Get all good channels
+                iGoodChannels = DataMat.ChannelFlag;
+                nChannels = length(iGoodChannels);
+                % Get maximum size of a data block
+                ProcessOptions = bst_get('ProcessOptions');
+                blockLengthSamples = max(floor(ProcessOptions.MaxBlockSize / nChannels), 1);
+                % Indices for each block
+                [~, iTimesBlocks, R] = bst_epoching(1:length(DataMat.Time), blockLengthSamples);
+                if ~isempty(R)
+                    if ~isempty(iTimesBlocks)
+                        lastTime = iTimesBlocks(end, 2);
+                    else
+                        lastTime = 0;
+                    end
+                    % Add the times for the remaining block
+                    iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
+                end
+
+                % Process each block
+                ImportOptions = db_template('ImportOptions');
+                ImportOptions.ImportMode      = 'Time';
+                ImportOptions.DisplayMessages = 0;
+                ImportOptions.UseCtfComp      = isUseCtfComp;
+                ImportOptions.UseSsp          = isUseSsp;
+                ImportOptions.RemoveBaseline  = 'no';
+                for iBlock = 1 : size(iTimesBlocks, 1)
+                    SamplesBounds = iTimesBlocks(iBlock, :) - 1;
+                    % Load data from link to raw data
+                    F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, [], ImportOptions);
+                    RawDataMat = in_bst_data(sInputs(1).FileName, 'ChannelFlag');
+                    RawDataMat.F = F;
+                    % Apply montage
+                    RawDataMat.F = panel_montage('ApplyMontage', sMontage, RawDataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                    if iBlock == 1
+                        % Compute channel flag and update it
+                        ChannelFlag = ones(size(RawDataMat.F,1),1);
+                        isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(RawDataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
+                        ChannelFlag(isChanBad) = -1;
+                        sFileIn.channelflag = ChannelFlag;
+                        % Create an empty Brainstorm-binary file
+                        sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMatOut);
+                    end
+                    % Write block
+                    out_fwrite(sFileOut, ChannelMatOut, 1, iTimesBlocks(iBlock, :)-1, [], RawDataMat.F);
+                end
+                % Update projectors data
+                if isUseSsp
+                    % Mark the projectors as already applied to the file
+                    if ~isempty(ChannelMatOut.Projector)
+                        for iProj = 1:length(ChannelMatOut.Projector)
+                            if (ChannelMatOut.Projector(iProj).Status == 1)
+                                ChannelMatOut.Projector(iProj).Status = 2;
+                            end
+                        end
+                    end
+                else
+                    % Clear old projectors
+                    if ~isempty(ChannelMatOut.Projector)
+                        ChannelMatOut.Projector = repmat(db_template('projector'), 0);
+                    end
+                end
+                bst_save(file_fullpath(sChannelOut.FileName), ChannelMatOut);
+                % Set and save output sFile structure (link to raw, a .mat file)
+                sInMat = in_bst(sInputs(1).FileName, [], 1);
+                sOutMat = sInMat;
+                sOutMat.ChannelFlag = sFileOut.channelflag;
+                sOutMat.F = sFileOut;
+                % Update History
+                if isUseCtfComp && strcmp(sOutMat.F.device, 'CTF')
+                    sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied CTF compensation']);
+                end
+                if isUseSsp && ~isempty(ChannelMatOut.Projector)
+                    sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied SSP/ICA projectors']);
+                end
+                sOutMat = bst_history('add', sOutMat, 'montage', ['Applied montage: ' sMontage.Name]);
+                bst_save(MatFile, sOutMat, 'v6');
+                % Register in BST database
+                db_add_data(iStudyOut, MatFile, sOutMat);
+                OutputFiles{end+1} = MatFile;
+
+            else
+                if isCreateChan
+                    DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                    % Compute channel flag
+                    ChannelFlag = ones(size(DataMat.F,1),1);
+                    isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
+                    ChannelFlag(isChanBad) = -1;
+                else
+                    DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                    ChannelFlag = DataMat.ChannelFlag;
+                end
+                % Edit data structure
+                DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
+                DataMat.ChannelFlag = ChannelFlag;
+                DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
+                % New filename
+                [fPath, fBase, fExt] = bst_fileparts(sInputs(iInput).FileName);
+                NewDataFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase '_montage.mat']);
+                NewDataFile = file_unique(NewDataFile);
+                % Save new data file
+                bst_save(NewDataFile, DataMat, 'v6');
+                % Add file to database
+                db_add_data(iStudyOut, NewDataFile, DataMat);
+                % Add file to list of returned files
+                OutputFiles{end+1} = NewDataFile;
+            end
             
             % Copy video links
             if ~isequal(iStudyIn, iStudyOut) && ~isempty(sStudyIn.Image) && isempty(sStudyOut.Image)

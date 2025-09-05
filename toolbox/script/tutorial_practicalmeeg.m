@@ -3,7 +3,7 @@ function tutorial_practicalmeeg(bids_dir, reports_dir)
 %
 % WORKSHOP PAGE : https://neuroimage.usc.edu/brainstorm/WorkshopParis2019
 % FULL TUTORIAL : https://neuroimage.usc.edu/brainstorm/Tutorials/VisualSingle
-% DOWNLOAD DATA : http://neuroimage.usc.edu/bst/download.php
+% DOWNLOAD DATA : https://neuroimage.usc.edu/bst/download.php
 %
 % INPUTS:
 %    - bids_dir: Path where the tutorial_practicalmeeg.zip file has been unzipped

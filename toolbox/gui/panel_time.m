@@ -493,6 +493,13 @@ end
 
 %% ===== GET TIME INDICES =====
 function iTime = GetTimeIndices(TimeVector, TimeRange) %#ok<DEFNU>
+    
+    % If TimeRange is empty, return the entire time vector
+    if isempty(TimeRange)
+        iTime = 1:length(TimeVector);
+        return;
+    end
+    
     % If the two segments are not overlapping: empty time range
     if (TimeRange(2) < TimeVector(1)) || (TimeRange(1) > TimeVector(end)) || (TimeRange(1) > TimeRange(2)) || (length(TimeRange) ~= 2)
         iTime = [];

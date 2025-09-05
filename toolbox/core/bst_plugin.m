@@ -177,27 +177,29 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.6';
+    PlugDesc(end).Version        = '1.9.8';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
-    PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
-                                    'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
-                                    'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', 'bin/cgalpoly.mexa64', 'bin/cgalpoly.mexmaci64', 'bin/cgalpoly_x86-64.exe', ...   % Removing cgalpoly completely (not used)
-                                    'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
-                                    'bin/cork.exe', ...
-                                    'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
-                                    'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
-                                    'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
-                                    'bin/tetgen1.5.mexglx'};
-    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
-                                    'bin/tetgen1.5.exe'};
+    PlugDesc(end).UnloadPlugs    =  {'easyh5','jsnirfy'};
+
+    % === ANATOMY: NEUROMAPS ===
+    PlugDesc(end+1)              = GetStruct('neuromaps');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/thuy-n/bst-neuromaps/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/thuy-n/bst-neuromaps';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -261,7 +263,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro.zip';
+    PlugDesc(end).URLzip         = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro.zip';
     PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
     PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
     PlugDesc(end).CompiledStatus = 1;
@@ -296,7 +298,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('axion');
     PlugDesc(end).Version        = '1.0';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=AxionBioSystems.zip';
+    PlugDesc(end).URLzip         = 'https://neuroimage.usc.edu/bst/getupdate.php?d=AxionBioSystems.zip';
     PlugDesc(end).URLinfo        = 'https://www.axionbiosystems.com/products/software/neural-module';
     PlugDesc(end).TestFile       = 'AxisFile.m';
     % PlugDesc(end).ReadmeFile     = 'README.md';
@@ -339,8 +341,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
-    % === I/O: JSNIRF ===
+    % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
@@ -349,9 +352,23 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'loadsnirf.m';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).DeleteFiles    = {'loadjsnirf.m', 'savejsnirf.m'};
+    PlugDesc(end).DeleteFiles    = {'external', '.gitmodules'};
     PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).RequiredPlugs  = {'easyh5'};
+    PlugDesc(end).RequiredPlugs  = {'easyh5'; 'jsonlab'};
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
+
+    % === I/O: JSONLab ===
+    PlugDesc(end+1)              = GetStruct('jsonlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jsonlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neurojson.org/jsonlab';
+    PlugDesc(end).TestFile       = 'savejson.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'examples', 'images', 'test', '.github', '.gitignore'};
+    PlugDesc(end).ReadmeFile     = 'README.rst';
+    PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
@@ -365,7 +382,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadedFcn      = @Configure;
-    % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
+    % Stable version: https://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
     % === I/O: NEUROELECTRICS ===
     PlugDesc(end+1)              = GetStruct('neuroelectrics');
@@ -410,7 +427,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('plexon');
     PlugDesc(end).Version        = '1.8.4';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+    PlugDesc(end).URLzip         = 'https://plexon-prod.s3.amazonaws.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
     PlugDesc(end).TestFile       = 'plx_info.m';
     PlugDesc(end).ReadmeFile     = 'Change Log.txt';
@@ -502,6 +519,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'mtrf'};
     PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
+
+    % === STATISTICS: MVGC ===
+    PlugDesc(end+1)              = GetStruct('mvgc');
+    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).TestFile       = 'startup.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
+    PlugDesc(end).LoadedFcn      = 'cd(fullfile(PlugDesc.Path)); startup;';
 
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
@@ -627,6 +657,31 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
+    % === sEEG: GARDEL ===
+    PlugDesc(end+1)              = GetStruct('gardel');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/GARDEL_Brainstorm/gardel-GARDEL_Brainstorm.zip';
+    PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
+    PlugDesc(end).TestFile       = 'code/Functions/elec_auto_segmentation.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn   = {};
+    PlugDesc(end).DeleteFiles    = {'gardel_splash.png', 'gardel_splash_480x480.png', 'gardel_splash480x480.svg', ...
+                                    'code/Functions/associate_matter.m', 'code/Functions/associate_region.m', 'code/Functions/BN_colorlut2complete_descr.m', ...
+                                    'code/Functions/coregistration.m', 'code/Functions/find_parsing_json.m', 'code/Functions/First_SPM_reorientation.m', ...
+                                    'code/Functions/make_bids_filename.m', 'code/Functions/new_brainmasking_to_be_compiled.m', 'code/Functions/NEW_SEG2.m', ...
+                                    'code/Functions/open_electrodes_file.m', 'code/Functions/open_nii_anatomical_convention.m', 'code/Functions/plot_brain.m', ...
+                                    'code/Functions/read_BNatlas.m', 'code/Functions/read_fscolorlut.m', 'code/Functions/Segmentation.asv', 'code/Functions/stlwrite.m', ...
+                                    'code/Functions/write_coordsystem_json.m', 'code/Functions/write2Brainstorm.m', 'code/Functions/write2MNI.m', ...
+                                    'code/toolboxes/NIFTI_dataViewer', 'code/toolboxes/freezeColors', 'code/toolboxes/dicm2nii', ...
+                                    'code/.gitkeep', 'code/BN_Atlas_246_LUT_sam.txt', 'code/CTthresholdGUI.fig', 'code/CTthresholdGUI.m', 'code/electrode_creation.m', ...
+                                    'code/electrodes_profiles.json', 'code/GARDEL User Manual_V2.docx', 'code/GARDEL User Manual_V2.pdf', 'code/GARDEL.fig', ...
+                                    'code/GARDEL.m', 'code/GARDELv2_bis.prj', 'code/MontageAnyWaveGardel.m', 'code/newtabMarsAtlas_SAM_2016.csv', ...
+                                    'code/save_bipolar_with_region.m', 'code/single_subj_T1.nii', 'code/VepFreeSurferColorLut.txt', 'code/write_localisations.m'};
+
     % === sEEG: MIA ===
     PlugDesc(end+1)              = GetStruct('mia');
     PlugDesc(end).Version        = 'github-master';
@@ -636,12 +691,12 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-    
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
@@ -656,6 +711,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).GetVersionFcn  = 'ft_version';
     PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
                                     'ft_default = []; ' ...
+                                    'clear ft_defaults; ' ...
                                     'if exist(''filtfilt'', ''file''), ft_default.toolbox.signal=''matlab''; end; ' ...
                                     'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
                                     'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
@@ -982,7 +1038,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'duneuro'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
+                str = bst_webread('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
            case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
@@ -1015,7 +1071,8 @@ end
 %% ===== IS GITHUB MASTER ======
 % Returns 1 if the URL is a github master/main branch
 function isMaster = isGithubMaster(URLzip)
-    isMaster = ~isempty(strfind(URLzip, 'https://github.com/')) && (~isempty(strfind(URLzip, 'master.zip')) || ~isempty(strfind(URLzip, 'main.zip')));
+    isMaster = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+               (strMatchEdge(URLzip, 'master.zip', 'end') || strMatchEdge(URLzip, 'main.zip', 'end'));
 end
 
 
@@ -1191,6 +1248,12 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
         % Theoretical plugin path
         PlugName = SearchPlugs(iSearch).Name;
         PlugPath = bst_fullfile(UserPluginsDir, PlugName);
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
         % Check if test function is available in the Matlab path
         TestFilePath = GetTestFilePath(SearchPlugs(iSearch));
         % If installed software found in Matlab path
@@ -1200,7 +1263,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug) = SearchPlugs(iSearch);
             PlugDesc(iPlug).isLoaded = 1;
             % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
-            if ~isempty(strfind(TestFilePath, PlugPath))
+            if strMatchEdge(TestFilePath, PlugPath, 'start')
                 PlugDesc(iPlug).isManaged = 1;
             % Process compiled together with Brainstorm
             elseif isCompiled && ~isempty(strfind(TestFilePath, ['.brainstorm' filesep 'plugins' filesep PlugName]))
@@ -1356,19 +1419,33 @@ function TestFilePath = GetTestFilePath(PlugDesc)
             % FieldTrip: Ignore if found embedded in SPM12
             if strcmpi(PlugDesc.Name, 'fieldtrip')
                 p = which('spm.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % SPM12: Ignore if found embedded in ROAST
+            % SPM12: Ignore if found embedded in ROAST or in FieldTrip
             elseif strcmpi(PlugDesc.Name, 'spm12')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                q = which('ft_defaults.m');
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % Iso2mesh: Ignore if found embedded in ROAST
             elseif strcmpi(PlugDesc.Name, 'iso2mesh')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % easyh5: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'easyh5')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             end
@@ -1734,7 +1811,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     
     % === SHOW PLUGIN INFO ===
     % Log install
-    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
+    bst_webread(['https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar
@@ -2121,6 +2198,15 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         return;
     end
     
+    % === PROCESS DEPENDENCIES ===
+    % Unload incompatible plugins
+    if ~isempty(PlugDesc.UnloadPlugs)
+        for iPlug = 1:length(PlugDesc.UnloadPlugs)
+            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
+            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
+        end
+    end
+
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
@@ -2168,7 +2254,13 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     TestFilePath = GetTestFilePath(PlugDesc);
     if ~isempty(TestFilePath)
         PlugDesc.isLoaded = 1;
-        PlugDesc.isManaged = ~isempty(strfind(which(PlugDesc.TestFile), PlugPath));
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
+        PlugDesc.isManaged = strMatchEdge(which(PlugDesc.TestFile), PlugPath, 'start');
         if PlugDesc.isManaged
             PlugDesc.Path = PlugPath;
         else
@@ -2193,14 +2285,6 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         bst_progress('setimage', LogoFile);
     end
     
-    % === PROCESS DEPENDENCIES ===
-    % Unload incompatible plugins
-    if ~isempty(PlugDesc.UnloadPlugs)
-        for iPlug = 1:length(PlugDesc.UnloadPlugs)
-            % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
-            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
-        end
-    end
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
@@ -2224,6 +2308,12 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
     if ~isCompiled
+        % Handle case symbolic link
+        try
+            PlugHomeDir = builtin('_canonicalizepath', PlugHomeDir);
+        catch
+            % Nothing here
+        end
         addpath(PlugHomeDir);
         if isVerbose
             disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
@@ -2565,10 +2655,12 @@ end
 
 
 %% ===== MENUS: CREATE =====
-function j = MenuCreate(jMenu, jPlugsPrev, fontSize)
+function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
     import org.brainstorm.icon.*;
     % Get all the supported plugins
-    PlugDesc = GetSupported();
+    if isempty(PlugDesc)
+        PlugDesc = GetSupported();
+    end
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
     isCompiled = bst_iscompiled();
@@ -2721,10 +2813,14 @@ end
 %% ===== MENUS: UPDATE =====
 function MenuUpdate(jMenu, fontSize)
     import org.brainstorm.icon.*;
-    % Regenerate plugin menu to look for new plugins
     global GlobalData
+    % Get installed and supported plugins
+    [PlugsInstalled, PlugsSupported]= GetInstalled();
+    % Get previous menu entries
     jPlugs = GlobalData.Program.GUI.pluginMenus;
-    jPlugs = MenuCreate(jMenu, jPlugs, fontSize);
+    % Regenerate plugin menu to look for new plugins
+    jPlugs = MenuCreate(jMenu, jPlugs, PlugsSupported, fontSize);
+    % Update menu entries
     GlobalData.Program.GUI.pluginMenus = jPlugs;
     % If compiled: disable most menus
     isCompiled = bst_iscompiled();
@@ -2734,9 +2830,9 @@ function MenuUpdate(jMenu, fontSize)
     for iPlug = 1:length(jPlugs)
         j = jPlugs(iPlug);
         PlugName = j.name;
+        Plug    = PlugsInstalled(ismember({PlugsInstalled.Name}, PlugName));
+        PlugRef = PlugsSupported(ismember({PlugsSupported.Name}, PlugName));
         % Is installed?
-        PlugRef = GetSupported(PlugName);
-        Plug = GetInstalled(PlugName);
         if ~isempty(Plug)
             isInstalled = 1;
         elseif ~isempty(PlugRef)
@@ -3184,5 +3280,18 @@ end
 %% ===== NOT SUPPORTED APPLE SILICON =====
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
-    pluginNames = {'brain2mesh', 'duneuro', 'iso2mesh','mcxlab-cuda', 'xdf'};
+    pluginNames = { 'duneuro', 'mcxlab-cuda'};
+end
+
+%% ===== MATCH STRING EDGES =====
+% Check if a string 'strA' starts (or ends) with string B
+function result = strMatchEdge(a, b, edge)
+    b = regexptranslate('escape', b);
+    if strcmpi(edge, 'start')
+        result = ~isempty(regexp(a, ['^', b], 'once'));
+    elseif strcmpi(edge, 'end')
+        result = ~isempty(regexp(a, [b, '$'], 'once'));
+    else
+        result = 0;
+    end
 end

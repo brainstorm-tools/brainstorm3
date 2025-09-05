@@ -260,6 +260,14 @@ if isKernel
             Results.Leff = DataMat.Leff;
         end
     end
+% If full results are saved as factor decomposition
+elseif isfield(Results,'ImageGridAmp') && iscell(Results.ImageGridAmp)
+    % ImageGridAmp = ImageGridAmp{1} * ImageGridAmp{2} * ... * ImageGridAmp{N}
+    tmp = Results.ImageGridAmp{1};
+    for iDecomposition = 2 : length(Results.ImageGridAmp)
+        tmp = tmp * Results.ImageGridAmp{iDecomposition};
+    end
+    Results.ImageGridAmp = full(tmp);
 end
 
 

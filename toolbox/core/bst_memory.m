@@ -304,6 +304,7 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         sSurf.Comment         = surfMat.Comment;
         sSurf.Faces           = double(surfMat.Faces);
         sSurf.Vertices        = double(surfMat.Vertices);
+        sSurf.Color           = double(surfMat.Color);
         sSurf.VertConn        = surfMat.VertConn;
         sSurf.VertNormals     = surfMat.VertNormals;
         [tmp, sSurf.VertArea] = tess_area(surfMat.Vertices, surfMat.Faces);
@@ -795,9 +796,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
     GlobalData.DataSet(iDS).DataFile    = file_short(DataFile);
     GlobalData.DataSet(iDS).Measures    = Measures;
     
-    % ===== LOAD CHANNEL FILE =====
-    LoadChannelFile(iDS, ChannelFile);
-    
     % ===== Check time window consistency with previously loaded data =====
     if isTimeCheck
         % Update time window
@@ -814,25 +812,18 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
                 return;
             % Otherwise: unload all the other datasets
             else
-                % Save newly created dataset
-                bakDS = GlobalData.DataSet(iDS);
-                % Unload everything
-                UnloadAll('Forced');
-                % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
-                if ~isempty(GlobalData.DataSet)
-                    % Unload the new dataset
-                    UnloadDataSets(iDS);
-                    iDS = [];
-                    return;
+                iDS = UnloadOtherDs(iDS);
+                if isempty(iDS)
+                    return
                 end
-                % Restore new dataset
-                GlobalData.DataSet = bakDS;
-                iDS = 1;
                 % Update time window
                 isTimeCoherent = CheckTimeWindows();
             end
         end
     end
+
+    % ===== LOAD CHANNEL FILE =====
+    LoadChannelFile(iDS, ChannelFile);
     
     % ===== UPDATE TOOL TABS =====
     if ~isempty(iDS) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
@@ -1251,14 +1242,24 @@ function [iDS, iResult] = LoadResultsFile(ResultsFile, isTimeCheck)
         isTimeCoherent = CheckTimeWindows();
         % If loaded results are not coherent with previous data
         if ~isTimeCoherent
-            % Remove it
-            GlobalData.DataSet(iDS).Results(iResult) = [];
-            iDS = [];
-            iResult  = [];
-            bst_error(['Time definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load results', 0);
-            return
+            res = java_dialog('question', [...
+                'The time definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files first?' 10 10], 'Load results', [], {'Unload other files', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                UnloadDataSets(iDS);
+                iDS = [];
+                return;
+            % Otherwise: unload all the other datasets
+            else
+                iDS = UnloadOtherDs(iDS);
+                if isempty(iDS)
+                    iResult = [];
+                    return
+                end
+                % Update time window
+                isTimeCoherent = CheckTimeWindows();
+            end
         end
     end
     % Update TimeWindow panel, if it exists
@@ -1569,6 +1570,11 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if any(TimefreqFile == '$')
         TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
     end
+    % Is connectivity timefreq?
+    isConnect = 0;
+    if regexp(TimefreqFile, '_connect[n|1]', 'once')
+        isConnect = 1;
+    end
     % Get file information
     [sStudy, iTf, ChannelFile, FileType, sItem] = GetFileInfo(TimefreqFile);
     TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'DataType');
@@ -1767,7 +1773,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     % ===== REMOVE NAN =====
     % Replace NaN values with 0, and add them to the mask
     iNan = find(isnan(TimefreqMat.TF));
-    if ~isempty(iNan)
+    if ~isempty(iNan) && ~isConnect
         disp(sprintf('BST> Error: There are %d abnormal NaN values in this file, check the computation process.', length(iNan)));
         TimefreqMat.TF(iNan) = 0;
     end
@@ -1982,24 +1988,12 @@ function [iDS, iMatrix] = LoadMatrixFile(MatFile, iDS, iMatrix) %#ok<DEFNU>
     if isempty(iDS) && isempty(Mat.Events)
         iDS = GetDataSetStudy(sStudy.FileName);
     end
-    % Create dataset
-    if isempty(iDS)
-        % Create a new DataSet only for results
-        iDS = length(GlobalData.DataSet) + 1;
-        GlobalData.DataSet(iDS)             = db_template('DataSet');
-        GlobalData.DataSet(iDS).SubjectFile = file_short(sStudy.BrainStormSubject);
-        GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
-    end
-    % Make sure that there is only one dataset selected
-    iDS = iDS(1);
- 
-    % ===== CHECK TIME =====
-    % If there time in this file
-    if (length(Mat.Time) >= 2)
-        isTimeOkDs = 1;
+    % Check time against existing DS
+    isTimeOkDs = 1;
+    if ~isempty(iDS) && (length(Mat.Time) >= 2)
         % Save measures information if no DataFile is available
         if isempty(GlobalData.DataSet(iDS).Measures) || isempty(GlobalData.DataSet(iDS).Measures.Time)
-            GlobalData.DataSet(iDS).Measures.Time            = double(Mat.Time([1, end])); 
+            GlobalData.DataSet(iDS).Measures.Time            = double(Mat.Time([1, end]));
             GlobalData.DataSet(iDS).Measures.SamplingRate    = double(Mat.Time(2) - Mat.Time(1));
             GlobalData.DataSet(iDS).Measures.NumberOfSamples = length(Mat.Time);
         elseif (abs(Mat.Time(1)   - GlobalData.DataSet(iDS).Measures.Time(1)) > 1e-5) || ...
@@ -2007,15 +2001,47 @@ function [iDS, iMatrix] = LoadMatrixFile(MatFile, iDS, iMatrix) %#ok<DEFNU>
                ~isequal(length(Mat.Time), GlobalData.DataSet(iDS).Measures.NumberOfSamples)
             isTimeOkDs = 0;
         end
+    end
+    % Create dataset if not existent or different time definition
+    if isempty(iDS) || ~isTimeOkDs
+        % Create a new DataSet only for results
+        iDS = length(GlobalData.DataSet) + 1;
+        GlobalData.DataSet(iDS)             = db_template('DataSet');
+        GlobalData.DataSet(iDS).SubjectFile = file_short(sStudy.BrainStormSubject);
+        GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
+        % Save measures information
+        GlobalData.DataSet(iDS).Measures.Time            = double(Mat.Time([1, end]));
+        GlobalData.DataSet(iDS).Measures.SamplingRate    = double(Mat.Time(2) - Mat.Time(1));
+        GlobalData.DataSet(iDS).Measures.NumberOfSamples = length(Mat.Time);
+    end
+    % Make sure that there is only one dataset selected
+    iDS = iDS(1);
+ 
+    % ===== CHECK TIME =====
+    % If there time in this file
+    if (length(Mat.Time) >= 2)
         % Update time window
         isTimeCoherent = CheckTimeWindows();
         % If loaded file are not coherent with previous data
         if ~isTimeCoherent || ~isTimeOkDs
-            iDS = [];
-            bst_error(['Time definition for this file is not compatible with the other files' 10 ...
-                       'already loaded in Brainstorm.' 10 10 ...
-                       'Close existing windows before opening this file, or use the Navigator.'], 'Load matrix', 0);
-            return
+            res = java_dialog('question', [...
+                'The time definition is not compatible with previously loaded files.' 10 ...
+                'Unload all the other files first?' 10 10], 'Load matrix', [], {'Unload other files', 'Cancel'});
+            % Cancel: Unload the new dataset
+            if isempty(res) || strcmpi(res, 'Cancel')
+                UnloadDataSets(iDS);
+                iDS = [];
+                return;
+            % Otherwise: unload all the other datasets
+            else
+                iDS = UnloadOtherDs(iDS);
+                if isempty(iDS)
+                    iMatrix = [];
+                    return
+                end
+                % Update time window
+                isTimeCoherent = CheckTimeWindows();
+            end
         end
         % Update TimeWindow panel
         panel_time('UpdatePanel');
@@ -2371,6 +2397,8 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 end
             elseif ~iscell(RowNames) && ~iscell(AllRows)
                 iFound = find(AllRows == RowNames(i), 1);
+            elseif iscell(RowNames) && ~iscell(AllRows)
+                iFound = find(AllRows == str2double(RowNames{i}), 1);
             else
                 iFound = [];
             end
@@ -3439,6 +3467,8 @@ function UnloadSurface(SurfaceFiles, isCloseFig)
         end
         % Save modifications to the surfaces
         panel_scout('SaveModifications');
+        % Save modifications in surface
+        panel_surface('SaveModifications');
         % Check if surface is already loaded
         [sSurf, iSurf] = GetSurface(SurfaceFiles{i});
         % If surface is not loaded: skip
@@ -3556,5 +3586,24 @@ function SaveChannelFile(iDS)
     end
 end
 
+%% ===== UNLOAD OTHER DS =====
+function iDS = UnloadOtherDs(iDS)
+% Unload Brainstorm datasets except for iDS. It returns the new iDS (iDS=1) for the kept DS
+    global GlobalData;
+    % Save dataset to keep
+    bakDS = GlobalData.DataSet(iDS);
+    % Unload everything
+    UnloadAll('Forced');
+    % If not everything was unloaded correctly (eg. the user cancelled half way when asked to save the modifications)
+    if ~isempty(GlobalData.DataSet)
+        % Unload also dataset to keep
+        UnloadDataSets(iDS);
+        iDS = [];
+        return;
+    end
+    % Restore dataset
+    GlobalData.DataSet = bakDS;
+    iDS = 1;
+end
 
 

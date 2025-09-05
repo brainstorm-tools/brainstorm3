@@ -3373,20 +3373,21 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         iLinesGroup = find(strcmpi(LinesLabels{1}, LinesLabels));
         % Get montage
         sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+        [~, ~, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {GlobalData.DataSet(iDS).Channel.Name}, GlobalData.DataSet(iDS).Measures.sFile.channelflag);
         % Get groups in which each sensor belongs, to map group and color
         GroupNames = {};
         for i = 1:length(iLinesGroup)
-            ChanName = sMontage.ChanNames{find(sMontage.Matrix(iLinesGroup(i),:), 1)};
+            ChanName = sMontage.ChanNames{find(sMontage.Matrix(iMatrixDisp(iLinesGroup(i)),:), 1)};
             GroupNames{i} = GlobalData.DataSet(iDS).Channel(strcmpi(ChanName, {GlobalData.DataSet(iDS).Channel.Name})).Group;
         end
         % Create legend
-        [hLegend, hLegendObjects] = legend(PlotHandles.hLines(iLinesGroup), strrep(GroupNames, '_', '-'));
+        legend(PlotHandles.hLines(iLinesGroup), strrep(GroupNames, '_', '-'));
     % Plotting the names of the channels
     elseif strcmpi(TsInfo.DisplayMode, 'butterfly') && ~isFastUpdate && ~isempty(LinesLabels) && TsInfo.ShowLegend && ((length(LinesLabels) > 1) || ~isempty(LinesLabels{1}))
         if (length(LinesLabels) == 1) && (length(PlotHandles.hLines) > 1)
-            [hLegend, hLegendObjects] = legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
+            legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
         elseif (length(PlotHandles.hLines) == length(LinesLabels))
-            [hLegend, hLegendObjects] = legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
+            legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
         else
             disp('BST> Error: Number of legend entries do not match the number of lines. Ignoring...');
         end

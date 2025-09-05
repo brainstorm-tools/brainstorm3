@@ -857,6 +857,10 @@ function SetDisplayOptions(sOptions)
             if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum')
                 bst_set('LastPsdDisplayFunction', sOptions.Function);
             end
+            % Remember option for Wavelet and Hilbert TF map figures.
+            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Timefreq') && any(strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'morlet', 'hilbert'}))
+                bst_set('LastTfDisplayFunction', sOptions.Function);
+            end
         end
         TfInfo.isFooofDispChanged = ~isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp);
         TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;

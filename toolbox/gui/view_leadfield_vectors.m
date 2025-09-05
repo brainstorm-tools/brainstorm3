@@ -124,6 +124,9 @@ if isempty(hFig)
     error('No reference surface available');
 end
 hold on
+% Hide scouts
+scoutsOptions = panel_scout('GetScoutsOptions');
+panel_scout('SetScoutsOptions', scoutsOptions.overlayScouts, scoutsOptions.overlayConditions, scoutsOptions.displayAbsolute, 'none');
 % Set orientation: left
 figure_3d('SetStandardView', hFig, 'left');
 % Update figure name
@@ -309,7 +312,7 @@ bst_progress('stop');
                     '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR>'...
                     '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>'...
                     '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'...
-                    '</TABLE>'], 'Keyboard shortcuts');      
+                    '</TABLE>'], 'Keyboard shortcuts', [], 0);
             otherwise
                 KeyPressFcn_bak(hFig, keyEvent); 
                 return;
