@@ -1709,7 +1709,6 @@ function DisplayFigurePopup(hFig)
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show head lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ShowHeadLines', ~TopoLayoutOptions.ShowHeadLines));
             jItem.setSelected(TopoLayoutOptions.ShowHeadLines);
         end
-
         jPopup.addSeparator();
     end
     

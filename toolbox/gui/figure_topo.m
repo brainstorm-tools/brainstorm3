@@ -974,24 +974,27 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         Y = Vertices(:,2);
     % Regular sensors with 3D coordinates: Project in 2D
     else
+        axis(hAxes, 'equal');
         % Range for X and Y is [-sqrt(2), -sqrt(2)]
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
-        % Scale values, so max is useSpace/2
-        maxRadius = max(abs([X;Y]));
-        scaleF = (1/maxRadius) * (useSpace / 2);
-        X = X * scaleF(1);
-        Y = Y * scaleF(2);
-        % Add offset of half figure
-        X = X + 0.5;
-        Y = Y + 0.5;
-        % Find practical plotSize: half of 15-percentile of distances between plot positions
-        GridPts = [X,Y];
-        GridPts = unique(GridPts, 'rows');
-        Tri = delaunayTriangulation(GridPts);
-        edges = Tri.edges;
-        edgesDists = sqrt(sum((GridPts(edges(:,1),:) - GridPts(edges(:,2), :)).^2, 2));
-        dist = bst_prctile(edgesDists, 15);
-        plotSize = 0.5 * dist * [1, 1];
+        if TopoLayoutOptions.ShowHeadLines
+            % Scale values, so max is useSpace/2
+            maxRadius = max(abs([X;Y]));
+            scaleF = (1/maxRadius) * (useSpace / 2);
+            X = X * scaleF(1);
+            Y = Y * scaleF(2);
+            % Add offset of half figure
+            X = X + 0.5;
+            Y = Y + 0.5;
+            % Find practical plotSize: half of 15-percentile of distances between plot positions
+            GridPts = [X,Y];
+            GridPts = unique(GridPts, 'rows');
+            Tri = delaunayTriangulation(GridPts);
+            edges = Tri.edges;
+            edgesDists = sqrt(sum((GridPts(edges(:,1),:) - GridPts(edges(:,2), :)).^2, 2));
+            dist = bst_prctile(edgesDists, 15);
+            plotSize = 0.5 * dist * [1, 1];
+        end
     end
     % Zoom factor: size of each signal depends on minimum distance between plots
     if isempty(plotSize)
