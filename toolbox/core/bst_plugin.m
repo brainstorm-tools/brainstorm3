@@ -526,12 +526,14 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Category       = 'Statistics';
     PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
-    PlugDesc(end).TestFile       = 'startup.m';
+    PlugDesc(end).TestFile       = 'startup_mvgc.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {''};
     PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
-    PlugDesc(end).LoadedFcn      = 'cd(fullfile(PlugDesc.Path)); startup;';
+    PlugDesc(end).DownloadedFcn  = ['movefile(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
+                                    'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));'];
+    PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
 
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
