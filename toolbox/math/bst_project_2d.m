@@ -30,15 +30,15 @@ end
 
 % Different projection methods
 switch (Method)
-    case '2dcap'
-        % Spherical coordinates
-        [TH,PHI,R] = cart2sph(x, y, z);
-        % Flat projection
-        R = 1 - PHI ./ pi*2;
-        % Convert back to cartesian coordinates
-        [X,Y] = pol2cart(TH,R);
+%     case '2dcap'
+%         % Spherical coordinates
+%         [TH,PHI,R] = cart2sph(x, y, z);
+%         % Flat projection
+%         R = 1 - PHI ./ pi*2;
+%         % Convert back to cartesian coordinates
+%         [X,Y] = pol2cart(TH,R);
 
-    case '2dlayout'
+    case {'2dcap', '2dlayout'}
         % Lambert azimuthal equal-area projection
         [az,elev] = cart2sph(x, y, z);
         elev = -elev;               % elevation is negative towards +z
