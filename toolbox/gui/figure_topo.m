@@ -596,12 +596,6 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
             else
                 [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dcap');
             end
-%             % Center and scale in a [-1,-1,2,2] reclangle
-%             Xm = [min(X), max(X)];
-%             Ym = [min(Y), max(Y)];
-%             R = max(Xm(2)-Xm(1), Ym(2)-Ym(1));
-%             X = (X - Xm(1)) / R * 2 - (Xm(2)-Xm(1))/R;
-%             Y = (Y - Ym(1)) / R * 2 - (Ym(2)-Ym(1))/R;
             % Get 2D vertices coordinates, re-tesselate
             Vertices_surf = [X, Y, 0*X];
             Faces_surf = delaunay(X,Y);
@@ -611,8 +605,6 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
             PlotNoseEars(hAxes, 1);
             % Store the sensor markers positions
             [Xmark,Ymark] = bst_project_2d(markers_loc(:,1), markers_loc(:,2), markers_loc(:,3), '2dcap');
-%             Xmark = (Xmark - Xm(1)) / R * 2 - (Xm(2)-Xm(1))/R;
-%             Ymark = (Ymark - Ym(1)) / R * 2 - (Ym(2)-Ym(1))/R;
             PlotHandles.MarkersLocs = [Xmark(selChan), Ymark(selChan), 0.05 * ones(length(selChan),1)];
 
         % ===== 2D DISC SURFACE =====
