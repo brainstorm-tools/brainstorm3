@@ -529,7 +529,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'mvgc_makemex.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).LoadFolders    = {'utils'};
     PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
     PlugDesc(end).LoadedFcn      = 'cd(fullfile(PlugDesc.Path)); startup;';
 
