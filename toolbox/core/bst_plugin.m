@@ -526,10 +526,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Category       = 'Statistics';
     PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
-    PlugDesc(end).TestFile       = 'startup.m';
+    PlugDesc(end).TestFile       = 'mvgc_makemex.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).LoadFolders    = {'utils'};
     PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
     PlugDesc(end).LoadedFcn      = 'cd(fullfile(PlugDesc.Path)); startup;';
 
