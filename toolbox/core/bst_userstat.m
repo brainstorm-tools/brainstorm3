@@ -181,6 +181,14 @@ if ~isempty(PlugName)
     str =  bst_webread(url);
 
     if isempty(str)
+        err = bst_websave(fullfile(bst_get('BrainstormTmpDir'), sprintf('stat_%s.txt',PlugName)), url);
+
+        if isempty(err)
+            str = fileread(fullfile(bst_get('BrainstormTmpDir'), sprintf('stat_%s.txt',PlugName)));
+        end
+    end
+
+    if isempty(str)
         bst_progress('stop');
         return;
     end
