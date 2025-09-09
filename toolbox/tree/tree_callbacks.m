@@ -1421,13 +1421,22 @@ switch (lower(action))
                             AddSeparator(jPopup);
                             gui_component('MenuItem', jPopup, [], ['Apply ' mod{1} ' leadfield exclusion zone'], IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, mod{1}, iStudy));
                         elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
+
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
                     end
 
-                     if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod)
-                            gui_component('MenuItem', jPopup, [], 'View NIRS leadfield sensitivity', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface'));
-                     end
+                    if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod)
+
+                        [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', filenameRelative);
+                        ChannelMat  = in_bst_channel(sStudy.Channel.FileName, 'Channel');
+                        groups      = unique({ChannelMat.Channel.Group});
+
+                        for iGroup = 1:length(groups)
+                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS sensitivity - %s', groups{iGroup}) , IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', groups{iGroup}));
+                        end
+
+                    end
 
                 end
                 % Copy to other conditions/subjects 

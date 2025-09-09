@@ -1,4 +1,4 @@
-function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode)
+function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode, Group)
 % VIEW_LEADFIELD_SENTIVITY: Show the leadfield sensitivity on the MRI slices.
 % 
 % USAGE:  hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode='Mri3D')
@@ -35,6 +35,10 @@ global GlobalData;
 if (nargin < 3) || isempty(DisplayMode)
     DisplayMode = 'Mri3D';
 end
+if (nargin < 4) || isempty(Group)
+    Group = '';
+end
+
 hFig = [];
 
 % Isosurface display : Requires ISO2MESH
@@ -51,21 +55,33 @@ bst_progress('start', 'View leadfields', 'Loading headmodel...');
 [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', HeadmodelFile);
 ChannelFile = sStudy.Channel.FileName;
 ChannelMat = in_bst_channel(sStudy.Channel.FileName, 'Channel');
+
 % Get modality channels
 iModChannels = good_channel(ChannelMat.Channel, [], Modality);
 if isempty(iModChannels)
     error(['No channels "' Modality '" in channel file: ' ChannelFile]);
 end
+
+if ~isempty(Group)
+    iGroupChannels = find(strcmp({ChannelMat.Channel.Group}, Group));
+    if isempty(iGroupChannels)
+        error(['No group "' Group '" in channel file: ' ChannelFile]);
+    end
+
+    iModChannels = intersect(iModChannels, iGroupChannels);
+end
+
+% Detected modality 
 Channels = ChannelMat.Channel(iModChannels);
-markersLocs = cell2mat(cellfun(@(c)c(:,1), {Channels.Loc}, 'UniformOutput', 0))';
 isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
 isNIRS      = strcmp(Modality, 'NIRS');
 isApplyOrient = isNIRS; % Only apply the orientation for NIRS
 
 % Load leadfield matrix
-HeadmodelMat = in_bst_headmodel(HeadmodelFile, isApplyOrient);
-GainMod = HeadmodelMat.Gain(iModChannels, :);
-isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
+HeadmodelMat    = in_bst_headmodel(HeadmodelFile, isApplyOrient);
+GainMod         = HeadmodelMat.Gain(iModChannels, :);
+isVolumeGrid    = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
+
 % Get subject
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
