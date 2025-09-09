@@ -1356,16 +1356,6 @@ function hNewFig = CloneFigure(hFig)
         % Update sensor markers and labels
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorMarkers = findobj(hNewAxes, 'tag', 'SensorMarker');
         GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSensorLabels  = findobj(hNewAxes, 'tag', 'SensorsLabels');
-        % Topography handles
-        if strcmpi(FigureId.Type, 'Topography')
-            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.hSurf = findobj(hNewAxes, 'tag', get(GlobalData.DataSet(iDS).Figure(iFig).Handles.hSurf, 'Tag'));
-            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.Wmat        = GlobalData.DataSet(iDS).Figure(iFig).Handles.Wmat;
-            GlobalData.DataSet(iDS).Figure(iNewFig).Handles.DataMinMax  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
-        end
-        % 2DDisc: Set white background
-        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.SubType, '2DDisc')
-            SetBackgroundColor(hNewFig, [1 1 1]);
-        end
         % Delete scouts
         delete(findobj(hNewAxes, 'Tag', 'ScoutLabel'));
         delete(findobj(hNewAxes, 'Tag', 'ScoutMarker'));
@@ -1392,8 +1382,12 @@ function hNewFig = CloneFigure(hFig)
         end
         % Update Surfaces panel
         panel_surface('UpdatePanel');
-        % Reload figure to apply montage (Topology NIRS)
-        if strcmpi(FigureId.Type, 'Topography') && strcmpi(FigureId.Modality, 'NIRS')
+        % Reload figure
+        if strcmpi(FigureId.Type, 'Topography')
+            % 2DDisc: Set white background
+            if strcmpi(FigureId.SubType, '2DDisc')
+                SetBackgroundColor(hNewFig, [1 1 1]);
+            end
             ReloadFigures(hNewFig, 0);
         end
         
