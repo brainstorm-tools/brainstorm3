@@ -1424,6 +1424,11 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
                     end
+
+                     if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod)
+                            gui_component('MenuItem', jPopup, [], 'View NIRS leadfield sensitivity', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface'));
+                     end
+
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')

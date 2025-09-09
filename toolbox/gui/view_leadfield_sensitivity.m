@@ -58,9 +58,12 @@ if isempty(iModChannels)
 end
 Channels = ChannelMat.Channel(iModChannels);
 markersLocs = cell2mat(cellfun(@(c)c(:,1), {Channels.Loc}, 'UniformOutput', 0))';
-isMeg = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
+isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
+isNIRS      = strcmp(Modality, 'NIRS');
+isApplyOrient = 1;
+
 % Load leadfield matrix
-HeadmodelMat = in_bst_headmodel(HeadmodelFile);
+HeadmodelMat = in_bst_headmodel(HeadmodelFile, isApplyOrient);
 GainMod = HeadmodelMat.Gain(iModChannels, :);
 isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 % Get subject
@@ -312,22 +315,37 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         bst_progress('start', 'View leadfields', 'Computing sensitivity...');
         % Sum all the channels
         if (iChannel == 0)
-            if isAvgRef
+            if isNIRS
+                LeadField = GainMod;
+            elseif isAvgRef
                 LeadField = bst_bsxfun(@minus, GainMod, mean(GainMod,1));
             elseif ~isempty(iRef)
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
-            LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-            normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+
+            if isApplyOrient
+                normLF = sum(LeadField)';
+            else
+                LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
+                normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+            end
+
         % Compute the sensitivity for one sensor
         else
-            if isAvgRef
+            if isNIRS
+                LeadField = GainMod(iChannel,:);
+            elseif isAvgRef
                 LeadField = GainMod(iChannel,:) - mean(GainMod,1);
             elseif ~isempty(iRef)
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
-            LeadField = reshape(LeadField,3,[])'; % each column is a vector
-            normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
+
+            if isApplyOrient
+                normLF = LeadField;
+            else
+                LeadField = reshape(LeadField,3,[])'; % each column is a vector
+                normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
+            end
         end
         % Surface or volume
         switch lower(DisplayMode)
