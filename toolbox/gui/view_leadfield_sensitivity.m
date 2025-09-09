@@ -156,6 +156,9 @@ switch (Modality)
     case {'EEG', 'SEEG', 'ECOG'}
         ColormapInfo.DisplayUnits = '\muV/nAm';  % ~ 1e3
         dispFactor = 1e-3;
+   case {'NIRS'}
+        ColormapInfo.DisplayUnits = 'mm'; 
+        dispFactor = 1;
 end
 setappdata(hFig, 'Colormap', ColormapInfo);
 % Display SEEG/ECOG electrodes
