@@ -531,13 +531,12 @@ end
 
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
+Param = [];
 if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro'})) || ...
    (~isempty(OPTIONS.EEGMethod) && ~ismember(OPTIONS.EEGMethod, {'openmeeg', 'duneuro'}))
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
-    Param(1:length(OPTIONS.Channel)) = deal(struct(...
-            'Center', [], ...
-            'Radii',  []));
+    Param = repmat(struct('Center', [], 'Radii', []), 1, length(OPTIONS.Channel));
     iAllMeg = [iRef, iMeg];
     % Overlapping spheres
     if strcmpi(OPTIONS.MEGMethod, 'os_meg')
@@ -586,8 +585,6 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
             strHistory = sprintf(', Cond: %1.3f %1.3f %1.3f, Radii: %1.3f %1.3f %1.3f', OPTIONS.Conductivity, OPTIONS.Radii);
         end
     end
-else
-    Param = [];
 end   
 
 
@@ -641,8 +638,6 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     Param = struct('FluenceFolder',    OPTIONS.FluenceFolder , ...
                    'smoothing_method', OPTIONS.smoothing_method, ...
                    'smoothing_fwhm',   OPTIONS.smoothing_fwhm);
-else
-    Param = [];
 end   
 
 %% Check for errors: NaN values in the Gain matrix
