@@ -60,7 +60,7 @@ Channels = ChannelMat.Channel(iModChannels);
 markersLocs = cell2mat(cellfun(@(c)c(:,1), {Channels.Loc}, 'UniformOutput', 0))';
 isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
 isNIRS      = strcmp(Modality, 'NIRS');
-isApplyOrient = 1;
+isApplyOrient = isNIRS; % Only apply the orientation for NIRS
 
 % Load leadfield matrix
 HeadmodelMat = in_bst_headmodel(HeadmodelFile, isApplyOrient);
