@@ -190,7 +190,11 @@ end
 % Update display
 UpdateLeadfield();
 % Reset thresholds
-panel_surface('SetDataThreshold', hFig, 1, 0);
+if isNIRS
+    panel_surface('SetDataThreshold', hFig, 1, 1/100);
+else
+   panel_surface('SetDataThreshold', hFig, 1, 0);
+end
 panel_surface('SetSizeThreshold', hFig, 1, 1);
 
 
