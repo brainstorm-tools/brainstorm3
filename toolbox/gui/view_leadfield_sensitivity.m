@@ -409,7 +409,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         else
             strTarget = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
         end
-        if isMeg
+        if isMeg  || isNIRS
             strTitle = strTarget;
         elseif isAvgRef
             strTitle = [strTarget '  |  Average reference'];
