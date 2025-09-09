@@ -211,7 +211,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
                 isUpdate = 1;
             case 'downarrow'
-                if ~isMeg
+                if ~isMeg && ~isNIRS
                     if isempty(iRef)
                         iRef = length(Channels) + 1;
                     end
@@ -228,7 +228,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     isUpdate = 1;
                 end
             case 'uparrow'
-                if ~isMeg
+                if ~isMeg && ~isNIRS
                     if isempty(iRef)
                         iRef = 0;
                     end
