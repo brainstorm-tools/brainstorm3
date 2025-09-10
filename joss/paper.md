@@ -96,10 +96,11 @@ Intracranial electrode localization, particularly for sEEG, is a foundational st
 
 Integrating GARDEL with Brainstorm provides seamless, one-click deployment of intracranial electrode localization directly within Brainstorm, eliminating the need for external scripts and reducing  manual intervention. This reduces localization time from hours to minutes (with some minor post-processing), enabling researchers to efficiently scale analyses across larger patient cohorts. The integration also enhances reproducibility by standardizing detection parameters, minimizing manual intervention, and unifying the entire workflow of co-registration, localization, visualization, and atlas-based labeling into a single interactive environment.
 
-While other tools, such as DEETO[@Arnulfo:2015], 3D Slicer’s sEEG Assistant[Narizzano:2017], FASCILE[@Ervin:2021] and LeGUI[@Davis:2021] have demonstrated dramatic speedups compared to manual localization, they do not provide an end-to-end processing workflow from anatomical to functional analyses like Brainstorm that does.
+While other tools, such as DEETO[@Arnulfo:2015], 3D Slicer’s sEEG Assistant[@Narizzano:2017], FASCILE[@Ervin:2021] and LeGUI[@Davis:2021] have demonstrated dramatic speedups compared to manual localization, they do not provide an end-to-end processing workflow from anatomical to functional analyses like Brainstorm that does.
 
 # Acknowledgements
 
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
