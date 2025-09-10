@@ -60,7 +60,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description the process
     sProcess.Comment     = 'Import BIDS dataset';
     sProcess.Category    = 'Custom';
@@ -117,13 +117,13 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs) 
     OutputFiles = {};
     % === GET OPTIONS ===
     % Get folder to import
@@ -646,6 +646,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
         allMeegElecFormats = {};
         allMeegElecAnatRef = {};
         allMeegElecFiducials = {};
+        allMeegElecCoordSys = {};
+        allMeegLmCoordSys = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
@@ -691,12 +693,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                 end
                 % Loop on the supported modalities
-                for mod = {'meg', 'eeg', 'ieeg','nirs'}
+                for mod = {'meg', 'eeg', 'ieeg', 'nirs'}
                     posUnits = 'mm';
                     electrodesFile = [];
                     electrodesSpace = 'ScanRAS';
                     electrodesAnatRef = [];
                     electrodesCoordSystem = [];
+                    landmarkCoordSystem = [];
                     coordsystemSpace = [];
                     sFid = [];
                     
@@ -723,7 +726,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             sCoordsystem = [];
                         end
                         if ~isempty(sCoordsystem)
-                            % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
+                            % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinates in the same units (it would be weird to do otherwise, but it might happen)
                             if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
                                 posUnits = sCoordsystem.iEEGCoordinateUnits;
                             elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
@@ -735,19 +738,22 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Get fiducials structure
                             sFid = GetFiducials(sCoordsystem, posUnits);
-                            % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
-                            if isempty(sFid)
-                                if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
-                                    electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
-                                elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
-                                    electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
-                                elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
-                                    electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
-                               elseif isfield(sCoordsystem, 'NIRSCoordinateSystem') && ~isempty(sCoordsystem.NIRSCoordinateSystem)
-                                    electrodesCoordSystem = sCoordsystem.NIRSCoordinateSystem;
-                                elseif ~isempty(coordsystemSpace)
-                                    electrodesCoordSystem = coordsystemSpace;
-                                end
+                            % If there are no fiducials: there is no easy way to match with the anatomy, 
+                            % and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG).
+                            % Note coordinate systems also for potentially loading saved co-registration.
+                            if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
+                            elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
+                            elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                            elseif isfield(sCoordsystem, 'NIRSCoordinateSystem') && ~isempty(sCoordsystem.NIRSCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.NIRSCoordinateSystem;
+                            elseif ~isempty(coordsystemSpace)
+                                electrodesCoordSystem = coordsystemSpace;
+                            end
+                            if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinateSystem') %&& ~isempty(sCoordsystem.AnatomicalLandmarkCoordinateSystem)
+                                landmarkCoordSystem = sCoordsystem.AnatomicalLandmarkCoordinateSystem;
                             end
                             % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                             if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
@@ -791,14 +797,14 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                     end
                     % If the coordinate system is specified in the _coordsystem.json and no fiducials are available
-                    if ~isempty(electrodesCoordSystem)
+                    if isempty(sFid) && ~isempty(electrodesCoordSystem)
                         if strcmpi(electrodesCoordSystem, 'ACPC')
                             electrodesSpace = 'ACPC';
                         elseif strcmpi(electrodesCoordSystem, 'CapTrak')
                             electrodesSpace = 'CapTrak';
                         elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM'))  || ~isempty(strfind(electrodesCoordSystem, 'fs')) 
                             electrodesSpace = 'MNI';
-                        elseif ismember(upper(electrodesCoordSystem), {'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'})
+                        elseif ismember(upper(electrodesCoordSystem), upper({'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'}))
                             electrodesSpace = 'ALS';
                         end
                     end
@@ -828,10 +834,12 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         allMeegElecFormats{end+1} = ['BIDS-' upper(electrodesSpace) '-' upper(posUnits)];
                         allMeegElecAnatRef{end+1} = electrodesAnatRef;
                         allMeegElecFiducials{end+1} = sFid;
+                        allMeegElecCoordSys{end+1} = electrodesCoordSystem;
+                        allMeegLmCoordSys{end+1} = landmarkCoordSystem;
                     end
-                end
+                end % modality loop
             end
-        end
+        end % session loop
         
         % === IMPORT RECORDINGS ===
         % Try import them all, one by one
@@ -855,12 +863,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 case '.cnt',   FileFormat = 'EEG-ANT-CNT';    
                 otherwise,     FileFormat = [];
             end
-            % Import file if file was identified
+            % Import file if it was identified
             if ~isempty(FileFormat)
                 % Import files to database
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
                 OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
+
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
                 if isempty(iLast)
@@ -1000,6 +1009,125 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         'fiducials',   allMeegElecFiducials{iFile});
                 end
                 
+                % === co-registration (CTF only for now) ===
+                % Apply saved co-registration if available, on top of default native or SCS
+                % transformation that Bst does when loading raw files.
+                % For now, this is only implemented for CTF as we need to check and properly deal
+                % with other transformations when importing raw data, vs the coordinate system of
+                % saved landmarks (indicated in the json file). For data formats where Bst keeps
+                % native coordinates, we could assume (or ideally check) that the landmark system is
+                % this native system, but this requires verifying how Bst loads each type, and the
+                % corresponding BIDS coordinate system labels.
+                % Only apply coreg if IntendedFor MRI was found and imported (saved in
+                % allMeegElecAnatRef) and SCS-named fiducials were present in
+                % AnatomicalLandmarkCoordinates on both sides.
+
+                % List of two columns: file formats & matching expected BIDS coordinate systems, for
+                % which we know how to load the co-registration. Code below will need to be modified
+                % accordingly to deal with transformations that Bst applies when loading, and their
+                % format-specific labels. We could have multiple acceptable coordinate systems for
+                % the same file format in this list, listed as separate lines.
+                KnownCoregFormats = {'CTF', 'ctf'}; 
+
+                isCoregOk = true;
+                % First check: known format, files were found, and fids found on the MRI side
+                isKnown = strcmpi(FileFormat, KnownCoregFormats(:,1));
+                if any(isKnown) && ...
+                        ~isempty(allMeegElecAnatRef{iFile}) && ~isempty(SubjectFidMriFile{iSubj}) && ...
+                        ~isempty(allMeegElecFiducials{iFile}) 
+                    % Second check: coreg fids also present on MEEG side
+                    sFid = allMeegElecFiducials{iFile};
+                    sMriFid = load(file_fullpath(allMeegElecAnatRef{iFile}), 'SCS'); 
+                    if isfield(sFid, 'NAS') && isfield(sFid, 'LPA') && isfield(sFid, 'RPA')
+                        % With all this necessary coreg info, give warnings if something else doesn't work.
+                        % Third check: expected coordinate systems. Assume ok if some are missing.
+                        if ~isempty(allMeegElecCoordSys{iFile})
+                            BidsSystem = allMeegElecCoordSys{iFile};
+                            if ~isempty(allMeegLmCoordSys{iFile}) && ~strcmpi(BidsSystem, allMeegLmCoordSys{iFile})
+                                msg = ['Inconsistent coordinate systems for co-registration, anat landmark: ' allMeegLmCoordSys{iFile}  ...
+                                    ' vs sensors: ' BidsSystem ' for session ' sessionName ' of subject ' SubjectName{iSubj}];
+                                disp(['BIDS> Warning: ' msg]);
+                                Messages = [Messages 10 msg];
+                                isCoregOk = false;
+                                BidsSystem = [];
+                            end
+                        elseif ~isempty(allMeegLmCoordSys{iFile})
+                            BidsSystem = allMeegLmCoordSys{iFile};
+                        else % Assume first one in known list, but warn
+                            BidsSystem = KnownCoregFormats{find(isKnown, 1),2};
+                            msg = ['Coordinate systems not specified for co-registration. Assuming ' BidsSystem ...
+                                ' but should be verified, for session ' sessionName ' of subject ' SubjectName{iSubj}];
+                            disp(['BIDS> Warning: ' msg]);
+                            Messages = [Messages 10 msg];
+                        end
+                        if ~isempty(BidsSystem) && ~any(strcmpi(BidsSystem, KnownCoregFormats(isKnown,2)))
+                            msg = ['Unexpected coordinate system(s) for loading co-registration, file format: ' ...
+                                FileFormat ' anat landmark: ' allMeegLmCoordSys{iFile} ' sensors: ' allMeegElecCoordSys{iFile} ...
+                                ' for session ' sessionName ' of subject ' SubjectName{iSubj}];
+                            disp(['BIDS> Warning: ' msg]);
+                            Messages = [Messages 10 msg];
+                            isCoregOk = false;
+                        end
+                    end
+                end
+                if isCoregOk
+                    % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm.
+                    MriFidDist = [sMriFid.NAS; sMriFid.LPA; sMriFid.RPA];
+                    MriFidDist = sqrt(sum( (MriFidDist - circshift(MriFidDist, 1, 1)).^2, 2));
+                    MeegFidDist = [sFid.NAS; sFid.LPA; sFid.RPA];
+                    MeegFidDist = sqrt(sum( (MeegFidDist - circshift(MeegFidDist, 1, 1)).^2, 2));
+                    MeegFidDist = MeegFidDist * 10; % cm to mm
+                    % Warn if distances differ by more than a um, indicating they are not the
+                    % same triplet of points.
+                    % We could accept this by assuming the points define the same SCS or are
+                    % roughly the same, like when we mark fids on MRI vs digitized fids, but
+                    % for BIDS, I believe it is expected to have the exact same points.
+                    if any(abs(MeegFidDist - MriFidDist) > 1e-3) % > 1 um
+                        msg = ['Unexpected distance inconsistency for anat landmarks in MRI vs MEG. ' ...
+                            'Imported co-registration may be wrong and should be verified: ', allMeegFiles{iFile}];
+                        disp(['BIDS> Warning: ' msg]);
+                        Messages = [Messages 10 msg];
+                    end
+                    % Unsure what data formats would lead to multiple new raw files per load, but
+                    % looping here the same as above.
+                    for iRaw = 1:length(newFiles)
+                        % Get and load channel file
+                        ChannelFile = bst_get('ChannelFileForStudy', newFiles{iRaw});
+                        ChannelMat = in_bst_channel(ChannelFile);
+                        switch lower(BidsSystem)
+                            case 'ctf'
+                                % For CTF, We must take into account Bst's 'Native=>Brainstorm/CTF'
+                                % tranformation that was applied when importing if present (if digitized
+                                % anatomical fids were found), since our "co-registration landmarks" are in
+                                % native "CTF head" coordinates.
+                                iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
+                                if ~isempty(iTransf)
+                                    T = ChannelMat.TransfMeg{iTransf}(1:3, :);
+                                    sFid.NAS = T * [sFid.NAS'; 1];
+                                    sFid.LPA = T * [sFid.LPA'; 1];
+                                    sFid.RPA = T * [sFid.RPA'; 1];
+                                end
+                                % Compute "current Bst system" to "co-registered" tranformation. Current
+                                % system might be "raw scs" computed from digitized anat fids of this
+                                % session, or "native" based on CTF head coils.
+                                Transf = cs_compute(sFid, 'scs');
+                                T = eye(4);
+                                T(1:3,1:3) = Transf.R;
+                                T(1:3,4) = - Transf.T;
+                            otherwise
+                                % This should not happen unless there's a coding error, e.g. formats
+                                % were added above but not here. Add Matlab warning just in case.
+                                % Maybe we can later change this to a default common case, if many
+                                % file formats don't require fiddling with Bst transformations and
+                                % we can just do cs_compute directly on sFid.
+                                warning('Unexpected BIDS coordinate system. Coregistration not loaded. Please report: this is a coding error.');
+                                break;
+                        end
+                        % Apply to channel file, saving transformation as a 'manual correction'.
+                        channel_apply_transf(ChannelFile, T);
+                    end
+                end
+
                 % === MEG.JSON ===
                 % Get _meg.json next to the recordings file
                 MegFile = [baseName, '_meg.json'];

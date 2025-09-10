@@ -45,6 +45,7 @@ end
 ChannelMats = {};
 % Get the transformation rotation and translation
 if isnumeric(Transf)
+    TransfMat = Transf;
     R = Transf(1:3,1:3);
     T = Transf(1:3,4);
     Transf = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
@@ -106,8 +107,8 @@ for iFile = 1:length(ChannelFiles)
         if ~isfield(ChannelMat, 'TransfMegLabels') || ~iscell(ChannelMat.TransfMegLabels) || (length(ChannelMat.TransfMeg) ~= length(ChannelMat.TransfMegLabels))
             ChannelMat.TransfMegLabels = cell(size(ChannelMat.TransfMeg));
         end
-        % Add a new transform to the list
-        ChannelMat.TransfMeg{end+1} = Transf;
+        % Add a new transform to the list. Save 4x4 matrix here, not function handle.
+        ChannelMat.TransfMeg{end+1} = TransfMat;
         ChannelMat.TransfMegLabels{end+1} = 'manual correction';
     end
     % If also need to apply it to the EEG
@@ -118,7 +119,7 @@ for iFile = 1:length(ChannelFiles)
         if ~isfield(ChannelMat, 'TransfEegLabels') || ~iscell(ChannelMat.TransfEegLabels) || (length(ChannelMat.TransfEeg) ~= length(ChannelMat.TransfEegLabels))
             ChannelMat.TransfEegLabels = cell(size(ChannelMat.TransfEeg));
         end
-        ChannelMat.TransfEeg{end+1} = Transf;
+        ChannelMat.TransfEeg{end+1} = TransfMat;
         ChannelMat.TransfEegLabels{end+1} = 'manual correction';
     end
 
