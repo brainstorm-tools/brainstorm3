@@ -493,8 +493,8 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     Gain(~isnan(Gain_om)) = Gain_om(~isnan(Gain_om));
     % Comment in history field
     om_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
-    [~, Locb] = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'openmeeg');
-    strHistory = [strHistory, ' | ', sprintf('OpenMEEG (%s)', strjoin(om_types(Locb), ', '))];
+    Lia = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'openmeeg');
+    strHistory = [strHistory, ' | ', sprintf('OpenMEEG (%s)', strjoin(om_types(Lia), ', '))];
     for iLayer = 1:length(OPTIONS.BemNames)
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
@@ -511,8 +511,8 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field
     dn_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
-    [~, Locb] = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'duneuro');
-    strHistory = [strHistory, ' | ', sprintf('DUNEuro (%s)', strjoin(dn_types(Locb), ', '))];
+    Lia = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'duneuro');
+    strHistory = [strHistory, ' | ', sprintf('DUNEuro (%s)', strjoin(dn_types(Lia), ', '))];
     strHistory = [strHistory, ' | ', sprintf('Fem head file: %s, |  Cortex file: %s, ', OPTIONS.FemFile, OPTIONS.CortexFile) ];
     if ~OPTIONS.UseTensor
         strHistory = [strHistory, ' | ', sprintf('FemCond: isotropic, %s', num2str(OPTIONS.FemCond))];
