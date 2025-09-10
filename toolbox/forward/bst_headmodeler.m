@@ -538,7 +538,7 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
     Param = repmat(struct('Center', [], 'Radii', []), 1, length(OPTIONS.Channel));
     iAllMeg = [iRef, iMeg];
-    % Overlapping spheres
+    % MEG: Overlapping spheres
     if strcmpi(OPTIONS.MEGMethod, 'os_meg')
         % Start progress bar
         bst_progress('start', 'Head modeler', 'Estimating overlapping spheres...');
@@ -554,10 +554,15 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
             [Param(iRef).Center] = deal(mean([Param(iMeg).Center],2));
             [Param(iRef).Radii]  = deal(mean([Param(iMeg).Radii],2));
         end
-    % Other types
-    else
-        [Param.Center] = deal(OPTIONS.HeadCenter);
-        [Param.Radii]  = deal(OPTIONS.Radii);
+    % MEG: Other types
+    elseif ~isempty(OPTIONS.MEGMethod)
+        [Param(iAllMeg).Center] = deal(OPTIONS.HeadCenter);
+        [Param(iAllMeg).Radii]  = deal(OPTIONS.Radii);
+    end
+    % EEG: 3-shell sphere
+    if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
+        [Param(iEeg).Center] = deal(OPTIONS.HeadCenter);
+        [Param(iEeg).Radii]  = deal(OPTIONS.Radii);
     end
 
     % ===== COMPUTE GAIN MATRIX ======
