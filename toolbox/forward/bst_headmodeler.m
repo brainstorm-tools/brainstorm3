@@ -492,6 +492,9 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     % Add values to previous Gain matrix
     Gain(~isnan(Gain_om)) = Gain_om(~isnan(Gain_om));
     % Comment in history field
+    om_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
+    [~, Locb] = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'openmeeg');
+    strHistory = [strHistory, ' | ', sprintf('OpenMEEG (%s)', strjoin(om_types(Locb), ', '))];
     for iLayer = 1:length(OPTIONS.BemNames)
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
@@ -507,6 +510,9 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field
+    dn_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
+    [~, Locb] = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'duneuro');
+    strHistory = [strHistory, ' | ', sprintf('DUNEuro (%s)', strjoin(dn_types(Locb), ', '))];
     strHistory = [strHistory, ' | ', sprintf('Fem head file: %s, |  Cortex file: %s, ', OPTIONS.FemFile, OPTIONS.CortexFile) ];
     if ~OPTIONS.UseTensor
         strHistory = [strHistory, ' | ', sprintf('FemCond: isotropic, %s', num2str(OPTIONS.FemCond))];
@@ -569,6 +575,21 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
     % Start progress bar
     BlockSize = 2000;
     bst_progress('start', 'Head modeler', 'Computing gain matrix...', 0, ceil(nv/BlockSize));
+    % Comment in history field
+    % ===== MEG =====
+    if ismember(OPTIONS.MEGMethod, {'meg_sphere', 'os_meg'})
+        if strcmpi(OPTIONS.MEGMethod, 'os_meg')
+            megMethodStr = 'Overlapting spheres';
+        else
+            megMethodStr = 'Single sphere';
+        end
+        strHistory =  [strHistory, ' | ', megMethodStr, ' (MEG)',  ' | ' 'See ''Param'' field'];
+    end
+    % ===== EEG =====
+    if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
+        strHistory =  [strHistory, ' | ', '3-shell sphere (EEG)',  ' | ', ...
+            sprintf('Cond: %1.3f %1.3f %1.3f, Radii: %1.3f %1.3f %1.3f', OPTIONS.Conductivity, OPTIONS.Radii)];
+    end
     % Loop on all blocks 
     for iBlock = 1:BlockSize:nv
         bst_progress('inc', 1);
@@ -587,7 +608,6 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
             EegLoc = [OPTIONS.Channel(iEeg).Loc]';
             Gain(iEeg,iSrcGain) = bst_eeg_sph(OPTIONS.GridLoc(iSrc,:), EegLoc, OPTIONS.HeadCenter, OPTIONS.Radii, OPTIONS.Conductivity);
-            strHistory = sprintf(', Cond: %1.3f %1.3f %1.3f, Radii: %1.3f %1.3f %1.3f', OPTIONS.Conductivity, OPTIONS.Radii);
         end
     end
 end   
@@ -640,9 +660,9 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         end
     end
     Gain(iNirs,:) = gain_nirs(iNirs, :);
-    Param = struct('FluenceFolder',    OPTIONS.FluenceFolder , ...
-                   'smoothing_method', OPTIONS.smoothing_method, ...
-                   'smoothing_fwhm',   OPTIONS.smoothing_fwhm);
+    % Comment in history field
+    strHistory =  [strHistory, ' | ', 'Import (NIRS)'  ' | ', ...
+        sprintf('Fluence: %s, SmoothMethod: %s, SmoothFWHM: %1.3f', OPTIONS.FluenceFolder, OPTIONS.smoothing_method, OPTIONS.smoothing_fwhm)];
 end   
 
 %% Check for errors: NaN values in the Gain matrix
@@ -702,7 +722,7 @@ SaveHeadModel = struct(...
     'SurfaceFile',   file_win2unix(OutSurfaceFile), ...
     'Param',         Param);
 % History: compute head model
-SaveHeadModel = bst_history('add', SaveHeadModel, 'compute', ['Compute head model: ' OPTIONS.Comment strHistory]);
+SaveHeadModel = bst_history('add', SaveHeadModel, 'compute', ['Compute head model: ##' OPTIONS.Comment, '##' strHistory]);
 % Save file
 if ~isempty(OPTIONS.HeadModelFile)
     bst_save(OPTIONS.HeadModelFile, SaveHeadModel, 'v7');
