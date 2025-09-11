@@ -94,6 +94,10 @@ The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for s
 
 ![Adding a contact using 3D figure; (a) Missed detecting contact (3rd from top for electrode **A** in red); (b) Brainstorm interface showing option for adding it (turn on surface/centroid selection and select electrode **A** in iEEG panel, select the surface point and right click on it to get this menu); (c) Missing contact **A3** added.\label{fig:figure8}](figure8.png){ width=70% }
 
+**Automated anatomical labeling:** Brainstorm supports multiple standardized [brain anatomy templates](https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy) (ICBM152, Colin27, USCBrain, FsAverage, etc.) and [brain atlases](https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy) (AAL, Desikan-Killiany, Brainetome, Schaefer, etc.), all of which can be added from the interface as shown in \autoref{fig:figure9}(a-b). The spatial coordinates of contacts localized by the steps above are automatically cross-referenced against these atlases, resulting in detailed anatomical labels (e.g., specific cortical gyri, subcortical nuclei) as shown in \autoref{fig:figure9}(c-d). This enriched labeling framework provides a comprehensive anatomical context for each contact (the region of the brain the contact belongs to), facilitating both clinical interpretation and research analyses. More details can be found in the tutorial section on [anatomical labeling](https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity#Anatomical_labelling). Work by [@Taylor:2021] demonstrates a clinical validation study using this feature of Brainstorm.
+
+![(a) The different brain anatomy templates supported inside Brainstorm (b) The different brain atlases supported inside Brainstorm (c) Brainstorm interface to compute the anatomical labeling (in the iEEG panel select the electrode **A**, go to *Electrodes > Compute atlas labels*) (d) The computed anatomical labels for contacts in electrode **A** using the AAL3 atlas.\label{fig:figure9}](figure9.png)
+
 # Statement of need
 
 Intracranial electrode localization, particularly for sEEG, is a foundational step in epilepsy surgery planning and neuroscience research. At present, many researchers and clinicians rely on manual workflows or a patchwork of separate tools for localization, which results in time-consuming procedures, inter-operator variability, and fragmented pipelines. Manual identification and labeling of electrode contacts can take several hours per subject, slowing down the workflows, while subjective differences between operators introduce inconsistencies in results. Moreover, existing practices often require multiple platforms, i.e., one for CT-MRI co-registration, another for electrode detection, and another for anatomical labeling, and another for data analysis, thereby adding unnecessary complexity and risk of errors in the final results.
@@ -107,6 +111,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
