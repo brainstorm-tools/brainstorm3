@@ -90,9 +90,9 @@ The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for s
 
 ![Merging electrodes using the Brainstorm iEEG panel; (a) Electrodes **I** and **J** are wrongly detected as separate electrodes; (b) Brainstorm interface showing option for merging them; (c) The merged electrode in iEEG panel (**I** and **J** get replaced by **Imerged**); (d) The rendered merged electrode.\label{fig:figure6}](figure6.png){ width=70% }
 
-![Removing a contact using 3D figure; (a) Wrongly detected contact (selected contact **C12** in red); (b) Brainstorm interface showing option for removing it (right click on the **C12** contact to get this menu); (c) Contact removed.\label{fig:figure8}](figure8.png)
+![Removing a contact using 3D figure; (a) Wrongly detected contact (selected contact **C12** in red); (b) Brainstorm interface showing option for removing it (right click on the **C12** contact to get this menu); (c) Contact removed.\label{fig:figure7}](figure7.png)
 
-![Adding a contact using 3D figure; (a) Missed detecting contact (3rd from top for electrode **A** in red); (b) Brainstorm interface showing option for adding it (turn on surface/centroid selection and select electrode **A** in iEEG panel, select the surface point and right click on it to get this menu); (c) Missing contact **A3** added.\label{fig:figure7}](figure7.png){ width=70% }
+![Adding a contact using 3D figure; (a) Missed detecting contact (3rd from top for electrode **A** in red); (b) Brainstorm interface showing option for adding it (turn on surface/centroid selection and select electrode **A** in iEEG panel, select the surface point and right click on it to get this menu); (c) Missing contact **A3** added.\label{fig:figure8}](figure8.png){ width=70% }
 
 # Statement of need
 
@@ -107,6 +107,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
