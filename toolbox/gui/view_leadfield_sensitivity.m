@@ -75,10 +75,9 @@ end
 Channels = ChannelMat.Channel(iModChannels);
 isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
 isNIRS      = strcmp(Modality, 'NIRS');
-isApplyOrient = isNIRS; % Only apply the orientation for NIRS
 
 % Load leadfield matrix
-HeadmodelMat    = in_bst_headmodel(HeadmodelFile, isApplyOrient);
+HeadmodelMat    = in_bst_headmodel(HeadmodelFile);
 GainMod         = HeadmodelMat.Gain(iModChannels, :);
 isVolumeGrid    = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 
@@ -348,12 +347,8 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
 
-            if isApplyOrient
-                normLF = sum(LeadField)';
-            else
-                LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-                normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
-            end
+            LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
+            normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
 
         % Compute the sensitivity for one sensor
         else
@@ -365,12 +360,8 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
 
-            if isApplyOrient
-                normLF = LeadField;
-            else
-                LeadField = reshape(LeadField,3,[])'; % each column is a vector
-                normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
-            end
+            LeadField = reshape(LeadField,3,[])'; % each column is a vector
+            normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
         end
         % Surface or volume
         switch lower(DisplayMode)
