@@ -68,7 +68,7 @@ Stereoelectroencephalography (sEEG) is a critical tool for mapping epileptic net
 
 **Tutorials and Documentation:** Brainstorm offers a comprehensive collection of [detailed tutorials](https://neuroimage.usc.edu/brainstorm/Tutorials) that cover all major components of the platform, supporting users from basic data processing to advanced multimodal analyses. Within this ecosystem, the sEEG-suite is accompanied by its own dedicated tutorials, with each section of the suite linking to a corresponding resource. For convenience, the complete set of tutorials for stereo-electroencephalography (sEEG) analysis can be accessed here: [sEEG-suite: Stereo-electroencephalography (sEEG) Analysis](https://neuroimage.usc.edu/brainstorm/Tutorials#sEEG-suite:_Stereo-electroencephalography_.28sEEG.29_analysis).
 
-The flowchart in Figure 1 illustrates the end-to-end workflow for sEEG analysis in Brainstorm which involve (1) importing and pre-processing the anatomy, (2) manual and automated contact localization, (3) refining contact localization, (4) automated anatomical labeling, and (5) linking localized contacts with raw recordings.
+The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for sEEG analysis in Brainstorm which involve (1) importing and pre-processing the anatomy, (2) manual and automated contact localization, (3) refining contact localization, (4) automated anatomical labeling, and (5) linking localized contacts with raw recordings.
 
 ![End-to-end flowchart for sEEG analysis in Brainstorm.\label{fig:figure1}](figure1.png)
 
@@ -85,5 +85,6 @@ While other tools, such as DEETO[@Arnulfo:2015], 3D Slicer’s sEEG Assistant[@N
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
