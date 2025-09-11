@@ -76,6 +76,10 @@ The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for s
 
 ![(a) pre-MRI; (b) post-CT; (c) post-CT co-registered to pre-MRI and skull-stripped using SPM (the colored image is the post-CT overlaid on the pre-MRI to show their proper alignment); (d) Skull-stripped post-CT by itself; (e) Isosurface generated from skull-stripped post-CT using intensity thresholding to capture metal artifacts as candidate contacts.\label{fig:figure2}](figure2.png)
 
+**Manual contact localization:** Prior to localizing the electrode contacts, knowledge of the implantation scheme is required in order to have the correct naming convention (used by the center/neurosurgeons) for the various electrodes used. Brainstorm’s iEEG graphical panel allows creating an electrode implantation manually by first defining the electrode model and constructor (through a list of predefined uniformly spaced electrode models from various constructors, such as [DIXI](https://diximedus.com/), [PMT](http://www.pmtcorp.com/electrodes.html), etc, or users can choose to define and load their own model). The user can then set the electrode tip and skull entry to render the electrode (\autoref{fig:figure3}). This process can be done in the 3D space (using the intensity thresholded mesh generated in the previous section), in the 2D MRI viewer (using the intensity thresholded post-CT overlaid on the pre-MRI), or only on post-MRI if the CT is not available. More details can be found in the tutorial: [SEEG contact localization and labeling](https://neuroimage.usc.edu/brainstorm/seeg/SeegContactLocalization).
+
+![(a) Create an electrode and assign label to it (in red); (b) Define the electrode model (in red); (c) On the 3D figure (SEEG/3D: gardel), set the electrode tip (in blue) and skull entry (in orange) using the surface selection button (in red) to render the electrode both in 2D MRI viewer and 3D figure.\label{fig:figure3}](figure3.png)
+
 # Statement of need
 
 Intracranial electrode localization, particularly for sEEG, is a foundational step in epilepsy surgery planning and neuroscience research. At present, many researchers and clinicians rely on manual workflows or a patchwork of separate tools for localization, which results in time-consuming procedures, inter-operator variability, and fragmented pipelines. Manual identification and labeling of electrode contacts can take several hours per subject, slowing down the workflows, while subjective differences between operators introduce inconsistencies in results. Moreover, existing practices often require multiple platforms, i.e., one for CT-MRI co-registration, another for electrode detection, and another for anatomical labeling, and another for data analysis, thereby adding unnecessary complexity and risk of errors in the final results.
@@ -89,6 +93,7 @@ While other tools, such as DEETO[@Arnulfo:2015], 3D Slicer’s sEEG Assistant[@N
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
