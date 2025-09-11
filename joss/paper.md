@@ -80,9 +80,19 @@ The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for s
 
 ![(a) Create an electrode and assign label to it (in red); (b) Define the electrode model (in red); (c) On the 3D figure (SEEG/3D: gardel), set the electrode tip (in blue) and skull entry (in orange) using the surface selection button (in red) to render the electrode both in 2D MRI viewer and 3D figure.\label{fig:figure3}](figure3.png)
 
-**Automatic contact localization:** With the click of a single button inside Brainstorm (\autoref{fig:figure4}), we have live, interactive visualization of the detection process, enabling users to observe contact identification, grouping, and ordering in real time. The electrode names are automatically assigned from **A-Z**, **AA-ZZ**, etc. in the order they are detected, which can be renamed as desired during post-processing. On the button click, GARDEL uses the skull-stripped post-CT volume along with the intensity threshold to identify high-density regions corresponding to metallic artifacts that are considered as electrode contacts. These detected points are grouped into individual leads, with contacts sorted along each electrode trajectory, designating the deepest contact as the first in sequence. This integration reduces the need for manual contact detection and electrode indexing, significantly streamlining the localization workflow. More details can be found in the tutorial:  [Automatic SEEG Contact Localization using GARDEL](https://neuroimage.usc.edu/brainstorm/Tutorials/AutoContactLocGardel).
+**Automatic contact localization:** With the click of a single button inside Brainstorm (\autoref{fig:figure4}), we have live, interactive visualization of the detection process, enabling users to observe contact identification, grouping, and ordering in real time. The electrode names are automatically assigned from **A-Z**, **AA-ZZ**, etc. in the order they are detected, which can be renamed as desired during post-processing (\autoref{fig:figure5}). On the button click, GARDEL uses the skull-stripped post-CT volume along with the intensity threshold to identify high-density regions corresponding to metallic artifacts that are considered as electrode contacts. These detected points are grouped into individual leads, with contacts sorted along each electrode trajectory, designating the deepest contact as the first in sequence. This integration reduces the need for manual contact detection and electrode indexing, significantly streamlining the localization workflow. More details can be found in the tutorial:  [Automatic SEEG Contact Localization using GARDEL](https://neuroimage.usc.edu/brainstorm/Tutorials/AutoContactLocGardel).
 
 ![The Brainstorm interface displaying the automatically detected contacts, with the GARDEL button (in orange) that triggers the automatic detection.\label{fig:figure4}](figure4.png)
+
+**Post-processing of the electrodes/contacts**: All the necessary post-processing can be done using the Brainstorm interface interactively. If there is a wrongly detected electrode, we can delete and manually rectify it by creating it from scratch (as mentioned in the **Manual contact localization** section above) along with renaming them if needed (\autoref{fig:figure5}). There could be cases where a single electrode may be detected as multiple in which case we need to merge them as one (\autoref{fig:figure6}). We also allow fine-tuning at the contact level, where we can remove (\autoref{fig:figure7) or add (\autoref{fig:figure8}) them. On doing any of the editing operations, it is also ensured that the ordering of the contacts is maintained with the deepest contact as first in the sequence. More details can be found in the tutorial section: [Edit the contacts positions](https://neuroimage.usc.edu/brainstorm/seeg/SeegContactLocalization#Edit_the_contacts_positions).
+
+![Renaming electrode (a) Electrode **A** before renaming; (b) Brainstorm interface to rename the electrode (double click on electrode **A** and change name to **AA’**); (c) Electrode **A** renamed to **AA’** (along with all the contacts).\label{fig:figure5}](figure5.png)
+
+![Merging electrodes using the Brainstorm iEEG panel; (a) Electrodes **I** and **J** are wrongly detected as separate electrodes; (b) Brainstorm interface showing option for merging them; (c) The merged electrode in iEEG panel (**I** and **J** get replaced by **Imerged**); (d) The rendered merged electrode.\label{fig:figure6}](figure6.png){ width=70% }
+
+![Removing a contact using 3D figure; (a) Wrongly detected contact (selected contact **C12** in red); (b) Brainstorm interface showing option for removing it (right click on the **C12** contact to get this menu); (c) Contact removed.\label{fig:figure8}](figure8.png)
+
+![Adding a contact using 3D figure; (a) Missed detecting contact (3rd from top for electrode **A** in red); (b) Brainstorm interface showing option for adding it (turn on surface/centroid selection and select electrode **A** in iEEG panel, select the surface point and right click on it to get this menu); (c) Missing contact **A3** added.\label{fig:figure7}](figure7.png){ width=70% }
 
 # Statement of need
 
@@ -97,6 +107,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
