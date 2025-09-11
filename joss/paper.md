@@ -98,6 +98,8 @@ The flowchart in \autoref{fig:figure1} illustrates the end-to-end workflow for s
 
 ![(a) The different brain anatomy templates supported inside Brainstorm (b) The different brain atlases supported inside Brainstorm (c) Brainstorm interface to compute the anatomical labeling (in the iEEG panel select the electrode **A**, go to *Electrodes > Compute atlas labels*) (d) The computed anatomical labels for contacts in electrode **A** using the AAL3 atlas.\label{fig:figure9}](figure9.png)
 
+**Link to raw recordings:** Once the sEEG contacts have been localized, we can associate them with the corresponding raw electrophysiological recordings. This link ensures that anatomical localization can be directly tied to the recorded brain signals. To establish this connection, it is essential that the contact names match exactly with the channel names in the raw recordings. Any mismatch (such as differences in naming conventions, capitalization, or numbering) will prevent Brainstorm from aligning the contacts with the appropriate channels. Detailed instructions on how to perform this linking can be found in the tutorial section: [Access the recordings](https://neuroimage.usc.edu/brainstorm/seeg/SeizureFingerprinting#Access_the_recordings). Following these guidelines ensures that each localized contact is correctly mapped to its electrophysiological data, allowing for reliable analysis and visualization. Once this step is completed, users can proceed either with the sEEG data analysis within Brainstorm using its [rich and complete set of tools](https://neuroimage.usc.edu/brainstorm/Tutorials#sEEG-suite:_Stereo-electroencephalography_.28sEEG.29_analysis) or export the final data into any of the [supported formats](https://neuroimage.usc.edu/brainstorm/Introduction#Supported_file_formats) for analysis with other software.
+
 # Statement of need
 
 Intracranial electrode localization, particularly for sEEG, is a foundational step in epilepsy surgery planning and neuroscience research. At present, many researchers and clinicians rely on manual workflows or a patchwork of separate tools for localization, which results in time-consuming procedures, inter-operator variability, and fragmented pipelines. Manual identification and labeling of electrode contacts can take several hours per subject, slowing down the workflows, while subjective differences between operators introduce inconsistencies in results. Moreover, existing practices often require multiple platforms, i.e., one for CT-MRI co-registration, another for electrode detection, and another for anatomical labeling, and another for data analysis, thereby adding unnecessary complexity and risk of errors in the final results.
@@ -111,6 +113,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
