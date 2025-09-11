@@ -15,33 +15,46 @@ authors:
     corresponding: true
     affiliation: 1
   - name: Raymundo Cassani
+    orcid: 0000-0002-3509-5543
     equal-contrib: true
     corresponding: true
     affiliation: 2
   - name: Takfarinas Medani
+    orcid: 0000-0003-0774-067X
     corresponding: true
     affiliation: 1
-  - name: Anand A. Joshi
+  - name: Anand Joshi
+    orcid: 0000-0002-9582-3848
     affiliation: 1
-  - name: Samuel M. Villalon
+  - name: Samuel Villalon
+    orcid: 0000-0002-7571-701X
     affiliation: 3
-  - name: Yash S. Vakilna
+  - name: Yash Vakilna
+    orcid: 0000-0001-5084-9625
     affiliation: "4, 6"
   - name: Johnson Hampson
+    orcid: 0000-0002-6087-3888
     affiliation: 4
   - name: Kenneth Taylor
+    orcid: 0000-0001-5006-7607
     affiliation: 5
   - name: Francois Tadel
+    orcid: 0000-0001-5726-7126
     affiliation: 7
   - name: Dileep Nair
+    orcid: 0000-0001-9663-7222
     affiliation: 5
-  - name: Christian G. Bénar
+  - name: Christian Bénar
+    orcid: 0000-0002-3339-1306
     affiliation: 3
   - name: Sylvain Baillet
+    orcid: 0000-0002-6762-5713
     affiliation: 2
   - name: John Mosher
+    orcid: 0000-0002-3221-229X
     affiliation: 4
-  - name: Richard M. Leahy
+  - name: Richard Leahy
+    orcid: 0000-0002-7278-5471
     affiliation: 1
 affiliations:
  - name: University of Southern California, USA
@@ -58,7 +71,7 @@ affiliations:
    index: 6
  - name: Independent Research Engineer, France
    index: 7
-date: 10 September 2025
+date: 11 September 2025
 bibliography: paper.bib
 ---
 
@@ -113,6 +126,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
