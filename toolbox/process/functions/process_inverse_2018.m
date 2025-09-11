@@ -202,6 +202,9 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         if isempty(sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).SEEGMethod)
             AllMod = setdiff(AllMod, {'SEEG'});
         end
+        if isempty(sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).NIRSMethod)
+            AllMod = setdiff(AllMod, {'NIRS'});
+        end
         if ~strcmpi(sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).HeadModelType, 'surface')
             HeadModelType = sChanStudies(i).HeadModel(sChanStudies(i).iHeadModel).HeadModelType;
         end
@@ -226,15 +229,24 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             end
         end
     end
+    
+    % Check for the presence of NIRS
+    isNIRS = all(ismember(AllMod, {'NIRS'}));
+    
     % Keep only MEG and EEG
     if any(ismember(AllMod, {'MEG GRAD','MEG MAG'}))
         AllMod = intersect(AllMod, {'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG'});
     else
         AllMod = intersect(AllMod, {'MEG', 'EEG', 'ECOG', 'SEEG'});
     end
+
     % Check that at least one modality is available
     if isempty(AllMod)
-        errMessage = 'No valid sensor types to estimate sources: please calculate an appropriate headmodel.';
+        if isNIRS
+            errMessage = ['To estimate sources for NIRS, use process:' 10 'NIRS > Sources > Compute sources' 10 'NIRSTORM plugin is required'];
+        else
+            errMessage = 'No valid sensor types to estimate sources: please calculate an appropriate headmodel.';
+        end
         return;
     end
 
