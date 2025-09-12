@@ -3,10 +3,10 @@ title: 'sEEG-Suite: An Interactive Pipeline for Semi-Automated Contact Localizat
 tags:
   - Brainstorm
   - sEEG
-  - contact localization
-  - electrode labeling
-  - epilepsy
   - co-registration
+  - contact localization
+  - anatomical labeling
+  - epilepsy
   - neuroscience
 authors:
   - name: Chinmay Chinara
@@ -126,6 +126,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
