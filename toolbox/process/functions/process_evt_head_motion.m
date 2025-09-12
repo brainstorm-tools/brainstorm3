@@ -291,6 +291,12 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     % Load and downsample continuous head localization channels.
     % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
     % Locations are in meters, [nChannels, nSamples, nEpochs] possibly converted to continuous.
+    % Data is returned for each epoch (concatenated if converted to continuous), for the provided
+    % sample bounds.
+    % The coordinate system is "CTF dewar", with X & Y axes at 45 degrees, and the origin inside the
+    % dewar.
+    % However, with CTF software version 3847, the extra coil is mislocalized near the coordinate
+    % system origin, which doesn't make sense for any coordinate system.
     
     % For now removing bad segments is done in process_adjust_coordinates only.
     %     , RemoveBadSegments

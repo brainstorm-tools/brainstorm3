@@ -9,6 +9,9 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
     % _coordsystem.json files for functional data, in native coordinates (e.g. CTF).
     % The points used are the anatomical fiducials marked in Brainstorm on the MRI
     % that define the Brainstorm subject coordinate system (SCS).
+    % 
+    % iSubjects is a list of Brainstorm subject indices.  Shown e.g. in pop-up when hovering over a
+    % subject in the tree.
     %
     % RecreateMegCoordJson: if true, this file will be deleted and recreated with
     % BidsBuildRecordingFiles before adding coregistration info to it (was added because fiducial
