@@ -2613,6 +2613,9 @@ function UpdateSurfaceCS(SurfaceFiles, sMriOld, sMriNew)
         sSurfNew.Vertices = sSurf.Vertices;
         sSurfNew.Faces    = sSurf.Faces;
         sSurfNew.Comment  = sSurf.Comment;
+        if isfield(sSurf, 'Color')
+            sSurfNew.Color  = sSurf.Color;
+        end
         if isfield(sSurf, 'History')
             sSurfNew.History  = sSurf.History;
         end

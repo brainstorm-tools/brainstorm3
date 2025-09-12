@@ -596,23 +596,15 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
             else
                 [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dcap');
             end
-            % Center and scale in a [-1,-1,2,2] reclangle
-            Xm = [min(X), max(X)];
-            Ym = [min(Y), max(Y)];
-            R = max(Xm(2)-Xm(1), Ym(2)-Ym(1));
-            X = (X - Xm(1)) / R * 2 - (Xm(2)-Xm(1))/R;
-            Y = (Y - Ym(1)) / R * 2 - (Ym(2)-Ym(1))/R;
             % Get 2D vertices coordinates, re-tesselate
             Vertices_surf = [X, Y, 0*X];
             Faces_surf = delaunay(X,Y);
             % Clean from some pathological triangles
             Faces_surf = tess_threshold(Vertices_surf, Faces_surf, 25, 20, 179);
             % Plot nose / ears
-            PlotNoseEars(hAxes, 0);
+            PlotNoseEars(hAxes, 1);
             % Store the sensor markers positions
             [Xmark,Ymark] = bst_project_2d(markers_loc(:,1), markers_loc(:,2), markers_loc(:,3), '2dcap');
-            Xmark = (Xmark - Xm(1)) / R * 2 - (Xm(2)-Xm(1))/R;
-            Ymark = (Ymark - Ym(1)) / R * 2 - (Ym(2)-Ym(1))/R;
             PlotHandles.MarkersLocs = [Xmark(selChan), Ymark(selChan), 0.05 * ones(length(selChan),1)];
 
         % ===== 2D DISC SURFACE =====
@@ -884,7 +876,13 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     isDrawLines       = isempty(PlotHandles.hLines)        || any(~ishandle(PlotHandles.hLines{1}));
     isDrawLegend      = isempty(PlotHandles.hLabelLegend);
     isDrawSensorLabels= isempty(PlotHandles.hSensorLabels) || any(~ishandle(PlotHandles.hSensorLabels));
-
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG', 'MEG', 'NIRS'})
+        isDrawHeadLines = isempty(PlotHandles.hHeadLines) || any(~ishandle(PlotHandles.hHeadLines));
+    else
+        TopoLayoutOptions.ShowHeadLines = 0;
+        bst_set('TopoLayoutOptions', TopoLayoutOptions);
+        isDrawHeadLines = 0;
+    end
     % Default figure colors
     if TopoLayoutOptions.WhiteBackground
         figColor  = [1,1,1];
@@ -924,6 +922,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     plotSize = [];
     % Plots use only 90% of plot (thus 5% of space for UDLR margins)
     useSpace = [0.9, 0.9];
+    axLimits = [0, 1; 0, 1];
     % Compute size of plots, and their XY location (center of plot)
     % SEEG/ECOG: Do no use real positions, create a 2D grid to place time-series (or spectra)
     if ismember(Channel(1).Type, {'SEEG','ECOG'}) && ~isempty(GlobalData.DataSet(iDS).IntraElectrodes)
@@ -967,7 +966,27 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         Y = Vertices(:,2);
     % Regular sensors with 3D coordinates: Project in 2D
     else
+        axis(hAxes, 'equal');
+        % Range for X and Y is [-sqrt(2), -sqrt(2)]
         [X,Y] = bst_project_2d(Vertices(:,1), Vertices(:,2), Vertices(:,3), '2dlayout');
+        if TopoLayoutOptions.ShowHeadLines
+            % Scale values, so max is useSpace/2
+            maxRadius = max(abs([X;Y]));
+            scaleF = (1/maxRadius) * (useSpace / 2);
+            X = X * scaleF(1);
+            Y = Y * scaleF(2);
+            % Add offset of half figure
+            X = X + 0.5;
+            Y = Y + 0.5;
+            % Find practical plotSize: half of 15-percentile of distances between plot positions
+            GridPts = [X,Y];
+            GridPts = unique(GridPts, 'rows');
+            Tri = delaunayTriangulation(GridPts);
+            edges = Tri.edges;
+            edgesDists = sqrt(sum((GridPts(edges(:,1),:) - GridPts(edges(:,2), :)).^2, 2));
+            dist = bst_prctile(edgesDists, 15);
+            plotSize = 0.5 * dist * [1, 1];
+        end
     end
     % Zoom factor: size of each signal depends on minimum distance between plots
     if isempty(plotSize)
@@ -1274,10 +1293,28 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
         set(PlotHandles.hLabelLegend, 'Visible', 'off');
         set(PlotHandles.hOverlayLegend, 'Visible', 'off');
     end
-    
+
+    % ===== HEAD LINES =====
+    if TopoLayoutOptions.ShowHeadLines
+        if isDrawHeadLines
+            PlotHandles.hHeadLines = PlotNoseEars(hAxes, 1, 1*scaleF(1), [0.5, 0.5]);
+        else
+            set(PlotHandles.hHeadLines, 'Visible', 'on');
+        end
+        % Set limits to contain at leas the head
+        axLimits(1, :) = max(maxRadius, 1.15) * [-scaleF(1), scaleF(1)];
+        axLimits(2, :) = max(maxRadius, 1.15) * [-scaleF(2), scaleF(2)];
+        axLimits(1, :) = 0.5 + axLimits(1, :) + ((1-useSpace(1))/2 * [-1, 1]);
+        axLimits(2, :) = 0.5 + axLimits(2, :) + ((1-useSpace(2))/2 * [-1, 1]);
+    else
+        if ~isempty(PlotHandles.hHeadLines)
+            delete(PlotHandles.hHeadLines);
+            PlotHandles.hHeadLines = [];
+        end
+    end
+
     % ===== AXES LIMITS =====
-    % Set axes limits
-    set(hAxes, 'XLim', [0 1], 'YLim', [0 1]);
+    set(hAxes, 'XLim', axLimits(1,:), 'YLim', axLimits(2,:));
     
     % ===== FIGURE COLORS =====
     % Set figure background
@@ -1489,32 +1526,40 @@ end
 
 
 %% ===== PLOT NOSE AND EARS =====
-function PlotNoseEars(hAxes, isDisc)
+function hPs = PlotNoseEars(hAxes, isDisc, radius, xy_center)
+    if nargin < 4 || isempty(xy_center)
+        xy_center = [0,0];
+    end
+    if nargin < 3 || isempty(radius)
+        radius = 1;
+    end
+    hPs = [];
     % Define coordinates
     Z = 0.0005;
-    NoseX = [0.983; 1.15; 0.983];
-    NoseY = [.18;       0;   -.18];
+    NoseX = [0.983;  1.15;  0.983] * radius + xy_center(1);
+    NoseY = [0.18;   0;    -0.18]  * radius + xy_center(2);
     NoseZ = 0*NoseX + Z;
-    EarX  = [.0555 .0775 .0783 .0746  .0555  -.0055 -.0932 -.1313 -.1384 -.1199] * 2;
-    EarY  = ([.973, 1     1.016 1.0398 1.0638  1.06   1.074  1.044, 1      .951 ] + 0.02);
+    EarX  = [.0555 .0775 .0783 .0746  .0555  -.0055 -.0932 -.1313 -.1384 -.1199] * 2 * radius + xy_center(1);
+    EarY  = ([.973, 1     1.016 1.0398 1.0638  1.06   1.074  1.044, 1      .951 ] + 0.02) * radius + xy_center(2);
     EarZ  = 0*EarX + Z;
     % Line properties
     LineWidth = 2;
     LineColor = [.4 .4 .4];
     % Plot nose
-    plot3(NoseX, NoseY, NoseZ, ...
+    hPs(end+1) = plot3(NoseX, NoseY, NoseZ, ...
          'Color',     LineColor, ...
          'LineWidth', LineWidth, ...
          'Tag',       'RefTopo', ...
          'Parent',    hAxes);
     % Plot left ear
-    plot3(EarX, EarY, EarZ, ...
+    hPs(end+1) = plot3(EarX, EarY, EarZ, ...
          'Color',     LineColor, ...
          'LineWidth', LineWidth, ...
          'Tag',       'RefTopo', ...
          'Parent',    hAxes);
     % Plot right ear
-    plot3(EarX, -EarY, EarZ, ...
+    EarY = -EarY + 2*xy_center(2);
+    hPs(end+1) = plot3(EarX, EarY, EarZ, ...
          'Color',     LineColor, ...
          'LineWidth', LineWidth, ...
          'Tag',       'RefTopo', ...
@@ -1522,10 +1567,10 @@ function PlotNoseEars(hAxes, isDisc)
      % Plot circle
      if isDisc
         t = 0:pi/50:2*pi;
-        CircX = 1 * cos(t);
-        CircY = 1 * sin(t);
+        CircX = radius * cos(t) + xy_center(1);
+        CircY = radius * sin(t) + xy_center(2);
         CircZ = 0 * t + Z;
-        plot3(CircX, CircY, CircZ, ...
+        hPs(end+1) = plot3(CircX, CircY, CircZ, ...
              'Color',     LineColor, ...
              'LineWidth', LineWidth, ...
              'Tag',       'RefTopo', ...
@@ -1673,6 +1718,9 @@ function SetTopoLayoutOptions(option, value)
         case 'ContourLines'
             TopoLayoutOptions.ContourLines = value;
             isLayout = 0;
+        case 'ShowHeadLines'
+            TopoLayoutOptions.ShowHeadLines = value;
+            isLayout = 1;
     end
     % Save options permanently
     bst_set('TopoLayoutOptions', TopoLayoutOptions);
