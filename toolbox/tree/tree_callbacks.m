@@ -1236,8 +1236,12 @@ switch (lower(action))
                         % No read-only
                         if ~bst_get('ReadOnly')
                             AddSeparator(jMenuAlign);
-                            % === ALIGN ALL SURFACES ===
-                            gui_component('MenuItem', jMenuAlign, [], 'Edit fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
+                            if ismember(SurfaceType, {'Scalp', 'Other'}) && (length(bstNodes) == 1)
+                                % === ALIGN ONE SURFACE TO MRI ===
+                                gui_component('MenuItem', jMenuAlign, [], 'Aligh surface to MRI...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative));
+                                % === ALIGN ALL SURFACES TO A REFERENCE ONE ===
+                                gui_component('MenuItem', jMenuAlign, [], 'Edit subject fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
+                            end
                             % === MENU: ALIGN SURFACE MANUALLY ===
                             fcnPopupAlign();
                             % === MENU: LOAD FREESURFER SPHERE ===
