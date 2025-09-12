@@ -59,6 +59,7 @@ Def_OPTIONS.WinLen        = [];            % Option for coherence & PLV 2023
 Def_OPTIONS.WinOverlap    = 0.50;          % Option for spectral estimates (Coherence 2021, PLV 2023)
 Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence deprecated, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, PLV, spectral Granger)
+Def_OPTIONS.GrangerMethod = 'bst';         % Option for Granger causality ('bst' or 'mvgc')
 Def_OPTIONS.GrangerOrder  = 10;            % Option for Granger causality
 Def_OPTIONS.GrangerDir    = 'out';         % Option for Granger causality
 Def_OPTIONS.RemoveEvoked  = 0;             % Removed evoked response to each single trial (useful to bring signals closer to a stationnary state)
@@ -577,79 +578,256 @@ for iFile = 1 : length(FilesA)
             end
             
         % ==== GRANGER ====
-        case 'granger'
+        case {'granger', 'spgranger'}
             DisplayUnits = 'Granger causality';
-            bst_progress('text', sprintf('Calculating: Granger [%dx%d]...', nA, nB));
-            % Using the connectivity toolbox developed at USC
-            inputs.partial     = 0;
-            inputs.nTrials     = nTrials;
-            inputs.standardize = true;
-            inputs.flagFPE     = true;
-            inputs.lag         = 0;
-            inputs.flagELM     = false;
-            %inputs.rho         = 50;
-            % If computing a 1xN interaction: selection of the Granger orientation
-            if (nA == 1) && strcmpi(OPTIONS.GrangerDir, 'in')
-                R = bst_granger(sInputA.Data, sInputB.Data, OPTIONS.GrangerOrder, inputs);
-            else
-                % [sink x source] = bst_granger(sink, source, ...)
-                R = bst_granger(sInputB.Data, sInputA.Data, OPTIONS.GrangerOrder, inputs);
+            isSpectral = ~isempty(regexp(OPTIONS.ProcessName, '^process_spgranger', 'once'));
+            spectralStr = '';
+            if isSpectral
+                spectralStr = 'spectral ';
             end
-            % Granger function returns a connectivity matrix [sink x source] = [to x from] => Needs to be transposed
-            R = R';
-            % Comment
-            if (nA == 1)
-                Comment = ['Granger(' OPTIONS.GrangerDir ')'];
-            else
-                Comment = 'Granger';
-            end
+            bst_progress('text', sprintf('Calculating: Granger %s[%dx%d]...', spectralStr, nA, nB));
             
-        % ==== GRANGER SPECTRAL ====
-        case 'spgranger'
-            DisplayUnits = 'Granger causality';
-            bst_progress('text', sprintf('Calculating: Granger spectral [%dx%d]...', nA, nB));
-            % Using the connectivity toolbox developed at USC
-            inputs.partial     = 0;
-            inputs.nTrials     = nTrials;
-            inputs.standardize = true;
-            inputs.flagFPE     = true;
-            inputs.lag         = 0;
-            inputs.flagELM     = false;
-            inputs.freqResolution = OPTIONS.MaxFreqRes;
-            %inputs.rho         = 50;
-            % If computing a 1xN interaction: selection of the Granger orientation
-            if (nA == 1) && strcmpi(OPTIONS.GrangerDir, 'in')
-                [R, ~, OPTIONS.Freqs] = bst_granger_spectral(sInputA.Data, sInputB.Data, sfreq, OPTIONS.GrangerOrder, inputs);
-            else
-                [R, ~, OPTIONS.Freqs] = bst_granger_spectral(sInputB.Data, sInputA.Data, sfreq, OPTIONS.GrangerOrder, inputs);
-            end
-            R = permute(R, [2 1 3]);
-            % Remove the values at 0Hz => Meaningless
-            iZero = find(OPTIONS.Freqs == 0);
-            if ~isempty(iZero)
-                OPTIONS.Freqs(iZero) = [];
-                R(:,:,iZero) = [];
-            end
-            % Keep only the frequency bins we are interested in
-            if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0)
-                % Get frequencies of interest
-                iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
-                if isempty(iFreq)
-                    bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
-                    CleanExit; return;
+            switch (OPTIONS.GrangerMethod)
+                case 'bst'
+                    if ~isSpectral % process_granger[1, 1n, 2].m
+                        % Using the connectivity toolbox developed at USC
+                        inputs.partial     = 0;
+                        inputs.nTrials     = nTrials;
+                        inputs.standardize = true;
+                        inputs.flagFPE     = true;
+                        inputs.lag         = 0;
+                        inputs.flagELM     = false;
+                        %inputs.rho         = 50;
+                        % If computing a 1xN interaction: selection of the Granger orientation
+                        if (nA == 1) && strcmpi(OPTIONS.GrangerDir, 'in')
+                            R = bst_granger(sInputA.Data, sInputB.Data, OPTIONS.GrangerOrder, inputs);
+                        else
+                            % [sink x source] = bst_granger(sink, source, ...)
+                            R = bst_granger(sInputB.Data, sInputA.Data, OPTIONS.GrangerOrder, inputs);
+                        end
+                        % 'bst_granger' returns  (restVar/unrestVar) - 1
+                        % Report R as log(restVar/unrestVar)
+                        R = log(R + 1);
+                        % Granger function returns a connectivity matrix [sink x source] = [to x from] => Needs to be transposed
+                        R = R';
+                        % Comment
+                        if (nA == 1)
+                            Comment = ['Granger(' OPTIONS.GrangerDir ')'];
+                        else
+                            Comment = 'Granger';
+                        end
+
+                    else % process_spgranger[1, 1n, 2].m
+                        % Using the connectivity toolbox developed at USC
+                        inputs.partial     = 0;
+                        inputs.nTrials     = nTrials;
+                        inputs.standardize = true;
+                        inputs.flagFPE     = true;
+                        inputs.lag         = 0;
+                        inputs.flagELM     = false;
+                        inputs.freqResolution = OPTIONS.MaxFreqRes;
+                        %inputs.rho         = 50;
+                        % If computing a 1xN interaction: selection of the Granger orientation
+                        if (nA == 1) && strcmpi(OPTIONS.GrangerDir, 'in')
+                            [R, ~, OPTIONS.Freqs] = bst_granger_spectral(sInputA.Data, sInputB.Data, sfreq, OPTIONS.GrangerOrder, inputs);
+                        else
+                            [R, ~, OPTIONS.Freqs] = bst_granger_spectral(sInputB.Data, sInputA.Data, sfreq, OPTIONS.GrangerOrder, inputs);
+                        end
+                        % 'bst_granger_spectral' returns  (restVar/unrestVar) - 1
+                        % Report R as log(restVar/unrestVar)
+                        R = log(R + 1);
+                        R = permute(R, [2 1 3]);
+                    end
+
+                case 'mvgc'
+                    % Check plugin
+                    [isInstalled, errMsg] = bst_plugin('Install', 'mvgc');
+                    if ~isInstalled
+                        error(['MVGC plugin is required to compute Granger causality' 10 errMsg]);
+                    end
+                    % Modelling requirements:
+                    % - For processes in Procees1 tab: GC_NxN, GC_1xN, SpGC_NxN, SpGC_1_N
+                    %   Model is computed using all signals in InputA
+                    %
+                    % - For processes in Process2 tab: GC_AxB, SpGC_AxB
+                    %   A model is compute from each signal in InputA and all signals in InputB
+
+                    % Process1 (cases N<-->N, 1-->N, 1<--N)
+                    if ~isempty(regexp(OPTIONS.ProcessName, '1[n]*$', 'once'));
+                        % Obtain data to compute model
+                        X = sInputB.Data;  % For NxN sInputB == sInputA
+                        nX = size(X, 1);
+                        % Output R matrix, in the shape [To, From]
+                        R = NaN(nX);
+                        % Detect and ignore flat signals
+                        iFlatX = all(X == X(:,1), 2);
+                        X = X(~iFlatX, :);
+                        [~, iSideA] = ismember(sInputA.RowNames, sInputB.RowNames); % Side 1 in 1xN
+                        % New indices for X without flat signals
+                        if any(iFlatX)
+                            RowNamesB = sInputB.RowNames(~iFlatX);
+                            [a, b] = ismember(sInputA.RowNames, RowNamesB);
+                            iSideA2 = (b(a));
+                        else
+                            iSideA2 = iSideA;
+                        end
+                        % Modeling for conditional GC
+                        if ~isempty(X)
+                            % Model order to use, Akaike information criteria
+                            [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR');
+                            OPTIONS.GrangerOrderAic = moAIC;
+                            Message = sprintf('Model order to be used (found with AIC): %d', moAIC);
+                            disp(Message);
+                            bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                            % Fit VAR model
+                            [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
+                            % Autocovariance for VAR model
+                            G = var_to_autocov(A, SIG);
+                            % Initialize R for (spectral granger)
+                            if isSpectral
+                                R = repmat(R, [1, 1, size(G,3)+1]); % [To, From, Freq]
+                                OPTIONS.Freqs = linspace(0, sfreq/2, size(R,3))';
+                            end
+                            % GC NxN and spGC NxN
+                            if isConnNN
+                                % Conditional Granger causality (NxN)
+                                granger_fnc = @autocov_to_pwcgc;
+                                if isSpectral
+                                    granger_fnc = @autocov_to_spwcgc;
+                                end
+                                R_valid = granger_fnc(G);  % R_valid is shape [To, From, <Freq>]
+                                % Complet R considering flat signals
+                                if any(iFlatX)
+                                    R(~iFlatX, ~iFlatX, :) = R_valid;
+                                else
+                                    R = R_valid;
+                                end
+                                % Permute to Brainstorm expected orientation: [From, To]
+                                R = permute(R, [2, 1, 3]); % [From, To]
+                                Comment = 'Granger (MVGC)';
+
+                            % GC 1xN and spGC 1xN
+                            else
+                                % Connectivity matrix for non-flat signals, R_valid is shape [To, From, <Freq>]
+                                R_valid = NaN(size(X, 1));
+                                % Conditional Granger causality (1xN)
+                                granger_fnc = @autocov_to_mvgc;
+                                if isSpectral
+                                    R_valid = repmat(R_valid, [1, 1, size(G,3)+1]); % [To, From, Freq]
+                                    granger_fnc = @autocov_to_smvgc;
+                                end
+                                % Compute conditional Granger causality
+                                for iSeed = 1 : length(iSideA2)
+                                    iSideB = setdiff(1:size(X,1), iSideA2(iSeed));
+                                    for iTarget = 1 : length(iSideB)
+                                        if strcmpi(OPTIONS.GrangerDir, 'in')
+                                            R_valid(iSideA2(iSeed), iSideB(iTarget), :) = granger_fnc(G, iSideA2(iSeed), iSideB(iTarget)); % (To, From) == In  iSideA2(iSeed)
+                                        elseif strcmpi(OPTIONS.GrangerDir, 'out')
+                                            R_valid(iSideB(iTarget), iSideA2(iSeed), :) = granger_fnc(G, iSideB(iTarget), iSideA2(iSeed)); % (To, Form) == Out iSideA2(iSeed)
+                                        end
+                                    end
+                                end
+                                % Complete R considering flat signals
+                                if any(iFlatX)
+                                    R(~iFlatX, ~iFlatX, :) = R_valid;
+                                else
+                                    R = R_valid;
+                                end
+                                % Permute to Brainstorm expected orientation: [From, To, <Freq>]
+                                R = permute(R, [2, 1, 3]);
+                                % Select relevant sections of R
+                                if strcmpi(OPTIONS.GrangerDir, 'in')      % Columns
+                                    R = R(:, iSideA, :);
+                                    % 1xN needs to be saved as Rows
+                                    R = permute(R, [2, 1, 3]);
+                                elseif strcmpi(OPTIONS.GrangerDir, 'out') % Rows
+                                    R = R(iSideA, :, :);
+                                end
+                                Comment = ['Granger (MVGC)(' OPTIONS.GrangerDir ')'];
+                            end
+                        end
+
+                    % Process2 (case A-->B)
+                    else
+                        % Output R matrix, in the shape [To, From]
+                        R = NaN(nB, nA);
+                        for iA = 1 : size(sInputA.Data, 1)
+                            % Data to compute model
+                            X = [sInputA.Data(iA, :); sInputB.Data];
+                            % Detect and ignore flat signals
+                            iFlatX = all(X == X(:,1), 2);
+                            X = X(~iFlatX, :);
+                            if ismember(iA, find(iFlatX))
+                                continue
+                            end
+                            % Connectivity matrix for non-flat signals, R_valid is shape [To, From, <Freq>], Size [nB, 1]
+                            R_valid = NaN(size(X, 1)-1, 1);
+                            % Model order to use, Akaike information criteria
+                            [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR');
+                            OPTIONS.GrangerOrderAic = moAIC;
+                            Message = sprintf('Model order to be used (found with AIC): %d', moAIC);
+                            disp(Message);
+                            bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
+                            % Fit VAR model
+                            [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
+                            % Autocovariance for VAR model
+                            G = var_to_autocov(A, SIG);
+                            % Conditional Granger causality (1xN)
+                            granger_fnc = @autocov_to_mvgc;
+                            if isSpectral
+                                R_valid = repmat(R, [1, 1, size(G,3)+1]); % [To, From, Freq]
+                                granger_fnc = @autocov_to_smvgc;
+                            end
+                            iSideB = setdiff(1:size(X,1), 1); % Signal iA is always index 1
+                            for iTarget = 1 : length(iSideB)
+                                R_valid(iTarget, 1, :) = granger_fnc(G, iSideB(iTarget), 1); % (To, Form) == Out iSideA2(iSeed)
+                            end
+                            % Complete R considering flat signals
+                            if any(iFlatX)
+                                % iFlatX(1) corresponds to Signal iA
+                                R(~iFlatX(2:end), iA, :) = R_valid;
+                            else
+                                R(:, iA, :) = R_valid;
+                            end
+                        end
+                        % Permute to Brainstorm expected orientation: [From, To, <Freq>]
+                        R = permute(R, [2, 1, 3]);
+                        Comment = ['Granger (MVGC)(' OPTIONS.GrangerDir ')'];
+                    end
+            end % GrangerMethod
+
+            % For Spectral GC, modify R according the provided frequency parameters
+            if isSpectral
+                % Remove the values at 0Hz => Meaningless
+                iZero = find(OPTIONS.Freqs == 0);
+                if ~isempty(iZero)
+                    OPTIONS.Freqs(iZero) = [];
+                    R(:,:,iZero) = [];
                 end
-                % Cut the unwanted frequencies
-                R = R(:,:,iFreq);
-                OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
+                % Keep only the frequency bins we are interested in
+                if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0)
+                    % Get frequencies of interest
+                    iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
+                    if isempty(iFreq)
+                        bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
+                        CleanExit; return;
+                    end
+                    % Cut the unwanted frequencies
+                    R = R(:,:,iFreq);
+                    OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
+                end
+                % Reshape as [nA x nB x nTime x nFreq]
+                R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
+                grangerMethodStr = '';
+                if strcmpi(OPTIONS.GrangerMethod, 'mvgc')
+                    grangerMethodStr = '(MVGC)';
+                end
+                if isConnNN
+                    Comment = sprintf('SpGranger %s(%1.1fHz)', grangerMethodStr, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
+                else
+                    Comment = sprintf('SpGranger %s(%s,%1.1fHz)', grangerMethodStr, OPTIONS.GrangerDir, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
+                end
             end
-            % Comment
-            if (nA == 1)
-                Comment = sprintf('SpGranger(%s,%1.1fHz)', OPTIONS.GrangerDir, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
-            else
-                Comment = sprintf('SpGranger(%1.1fHz)', OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
-            end
-            % Reshape as [nA x nB x nTime x nFreq]
-            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== AEC ====
         % WARNING: This function has been deprecated. Now using the HENV implementation instead

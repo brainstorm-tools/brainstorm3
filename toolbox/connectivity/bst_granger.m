@@ -113,6 +113,20 @@ if ~isfield(inputs, 'rho') || isempty(inputs.rho)
   inputs.rho = 50;
 end
 
+% Handle flat signals
+nX = size(X, 1);
+connectivity_out  = zeros(nX);
+connectivityV_out = zeros(nX);
+iFlatX = all(X == X(:,1), 2);
+X = X(~iFlatX, :);
+if ~isempty(Y)
+    nY = size(Y, 1);
+    connectivity_out  = zeros(nX, nY);
+    connectivityV_out = zeros(nX, nY);
+    iFlatY = all(Y == Y(:,1), 2);
+    Y = Y(~iFlatY, :);
+end
+
 % dimensions of the signals
 nX = size(X, 1);
 if ndims(X) == 3
@@ -179,16 +193,16 @@ if isempty(Y) % auto-causality
         
         % source = iY, sink = iX
         minOrder = min([restOrder(iX) unOrder]); 
-        connectivity(iX, iY) = restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1;
+        connectivity(iX, iY) = max(0, restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1);
         
         % source = iX, sink = iY
         minOrder = min([restOrder(iY) unOrder]);
-        connectivity(iY, iX) = restCovFull(iY, minOrder+1) / unCovFull(2, 2, minOrder+1) - 1;
+        connectivity(iY, iX) = max(0, restCovFull(iY, minOrder+1) / unCovFull(2, 2, minOrder+1) - 1);
         
       else % by default, bst_mvar sends the result of the single model of given order into the "Full" variables
         
-        connectivity(iX, iY) = restCovFull(iX) / unCovFull(1, 1) - 1; % source = iY, sink = iX
-        connectivity(iY, iX) = restCovFull(iY) / unCovFull(2, 2) - 1; % source = iX, sink = iY
+        connectivity(iX, iY) = max(0, restCovFull(iX) / unCovFull(1, 1) - 1); % source = iY, sink = iX
+        connectivity(iY, iX) = max(0, restCovFull(iY) / unCovFull(2, 2) - 1); % source = iX, sink = iY
         
       end
       
@@ -247,9 +261,9 @@ else % cross-causality
         % causality in mean: Geweke-Granger, i.e. restricted variance / unrestricted variance - 1
         if inputs.flagFPE % get the minimum order of the two models estimated
           minOrder = min([restOrder(iX) unOrder]); 
-          connectivity(iX, iY) = restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1;
+          connectivity(iX, iY) = max(0, restCovFull(iX, minOrder+1) / unCovFull(1, 1, minOrder+1) - 1);
         else % by default, bst_mvar sends the result of the single model of given order into the "Full" variables
-          connectivity(iX, iY) = restCovFull(iX) / unCovFull(1, 1) - 1;
+          connectivity(iX, iY) = max(0, restCovFull(iX) / unCovFull(1, 1) - 1);
         end
 
         % causality in variance
@@ -336,3 +350,20 @@ pValueV = 1 - gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inp
 % = gamcdf(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1), (2 * inputs.lag)/2 = inputs.lag, 2)
 % = gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1) / 2, inputs.lag)
 % note: if connectivityV = 0 (auto-causality or two of the same signals) then this formula evalutes pValueV = 1 which is desired (no significant causality)
+
+% Complete connecitivy matrixes GC for flat signals
+if isempty(Y)
+    if any(iFlatX)
+        connectivity_out(~iFlatX, ~iFlatX)  = connectivity;
+        connectivityV_out(~iFlatX, ~iFlatX) = connectivityV;
+        connectivity  = connectivity_out;
+        connectivityV = connectivityV_out;
+    end
+else
+    if any(iFlatX) || any(iFlatY)
+        connectivity_out(~iFlatX, ~iFlatY)  = connectivity;
+        connectivityV_out(~iFlatX, ~iFlatY) = connectivityV;
+        connectivity  = connectivity_out;
+        connectivityV = connectivityV_out;
+    end
+end

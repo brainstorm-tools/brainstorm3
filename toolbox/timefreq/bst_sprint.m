@@ -1356,8 +1356,8 @@ function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks,
                 % Find half height index on each side of the center frequency.
                 half_height = 0.5 * max_height;
 
-                le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
+                le_ind = max_ind - find(flat_iter(max_ind-1:-1:1) <= half_height,1);
+                ri_ind = max_ind + find(flat_iter(max_ind+1:end)  <= half_height,1);
 
                 % Keep bandwidth estimation from the shortest side.
                 % We grab shortest to avoid estimating very large std from overalapping peaks.
@@ -1410,8 +1410,8 @@ function [guess_params,peak_function] = est_peaks(freqs, flat_iter, max_n_peaks,
                     break
                 end
                 half_height = 0.5 * max_height;
-                le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                le_ind = max_ind - find(flat_iter(max_ind-1:-1:1) <= half_height,1);
+                ri_ind = max_ind + find(flat_iter(max_ind+1:end)  <= half_height,1);
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
 
                 % Estimate gamma from FWHM. Calculate FWHM, converting to Hz, get guess gamma from FWHM
@@ -1560,8 +1560,8 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 % Find half height index on each side of the center frequency.
                 half_height = 0.5 * max_height;
 
-                le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
+                le_ind = max_ind - find(flat_iter(max_ind-1:-1:1) <= half_height,1);
+                ri_ind = max_ind + find(flat_iter(max_ind+1:end)  <= half_height,1);
 
                 % Keep bandwidth estimation from the shortest side.
                 % We grab shortest to avoid estimating very large std from overalapping peaks.
@@ -1621,8 +1621,8 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                     break
                 end
                 half_height = 0.5 * max_height;
-                le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
+                le_ind = max_ind - find(flat_iter(max_ind-1:-1:1) <= half_height,1);
+                ri_ind = max_ind + find(flat_iter(max_ind+1:end)  <= half_height,1);
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
 
                 % Estimate gamma from FWHM. Calculate FWHM, converting to Hz, get guess gamma from FWHM

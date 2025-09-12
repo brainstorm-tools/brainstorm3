@@ -520,6 +520,21 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'mtrf'};
     PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
 
+    % === STATISTICS: MVGC ===
+    PlugDesc(end+1)              = GetStruct('mvgc');
+    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).TestFile       = 'startup_mvgc.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
+    PlugDesc(end).DownloadedFcn  = ['movefile(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
+                                    'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));'];
+    PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
+
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
     PlugDesc(end).Version        = 'github-master';
@@ -2340,9 +2355,11 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Check if test function is available on path
     if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully loaded from:' 10 PlugHomeDir 10 10 ...
-            'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 ...
-            'Try restarting Matlab and Brainstorm.'];
-        bst_progress('removeimage')
+            'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 10 ...
+            'Try the following:' 10 ...
+            '1. Update the plugin ' PlugDesc.Name 10 ...
+            '2. If the issue persists, restart Matlab and Brainstorm.'];
+        bst_progress('removeimage');
         return;
     end
     
