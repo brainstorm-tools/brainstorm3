@@ -23,16 +23,16 @@ authors:
     orcid: 0000-0003-0774-067X
     corresponding: true
     affiliation: 1
-  - name: Anand Joshi
+  - name: Anand A. Joshi
     orcid: 0000-0002-9582-3848
     affiliation: 1
-  - name: Samuel Villalon
+  - name: Samuel Medina Villalon
     orcid: 0000-0002-7571-701X
-    affiliation: 3
-  - name: Yash Vakilna
+    affiliation: "3, 7"
+  - name: Yash S. Vakilna
     orcid: 0000-0001-5084-9625
     affiliation: "4, 6"
-  - name: Johnson Hampson
+  - name: Johnson P. Hampson
     orcid: 0000-0002-6087-3888
     affiliation: 4
   - name: Kenneth Taylor
@@ -40,38 +40,40 @@ authors:
     affiliation: 5
   - name: Francois Tadel
     orcid: 0000-0001-5726-7126
-    affiliation: 7
+    affiliation: 8
   - name: Dileep Nair
     orcid: 0000-0001-9663-7222
     affiliation: 5
-  - name: Christian Bénar
+  - name: Christian G. Bénar
     orcid: 0000-0002-3339-1306
     affiliation: 3
   - name: Sylvain Baillet
     orcid: 0000-0002-6762-5713
     affiliation: 2
-  - name: John Mosher
+  - name: John C. Mosher
     orcid: 0000-0002-3221-229X
     affiliation: 4
-  - name: Richard Leahy
+  - name: Richard M. Leahy
     orcid: 0000-0002-7278-5471
     affiliation: 1
 affiliations:
- - name: University of Southern California, USA
+ - name: University of Southern California, Los Angeles, USA
    index: 1
- - name: McGill University, Canada
+ - name: McGill University, Montreal, Canada
    index: 2
- - name: Institut de Neurosciences des Systèmes, France
+ - name: Aix-Marseille Université, INSERM, Institut de Neurosciences des Systèmes, Marseille, France
    index: 3
  - name: University of Texas Health Science Center at Houston, USA
    index: 4
- - name: Cleveland Clinic, USA
+ - name: Cleveland Clinic, Ohio, USA
    index: 5
- - name: Rice University, USA
+ - name: Rice University, Houston, USA
    index: 6
- - name: Independent Research Engineer, France
+ - name: APHM, Timone Hospital, Epileptology and Cerebral Rhythmology Department, Marseille, France
    index: 7
-date: 11 September 2025
+ - name: Independent Research Engineer, France
+   index: 8
+date: 12 September 2025
 bibliography: paper.bib
 ---
 
@@ -126,6 +128,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
