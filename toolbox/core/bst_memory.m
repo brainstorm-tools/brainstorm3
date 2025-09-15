@@ -2188,7 +2188,28 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
 
     % ===== GET RESULTS VALUES =====
     % === FULL RESULTS ===
-    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp) && iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+        % Get ImageGridAmp interesting sub-part
+        ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+        assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
+        Std           = []; % Std should not be set if ImageGridAmp is a cell
+
+        if ~isempty(iTime)
+            ResultsValues{end} = ResultsValues{end}(:, iTime);
+        end
+        
+        if ~isempty(iRows)
+            ResultsValues{1} = ResultsValues{1}(iRows, :);
+        end
+
+        tmp = ResultsValues{1};
+        for iDecomposition = 2 : length(ResultsValues)
+            tmp = tmp * ResultsValues{iDecomposition};
+        end     
+        
+        ResultsValues = double(tmp);
+
+    elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
         % Get ImageGridAmp interesting sub-part
         if isempty(iRows)
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
@@ -2588,8 +2609,9 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         sources = GetResultsValues(iDS, iResult, [], iMax);
     % Full results
     else
-        % Get the maximum on the full results matrix
-        sources = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+        % Get the maximum on the full results matrix 
+        % -- note we shdould avoid that
+        sources = GetResultsValues(iDS, iResult, [], []);
     end
     % Store minimum and maximum of displayed data
     DataMinMax = [min(sources(:)), max(sources(:))];
