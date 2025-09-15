@@ -2196,10 +2196,18 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
 
         if ~isempty(iTime)
             ResultsValues{end} = ResultsValues{end}(:, iTime);
+
+            usedRow = any(ResultsValues{end}, 2);
+            ResultsValues{end} = ResultsValues{end}(usedRow, :);
+            ResultsValues{end-1} = ResultsValues{end-1}(:, usedRow);
         end
         
         if ~isempty(iRows)
             ResultsValues{1} = ResultsValues{1}(iRows, :);
+
+            usedCol = any(ResultsValues{1}, 1);
+            ResultsValues{1} = ResultsValues{1}(:, usedCol);
+            ResultsValues{2} = ResultsValues{2}(usedCol, :);
         end
 
         ResultsValues = double(bst_multiply_cells(ResultsValues));
