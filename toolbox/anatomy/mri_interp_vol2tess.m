@@ -172,6 +172,7 @@ OutputFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [File
 % Save new file
 bst_save(OutputFile, ResultsMat, 'v7');
 % Update database
+OutputFile = file_short(OutputFile);
 db_add_data(iStudy, OutputFile, ResultsMat);
 
 % Update tree
@@ -184,7 +185,7 @@ if ~isProgressBar
     bst_progress('stop');
 end
 %% ====== VISUALIZE RESULT ======= 
-view_surface_data(pialFile, file_short(OutputFile));
+view_surface_data(pialFile, OutputFile);
 if ~isProgressBar
     bst_progress('stop');
 end
