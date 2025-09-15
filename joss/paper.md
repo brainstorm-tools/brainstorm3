@@ -99,7 +99,7 @@ Stereoelectroencephalography (sEEG) is a critical tool for mapping epileptic net
 
 ![The Brainstorm interface displaying the automatically detected contacts, with the GARDEL button (in orange) that triggers the automatic detection.\label{fig:figure4}](figure4.png)
 
-**Post-processing of the electrodes/contacts**: All the necessary post-processing can be done using the Brainstorm interface interactively. If there is a wrongly detected electrode, we can delete and manually rectify it by creating it from scratch (as mentioned in the **Manual contact localization** section above) along with renaming them if needed (\autoref{fig:figure5}). There could be cases where a single electrode may be detected as multiple in which case we need to merge them as one (\autoref{fig:figure6}). We also allow fine-tuning at the contact level, where we can remove (\autoref{fig:figure7) or add (\autoref{fig:figure8}) them. On doing any of the editing operations, it is also ensured that the ordering of the contacts is maintained with the deepest contact as first in the sequence. More details can be found in the tutorial section: [Edit the contacts positions](https://neuroimage.usc.edu/brainstorm/seeg/SeegContactLocalization#Edit_the_contacts_positions).
+**Post-processing of the electrodes/contacts**: All the necessary post-processing can be done using the Brainstorm interface interactively. If there is a wrongly detected electrode, we can delete and manually rectify it by creating it from scratch (as mentioned in the **Manual contact localization** section above) along with renaming them if needed (\autoref{fig:figure5}). There could be cases where a single electrode may be detected as multiple in which case we need to merge them as one (\autoref{fig:figure6}). We also allow fine-tuning at the contact level, where we can remove (\autoref{fig:figure7}) or add (\autoref{fig:figure8}) them. On doing any of the editing operations, it is also ensured that the ordering of the contacts is maintained with the deepest contact as first in the sequence. More details can be found in the tutorial section: [Edit the contacts positions](https://neuroimage.usc.edu/brainstorm/seeg/SeegContactLocalization#Edit_the_contacts_positions).
 
 ![Renaming electrode (a) Electrode **A** before renaming; (b) Brainstorm interface to rename the electrode (double click on electrode **A** and change name to **AA’**); (c) Electrode **A** renamed to **AA’** (along with all the contacts).\label{fig:figure5}](figure5.png)
 
@@ -128,6 +128,7 @@ While other tools, such as DEETO [@Arnulfo:2015], 3D Slicer’s sEEG Assistant [
 Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972.
 
 # References
+
 
 
 
