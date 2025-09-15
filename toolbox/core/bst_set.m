@@ -82,6 +82,7 @@ function bst_set( varargin )
 %    - bst_set('PcaOptions',            PcaOptions) 
 %    - bst_set('ReadOnly',              ReadOnly)
 %    - bst_set('LastPsdDisplayFunction', LastPsdDisplayFunction)
+%    - bst_set('LastTfDisplayFunction', LastTfDisplayFunction)
 %    - bst_set('PlotlyCredentials',     Username, ApiKey, Domain)
 %    - bst_set('KlustersExecutable',    ExecutablePath)
 %    - bst_set('ExportBidsOptions'),    ExportBidsOptions)
@@ -276,8 +277,8 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'ConnectGraphOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_stft', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'PcaOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
-          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions', 'ShowHiddenFiles'}
+          'OpenMEEGOptions', 'DuneuroOptions','NIRSTORMOptions', 'DigitizeOptions', 'PcaOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
+          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'LastTfDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions', 'ShowHiddenFiles'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

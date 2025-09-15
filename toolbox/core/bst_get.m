@@ -202,6 +202,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('groot')                   : Get the root graphic object
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
+%    - bst_get('LastTfDisplayFunction')   : Display option of measure for timefreq map (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
 %    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
 %    - bst_get('Pipelines')               : Saved Pipelines stored
@@ -3255,7 +3256,8 @@ case 'AtlasFile'
             'ShowRefLines',    1, ...
             'ShowLegend',      1, ...
             'FlipYAxis',       0, ...
-            'ContourLines',    10);
+            'ContourLines',    10, ...
+            'ShowHeadLines',   0);
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'StatThreshOptions'
@@ -3591,6 +3593,13 @@ case 'AtlasFile'
     case 'LastPsdDisplayFunction'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'LastPsdDisplayFunction')
             argout1 = GlobalData.Preferences.LastPsdDisplayFunction;
+        else
+            argout1 = [];
+        end
+
+    case 'LastTfDisplayFunction'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'LastTfDisplayFunction')
+            argout1 = GlobalData.Preferences.LastTfDisplayFunction;
         else
             argout1 = [];
         end

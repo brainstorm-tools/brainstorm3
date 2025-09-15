@@ -24,6 +24,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %         - 'openmeeg'        : OpenMEEG forward model
 %     .SEEGMethod:    'openmeeg' and 'duneuro'  
 %     .ECOGMethod:    'openmeeg' and 'duneuro' 
+%     .NIRSMethod:    'import'
 %
 %     ======= METHODS OPTIONS =============================================
 %     OpenMEEG: see bst_openmeeg
@@ -85,6 +86,7 @@ Def_OPTIONS = struct(...
     'EEGMethod',          'eeg_3sphereberg', ...
     'ECOGMethod',         'openmeeg', ...
     'SEEGMethod',         'openmeeg', ...
+    'NIRSMethod',         'import', ...
     'HeadCenter',         [],...
     'Radii',              [.88 .93 1],...
     'Conductivity',       [.33 .0042 .33],...
@@ -150,6 +152,7 @@ iRef  = good_channel(OPTIONS.Channel,[],'MEG REF');
 iEeg  = good_channel(OPTIONS.Channel,[],'EEG');
 iEcog = good_channel(OPTIONS.Channel,[],'ECOG');
 iSeeg = good_channel(OPTIONS.Channel,[],'SEEG');
+iNirs = good_channel(OPTIONS.Channel,[],'NIRS');
 % If no channels available for one type: ignore method
 if isempty(iMeg)
     OPTIONS.MEGMethod = '';
@@ -172,7 +175,12 @@ if isempty(iSeeg)
 elseif isempty(OPTIONS.SEEGMethod)
     iSeeg = [];
 end
-if isempty(OPTIONS.EEGMethod) && isempty(OPTIONS.MEGMethod) && isempty(OPTIONS.ECOGMethod) && isempty(OPTIONS.SEEGMethod)
+if isempty(iNirs)
+    OPTIONS.NIRSMethod = '';
+elseif isempty(OPTIONS.NIRSMethod)
+    iNirs = [];
+end
+if isempty(OPTIONS.EEGMethod) && isempty(OPTIONS.MEGMethod) && isempty(OPTIONS.ECOGMethod) && isempty(OPTIONS.SEEGMethod) && isempty(OPTIONS.NIRSMethod)
     errMessage = 'Nothing to process...';
     OPTIONS = [];
     return;
@@ -199,12 +207,13 @@ OPTIONS.iMeg  = [iMeg iRef];
 OPTIONS.iEeg  = iEeg;
 OPTIONS.iEcog = iEcog;
 OPTIONS.iSeeg = iSeeg;
+OPTIONS.iNirs = iNirs;
     
 
 %% ===== OUTPUT FILENAME ===========================================================================
 %  =================================================================================================
 % Get all methods
-allMethods = unique({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
+allMethods = unique({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod, OPTIONS.NIRSMethod});
 allMethods(cellfun(@isempty, allMethods)) = [];
 % Build default comment
 if isempty(OPTIONS.Comment)
@@ -404,12 +413,12 @@ else
     end
 end
 % Check for any sensor located "inside" the inner skull (that shouldn't be there)
-allLoc = [OPTIONS.Channel([iMeg iEeg]).Loc];
+allLoc = [OPTIONS.Channel([iMeg iEeg, iNirs]).Loc];
 if ~isempty(allLoc)
     iVertInside = find(inpolyhd(allLoc, sSurfInner.Vertices, sSurfInner.Faces));
     % Warning if there are some sensors inside
     if ~isempty(iVertInside)
-        errMessage = ['Some EEG or MEG sensors are located inside the brain volume.' 10 ...
+        errMessage = ['Some EEG, MEG  or NIRS sensors are located inside the brain volume.' 10 ...
                       'You should check the positions of the sensors and the type of the channels.' 10 10 ...
                       'Position: Right-click on the channel file > MRI registration > Edit.' 10 ...
                       'Type: Right-click on the channel file > Edit channel file.'];
@@ -483,6 +492,9 @@ if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMetho
     % Add values to previous Gain matrix
     Gain(~isnan(Gain_om)) = Gain_om(~isnan(Gain_om));
     % Comment in history field
+    om_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
+    Lia = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'openmeeg');
+    strHistory = [strHistory, ' | ', sprintf('OpenMEEG (%s)', strjoin(om_types(Lia), ', '))];
     for iLayer = 1:length(OPTIONS.BemNames)
         vertInfo = whos('-file', OPTIONS.BemFiles{iLayer}, 'Vertices');
         strHistory = [strHistory, ' | ', sprintf('%s %1.4f %dV', OPTIONS.BemNames{iLayer}, OPTIONS.BemCond(iLayer), vertInfo.size(1)) ];
@@ -498,6 +510,9 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field
+    dn_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
+    Lia = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'duneuro');
+    strHistory = [strHistory, ' | ', sprintf('DUNEuro (%s)', strjoin(dn_types(Lia), ', '))];
     strHistory = [strHistory, ' | ', sprintf('Fem head file: %s, |  Cortex file: %s, ', OPTIONS.FemFile, OPTIONS.CortexFile) ];
     if ~OPTIONS.UseTensor
         strHistory = [strHistory, ' | ', sprintf('FemCond: isotropic, %s', num2str(OPTIONS.FemCond))];
@@ -522,15 +537,14 @@ end
 
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
+Param = [];
 if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro'})) || ...
    (~isempty(OPTIONS.EEGMethod) && ~ismember(OPTIONS.EEGMethod, {'openmeeg', 'duneuro'}))
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
-    Param(1:length(OPTIONS.Channel)) = deal(struct(...
-            'Center', [], ...
-            'Radii',  []));
+    Param = repmat(struct('Center', [], 'Radii', []), 1, length(OPTIONS.Channel));
     iAllMeg = [iRef, iMeg];
-    % Overlapping spheres
+    % MEG: Overlapping spheres
     if strcmpi(OPTIONS.MEGMethod, 'os_meg')
         % Start progress bar
         bst_progress('start', 'Head modeler', 'Estimating overlapping spheres...');
@@ -546,16 +560,36 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
             [Param(iRef).Center] = deal(mean([Param(iMeg).Center],2));
             [Param(iRef).Radii]  = deal(mean([Param(iMeg).Radii],2));
         end
-    % Other types
-    else
-        [Param.Center] = deal(OPTIONS.HeadCenter);
-        [Param.Radii]  = deal(OPTIONS.Radii);
+    % MEG: Other types
+    elseif ~isempty(OPTIONS.MEGMethod)
+        [Param(iAllMeg).Center] = deal(OPTIONS.HeadCenter);
+        [Param(iAllMeg).Radii]  = deal(OPTIONS.Radii);
+    end
+    % EEG: 3-shell sphere
+    if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
+        [Param(iEeg).Center] = deal(OPTIONS.HeadCenter);
+        [Param(iEeg).Radii]  = deal(OPTIONS.Radii);
     end
 
     % ===== COMPUTE GAIN MATRIX ======
     % Start progress bar
     BlockSize = 2000;
     bst_progress('start', 'Head modeler', 'Computing gain matrix...', 0, ceil(nv/BlockSize));
+    % Comment in history field
+    % ===== MEG =====
+    if ismember(OPTIONS.MEGMethod, {'meg_sphere', 'os_meg'})
+        if strcmpi(OPTIONS.MEGMethod, 'os_meg')
+            megMethodStr = 'Overlapting spheres';
+        else
+            megMethodStr = 'Single sphere';
+        end
+        strHistory =  [strHistory, ' | ', megMethodStr, ' (MEG)',  ' | ' 'See ''Param'' field'];
+    end
+    % ===== EEG =====
+    if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
+        strHistory =  [strHistory, ' | ', '3-shell sphere (EEG)',  ' | ', ...
+            sprintf('Cond: %1.3f %1.3f %1.3f, Radii: %1.3f %1.3f %1.3f', OPTIONS.Conductivity, OPTIONS.Radii)];
+    end
     % Loop on all blocks 
     for iBlock = 1:BlockSize:nv
         bst_progress('inc', 1);
@@ -574,17 +608,69 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')
             EegLoc = [OPTIONS.Channel(iEeg).Loc]';
             Gain(iEeg,iSrcGain) = bst_eeg_sph(OPTIONS.GridLoc(iSrc,:), EegLoc, OPTIONS.HeadCenter, OPTIONS.Radii, OPTIONS.Conductivity);
-            strHistory = sprintf(', Cond: %1.3f %1.3f %1.3f, Radii: %1.3f %1.3f %1.3f', OPTIONS.Conductivity, OPTIONS.Radii);
         end
     end
-else
-    Param = [];
-end    
-% Check for errors: NaN values in the Gain matrix
+end   
+
+
+%% ===== COMPUTE: NIRSTORM HEADMODELS =====
+if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
+    if ~strcmp(OPTIONS.HeadModelType, 'surface')
+        errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
+        OPTIONS = [];
+        return;
+    end
+    % Check NIRSTORM plugin
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nirstorm');
+    if ~isInstalled
+        errMessage = ['NIRSTORM plugin is required to compute NIRS head model' 10 errMsg];
+        OPTIONS = [];
+        return;
+    end
+    % Check version, update if needed
+    if bst_plugin('CompareVersions', PlugDesc.Version, '0.9.1') < 0
+        if PlugDesc.isManaged
+            bst_plugin('Uninstall', 'nirstorm', 0, 0);
+            bst_plugin('Install',   'nirstorm');
+        end
+    end
+    % Get Subject
+    sSubject = bst_get('SurfaceFile', OutSurfaceFile);
+    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+    % Subject Informations 
+    OPTIONS.SubjectName = sSubject.Name;
+    OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    OPTIONS.VoronoiFile = voronoi_fn;
+    OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    % Use defined options
+    if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
+        sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);
+        if isempty(sOptions)
+            errMessage = 'Canceled by user.';
+            OPTIONS = [];
+            return;
+        end
+        OPTIONS = struct_copy_fields(OPTIONS, sOptions, 1);
+    end
+    % Compute head model
+    [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+    if  ~isempty(warning_message)
+        for iMessage = 1:length(warning_message)
+            warning(warning_message{iMessage});
+        end
+    end
+    Gain(iNirs,:) = gain_nirs(iNirs, :);
+    % Comment in history field
+    strHistory =  [strHistory, ' | ', 'Import (NIRS)'  ' | ', ...
+        sprintf('Fluence: %s, SmoothMethod: %s, SmoothFWHM: %1.3f', OPTIONS.FluenceFolder, OPTIONS.smoothing_method, OPTIONS.smoothing_fwhm)];
+end   
+
+%% Check for errors: NaN values in the Gain matrix
 if (nnz(isnan(Gain(iEeg,:))) > 0)  && ~isempty(OPTIONS.EEGMethod)  || ...
    (nnz(isnan(Gain(iMeg,:))) > 0)  && ~isempty(OPTIONS.MEGMethod)  || ...
    (nnz(isnan(Gain(iEcog,:))) > 0) && ~isempty(OPTIONS.ECOGMethod) || ...
-   (nnz(isnan(Gain(iSeeg,:))) > 0) && ~isempty(OPTIONS.SEEGMethod)
+   (nnz(isnan(Gain(iSeeg,:))) > 0) && ~isempty(OPTIONS.SEEGMethod) || ...
+   (nnz(isnan(Gain(iNirs,:))) > 0) && ~isempty(OPTIONS.NIRSMethod)
     errMessage = ['An unknown error occurred in the computation of the head model:' 10 ...
                   'NaN values found for valid sensors in the Gain matrix'];
     OPTIONS = [];
@@ -625,6 +711,7 @@ SaveHeadModel = struct(...
     'EEGMethod',     OPTIONS.EEGMethod, ...
     'ECOGMethod',    OPTIONS.ECOGMethod, ...
     'SEEGMethod',    OPTIONS.SEEGMethod, ...
+    'NIRSMethod',    OPTIONS.NIRSMethod, ...
     'Gain',          Gain, ...                   % FT 11-Jan-10: Remove "single"
     'Comment',       OPTIONS.Comment, ...
     'HeadModelType', OPTIONS.HeadModelType, ...
@@ -635,7 +722,7 @@ SaveHeadModel = struct(...
     'SurfaceFile',   file_win2unix(OutSurfaceFile), ...
     'Param',         Param);
 % History: compute head model
-SaveHeadModel = bst_history('add', SaveHeadModel, 'compute', ['Compute head model: ' OPTIONS.Comment strHistory]);
+SaveHeadModel = bst_history('add', SaveHeadModel, 'compute', ['Compute head model: ##' OPTIONS.Comment, '##' strHistory]);
 % Save file
 if ~isempty(OPTIONS.HeadModelFile)
     bst_save(OPTIONS.HeadModelFile, SaveHeadModel, 'v7');
@@ -645,5 +732,4 @@ end
 bst_progress('stop');
 bst_progress('removeimage');
 
-
-
+end

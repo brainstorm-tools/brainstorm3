@@ -55,6 +55,7 @@ if isstruct(DataFile)
     DataMat  = DataFile;
     isRawIn  = 0;
     if isstruct(DataMat.F) || strcmpi(DataMat.DataType, 'raw')
+        sFileIn = DataMat.F;
         isRawIn  = 1;
     end
     DataFile = [];
@@ -128,9 +129,11 @@ if isTimelock
 %     if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
 %         ftData.var = DataMat.Std(iChannels,:);
 %     end
+
 % Raw structure: see ft_datatype_raw.m
 else
     ftData.trial{1} = F;
+    ftData.time{1} = DataMat.Time;
 end
 
 % ===== CHANNEL INFO =====

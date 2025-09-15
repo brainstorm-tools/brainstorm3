@@ -1,3 +1,46 @@
+August 2025
+- Anatomy: Skull stripping MRI/CT/PET and diff-size coregistered volumes
+- BIDS: Resolve BIDS URI for same Dataset
+- Connectivity: MVGC method (recommended) for Time and Freq Granger causality
+- DB: Bugfix, keep default anatomies for moved or copied Subject
+- DB: Update: include 'NIRSmethod' field in Study.HeadModel struct
+- iEEG: Improvements and bugfix for iEEG panel
+- IO: Extended support for XDF files
+- IO: Bugfix for Axion files
+- Reports: Support screenshots of jFrame windows
+- Viz: Improved 2D-Layout plot positioning for MEG, EEG, NIRS, ECOG and SEEG
+- Viz: Show all pairs for AxB connectivity metrics
+- Distrib: Brainstorm compilation fetches latest brainstorm.jar
+- Distrib: Script to run the ECOG tutorial
+--------------------------------------------------------------
+July 2025
+- Anatomy: Prefer sform over qform if both are present in NIfTI files
+- Anatomy: Allow non-interactive call for tess_force_envelop
+- Anatomy: Compute mesh statistics for surface and volume meshes
+- Anatomy: Add various methods to smooth a surface mesh
+- BIDS: Sensor positions from `_electrodes.tsv` after importing `_channels.tsv`
+- Events: in/out events as BIDS, onset is relative to beginning of recording
+- Events: Improve event merging, merge channel and notes information
+- iEEG: Automatic contact localization with GARDEL
+- Process: Extend FieldTrip-based SCD to work on imported and raw data
+- Plugins: Expand symbolic links and improve handling of paths
+- Distrib: Coregister, realign and skullstrip with SPM12 in compiled version
+- Distrib: Scripting, support string arrays "text" and char vectors 'text'
+--------------------------------------------------------------
+June 2025
+- Bugfix: Correct conversion of EEG points from .pos file on reviewing CTF data
+- Digitizer: Improved support for Polhemus-Patriot device
+- Connectivity: Allow NaN as value for connectivity metrics
+- Viz: Improved figures for FOOOF at source level
+- Viz: Remember last display option for TF representations
+- Distrib: Script to run the Seizure fingerprinting tutorial
+--------------------------------------------------------------
+May 2025
+- NIRS: Correct units of dOD
+- NIRS: Automatic fix of badly formatted SNIRF files
+- BIDS: Allow importing BIDS dataset with ANT .cnt EEG files
+- iEEG: Bugfixes and improvements in iEEG panel
+--------------------------------------------------------------
 April 2025
 - Anatomy: Add support for PET volumes
 - Process: Apply montages on raw continuous recordings

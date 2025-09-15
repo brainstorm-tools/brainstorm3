@@ -1,7 +1,7 @@
-function [NewTessFile, iSurface] = tess_force_envelope(TessFile, EnvFile)
+function [NewTessFile, iSurface] = tess_force_envelope(TessFile, EnvFile, isInteractive)
 % TESS_FORCE_ENVELOPE: Forces the vertices of a surface to fit entirely in an envelope.
 %
-% USAGE:  [NewTessFile, iSurface] = tess_force_envelope(TessFile, EnvFile)
+% USAGE:  [NewTessFile, iSurface] = tess_force_envelope(TessFile, EnvFile, isInteractive=1)
 % 
 % INPUT: 
 %    - TessFile : Full path to surface file to modify
@@ -31,6 +31,11 @@ function [NewTessFile, iSurface] = tess_force_envelope(TessFile, EnvFile)
 % Authors: Francois Tadel, 2019
 
     
+% ===== PARSE INPUTS =====
+if (nargin < 3) || isempty(isInteractive)
+    isInteractive = 1;
+end
+
 % ===== LOAD FILES =====
 % Progress bar
 bst_progress('start', 'Fix cortex surface', 'Loading surfaces...');
@@ -45,7 +50,6 @@ EnvMat.Vertices = double(EnvMat.Vertices);
 % Compute best fitting sphere from envelope
 bfs_center = bst_bfs(EnvMat.Vertices);
 
-
 % ===== DEFORM SURFACE TO FIT IN ENVELOPE =====
 % Center the two surfaces on the center of the sphere
 vCortex = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
@@ -57,15 +61,25 @@ iVertOut = find(~inpolyhd(vCortex, vInner, EnvMat.Faces));
 % If no points outside, nothing to do
 if isempty(iVertOut)
     bst_progress('stop');
-    java_dialog('msgbox', 'All cortex vertices are already inside the inner skull.', 'Fix cortex surface');
+    msgNoVertexOutside = 'All cortex vertices are already inside the inner skull.';
+    if isInteractive
+        java_dialog('msgbox', msgNoVertexOutside, 'Fix cortex surface');
+    else
+        fprintf(['BST> ' msgNoVertexOutside '\n']);
+    end
+    NewTessFile = file_short(TessFile);
+    [~, ~, iSurface] = bst_get('SurfaceFile', TessFile);
     return;
 end
-% Display where the outside points are
-hFig = view_surface(TessFile, [], [], 'NewFigure');
-panel_surface('SetSurfaceEdges', hFig, 1, 1);
-line(TessMat.Vertices(iVertOut,1), TessMat.Vertices(iVertOut,2), TessMat.Vertices(iVertOut,3), 'LineStyle', 'none', 'Marker', 'o',  'MarkerFaceColor', [1 0 0], 'MarkerSize', 6);
-view_surface(EnvFile, [], [], hFig);
-figure_3d('SetStandardView', hFig, 'bottom');
+
+if isInteractive
+    % Display where the outside points are
+    hFig = view_surface(TessFile, [], [], 'NewFigure');
+    panel_surface('SetSurfaceEdges', hFig, 1, 1);
+    line(TessMat.Vertices(iVertOut,1), TessMat.Vertices(iVertOut,2), TessMat.Vertices(iVertOut,3), 'LineStyle', 'none', 'Marker', 'o',  'MarkerFaceColor', [1 0 0], 'MarkerSize', 6);
+    view_surface(EnvFile, [], [], hFig);
+    figure_3d('SetStandardView', hFig, 'bottom');
+end
 
 % Fix point by point
 for i = 1:length(iVertOut)
@@ -112,11 +126,13 @@ NewTessFile = file_short(NewTessFile);
 % Register this file in Brainstorm database
 iSurface = db_add_surface(iSubject, NewTessFile, NewTessMat.Comment);
 
-% Display modified surface
-hFig = view_surface(NewTessFile, [], [], 'NewFigure');
-panel_surface('SetSurfaceEdges', hFig, 1, 1);
-view_surface(EnvFile, [], [], hFig);
-figure_3d('SetStandardView', hFig, 'bottom');
+if isInteractive
+    % Display modified surface
+    hFig = view_surface(NewTessFile, [], [], 'NewFigure');
+    panel_surface('SetSurfaceEdges', hFig, 1, 1);
+    view_surface(EnvFile, [], [], hFig);
+    figure_3d('SetStandardView', hFig, 'bottom');
+end
 
 % Close progress bar
 bst_progress('stop');

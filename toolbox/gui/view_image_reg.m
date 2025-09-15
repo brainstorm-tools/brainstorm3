@@ -173,7 +173,8 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
 % Only for connectivity files
 if ~isempty(iTimefreq) && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
     % If there are some self-connectivity values in the displayed matrix
-    if any(ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
+    if all(ismember({'From', 'To'}, DimLabels)) && ...
+       any(ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
         GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = 'self_connect';
         GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 1;
     else

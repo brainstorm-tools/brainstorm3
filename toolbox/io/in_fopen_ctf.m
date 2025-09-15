@@ -184,17 +184,30 @@ end
 
 %% ===== READ POLHEMUS FILE =====
 if ~isempty(pos_file)
-    % Read file
+    % Read file, returns in CTF native
     HeadMat = in_channel_pos(pos_file);
     % Copy head points
     ChannelMat.HeadPoints = HeadMat.HeadPoints;
+    % Copy channel positions for EEG
+    iHeadEegChannels = channel_find(HeadMat.Channel, 'EEG');
+    for ix = 1 : length(iHeadEegChannels)
+        HeadEegChannelName = HeadMat.Channel(iHeadEegChannels(ix)).Name;
+        iChannelEegChannel = channel_find(ChannelMat.Channel, HeadEegChannelName);
+        if ~isempty(iChannelEegChannel) && length(iChannelEegChannel) == 1 && ...
+           strcmpi(ChannelMat.Channel(iChannelEegChannel).Type, 'EEG') && isempty(ChannelMat.Channel(iChannelEegChannel).Loc)
+            ChannelMat.Channel(iChannelEegChannel).Loc = HeadMat.Channel(iHeadEegChannels(ix)).Loc;
+        end
+    end
+
     isAlign = true;
     % Warn if unsure about coordinate system. Should now be converted to "Native" CTF coil-based
     % when HPI points are present when loading the pos file.
     if ~isfield(HeadMat, 'TransfMegLabels') || ~iscell(HeadMat.TransfMegLabels) || isempty(HeadMat.TransfMegLabels)
         disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');
     elseif ismember('Native=>Brainstorm/CTF', HeadMat.TransfMegLabels)
-        disp('BST> Warning: head point coordinates appear to already be in SCS, presumably because of missing digitized head coils.');
+        disp(['BST> Warning: missing digitized head coils in headshape file, automatic MEG-MRI coregistration is not possible.' 10 ...
+              '              Assuming SCS coordinates as anatomical fiducials are present. If these fiducials actually represent head coils,' 10 ...
+              '              please rename them in the headshape file to "HPI-N", "HPI-L" and "HPI-R", and re-import this MEG dataset.']);
         isAlign = false;
     elseif ~ismember('RawPoints=>Native', HeadMat.TransfMegLabels)
         disp('BST> Warning: Unable to confirm coordinate system of head points. Assuming "Native" CTF head-coil-based system.');

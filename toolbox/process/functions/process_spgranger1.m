@@ -22,6 +22,7 @@ function varargout = process_spgranger1( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2014-2020
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -48,6 +49,17 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
+    % === GRANGER METHOD
+    sProcess.options.label.Comment = '<B>Granger causility method:</B>';
+    sProcess.options.label.Type    = 'label';
+    sProcess.options.grangermethod.Comment = {['Conditional Granger causality<BR>', ...
+                                             '<FONT color="#777777">(MVGC Toolbox implementation)</FONT>'], ...
+                                             ['<FONT color="#777777">Unconditional Granger causality (Not recommended)</FONT><BR>', ...
+                                             '<FONT color="#777777">Default before Sep 2025</FONT>']; ...
+                                             'mvgc', 'bst'};
+    sProcess.options.grangermethod.Type    = 'radio_label';
+    sProcess.options.grangermethod.Value   = 'bst';
+    sProcess.options.grangermethod.Controller.bst = 'bst';
     % === DIRECTION
     sProcess.options.dirlabel.Comment  = 'Direction of the causality:';
     sProcess.options.dirlabel.Type     = 'label';
@@ -62,6 +74,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
     sProcess.options.maxfreqres.Type    = 'value';
     sProcess.options.maxfreqres.Value   = {2,'Hz',2};
+    sProcess.options.maxfreqres.Class   = 'bst';
     % === HIGHEST FREQUENCY OF INTEREST
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
@@ -91,6 +104,10 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
 
     % Metric options
     OPTIONS.Method = 'spgranger';
+    OPTIONS.GrangerMethod = 'bst';
+    if isfield(sProcess.options, 'grangermethod') && ~isempty(sProcess.options.grangermethod.Value)
+        OPTIONS.GrangerMethod = sProcess.options.grangermethod.Value;
+    end
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
     OPTIONS.GrangerOrder = sProcess.options.grangerorder.Value{1};
     OPTIONS.MaxFreqRes   = sProcess.options.maxfreqres.Value{1};

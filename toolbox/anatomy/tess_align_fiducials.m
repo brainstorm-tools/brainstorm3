@@ -1,11 +1,19 @@
-function tess_align_fiducials( RefFile, SurfaceFiles )
-% TESS_ALIGN_FIDUCIALS: Align a list of surfaces according to one reference surface.
+function tess_align_fiducials(RefFile, SurfaceFiles, updateMRI )
+% TESS_ALIGN_FIDUCIALS: Align surfaces according to one reference surface.
 %
-% USAGE:  tess_align_fiducials( RefFile, SurfaceFiles )
+% USAGE 1:  tess_align_fiducials( RefFile, SurfaceFiles )
+%           Use the GUI to set fiducials in suface RefFile, on close:
+%           - All surfaces SurfaceFiles will aligned to RefFile
+%           - New set of fiducials will be saved in Subject's MRI (to keep MRI-Surf registration)
+%
+% USAGE 2:  tess_align_fiducials( RefFile )
+%           Use the GUI to set fiducials in suface RefFile, on close:
+%           - RefFile will be alighned to the Subjec's MRI using the new fiducials
+%           - No changes are peformed in Subject's MRI nor other Surfaces
 % 
 % INPUT:
-%     - RefFile      : full path to reference surface file
-%     - SurfaceFiles : cell array of strings, full path to all the surfaces files to align
+%     - RefFile      : path to reference surface file
+%     - SurfaceFiles : cell array of strings, path to all the surfaces files to align
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,12 +34,21 @@ function tess_align_fiducials( RefFile, SurfaceFiles )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2013
+%          Raymundo Cassani, 2025
+
+%% ===== PARSE INPUTS =====
+updateMriFid = 1;
+if (nargin < 2) || isempty(SurfaceFiles)
+    SurfaceFiles = {RefFile};
+    updateMriFid = 0;
+end
 
 %% ===== INITIALIZATION =====
 % Initializations
 global gAlignFid;
 gAlignFid = [];
 gAlignFid.SurfaceFiles = SurfaceFiles;
+gAlignFid.updateMriFid = updateMriFid;
 % Save current scouts modifications
 panel_scout('SaveModifications');
 % Get all the subject's surfaces:
@@ -228,8 +245,10 @@ function SaveModifications()
     % Process surfaces
     figure_mri('UpdateSurfaceCS', gAlignFid.SurfaceFiles, sMriOld, sMriNew);
     % Save MRI
-    s.SCS = sMriNew.SCS;
-    bst_save(file_fullpath(gAlignFid.MriFile), s, 'v7', 1);
+    if gAlignFid.updateMriFid
+        s.SCS = sMriNew.SCS;
+        bst_save(file_fullpath(gAlignFid.MriFile), s, 'v7', 1);
+    end
 end
 
         

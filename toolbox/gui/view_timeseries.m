@@ -309,10 +309,9 @@ if isNewFig
     else
         gui_brainstorm('SetSelectedTab', 'Record');
     end
-else
-    % Update figure name
-    bst_figures('UpdateFigureName', hFig);
 end
+% Update figure name
+bst_figures('UpdateFigureName', hFig);
 % Open Cluster tab
 if ~isempty(GlobalData.DataSet(iDS).Clusters)
     gui_brainstorm('ShowToolTab', 'Cluster');
