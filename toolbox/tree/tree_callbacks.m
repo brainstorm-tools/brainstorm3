@@ -1430,7 +1430,8 @@ switch (lower(action))
 
                         [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', filenameRelative);
                         ChannelMat  = in_bst_channel(sStudy.Channel.FileName, 'Channel');
-                        groups      = unique({ChannelMat.Channel.Group});
+                        iNIRS       = good_channel(ChannelMat.Channel, [], 'NIRS');
+                        groups      = unique({ChannelMat.Channel(iNIRS).Group});
 
                         for iGroup = 1:length(groups)
                             gui_component('MenuItem', jPopup, [], sprintf('View NIRS sensitivity - %s', groups{iGroup}) , IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', groups{iGroup}));

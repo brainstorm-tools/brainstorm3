@@ -63,12 +63,13 @@ if isempty(iModChannels)
 end
 
 if ~isempty(Group)
-    iGroupChannels = find(strcmp({ChannelMat.Channel.Group}, Group));
-    if isempty(iGroupChannels)
+    iGroupChannels  = find(strcmp({ChannelMat.Channel.Group}, Group));
+    iModChannels    = intersect(iModChannels, iGroupChannels);
+
+    if isempty(iModChannels)
         error(['No group "' Group '" in channel file: ' ChannelFile]);
     end
 
-    iModChannels = intersect(iModChannels, iGroupChannels);
 end
 
 % Detected modality 
