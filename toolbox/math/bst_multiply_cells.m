@@ -3,7 +3,11 @@ function out = bst_multiply_cells(ImageGridAmp)
 % product of each array : 
 % out = ImageGridAmp{1} * ImageGridAmp{2} * ... * ImageGridAmp{N}
     
-    if length(ImageGridAmp) == 2
+    if length(ImageGridAmp) == 1
+        
+        out = ImageGridAmp{1};
+
+    elseif length(ImageGridAmp) == 2
 
         out = ImageGridAmp{1} * ImageGridAmp{2};
 
