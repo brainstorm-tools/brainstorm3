@@ -5,7 +5,7 @@ function out = bst_multiply_cells(ImageGridAmp)
     
     if length(ImageGridAmp) == 2
 
-        out = Results.ImageGridAmp{1} * Results.ImageGridAmp{2};
+        out = ImageGridAmp{1} * ImageGridAmp{2};
 
     elseif size(ImageGridAmp{end}, 2) < size(ImageGridAmp{1}, 1) % multiply starting from the right
 
