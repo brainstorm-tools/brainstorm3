@@ -933,6 +933,15 @@ end
 
 %% ===== LOAD DEFAULT MONTAGES ======
 function LoadDefaultMontages() %#ok<DEFNU>
+    global GlobalData
+    restoreMontageBak = 0;
+    % Load default montages in empty GlobalData.ChannelMontages so first
+    if ~isempty(GlobalData.ChannelMontages.Montages)
+        % Make backup of loaded montages
+        sMontageBak = GlobalData.ChannelMontages.Montages;
+        restoreMontageBak = 1;
+        GlobalData.ChannelMontages.Montages = [];
+    end
     % Set average reference montage
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference';
@@ -984,6 +993,12 @@ function LoadDefaultMontages() %#ok<DEFNU>
     MontageFiles = dir(bst_fullfile(MontagePath, '*.mon'));
     for i = 1:length(MontageFiles)
         LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MON', 1);
+    end
+    % Restore backup of loaded montages
+    if restoreMontageBak
+        for ix = 1 : length(sMontageBak)
+            SetMontage(sMontageBak(ix).Name, sMontageBak(ix));
+        end
     end
 end
    
