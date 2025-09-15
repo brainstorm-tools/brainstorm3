@@ -1238,7 +1238,7 @@ switch (lower(action))
                             AddSeparator(jMenuAlign);
                             if ismember(SurfaceType, {'Scalp', 'Other'}) && (length(bstNodes) == 1)
                                 % === ALIGN ONE SURFACE TO MRI ===
-                                gui_component('MenuItem', jMenuAlign, [], 'Aligh surface to MRI...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative));
+                                gui_component('MenuItem', jMenuAlign, [], 'Align surface to MRI...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative));
                                 % === ALIGN ALL SURFACES TO A REFERENCE ONE ===
                                 gui_component('MenuItem', jMenuAlign, [], 'Edit subject fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
                             end
