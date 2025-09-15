@@ -2607,14 +2607,27 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         [maxGFP, iMax] = max(GFP);
         % Get the results values at this particular time point
         sources = GetResultsValues(iDS, iResult, [], iMax);
+
+        % Store minimum and maximum of displayed data
+        DataMinMax =  bst_bounds(sources);
     % Full results
     else
         % Get the maximum on the full results matrix 
-        % -- note we shdould avoid that
-        sources = GetResultsValues(iDS, iResult, [], []);
+        window_length   = 500; % in sample
+        nWindow         = ceil(GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples /window_length);
+        DataMinMax      = [Inf, -Inf];
+
+        for k=0:(nWindow-1)
+            idx = (1+ k*window_length):(window_length*(k+1));
+            idx = idx( idx <= GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples);
+
+            sources = GetResultsValues(iDS, iResult, [], idx);
+            WindowMinMax = bst_bounds(sources);
+
+            DataMinMax(1) = min(DataMinMax(1),   WindowMinMax(1));
+            DataMinMax(2) = max(DataMinMax(2),   WindowMinMax(2));
+        end
     end
-    % Store minimum and maximum of displayed data
-    DataMinMax =  bst_bounds(sources);
 end
 
 
