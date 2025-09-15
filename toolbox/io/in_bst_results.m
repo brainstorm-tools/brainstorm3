@@ -262,12 +262,7 @@ if isKernel
     end
 % If full results are saved as factor decomposition
 elseif LoadFull &&  isfield(Results,'ImageGridAmp') && iscell(Results.ImageGridAmp)
-    % ImageGridAmp = ImageGridAmp{1} * ImageGridAmp{2} * ... * ImageGridAmp{N}
-    tmp = Results.ImageGridAmp{1};
-    for iDecomposition = 2 : length(Results.ImageGridAmp)
-        tmp = tmp * Results.ImageGridAmp{iDecomposition};
-    end
-    Results.ImageGridAmp = full(tmp);
+    Results.ImageGridAmp = bst_multiply_cells(Results.ImageGridAmp);
 end
 
 

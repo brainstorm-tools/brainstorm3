@@ -2202,12 +2202,7 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
             ResultsValues{1} = ResultsValues{1}(iRows, :);
         end
 
-        tmp = ResultsValues{1};
-        for iDecomposition = 2 : length(ResultsValues)
-            tmp = tmp * ResultsValues{iDecomposition};
-        end     
-        
-        ResultsValues = double(tmp);
+        ResultsValues = double(bst_multiply_cells(ResultsValues));
 
     elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
         % Get ImageGridAmp interesting sub-part
