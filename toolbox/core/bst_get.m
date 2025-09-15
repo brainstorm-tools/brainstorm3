@@ -117,8 +117,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('SurfaceFileByType',    MriName,     SurfaceType) : Find surfaces with given type for subject that also has MRI MriName  (default only)
 %    - bst_get('SurfaceFileByType',    ...,  ..., isDefaultOnly) : If 0, return all the surfaces of the given type, instead of only the default surface
 %    - bst_get('MriFile',              MriFile)               : Find a MRI in current protocol
-%    - bst_get('AtlasFile',            iSubject,  AtlasName)  : Find an anatomical atlas for a Subject
-
+% 
 % ====== GUI =================================================================
 %    - bst_get('BstControls')    : Return main Brainstorm GUI structure
 %    - bst_get('BstFrame')       : Return main Brainstorm JFrame
@@ -1315,56 +1314,8 @@ switch contextName
                 return
             end
         end
-
-% ==== ATLAS FILE ====        
-% Usage : sAtlas = bst_get('AtlasFile', sSubject/iSubject, AtlasName) % Atlas struct for a specific subject and atlas name
-%         sAtlas = bst_get('AtlasFile', sSubject/iSubject)            % Atlas structs for a specific subject
-%         sAtlas = bst_get('AtlasFile', [], AtlasName)                % Atlas struct for current subject and atlas name
-%         sAtlas = bst_get('AtlasFile')                              % Atlas structs for current subject
-case 'AtlasFile'
-    % No protocol in database
-    if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
-        return
-    end
-    % Get list of current protocol subjects
-    ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
-    if isempty(ProtocolSubjects)
-        return
-    end
-
-    % Parse inputs
-    AtlasName = '';
-    sSubject = [];
-    if nargin > 1
-        sSubject  = varargin{2};
-    end
-    if nargin > 2
-        AtlasName = varargin{3};
-    end
-    % Get sSubject struct
-    if isempty(sSubject)
-        sSubject = bst_get('Subject');
-    elseif ~isstruct(sSubject)
-        sSubject = bst_get('Subject', sSubject, 1);
-    end
-    if isempty(sSubject) || ~isfield(sSubject, 'Anatomy') || isempty(sSubject.Anatomy)
-        argout1 = [];
-        return
-    end
-    % Find Atlases
-    iAtlases = ~cellfun(@isempty, (regexp({sSubject.Anatomy.FileName}, '_volatlas')));
-    sAtlas = sSubject.Anatomy(iAtlases);
-    if isempty(sAtlas)
-        argout1 = [];
-        return
-    end
-    if ~isempty(AtlasName)
-        sAtlas = sAtlas(strcmpi({sAtlas.Comment}, AtlasName));
-    end
-    argout1 = sAtlas;
-    return
-
-
+        
+        
 %% ==== CHANNEL FILE ====
     % Usage: [sStudy, iStudy, iChannel] = bst_get('ChannelFile', ChannelFile)
     case 'ChannelFile'

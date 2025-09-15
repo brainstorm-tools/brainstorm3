@@ -38,7 +38,7 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     import javax.swing.*
 
     % Get Subject for PET file
-    [~, iSubject] = bst_get('MriFile', PetFile);
+    [sSubject, iSubject] = bst_get('MriFile', PetFile);
 
     % === MAIN LAYOUT ===
     jPanelMain = gui_river([5, 5], [0, 10, 10, 10]);
@@ -55,7 +55,7 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     gui_component('label', jPanelRescale, 'br', ...
         sprintf('<HTML><FONT color="#777777">%s</FONT><BR><BR></HTML>', '(Standardized uptake value ratio)'));
     % Atlases
-    sAtlases = bst_get('AtlasFile', iSubject);
+    sAtlases = sSubject.Anatomy(~cellfun(@isempty, strfind({sSubject.Anatomy.FileName}, '_volatlas')));
     atlasNames = {sAtlases.Comment};
     if isempty(atlasNames)
         atlasNames = {'(No atlas found)'};
@@ -174,13 +174,9 @@ function ButtonOK_Callback(panelName)
         if isempty(maskROI) || strcmp(maskROI, '(No ROI found)')
             maskROI = '';
         end
-        % Get Atlas file
-        [~, iSubject] = bst_get('MriFile', PetFile);
-        sAtlasDb = bst_get('AtlasFile', iSubject, atlas);
-        AtlasFile = sAtlasDb.FileName;
 
         % Call pet_process pipeline with projection option
-        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasFile, roi, maskROI, isMaskChecked, doProject);
+        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');

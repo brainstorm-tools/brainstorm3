@@ -1,9 +1,9 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasFile, roiName, maskROI, applyMask, doProject)
+function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject)
 % PET_PROCESS: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
 %
 % INPUTS:
 %   - PetFile   : PET file path
-%   - AtlasFile : Atlas file path
+%   - AtlasFile : Name of anatomical Atlas
 %   - roiName   : Name of the ROI for SUVR rescale (string, can be empty)
 %   - maskROI   : Name of the ROI for masking (string, can be empty)
 %   - applyMask : Logical, true to apply mask, false otherwise
@@ -42,9 +42,13 @@ end
 
 try
     % Get Subject for PET file
-    [~, iSubject] = bst_get('MriFile', PetFile);
+    [sSubject, iSubject] = bst_get('MriFile', PetFile);
     % Load Atlas file
-    sAtlas = in_mri_bst(AtlasFile);
+    [~, iAtlas] = ismember(AtlasName, {sSubject.Anatomy.Comment});
+    if iAtlas
+        AtlasName = sSubject.Anatomy(iAtlas).FileName;
+    end
+    sAtlas = in_mri_bst(AtlasName);
     % Load PET file in sMRI structure
     sMri = in_mri_bst(PetFile);
     orgComment = sMri.Comment;
