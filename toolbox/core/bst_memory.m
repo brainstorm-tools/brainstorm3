@@ -2614,7 +2614,7 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         sources = GetResultsValues(iDS, iResult, [], []);
     end
     % Store minimum and maximum of displayed data
-    DataMinMax = [min(sources(:)), max(sources(:))];
+    DataMinMax =  bst_bounds(sources);
 end
 
 
