@@ -7,14 +7,14 @@ function out = bst_multiply_cells(ImageGridAmp)
 
         out = Results.ImageGridAmp{1} * Results.ImageGridAmp{2};
 
-    elseif size(ImageGridAmp{end}, 2) < size(ImageGridAmp{1}, 1) % multiply starting from the left
+    elseif size(ImageGridAmp{end}, 2) < size(ImageGridAmp{1}, 1) % multiply starting from the right
 
         out = ImageGridAmp{end};
         for iDecomposition = (length(ImageGridAmp) - 1) : -1 : 1
             out = ImageGridAmp{iDecomposition} * out;
         end
 
-    else  % multiply starting from the right
+    else  % multiply starting from the left
 
         out = ImageGridAmp{1};
         for iDecomposition = 2 : length(ImageGridAmp)
