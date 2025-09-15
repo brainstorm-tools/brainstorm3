@@ -1772,6 +1772,8 @@ function SetCurrentMontage(Modality, MontageName)
         panel_record('UpdateDisplayOptions', hFig);
         % Update figure plot
         bst_figures('ReloadFigures', hFig, 0);
+        % Update panel Record
+        panel_record('UpdateDisplayOptions', hFig);
         % Close progress bar
         bst_progress('stop');
     end
