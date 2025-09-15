@@ -308,7 +308,11 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
+montagesToCheck = {'CTF LF', 'Bad channels', 'Average reference (L -> R)', ...
+                   'Scalp current density', 'Scalp current density (L -> R)', ...
+                   'Head distance', ...
+                   'Infinity reference (REST)', 'Infinity reference (REST) (L -> R)'};
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesToCheck, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Load default selections
     panel_montage('LoadDefaultMontages');
