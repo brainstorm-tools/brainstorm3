@@ -98,7 +98,7 @@ switch(fileType)
                 sMatrix.ImageGridAmp  = sMatrix.ImageGridAmp(:,iTime);
             end
 
-            if isLoadFull
+            if isLoadFull && iscell(sMatrix.ImageGridAmp)
                 sMatrix.ImageGridAmp = bst_multiply_cells(sMatrix.ImageGridAmp);
             end
 
