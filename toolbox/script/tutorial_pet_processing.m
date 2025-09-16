@@ -56,7 +56,7 @@ end
 %  =============================================================================
 disp([10 'DEMO> 1. Create protocol' 10]);
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'pet_processing';
+ProtocolName = 'TutorialPET';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
