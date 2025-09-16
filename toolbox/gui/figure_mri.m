@@ -3030,6 +3030,12 @@ function ApplyCoordsToAllFigures(hSrcFig, cs)
     srcHandles = bst_figures('GetFigureHandles', hSrcFig);
     % Get slices locations
     XYZ = GetLocation(cs, srcMri, srcHandles);
+    if isempty(XYZ) 
+        bst_error('Error: The MNI transformation is not available for this subject. To align multiple MRI within the same subject, use ''*'' instead.'); 
+        return; 
+    end 
+ 
+
     % Go through all figures, set new location
     for ii = 1:length(hAllFig)
         destMri = panel_surface('GetSurfaceMri', hAllFig(ii));
