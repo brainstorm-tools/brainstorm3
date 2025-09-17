@@ -345,6 +345,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
 
+    % === I/O: JNIfTI ===
+    PlugDesc(end+1)              = GetStruct('jnifti');
+    PlugDesc(end).Version        = '0.8';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jnifty/archive/refs/tags/v0.8.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jnifty';
+    PlugDesc(end).TestFile       = 'jnii2nii.m';
+    PlugDesc(end).ReadmeFile     = 'README.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadedFcn      = '';
+    PlugDesc(end).RequiredPlugs  = {'jsonlab'};
+
     % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
     PlugDesc(end).Version        = 'github-master';
