@@ -2805,13 +2805,26 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     isoValue = [];
     isoRange = [];
     % Load the IsoSurface
+    subjectDir = bst_fileparts(file_fullpath(isosurfaceFile));
     sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
         % Get CT file, value and range from last History entry
         ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(?:\sminVal\s*=\s*)?(\d+)?(?:\smaxVal\s*=\s*)?(\d+)?', 'tokens');
         iEntries =  find(~cellfun(@isempty, ctEntries));
         if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
-            ctFile   = ctEntries{iEntries(end)}{1}{1};
+            ctFile = ctEntries{iEntries(end)}{1}{1};
+            % Try to fix CT filepath if wrong
+            if ~file_exist(bst_fullfile(subjectDir, ctFile))
+                isoSubjectName = bst_fileparts(isosurfaceFile);
+                [~, ctBase, ctExt] = bst_fileparts(ctFile);
+                ctFileNew = bst_fullfile(isoSubjectName, [ctBase, ctExt]);
+                if file_exist(file_fullpath(ctFileNew))
+                    % Update history
+                    sSurf.History{iEntries(end), 3} = strrep(sSurf.History{iEntries(end), 3}, ctFile, ctFileNew);
+                    bst_save(file_fullpath(isosurfaceFile), sSurf, [], 1);
+                    ctFile = ctFileNew;
+                end
+            end
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
             if any(cellfun(@isempty, ctEntries{iEntries(end)}{1}(3:4)))
                 % If range not in last History entry, load from CT file and update History accordingly
