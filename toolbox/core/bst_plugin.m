@@ -5,6 +5,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetSupported',         PlugName/PlugDesc)           % Get only one specific supported plugin
 %                 PlugDesc = bst_plugin('GetInstalled')                                      % Get all the installed plugins
 %                 PlugDesc = bst_plugin('GetInstalled',         PlugName/PlugDesc)           % Get a specific installed plugin
+%                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
@@ -1381,6 +1382,14 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
 end
 
 
+%% ===== GET LOADED PLUGINS =====
+% USAGE:  [PlugDesc, SearchPlugs] = bst_plugin('GetLoaded')
+function PlugDesc = GetLoaded()
+    PlugDesc = GetInstalled();
+    PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+end
+
+
 %% ===== GET DESCRIPTION =====
 % USAGE:  [PlugDesc, errMsg] = GetDescription(PlugName/PlugDesc)
 function [PlugDesc, errMsg] = GetDescription(PlugName)
@@ -2525,8 +2534,7 @@ function strList = List(Target, isGui)
             PlugDesc = GetInstalled();
             isInstalled = 1;
         case 'Loaded'
-            PlugDesc = GetInstalled();
-            PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+            PlugDesc = GetLoaded();
             isInstalled = 1;
         otherwise
             error(['Invalid target: ' Target]);
