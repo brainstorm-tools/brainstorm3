@@ -1,5 +1,5 @@
 function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode, Group)
-% VIEW_LEADFIELD_SENTIVITY: Show the leadfield sensitivity on the MRI slices.
+% VIEW_LEADFIELD_SENTIVITY: Show the leadfield sensitivity
 % 
 % USAGE:  hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode='Mri3D')
 %
@@ -7,6 +7,7 @@ function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode,
 %    - HeadmodelFile : Relative file path to Brainstorm forward model
 %    - Modality      : {'MEG', 'EEG', 'ECOG', 'SEEG'}
 %    - DisplayMode   : {'Mri3D', 'MriViewer', 'Surface', 'Isosurface'}
+%    - Group         : Use channels of this Group (e.g., NIRS wavelength group). Default = ''
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
