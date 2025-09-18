@@ -3706,6 +3706,8 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
         end
     end
+    % Preparing files for implantation
+    bst_progress('start', 'Implantation', 'Loading and verifying files for implantation...');
     % Check SCS coordinates and coregistration of MRI files
     errMsg = '';
     for iVol=1:length(MriFiles)
@@ -3736,9 +3738,6 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         bst_error(errMsg, 'SEEG/ECOG implantation', 0);
         return
     end
-
-    % Progress bar
-    bst_progress('start', 'Implantation', 'Updating display...');
     % Channel file
     if isempty(sStudy.Channel) || isempty(sStudy.Channel(1).FileName)
         % Create empty channel file structure
