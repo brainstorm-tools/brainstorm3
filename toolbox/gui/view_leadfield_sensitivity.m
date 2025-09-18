@@ -278,34 +278,32 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     set (hLabel, 'Visible', 'on');
                 end
             case 'h'
-
-                strHelp = [  ...
-                            '<TR><TD><B>Left arrow</B></TD><TD>Previous target channel (red color)</TD></TR>' ...
-                            '<TR><TD><B>Right arrow</B></TD><TD>Next target channel (red color)</TD></TR>'];
-                if ~isMeg && ~isNIRS
-                    strHelp = [  ...
-                            '<TR><TD><B>Up arrow</B></TD><TD>Previous ref channel (green color)</TD></TR>' ...
-                            '<TR><TD><B>Down arrow</B></TD><TD>Next ref channel (green color)</TD></TR>'];
+                % HTML table with help notes
+                strHelpHtml = ['<TR><TD><B>Left arrow</B></TD><TD>Previous target channel (red color)</TD></TR>' ...
+                               '<TR><TD><B>Right arrow</B></TD><TD>Next target channel (red color)</TD></TR>'];
+                if isEeg
+                    strHelpHtml = [strHelpHtml ...
+                               '<TR><TD><B>Up arrow</B></TD><TD>Previous ref channel (green color)</TD></TR>' ...
+                               '<TR><TD><B>Down arrow</B></TD><TD>Next ref channel (green color)</TD></TR>'];
                 end
-                
                 if strcmpi(DisplayMode, 'isosurface')
-                    strHelp = [strHelp, '<TR><TD><B>I</B></TD><TD>Select the <B>I</B>sosurface threshold</TD></TR>'];
+                    strHelpHtml = [strHelpHtml, ...
+                               '<TR><TD><B>I</B></TD><TD>Select the <B>I</B>sosurface threshold</TD></TR>'];
                 end
-                strHelp = [strHelp,  '<TR><TD><B>L</B></TD><TD>Show/hide legend</TD></TR>' ];
-
-                if ~isMeg && ~isNIRS
-                    strHelp = [strHelp, '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>'];
+                strHelpHtml = [strHelpHtml, ...
+                               '<TR><TD><B>L</B></TD><TD>Show/hide legend</TD></TR>' ];
+                if isEeg
+                    strHelpHtml = [strHelpHtml, ...
+                               '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>'];
                 end
-                strHelp = [strHelp, '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>'];
-
+                strHelpHtml = [strHelpHtml, ...
+                               '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>'];
                 if is3D
-                    strHelp = [strHelp, ...
-                        '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>' ...
-                        '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'];
+                    strHelpHtml = [strHelpHtml, ...
+                               '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>' ...
+                               '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'];
                 end
-
-                java_dialog('msgbox', ['<HTML><TABLE>', strHelp, '</TABLE></HTML>'], 'Keyboard shortcuts', [], 0);
-
+                java_dialog('msgbox', ['<HTML><TABLE>', strHelpHtml, '</TABLE></HTML>'], 'Keyboard shortcuts', [], 0);
             otherwise
                 KeyPressFcn_bak(hFig, keyEvent); 
                 return;
