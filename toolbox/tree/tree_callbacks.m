@@ -1425,24 +1425,18 @@ switch (lower(action))
                             AddSeparator(jPopup);
                             gui_component('MenuItem', jPopup, [], ['Apply ' mod{1} ' leadfield exclusion zone'], IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, mod{1}, iStudy));
                         elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
-
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
                     end
-
-                    if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod)
-
-                        [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', filenameRelative);
-                        ChannelMat  = in_bst_channel(sStudy.Channel.FileName, 'Channel');
-                        iNIRS       = good_channel(ChannelMat.Channel, [], 'NIRS');
-                        groups      = unique({ChannelMat.Channel(iNIRS).Group});
-
-                        for iGroup = 1:length(groups)
-                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS sensitivity - %s', groups{iGroup}) , IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', groups{iGroup}));
+                    % NIRS
+                    if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod) && ~isempty(ChannelFile)
+                        ChannelMat = in_bst_channel(ChannelFile, 'Channel');
+                        iNIRS      = good_channel(ChannelMat.Channel, [], 'NIRS');
+                        Groups     = unique({ChannelMat.Channel(iNIRS).Group});
+                        for iGroup = 1:length(Groups)
+                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
                         end
-
                     end
-
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')
