@@ -39,7 +39,6 @@ end
 if (nargin < 4) || isempty(Group)
     Group = '';
 end
-
 hFig = [];
 
 % Isosurface display : Requires ISO2MESH
@@ -56,21 +55,18 @@ bst_progress('start', 'View leadfields', 'Loading headmodel...');
 [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', HeadmodelFile);
 ChannelFile = sStudy.Channel.FileName;
 ChannelMat = in_bst_channel(sStudy.Channel.FileName, 'Channel');
-
 % Get modality channels
 iModChannels = good_channel(ChannelMat.Channel, [], Modality);
 if isempty(iModChannels)
     error(['No channels "' Modality '" in channel file: ' ChannelFile]);
 end
-
+% Get channels in group
 if ~isempty(Group)
-    iGroupChannels  = find(strcmp({ChannelMat.Channel.Group}, Group));
-    iModChannels    = intersect(iModChannels, iGroupChannels);
-
+    iGroupChannels = find(strcmp({ChannelMat.Channel.Group}, Group));
+    iModChannels   = intersect(iModChannels, iGroupChannels);
     if isempty(iModChannels)
-        error(['No group "' Group '" in channel file: ' ChannelFile]);
+        error(['No channels for group "' Group '" in channel file: ' ChannelFile]);
     end
-
 end
 
 % Detected modality 
@@ -79,10 +75,9 @@ isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
 isNIRS      = strcmp(Modality, 'NIRS');
 
 % Load leadfield matrix
-HeadmodelMat    = in_bst_headmodel(HeadmodelFile);
-GainMod         = HeadmodelMat.Gain(iModChannels, :);
-isVolumeGrid    = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
-
+HeadmodelMat = in_bst_headmodel(HeadmodelFile);
+GainMod      = HeadmodelMat.Gain(iModChannels, :);
+isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 % Get subject
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
