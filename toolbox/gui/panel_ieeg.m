@@ -3832,38 +3832,37 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         if isempty(sSubject) || isempty(sSubject.Anatomy)
             bst_error('No MRI available for this subject.', 'Display electrodes', 0);
         end
-        % MRI volumes
+        % Default MRI volume
         MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
     end
-
-    % If MRI Viewer with requested MRI is open don't open another one
     if length(MriFiles) == 1
-        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, [], 'MriViewer', '');
-    else
-        hFig = bst_figures('GetFigureWithSurface', MriFiles{1}, MriFiles{2}, 'MriViewer', '');
+        MriFiles{2} = [];
     end
-    if ~isempty(hFig)
-        return
-    end
-
-    % == DISPLAY THE MRI VIEWER
-    if length(MriFiles) == 1
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, [], [], 2);
-    else
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2);
-    end
+    % Get Figure with requested MriFiles
+    [hFig, iFig, iDS] = bst_figures('GetFigureWithSurface', MriFiles{1}, MriFiles{2}, 'MriViewer', '');
     if isempty(hFig)
-        return;
+        % Create MRI viewer with requested MriFiles
+        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2);
+        if isempty(hFig)
+            return;
+        end
     end
-    % Add channels to the figure
-    LoadElectrodes(hFig, ChannelFile, Modality);
+    % Detect other MRI viewer figures in dataset
+    [hFig2, ~, iDS2] = bst_figures('GetFiguresByType','MriViewer');
+    hFig2 = hFig2(iDS2 == iDS);
+    hFigs = unique([hFig, hFig2]);
+    % Add channels to the figures
+    for ix = 1 : length(hFigs)
+        % Add channels to the figure
+        LoadElectrodes(hFigs(ix), ChannelFile, Modality);
+        % Make electrodes editable
+        if isEdit
+            figure_mri('SetEditChannels', hFigs(ix), isEdit);
+        end
+    end
     % SEEG and ECOG: Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
-    end
-    % Make electrodes editable
-    if isEdit
-        figure_mri('SetEditChannels', hFig, isEdit);
     end
 end
 
