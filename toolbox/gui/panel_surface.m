@@ -363,6 +363,7 @@ end
 %  =================================================================================
 %% ===== SLIDERS CALLBACKS =====
 function SliderCallback(hObject, event, target)
+    global GlobalData;
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Surface');
     if isempty(ctrl)
@@ -417,39 +418,66 @@ function SliderCallback(hObject, event, target)
 
         case 'SurfIsoValue'
             isosurfFile = TessInfo(iSurface).SurfaceFile;
-            % Get CT file and IsoValue used to generate the isosurface file
-            [ctFile, isoValue] = GetIsosurfaceParams(isosurfFile);
-            if isoValue == jSlider.getValue()
+            % Get loaded isosurface index from memory
+            [~, iSurf] = bst_memory('GetSurface', isosurfFile);
+            % Get CT file and original IsoValue used to generate the isosurface file
+            [ctFile, orgIsoValue] = GetIsosurfaceParams(isosurfFile);
+            if ~GlobalData.Surface(iSurf).isSurfaceModified
+                currentIsoValue = orgIsoValue;
+            else
+                currentIsoValue = TessInfo(iSurface).SurfIsoValue;
+            end
+            % Get new isoValue from the slider
+            newIsoValue = jSlider.getValue();
+            if currentIsoValue == newIsoValue
+                % No modifications done to isosurface
+                GlobalData.Surface(iSurf).isSurfaceModified = 0;
                 return
             end
             sSubject = bst_get('MriFile', ctFile);
             dialogTitle = 'Change threshold IsoSurface';
             if isempty(sSubject)
                 bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), dialogTitle);
-                SetIsoValue(isoValue);
+                SetIsoValue(currentIsoValue);
                 return;
             else
                 subjectFile = getappdata(hFig, 'SubjectFile');
                 if ~strcmp(subjectFile, sSubject.FileName)
                     bst_error('Subject for CT and IsoSurface is not the same', dialogTitle);
-                    SetIsoValue(isoValue);
+                    SetIsoValue(currentIsoValue);
                     return;
                 end
             end
-            % Ask user if they want to proceed
-            if ~java_dialog('confirm', 'Do you want to proceed generating mesh with new isoValue ?', dialogTitle)
-                SetIsoValue(isoValue);
-                return;
+            % Compute new isosurface mesh
+            sCt = bst_memory('LoadMri', ctFile);
+            [Vertices, Faces] = tess_isosurface(sCt, newIsoValue);
+            nVertices = size(Vertices, 1);
+            nFaces    = size(Faces, 1);
+            % Update vertices and faces values in panel
+            ctrl.jLabelNbVertices.setText(sprintf('%d', nVertices));
+            ctrl.jLabelNbFaces.setText(sprintf('%d', nFaces));
+            % Update for all figures using this surface
+            hFigs = bst_figures('GetFigureWithSurface', isosurfFile);
+            for ix = 1 : length(hFigs)
+                [iSurface, TessInfo] = GetSurface(hFigs(ix), isosurfFile, []);
+                colorBak = TessInfo(iSurface).AnatomyColor;
+                TessInfo(iSurface).hPatch.Vertices = Vertices;
+                TessInfo(iSurface).hPatch.Faces    = Faces;
+                TessInfo(iSurface).nVertices       = nVertices;
+                TessInfo(iSurface).nFaces          = nFaces;
+                TessInfo(iSurface).SurfIsoValue    = newIsoValue;
+                setappdata(hFigs(ix), 'Surface', TessInfo);
+                SetSurfaceColor(hFigs(ix), iSurface, colorBak(2,:), colorBak(1,:));
             end
-            % Get new isoValue from the slider
-            isoValue = jSlider.getValue();
-            % Remove the old IsoSurface, generate, and load the new one
-            RemoveSurface(hFig, iSurface);
-            bst_memory('UnloadSurface', isosurfFile);
-            colorBak = TessInfo(iSurface).AnatomyColor;
-            tess_isosurface(ctFile, isoValue);
-            SetSurfaceColor(hFig, iSurface, colorBak(2,:), colorBak(1,:));
-            UpdatePanel();
+            % Update the loaded IsoSurface
+            GlobalData.Surface(iSurf).Vertices    = Vertices;
+            GlobalData.Surface(iSurf).Faces       = Faces;
+            GlobalData.Surface(iSurf).VertConn    = tess_vertconn(Vertices, Faces);
+            GlobalData.Surface(iSurf).VertNormals = tess_normals(Vertices, Faces, GlobalData.Surface(iSurf).VertConn);
+            GlobalData.Surface(iSurf).VertArea    = tess_area(Vertices, Faces);
+            GlobalData.Surface(iSurf).SulciMap    = tess_sulcimap(GlobalData.Surface(iSurf));
+            GlobalData.Surface(iSurf).Comment     = num2str(newIsoValue);
+            GlobalData.Surface(iSurf).isSurfaceModified = orgIsoValue ~= newIsoValue;
             
         case 'DataAlpha'
             % Update value in Surface array
@@ -546,6 +574,17 @@ function SetIsoValue(isoValue)
     end 
     ctrl.jLabelSurfIsoValue.setText(sprintf('%d', isoValue));
     ctrl.jSliderSurfIsoValue.setValue(isoValue);
+end
+
+%% ===== GET SLIDER ISOVALUE =====
+function isoValue = GetIsoValue()
+    isoValue = [];
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'Surface');
+    if isempty(ctrl)
+        return
+    end 
+    isoValue = ctrl.jSliderSurfIsoValue.getValue();
 end
 
 %% ===== SCROLL MRI CUTS =====
@@ -1153,9 +1192,9 @@ function UpdateSurfaceProperties()
     surfColor = TessInfo(iSurface).AnatomyColor(2, :);
     ctrl.jButtonSurfColor.setBackground(java.awt.Color(surfColor(1),surfColor(2),surfColor(3)));
     % Surface smoothing ALPHA
-    ctrl.jSliderSurfSmoothValue.setVisible(~isFem);
-    ctrl.jLabelSurfSmoothTitle.setVisible(~isFem);
-    ctrl.jLabelSurfSmoothValue.setVisible(~isFem);
+    ctrl.jSliderSurfSmoothValue.setVisible(~isFem && ~isIsoSurf);
+    ctrl.jLabelSurfSmoothTitle.setVisible(~isFem && ~isIsoSurf );
+    ctrl.jLabelSurfSmoothValue.setVisible(~isFem && ~isIsoSurf);
     ctrl.jSliderSurfSmoothValue.setValue(100 * TessInfo(iSurface).SurfSmoothValue);
     ctrl.jLabelSurfSmoothValue.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).SurfSmoothValue)));
     % Show/hide isoSurface thresholding
@@ -1163,7 +1202,10 @@ function UpdateSurfaceProperties()
     ctrl.jLabelSurfIsoValueTitle.setVisible(isIsoSurf);
     ctrl.jLabelSurfIsoValue.setVisible(isIsoSurf);
     if isIsoSurf
-        [~, isoValue, isoRange] = panel_surface('GetIsosurfaceParams', TessInfo(iSurface).SurfaceFile);
+        [~, isoValue, isoRange] = GetIsosurfaceParams(TessInfo(iSurface).SurfaceFile);
+        if TessInfo(iSurface).SurfIsoValue ~= 0
+            isoValue = TessInfo(iSurface).SurfIsoValue;
+        end
         ctrl.jSliderSurfIsoValue.setMinimum(isoRange(1));
         ctrl.jSliderSurfIsoValue.setMaximum(isoRange(2));
         SetIsoValue(isoValue);
@@ -1282,6 +1324,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     % ===== PLOT OBJECT =====
     % Get file type (tessalation or MRI)
     fileType = file_gettype(surfaceFile);
+    updateColor = 0;
     % === TESSELATION ===
     if any(strcmpi(fileType, {'cortex','scalp','innerskull','outerskull','tess'}))
         % === LOAD SURFACE ===
@@ -1300,9 +1343,11 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         else
             TessInfo(iTess).AnatomyColor = [.75 .* sSurface.Color; sSurface.Color];
         end
-        % Set transparency for isosurface
+        % Set default transparency and color for isosurface
         if ~isempty(regexp(surfaceFile, 'tess_isosurface', 'match'))
             TessInfo(iTess).SurfAlpha = 0.6;
+            TessInfo(iTess).AnatomyColor = [1;1]*[0.75, 0.75, 0.85];
+            updateColor = 1;
         end
 
         % === PLOT SURFACE ===
@@ -1429,6 +1474,9 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     setappdata(hFig, 'iSurface', iTess);
     % Automatically set transparencies (to view different layers at the same time)
     SetAutoTransparency(hFig);
+    if updateColor
+        UpdateSurfaceColormap(hFig, iTess);
+    end
     % Close progress bar
     drawnow;
     if isNewProgressBar
@@ -2703,8 +2751,6 @@ function SetSurfaceColor(hFig, iSurf, colorCortex, colorSulci)
     if (bst_get('GuiLevel') >= 0)
         ctrl.jButtonSurfColor.setBackground(java.awt.Color(colorCortex(1), colorCortex(2), colorCortex(3)));
     end
-    % Update panel controls
-    UpdateSurfaceProperties();
     % Update color display on the surface
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
@@ -2759,13 +2805,26 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
     isoValue = [];
     isoRange = [];
     % Load the IsoSurface
+    subjectDir = bst_fileparts(file_fullpath(isosurfaceFile));
     sSurf = load(file_fullpath(isosurfaceFile), 'History');
     if isfield(sSurf, 'History') && ~isempty(sSurf.History)
         % Get CT file, value and range from last History entry
         ctEntries = regexp(sSurf.History(:, 3), '^Thresholded CT:\s(.*)\sthreshold\s*=\s*(\d+)(?:\sminVal\s*=\s*)?(\d+)?(?:\smaxVal\s*=\s*)?(\d+)?', 'tokens');
         iEntries =  find(~cellfun(@isempty, ctEntries));
         if any(iEntries) && length(ctEntries{iEntries(end)}{1}) == 4
-            ctFile   = ctEntries{iEntries(end)}{1}{1};
+            ctFile = ctEntries{iEntries(end)}{1}{1};
+            % Try to fix CT filepath if wrong
+            if ~file_exist(bst_fullfile(subjectDir, ctFile))
+                isoSubjectName = bst_fileparts(isosurfaceFile);
+                [~, ctBase, ctExt] = bst_fileparts(ctFile);
+                ctFileNew = bst_fullfile(isoSubjectName, [ctBase, ctExt]);
+                if file_exist(file_fullpath(ctFileNew))
+                    % Update history
+                    sSurf.History{iEntries(end), 3} = strrep(sSurf.History{iEntries(end), 3}, ctFile, ctFileNew);
+                    bst_save(file_fullpath(isosurfaceFile), sSurf, [], 1);
+                    ctFile = ctFileNew;
+                end
+            end
             isoValue = str2double(ctEntries{iEntries(end)}{1}{2});
             if any(cellfun(@isempty, ctEntries{iEntries(end)}{1}(3:4)))
                 % If range not in last History entry, load from CT file and update History accordingly
@@ -2783,5 +2842,57 @@ function [ctFile, isoValue, isoRange] = GetIsosurfaceParams(isosurfaceFile)
                 isoRange = str2double(ctEntries{iEntries(end)}{1}(3:4));
             end
         end
+    end
+end
+
+%% ===== SAVE SURFACE MODIFICATIONS =====
+function SaveModifications()
+    global GlobalData;
+    % Loop on all the loaded surfaces
+    for iSurf = 1:length(GlobalData.Surface)
+        % Skip surfaces generated on the fly (view_surface_matrix)
+        if ~isempty(GlobalData.Surface(iSurf).FileName) && (GlobalData.Surface(iSurf).FileName(1) == '#')
+            continue;
+        end
+        % If the surface was not modified: skip
+        if ~GlobalData.Surface(iSurf).isSurfaceModified
+            continue;
+        end
+        SurfaceFile = GlobalData.Surface(iSurf).FileName;
+        disp(['BST> Saving modified surface: ' SurfaceFile]);
+
+        switch lower(GlobalData.Surface(iSurf).Name)
+            case 'other'
+                % Specific handling for IsoSurfaces
+                if ~isempty(regexp(SurfaceFile, 'tess_isosurface', 'match'))
+                    % Ask user if they want to proceed
+                    if ~java_dialog('confirm', ['Save new threshold for isosurface file: ' 10 10 SurfaceFile], 'Change threshold IsoSurface')
+                        GlobalData.Surface(iSurf).isSurfaceModified = 0;
+                        return
+                    end
+                    % Modified data to be saved
+                    s.Vertices    = GlobalData.Surface(iSurf).Vertices;
+                    s.Faces       = GlobalData.Surface(iSurf).Faces;
+                    s.VertConn    = GlobalData.Surface(iSurf).VertConn;
+                    s.VertNormals = GlobalData.Surface(iSurf).VertNormals;
+                    s.VertArea    = GlobalData.Surface(iSurf).VertArea;
+                    s.SulciMap    = GlobalData.Surface(iSurf).SulciMap;
+                    newIsoValue   = GlobalData.Surface(iSurf).Comment;
+                    % Get parameters from original file (not the loaded)
+                    [ctFile, oldIsoValue, isoRange] = GetIsosurfaceParams(SurfaceFile);
+                    sIsoSrfOrg = load(file_fullpath(SurfaceFile), 'Comment', 'History');
+                    s.Comment   = strrep(sIsoSrfOrg.Comment, num2str(oldIsoValue), newIsoValue);
+                    s.History   = sIsoSrfOrg.History;
+                    % Update History
+                    s = bst_history('add', s, 'threshold_ct', ...
+                                sprintf('Thresholded CT: %s threshold = %s minVal = %d maxVal = %d', ctFile, newIsoValue, isoRange));
+                    % Save isosurface
+                    bst_save(file_fullpath(SurfaceFile), s, 'v7');
+                    % Reload the subject
+                    [~, iSubject] = bst_get('MriFile', ctFile);
+                    db_reload_subjects(iSubject);
+                end
+        end
+        GlobalData.Surface(iSurf).isSurfaceModified = 0;
     end
 end

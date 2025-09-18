@@ -137,6 +137,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Build average reference
             if ~isempty(strfind(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
+            elseif ~isempty(strfind(sMontage.Name, 'Infinity reference (REST)'))
+                % Get leadfield matrix
+                sHeadModel = bst_get('HeadModelForStudy', iStudyIn);
+                if isempty(sHeadModel) || isempty(sHeadModel.EEGMethod)
+                    bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" requires requires a EEG head model.']);
+                    return
+                end
+                HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
+                sMontage = panel_montage('GetMontageRestRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, HeadModelMat.Gain);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
             elseif ~isempty(strfind(sMontage.Name, 'Scalp current density'))

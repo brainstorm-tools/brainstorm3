@@ -2613,6 +2613,9 @@ function UpdateSurfaceCS(SurfaceFiles, sMriOld, sMriNew)
         sSurfNew.Vertices = sSurf.Vertices;
         sSurfNew.Faces    = sSurf.Faces;
         sSurfNew.Comment  = sSurf.Comment;
+        if isfield(sSurf, 'Color')
+            sSurfNew.Color  = sSurf.Color;
+        end
         if isfield(sSurf, 'History')
             sSurfNew.History  = sSurf.History;
         end
@@ -3024,12 +3027,39 @@ function ApplyCoordsToAllFigures(hSrcFig, cs)
     hAllFig = setdiff(hAllFig, hSrcFig);
     % Get MRI and Handles
     srcMri = panel_surface('GetSurfaceMri', hSrcFig);
+    srcSub = bst_fileparts(srcMri.FileName);
+    srcSize = size(srcMri.Cube);
+    % Check for linear or non-linear MNI transformations
+    isMni = isfield(srcMri,'NCS') && ...
+            (isfield(srcMri.NCS,'R') && ~isempty(srcMri.NCS.R) && isfield(srcMri.NCS,'T') && ~isempty(srcMri.NCS.T)) || ...
+            (isfield(srcMri.NCS,'y') && ~isempty(srcMri.NCS.y));
+    % Check for SCS transformation
+    isScs = isfield(srcMri,'SCS') && ...
+            (isfield(srcMri.SCS,'R') && ~isempty(srcMri.SCS.R) && isfield(srcMri.SCS,'T') && ~isempty(srcMri.SCS.T));
+    if (strcmpi(cs, 'mni') && ~isMni) || (strcmpi(cs, 'scs') && ~isScs)
+        warning(['Transformation "%s" not available in source MRI.', 10, ...
+        '         Applying "voxel" coordinates only to same-subject same-size volumes.'], upper(cs));
+        cs = 'voxel';
+    end
     srcHandles = bst_figures('GetFigureHandles', hSrcFig);
     % Get slices locations
     XYZ = GetLocation(cs, srcMri, srcHandles);
     % Go through all figures, set new location
     for ii = 1:length(hAllFig)
         destMri = panel_surface('GetSurfaceMri', hAllFig(ii));
+        % Check for linear or non-linear MNI transformations
+        isMni = isfield(destMri,'NCS') && ...
+                (isfield(destMri.NCS,'R') && ~isempty(destMri.NCS.R) && isfield(destMri.NCS,'T') && ~isempty(destMri.NCS.T)) || ...
+                (isfield(destMri.NCS,'y') && ~isempty(destMri.NCS.y));
+        % Check for SCS transformation
+        isScs = isfield(destMri,'SCS') && ...
+                (isfield(destMri.SCS,'R') && ~isempty(destMri.SCS.R) && isfield(destMri.SCS,'T') && ~isempty(destMri.SCS.T));
+        % Check for same subject as same cube size as source MRI
+        isSameSub = strcmp(srcSub, bst_fileparts(destMri.FileName));
+        isSameSize = isequal(srcSize, size(destMri.Cube));
+        if (strcmpi(cs, 'mni') && ~isMni) || (strcmpi(cs, 'scs') && ~isScs) || (strcmpi(cs, 'voxel') && ~isSameSub && ~isSameSize)           
+            continue
+        end
         destHandles = bst_figures('GetFigureHandles', hAllFig(ii));
         SetLocation(cs, destMri, destHandles, XYZ);
     end

@@ -222,6 +222,8 @@ switch (lower(commandName))
         pBar.jLabel.setText(msg);
         % Show window
         java_call(pBar.jWindow, 'setVisible', 'Z', 1);
+        % Repaing window
+        pBar.jWindow.getContentPane().repaint();
         % Set watch cursor
         jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
         
