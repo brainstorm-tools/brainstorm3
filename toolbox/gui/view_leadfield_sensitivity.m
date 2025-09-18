@@ -71,9 +71,8 @@ end
 
 % Detected modality 
 Channels = ChannelMat.Channel(iModChannels);
-isMeg       = ismember(Modality, {'MEG', 'MEG MAG', 'MEG GRAD'});
-isNIRS      = strcmp(Modality, 'NIRS');
-
+isEeg    = ismember(Modality, {'EEG', 'SEEG', 'ECOG'});
+isNirs   = strcmp(Modality, 'NIRS');
 % Load leadfield matrix
 HeadmodelMat = in_bst_headmodel(HeadmodelFile);
 GainMod      = HeadmodelMat.Gain(iModChannels, :);
@@ -186,7 +185,7 @@ end
 % Update display
 UpdateLeadfield();
 % Reset thresholds
-if isNIRS
+if isNirs
     panel_surface('SetDataThreshold', hFig, 1, 1/100);
 else
    panel_surface('SetDataThreshold', hFig, 1, 0);
@@ -227,7 +226,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
                 isUpdate = 1;
             case 'downarrow'
-                if ~isMeg && ~isNIRS
+                if isEeg
                     if isempty(iRef)
                         iRef = length(Channels) + 1;
                     end
@@ -244,7 +243,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     isUpdate = 1;
                 end
             case 'uparrow'
-                if ~isMeg && ~isNIRS
+                if isEeg
                     if isempty(iRef)
                         iRef = 0;
                     end
@@ -339,27 +338,24 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         bst_progress('start', 'View leadfields', 'Computing sensitivity...');
         % Sum all the channels
         if (iChannel == 0)
-            if isNIRS
+            if isNirs
                 LeadField = GainMod;
             elseif isAvgRef
                 LeadField = bst_bsxfun(@minus, GainMod, mean(GainMod,1));
             elseif ~isempty(iRef)
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
-
             LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
             normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
-
         % Compute the sensitivity for one sensor
         else
-            if isNIRS
+            if isNirs
                 LeadField = GainMod(iChannel,:);
             elseif isAvgRef
                 LeadField = GainMod(iChannel,:) - mean(GainMod,1);
             elseif ~isempty(iRef)
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
-
             LeadField = reshape(LeadField,3,[])'; % each column is a vector
             normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
         end
@@ -422,14 +418,13 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
     function UpdateLegend()
         if (iChannel == 0)
             strTarget = 'Sum of all channels';
-        elseif isNIRS
+        elseif isNirs
             tokens = regexp(Channels(iChannel).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             strTarget = sprintf('Target channel #%d/%d : S%s (red) D%s (green)', iChannel, length(Channels), tokens{1}{1}, tokens{1}{2});
-
         else
             strTarget = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
         end
-        if isMeg  || isNIRS
+        if ~isEeg
             strTitle = strTarget;
         elseif isAvgRef
             strTitle = [strTarget '  |  Average reference'];
@@ -451,10 +446,9 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         delete(findobj(hAxes, '-depth', 1, 'Tag', 'SelDetector'));
 
         % Plot selected sensor
-        if (iChannel > 0) 
-
-            if isNIRS
-
+        if (iChannel > 0)
+            if isNirs
+                % Source
                 line(Channels(iChannel).Loc(1,1), Channels(iChannel).Loc(2,1), Channels(iChannel).Loc(3,1), ...
                     'Parent',          hAxes, ...
                     'LineWidth',       2, ...
@@ -464,8 +458,8 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     'MarkerEdgeColor', [.4 .4 .4], ...
                     'MarkerSize',      8, ...
                     'Tag',             'SelSource');
-
-            line(Channels(iChannel).Loc(1,2), Channels(iChannel).Loc(2,2), Channels(iChannel).Loc(3,2), ...
+                % Detector
+                line(Channels(iChannel).Loc(1,2), Channels(iChannel).Loc(2,2), Channels(iChannel).Loc(3,2), ...
                     'Parent',          hAxes, ...
                     'LineWidth',       2, ...
                     'LineStyle',       'none', ...
@@ -475,6 +469,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     'MarkerSize',      8, ...
                     'Tag',             'SelDetector');
             else
+                % Channel
                 line(Channels(iChannel).Loc(1,1), Channels(iChannel).Loc(2,1), Channels(iChannel).Loc(3,1), ...
                     'Parent',          hAxes, ...
                     'LineWidth',       2, ...
@@ -484,13 +479,12 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     'MarkerEdgeColor', [.4 .4 .4], ...
                     'MarkerSize',      8, ...
                     'Tag',             'SelChannel');
-
             end
         end
         % Remove previous selected reference
         delete(findobj(hAxes, '-depth', 1, 'Tag', 'RefChannel'));
         % Plot the reference electrode
-        if ~isMeg && ~isNIRS && ~isAvgRef
+        if isEeg && ~isAvgRef
             line(Channels(iRef).Loc(1,1), Channels(iRef).Loc(2,1), Channels(iRef).Loc(3,1), ...
                 'Parent',          hAxes, ...
                 'LineWidth',       2, ...
@@ -507,7 +501,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 %% ===== SELECT REFERENCE =====
     function isOk = SelectReference()
         isOk = 0;
-        if ~isMeg && ~isNIRS
+        if isEeg
             % Ask for the reference electrode
             refChan = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', [Modality ' reference'], [], {'Average Ref', Channels.Name});
             if isempty(refChan)
