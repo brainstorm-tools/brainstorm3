@@ -389,6 +389,8 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                             elseif strcmpi(DataType, 'Source')
                                 if ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                     DataType = 'sLORETA';
+                                elseif  ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'headmodel'))
+                                    DataType = 'headmodel';
                                 else
                                     [~, iResult] = bst_memory('LoadResultsFile', TessInfo(iTess).DataSource.FileName, 0);
                                     if ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Function), 'sloreta'));

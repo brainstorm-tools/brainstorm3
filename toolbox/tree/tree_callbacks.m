@@ -1428,6 +1428,15 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
                     end
+                    % NIRS
+                    if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod) && ~isempty(ChannelFile)
+                        ChannelMat = in_bst_channel(ChannelFile, 'Channel');
+                        iNIRS      = good_channel(ChannelMat.Channel, [], 'NIRS');
+                        Groups     = unique({ChannelMat.Channel(iNIRS).Group});
+                        for iGroup = 1:length(Groups)
+                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
+                        end
+                    end
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')
