@@ -204,7 +204,7 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     % Sort by time
     if (size(newEvent.times, 2) > 1)
         [tmp__, iSort] = sort(bst_round(newEvent.times(1,:), 9));
-        newEvent.times   = snewEvent.times(:,iSort);
+        newEvent.times   = newEvent.times(:,iSort);
         newEvent.epochs  = newEvent.epochs(iSort);
         if ~isempty(newEvent.reactTimes)
             newEvent.reactTimes = newEvent.reactTimes(iSort);
