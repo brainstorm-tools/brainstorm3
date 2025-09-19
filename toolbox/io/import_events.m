@@ -250,7 +250,7 @@ for iNew = 1:length(newEvents)
         sFile.events(iEvt).notes      = [sFile.events(iEvt).notes, newEvents(iNew).notes];
         % Sort by time
         if (size(sFile.events(iEvt).times, 2) > 1)
-            [tmp__, iSort] = unique(bst_round(sFile.events(iEvt).times(1,:), 9));
+            [tmp__, iSort] = sort(bst_round(sFile.events(iEvt).times(1,:), 9));
             sFile.events(iEvt).times   = sFile.events(iEvt).times(:,iSort);
             sFile.events(iEvt).epochs  = sFile.events(iEvt).epochs(iSort);
             if ~isempty(sFile.events(iEvt).reactTimes)
@@ -296,40 +296,9 @@ for iNew = 1:length(newEvents)
     end
 end
 
-% Merge channels for simultaneous channelwise events
+% Merge simultaneous event occurences
 for iEvt = 1:length(sFile.events)
-    if isempty(sFile.events(iEvt).channels)
-        % Noting to merge
-        continue
-    end
-    iOcc = find(~cellfun(@isempty, sFile.events(iEvt).channels));
-    if numel(iOcc) < 2
-        % Noting to merge
-        continue
-    end
-    % Only for events with channel info
-    [~, ics, ias] = unique(bst_round(sFile.events(iEvt).times(:,iOcc)', 9), 'rows', 'stable');
-    for ic = 1 : numel(ics)
-        irep = iOcc(ias == ic);
-        if numel(irep) < 2
-            continue
-        end
-        % Merge channels if there are not Notes, or all Notes are the same for repeated occurrences
-        if isempty(sFile.events(iEvt).notes) || isequal(sFile.events(iEvt).notes{irep})
-            % Merge channels in first occurrence
-            sFile.events(iEvt).channels{irep(1)} = unique([sFile.events(iEvt).channels{irep}]);
-            % Delete merged occurences
-            sFile.events(iEvt).channels(irep(2:end)) = [];
-            sFile.events(iEvt).times(:, irep(2:end)) = [];
-            sFile.events(iEvt).epochs(irep(2:end))   = [];
-            if ~isempty(sFile.events(iEvt).notes)
-                sFile.events(iEvt).notes(irep(2:end)) = [];
-            end
-            if ~isempty(sFile.events(iEvt).reactTimes)
-                sFile.events(iEvt).reactTimes(irep(2:end)) = [];
-            end
-        end
-    end
+    sFile.events(iEvt) = process_evt_merge('MergeOccurrences', sFile.events(iEvt));
 end
 
 % %% ===== SORT EVENTS BY LABEL =====
