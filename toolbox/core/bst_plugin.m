@@ -5,6 +5,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetSupported',         PlugName/PlugDesc)           % Get only one specific supported plugin
 %                 PlugDesc = bst_plugin('GetInstalled')                                      % Get all the installed plugins
 %                 PlugDesc = bst_plugin('GetInstalled',         PlugName/PlugDesc)           % Get a specific installed plugin
+%                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
@@ -28,7 +29,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('Archive',              OutputFile=[ask])    % Archive software environment
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
-%                            bst_plugin('LinkCatSpm',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('LinkSpmToolbox',       Action, Toolbox)     % 0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
 %                            bst_plugin('UpdateDescription',    PlugDesc, doDelete=0) % Update plugin description after load
 %
 %
@@ -157,9 +158,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn   = 'LinkCatSpm(1);';
-    PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
-    PlugDesc(end).LoadedFcn      = 'LinkCatSpm(2);';
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12'');';
+    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''cat12'');';
+    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''cat12'');';
+    PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''cat12'');';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
 
     % === ANATOMY: CT2MRIREG ===
@@ -200,7 +202,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
-    
+
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
@@ -342,6 +344,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
+
+    % === I/O: JNIfTI ===
+    PlugDesc(end+1)              = GetStruct('jnifti');
+    PlugDesc(end).Version        = '0.8';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jnifty/archive/refs/tags/v0.8.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jnifty';
+    PlugDesc(end).TestFile       = 'jnii2nii.m';
+    PlugDesc(end).ReadmeFile     = 'README.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadedFcn      = '';
+    PlugDesc(end).RequiredPlugs  = {'jsonlab'};
 
     % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
@@ -1377,6 +1392,14 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug).URLzip = []; 
         end
     end
+end
+
+
+%% ===== GET LOADED PLUGINS =====
+% USAGE:  [PlugDesc, SearchPlugs] = bst_plugin('GetLoaded')
+function PlugDesc = GetLoaded()
+    PlugDesc = GetInstalled();
+    PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
 end
 
 
@@ -2524,8 +2547,7 @@ function strList = List(Target, isGui)
             PlugDesc = GetInstalled();
             isInstalled = 1;
         case 'Loaded'
-            PlugDesc = GetInstalled();
-            PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+            PlugDesc = GetLoaded();
             isInstalled = 1;
         otherwise
             error(['Invalid target: ' Target]);
@@ -3166,10 +3188,10 @@ end
 %  ===== PLUGIN-SPECIFIC FUNCTIONS ============================================
 %  ============================================================================
 
-%% ===== LINK CAT-SPM =====
-% USAGE: bst_plugin('LinkCatSpm', Action)               
-%        0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
-function LinkCatSpm(Action)
+%% ===== LINK TOOLBOX-SPM =====
+% USAGE: bst_plugin('LinkSpmToolbox', Action)               
+%        0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
+function LinkSpmToolbox(Action, ToolboxName)
     % Get SPM12 plugin
     PlugSpm = GetInstalled('spm12');
     if isempty(PlugSpm)
@@ -3189,12 +3211,15 @@ function LinkCatSpm(Action)
     if ~file_exist(spmToolboxDir)
         error(['Could not find SPM12 toolbox folder: ' spmToolboxDir]);
     end
-    % CAT12 plugin path
-    spmCatDir = bst_fullfile(spmToolboxDir, 'cat12');
+    % Toolbox plugin path
+    spmToolboxDirTarget = bst_fullfile(spmToolboxDir, ToolboxName);
+    % Get toolbox plugin
+    PlugToolbox = GetInstalled(ToolboxName);
+
     % Check link
     if (Action == 2)
         % Link exists and works: return here
-        if file_exist(bst_fullfile(spmCatDir, 'cat12.m'))
+        if file_exist(bst_fullfile(spmToolboxDirTarget, PlugToolbox.TestFile))
             return;
         % Link doesn't exist: Create it
         else
@@ -3202,16 +3227,16 @@ function LinkCatSpm(Action)
         end
     end
     % If folder already exists
-    if file_exist(spmCatDir)
-        % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install of CAT12
+    if file_exist(spmToolboxDirTarget)
+        % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install
         if (Action == 1) && ~PlugSpm.isManaged
-            error(['CAT12 seems already set up: ' spmCatDir]);
+            error([upper(ToolboxName) ' seems already set up: ' spmToolboxDirTarget]);
         end
-        % All the other cases: delete existing CAT12 folder
+        % All the other cases: delete existing toolbox folder
         if ispc
-            rmCall = ['rmdir /q /s "' spmCatDir '"'];
+            rmCall = ['rmdir /q /s "' spmToolboxDirTarget '"'];
         else
-            rmCall = ['rm -rf "' spmCatDir '"'];
+            rmCall = ['rm -rf "' spmToolboxDirTarget '"'];
         end
         disp(['BST> Deleting existing SPM12 toolbox: ' rmCall]);
         [status,result] = system(rmCall);
@@ -3221,22 +3246,20 @@ function LinkCatSpm(Action)
     end
     % Create new link
     if (Action == 1)
-        % Get CAT12 plugin
-        PlugCat = GetInstalled('cat12');
-        if isempty(PlugCat) || ~PlugCat.isLoaded
-            error('Plugin CAT12 is not loaded.');
+        if isempty(PlugToolbox) || ~PlugToolbox.isLoaded
+            error(['Plugin ' upper(ToolboxName) ' is not loaded.']);
         end
         % Return if installation is not complete yet (first load before installation ends)
-        if isempty(PlugCat.InstallDate)
+        if isempty(PlugToolbox.InstallDate)
             return
         end
         % Define source and target for the link
-        if ~isempty(PlugCat.SubFolder)
-            linkTarget = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
+        if ~isempty(PlugToolbox.SubFolder)
+            linkTarget = bst_fullfile(PlugToolbox.Path, PlugToolbox.SubFolder);
         else
-            linkTarget = PlugCat.Path;
+            linkTarget = PlugToolbox.Path;
         end
-        linkFile = spmCatDir;
+        linkFile = spmToolboxDirTarget;
         % Create link
         if ispc
             linkCall = ['mklink /D "' linkFile '" "' linkTarget '"'];

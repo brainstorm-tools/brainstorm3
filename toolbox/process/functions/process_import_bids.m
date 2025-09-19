@@ -1473,7 +1473,7 @@ function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
         return
     end
     % Check for dataset-name
-    DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
+    DatasetName = regexp(InFile, '^bids:([^:]*):', 'tokens', 'once');
     DatasetName = DatasetName{1};
     if ~isempty(DatasetName)
         % Get BIDS dataset name from BIDS dir
@@ -1484,7 +1484,7 @@ function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
         end
     end
     % There should not be a slash after bids::, but check anyway.
-    OutFile = regexprep(InFile, 'bids:[^:]*:/?', '');
+    OutFile = regexprep(InFile, '^bids:[^:]*:/?', '');
     OutFile = bst_fullfile(BidsDir, OutFile);
 end
     

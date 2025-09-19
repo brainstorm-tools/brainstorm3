@@ -597,7 +597,6 @@ function FigureMouseUpCallback(hFig, varargin)
     % Check if clicked object is still available
     if ~isempty(clickObject) && ~ishandle(clickObject)
         clickObject = [];
-        clickAction = [];
     end
     
     % ===== SIMPLE CLICK ===== 

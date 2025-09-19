@@ -2800,6 +2800,8 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
         sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
         % Get channel indices in the figure montage
         if ~isempty(sMontage)
+            % Set name to retrieved montage
+            TsInfo.MontageName = sMontage.Name;
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames, ChannelFlag);
             % No signal to display
             if isempty(iMatrixDisp) && ~isempty(sMontage.ChanNames)
