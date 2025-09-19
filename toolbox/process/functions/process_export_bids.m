@@ -420,6 +420,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     mkdir(anatFolder);
                 end
                 mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
+                mriJson = bst_fullfile(anatFolder, [prefix '_T1w.json']);
+
                 if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
                     if defaceMri
                         origMri = GetDefacedMri(sSubject);
@@ -427,6 +429,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                         origMri = sSubject.Anatomy(1).FileName;
                     end
                     export_mri(origMri, mriFile);
+                    export_mri_fiducials(origMri, mriJson);
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
