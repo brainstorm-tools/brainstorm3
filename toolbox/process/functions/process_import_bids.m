@@ -736,8 +736,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             elseif isfield(sCoordsystem, 'NIRSCoordinateUnits') && ~isempty(sCoordsystem.NIRSCoordinateUnits) && ismember(sCoordsystem.NIRSCoordinateUnits, {'mm','cm','m'})
                                  posUnits = sCoordsystem.NIRSCoordinateUnits;
                             end
-                            % Get fiducials structure
-                            sFid = GetFiducials(sCoordsystem, posUnits);
+                            % Get fiducials structure (returns in m)
+                            sFid.SCS = GetFiducials(sCoordsystem, posUnits);
                             % If there are no fiducials: there is no easy way to match with the anatomy, 
                             % and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG).
                             % Note coordinate systems also for potentially loading saved co-registration.
@@ -1047,7 +1047,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Second check: coreg fids also present on MEEG side
                     sFid = allMeegElecFiducials{iFile};
                     sMriFid = load(file_fullpath(allMeegElecAnatRef{iFile}), 'SCS'); 
-                    if isfield(sFid, 'NAS') && isfield(sFid, 'LPA') && isfield(sFid, 'RPA')
+                    if isfield(sFid.SCS, 'NAS') && isfield(sFid.SCS, 'LPA') && isfield(sFid.SCS, 'RPA')
                         % With all this necessary coreg info, give warnings if something else doesn't work.
                         % Third check: expected coordinate systems. Assume ok if some are missing.
                         if ~isempty(allMeegElecCoordSys{iFile})
@@ -1078,20 +1078,20 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             isCoregOk = false;
                         end
                     end
-                end
+                end % coreg checks
                 if isCoregOk
-                    % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm.
-                    MriFidDist = [sMriFid.NAS; sMriFid.LPA; sMriFid.RPA];
+                    % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm but converted to m by GetFiducials.
+                    MriFidDist = [sMriFid.SCS.NAS; sMriFid.SCS.LPA; sMriFid.SCS.RPA];
                     MriFidDist = sqrt(sum( (MriFidDist - circshift(MriFidDist, 1, 1)).^2, 2));
-                    MeegFidDist = [sFid.NAS; sFid.LPA; sFid.RPA];
+                    MeegFidDist = [sFid.SCS.NAS; sFid.SCS.LPA; sFid.SCS.RPA];
                     MeegFidDist = sqrt(sum( (MeegFidDist - circshift(MeegFidDist, 1, 1)).^2, 2));
-                    MeegFidDist = MeegFidDist * 10; % cm to mm
+                    MeegFidDist = MeegFidDist * 1e3; % cm to mm
                     % Warn if distances differ by more than a um, indicating they are not the
                     % same triplet of points.
                     % We could accept this by assuming the points define the same SCS or are
                     % roughly the same, like when we mark fids on MRI vs digitized fids, but
                     % for BIDS, I believe it is expected to have the exact same points.
-                    if any(abs(MeegFidDist - MriFidDist) > 1e-3) % > 1 um
+                    if any(abs(MeegFidDist - MriFidDist) > 1e-2) % > 10 um (precision limited: rounded to um when saving in json)
                         msg = ['Unexpected distance inconsistency for anat landmarks in MRI vs MEG. ' ...
                             'Imported co-registration may be wrong and should be verified: ', allMeegFiles{iFile}];
                         disp(['BIDS> Warning: ' msg]);
@@ -1112,9 +1112,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
                                 if ~isempty(iTransf)
                                     T = ChannelMat.TransfMeg{iTransf}(1:3, :);
-                                    sFid.NAS = T * [sFid.NAS'; 1];
-                                    sFid.LPA = T * [sFid.LPA'; 1];
-                                    sFid.RPA = T * [sFid.RPA'; 1];
+                                    sFid.SCS.NAS = T * [sFid.SCS.NAS'; 1];
+                                    sFid.SCS.LPA = T * [sFid.SCS.LPA'; 1];
+                                    sFid.SCS.RPA = T * [sFid.SCS.RPA'; 1];
                                 end
                                 % Compute "current Bst system" to "co-registered" tranformation. Current
                                 % system might be "raw scs" computed from digitized anat fids of this
@@ -1132,8 +1132,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 warning('Unexpected BIDS coordinate system. Coregistration not loaded. Please report: this is a coding error.');
                                 break;
                         end
-                        % Apply to channel file, saving transformation as a 'manual correction'.
-                        channel_apply_transf(ChannelFile, T);
+                        % If coregistration was done with this recording session, the alignment may
+                        % have been saved in the MRI fiducials, so the transformation will be
+                        % identity here. In this case, avoid adding unneeded transformation.
+                        if max(abs(T(:)' - [1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1])) > 1e-4
+                            % Apply to channel file, saving transformation as a 'manual correction'.
+                            channel_apply_transf(ChannelFile, T);
+                        end
                     end
                 end
 
@@ -1462,7 +1467,7 @@ end
 % See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
 function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
     Msg = '';
-    if ~strncmp(InFile, 'bids:', 5) || strncmp(InFile, 'bids::', 6)
+    if ~strncmp(InFile, 'bids:', 5)
         % Assume it is a relative path to BIDS dir
         OutFile = bst_fullfile(BidsDir, InFile);
         return
