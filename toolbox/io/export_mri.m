@@ -67,6 +67,7 @@ if isempty(OutputMriFile)
         case 'Analyze', ExportExt = '.img';
         case 'CTF',     ExportExt = '.mri';
         case 'Nifti1',  ExportExt = '.nii';
+        case 'JNIfTI',  ExportExt = '.jnii';
         case 'FT-MRI',  ExportExt = '.mat';
         otherwise,      ExportExt = '.nii';
     end
@@ -100,6 +101,20 @@ end
 
 % ===== SAVE MRI =====
 [OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputMriFile);
+% Install/load required plugins
+LoadedPlugins = bst_plugin('GetLoaded');
+RequiredPlugins = {};
+switch lower(OutputExt)
+    case {'.jnii', '.bnii'}
+        % JNIfTI Toolbox
+        RequiredPlugins = {'jnifti'};
+end
+for iPlugin = 1 : length(RequiredPlugins)
+    [isInstalled, errMsg] = bst_plugin('Install', RequiredPlugins{iPlugin});
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 % Show progress bar
 if ~isProgress
     bst_progress('start', 'Export MRI', ['Export MRI to file "' [OutputBase, OutputExt] '"...']);
@@ -110,6 +125,15 @@ switch lower(OutputExt)
         out_mri_gis(sMri, OutputMriFile);
     case {'.img', '.nii'}
         out_mri_nii(sMri, OutputMriFile);
+    case {'.jnii', '.bnii'}
+        % Create temporal NIfTI file
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'out_jnifti');
+        % Save  MRI nii format
+        TmpNiiFile = bst_fullfile(TmpDir, 'tmp.nii');
+        out_mri_nii(sMri, TmpNiiFile);
+        nii2jnii(TmpNiiFile, OutputMriFile);
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
     case '.mri'
         out_mri_ctf(sMri, OutputMriFile);
     case '.mat'
@@ -117,6 +141,14 @@ switch lower(OutputExt)
         bst_save(OutputMriFile, ftMri, 'v7');
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
+end
+% Unload required plugins that were loaded
+if ~isempty(RequiredPlugins)
+    tmpLoadedPlugins = bst_plugin('GetLoaded');
+    ToUnloadPluginNames = setdiff({tmpLoadedPlugins.Name}, {LoadedPlugins.Name});
+    for ix = 1 : length(ToUnloadPluginNames)
+        bst_plugin('Unload', ToUnloadPluginNames{ix});
+    end
 end
 % Hide progress bar
 if ~isProgress

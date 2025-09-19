@@ -102,6 +102,37 @@ switch(lower(extension))
         data = nifti_read_img(fid, hdr, 0);
         fclose(fid);
         
+    case {'.jnii', '.bnii'}
+        % Install/load JNIfTI Toolbox
+        LoadedPlugins = bst_plugin('GetLoaded');
+        [isInstalled, errMsg] = bst_plugin('Install', 'jnifti');
+        if ~isInstalled
+            error(errMsg);
+        end
+        % Create temporal NIfTI file
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'in_jnifti');
+        % Save input MRI .jnii as .nii format
+        TmpNiiFile = bst_fullfile(TmpDir, 'tmp.nii');
+        jnii2nii(MriFile, TmpNiiFile);
+        % Unload JNIfTI and its dependencies
+        tmpLoadedPlugins = bst_plugin('GetLoaded');
+        ToUnloadPluginNames = setdiff({tmpLoadedPlugins.Name}, {LoadedPlugins.Name});
+        for ix = 1 : length(ToUnloadPluginNames)
+            bst_plugin('Unload', ToUnloadPluginNames{ix});
+        end
+        % History
+        s.History = [];
+        s = bst_history('add', s, 'import', sprintf('File %s converted to NIfTI using `jnii2nii` from JNIfTI Toolbox', MriFile));
+        % Load NIfTI file
+        [sMri, vox2ras, tReorient] = in_mri_nii(TmpNiiFile, isReadMulti, isApply, isScale);
+        % Prepend history
+        if isfield(sMri, 'History')
+            sMri.History = [s.History; sMri.History];
+        end
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
+        return
+
     otherwise
         error('Unsupported file format');
 end
@@ -115,6 +146,12 @@ sMri.Cube    = data;
 sMri.Voxsize = Voxsize;
 sMri.Comment = 'MRI';
 sMri.Header  = hdr;
+% Transformation info
+if ~isempty(hdr.nifti.vox2ras)
+    sMri = bst_history('add', sMri, 'vox2ras', sprintf(['"%s" transformation, %s %d. ' ...
+        'See fields "[sq]form" and "[sq]form_code" in "Hearder.nifti" for more info.'], ...
+        hdr.nifti.vox2ras_type, [hdr.nifti.vox2ras_type, '_code'], hdr.nifti.([hdr.nifti.vox2ras_type, '_code'])));
+end
 
 % ===== NIFTI ORIENTATION =====
 % Apply orientation to the volume
@@ -340,21 +377,18 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         P0 = [x y z]';
         nifti.qform = [qMdc*D P0; 0 0 0 1];
 
-        % Build final transformation matrix
-        % For SFORM, accept only NIFTI_XFORM_ALIGNED_ANAT (2)
-        if (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3)) && ~isequal(nifti.sform(1:3,1:3),eye(3))
+        % Build final vos2ras transformation matrix
+        % Try SFORM, accept if different from NIFTI_XFORM_UNKNOWN (0)
+        if (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
+            nifti.vox2ras_type = 'sform';
             nifti.vox2ras = nifti.sform;
-        elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3)) && ~isequal(nifti.qform(1:3,1:3),eye(3))
-            nifti.vox2ras = nifti.qform;
-        % Same thing, but accept identity rotations
-        elseif (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
-            nifti.vox2ras = nifti.sform;
+        % Try QFORM, accept if different from NIFTI_XFORM_UNKNOWN (0)
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
+            nifti.vox2ras_type = 'qform';
             nifti.vox2ras = nifti.qform;
-        % Last chance: accept other SFORM codes
-        elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform)
-            nifti.vox2ras = nifti.sform;
+        % SFORM and QFORM = NIFTI_XFORM_UNKNOWN (0)
         else
+            nifti.vox2ras_type = 'none';
             nifti.vox2ras = [];
         end
     end

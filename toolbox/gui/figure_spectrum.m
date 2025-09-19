@@ -1613,12 +1613,15 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     % Plotting the names of the channels
     if ~isempty(LinesLabels) && TsInfo.ShowLegend && ((length(LinesLabels) > 1) || ~isempty(LinesLabels{1}))
         if (length(LinesLabels) == 1) && (length(PlotHandles.hLines) > 1)
-            [hLegend, hLegendObjects] = legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
+            legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
         elseif (length(PlotHandles.hLines) == length(LinesLabels))
-            [hLegend, hLegendObjects] = legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
+            legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
         else
             disp('BST> Error: Number of legend entries do not match the number of lines. Ignoring...');
+            legend('off');
         end
+    else
+        legend('off');
     end
 end
 

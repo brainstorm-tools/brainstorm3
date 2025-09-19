@@ -324,6 +324,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                         bst_progress('stop');
                         return;
                     end
+                else
+                    isReslice = 0;
                 end
 
             % Ask for PET processing
@@ -349,6 +351,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             RegMethod = 'Ignore';
             % Reslice: never reslice
             isReslice = 0;
+            if isPet
+                petImportFileTag = '';
+            end
         end
 
         % Check that reference volume has set fiducials for reslicing

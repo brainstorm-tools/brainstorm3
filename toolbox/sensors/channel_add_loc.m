@@ -41,12 +41,14 @@ isTemplate = 0;
 if ~isempty(LocChannelFile)
     if ischar(LocChannelFile)
         LocChannelMat = in_bst_channel(LocChannelFile);
+        LocFileFormat  = 'BST';
         % Check if the input file is a template
         defaultsDir = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
         isTemplate = ~isempty(strfind(LocChannelFile, defaultsDir));
     else
         LocChannelMat = LocChannelFile;
         LocChannelFile = [];
+        LocFileFormat  = '';
     end
 % Import positions from external file
 else
@@ -57,7 +59,7 @@ else
         isFixUnits = 0;
         isApplyVox2ras = 1;
     end
-    [LocChannelMat, ChannelFile, FileFormat] = import_channel(iStudies, [], [], 0, 0, 0, isFixUnits, isApplyVox2ras);
+    [LocChannelMat, LocChannelFile, LocFileFormat] = import_channel(iStudies, [], [], 0, 0, 0, isFixUnits, isApplyVox2ras);
 end
 % Nothing loaded: exit
 if isempty(LocChannelMat)
@@ -219,7 +221,11 @@ for is = 1:length(iStudies)
     end
     
     % History: Added channel locations
-    ChannelMat = bst_history('add', ChannelMat, 'addloc', ['Added EEG positions from "' LocChannelMat.Comment '"']);
+    histStr = ['Added EEG positions from "' LocChannelMat.Comment '"'];
+    if ~isempty(LocChannelFile) && ~isempty(LocFileFormat)
+        histStr = [histStr, sprintf(', File "%s", Format "%s"', LocChannelFile, LocFileFormat)];
+    end
+    ChannelMat = bst_history('add', ChannelMat, 'addloc', histStr);
     % Save modified file
     bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
     % Reload study

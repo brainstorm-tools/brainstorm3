@@ -115,6 +115,7 @@ if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
         case '.mri',                  FileFormat = 'CTF';
         case {'.ima', '.dim'},        FileFormat = 'GIS';
         case {'.img','.hdr','.nii'},  FileFormat = 'Nifti1';
+        case {'.jnii','.bnii'},       FileFormat = 'JNIfTI';
         case '.fif',                  FileFormat = 'Neuromag';
         case {'.mgz','.mgh'},         FileFormat = 'MGH';
         case {'.mnc','.mni'},         FileFormat = 'MINC';
@@ -133,7 +134,7 @@ switch (FileFormat)
         MRI = in_mri_ctf(MriFile);  % Auto-detect file format
     case 'GIS'
         MRI = in_mri_gis(MriFile, ByteOrder);
-    case {'Nifti1', 'Analyze'}
+    case {'Nifti1', 'Analyze', 'JNIfTI'}
         if isInteractive
             [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], isRescale);
         else

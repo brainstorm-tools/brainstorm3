@@ -5,6 +5,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetSupported',         PlugName/PlugDesc)           % Get only one specific supported plugin
 %                 PlugDesc = bst_plugin('GetInstalled')                                      % Get all the installed plugins
 %                 PlugDesc = bst_plugin('GetInstalled',         PlugName/PlugDesc)           % Get a specific installed plugin
+%                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
@@ -28,7 +29,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('Archive',              OutputFile=[ask])    % Archive software environment
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
-%                            bst_plugin('LinkCatSpm',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('LinkSpmToolbox',       Action, Toolbox)     % 0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
 %                            bst_plugin('UpdateDescription',    PlugDesc, doDelete=0) % Update plugin description after load
 %
 %
@@ -157,9 +158,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn   = 'LinkCatSpm(1);';
-    PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
-    PlugDesc(end).LoadedFcn      = 'LinkCatSpm(2);';
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12'');';
+    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''cat12'');';
+    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''cat12'');';
+    PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''cat12'');';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
 
     % === ANATOMY: CT2MRIREG ===
@@ -200,7 +202,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
-    
+
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
@@ -342,6 +344,19 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'examples'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).UnloadPlugs    = {'iso2mesh'};
+
+    % === I/O: JNIfTI ===
+    PlugDesc(end+1)              = GetStruct('jnifti');
+    PlugDesc(end).Version        = '0.8';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/NeuroJSON/jnifty/archive/refs/tags/v0.8.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeuroJSON/jnifty';
+    PlugDesc(end).TestFile       = 'jnii2nii.m';
+    PlugDesc(end).ReadmeFile     = 'README.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadedFcn      = '';
+    PlugDesc(end).RequiredPlugs  = {'jsonlab'};
 
     % === I/O: JSNIRFY ===
     PlugDesc(end+1)              = GetStruct('jsnirfy');
@@ -520,6 +535,21 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'mtrf'};
     PlugDesc(end).DeleteFiles    = {'.gitattributes', '.github/ISSUE_TEMPLATE', 'data', 'doc', 'examples', 'img'};
 
+    % === STATISTICS: MVGC ===
+    PlugDesc(end+1)              = GetStruct('mvgc');
+    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).TestFile       = 'startup_mvgc.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {''};
+    PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
+    PlugDesc(end).DownloadedFcn  = ['movefile(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
+                                    'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));'];
+    PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
+
     % === STATISTICS: PICARD ===
     PlugDesc(end+1)              = GetStruct('picard');
     PlugDesc(end).Version        = 'github-master';
@@ -644,6 +674,31 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
+    % === sEEG: GARDEL ===
+    PlugDesc(end+1)              = GetStruct('gardel');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).URLzip         = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/archive/GARDEL_Brainstorm/gardel-GARDEL_Brainstorm.zip';
+    PlugDesc(end).URLinfo        = 'https://gitlab-dynamap.timone.univ-amu.fr/public_shared_tools/gardel/-/wikis/home';
+    PlugDesc(end).TestFile       = 'code/Functions/elec_auto_segmentation.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn   = {};
+    PlugDesc(end).DeleteFiles    = {'gardel_splash.png', 'gardel_splash_480x480.png', 'gardel_splash480x480.svg', ...
+                                    'code/Functions/associate_matter.m', 'code/Functions/associate_region.m', 'code/Functions/BN_colorlut2complete_descr.m', ...
+                                    'code/Functions/coregistration.m', 'code/Functions/find_parsing_json.m', 'code/Functions/First_SPM_reorientation.m', ...
+                                    'code/Functions/make_bids_filename.m', 'code/Functions/new_brainmasking_to_be_compiled.m', 'code/Functions/NEW_SEG2.m', ...
+                                    'code/Functions/open_electrodes_file.m', 'code/Functions/open_nii_anatomical_convention.m', 'code/Functions/plot_brain.m', ...
+                                    'code/Functions/read_BNatlas.m', 'code/Functions/read_fscolorlut.m', 'code/Functions/Segmentation.asv', 'code/Functions/stlwrite.m', ...
+                                    'code/Functions/write_coordsystem_json.m', 'code/Functions/write2Brainstorm.m', 'code/Functions/write2MNI.m', ...
+                                    'code/toolboxes/NIFTI_dataViewer', 'code/toolboxes/freezeColors', 'code/toolboxes/dicm2nii', ...
+                                    'code/.gitkeep', 'code/BN_Atlas_246_LUT_sam.txt', 'code/CTthresholdGUI.fig', 'code/CTthresholdGUI.m', 'code/electrode_creation.m', ...
+                                    'code/electrodes_profiles.json', 'code/GARDEL User Manual_V2.docx', 'code/GARDEL User Manual_V2.pdf', 'code/GARDEL.fig', ...
+                                    'code/GARDEL.m', 'code/GARDELv2_bis.prj', 'code/MontageAnyWaveGardel.m', 'code/newtabMarsAtlas_SAM_2016.csv', ...
+                                    'code/save_bipolar_with_region.m', 'code/single_subj_T1.nii', 'code/VepFreeSurferColorLut.txt', 'code/write_localisations.m'};
+
     % === sEEG: MIA ===
     PlugDesc(end+1)              = GetStruct('mia');
     PlugDesc(end).Version        = 'github-master';
@@ -653,12 +708,12 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
-    
+
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
@@ -1033,7 +1088,8 @@ end
 %% ===== IS GITHUB MASTER ======
 % Returns 1 if the URL is a github master/main branch
 function isMaster = isGithubMaster(URLzip)
-    isMaster = ~isempty(strfind(URLzip, 'https://github.com/')) && (~isempty(strfind(URLzip, 'master.zip')) || ~isempty(strfind(URLzip, 'main.zip')));
+    isMaster = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+               (strMatchEdge(URLzip, 'master.zip', 'end') || strMatchEdge(URLzip, 'main.zip', 'end'));
 end
 
 
@@ -1209,6 +1265,12 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
         % Theoretical plugin path
         PlugName = SearchPlugs(iSearch).Name;
         PlugPath = bst_fullfile(UserPluginsDir, PlugName);
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
         % Check if test function is available in the Matlab path
         TestFilePath = GetTestFilePath(SearchPlugs(iSearch));
         % If installed software found in Matlab path
@@ -1218,7 +1280,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug) = SearchPlugs(iSearch);
             PlugDesc(iPlug).isLoaded = 1;
             % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
-            if ~isempty(strfind(TestFilePath, PlugPath))
+            if strMatchEdge(TestFilePath, PlugPath, 'start')
                 PlugDesc(iPlug).isManaged = 1;
             % Process compiled together with Brainstorm
             elseif isCompiled && ~isempty(strfind(TestFilePath, ['.brainstorm' filesep 'plugins' filesep PlugName]))
@@ -1333,6 +1395,14 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
 end
 
 
+%% ===== GET LOADED PLUGINS =====
+% USAGE:  [PlugDesc, SearchPlugs] = bst_plugin('GetLoaded')
+function PlugDesc = GetLoaded()
+    PlugDesc = GetInstalled();
+    PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+end
+
+
 %% ===== GET DESCRIPTION =====
 % USAGE:  [PlugDesc, errMsg] = GetDescription(PlugName/PlugDesc)
 function [PlugDesc, errMsg] = GetDescription(PlugName)
@@ -1374,33 +1444,33 @@ function TestFilePath = GetTestFilePath(PlugDesc)
             % FieldTrip: Ignore if found embedded in SPM12
             if strcmpi(PlugDesc.Name, 'fieldtrip')
                 p = which('spm.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % SPM12: Ignore if found embedded in ROAST or in FieldTrip
             elseif strcmpi(PlugDesc.Name, 'spm12')
                 p = which('roast.m');
                 q = which('ft_defaults.m');
-                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % Iso2mesh: Ignore if found embedded in ROAST
             elseif strcmpi(PlugDesc.Name, 'iso2mesh')
                 p = which('roast.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
             elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
                 p = which('iso2meshver.m');
-                if ~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             % easyh5: Ignore if found embedded in iso2mesh or jsonlab
             elseif strcmpi(PlugDesc.Name, 'easyh5')
                 p = which('iso2meshver.m');
                 q = which('savejson.m');
-                if (~isempty(p) && ~isempty(strfind(TestFilePath, bst_fileparts(p)))) || (~isempty(q) && ~isempty(strfind(TestFilePath, bst_fileparts(q))))
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             end
@@ -2209,7 +2279,13 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     TestFilePath = GetTestFilePath(PlugDesc);
     if ~isempty(TestFilePath)
         PlugDesc.isLoaded = 1;
-        PlugDesc.isManaged = ~isempty(strfind(which(PlugDesc.TestFile), PlugPath));
+        % Handle case symbolic link
+        try
+            PlugPath = builtin('_canonicalizepath', PlugPath);
+        catch
+            % Nothing here
+        end
+        PlugDesc.isManaged = strMatchEdge(which(PlugDesc.TestFile), PlugPath, 'start');
         if PlugDesc.isManaged
             PlugDesc.Path = PlugPath;
         else
@@ -2257,6 +2333,12 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
     if ~isCompiled
+        % Handle case symbolic link
+        try
+            PlugHomeDir = builtin('_canonicalizepath', PlugHomeDir);
+        catch
+            % Nothing here
+        end
         addpath(PlugHomeDir);
         if isVerbose
             disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
@@ -2296,9 +2378,11 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Check if test function is available on path
     if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully loaded from:' 10 PlugHomeDir 10 10 ...
-            'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 ...
-            'Try restarting Matlab and Brainstorm.'];
-        bst_progress('removeimage')
+            'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 10 ...
+            'Try the following:' 10 ...
+            '1. Update the plugin ' PlugDesc.Name 10 ...
+            '2. If the issue persists, restart Matlab and Brainstorm.'];
+        bst_progress('removeimage');
         return;
     end
     
@@ -2463,8 +2547,7 @@ function strList = List(Target, isGui)
             PlugDesc = GetInstalled();
             isInstalled = 1;
         case 'Loaded'
-            PlugDesc = GetInstalled();
-            PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+            PlugDesc = GetLoaded();
             isInstalled = 1;
         otherwise
             error(['Invalid target: ' Target]);
@@ -3105,10 +3188,10 @@ end
 %  ===== PLUGIN-SPECIFIC FUNCTIONS ============================================
 %  ============================================================================
 
-%% ===== LINK CAT-SPM =====
-% USAGE: bst_plugin('LinkCatSpm', Action)               
-%        0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
-function LinkCatSpm(Action)
+%% ===== LINK TOOLBOX-SPM =====
+% USAGE: bst_plugin('LinkSpmToolbox', Action)               
+%        0=Delete/1=Create/2=Check a symbolic link for a Toolbox in SPM12 toolbox folder
+function LinkSpmToolbox(Action, ToolboxName)
     % Get SPM12 plugin
     PlugSpm = GetInstalled('spm12');
     if isempty(PlugSpm)
@@ -3128,12 +3211,15 @@ function LinkCatSpm(Action)
     if ~file_exist(spmToolboxDir)
         error(['Could not find SPM12 toolbox folder: ' spmToolboxDir]);
     end
-    % CAT12 plugin path
-    spmCatDir = bst_fullfile(spmToolboxDir, 'cat12');
+    % Toolbox plugin path
+    spmToolboxDirTarget = bst_fullfile(spmToolboxDir, ToolboxName);
+    % Get toolbox plugin
+    PlugToolbox = GetInstalled(ToolboxName);
+
     % Check link
     if (Action == 2)
         % Link exists and works: return here
-        if file_exist(bst_fullfile(spmCatDir, 'cat12.m'))
+        if file_exist(bst_fullfile(spmToolboxDirTarget, PlugToolbox.TestFile))
             return;
         % Link doesn't exist: Create it
         else
@@ -3141,16 +3227,16 @@ function LinkCatSpm(Action)
         end
     end
     % If folder already exists
-    if file_exist(spmCatDir)
-        % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install of CAT12
+    if file_exist(spmToolboxDirTarget)
+        % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install
         if (Action == 1) && ~PlugSpm.isManaged
-            error(['CAT12 seems already set up: ' spmCatDir]);
+            error([upper(ToolboxName) ' seems already set up: ' spmToolboxDirTarget]);
         end
-        % All the other cases: delete existing CAT12 folder
+        % All the other cases: delete existing toolbox folder
         if ispc
-            rmCall = ['rmdir /q /s "' spmCatDir '"'];
+            rmCall = ['rmdir /q /s "' spmToolboxDirTarget '"'];
         else
-            rmCall = ['rm -rf "' spmCatDir '"'];
+            rmCall = ['rm -rf "' spmToolboxDirTarget '"'];
         end
         disp(['BST> Deleting existing SPM12 toolbox: ' rmCall]);
         [status,result] = system(rmCall);
@@ -3160,22 +3246,20 @@ function LinkCatSpm(Action)
     end
     % Create new link
     if (Action == 1)
-        % Get CAT12 plugin
-        PlugCat = GetInstalled('cat12');
-        if isempty(PlugCat) || ~PlugCat.isLoaded
-            error('Plugin CAT12 is not loaded.');
+        if isempty(PlugToolbox) || ~PlugToolbox.isLoaded
+            error(['Plugin ' upper(ToolboxName) ' is not loaded.']);
         end
         % Return if installation is not complete yet (first load before installation ends)
-        if isempty(PlugCat.InstallDate)
+        if isempty(PlugToolbox.InstallDate)
             return
         end
         % Define source and target for the link
-        if ~isempty(PlugCat.SubFolder)
-            linkTarget = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
+        if ~isempty(PlugToolbox.SubFolder)
+            linkTarget = bst_fullfile(PlugToolbox.Path, PlugToolbox.SubFolder);
         else
-            linkTarget = PlugCat.Path;
+            linkTarget = PlugToolbox.Path;
         end
-        linkFile = spmCatDir;
+        linkFile = spmToolboxDirTarget;
         % Create link
         if ispc
             linkCall = ['mklink /D "' linkFile '" "' linkTarget '"'];
@@ -3224,4 +3308,17 @@ end
 % Return list of plugins not supported on Apple silicon
 function pluginNames = PluginsNotSupportAppleSilicon()
     pluginNames = { 'duneuro', 'mcxlab-cuda'};
+end
+
+%% ===== MATCH STRING EDGES =====
+% Check if a string 'strA' starts (or ends) with string B
+function result = strMatchEdge(a, b, edge)
+    b = regexptranslate('escape', b);
+    if strcmpi(edge, 'start')
+        result = ~isempty(regexp(a, ['^', b], 'once'));
+    elseif strcmpi(edge, 'end')
+        result = ~isempty(regexp(a, [b, '$'], 'once'));
+    else
+        result = 0;
+    end
 end
