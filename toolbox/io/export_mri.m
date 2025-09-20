@@ -1,13 +1,12 @@
-function export_mri( BstMriFile, OutputMriFile)
+function export_mri( BstMriFile, OutputMriFile )
 % EXPORT_MRI: Export a MRI to one of the supported file formats.
 %
-% USAGE:  export_mri( BstMriFile, OutputMriFile=[ask], ExportFiducials = [true])
-%         export_mri( sMri,       OutputMriFile=[ask], ExportFiducials = [true])
+% USAGE:  export_mri( BstMriFile, OutputMriFile=[ask] )
+%         export_mri( sMri,       OutputMriFile=[ask] )
 % INPUT: 
 %     - BstMriFile    : Full path to input Brainstorm MRI file to be exported
 %     - sMri          : Brainstorm MRI structure
 %     - OutputMriFile : Full path to target file (extension will determine the format)
-%     - ExportFiducials : Choose to export the fiducials along side the MRI
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -35,9 +34,6 @@ if (nargin < 1) || isempty(BstMriFile)
 end
 if (nargin < 2)
     OutputMriFile = [];
-end
-if (nargin < 3)
-    ExportFiducials = true;
 end
 
 % ===== LOAD MRI FILE =====
@@ -146,7 +142,6 @@ switch lower(OutputExt)
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
 end
-
 % Unload required plugins that were loaded
 if ~isempty(RequiredPlugins)
     tmpLoadedPlugins = bst_plugin('GetLoaded');
@@ -155,10 +150,12 @@ if ~isempty(RequiredPlugins)
         bst_plugin('Unload', ToUnloadPluginNames{ix});
     end
 end
-
 % Hide progress bar
 if ~isProgress
     bst_progress('stop');
 end
 
-end
+
+
+
+
