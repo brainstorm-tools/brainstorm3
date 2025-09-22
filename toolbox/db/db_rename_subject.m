@@ -69,6 +69,15 @@ if ~isOk
     bst_error(['Could not rename anat/"' oldName '" to anat/"' newName '".'], 'Rename', 0);
     return;
 end
+% Update default anatomy and surfaces in brainstormsubject.mat
+subjMat = load(bst_fullfile(ProtocolInfo.SUBJECTS, newName, 'brainstormsubject.mat'));
+for surfaceCatergory = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
+    surfaceFilename = subjMat.(surfaceCatergory{1});
+    if ~isempty(surfaceFilename) && ischar(surfaceFilename)
+        subjMat.(surfaceCatergory{1}) = regexprep(surfaceFilename, ['^' oldName], newName);
+    end
+end
+bst_save(bst_fullfile(ProtocolInfo.SUBJECTS, newName, 'brainstormsubject.mat'), subjMat);
 
 %% ===== RENAME ALL THE CONDITIONS =====
 dataDir = bst_fullfile(ProtocolInfo.STUDIES, oldName);

@@ -87,7 +87,11 @@ function sInput = Run(sProcess, sInput, method) %#ok<DEFNU>
             'Make sure you remove the DC offset before resampling; EEGLAB function does not work well when the signals are not centered.']);
     end
     % Resample
-    [sInput.A, sInput.TimeVector] = Compute(sInput.A, sInput.TimeVector, NewFreq, method);
+    OldTimeVector = sInput.TimeVector;
+    [sInput.A, sInput.TimeVector] = Compute(sInput.A, OldTimeVector, NewFreq, method);
+    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
+        sInput.Std = Compute(sInput.Std, OldTimeVector, NewFreq, method);
+    end
     % Update file
     sInput.CommentTag = sprintf('resample(%dHz)', round(NewFreq));
     sInput.HistoryComment = sprintf('Resample from %0.2f Hz to %0.2f Hz (%s)', OldFreq, NewFreq, method);

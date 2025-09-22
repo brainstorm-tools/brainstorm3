@@ -755,15 +755,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 if iscell(sCoordsystem.IntendedFor)
                                     sCoordsystem.IntendedFor = sCoordsystem.IntendedFor{1};
                                 end
-                                % Resolve BIDS URI
-                                if strncmp(sCoordsystem.IntendedFor, 'bids:', 5)
-                                    [sCoordsystem.IntendedFor, msg] = DecodeBidsUri(sCoordsystem.IntendedFor, BidsDir);
-                                    if ~isempty(msg)
-                                        Messages = [Messages 10 msg];
-                                    end
-                                else
-                                    % Assume it's a relative path.
-                                    sCoordsystem.IntendedFor = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
+                                % Get full filepath for sCoordsystem.IntendedFor (which can given as either relative or BIDS URI)
+                                [sCoordsystem.IntendedFor, msg] = ResolveBidsUri(sCoordsystem.IntendedFor, BidsDir);
+                                if ~isempty(msg)
+                                    Messages = [Messages 10 msg];
                                 end
                                 if file_exist(sCoordsystem.IntendedFor)
                                     % Check whether the IntendedFor files is already imported as a volume
@@ -875,26 +870,6 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
                 OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
-                % Add electrodes positions if available
-                if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
-                    % Subject T1 coordinates (space-ScanRAS)
-                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-SCANRAS-'))
-                        % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
-                        % after importing the files, as these transformation were not available in the BIDS dataset
-                        isVox2ras = 2;
-                    % Or MNI coordinates (space-IXI549Space or other MNI space)
-                    else
-                        isVox2ras = 0;
-                    end
-                    % Import electrode positions
-                    % Note: this does not work if channel names different in data and metadata - see note in the function header
-                    bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
-                        'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
-                        'fixunits',    0, ...
-                        'vox2ras',     isVox2ras, ...
-                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
-                        'fiducials',   allMeegElecFiducials{iFile});
-                end
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
                 if isempty(iLast)
@@ -929,7 +904,6 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         % Silence warnings for missing columns that are not required.
                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     end  
-
                     % Try to add info to the existing Brainstorm channel file
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
@@ -946,13 +920,21 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             isModifiedData = 0;
                             % Loop to find matching channels
                             for iChanBids = 1:size(ChanInfo,1)
-                                % Look for corresponding channel in Brainstorm channel file
-                                iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
-                                if isempty(iChanBst)
-                                    iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                if ~isempty(regexp(ChanInfo{iChanBids, 2}, 'MEG', 'once'))                                    
+                                    % Look for corresponding channel in Brainstorm channel file
+                                    iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                     if isempty(iChanBst)
-                                        continue;
+                                        iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                        if isempty(iChanBst)
+                                            continue;
+                                        end
                                     end
+                                % For non-MEG channels make _channels.tsv (BIDS metadata) as authoritative
+                                % i.e. update the channel names as found in _channels.tsv for all non-MEG channels
+                                else
+                                    ChannelMat.Channel(iChanBids).Name = ChanInfo{iChanBids, 1};
+                                    iChanBst = iChanBids;
+                                    isModifiedChan = 1;
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
@@ -1006,6 +988,27 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end                   
                 end
 
+                % Add electrodes positions if available
+                if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
+                    % Subject T1 coordinates (space-ScanRAS)
+                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-SCANRAS-'))
+                        % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
+                        % after importing the files, as these transformation were not available in the BIDS dataset
+                        isVox2ras = 2;
+                    % Or MNI coordinates (space-IXI549Space or other MNI space)
+                    else
+                        isVox2ras = 0;
+                    end
+                    % Import electrode positions
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
+                    bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
+                        'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
+                        'fixunits',    0, ...
+                        'vox2ras',     isVox2ras, ...
+                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
+                        'fiducials',   allMeegElecFiducials{iFile});
+                end
+                
                 % === MEG.JSON ===
                 % Get _meg.json next to the recordings file
                 MegFile = [baseName, '_meg.json'];
@@ -1320,28 +1323,41 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
 end
 
 
-%% ===== CONVERT TO/FROM BIDS URI =====
-% This function is limited to the current BIDS dataset. BIDS URIs can in principle point to other
-% named datasets, including e.g. under derivatives, which would be defined in the
-% dataset_description.json file. For now we just warn if such a dataset name is used in the URI.
-function [OutFile, Msg] = DecodeBidsUri(InFile, BidsDir)
-    % See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+%% ===== RESOLVE RELATIVE PATH AND BIDS URI =====
+% Resolve full filepath using URI scheme: bids:[<dataset-name>]:<relative-path>
+%
+% BIDS URIs can in principle point to other named datasets, including e.g:
+% under derivatives, which would be defined in the dataset_description.json file.
+%
+% For now, this function is limited to the current BIDS dataset.
+% A warn is shown if such a dataset name is used in the URI.
+% See https://bids-specification.readthedocs.io/en/stable/common-principles.html#bids-uri
+function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
     Msg = '';
+    if strncmp(InFile, 'bids::', 6)
+        % Assume it is a relative path to BIDS dir
+        OutFile = regexprep(InFile, '^bids::/?', '');
+        OutFile = bst_fullfile(BidsDir, OutFile);
+        return
+    end
     if ~strncmp(InFile, 'bids:', 5)
-        % Nothing to do.
-        OutFile = InFile;
-        return;
+        % Assume it is a relative path to BIDS dir
+        OutFile = bst_fullfile(BidsDir, InFile);
+        return
     end
     % Check for dataset-name
-    DatasetName = regexp(InFile, 'bids:([^:]*):', 'tokens', 'once');
+    DatasetName = regexp(InFile, '^bids:([^:]*):', 'tokens', 'once');
     DatasetName = DatasetName{1};
     if ~isempty(DatasetName)
-        Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
-        disp(['BIDS> Warning: ' Msg]);
+        % Get BIDS dataset name from BIDS dir
+        [~, currentDatasetName] = bst_fileparts(BidsDir);
+        if ~strcmp(currentDatasetName, DatasetName)
+            Msg = ['URI includes dataset-name, which is not yet implemented in Brainstorm. Attempting to resolve within the current BIDS dataset. ' InFile];
+            disp(['BIDS> Warning: ' Msg]);
+        end
     end
-
-    % Note: BIDS uses forward slashes independently of OS. So use forward here to avoid mixing.
     % There should not be a slash after bids::, but check anyway.
-    OutFile = regexprep(InFile, 'bids:[^:]*:/?', [BidsDir '/']);
+    OutFile = regexprep(InFile, '^bids:[^:]*:/?', '');
+    OutFile = bst_fullfile(BidsDir, OutFile);
 end
     

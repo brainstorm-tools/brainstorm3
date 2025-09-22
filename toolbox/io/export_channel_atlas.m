@@ -11,6 +11,8 @@ function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, 
 %     - TsvFile       : Output text file (tab-separated values)
 %     - Radius        : Size in millimeters of the neighborhood to consider around each contact
 %     - IsInteractive : If 1, display the output table at the end of the process
+%                     : If 0, use all available Coodinates, Parcellations (anat) and Atlases (surface),
+%                       and do not display output table 
 %     - iChannels     : Limit export to a subset of channel indices
 % 
 % REFERENCES:
@@ -183,9 +185,11 @@ if ~isempty(iCortex)
     end
 end
 % Checkboxes
-isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute contact labels', [], Columns(:,2), isSelect);
-if ~any(isSelect)
-    return;
+if isInteractive
+    isSelect = java_dialog('checkbox', 'Select information to export:', 'Compute contact labels', [], Columns(:,2), isSelect);
+    if ~any(isSelect)
+        return;
+    end
 end
 % Keep only the selected columns
 Columns = Columns(isSelect == 1, :);
@@ -219,13 +223,18 @@ if ~isempty(iColSurf)
             SurfAtlasesGui{1} = [SurfAtlasesGui{1}, repmat(' ', 1, 23-length(SurfAtlasesGui{1}))];
         end
         % Checkboxes
-        isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute contact labels', [], SurfAtlasesGui, true(1,length(SurfAtlasesGui)));
-        if ~isempty(isSelect) && any(isSelect)
-            SurfAtlases = SurfAtlases(isSelect == 1);
+        isSelect = true(1,length(SurfAtlasesGui));
+        if isInteractive
+            isSelect = java_dialog('checkbox', 'Select surface atlases to export:', 'Compute contact labels', [], SurfAtlasesGui, isSelect);
+            if ~isempty(isSelect) && any(isSelect)
+                SurfAtlases = SurfAtlases(isSelect == 1);
+            else
+                Columns(iColSurf,:) = [];
+                SurfAtlases = {};
+                iColSurf = [];
+            end
         else
-            Columns(iColSurf,:) = [];
-            SurfAtlases = {};
-            iColSurf = [];
+            SurfAtlases = SurfAtlases(isSelect == 1);
         end
     end
 end

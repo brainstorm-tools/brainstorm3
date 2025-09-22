@@ -21,10 +21,12 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 %
 % Authors: Francois Tadel, 2017-2022
 
-% Initialize SPM12+CAT12
-[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-if ~isInstalled
-    error(errMsg);
+% Initialize SPM12
+if ~bst_iscompiled
+    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    if ~isInstalled
+        error(errMsg);
+    end
 end
 
 % Get the two output file names: .mat and .dat

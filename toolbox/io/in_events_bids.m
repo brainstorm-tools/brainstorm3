@@ -32,13 +32,18 @@ function events = in_events_bids(sFile, EventFile)
 % trial_type would be a subset of possible events that identify trial category.
 % value can be numbers or strings identifying the event.
 % Only 'onset' and 'duration' are required.
-Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value'}, 0);
+Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value', 'event_type'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
 end
 % Standardize empty/missing values to empty char.
 Markers(cellfun(@(c) (isequal(c,'n/a') || isequal(c,'N/A') || isempty(c)), Markers(:))) = {''};
+% Use 'event_type' for event names if and only if 'trial_type' is missing
+if all(cellfun(@isempty, Markers(:,3))) && ~all(cellfun(@isempty, Markers(:,6)))
+    Markers(:,3) = Markers(:,6);
+end
+Markers(:,6) = [];
 % If there is no trial_type and no value information: use the filename as the event name
 if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
