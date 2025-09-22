@@ -240,6 +240,9 @@ function sEvents = MergeOccurrences(sEvents)
     idel = [];
     % Simultaneous occurences (checks simple and extended event types)
     [~, ics, ias] = unique(bst_round(sEvents.times', 9), 'rows', 'stable');
+    % Shape as row vectors
+    ics = ics(:)';
+    ias = ias(:)';
     for ic = 1 : numel(ics)
         irep = find(ias == ic);
         if numel(irep) < 2
