@@ -142,6 +142,8 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
 
             if isfield(sMriJson, 'AnatomicalLandmarkCoordinates')
                 isPrevJsonLandmarks = true;
+                % Keep copy to check if anything changed and we should save.
+                PrevJsonLandmarks = sMriJson.AnatomicalLandmarkCoordinates;
                 % Remove previous landmarks regardless. The existing backup in derivatives may or
                 % may not have those - only one original backup is kept - but no practical use in
                 % keeping multiple previous aligments.
@@ -177,22 +179,31 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     break;
                 end
             end
+            % Only save if something changed.
+            isSaveMri = false;
             if ~isLandmarksFound
                 if isPrevJsonLandmarks
                     warning('MRI landmark coordinates not found, but previously saved in T1w.json file. Removing field and skipping subject %s.', sSubjects.Subject(iSub).Name);
+                    isSaveMri = true;
                 else
                     warning('MRI landmark coordinates not found. Skipping subject %s.', sSubjects.Subject(iSub).Name);
                 end
                 % In case some were found but not all, just remove them all again.
                 sMriJson.AnatomicalLandmarkCoordinates = [];
             elseif isPrevJsonLandmarks
-                fprintf('Replacing previous MRI landmark coordinates for subject %s.\n', sSubjects.Subject(iSub).Name);
+                % Verify if different and replacing is needed, otherwise no warning and continue to MEG.
+                if ~isequal(PrevJsonLandmarks, sMriJson.AnatomicalLandmarkCoordinates)
+                    fprintf('Replacing previous MRI landmark coordinates for subject %s.\n', sSubjects.Subject(iSub).Name);
+                    isSaveMri = true;
+                end
             end
-            % Remove field if empty. There are no other anat landmark fields in MRI json (as opposed to MEG, see below).
-            if isempty(sMriJson.AnatomicalLandmarkCoordinates)
-                sMriJson = rmfield(sMriJson, 'AnatomicalLandmarkCoordinates');
+            if isSaveMri
+                % Remove field if empty. There are no other anat landmark fields in MRI json (as opposed to MEG, see below).
+                if isempty(sMriJson.AnatomicalLandmarkCoordinates)
+                    sMriJson = rmfield(sMriJson, 'AnatomicalLandmarkCoordinates');
+                end
+                WriteJson(MriJsonFile, sMriJson);
             end
-            WriteJson(MriJsonFile, sMriJson);
             OutFilesMri{iOutSub} = MriJsonFile;
             if ~isLandmarksFound
                 continue;
@@ -410,8 +421,8 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iSubjec
                     'As such, these landmarks and the corresponding alignment should be preferred.'];
                 % Remove previous coordinates, though for MEG it may never get saved unless it's filled below.
                 % Still good practice in case it was done wrong previously (e.g. bad field names)
-                % Set empty instead of removing field, so that it keeps its order. Could use
-                % orderfields, but more complicated when list of fields differ (set diff first but need all fields).
+                % Set empty instead of removing field, so that it keeps its order, however we use
+                % orderfields later.
                 sMegJson.AnatomicalLandmarkCoordinates = []; 
                 % Here we want to only point to the aligned MRI, even if there are multiple MRIs in
                 % this BIDS subject and they were all listed. But inform about any change.
