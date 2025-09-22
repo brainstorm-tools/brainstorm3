@@ -1468,11 +1468,11 @@ end
 function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
     Msg = '';
     if ~strncmp(InFile, 'bids:', 5)
-        % Assume it is a relative path to BIDS dir
+        % Assume it is a relative path to BIDS dir, replace with absolute path
         OutFile = bst_fullfile(BidsDir, InFile);
         return
     end
-    % Check for dataset-name
+    % Check for dataset-name to warn
     DatasetName = regexp(InFile, '^bids:([^:]*):', 'tokens', 'once');
     DatasetName = DatasetName{1};
     if ~isempty(DatasetName)
@@ -1483,6 +1483,7 @@ function [OutFile, Msg] = ResolveBidsUri(InFile, BidsDir)
             disp(['BIDS> Warning: ' Msg]);
         end
     end
+    % Replace with absolute path.
     % There should not be a slash after bids::, but check anyway.
     OutFile = regexprep(InFile, '^bids:[^:]*:/?', '');
     OutFile = bst_fullfile(BidsDir, OutFile);
