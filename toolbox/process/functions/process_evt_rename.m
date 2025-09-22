@@ -130,7 +130,7 @@ function [events, isModified] = Compute(sInput, events, src, dest)
         iEvt = find(strcmpi({events.label}, src{i}));
         if isempty(iEvt)
             bst_report('Warning', 'process_evt_rename', sInput, ['Event "' src{i} '" does not exist.']);
-            return;
+            continue;
         end
         % Rename event
         events(iEvt).label = dest{i};
