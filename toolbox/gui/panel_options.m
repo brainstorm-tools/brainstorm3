@@ -37,6 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
+    isCompiled = bst_iscompiled;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -60,6 +61,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jCheckSystemCopy  = gui_component('CheckBox', jPanelSystem, 'br', 'Use system calls to copy/move files', [], [], []);
         else
             jCheckSystemCopy = [];
+        end
+        if isCompiled
+            jCheckCrossPlatformJLF = gui_component('CheckBox', jPanelSystem, 'br', 'Use cross platform Java Look and Feel', [], [], []);
         end
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
@@ -192,6 +196,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
         jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
+        if isCompiled
+            jCheckCrossPlatformJLF.setSelected(bst_get('UseCrossPlatformJLF'));
+        end
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
         end
@@ -286,6 +293,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             StartOpenGL();
         end
         
+        % ===== JAVA LOOK AND FEEL =====
+        changedJLF = 0;
+        if isCompiled
+            changedJLF = bst_get('UseCrossPlatformJLF') ~= jCheckCrossPlatformJLF.isSelected();
+            bst_set('UseCrossPlatformJLF', jCheckCrossPlatformJLF.isSelected());
+        end
+
         % ===== INTERFACE SCALING =====
         previousScaling = bst_get('InterfaceScaling');
         switch (jSliderScaling.getValue())
@@ -368,7 +382,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_progress('stop');
         
         % If the scaling was changed: Restart brainstorm
-        if (previousScaling ~= InterfaceScaling)
+        if (previousScaling ~= InterfaceScaling) || changedJLF
             brainstorm stop;
             brainstorm;
         end
@@ -379,8 +393,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function ButtonSave_Callback(varargin)
         % Save options
         SaveOptions()
-        % Hide panel
-        gui_hide(panelName);
+        if ~isempty(GlobalData)
+            % Hide panel
+            gui_hide(panelName);
+        end
     end
 
 %% ===== CANCEL BUTTON =====

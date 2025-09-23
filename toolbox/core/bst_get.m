@@ -2867,6 +2867,13 @@ switch contextName
             argout1 = 5;
         end
         
+    case 'UseCrossPlatformJLF'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseCrossPlatformJLF')
+            argout1 = GlobalData.Preferences.UseCrossPlatformJLF;
+        else
+            argout1 = 0;
+        end
+
     case 'DisableOpenGL'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DisableOpenGL')
             argout1 = GlobalData.Preferences.DisableOpenGL;
