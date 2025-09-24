@@ -139,7 +139,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).URLzip         = 'https://github.com/fangq/brain2mesh/archive/master.zip';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/brain2mesh/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/brain2mesh/';
     PlugDesc(end).TestFile       = 'brain2mesh.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
@@ -151,8 +151,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neuro.uni-jena.de/cat/';
+    PlugDesc(end).URLzip         = 'https://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
+    PlugDesc(end).URLinfo        = 'https://www.neuro.uni-jena.de/cat/';
     PlugDesc(end).TestFile       = 'cat_version.m';
     PlugDesc(end).ReadmeFile     = 'Contents.txt';
     PlugDesc(end).CompiledStatus = 0;
@@ -183,7 +183,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
     PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
-    PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
+    PlugDesc(end).URLinfo        = 'https://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
@@ -255,7 +255,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     end
     PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
     PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''https://files.inria.fr/OpenMEEG/download/'', ''-browser'')'; ...
-                                    'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
+                                    'Download Visual C++', 'web(''https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'', ''-browser'')'; ...
                                     'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin', 'lib'};
@@ -569,7 +569,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = '1.0';
     PlugDesc(end).Category       = 'e-phys';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'http://packlab.mcgill.ca/despikingtoolbox.zip';
+    PlugDesc(end).URLzip         = 'https://packlab.mcgill.ca/despikingtoolbox.zip';
     PlugDesc(end).URLinfo        = 'https://journals.physiology.org/doi/full/10.1152/jn.00642.2010';
     PlugDesc(end).TestFile       = 'despikeLFP.m';
     PlugDesc(end).ReadmeFile     = 'readme.txt';
@@ -710,7 +710,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
+    PlugDesc(end).URLinfo        = 'https://www.neurotrack.fr/mia/';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
@@ -722,7 +722,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).URLzip         = 'https://download.fieldtriptoolbox.org/fieldtrip-lite-20240405.zip';
-    PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
+    PlugDesc(end).URLinfo        = 'https://www.fieldtriptoolbox.org';
     PlugDesc(end).TestFile       = 'ft_defaults.m';
     PlugDesc(end).ReadmeFile     = 'README';
     PlugDesc(end).CompiledStatus = 2;
@@ -1025,7 +1025,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'spm12'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('http://www.fil.ion.ucl.ac.uk/spm/download/spm12_updates/');
+                s = bst_webread('https://www.fil.ion.ucl.ac.uk/spm/download/spm12_updates/');
                 if ~isempty(s)
                     n = regexp(s,'spm12_updates_r(\d.*?)\.zip','tokens','once');
                     if ~isempty(n) && ~isempty(n{1})
@@ -1035,7 +1035,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'cat12'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('http://www.neuro.uni-jena.de/cat12/');
+                s = bst_webread('https://www.neuro.uni-jena.de/cat12/');
                 if ~isempty(s)
                     n = regexp(s,'cat12_r(\d.*?)\.zip','tokens');
                     if ~isempty(n)
