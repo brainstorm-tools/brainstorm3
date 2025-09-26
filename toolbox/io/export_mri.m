@@ -157,11 +157,7 @@ end
 
 if strcmpi(ExportFiducials, 'bids')
     OutputJsonFile = fullfile(OutputPath, [OutputBase, '.json']);
-
-    if isempty(export_fiducials_bids(sMri, OutputJsonFile))
-        error(['Unable to write fiducials to the file : "' OutputJsonFile '"']);
-    end
-
+    export_fiducials_bids(sMri, OutputJsonFile);
 end
 
 
@@ -180,7 +176,7 @@ end
 
 end
 
-function OutputJsonFile = export_fiducials_bids(sMri, OutputJsonFile)
+function export_fiducials_bids(sMri, OutputJsonFile)
 % Export_mri_fiducials: Export a MRI fiducials to a json file.
 % Coordinate are exported in voxel, using a 0-based indexing
 
@@ -215,6 +211,9 @@ function OutputJsonFile = export_fiducials_bids(sMri, OutputJsonFile)
     end
 
     fid = fopen(OutputJsonFile, 'w');
+    if fid < 0 
+        error('Unable to write to %s', OutputJsonFile )
+    end
     fprintf(fid, jsonencode(output,"PrettyPrint", true));
     fclose(fid);
 
