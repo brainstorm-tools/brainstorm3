@@ -2188,7 +2188,31 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
 
     % ===== GET RESULTS VALUES =====
     % === FULL RESULTS ===
-    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp) && iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+        % Get ImageGridAmp interesting sub-part
+        ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+        assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
+        Std           = []; % Std should not be set if ImageGridAmp is a cell
+
+        if ~isempty(iTime)
+            ResultsValues{end} = ResultsValues{end}(:, iTime);
+
+            usedRow = any(ResultsValues{end}, 2);
+            ResultsValues{end} = ResultsValues{end}(usedRow, :);
+            ResultsValues{end-1} = ResultsValues{end-1}(:, usedRow);
+        end
+        
+        if ~isempty(iRows)
+            ResultsValues{1} = ResultsValues{1}(iRows, :);
+
+            usedCol = any(ResultsValues{1}, 1);
+            ResultsValues{1} = ResultsValues{1}(:, usedCol);
+            ResultsValues{2} = ResultsValues{2}(usedCol, :);
+        end
+
+        ResultsValues = double(bst_multiply_cells(ResultsValues));
+
+    elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
         % Get ImageGridAmp interesting sub-part
         if isempty(iRows)
             ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
@@ -2586,13 +2610,27 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         [maxGFP, iMax] = max(GFP);
         % Get the results values at this particular time point
         sources = GetResultsValues(iDS, iResult, [], iMax);
+
+        % Store minimum and maximum of displayed data
+        DataMinMax =  bst_bounds(sources);
     % Full results
     else
-        % Get the maximum on the full results matrix
-        sources = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+        % Get the maximum on the full results matrix 
+        window_length   = 500; % in sample
+        nWindow         = ceil(GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples /window_length);
+        DataMinMax      = [Inf, -Inf];
+
+        for k=0:(nWindow-1)
+            idx = (1+ k*window_length):(window_length*(k+1));
+            idx = idx( idx <= GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples);
+
+            sources = GetResultsValues(iDS, iResult, [], idx);
+            WindowMinMax = bst_bounds(sources);
+
+            DataMinMax(1) = min(DataMinMax(1),   WindowMinMax(1));
+            DataMinMax(2) = max(DataMinMax(2),   WindowMinMax(2));
+        end
     end
-    % Store minimum and maximum of displayed data
-    DataMinMax = [min(sources(:)), max(sources(:))];
 end
 
 
