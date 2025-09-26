@@ -101,6 +101,14 @@ if isempty(OutputMriFile)
     % Save default export format
     DefaultFormats.MriOut = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+
+    res = java_dialog('question', 'Do you want to also export the fiducials contained in the MRI ?' ,...
+                              'Export fiducials', [], {'Yes', 'No'},'Yes');
+
+    if strcmpi(res, 'yes')
+        ExportFiducials = 'bids';
+    end
+
 end
 
 % ===== SAVE MRI =====
