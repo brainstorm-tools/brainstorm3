@@ -79,8 +79,9 @@ function OutputMriFile = export_mri_fiducials(BstMriFile, OutputMriFile)
     % Convert from 1- based to 0-based for BIDS
     fieldsName = fieldnames(output.FiducialsCoordinates);
     for iField = 1:length(fieldsName)
+        
         coord = output.FiducialsCoordinates.(fieldsName{iField});
-        output.FiducialsCoordinates.(fieldsName{iField}) = coord - 1;
+        output.FiducialsCoordinates.(fieldsName{iField}) = round(1000 .* ( (coord ./ sMri.Voxsize) - 1)) ./ 1000;
     end
 
     fid = fopen(OutputMriFile, 'w');
