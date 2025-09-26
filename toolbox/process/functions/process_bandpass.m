@@ -295,83 +295,77 @@ function DisplaySpec(sfreq)
     % Filter description: Left panel
     strFilter1 = ['<HTML>Linear phase <B>FIR filter</B>' '<BR>'];
     if ~isempty(HighPass) && (HighPass > 0) && ~isempty(LowPass) && (LowPass > 0)
-        strFilter1 = [strFilter1 'Band-pass: &nbsp;&nbsp;<B>' num2str(HighPass) '-' num2str(LowPass) ' Hz</B><BR>'];
-        strFilter1 = [strFilter1 'Low transition: &nbsp;&nbsp;<B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
-        strFilter1 = [strFilter1 'High transition: &nbsp;&nbsp;<B>' num2str(FiltSpec.fcuts(3)) '-' num2str(FiltSpec.fcuts(4)) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'Band-pass: <B>' num2str(HighPass) '-' num2str(LowPass) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'Low transition: <B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'High transition: <B>' num2str(FiltSpec.fcuts(3)) '-' num2str(FiltSpec.fcuts(4)) ' Hz</B><BR>'];
     elseif ~isempty(HighPass) && (HighPass > 0)
-        strFilter1 = [strFilter1 'High-pass: &nbsp;&nbsp;<B>' num2str(HighPass) ' Hz</B><BR>'];
-        strFilter1 = [strFilter1 'Transition: &nbsp;&nbsp;<B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'High-pass: <B>' num2str(HighPass) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'Transition: <B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
     elseif ~isempty(LowPass) && (LowPass > 0)
-        strFilter1 = [strFilter1 'Low-pass: &nbsp;&nbsp;<B>' num2str(LowPass) ' Hz</B><BR>'];
-        strFilter1 = [strFilter1 'Transition: &nbsp;&nbsp;<B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'Low-pass: <B>' num2str(LowPass) ' Hz</B><BR>'];
+        strFilter1 = [strFilter1 'Transition: <B>' num2str(FiltSpec.fcuts(1)) '-' num2str(FiltSpec.fcuts(2)) ' Hz</B><BR>'];
     end
     if isRelax
-        strFilter1 = [strFilter1 'Stopband attenuation: &nbsp;&nbsp;<B>40 dB</B><BR>'];
-        strFilter1 = [strFilter1 'Passband ripple: &nbsp;&nbsp;<B>1%</B><BR>'] ; 
+        strFilter1 = [strFilter1 'Stopband attenuation: <B>40 dB</B><BR>'];
+        strFilter1 = [strFilter1 'Passband ripple: <B>1%</B><BR>'] ; 
     else
-        strFilter1 = [strFilter1 'Stopband attenuation: &nbsp;&nbsp;<B>60 dB</B><BR>'];
-        strFilter1 = [strFilter1 'Passband ripple: &nbsp;&nbsp;<B>0.1%</B><BR>'] ; 
+        strFilter1 = [strFilter1 'Stopband attenuation: <B>60 dB</B><BR>'];
+        strFilter1 = [strFilter1 'Passband ripple: <B>0.1%</B><BR>'] ; 
     end
 
     % Filter description: Right panel
     strFilter2 = '<HTML>';
-    strFilter2 = [strFilter2 'Filter type: &nbsp;&nbsp;<B> Kaiser </B><BR>'];
-    strFilter2 = [strFilter2 'Filter order: &nbsp;&nbsp;<B>' num2str(FiltSpec.order) '</B><BR>'];
-    strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
-    strFilter2 = [strFilter2 'Transient (99% energy): &nbsp;&nbsp;<B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
-    strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
-    strFilter2 = [strFilter2 'Frequency resolution: &nbsp;&nbsp;<B>' num2str(dF, '%1.3f') ' Hz</B><BR>'];
+    strFilter2 = [strFilter2 'Filter type: <B> Kaiser </B><BR>'];
+    strFilter2 = [strFilter2 'Filter order: <B>' num2str(FiltSpec.order) '</B><BR>'];
+    strFilter2 = [strFilter2 'Transient (full): <B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
+    strFilter2 = [strFilter2 'Transient (99% energy): <B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
+    strFilter2 = [strFilter2 'Sampling frequency: <B>', num2str(sfreq), ' Hz</B><BR>'];
+    strFilter2 = [strFilter2 'Frequency resolution: <B>' num2str(dF, '%1.5f') ' Hz</B><BR>'];
     
     hFig = HFilterDisplay(Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
 
 end
 
 function hFig = HFilterDisplay(Hf,Freqs,Ht,t,transient,strFilter1,strFilter2,XFreqLim)
+% Display filter specs and responses using uifigure and uilabel (with HTML)
 
 % Progress bar
 bst_progress('start', 'Filter specifications', 'Updating graphs...');
 
 % Get existing specification figure
-hFig = findobj(0, 'Type', 'Figure', 'Tag', 'FilterSpecs');
-% If the figure doesn't exist yet: create it
-if isempty(hFig)
-    hFig = figure(...
-        'MenuBar',     'none', ...
-        ... 'Toolbar',     'none', ...
-        'Toolbar',     'figure', ...
-        'NumberTitle', 'off', ...
+hFig = findobj('Type', 'Figure', 'Tag', 'FilterSpecs');
+if isempty(hFig) || ~isa(hFig, 'matlab.ui.Figure')
+    hFig = uifigure(...
         'Name',        sprintf('Filter properties'), ...
         'Tag',         'FilterSpecs', ...
-        'Units',       'Pixels');
-    % Figure already exists: re-use it
+        'Units',       'pixels', ...
+        'Position',    [100 100 800 600], ...
+        'AutoResizeChildren',   'off' , ...
+        'ResizeFcn',   @ResizeCallback);
 else
     clf(hFig);
     figure(hFig);
 end
-% Disable the Java-related warnings after 2019b
-if (bst_get('MatlabVersion') >= 907)
-    warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
-end
 
 % Plot frequency response
-hAxesFreqz = axes('Units', 'pixels', 'Parent', hFig, 'Tag', 'AxesFreqz');
-Hf = 20.*log10(abs(Hf));
-plot(hAxesFreqz, Freqs, Hf);
+hAxesFreqz = uiaxes('Parent', hFig, 'Tag', 'AxesFreqz');
+Hf_db = 20.*log10(abs(Hf));
+plot(hAxesFreqz, Freqs, Hf_db);
+
 % Plot impulse response
-hAxesImpz = axes('Units', 'pixels', 'Parent', hFig, 'Tag', 'AxesImpz');
+hAxesImpz = uiaxes('Parent', hFig, 'Tag', 'AxesImpz');
 plot(hAxesImpz, t, Ht);
 
 % Add Axes limits
 set(hAxesFreqz, 'XLim', XFreqLim);
-set(hAxesFreqz, 'YLim', [min(Hf), max(Hf)] + (max(Hf)-min(Hf)) .* [-0.05,0.05]);
+set(hAxesFreqz, 'YLim', [min(Hf_db), max(Hf_db)] + (max(Hf_db)-min(Hf_db)) .* [-0.05,0.05]);
 YLimImpz = [min(Ht), max(Ht)] + (max(Ht)-min(Ht)) .* [-0.05,0.05];
 set(hAxesImpz, 'XLim', [min(t), max(t)], 'YLim', YLimImpz);
 
 % Add grids
 set([hAxesFreqz, hAxesImpz], 'XGrid', 'on', 'YGrid', 'on');
-% Enable zooming by default
 zoom(hFig, 'on');
-    
+
 % Add legends
 title(hAxesFreqz, 'Frequency response');
 xlabel(hAxesFreqz, 'Frequency (Hz)');
@@ -381,46 +375,43 @@ xlabel(hAxesImpz, 'Time (seconds)');
 ylabel(hAxesImpz, 'Amplitude');
 
 % Plot vertical lines to indicate effective transients (99% energy)
-line(transient.*[1 1], YLimImpz, -0.1.*[1 1], ...
-    'LineWidth', 1, ...
-    'Color',     [.7 .7 .7], ...
-    'Parent',    hAxesImpz);
-line(transient.*[-1 -1], YLimImpz, -0.1.*[1 1], ...
-    'LineWidth', 1, ...
-    'Color',     [.7 .7 .7], ...
-    'Parent',    hAxesImpz);
-text(transient .* 1.1, YLimImpz(2), '99% energy', ...
-    'Color',               [.7 .7 .7], ...
-    'FontSize',            bst_get('FigFont'), ...
-    'FontUnits',           'points', ...
-    'VerticalAlignment',   'top', ...
+hold(hAxesImpz, 'on');
+line(hAxesImpz, transient.*[1 1], YLimImpz, 'LineWidth', 1, 'Color', [.7 .7 .7]);
+line(hAxesImpz, transient.*[-1 -1], YLimImpz, 'LineWidth', 1, 'Color', [.7 .7 .7]);
+text(hAxesImpz, transient .* 1.1, YLimImpz(2), '99% energy', ...
+    'Color', [.7 .7 .7], ...
+    'FontSize', bst_get('FigFont'), ...
+    'FontUnits', 'points', ...
+    'VerticalAlignment', 'top', ...
+    'HorizontalAlignment', 'left');
+hold(hAxesImpz, 'off');
+
+% Display left panel (filter info) with HTML
+hLabel1 = uilabel(hFig, ...
+    'Text', strFilter1, ...
+    'Interpreter', 'html', ...
     'HorizontalAlignment', 'left', ...
-    'Parent',              hAxesImpz);
+    'FontSize', bst_get('FigFont'), ...
+    'Tag', 'Label1', ...
+    'BackgroundColor', hFig.Color);
 
-% Display left panel
-[jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(strFilter1), [0 0 1 1], hFig);
-set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
-bgColor = get(hFig, 'Color');
-jLabel1.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
-jLabel1.setVerticalAlignment(javax.swing.JLabel.TOP);
-
-% Display right panel
-[jLabel2, hLabel2] = javacomponent(javax.swing.JLabel(strFilter2), [0 0 1 1], hFig);
-set(hLabel2, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label2');
-bgColor = get(hFig, 'Color');
-jLabel2.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
-jLabel2.setVerticalAlignment(javax.swing.JLabel.TOP);
+% Display right panel (filter info) with HTML
+hLabel2 = uilabel(hFig, ...
+    'Text', strFilter2, ...
+    'Interpreter', 'html', ...
+    'HorizontalAlignment', 'left', ...
+    'FontSize', bst_get('FigFont'), ...
+    'Tag', 'Label2', ...
+    'BackgroundColor', hFig.Color);
 
 % Set resize function
-set(hFig, bst_get('ResizeFunction'), @ResizeCallback);
-% Force calling the resize function at least once
 ResizeCallback(hFig);
+set(hFig, 'ResizeFcn', @ResizeCallback);
+
 bst_progress('stop');
 
-% Resize function
-    function ResizeCallback(hFig, ev)
-        % Get figure position
-        figpos = get(hFig, 'Position');
+   function ResizeCallback(hFig, ~)
+        figpos = hFig.Position;
         textH = 110;        % Text Height
         marginL = 70;
         marginR = 30;
@@ -428,9 +419,10 @@ bst_progress('stop');
         marginB = 50;
         axesH = round((figpos(4) - textH) ./ 2);
         % Position axes
-        set(hAxesFreqz, 'Position', max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hAxesImpz,  'Position', max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hLabel1,    'Position', max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]));
-        set(hLabel2,    'Position', max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]));
+        hAxesFreqz.Position = max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]);
+        hAxesImpz.Position  = max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]);
+        hLabel1.Position    = max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]);
+        hLabel2.Position    = max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]);
     end
+
 end
