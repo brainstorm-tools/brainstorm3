@@ -1,12 +1,13 @@
-function export_mri( BstMriFile, OutputMriFile )
+function export_mri( BstMriFile, OutputMriFile , ExportFiducials)
 % EXPORT_MRI: Export a MRI to one of the supported file formats.
 %
-% USAGE:  export_mri( BstMriFile, OutputMriFile=[ask] )
-%         export_mri( sMri,       OutputMriFile=[ask] )
+% USAGE:  export_mri( BstMriFile, OutputMriFile=[ask], ExportFiducials = [ask] )
+%         export_mri( sMri,       OutputMriFile=[ask], ExportFiducials = [ask]  )
 % INPUT: 
 %     - BstMriFile    : Full path to input Brainstorm MRI file to be exported
 %     - sMri          : Brainstorm MRI structure
 %     - OutputMriFile : Full path to target file (extension will determine the format)
+%     - ExportFiducials : export fiducials as json. Valid option = {bids}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -34,6 +35,9 @@ if (nargin < 1) || isempty(BstMriFile)
 end
 if (nargin < 2)
     OutputMriFile = [];
+end
+if (nargin < 3)
+    ExportFiducials = '';
 end
 
 % ===== LOAD MRI FILE =====
@@ -97,6 +101,14 @@ if isempty(OutputMriFile)
     % Save default export format
     DefaultFormats.MriOut = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+
+    res = java_dialog('question', 'Do you want to also export the fiducials contained in the MRI ?' ,...
+                              'Export fiducials', [], {'Yes', 'No'},'Yes');
+
+    if strcmpi(res, 'yes')
+        ExportFiducials = 'bids';
+    end
+
 end
 
 % ===== SAVE MRI =====
@@ -142,6 +154,13 @@ switch lower(OutputExt)
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
 end
+
+if strcmpi(ExportFiducials, 'bids')
+    OutputJsonFile = fullfile(OutputPath, [OutputBase, '.json']);
+    export_fiducials_bids(sMri, OutputJsonFile);
+end
+
+
 % Unload required plugins that were loaded
 if ~isempty(RequiredPlugins)
     tmpLoadedPlugins = bst_plugin('GetLoaded');
@@ -153,6 +172,51 @@ end
 % Hide progress bar
 if ~isProgress
     bst_progress('stop');
+end
+
+end
+
+function export_fiducials_bids(sMri, OutputJsonFile)
+% Export_mri_fiducials: Export a MRI fiducials to a json file.
+% Coordinate are exported in voxel, using a 0-based indexing
+
+
+    output = struct();
+    output.CoordinateUnits = 'voxel';
+
+    SCS_fieldsname = {'NAS', 'RPA', 'LPA'};
+    for iFields = 1:length(SCS_fieldsname)
+        if isfield(sMri.SCS, SCS_fieldsname{iFields}) && ~isempty(sMri.SCS.(SCS_fieldsname{iFields}))
+            output.FiducialsCoordinates.(SCS_fieldsname{iFields}) = sMri.SCS.(SCS_fieldsname{iFields});
+        else
+            warning('%s not found',SCS_fieldsname{iFields} )
+        end
+    end
+
+    NCS_fieldsname = {'AC', 'PC', 'IH'};
+    for iFields = 1:length(NCS_fieldsname)
+        if isfield(sMri.NCS, NCS_fieldsname{iFields}) && ~isempty(sMri.NCS.(NCS_fieldsname{iFields}))
+            output.FiducialsCoordinates.(NCS_fieldsname{iFields}) = sMri.NCS.(NCS_fieldsname{iFields});
+        else
+            warning('%s not found',NCS_fieldsname{iFields} )
+        end
+    end
+    
+    % Convert from 1- based to 0-based for BIDS
+    fieldsName = fieldnames(output.FiducialsCoordinates);
+    for iField = 1:length(fieldsName)
+        
+        coord = output.FiducialsCoordinates.(fieldsName{iField});
+        output.FiducialsCoordinates.(fieldsName{iField}) = round(1000 .* ( (coord ./ sMri.Voxsize) - 1)) ./ 1000;
+    end
+
+    fid = fopen(OutputJsonFile, 'w');
+    if fid < 0 
+        error('Unable to write to %s', OutputJsonFile )
+    end
+    fprintf(fid, jsonencode(output,"PrettyPrint", true));
+    fclose(fid);
+
 end
 
 

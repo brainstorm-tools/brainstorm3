@@ -420,13 +420,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     mkdir(anatFolder);
                 end
                 mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
+
                 if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
                     if defaceMri
                         origMri = GetDefacedMri(sSubject);
                     else
                         origMri = sSubject.Anatomy(1).FileName;
                     end
-                    export_mri(origMri, mriFile);
+                    export_mri(origMri, mriFile, 'bids');
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
@@ -1128,4 +1129,3 @@ function defacedMri = GetDefacedMri(sSubject)
         end
     end
 end
-
