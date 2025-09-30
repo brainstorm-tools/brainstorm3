@@ -320,7 +320,7 @@ switch (OPTIONS.HeadModelType)
         % Add DBA message if required
         if any(~cellfun(@(c)isempty(strfind(c,'D')), {sAtlas.Scouts.Region}))
             bst_progress('setimage', 'logo_dba.gif');
-            bst_progress('setlink', 'http://www.cenir.org');
+            bst_progress('setlink', 'https://parisbraininstitute.org/cenir-neuroimaging-platform');
         end
         % Initialize grid of points
         GridLoc = [];

@@ -2525,12 +2525,12 @@ switch contextName
         if ~ismember('brainnetome', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
             sTemplates(end).Name = 'Brainnetome';
-            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+            sTemplates(end).Info = 'https://atlas.brainnetome.org/';
         end
         if ~ismember('brainnetome_leaddbs', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
             sTemplates(end).Name = 'Brainnetome_leaddbs';
-            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+            sTemplates(end).Info = 'https://atlas.brainnetome.org/';
         end
         if ~ismember('brodmann', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
@@ -2540,7 +2540,7 @@ switch contextName
         if ~ismember('hammers83', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
             sTemplates(end).Name = 'Hammers';
-            sTemplates(end).Info = 'http://brain-development.org/brain-atlases/adult-brain-atlases/';
+            sTemplates(end).Info = 'https://brain-development.org/brain-atlases/adult-brain-atlases/';
         end
         if ~ismember('neuromorphometrics', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
@@ -2867,6 +2867,13 @@ switch contextName
             argout1 = 5;
         end
         
+    case 'UseCrossPlatformJLF'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseCrossPlatformJLF')
+            argout1 = GlobalData.Preferences.UseCrossPlatformJLF;
+        else
+            argout1 = 0;
+        end
+
     case 'DisableOpenGL'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DisableOpenGL')
             argout1 = GlobalData.Preferences.DisableOpenGL;
@@ -3875,7 +3882,7 @@ switch contextName
                     {'.txt'},          'Array of samples (*.txt)',     'ARRAY-SAMPLES'; ...
                     {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
                     {'.txt'},          'CTF Video Times (*.txt)',      'CTFVIDEO'; ...
-                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type (*_events.tsv)', 'BIDS'; ...
+                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type, channel (*_events.tsv)', 'BIDS'; ...
                     };
             case 'channel'
                 argout1 = {...

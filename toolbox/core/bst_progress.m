@@ -151,6 +151,7 @@ if isempty(pBar)
     pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2), ...
            jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
     pBar.jWindow.setLocation(pos(1), pos(2));
+    pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', []);
     % Save progress bar
     GlobalData.Program.ProgressBar = pBar;
 end
@@ -187,6 +188,11 @@ switch (lower(commandName))
             pBar.jProgressBar.setMaximum(100);
             % Set initial value to start
             pBar.jProgressBar.setValue(0);
+            % Update values in GlobalData
+            GlobalData.Program.ProgressBar.Values.Minimum = 0;
+            GlobalData.Program.ProgressBar.Values.Maximum = 100;
+            GlobalData.Program.ProgressBar.Values.Value   = 0;
+            GlobalData.Program.ProgressBar.Values.LastVal = 0;
             
         % Call: bst_progress(''start'', title, msg, start, stop)
         elseif ((nargin == 5) && ischar(varargin{2}) && ischar(varargin{3}) && isnumeric(varargin{4}) && isnumeric(varargin{5}))
@@ -210,9 +216,12 @@ switch (lower(commandName))
             % Set progress bar bounds
             pBar.jProgressBar.setMinimum(valStart);
             pBar.jProgressBar.setMaximum(valStop);
-            % Set initial value to start
             pBar.jProgressBar.setValue(valStart);
-            
+            % Update values in GlobalData
+            GlobalData.Program.ProgressBar.Values.Minimum = valStart;
+            GlobalData.Program.ProgressBar.Values.Maximum = valStop;
+            GlobalData.Program.ProgressBar.Values.Value   = valStart;
+            GlobalData.Program.ProgressBar.Values.LastVal = valStart;
         else
             error(['Usage : bst_progress(''start'', title, comment) ' 10 '        bst_progress(''start'', title, comment, valStart, valStop)']);
         end
@@ -256,11 +265,19 @@ switch (lower(commandName))
             error('Usage : bst_progress(''inc'', valInc)');
         end
         % Get current value
-        curValue = pBar.jProgressBar.getValue();
-        % Get the incremented progress bar position
-        newVal = min(curValue + valInc, pBar.jProgressBar.getMaximum());
-        pBar.jProgressBar.setValue(newVal);
-        
+        minValue = GlobalData.Program.ProgressBar.Values.Minimum;
+        maxValue = GlobalData.Program.ProgressBar.Values.Maximum;
+        curValue = GlobalData.Program.ProgressBar.Values.Value;
+        newVal = min(curValue + valInc + minValue, maxValue);
+        % Plot the incremented progress if it moves at least 1% of the bar range
+        if (abs(newVal - GlobalData.Program.ProgressBar.Values.LastVal) / (maxValue - minValue)) > 1/100
+            % Get the incremented progress bar position
+            pBar.jProgressBar.setValue(newVal);
+            % Update value in GlobalData
+            GlobalData.Program.ProgressBar.Values.LastVal = newVal;
+        end
+        GlobalData.Program.ProgressBar.Values.Value = newVal;
+
     % ==== SET POSITION ====
     case 'set'
         % Parse arguments
@@ -270,17 +287,20 @@ switch (lower(commandName))
             error('Usage : bst_progress(''set'', pos)');
         end
         % Get current value
-        curValue = pBar.jProgressBar.getValue();
-        % Get the incremented progress bar position
+        curValue = GlobalData.Program.ProgressBar.Values.Value;
+        % Plot the position if it changes
         if (curValue ~= newVal)
-            newVal = min(newVal, pBar.jProgressBar.getMaximum());
+            newVal = min(newVal, GlobalData.Program.ProgressBar.Values.Maximum);
             pBar.jProgressBar.setValue(newVal);
+            % Update value in GlobalData
+            GlobalData.Program.ProgressBar.Values.Value   = newVal;
+            GlobalData.Program.ProgressBar.Values.LastVal = newVal;
         end
         
     % ==== GET POSITION ====
     case 'get'
         % Get the incremented progress bar position
-        pBar = pBar.jProgressBar.getValue();
+        pBar = GlobalData.Program.ProgressBar.Values.Value;
         
     % ==== SET TEXT ====
     case 'text'
@@ -364,9 +384,9 @@ switch (lower(commandName))
         pBarParams.Title = pBar.jWindow.getTitle().toCharArray';
         pBarParams.Msg = pBar.jLabel.getText().toCharArray';
         pBarParams.isIndeterminate = pBar.jProgressBar.isIndeterminate();
-        pBarParams.Value = pBar.jProgressBar.getValue();
-        pBarParams.Min = pBar.jProgressBar.getMinimum();
-        pBarParams.Max = pBar.jProgressBar.getMaximum();
+        pBarParams.Value = GlobalData.Program.ProgressBar.Values.Value;
+        pBarParams.Min = GlobalData.Program.ProgressBar.Values.Minimum; 
+        pBarParams.Max = GlobalData.Program.ProgressBar.Values.Maximum;
         pBar = pBarParams;
 
     % ==== SET BAR PARAMETERS ====

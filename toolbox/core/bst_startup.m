@@ -46,10 +46,24 @@ if (MatlabVersion < 701)
 end
 % Is Matlab running (if not it is a compiled version)
 isCompiled = bst_iscompiled();
-% Compiled version: Force system look and feel
+% Compiled version: Java Look and Feel (JLF)
 if isCompiled
+    useCrossPlatformJL = 0;
+    % Get user database file : brainstorm.mat
+    dbFile = bst_get('BrainstormDbFile');
+    % Import preference
+    if file_exist(dbFile)
+        bstOptions = load(dbFile, 'Preferences');
+        useCrossPlatformJL = isfield(bstOptions, 'Preferences') && isstruct(bstOptions.Preferences) && isfield(bstOptions.Preferences, 'UseCrossPlatformJLF') && bstOptions.Preferences.UseCrossPlatformJLF;
+    end
     try
-        javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        if ~useCrossPlatformJL
+            % System Look and Feel
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+        else
+            % Cross platform Look and Feel
+            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
+        end
     catch
         % Whatever....
     end
