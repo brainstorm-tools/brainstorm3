@@ -1,3 +1,18 @@
+September 2025
+- Anatomy: Option to export fiducal locations alongside MRI file
+- Anatomy: Option to align Surface to MRI, by setting fiducials in surface
+- EEG: REST aka Infinity reference available as montage
+- iEEG: Online update generation of isosurface from CT thresholding
+- IO: Add support for text (.jnii) and binary (.bnii) JNIfTI files
+- PET: Add PET volume processing: SUVR, ROI masking, projection to surface
+- NIRS: Display sensitivity map for NIRS
+- Viz: Use Lambert azimultal equal-area proj for 2D proj of 3D sensor locs
+- Bugfix: Update FEM tensor viz to follow moved slice within figure3D
+- Bugfix: Allow exporting files in any of their valid extensions
+- Compile: Update 'spmtrip' functions
+- Distrib: Add option for cross-platform Java Look and Feel in compiled
+- Distrib: Compilation with Matlab 2025b
+--------------------------------------------------------------
 August 2025
 - Anatomy: Skull stripping MRI/CT/PET and diff-size coregistered volumes
 - BIDS: Resolve BIDS URI for same Dataset
