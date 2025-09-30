@@ -182,7 +182,7 @@ function export_fiducials_bids(sMri, OutputJsonFile)
     SCS_fieldsname = {'NAS', 'RPA', 'LPA'};
     for iFields = 1:length(SCS_fieldsname)
         if isfield(sMri.SCS, SCS_fieldsname{iFields}) && ~isempty(sMri.SCS.(SCS_fieldsname{iFields}))
-            output.FiducialsCoordinates.(SCS_fieldsname{iFields}) = sMri.SCS.(SCS_fieldsname{iFields});
+            output.AnatomicalLandmarkCoordinates.(SCS_fieldsname{iFields}) = sMri.SCS.(SCS_fieldsname{iFields});
         else
             warning('Fiducial "%s" not found in MRI', SCS_fieldsname{iFields});
         end
@@ -191,16 +191,16 @@ function export_fiducials_bids(sMri, OutputJsonFile)
     NCS_fieldsname = {'AC', 'PC', 'IH'};
     for iFields = 1:length(NCS_fieldsname)
         if isfield(sMri.NCS, NCS_fieldsname{iFields}) && ~isempty(sMri.NCS.(NCS_fieldsname{iFields}))
-            output.FiducialsCoordinates.(NCS_fieldsname{iFields}) = sMri.NCS.(NCS_fieldsname{iFields});
+            output.AnatomicalLandmarkCoordinates.(NCS_fieldsname{iFields}) = sMri.NCS.(NCS_fieldsname{iFields});
         else
             warning('Fiducial "%s" not found in MRI', NCS_fieldsname{iFields});
         end
     end
     % Convert from Brainstorm 1-based voxels to 0-based voxels for BIDS
-    fieldsName = fieldnames(output.FiducialsCoordinates);
+    fieldsName = fieldnames(output.AnatomicalLandmarkCoordinates);
     for iField = 1:length(fieldsName)
-        coord = output.FiducialsCoordinates.(fieldsName{iField});
-        output.FiducialsCoordinates.(fieldsName{iField}) = round(1000 .* ((coord ./ sMri.Voxsize) - 1)) ./ 1000;
+        coord = output.AnatomicalLandmarkCoordinates.(fieldsName{iField});
+        output.AnatomicalLandmarkCoordinates.(fieldsName{iField}) = round(1000 .* ((coord ./ sMri.Voxsize) - 1)) ./ 1000;
     end
     % Save file
     fid = fopen(OutputJsonFile, 'w');
