@@ -420,7 +420,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     mkdir(anatFolder);
                 end
                 mriFile = bst_fullfile(anatFolder, [prefix '_T1w.nii']);
-
                 if (exist(mriFile, 'file') ~= 2 && exist([mriFile '.gz'], 'file') ~= 2) || overwrite
                     if defaceMri
                         origMri = GetDefacedMri(sSubject);
