@@ -426,7 +426,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     else
                         origMri = sSubject.Anatomy(1).FileName;
                     end
-                    export_mri(origMri, mriFile);
+                    export_mri(origMri, mriFile, 'bids');
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
@@ -1128,4 +1128,3 @@ function defacedMri = GetDefacedMri(sSubject)
         end
     end
 end
-
