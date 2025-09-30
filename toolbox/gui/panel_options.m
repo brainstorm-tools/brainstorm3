@@ -541,13 +541,13 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         if isJSDesktop()
             switch s.Details.HardwareSupportLevel
                 case 'Full'
-                    disp('hardware');
+                    disp(['hardware: ' s.RendererDevice]);
                 case 'Basic'
-                    disp('hardware');
-                    disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
+                    disp(['hardware: ' s.RendererDevice]);
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is ''Basic'', this may cause the display to be slow and ugly.']);
                 otherwise
                     disp('software');
-                    disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is unavailable, this may cause the display to be slow and ugly.']);
             end
             % OpenGL is always available on New Desktop
             DisableOpenGL = 0;
