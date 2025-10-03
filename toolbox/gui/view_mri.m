@@ -1,4 +1,4 @@
-function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
+function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig, iDS)
 % VIEW_MRI: Display a MRI in a MriViewer figure.
 %
 % USAGE:  view_mri(MriFile, OverlayFile=[], Modality=[], isNewFig=0)
@@ -44,6 +44,9 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+if (nargin < 5)
+    iDS = [];
+end
 if (nargin < 4) || isempty(isNewFig)
     isNewFig = 0;
 end
@@ -74,7 +77,6 @@ else
 end
 
 %% ===== LOAD OVERLAY FILE =====
-iDS = [];
 switch lower(FileType)
     case {'data', 'pdata'}
         % Load data file
@@ -132,6 +134,9 @@ end
 % Get Subject that holds this MRI
 if ~isempty(MriFile)
     sSubject = bst_get('MriFile', MriFile);
+    if ~isempty(iDS)
+        SubjectFile = sSubject.FileName;
+    end
 % If MRI is not provided: get default one
 elseif isempty(OverlayFile) || isempty(SubjectFile)
     error('Missing input file.');
