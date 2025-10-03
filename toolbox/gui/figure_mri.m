@@ -683,6 +683,7 @@ function sliderClicked_Callback(hFig, iSlider, ev)
     if ~ev.getSource.getModel.getValueIsAdjusting
         % Update MRI display
         UpdateMriDisplay(hFig, iSlider);
+        iEegMoveAllMriCrossHairs(hFig);
     end
 end
 
@@ -861,6 +862,7 @@ function ButtonSetCoordinates_Callback(hFig)
     end
     % Move the slices
     SetLocation('mri', sMri, Handles, MRI);
+    iEegMoveAllMriCrossHairs(hFig);
 end
 
 %% ===== BUTTON VIEW 3D HEAD =====
@@ -1630,6 +1632,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
                 % Move crosshair according to mouse position
                 if ~isempty(hAxes)
                     MouseMoveCrosshair(hAxes, sMri, Handles);
+                    iEegMoveAllMriCrossHairs(hFig);
                 end
             % CTRL+Mouse, or Mouse right
             case 'alt'
@@ -3270,3 +3273,13 @@ function SetVolumeAtlas(hFig, AnatAtlas)
 end
 
 
+%% ===== iEEG: UPDATE OTHER MRI VIEWERS =====
+function iEegMoveAllMriCrossHairs(hFig)
+    if gui_brainstorm('isTabVisible', 'iEEG')
+        global GlobalData
+        [~, ~, iDS] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+            ApplyCoordsToAllFigures(hFig, 'scs');
+        end
+    end
+end
