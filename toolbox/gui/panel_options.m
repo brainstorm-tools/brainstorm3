@@ -37,6 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
+    isCompiled = bst_iscompiled;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -60,6 +61,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jCheckSystemCopy  = gui_component('CheckBox', jPanelSystem, 'br', 'Use system calls to copy/move files', [], [], []);
         else
             jCheckSystemCopy = [];
+        end
+        if isCompiled
+            jCheckCrossPlatformJLF = gui_component('CheckBox', jPanelSystem, 'br', 'Use cross platform Java Look and Feel', [], [], []);
         end
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
@@ -192,6 +196,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
         jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
+        if isCompiled
+            jCheckCrossPlatformJLF.setSelected(bst_get('UseCrossPlatformJLF'));
+        end
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
         end
@@ -286,6 +293,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             StartOpenGL();
         end
         
+        % ===== JAVA LOOK AND FEEL =====
+        changedJLF = 0;
+        if isCompiled
+            changedJLF = bst_get('UseCrossPlatformJLF') ~= jCheckCrossPlatformJLF.isSelected();
+            bst_set('UseCrossPlatformJLF', jCheckCrossPlatformJLF.isSelected());
+        end
+
         % ===== INTERFACE SCALING =====
         previousScaling = bst_get('InterfaceScaling');
         switch (jSliderScaling.getValue())
@@ -368,7 +382,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_progress('stop');
         
         % If the scaling was changed: Restart brainstorm
-        if (previousScaling ~= InterfaceScaling)
+        if (previousScaling ~= InterfaceScaling) || changedJLF
             brainstorm stop;
             brainstorm;
         end
@@ -379,8 +393,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function ButtonSave_Callback(varargin)
         % Save options
         SaveOptions()
-        % Hide panel
-        gui_hide(panelName);
+        if ~isempty(GlobalData)
+            % Hide panel
+            gui_hide(panelName);
+        end
     end
 
 %% ===== CANCEL BUTTON =====
@@ -525,13 +541,13 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         if isJSDesktop()
             switch s.Details.HardwareSupportLevel
                 case 'Full'
-                    disp('hardware');
+                    disp(['hardware: ' s.RendererDevice]);
                 case 'Basic'
-                    disp('hardware');
-                    disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
+                    disp(['hardware: ' s.RendererDevice]);
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is ''Basic'', this may cause the display to be slow and ugly.']);
                 otherwise
                     disp('software');
-                    disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is unavailable, this may cause the display to be slow and ugly.']);
             end
             % OpenGL is always available on New Desktop
             DisableOpenGL = 0;

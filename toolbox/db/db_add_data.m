@@ -182,6 +182,7 @@ switch (fileType)
         sNew.EEGMethod     = FileMat.EEGMethod;
         sNew.ECOGMethod    = FileMat.ECOGMethod;
         sNew.SEEGMethod    = FileMat.SEEGMethod;
+        sNew.NIRSMethod    = FileMat.NIRSMethod;
         % Add it to study
         if isempty(iItem)
             iItem = length(sStudy.HeadModel) + 1;
