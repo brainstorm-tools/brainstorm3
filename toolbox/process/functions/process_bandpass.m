@@ -340,19 +340,26 @@ if isempty(hFig) || ~isa(hFig, 'matlab.ui.Figure')
         'Tag',         'FilterSpecs', ...
         'Units',       'pixels', ...
         'Position',    [100 100 800 600], ...
-        'AutoResizeChildren',   'off' );
+        'AutoResizeChildren',   'on');
+
 else
     clf(hFig);
     figure(hFig);
 end
 
+grid = uigridlayout(hFig,[3 2]);
+grid.RowHeight = {'1x','1x', '1x'};
+grid.ColumnWidth = {'1x','1x'};
+
 % Plot frequency response
-hAxesFreqz = uiaxes('Parent', hFig, 'Tag', 'AxesFreqz');
+hAxesFreqz = uiaxes('Parent', grid, 'Tag', 'AxesFreqz');
+hAxesFreqz.Layout.Row = 1; hAxesFreqz.Layout.Column = [1, 2];
 Hf_db = 20.*log10(abs(Hf));
 plot(hAxesFreqz, Freqs, Hf_db);
 
 % Plot impulse response
-hAxesImpz = uiaxes('Parent', hFig, 'Tag', 'AxesImpz');
+hAxesImpz = uiaxes('Parent', grid, 'Tag', 'AxesImpz');
+hAxesImpz.Layout.Row = 2; hAxesImpz.Layout.Column = [1, 2];
 plot(hAxesImpz, t, Ht);
 
 % Add Axes limits
@@ -386,43 +393,25 @@ text(hAxesImpz, transient .* 1.1, YLimImpz(2), '99% energy', ...
 hold(hAxesImpz, 'off');
 
 % Display left panel (filter info) with HTML
-hLabel1 = uilabel(hFig, ...
+hLabel1 = uilabel(grid, ...
     'Text', strFilter1, ...
     'Interpreter', 'html', ...
     'HorizontalAlignment', 'left', ...
-    'FontSize', bst_get('FigFont'), ...
+    'FontSize', 20, ...
     'Tag', 'Label1', ...
     'BackgroundColor', hFig.Color);
+hLabel1.Layout.Row = 3; hLabel1.Layout.Column = 1;
 
 % Display right panel (filter info) with HTML
-hLabel2 = uilabel(hFig, ...
+hLabel2 = uilabel(grid, ...
     'Text', strFilter2, ...
     'Interpreter', 'html', ...
     'HorizontalAlignment', 'left', ...
-    'FontSize', bst_get('FigFont'), ...
+    'FontSize', 20, ...
     'Tag', 'Label2', ...
     'BackgroundColor', hFig.Color);
-
-% Set resize function
-ResizeCallback(hFig);
-set(hFig, 'ResizeFcn', @ResizeCallback);
+hLabel2.Layout.Row = 3; hLabel2.Layout.Column = 2;
 
 bst_progress('stop');
 
-% Resize function
-    function ResizeCallback(hFig, ev)
-        % Get figure position
-        figpos = get(hFig, 'Position');
-        textH = 110;        % Text Height
-        marginL = 70;
-        marginR = 30;
-        marginT = 30;
-        marginB = 50;
-        axesH = round((figpos(4) - textH) ./ 2);
-        % Position axes
-        set(hAxesFreqz, 'Position', max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hAxesImpz,  'Position', max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]));
-        set(hLabel1,    'Position', max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]));
-        set(hLabel2,    'Position', max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]));
-    end
 end
