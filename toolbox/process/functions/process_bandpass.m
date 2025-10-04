@@ -349,8 +349,12 @@ else
     figure(hFig);
 end
 % Disable the Java-related warnings after 2019b
-if (bst_get('MatlabVersion') >= 907)
+% MATLAB >= 2019b and MATLAB <= 2024b
+if (bst_get('MatlabVersion') >= 907 && bst_get('MatlabVersion') <= 2402)
     warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+% MATLAB >= 2025a
+elseif (bst_get('MatlabVersion') >= 2501)
+    warning('off', 'MATLAB:ui:javacomponent:BridgeForWebFigures');
 end
 
 % Plot frequency response
