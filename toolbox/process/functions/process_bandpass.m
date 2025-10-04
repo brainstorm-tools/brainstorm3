@@ -340,8 +340,7 @@ if isempty(hFig) || ~isa(hFig, 'matlab.ui.Figure')
         'Tag',         'FilterSpecs', ...
         'Units',       'pixels', ...
         'Position',    [100 100 800 600], ...
-        'AutoResizeChildren',   'off' , ...
-        'ResizeFcn',   @ResizeCallback);
+        'AutoResizeChildren',   'off' );
 else
     clf(hFig);
     figure(hFig);
@@ -410,8 +409,10 @@ set(hFig, 'ResizeFcn', @ResizeCallback);
 
 bst_progress('stop');
 
-   function ResizeCallback(hFig, ~)
-        figpos = hFig.Position;
+% Resize function
+    function ResizeCallback(hFig, ev)
+        % Get figure position
+        figpos = get(hFig, 'Position');
         textH = 110;        % Text Height
         marginL = 70;
         marginR = 30;
@@ -419,10 +420,9 @@ bst_progress('stop');
         marginB = 50;
         axesH = round((figpos(4) - textH) ./ 2);
         % Position axes
-        hAxesFreqz.Position = max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]);
-        hAxesImpz.Position  = max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]);
-        hLabel1.Position    = max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]);
-        hLabel2.Position    = max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]);
+        set(hAxesFreqz, 'Position', max(1, [marginL, textH + marginB + axesH, figpos(3) - marginL - marginR, axesH - marginB - marginT]));
+        set(hAxesImpz,  'Position', max(1, [marginL, textH + marginB,         figpos(3) - marginL - marginR, axesH - marginB - marginT]));
+        set(hLabel1,    'Position', max(1, [40,                  1,  round((figpos(3)-40)/2),  textH]));
+        set(hLabel2,    'Position', max(1, [round(figpos(3)/2),  1,  round(figpos(3)/2),       textH]));
     end
-
 end
