@@ -42,7 +42,6 @@ else
     [~, fBase] = bst_fileparts(DataFile);
     ftMat = load(DataFile);
 end
-
 % Initialize returned structure
 DataMat = db_template('DataMat');
 DataMat.Comment  = fBase;
