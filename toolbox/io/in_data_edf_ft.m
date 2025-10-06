@@ -25,30 +25,26 @@ function [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
 % Authors: Edouard Delaire 2024
 %          Raymundo Cassani 2024
 
-%% ===== INSTALL PLUGIN FIELDTRIP =====
-if ~exist('edf2fieldtrip', 'file')
+    %% ===== INSTALL PLUGIN FIELDTRIP =====
+    if ~exist('edf2fieldtrip', 'file')
+        
+        % Save progress bar
+        pBarParams = bst_progress('getbarparams');
     
-    % Save progress bar
-    pBarParams = bst_progress('getbarparams');
-
-    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
-    if ~isInstalled
-        error(errMsg);
+        [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+        if ~isInstalled
+            error(errMsg);
+        end
+        
+        % Restore progress bar
+        bst_progress('setbarparams', pBarParams);    
     end
     
-    % Restore progress bar
-    bst_progress('setbarparams', pBarParams);    
-end
-
-
-% Temporary FieldTrip file
-[~, filename] = bst_fileparts(DataFile);
-tmpfilename = bst_fullfile(bst_get('BrainstormTmpDir', 0, 'fieldtrip'), [filename '.mat']);
-% Read EDF using FieldTrip
-data = edf2fieldtrip(DataFile);
-% Save read data
-save(tmpfilename, 'data');
-% Import in Brainstorm
-[DataMat, ChannelMat] = in_data_fieldtrip(tmpfilename);
+    % Read EDF using FieldTrip
+    data = edf2fieldtrip(DataFile);
+    data.DataFile = DataFile;
+    
+    % Import in Brainstorm
+    [DataMat, ChannelMat] = in_data_fieldtrip(data);
 end
 

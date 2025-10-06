@@ -2,6 +2,7 @@ function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
 % IN_DATA_FIELDTRIP: Read recordings from FieldTrip structures (ft_datatype_timelock, ft_datatype_raw)
 %
 % USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
+% USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip(DataMat, isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,7 +30,14 @@ if (nargin < 2) || isempty(isInteractive)
 end
 
 % Get format
+if ischar(DataFile)
+    ftMat = load(DataFile);
+else
+    ftMat = DataFile;
+    DataFile = ftMat.DataFile;
+end
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
+
 % Initialize returned structure
 DataMat = db_template('DataMat');
 DataMat.Comment  = fBase;
@@ -40,7 +48,6 @@ DataMat.nAvg     = 1;
 
 % ===== LOAD FILE =====
 % Load structure
-ftMat = load(DataFile);
 fields = fieldnames(ftMat);
 % If the .time field is not directly accessible, try one level down
 if ~isfield(ftMat, 'time')
