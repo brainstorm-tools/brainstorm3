@@ -32,13 +32,10 @@ if ~exist('edf2fieldtrip', 'file')
         error(errMsg);
     end
 end
-
-% Temporary FieldTrip file
-[~, filename] = bst_fileparts(DataFile);
-tmpfilename = bst_fullfile(bst_get('BrainstormTmpDir', 0, 'fieldtrip'), [filename '.mat']);
 % Read EDF using FieldTrip
-data = edf2fieldtrip(DataFile);
-% Save read data
-save(tmpfilename, 'data');
+ftData = edf2fieldtrip(DataFile);
+[~, comment] = bst_fileparts(DataFile);
 % Import in Brainstorm
-[DataMat, ChannelMat] = in_data_fieldtrip(tmpfilename);
+[DataMat, ChannelMat] = in_data_fieldtrip(ftData, comment);
+end
+
