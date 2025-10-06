@@ -1,6 +1,12 @@
-function sProcess = process_evt_exporthed(varargin)
+function varargout = process_evt_exporthed(varargin)
 % - Always write event name column as 'trial_event' (per Brainstorm export)
 % - Sidecar structure: "<trial_type/event_type>" : {Description, Levels, HED}
+
+eval(macro_method);
+end
+
+%% ===== GET DESCRIPTION =====
+function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Export HED (BIDS events)';
     sProcess.FileTag     = [];
     sProcess.Category    = 'Custom';
@@ -18,15 +24,15 @@ function sProcess = process_evt_exporthed(varargin)
     sProcess.options.sidecar.Type    = 'filename';
     sProcess.options.sidecar.Comment = 'Output events.json sidecar';
     sProcess.options.sidecar.Value   = {[], '', 'save', 'JSON files (*.json)|*.json'};
-
-    sProcess.Description = @GetDescription;
-    sProcess.Run         = @Run;
 end
 
-function str = GetDescription()
+%% ===== FORMAT COMMENT =====
+function str = FormatComment()
     str = ['Export events to BIDS with HED: writes "trial_event" column and JSON sidecar per HED quickstart.'];
 end
 
+
+%% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {sInputs.FileName};
 

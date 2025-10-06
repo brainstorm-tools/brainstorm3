@@ -1,7 +1,14 @@
-function sProcess = process_evt_importhed(varargin)
+function varargout = process_evt_importhed(varargin)
 % - Event name column: use 'trial_type' if present, else 'event_type'
 % - HED column: same rule (only one column is used)
 % - Reads JSON sidecar to attach HED schema info if present
+
+eval(macro_method);
+end
+
+
+%% ===== GET DESCRIPTION =====
+function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Import HED (BIDS events)';
     sProcess.FileTag     = [];
     sProcess.Category    = 'Custom';
@@ -19,15 +26,16 @@ function sProcess = process_evt_importhed(varargin)
     sProcess.options.sidecar.Type    = 'filename';
     sProcess.options.sidecar.Comment = 'Optional events.json sidecar';
     sProcess.options.sidecar.Value   = {[], '', 'open', 'JSON files (*.json)|*.json'};
-
-    sProcess.Description = @GetDescription;
-    sProcess.Run         = @Run;
 end
 
-function str = GetDescription()
+
+%% ===== FORMAT COMMENT =====
+function str = FormatComment()
     str = ['Import BIDS events (+HED): uses trial\_type (fallback event\_type) for event names and HED column.'];
 end
 
+
+%% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {sInputs.FileName};  
     % --- Read inputs
