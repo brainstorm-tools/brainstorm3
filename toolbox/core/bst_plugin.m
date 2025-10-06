@@ -1575,6 +1575,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         PlugDesc = [];
         return;
     end
+    % Backup calling progress bar;
+    isCallBar = bst_progress('isvisible');
+    if isCallBar
+        pBarParams = bst_progress('getbarparams');
+    end
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugName);
     if ~isempty(errMsg)
@@ -1870,6 +1875,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     bst_progress('removeimage');
     % Return success
     isOk = 1;
+    % Restore calling progress bar
+    if isCallBar
+        bst_progress('setbarparams', pBarParams);
+    end
 end
 
 

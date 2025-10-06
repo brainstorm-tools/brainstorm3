@@ -16,7 +16,7 @@ function pBar = bst_progress(varargin)
 %         pBar = bst_progress('removeimage')         : Remove the image from the wait bar
 %         pBar = bst_progress('removelink')          : Remove click-on-image action
 %   pBarParams = bst_progress('getbarparams')        : Get current bar parameters
-%         pBar = bst_progress('setbarparams')        : Set bar parameters
+%         pBar = bst_progress('setbarparams', pBarParams) : Set bar parameters
 
 % NOTES : The window is created once, and then never deleted, just hidden.
 %         Progress bar is represented by a structure: 
