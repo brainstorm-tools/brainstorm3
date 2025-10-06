@@ -27,17 +27,10 @@ function [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
 
     %% ===== INSTALL PLUGIN FIELDTRIP =====
     if ~exist('edf2fieldtrip', 'file')
-        
-        % Save progress bar
-        pBarParams = bst_progress('getbarparams');
-    
         [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
         if ~isInstalled
             error(errMsg);
         end
-        
-        % Restore progress bar
-        bst_progress('setbarparams', pBarParams);    
     end
     
     % Read EDF using FieldTrip
