@@ -30,11 +30,11 @@ if (nargin < 2) || isempty(isInteractive)
 end
 
 % Get format
-if ischar(DataFile)
-    ftMat = load(DataFile);
-else
+if isstruct(DataFile)
     ftMat = DataFile;
     DataFile = ftMat.DataFile;
+else
+    ftMat = load(DataFile);
 end
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 
