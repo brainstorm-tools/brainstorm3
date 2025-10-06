@@ -31,7 +31,15 @@ if ~exist('edf2fieldtrip', 'file')
     if ~isInstalled
         error(errMsg);
     end
+    
+    % Start progress bar
+    isProgress = ~bst_progress('isVisible');
+    if isProgress
+        bst_progress('start', 'Open raw EEG/MEG recordings', 'Initializing...');
+    end
+
 end
+
 
 % Temporary FieldTrip file
 [~, filename] = bst_fileparts(DataFile);
@@ -42,3 +50,5 @@ data = edf2fieldtrip(DataFile);
 save(tmpfilename, 'data');
 % Import in Brainstorm
 [DataMat, ChannelMat] = in_data_fieldtrip(tmpfilename);
+end
+
