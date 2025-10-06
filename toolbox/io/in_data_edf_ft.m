@@ -27,17 +27,17 @@ function [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
 
 %% ===== INSTALL PLUGIN FIELDTRIP =====
 if ~exist('edf2fieldtrip', 'file')
+    
+    % Save progress bar
+    pBarParams = bst_progress('getbarparams');
+
     [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
         error(errMsg);
     end
     
-    % Start progress bar
-    isProgress = ~bst_progress('isVisible');
-    if isProgress
-        bst_progress('start', 'Open raw EEG/MEG recordings', 'Initializing...');
-    end
-
+    % Restore progress bar
+    bst_progress('setbarparams', pBarParams);    
 end
 
 
