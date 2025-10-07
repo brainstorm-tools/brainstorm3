@@ -102,6 +102,37 @@ switch(lower(extension))
         data = nifti_read_img(fid, hdr, 0);
         fclose(fid);
         
+    case {'.jnii', '.bnii'}
+        % Install/load JNIfTI Toolbox
+        LoadedPlugins = bst_plugin('GetLoaded');
+        [isInstalled, errMsg] = bst_plugin('Install', 'jnifti');
+        if ~isInstalled
+            error(errMsg);
+        end
+        % Create temporal NIfTI file
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'in_jnifti');
+        % Save input MRI .jnii as .nii format
+        TmpNiiFile = bst_fullfile(TmpDir, 'tmp.nii');
+        jnii2nii(MriFile, TmpNiiFile);
+        % Unload JNIfTI and its dependencies
+        tmpLoadedPlugins = bst_plugin('GetLoaded');
+        ToUnloadPluginNames = setdiff({tmpLoadedPlugins.Name}, {LoadedPlugins.Name});
+        for ix = 1 : length(ToUnloadPluginNames)
+            bst_plugin('Unload', ToUnloadPluginNames{ix});
+        end
+        % History
+        s.History = [];
+        s = bst_history('add', s, 'import', sprintf('File %s converted to NIfTI using `jnii2nii` from JNIfTI Toolbox', MriFile));
+        % Load NIfTI file
+        [sMri, vox2ras, tReorient] = in_mri_nii(TmpNiiFile, isReadMulti, isApply, isScale);
+        % Prepend history
+        if isfield(sMri, 'History')
+            sMri.History = [s.History; sMri.History];
+        end
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
+        return
+
     otherwise
         error('Unsupported file format');
 end

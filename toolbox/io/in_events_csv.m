@@ -58,7 +58,7 @@ for iEvt = 1:length(uniqueEvents)
         continue;
     end
     % Simple events
-    if (length(csvValues) < 3) || any(isnan(csvValues{3}))
+    if (length(csvValues) < 3) || any(isnan(csvValues{3})) || all(csvValues{3} == 0)
         evtTimes = csvValues{2}(iSmp)';
     else
     % Extended events

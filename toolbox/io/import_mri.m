@@ -351,6 +351,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             RegMethod = 'Ignore';
             % Reslice: never reslice
             isReslice = 0;
+            if isPet
+                petImportFileTag = '';
+            end
         end
 
         % Check that reference volume has set fiducials for reslicing

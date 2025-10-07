@@ -55,6 +55,7 @@ if isstruct(DataFile)
     DataMat  = DataFile;
     isRawIn  = 0;
     if isstruct(DataMat.F) || strcmpi(DataMat.DataType, 'raw')
+        sFileIn = DataMat.F;
         isRawIn  = 1;
     end
     DataFile = [];

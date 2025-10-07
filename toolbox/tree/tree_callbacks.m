@@ -1236,8 +1236,12 @@ switch (lower(action))
                         % No read-only
                         if ~bst_get('ReadOnly')
                             AddSeparator(jMenuAlign);
-                            % === ALIGN ALL SURFACES ===
-                            gui_component('MenuItem', jMenuAlign, [], 'Edit fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
+                            if ismember(SurfaceType, {'Scalp', 'Other'}) && (length(bstNodes) == 1)
+                                % === ALIGN ONE SURFACE TO MRI ===
+                                gui_component('MenuItem', jMenuAlign, [], 'Align surface to MRI...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative));
+                                % === ALIGN ALL SURFACES TO A REFERENCE ONE ===
+                                gui_component('MenuItem', jMenuAlign, [], 'Edit subject fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
+                            end
                             % === MENU: ALIGN SURFACE MANUALLY ===
                             fcnPopupAlign();
                             % === MENU: LOAD FREESURFER SPHERE ===
@@ -1422,6 +1426,15 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], ['Apply ' mod{1} ' leadfield exclusion zone'], IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, mod{1}, iStudy));
                         elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
+                        end
+                    end
+                    % NIRS
+                    if ~isempty(sStudy.HeadModel(iHeadModel).NIRSMethod) && ~isempty(ChannelFile)
+                        ChannelMat = in_bst_channel(ChannelFile, 'Channel');
+                        iNIRS      = good_channel(ChannelMat.Channel, [], 'NIRS');
+                        Groups     = unique({ChannelMat.Channel(iNIRS).Group});
+                        for iGroup = 1:length(Groups)
+                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
                         end
                     end
                 end
@@ -3219,10 +3232,14 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
     AddSeparator(jPopup);
     % Create sub-menu
     jMenu = gui_component('Menu', jPopup, [], 'PET processing', IconLoader.ICON_VOLPET);
-    % === PET IMPORT PROCESSING ===
     if length(iAnatomy) == 1
         PetFile = sSubject.Anatomy(iAnatomy).FileName;
+        % === PET IMPORT ===
         gui_component('MenuItem', jMenu, [], 'Realign frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
+        % === PET PROCESSING ===
+        AddSeparator(jMenu);
+        gui_component('MenuItem', jMenu, [], 'Compute SUVR', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], PetFile));
+        gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET'));
     end
 end
 
@@ -3231,12 +3248,11 @@ end
 function PetImportProcess_Callback(PetFile)
     % Get number of frames (4D)
     CubeInfo = whos('-file', file_fullpath(PetFile), 'Cube');
-    nFrames = CubeInfo.size(4);
-    % Nothing to do here
-    if nFrames < 2
+    if numel(CubeInfo.size) < 4
         disp('BST> PET volume is static (3D), skipping realignment across frames');
         return
     end
+    nFrames = CubeInfo.size(4);
     % Collect user inputs
     petopts = gui_show_dialog('PET Pre-processing options', @panel_import_pet, 1, [], nFrames, 0);
     if ~isempty(petopts)

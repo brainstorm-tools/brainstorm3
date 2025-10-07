@@ -8,7 +8,7 @@ function [ varargout ] = bst_memory( varargin )
 %      [iDS, iResult] = bst_memory('LoadResultsFileFull',  ResultsFile)
 %      [iDS, iDipole] = bst_memory('LoadDipolesFile',      DipolesFile)
 %       [iDS, iTimef] = bst_memory('LoadTimefreqFile',     TimefreqFile)
-%        [sMri, iMri] = bst_memory('LoadMri',              iDS, MriFile);
+%        [sMri, iMri] = bst_memory('LoadMri',              MriFile/iSubject);
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
@@ -3467,6 +3467,8 @@ function UnloadSurface(SurfaceFiles, isCloseFig)
         end
         % Save modifications to the surfaces
         panel_scout('SaveModifications');
+        % Save modifications in surface
+        panel_surface('SaveModifications');
         % Check if surface is already loaded
         [sSurf, iSurf] = GetSurface(SurfaceFiles{i});
         % If surface is not loaded: skip
