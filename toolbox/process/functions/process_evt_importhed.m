@@ -1,7 +1,28 @@
 function varargout = process_evt_importhed(varargin)
-% - Event name column: use 'trial_type' if present, else 'event_type'
-% - HED column: same rule (only one column is used)
-% - Reads JSON sidecar to attach HED schema info if present
+% PROCESS_EVT_IMPORTHED: Import HED tags from a JSON sidecar to Events in Data
+%
+% USAGE:  OutputFiles = process_evt_importhed('Run', sProcess, sInput)
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Anna Zaidi, 2024
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -11,128 +32,118 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Import HED (BIDS events)';
     sProcess.FileTag     = [];
-    sProcess.Category    = 'Custom';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 1000;
     sProcess.InputTypes  = {'raw', 'data'};
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-
-    sProcess.options.eventstsv.Type    = 'filename';
-    sProcess.options.eventstsv.Comment = 'Path to _events.tsv';
-    sProcess.options.eventstsv.Value   = {[], '', 'open', 'TSV files (*.tsv)|*.tsv'};
-
+    % JSON side car file
     sProcess.options.sidecar.Type    = 'filename';
-    sProcess.options.sidecar.Comment = 'Optional events.json sidecar';
+    sProcess.options.sidecar.Comment = 'Events.json sidecar';
     sProcess.options.sidecar.Value   = {[], '', 'open', 'JSON files (*.json)|*.json'};
 end
 
 
 %% ===== FORMAT COMMENT =====
 function str = FormatComment()
-    str = ['Import BIDS events (+HED): uses trial\_type (fallback event\_type) for event names and HED column.'];
+    str = 'Import HED tags for events in data.';
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs)
-    OutputFiles = {sInputs.FileName};  
-    % --- Read inputs
-    eventsTsv = sProcess.options.eventstsv.Value{1};
-    sidecar   = sProcess.options.sidecar.Value{1};
-    if isempty(eventsTsv) || ~exist(eventsTsv,'file')
-        error('events.tsv not found.');
+function OutputFile = Run(sProcess, sInput)
+    OutputFile = sInput.FileName;
+    % ===== GET OPTIONS =====
+    jsonFile = sProcess.options.sidecar.Value{1};
+    if isempty(jsonFile) || ~exist(jsonFile,'file')
+        bst_error('TODO');
+        return
     end
-
-    % --- Parse TSV
-    T = readtsv_as_table(eventsTsv);
-    nameCol = pick_column(T, {'trial_type','event_type'});
-    hedCol  = pick_column(T, {'trial_type','event_type'}); 
-    onsetCol = pick_column(T, {'onset'});
-    durCol   = pick_column(T, {'duration'}); 
-
-    % --- Load JSON sidecar (optional)
-    HedSidecar = struct();
-    if ~isempty(sidecar) && exist(sidecar,'file')
-        HedSidecar = jsondecode(fileread(sidecar));
+    % ===== GET EVENTS TO PROCESS =====
+    isRaw = strcmpi(sInput.FileType, 'raw');
+    if isRaw
+        DataMat = in_bst_data(sInput.FileName, 'F', 'History');
+        sEvents = DataMat.F.events;
     else
-        guess = regexprep(eventsTsv, '_events\.tsv$', '_events.json');
-        if exist(guess,'file')
-            HedSidecar = jsondecode(fileread(guess));
-        end
+        DataMat = in_bst_data(sInput.FileName, 'Events', 'Time', 'History');
+        sEvents = DataMat.Events;
+    end
+    if isempty(sEvents)
+        bst_error('TODO');
+        return
     end
 
-    % --- Build Brainstorm events
-    sMat = in_bst(sInputs.FileName, 'F');
-    sEvents = [];
-    if isfield(sMat,'Events') && ~isempty(sMat.Events), sEvents = sMat.Events; end
-
-    names = string(T.(nameCol));
-    onsets = double(T.(onsetCol));
-    if ~isempty(durCol), durs = double(T.(durCol)); else, durs = zeros(size(onsets)); end
-
-    % Derive list of unique Brainstorm event categories from trial_type/event_type
-    evCats = unique(names(~ismissing(names)));
-    for k = 1:numel(evCats)
-        evName = char(evCats(k));
-        idx = strcmp(names, evCats(k));
-        times = [onsets(idx), onsets(idx) + durs(idx)]'; % 2 x N
-
-        % Attach per-event HED strings if present in the chosen column + sidecar Levels/HED
-        hedStrPerRow = strings(sum(idx),1);
-        if isfield(T, hedCol)
-            hedStrPerRow = string(T.(hedCol)(idx));
+    % ===== ADD HED TAGS TO EVENTS =====
+    %  Load JSON sidecar
+    evtSidecar = bst_jsondecode(jsonFile);
+    % Find field with HED
+    evtSidecarFields = fieldnames(evtSidecar);
+    if ismember('trial_type', evtSidecarFields)
+        fieldEvtName = 'trial_type';
+    elseif ismember('event_type', evtSidecarFields)
+        fieldEvtName = 'event_type';
+    else
+        bst_error('TODO');
+        return
+    end
+    sHed = evtSidecar.(fieldEvtName);
+    % Must contain 'Levels' and 'HED'
+    if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
+        bst_error('TODO');
+        return
+    end
+    % One HED for each Level
+    if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
+        bst_error('TODO');
+        return
+    end
+    hedEvtNames = fieldnames(sHed.Levels);
+    % Add HEDs to Events in Data file
+    for iHed = 1 : length(hedEvtNames)
+        hedEvtName = hedEvtNames{iHed};
+        iEvent = find(strcmp(hedEvtName, {sEvents.label}));
+        if isempty(iEvent)
+            continue
         end
-        hedFromLevels = strings(sum(idx),1);
-        if isstruct(HedSidecar) && isfield(HedSidecar, nameCol) ...
-                && isfield(HedSidecar.(nameCol), 'Levels')
-            lv = HedSidecar.(nameCol).Levels;
-            % If the level matches evName and has HED content, add it
-            if isfield(lv, evName)
-                if isstruct(lv.(evName)) && isfield(lv.(evName),'HED')
-                    hedFromLevels(:) = string(lv.(evName).HED);
-                elseif ischar(lv.(evName)) || isstring(lv.(evName))
-                    hedFromLevels(:) = string(lv.(evName));
-                end
+        hedStr = sHed.HED.(hedEvtName);
+        hedTags = parsHedStr(hedStr);
+        sEvents(iEvent).hedTags = hedTags;
+    end
+
+    % ===== SAVE RESULT =====
+    if isRaw
+        DataMat.F.events = sEvents;
+    else
+        DataMat.Events = sEvents;
+    end
+    % Add history entry
+    DataMat = bst_history('add', DataMat, 'events', sprintf('HED tags from % were added to events', jsonFile));
+    % Only save changes if something was change
+    bst_save(file_fullpath(sInput.FileName), DataMat, [], 1);
+end
+
+function hedTags = parsHedStr(hedStr)
+% Parse HED tags, taking into account tag-groups (HED tags within parentheses)
+    hedStr = [hedStr, ','];
+    hedTags = {};
+    index   = 1;
+    nOpen   = 0;
+    for ic = 1 : length(hedStr)
+        if hedStr(ic) == ','
+            if nOpen == 0
+                hedTags{end+1} = hedStr(index:ic-1);
+                index = ic + 1;
             end
-        end
-        finalHed = hedStrPerRow;
-        hasEmpty = (finalHed=="" | ismissing(finalHed));
-        finalHed(hasEmpty) = hedFromLevels(hasEmpty);
-
-        % Build Brainstorm event struct (add custom field hedTags)
-        sEvt = db_template('event');
-        sEvt.label    = evName;
-        sEvt.color    = [];            
-        sEvt.epochs   = ones(1,sum(idx));
-        sEvt.times    = times;
-        sEvt.select   = 1;
-        sEvt.channels = {};
-        sEvt.notes    = repmat({''}, 1, sum(idx));
-        sEvt.hedTags  = cellstr(finalHed);
-
-        sEvents = [sEvents, sEvt]; 
-    end
-
-    % --- Save back
-    sMat.Events = sEvents;
-    bst_save(file_fullpath(sInputs.FileName), sMat, 'v6', 1);
-end
-
-% --------- helpers ----------
-function T = readtsv_as_table(p)
-    opts = detectImportOptions(p, 'FileType','text', 'Delimiter','\t', 'MissingRule','fill');
-    opts = setvaropts(opts, opts.VariableNames, 'WhitespaceRule','preserve', 'EmptyFieldRule','auto');
-    T = readtable(p, opts);
-end
-
-function col = pick_column(T, prefList)
-    for i=1:numel(prefList)
-        if any(strcmpi(prefList{i}, T.Properties.VariableNames))
-            col = prefList{i};
-            return;
+        elseif hedStr(ic) == '('
+            nOpen = nOpen + 1;
+        elseif hedStr(ic) == ')'
+            nOpen = nOpen - 1;
+        else
+            % Continue scanning
         end
     end
-    error('Required column not found: %s', strjoin(prefList, ' or '));
+    % Remove empty spaces
+    hedTags = strtrim(hedTags);
 end
