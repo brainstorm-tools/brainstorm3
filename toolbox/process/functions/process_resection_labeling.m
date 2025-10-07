@@ -174,7 +174,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     end
 
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('start', 'Resection labeling', 'RESEC_LABEL: Exporting preop MRI...');
+    bst_progress('start', 'Resection labeling', 'RESEC_LABEL: Exporting pre- and post-op MRI...');
     % Create temporary folder
     TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-labeling');
     % Save pre-op MRI in .nii.gz format (resection-labeling plugin expects compressed .nii)
@@ -202,7 +202,6 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     status = system(strCall);
     if (status ~= 0)
         errMsg = 'Error during resection-labeling, see logs in the command window.';
-        disp(['RESEC_LABEL> ' errMsg]);
         bst_progress('stop');
         return;
     end
