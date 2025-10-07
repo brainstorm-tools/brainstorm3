@@ -174,7 +174,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     end
 
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('start', 'Resection labeling', 'RESEC_LABEL: Exporting pre- and post-op MRI...');
+    bst_progress('start', 'Resection labeling', 'Exporting pre- and post-op MRI...');
     % Create temporary folder
     TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-labeling');
     % Save pre-op MRI in .nii.gz format (resection-labeling plugin expects compressed .nii)
