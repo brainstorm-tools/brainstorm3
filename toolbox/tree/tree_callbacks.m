@@ -1150,6 +1150,12 @@ switch (lower(action))
                         if (length(iAnatomy) == 1) && iSubject ~=0 && ~isPet
                             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', filenameRelative));
                         end
+                        % === RESECTION LABELING ===
+                        if (length(iAnatomy) == 2) && ~isCt && ~isPet  % pre and post implant MRIs
+                            preOpMriFile  = sSubject.Anatomy(iAnatomy(1)).FileName;
+                            postOpMriFile = sSubject.Anatomy(iAnatomy(2)).FileName;
+                            gui_component('MenuItem', jPopup, [], 'Resection labeling', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_labeling, 'Compute', iSubject, preOpMriFile, postOpMriFile));
+                        end
                     end
                 end
                 % === MENU: EXPORT ===
