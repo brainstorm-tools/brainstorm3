@@ -143,6 +143,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events));
         gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents));
+        jMenu.addSeparator();
+        gui_component('MenuItem', jMenu, [], 'Import HED tags from file', IconLoader.ICON_EEG_NEW, [], @(h,ev)CallProcessOnRaw('process_evt_importhed'));
+        gui_component('MenuItem', jMenu, [], 'Export HED tags to file',   IconLoader.ICON_SAVE,    [], @(h,ev)CallProcessOnRaw('process_evt_exporthed'));
+
 
         % EVENT TYPES
         jMenu = gui_component('Menu', jMenuBar, [], 'Events', IconLoader.ICON_MENU, [], [], 11);
@@ -155,6 +159,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
         gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
+        % HED TAGGING
+        gui_component('MenuItem', jMenu, [], 'Add HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_hedtagger'));
+        gui_component('MenuItem', jMenu, [], 'Uniform protocol HED tags', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_uniformhed'));
+        jMenu.addSeparator();
+
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
             gui_component('MenuItem', jMenuSort, [], 'By time', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('time')));
