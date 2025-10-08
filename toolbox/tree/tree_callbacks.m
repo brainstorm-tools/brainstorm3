@@ -1154,7 +1154,7 @@ switch (lower(action))
                         if (length(iAnatomy) == 2) && ~isCt && ~isPet  % pre and post implant MRIs
                             MriFilePreOp  = sSubject.Anatomy(iAnatomy(1)).FileName;
                             MriFilePostOp = sSubject.Anatomy(iAnatomy(2)).FileName;
-                            gui_component('MenuItem', jPopup, [], 'Resection labeling', IconLoader.ICON_MASK, [], @(h,ev)bst_call(@process_resection_labeling, 'Compute', iSubject, MriFilePreOp, MriFilePostOp));
+                            gui_component('MenuItem', jPopup, [], 'Resection labeling', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_labeling, 'Compute', iSubject, MriFilePreOp, MriFilePostOp));
                         end
                     end
                 end
