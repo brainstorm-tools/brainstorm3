@@ -438,6 +438,9 @@ function [columnNames, channelsData] = LoadChannelFile()
                 iColumn = iColumn + 1;
             end
             % Channel weight
+            if isempty(Channel.Weight)
+                Channel.Weight = NaN;
+            end
             channelsData{iChannel, iColumn} = num2cell(Channel.Weight);
         end
     end
@@ -446,7 +449,7 @@ function [columnNames, channelsData] = LoadChannelFile()
     function nLoc = getLoc(Loc, n)
         % If information does not exist
         if (n > size(Loc, 2))
-            nLoc = [];
+            nLoc = [NaN; NaN; NaN];
         else
             nLoc = Loc(:, n);
         end
