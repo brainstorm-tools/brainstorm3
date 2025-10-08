@@ -411,7 +411,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
         % === PROCESS HEAD MODELS ===
-        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel)
+        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel) && isCompatibleChan
             % Info message about the list of bad channels used for the head models
             bst_report('Info', sProcess, sInputs, ['The montage applied on the head model and noise covariance used the list of bad channels from data file: ' sInputs(iInput).FileName]);
             % Loop through all the head models
