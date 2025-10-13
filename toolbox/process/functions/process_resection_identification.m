@@ -1,9 +1,9 @@
-function varargout = process_resection_labeling( varargin )
-% PROCESS_RESECTION_LABELING: Deliniate surgical resection mask using pre- and post-op MRIs.
+function varargout = process_resection_identification( varargin )
+% PROCESS_RESECTION_IDENTIFICATION: Deliniate surgical resection mask using pre- and post-op MRIs.
 %
-% USAGE:              OutputFiles = process_resection_labeling('Run',     sProcess, sInputs)
-%         [ResecMaskFile, errMsg] = process_resection_labeling('Compute', iSubject, MriFilePreOp, MriFilePostOp)
-%         [ResecMaskFile, errMsg] = process_resection_labeling('Compute', iSubject, sMriPreOp,    sMriPostOp)
+% USAGE:              OutputFiles = process_resection_identification('Run',     sProcess, sInputs)
+%         [ResecMaskFile, errMsg] = process_resection_identification('Compute', iSubject, MriFilePreOp, MriFilePostOp)
+%         [ResecMaskFile, errMsg] = process_resection_identification('Compute', iSubject, sMriPreOp,    sMriPostOp)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -33,7 +33,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Resection labeling';
+    sProcess.Comment     = 'Resection identifcation';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 42;
@@ -147,7 +147,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== COMPUTE RESECTION-LABELING =====
+%% ===== COMPUTE RESECTION-IDENTIFICATION =====
 function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp)
     ResecMaskFile = [];
     errMsg = '';
@@ -163,21 +163,21 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
         errMsg = 'Invalid call.';
         return;
     end
-    disp(['RESEC_LABEL> pre-op MRI:  ' sMriPreOp.Comment]);
-    disp(['RESEC_LABEL> post-op MRI: ' sMriPostOp.Comment]);
+    disp(['RESEC_ID> pre-op MRI:  ' sMriPreOp.Comment]);
+    disp(['RESEC_ID> post-op MRI: ' sMriPostOp.Comment]);
 
-    % Install/load resection-labeling plugin
-    [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-labeling');
+    % Install/load resection-identification plugin
+    [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-identification');
     if ~isOk
         errMsg = [errMsg, errInstall];
         return;
     end
 
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('start', 'Resection labeling', 'Exporting pre- and post-op MRI...');
+    bst_progress('start', 'Resection identification', 'Exporting pre- and post-op MRI...');
     % Create temporary folder
-    TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-labeling');
-    % Save pre-op MRI in .nii.gz format (resection-labeling plugin expects compressed .nii)
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-identification');
+    % Save pre-op MRI in .nii.gz format (resection-identification plugin expects compressed .nii)
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
     out_mri_nii(sMriPreOp, preOpNii);
     preOpNiiGz = gzip(preOpNii);
@@ -188,24 +188,24 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     postOpNiiGz = gzip(postOpNii);
     file_delete(postOpNii, 1, 1);
     
-    % === CALL RESECTION-LABELING PIPELINE ===
-    bst_progress('text', 'Calling resection-labeling ...');
-    % Get resection-labeling executable
-    ResecExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'resection_labeling');
+    % === CALL RESECTION-IDENTIFICATION PIPELINE ===
+    bst_progress('text', 'Calling resection-identification...');
+    % Get resection-identification executable
+    ResecExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'resection_identification');
     if ispc
-        ResecExe = [ResecExe, '.exe'];
+        ResecExe = [ResecExe, '.bat'];
     end
-    % Call resection-labeling
+    % Call resection-identification
     strCall = ['"' ResecExe '"' ' ' '"' preOpNiiGz{1} '"' ' ' '"' postOpNiiGz{1} '"'];
-    disp(['RESEC_LABEL> System call: ' strCall]);
+    disp(['RESEC_ID > System call: ' strCall]);
     tic;
     status = system(strCall);
     if (status ~= 0)
-        errMsg = 'Error during resection-labeling, see logs in the command window.';
+        errMsg = 'Error during resection-identification, see logs in the command window.';
         bst_progress('stop');
         return;
     end
-    disp(['RESEC_LABEL> Computation completed in: ' num2str(toc) 's']);
+    disp(['RESEC_ID > Computation completed in: ' num2str(toc) 's']);
 
     % === SAVE OUTPUT RESECTION MASKS ===
     % Post-op MRI surgical resection mask warped in pre-op space

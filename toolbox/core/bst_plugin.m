@@ -203,21 +203,21 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
     
-    % === ANATOMY: RESECTION LABELING ===
-    PlugDesc(end+1)              = GetStruct('resection-labeling');
+    % === ANATOMY: RESECTION IDENTIFICATION ===
+    PlugDesc(end+1)              = GetStruct('resection-identification');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
     switch(OsType)
         case 'linux64'
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_labeling_linux.zip';
-            PlugDesc(end).TestFile = 'resection_labeling';
+            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_linux.zip';
+            PlugDesc(end).TestFile = 'resection_identification';
         case {'mac64', 'mac64arm'}
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_labeling_mac.zip';
-            PlugDesc(end).TestFile = 'resection_labeling';
+            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_mac.zip';
+            PlugDesc(end).TestFile = 'resection_identification';
         case 'win64'
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_labeling_win.zip';
-            PlugDesc(end).TestFile = 'resection_labeling.exe';
+            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_win.zip';
+            PlugDesc(end).TestFile = 'resection_identification.bat';
     end
     PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
     PlugDesc(end).CompiledStatus = 1;
