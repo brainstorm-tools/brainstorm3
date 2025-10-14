@@ -192,7 +192,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
         ResecExe = [ResecExe, '.bat'];
     end
     % Call resection-identification
-    strCall = ['"' ResecExe '"' ' ' '"' preOpNii '"' ' ' '"' postOpNii '"'];
+    strCall = ['"' ResecExe '"' ' ' '"' preOpNii '"' ' ' '"' postOpNii '"' ' ' '"' TmpDir '"'];
     disp(['RESEC_ID > System call: ' strCall]);
     tic;
     status = system(strCall);
