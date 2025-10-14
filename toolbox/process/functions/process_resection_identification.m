@@ -176,7 +176,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     % === SAVE BOTH MRI AS NIfTI ===
     bst_progress('start', 'Resection identification', 'Exporting pre- and post-op MRI...');
     % Create temporary folder
-    TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-identification');
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'resection_identification');
     % Save pre-op MRI
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
     out_mri_nii(sMriPreOp, preOpNii);
