@@ -123,16 +123,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" is using the default anatomy (read-only).']);
         return
     end
-    % Proceed importing the MRI files only if no anatomy defined for subject
+    % Import pre-op MRI volume
+    DbMriFilePreOp  = import_mri(iSubject, MriFilePreOp, FileFormatPreOp, 0, 1, 'preop_mri');
     if isempty(sSubject.Anatomy)
-        % Import pre-op MRI volume
-        DbMriFilePreOp  = import_mri(iSubject, MriFilePreOp, FileFormatPreOp, 0, 0, 'mri_preop');      
-        % Import post-op MRI volume
-        DbMriFilePostOp = import_mri(iSubject, MriFilePostOp, FileFormatPostOp, 0, 0, 'mri_postop');
-    else
-        bst_report('Error', sProcess, [], ['Subject "' SubjectName '" has anatomy defined. Select an empty subject.']);
-        return
+        % MNI normalization (affine)
+        bst_normalize_mni(DbMriFilePreOp, 'maff8');
     end
+    % Import post-op MRI volume
+    DbMriFilePostOp = import_mri(iSubject, MriFilePostOp, FileFormatPostOp, 0, 1, 'postop_mri');
 
     % Call processing function
     [isOk, errMsg] = Compute(iSubject, DbMriFilePreOp, DbMriFilePostOp);
