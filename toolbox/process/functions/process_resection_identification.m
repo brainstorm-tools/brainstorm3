@@ -210,7 +210,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     % Reading volumes
     ResecMaskFile = import_mri(iSubject, ResecMaskNii, 'Nifti1', 0, 0, 'resection_mask');
     % Delete the temporary files
-    file_delete(TmpDir, 0, 1);
+    file_delete(TmpDir, 1, 1);
     % Close progress bar
     bst_progress('stop');
 end
