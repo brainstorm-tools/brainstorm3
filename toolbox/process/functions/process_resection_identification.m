@@ -148,8 +148,10 @@ end
 
 
 %% ===== COMPUTE RESECTION-IDENTIFICATION =====
-function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp)
-    ResecMaskFile = [];
+function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp)
+    ResecMaskFilePreOp  = [];
+    ResecMaskFilePostOp = [];
+    MriFilePost2PreOp   = [];
     errMsg = '';
 
     % Load pre- and post-op MRI
@@ -203,12 +205,20 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     end
     disp(['RESEC_ID > Computation completed in: ' num2str(toc) 's']);
 
-    % === SAVE OUTPUT RESECTION MASKS ===
+    % === SAVE OUTPUTS ===
+    bst_progress('text', 'Saving outputs...');
     % Post-op MRI surgical resection mask warped in pre-op space
-    ResecMaskNii  = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
-    bst_progress('text', 'Saving resection mask...');
-    % Reading volumes
-    ResecMaskFile = import_mri(iSubject, ResecMaskNii, 'Nifti1', 0, 0, 'resection_mask');
+    ResecMaskPreOpNii   = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
+    ResecMaskFilePreOp  = import_mri(iSubject, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
+    import_surfaces(iSubject, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
+    % Post-op MRI surgical resection mask
+    ResecMaskPostOpNii  = bst_fullfile(TmpDir, 'postop.resection.mask.nii.gz');
+    ResecMaskFilePostOp = import_mri(iSubject, ResecMaskPostOpNii, 'ALL-ATLAS', 0, 1, 'postop_resection_mask');
+    import_surfaces(iSubject, ResecMaskFilePostOp, 'MRI-MASK', 0, [], [], 'postop_resection'); 
+    % Post-op MRI non-linearly coregisterd to pre-op MRI
+    Post2PreOpNii  = bst_fullfile(TmpDir, 'postop.nonlin.post2pre.nii.gz');
+    MriFilePost2PreOp = import_mri(iSubject, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
+    
     % Delete the temporary files
     file_delete(TmpDir, 1, 1);
     % Close progress bar
