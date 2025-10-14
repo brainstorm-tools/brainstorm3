@@ -177,16 +177,12 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
     bst_progress('start', 'Resection identification', 'Exporting pre- and post-op MRI...');
     % Create temporary folder
     TmpDir = bst_get('BrainstormTmpDir', 0, 'resection-identification');
-    % Save pre-op MRI in .nii.gz format (resection-identification plugin expects compressed .nii)
+    % Save pre-op MRI
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
     out_mri_nii(sMriPreOp, preOpNii);
-    preOpNiiGz = gzip(preOpNii);
-    file_delete(preOpNii, 1, 1);
-    % Save post-op MRI in .nii.gz format
+    % Save post-op MRI
     postOpNii = bst_fullfile(TmpDir, 'postop.nii');
     out_mri_nii(sMriPostOp, postOpNii);
-    postOpNiiGz = gzip(postOpNii);
-    file_delete(postOpNii, 1, 1);
     
     % === CALL RESECTION-IDENTIFICATION PIPELINE ===
     bst_progress('text', 'Calling resection-identification...');
@@ -196,7 +192,7 @@ function [ResecMaskFile, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp
         ResecExe = [ResecExe, '.bat'];
     end
     % Call resection-identification
-    strCall = ['"' ResecExe '"' ' ' '"' preOpNiiGz{1} '"' ' ' '"' postOpNiiGz{1} '"'];
+    strCall = ['"' ResecExe '"' ' ' '"' preOpNii '"' ' ' '"' postOpNii '"'];
     disp(['RESEC_ID > System call: ' strCall]);
     tic;
     status = system(strCall);
