@@ -90,19 +90,15 @@ close(hFigMri);
 disp([10 'DEMO> 2. Import and process PET volumes' 10]);
 PetFiles = {Pet1File, Pet2File};
 for iPet = 1 : length(PetFiles)
-    % Import PET volume
-    impPetFile = import_mri(iSubject, PetFiles{iPet}, [], 0, 0, 'PET');
-    % Update PET name
-    [~, fbase, fExt] = bst_fileparts(PetFiles{iPet});
-    if strcmpi(fExt, '.gz')
-        [~, fbase] = bst_fileparts(fbase);
-    end
-    [sSubject, iSubject, iAnatomy] = bst_get('MriFile', impPetFile);
-    sSubject.Anatomy(iAnatomy).Comment = fbase;
-    s.Comment = fbase;
-    bst_save(file_fullpath(impPetFile), s, [], 1);
-    bst_set('Subject', iSubject, sSubject);
-    panel_protocols('UpdateNode', 'Subject', iSubject);
+    % Process: Import PET
+    bst_process('CallProcess', 'process_import_mri', [], [], ...
+        'subjectname', SubjectName, ...
+        'voltype',     'pet', ...  % PET
+        'comment',     '', ...
+        'mrifile',     {PetFiles{iPet}, 'Nifti1'});
+    % Imported PET (last volume)
+    sSubject = bst_get('Subject', SubjectName);
+    impPetFile = sSubject.Anatomy(end).FileName;
     % Align and aggregate PET volume
     PetAggFile = mri_realign(impPetFile, 'spm_realign', 0, 'mean');
     % Co-register and reslice PET volume
