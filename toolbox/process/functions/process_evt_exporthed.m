@@ -1,13 +1,35 @@
 function varargout = process_evt_exporthed(varargin)
-% - Always write event name column as 'trial_event' (per Brainstorm export)
-% - Sidecar structure: "<trial_type/event_type>" : {Description, Levels, HED}
+% PROCESS_EVT_EXPORTHED: Export HED tags from Brainstorm data files to a JSON sidecar
+%
+% USAGE:  OutputFiles = process_evt_exporthed('Run', sProcess, sInput)
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Anna Zaidi, 2024
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
-    sProcess.Comment     = 'Export HED (BIDS events)';
+    sProcess.Comment     = 'Export HED tags (BIDS _events.json)';
     sProcess.FileTag     = [];
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
@@ -16,113 +38,93 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-
-    sProcess.options.outtsv.Type    = 'filename';
-    sProcess.options.outtsv.Comment = 'Output _events.tsv';
-    sProcess.options.outtsv.Value   = {[], '', 'save', 'TSV files (*.tsv)|*.tsv'};
-
+    % JSON sidecar file
+    SelectOptions = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'save', ...                           % Dialog type: {open,save}
+        'Export HED JSON sidecar...', ...     % Window title
+        'ExportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        {{'_events.json'}, {'HED tags (*_events.json)'}, ''}, ...
+        ''};
     sProcess.options.sidecar.Type    = 'filename';
-    sProcess.options.sidecar.Comment = 'Output events.json sidecar';
-    sProcess.options.sidecar.Value   = {[], '', 'save', 'JSON files (*.json)|*.json'};
+    sProcess.options.sidecar.Comment = 'JSON sidecar';
+    sProcess.options.sidecar.Value   = SelectOptions;
 end
 
+
 %% ===== FORMAT COMMENT =====
-function str = FormatComment()
-    str = ['Export events to BIDS with HED: writes "trial_event" column and JSON sidecar per HED quickstart.'];
+function Comment = FormatComment()
+    Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs)
+    % Output files
     OutputFiles = {sInputs.FileName};
 
-    outTsv = sProcess.options.outtsv.Value{1};
+    % ===== GET OPTIONS =====
+    % JSON sidecar file with HED tags
     outJson = sProcess.options.sidecar.Value{1};
-    if isempty(outTsv), error('Provide output _events.tsv'); end
-    if isempty(outJson)
-        outJson = regexprep(outTsv, '_events\.tsv$', '_events.json');
+
+    % Check: Same FileType for all files
+    isRaw = strcmp({sInputs.FileType},'raw');
+    if ~all(isRaw) && ~all(~isRaw)
+        bst_report('Error', sProcess, sInputs, 'Do not mix ''raw'' and ''imported'' data')
+        return;
     end
+    isRaw = isRaw(1);
 
-    % --- Load Brainstorm file
-    sMat = in_bst(sInputs.FileName, 'F');
-    if ~isfield(sMat,'Events') || isempty(sMat.Events)
-        error('No events to export.');
-    end
-    E = sMat.Events;
-
-    % --- Flatten to BIDS table
-    % with columns: onset, duration, trial_event, HED
-    onset = [];
-    duration = [];
-    trial_event = strings(0,1);
-    hedCol = strings(0,1);
-
-    for k = 1:numel(E)
-        times = E(k).times; % 2 x N
-        n = size(times,2);
-        onset    = [onset;    times(1,:)'];
-        duration = [duration; max(0, times(2,:)' - times(1,:)')];
-        trial_event = [trial_event; repmat(string(E(k).label), n, 1)];
-        if isfield(E(k),'hedTags') && numel(E(k).hedTags) == n
-            hedCol = [hedCol; string(E(k).hedTags(:))];
+    % ===== GATHER ALL EVENTS AND THEIR HED TAGS =====
+    % Pairs of Event-HEDtags (dummy entry)
+    pairs = {'', {}};
+    for iInput = 1 : length(sInputs)
+        % Get events and their HED tags
+        if isRaw
+            sData = in_bst_data(sInputs(iInput).FileName, 'F');
+            sEvents = sData.F.events;
         else
-            hedCol = [hedCol; strings(n,1)];
+            sData = in_bst_data(sInputs(iInput).FileName, 'Events');
+            sEvents = sData.Events;
         end
-    end
-
-    T = table(onset, duration, trial_event, hedCol, 'VariableNames', {'onset','duration','trial_event','HED'});
-
-    % --- Write TSV (tab-separated, no quotes)
-    writetable_tsv_noquotes(T, outTsv);
-
-    % --- Build sidecar JSON per HED quickstart
-    ls = unique(trial_event);
-    Levels = struct();
-    for i = 1:numel(uLevels)
-        lv = char(uLevels(i));
-        mask = (trial_event == uLevels(i));
-        % If all HED are identical and nonempty, store at level; else leave empty
-        uniqHed = unique(hedCol(mask));
-        uniqHed = uniqHed(~(uniqHed=="" | ismissing(uniqHed)));
-        lvlEntry = struct('Description', '', 'HED', '');
-        if numel(uniqHed) == 1
-            lvlEntry.HED = char(uniqHed);
-        end
-        Levels.(lv) = lvlEntry;
-    end
-    Sidecar = struct();
-    Sidecar.trial_event = struct( ...
-        'Description', 'Brainstorm event label exported as BIDS trial_event', ...
-        'Levels', Levels, ...
-        'HED', '' ...
-    );
-
-    % --- Write sidecar
-    jsonStr = jsonencode(Sidecar, 'PrettyPrint', true);
-    fid = fopen(outJson,'w'); fwrite(fid, jsonStr); fclose(fid);
-end
-
-% --------- helpers ----------
-function writetable_tsv_noquotes(T, pathOut)
-    fid = fopen(pathOut,'w');
-    fprintf(fid, '%s\n', strjoin(T.Properties.VariableNames, '\t'));
-    for r = 1:height(T)
-        row = T{r,:};
-        for c = 1:numel(row)
-            val = row{c};
-            if isstring(val) || ischar(val)
-                txt = string(val);
-            elseif isnumeric(val) && isscalar(val)
-                txt = string(val);
+        evtNames   = {sEvents.label};
+        evtHedTags = {sEvents.hedTags};
+        % Check for uniformity of events and HED tags
+        for iEvt = 1 : length(evtNames)
+            ix = find(strcmp(evtNames{iEvt}, pairs(:,1)));
+            if ~isempty(ix) && ~isempty(setdiff(evtHedTags{iEvt}), pairs{ix, 2})
+                bst_report('Error', sProcess, sInputs, 'HED tags must be uniform across input files');
+                return
             else
-                txt = "";
-            end
-            if c < numel(row)
-                fprintf(fid, '%s\t', txt);
-            else
-                fprintf(fid, '%s\n', txt);
+                pairs{end+1, 1} = evtNames{iEvt};
+                pairs{end  , 2} = evtHedTags{iEvt};
             end
         end
     end
+    % Remove dummy entry
+    pairs(1,:) = [];
+    % Nothing to save
+    if all(cellfun(@isempty, pairs(:, 2)))
+        bst_report('Warning', sProcess, sInputs, 'Events do not have HED tags');
+        return
+    end
+
+    % ===== SAVE HED TAGS TO SIDECAR FILE =====
+    % Generate structure for sidecar
+    sHed = struct('Levels', struct(), 'HED', struct());
+    for iEvt = 1 : size(pairs, 1)
+        evtName    = pairs{iEvt, 1};
+        evtHedTags = pairs{iEvt, 2};
+        sHed.Levels.(evtName) = 'Brainstorm event label exported as BIDS trial_event';
+        sHed.HED.(evtName) = evtHedTags;
+    end
+    sSidecar = struct('trial_type', sHed);
+    % Write JSON sidecar
+    jsonStr = bst_jsonencode(sSidecar, 1);
+    fid = fopen(outJson, 'w');
+    fwrite(fid, jsonStr);
     fclose(fid);
 end
