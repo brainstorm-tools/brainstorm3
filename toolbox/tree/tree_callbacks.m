@@ -1090,8 +1090,19 @@ switch (lower(action))
                             sSubject = bst_get('MriFile', filenameRelative);
                             MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                             % Overlay menus
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            iVols = find(cellfun(@(c)isempty(strfind(c, '_volatlas')) && ~strcmpi(c, sSubject.Anatomy(iAnatomy).FileName), {sSubject.Anatomy.FileName}));
+                            if length(iVols) >= 2
+                                jMenuOverlay = gui_component('Menu', jMenuDisplay, [], 'Overlay on...', IconLoader.ICON_ANATOMY, [], []);
+                                for iVol = 1:length(iVols)
+                                    gui_component('MenuItem', jMenuOverlay, [], ['MRI Viewer: ' sSubject.Anatomy(iVols(iVol)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                end
+                                for iVol = 1:length(iVols)
+                                    gui_component('MenuItem', jMenuOverlay, [], ['MRI 3D: ' sSubject.Anatomy(iVols(iVol)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                end
+                            else
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));     
+                            end
                             AddSeparator(jMenuDisplay);
                         end
                         gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
