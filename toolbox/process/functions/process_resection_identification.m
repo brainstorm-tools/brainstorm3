@@ -57,14 +57,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
-    % Option: Pre-op MRI file
-    sProcess.options.preopmrifile.Comment = 'Pre-op MRI filename:';
-    sProcess.options.preopmrifile.Type    = 'filename';
-    sProcess.options.preopmrifile.Value   = SelectOptions;
-    % Option: Post-op MRI file
-    sProcess.options.postopmrifile.Comment = 'Post-op MRI filename:';
-    sProcess.options.postopmrifile.Type    = 'filename';
-    sProcess.options.postopmrifile.Value   = SelectOptions;
+    % Option: Post-op MRI name
+    sProcess.options.postopmriname.Comment = 'Post-op MRI name:';
+    sProcess.options.postopmriname.Type    = 'text';
+    sProcess.options.postopmriname.Value   = '';
 end
 
 
@@ -83,38 +79,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Subject name is empty.');
         return;
     end
-    % Get pre-op MRI filename to import
-    MriFilePreOp = sProcess.options.preopmrifile.Value{1};
-    if (length(sProcess.options.preopmrifile.Value) < 2) || isempty(sProcess.options.preopmrifile.Value{2})
-        FileFormatPreOp = 'All';
-    else
-        FileFormatPreOp = sProcess.options.preopmrifile.Value{2};
-    end
-    if isempty(MriFilePreOp)
-        bst_report('Error', sProcess, [], 'Pre-op MRI file not selected.');
-        return
-    end
-    % Get post-op MRI filename to import
-    MriFilePostOp = sProcess.options.postopmrifile.Value{1};
-    if (length(sProcess.options.postopmrifile.Value) < 2) || isempty(sProcess.options.postopmrifile.Value{2})
-        FileFormatPostOp = 'All';
-    else
-        FileFormatPostOp = sProcess.options.postopmrifile.Value{2};
-    end
-    if isempty(MriFilePostOp)
-        bst_report('Error', sProcess, [], 'Post-op MRI file not selected.');
-        return
-    end
-
-    % ===== GET/CREATE SUBJECT =====
     % Get subject 
     [sSubject, iSubject] = bst_get('Subject', SubjectName);
-    % Create subject is it does not exist yet
     if isempty(sSubject)
-        [sSubject, iSubject] = db_add_subject(SubjectName);
+        bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
+        return
     end
-    if isempty(iSubject)
-        bst_report('Error', sProcess, [], ['Cannot create subject "' SubjectName '".']);
+    if isempty(sSubject.Anatomy)
+        bst_report('Error', sProcess, [], 'Pre-op MRI does not exist. Import it and define the fiducials.');
         return
     end
     % The subject can't be using the default anatomy
@@ -122,17 +94,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" is using the default anatomy (read-only).']);
         return
     end
-    % Import pre-op MRI volume
-    DbMriFilePreOp  = import_mri(iSubject, MriFilePreOp, FileFormatPreOp, 0, 1, 'preop_mri');
-    if isempty(sSubject.Anatomy)
-        % MNI normalization (affine)
-        bst_normalize_mni(DbMriFilePreOp, 'maff8');
+    % Get post-op MRI
+    PostOpMriName = sProcess.options.postopmriname.Value;
+    iPostOpMri    = find(cellfun(@(x) ~isempty(regexp(x, sprintf('^%s$', PostOpMriName), 'match')), {sSubject.Anatomy.Comment}));
+    if isempty(iPostOpMri)
+        bst_report('Error', sProcess, [], 'Post-op MRI is either missing or its name is incorrect.');
+        return
     end
-    % Import post-op MRI volume
-    DbMriFilePostOp = import_mri(iSubject, MriFilePostOp, FileFormatPostOp, 0, 1, 'postop_mri');
-
+    
     % Call processing function
-    [isOk, errMsg] = Compute(DbMriFilePreOp, DbMriFilePostOp);
+    [isOk, errMsg] = Compute(sSubject.Anatomy(sSubject.iAnatomy).FileName, sSubject.Anatomy(iPostOpMri).FileName);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -167,10 +138,10 @@ function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = 
     TmpDir = bst_get('BrainstormTmpDir', 0, 'resection_identification');
     % Save pre-op MRI
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
-    out_mri_nii(sMriPreOp, preOpNii);
+    out_mri_nii(in_mri_bst(MriFilePreOp), preOpNii);
     % Save post-op MRI
     postOpNii = bst_fullfile(TmpDir, 'postop.nii');
-    out_mri_nii(sMriPostOp, postOpNii);
+    out_mri_nii(in_mri_bst(MriFilePostOp), postOpNii);
     
     % === CALL RESECTION-IDENTIFICATION PIPELINE ===
     bst_progress('text', 'Calling resection-identification...');
