@@ -86,30 +86,17 @@ function OutputFile = Run(sProcess, sInput)
     end
 
     % ===== ADD HED TAGS TO EVENTS =====
-    %  Load JSON sidecar
-    evtSidecar = bst_jsondecode(jsonFile);
-    % Find field with HED
-    evtSidecarFields = fieldnames(evtSidecar);
-    if ismember('trial_type', evtSidecarFields)
-        fieldEvtName = 'trial_type';
-    elseif ismember('event_type', evtSidecarFields)
-        fieldEvtName = 'event_type';
-    else
-        bst_error('TODO');
-        return
+    % Parse JSON file
+    fid = fopen(jsonFile, 'r');
+    if (fid < 0)
+        error(['Cannot open JSON file: ' jsonFile]);
     end
-    sHed = evtSidecar.(fieldEvtName);
-    % Must contain 'Levels' and 'HED'
-    if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
-        bst_error('TODO');
-        return
-    end
-    % One HED for each Level
-    if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
-        bst_error('TODO');
-        return
-    end
-    hedEvtNames = fieldnames(sHed.Levels);
+    % Read file
+    jsonFile = fread(fid, [1, Inf], '*char');
+    % Close file
+    fclose(fid);
+    % Decode JSON string
+    [hedEvtNames, hedEvtHedTags] = json2events(jsonFile);
     % Add HEDs to Events in Data file
     for iHed = 1 : length(hedEvtNames)
         hedEvtName = hedEvtNames{iHed};
@@ -117,9 +104,7 @@ function OutputFile = Run(sProcess, sInput)
         if isempty(iEvent)
             continue
         end
-        hedStr = sHed.HED.(hedEvtName);
-        hedTags = parsHedStr(hedStr);
-        sEvents(iEvent).hedTags = hedTags;
+        sEvents(iEvent).hedTags = hedEvtHedTags{iHed};
     end
 
     % ===== SAVE RESULT =====
@@ -132,6 +117,45 @@ function OutputFile = Run(sProcess, sInput)
     DataMat = bst_history('add', DataMat, 'events', sprintf('HED tags from % were added to events', jsonFile));
     % Only save changes if something was change
     bst_save(file_fullpath(sInput.FileName), DataMat, [], 1);
+end
+
+function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
+    if nargin < 2 || isempty(isOnlyHed)
+        isOnlyHed = 0;
+    end
+    %  Load JSON sidecar
+    evtSidecar = bst_jsondecode(jsonStr);
+    % Find field with HED
+    evtSidecarFields = fieldnames(evtSidecar);
+    if ismember('trial_type', evtSidecarFields)
+        fieldEvtName = 'trial_type';
+    elseif ismember('event_type', evtSidecarFields)
+        fieldEvtName = 'event_type';
+    else
+        bst_error('TODO');
+        return
+    end
+    sHed = evtSidecar.(fieldEvtName);
+    % Replace "Level" with "HED" if only HED
+    if isOnlyHed
+        sHed.Levels = sHed.HED;
+    end
+    % Must contain 'Levels' and 'HED'
+    if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
+        bst_error('TODO');
+        return
+    end
+    % One HED for each Level
+    if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
+        bst_error('TODO');
+        return
+    end
+    hedEvtNames = fieldnames(sHed.Levels);
+    hedEvtHedTags = repmat({''}, length(hedEvtNames), 1);
+    % Get HED tags
+    for iHed = 1 : length(hedEvtNames)
+        hedEvtHedTags{iHed} = parsHedStr(sHed.HED.(hedEvtNames{iHed}));
+    end
 end
 
 function hedTags = parsHedStr(hedStr)
