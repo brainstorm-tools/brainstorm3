@@ -160,7 +160,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
         % HED TAGGING
-        gui_component('MenuItem', jMenu, [], 'Add HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_hedtagger'));
+        gui_component('MenuItem', jMenu, [], 'Add HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)AddHedCtagger);
         gui_component('MenuItem', jMenu, [], 'Uniform protocol HED tags', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_uniformhed'));
         jMenu.addSeparator();
 
@@ -2474,6 +2474,75 @@ function ToggleEvent(eventName, channelNames, isFullPage)
         elseif ~isempty(iOccur)
             EventOccurDel(iEvent, iOccur);
         end
+    end
+end
+
+
+%% ===== EVENT ADD HED TAGS =====
+function AddHedCtagger()
+    % Get selected events
+    iEvents = GetSelectedEvents();
+    % Get events (ignore current epoch)
+    sEvents = GetEvents(iEvents, 1);
+    if isempty(sEvents)
+        return
+    end
+    % Event names and HED tags
+    orgEvtNames = {sEvents.label};
+    orgEvtHedTags = {sEvents.hedTags};
+    % Initialize CTagger
+    [isInstalled, errMsg] = bst_plugin('Install', 'ctagger', 0);
+    if ~isInstalled
+        disp(errMsg);
+        return;
+    end
+    % Encode EventNames and EventHedTags as JSON file
+    orgJsonStr = process_evt_exporthed('events2json', orgEvtNames, orgEvtHedTags);
+    % Open CTagger
+    try
+        loader = javaObject('TaggerLoader', orgJsonStr);
+    catch ME
+        error('Error initializing CTagger: %s', ME.message);
+    end
+
+    % CATCH
+    timeout = 300;  % secs
+    tStart  = tic;
+    notified = 0;
+    while ~notified && toc(tStart) < timeout
+        pause(0.5);
+        notified = loader.isNotified();
+    end
+    disp('DONE TAGGING')
+
+    % Decode JSON file as EventNames and EventHedTags
+    newJsonStr = char(loader.getHEDJson());
+    bst_plugin('Unload', 'ctagger');
+    % Returned JSON string only has HED
+    [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
+    if ~isempty(setdiff(orgEvtNames, newEvtNames))
+        disp('EVENTS CREATED');
+        return
+    end
+    % Update HED tags
+    isModified = 0;
+    for iOrg = 1 : length(orgEvtNames)
+        iNew = strcmp(orgEvtNames{iOrg}, newEvtNames);
+        if ~isempty(setdiff(orgEvtHedTags{iOrg}, newEvtHedTags{iNew}))
+            iEvt = strcmp(orgEvtNames{iOrg}, {sEvents.label});
+            sEvents(iEvt).hedTags = newEvtHedTags;
+            isModified = 1;
+        end
+    end
+    % No modifications: return
+    if ~isModified
+        return;
+    end
+    % Update dataset
+    if isempty(iEvents)
+        SetEvents(sEvents);
+    else
+        SetEvents(sEvents, iEvents);
     end
 end
 
