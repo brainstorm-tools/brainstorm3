@@ -1,4 +1,4 @@
-function varargout = process_group_by_hed(varargin)
+function varargout = process_evt_grouphed(varargin)
 
     eval(macro_method);
 end
