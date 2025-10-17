@@ -79,8 +79,8 @@ function OutputFiles = Run(sProcess, sInputs)
     isRaw = isRaw(1);
 
     % ===== GATHER ALL EVENTS AND THEIR HED TAGS =====
-    % Pairs of Event-HEDtags (dummy entry)
-    pairs = {'', {}};
+    evtAllNames   = {};
+    evtAllHedTags = {};
     for iInput = 1 : length(sInputs)
         % Get events and their HED tags
         if isRaw
@@ -94,37 +94,39 @@ function OutputFiles = Run(sProcess, sInputs)
         evtHedTags = {sEvents.hedTags};
         % Check for uniformity of events and HED tags
         for iEvt = 1 : length(evtNames)
-            ix = find(strcmp(evtNames{iEvt}, pairs(:,1)));
-            if ~isempty(ix) && ~isempty(setdiff(evtHedTags{iEvt}), pairs{ix, 2})
+            ix = find(strcmp(evtNames{iEvt}, evtAllNames));
+            if ~isempty(ix) && ~isempty(setdiff(evtHedTags{iEvt}), evtAllHedTags{ix})
                 bst_report('Error', sProcess, sInputs, 'HED tags must be uniform across input files');
                 return
             else
-                pairs{end+1, 1} = evtNames{iEvt};
-                pairs{end  , 2} = evtHedTags{iEvt};
+                evtAllNames{end+1}   = evtNames{iEvt};
+                evtAllHedTags{end+1} = evtHedTags{iEvt};
             end
         end
     end
-    % Remove dummy entry
-    pairs(1,:) = [];
     % Nothing to save
-    if all(cellfun(@isempty, pairs(:, 2)))
+    if all(cellfun(@isempty, evtAllHedTags))
         bst_report('Warning', sProcess, sInputs, 'Events do not have HED tags');
         return
     end
 
     % ===== SAVE HED TAGS TO SIDECAR FILE =====
+    jsonStr = events2json(evtAllNames, evtAllHedTags);
+    fid = fopen(outJson, 'w');
+    fwrite(fid, jsonStr);
+    fclose(fid);
+end
+
+function jsonStr = events2json(evtNames, evtHedTags)
     % Generate structure for sidecar
     sHed = struct('Levels', struct(), 'HED', struct());
-    for iEvt = 1 : size(pairs, 1)
-        evtName    = pairs{iEvt, 1};
-        evtHedTags = pairs{iEvt, 2};
-        sHed.Levels.(evtName) = 'Brainstorm event label exported as BIDS trial_event';
-        sHed.HED.(evtName) = evtHedTags;
+    for iEvt = 1 : length(evtNames)
+        evtKey    = evtNames{iEvt};
+        evtHedStr = strjoin(evtHedTags{iEvt}, ', ');
+        sHed.Levels.(evtKey) = sprintf('Brainstorm event ''%s'' label exported for HED tags', evtKey);
+        sHed.HED.(evtKey) = evtHedStr;
     end
     sSidecar = struct('trial_type', sHed);
     % Write JSON sidecar
     jsonStr = bst_jsonencode(sSidecar, 1);
-    fid = fopen(outJson, 'w');
-    fwrite(fid, jsonStr);
-    fclose(fid);
 end
