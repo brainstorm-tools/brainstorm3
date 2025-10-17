@@ -1,9 +1,8 @@
 function varargout = process_resection_identification( varargin )
 % PROCESS_RESECTION_IDENTIFICATION: Deliniate surgical resection mask using pre- and post-op MRIs.
 %
-% USAGE:              OutputFiles = process_resection_identification('Run',     sProcess, sInputs)
-%         [ResecMaskFile, errMsg] = process_resection_identification('Compute', iSubject, MriFilePreOp, MriFilePostOp)
-%         [ResecMaskFile, errMsg] = process_resection_identification('Compute', iSubject, sMriPreOp,    sMriPostOp)
+% USAGE:                                                           OutputFiles = process_resection_identification('Run',     sProcess, sInputs)
+%         [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = process_resection_identification('Compute', MriFilePreOp, MriFilePostOp)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -133,7 +132,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     DbMriFilePostOp = import_mri(iSubject, MriFilePostOp, FileFormatPostOp, 0, 1, 'postop_mri');
 
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, DbMriFilePreOp, DbMriFilePostOp);
+    [isOk, errMsg] = Compute(DbMriFilePreOp, DbMriFilePostOp);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -146,25 +145,14 @@ end
 
 
 %% ===== COMPUTE RESECTION-IDENTIFICATION =====
-function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = Compute(iSubject, MriFilePreOp, MriFilePostOp)
+function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = Compute(MriFilePreOp, MriFilePostOp)
     ResecMaskFilePreOp  = [];
     ResecMaskFilePostOp = [];
     MriFilePost2PreOp   = [];
     errMsg = '';
-
-    % Load pre- and post-op MRI
-    if isstruct(MriFilePreOp)
-        sMriPreOp  = MriFilePreOp;
-        sMriPostOp = MriFilePostOp;
-    elseif ischar(MriFilePreOp)
-        sMriPreOp  = in_mri_bst(MriFilePreOp);
-        sMriPostOp = in_mri_bst(MriFilePostOp);
-    else
-        errMsg = 'Invalid call.';
-        return;
-    end
-    disp(['RESEC_ID> pre-op MRI:  ' sMriPreOp.Comment]);
-    disp(['RESEC_ID> post-op MRI: ' sMriPostOp.Comment]);
+    
+    disp(['RESEC_ID> pre-op MRI:  ' MriFilePreOp]);
+    disp(['RESEC_ID> post-op MRI: ' MriFilePostOp]);
 
     % Install/load resection-identification plugin
     [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-identification');
@@ -205,6 +193,8 @@ function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = 
 
     % === SAVE OUTPUTS ===
     bst_progress('text', 'Saving outputs...');
+    % Get subject
+    [~, iSubject] = bst_get('MriFile', MriFilePreOp);
     % Post-op MRI surgical resection mask warped in pre-op space
     ResecMaskPreOpNii   = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
     ResecMaskFilePreOp  = import_mri(iSubject, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
