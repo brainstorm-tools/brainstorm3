@@ -122,6 +122,20 @@ function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = 
     MriFilePost2PreOp   = [];
     errMsg = '';
     
+    % Get subjects
+    [~, iSubjectPreOp]  = bst_get('MriFile', MriFilePreOp);
+    [~, iSubjectPostOp] = bst_get('MriFile', MriFilePostOp);
+    % The subject(s) can't be using the default anatomy
+    if any([iSubjectPreOp, iSubjectPostOp] == 0)
+        bst_report('Error', sProcess, [], 'Default anatomy cannot be used (read-only).');
+        return
+    end
+    % Make sure both MRIs come from the same subject
+    if (iSubjectPreOp ~= iSubjectPostOp)
+        bst_report('Error', sProcess, [], 'Both MRIs are not from the same subject.');
+        return
+    end
+
     disp(['RESEC_ID> pre-op MRI:  ' MriFilePreOp]);
     disp(['RESEC_ID> post-op MRI: ' MriFilePostOp]);
 
@@ -164,19 +178,17 @@ function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = 
 
     % === SAVE OUTPUTS ===
     bst_progress('text', 'Saving outputs...');
-    % Get subject
-    [~, iSubject] = bst_get('MriFile', MriFilePreOp);
     % Post-op MRI surgical resection mask warped in pre-op space
     ResecMaskPreOpNii   = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
-    ResecMaskFilePreOp  = import_mri(iSubject, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
-    import_surfaces(iSubject, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
+    ResecMaskFilePreOp  = import_mri(iSubjectPreOp, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
+    import_surfaces(iSubjectPreOp, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
     % Post-op MRI surgical resection mask
     ResecMaskPostOpNii  = bst_fullfile(TmpDir, 'postop.resection.mask.nii.gz');
-    ResecMaskFilePostOp = import_mri(iSubject, ResecMaskPostOpNii, 'ALL-ATLAS', 0, 1, 'postop_resection_mask');
-    import_surfaces(iSubject, ResecMaskFilePostOp, 'MRI-MASK', 0, [], [], 'postop_resection'); 
+    ResecMaskFilePostOp = import_mri(iSubjectPreOp, ResecMaskPostOpNii, 'ALL-ATLAS', 0, 1, 'postop_resection_mask');
+    import_surfaces(iSubjectPreOp, ResecMaskFilePostOp, 'MRI-MASK', 0, [], [], 'postop_resection'); 
     % Post-op MRI non-linearly coregisterd to pre-op MRI
     Post2PreOpNii  = bst_fullfile(TmpDir, 'postop.nonlin.post2pre.nii.gz');
-    MriFilePost2PreOp = import_mri(iSubject, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
+    MriFilePost2PreOp = import_mri(iSubjectPreOp, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
     
     % Delete the temporary files
     file_delete(TmpDir, 1, 1);
