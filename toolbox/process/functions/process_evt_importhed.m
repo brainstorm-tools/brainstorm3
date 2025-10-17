@@ -30,7 +30,7 @@ end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
-    sProcess.Comment     = 'Import HED (BIDS events)';
+    sProcess.Comment     = 'Import HED tags (BIDS _events.json)';
     sProcess.FileTag     = [];
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
@@ -47,8 +47,8 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function str = FormatComment()
-    str = 'Import HED tags for events in data.';
+function Comment = FormatComment()
+    Comment = sProcess.Comment;
 end
 
 
