@@ -40,9 +40,19 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % JSON side car file
+    SelectOptions = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'open', ...                           % Dialog type: {open,save}
+        'Import HED JSON sidecar...', ...     % Window title
+        'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        {{'_events.json'}, {'HED tags (*_events.json)'}, ''}, ... % Get all the available file formats
+        ''};
     sProcess.options.sidecar.Type    = 'filename';
-    sProcess.options.sidecar.Comment = 'Events.json sidecar';
-    sProcess.options.sidecar.Value   = {[], '', 'open', 'JSON files (*.json)|*.json'};
+    sProcess.options.sidecar.Comment = 'JSON sidecar';
+    sProcess.options.sidecar.Value   = SelectOptions;
 end
 
 
