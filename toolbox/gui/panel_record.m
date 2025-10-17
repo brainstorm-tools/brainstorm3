@@ -143,6 +143,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events));
         gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents));
+        jMenu.addSeparator();
+        gui_component('MenuItem', jMenu, [], 'Import HED tags from file', IconLoader.ICON_EEG_NEW, [], @(h,ev)CallProcessOnRaw('process_evt_importhed'));
+        gui_component('MenuItem', jMenu, [], 'Export HED tags to file',   IconLoader.ICON_SAVE,    [], @(h,ev)CallProcessOnRaw('process_evt_exporthed'));
+
 
         % EVENT TYPES
         jMenu = gui_component('Menu', jMenuBar, [], 'Events', IconLoader.ICON_MENU, [], [], 11);
@@ -155,6 +159,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
         gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
+        % HED TAGGING
+        gui_component('MenuItem', jMenu, [], 'Add HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)AddHedCtagger);
+        gui_component('MenuItem', jMenu, [], 'Uniform protocol HED tags', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_uniformhed'));
+        jMenu.addSeparator();
+
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
             gui_component('MenuItem', jMenuSort, [], 'By time', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('time')));
@@ -2465,6 +2474,75 @@ function ToggleEvent(eventName, channelNames, isFullPage)
         elseif ~isempty(iOccur)
             EventOccurDel(iEvent, iOccur);
         end
+    end
+end
+
+
+%% ===== EVENT ADD HED TAGS =====
+function AddHedCtagger()
+    % Get selected events
+    iEvents = GetSelectedEvents();
+    % Get events (ignore current epoch)
+    sEvents = GetEvents(iEvents, 1);
+    if isempty(sEvents)
+        return
+    end
+    % Event names and HED tags
+    orgEvtNames = {sEvents.label};
+    orgEvtHedTags = {sEvents.hedTags};
+    % Initialize CTagger
+    [isInstalled, errMsg] = bst_plugin('Install', 'ctagger', 0);
+    if ~isInstalled
+        disp(errMsg);
+        return;
+    end
+    % Encode EventNames and EventHedTags as JSON file
+    orgJsonStr = process_evt_exporthed('events2json', orgEvtNames, orgEvtHedTags);
+    % Open CTagger
+    try
+        loader = javaObject('TaggerLoader', orgJsonStr);
+    catch ME
+        error('Error initializing CTagger: %s', ME.message);
+    end
+
+    % CATCH
+    timeout = 300;  % secs
+    tStart  = tic;
+    notified = 0;
+    while ~notified && toc(tStart) < timeout
+        pause(0.5);
+        notified = loader.isNotified();
+    end
+    disp('DONE TAGGING')
+
+    % Decode JSON file as EventNames and EventHedTags
+    newJsonStr = char(loader.getHEDJson());
+    bst_plugin('Unload', 'ctagger');
+    % Returned JSON string only has HED
+    [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
+    if ~isempty(setdiff(orgEvtNames, newEvtNames))
+        disp('EVENTS CREATED');
+        return
+    end
+    % Update HED tags
+    isModified = 0;
+    for iOrg = 1 : length(orgEvtNames)
+        iNew = strcmp(orgEvtNames{iOrg}, newEvtNames);
+        if ~isempty(setdiff(orgEvtHedTags{iOrg}, newEvtHedTags{iNew}))
+            iEvt = strcmp(orgEvtNames{iOrg}, {sEvents.label});
+            sEvents(iEvt).hedTags = newEvtHedTags;
+            isModified = 1;
+        end
+    end
+    % No modifications: return
+    if ~isModified
+        return;
+    end
+    % Update dataset
+    if isempty(iEvents)
+        SetEvents(sEvents);
+    else
+        SetEvents(sEvents, iEvents);
     end
 end
 
