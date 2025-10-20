@@ -2547,6 +2547,9 @@ function AddHedCtagger()
     else
         SetEvents(sEvents, iEvents);
     end
+    % Save modifications
+    iDS = GetCurrentDataset();
+    SaveModifications(iDS);
 end
 
 
