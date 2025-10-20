@@ -208,15 +208,11 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_' OsType '.zip'];
     switch(OsType)
-        case 'linux64'
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_linux.zip';
-            PlugDesc(end).TestFile = 'resection_identification';
-        case {'mac64', 'mac64arm'}
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_mac.zip';
+        case {'linux64', 'mac64', 'mac64arm'}
             PlugDesc(end).TestFile = 'resection_identification';
         case 'win64'
-            PlugDesc(end).URLzip   = 'https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_win.zip';
             PlugDesc(end).TestFile = 'resection_identification.bat';
     end
     PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
