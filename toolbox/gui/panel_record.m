@@ -2501,7 +2501,7 @@ function AddHedCtagger()
         error('Error initializing CTagger: %s', ME.message);
     end
 
-    % CATCH
+    % CATCH RETURN
     timeout = 300;  % secs
     tStart  = tic;
     notified = 0;
@@ -2509,11 +2509,13 @@ function AddHedCtagger()
         pause(0.5);
         notified = loader.isNotified();
     end
-    disp('DONE TAGGING')
 
     % Decode JSON file as EventNames and EventHedTags
     newJsonStr = char(loader.getHEDJson());
     bst_plugin('Unload', 'ctagger');
+    if isempty(newJsonStr)
+        return
+    end
     % Returned JSON string only has HED
     [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
     if ~isempty(setdiff(newEvtNames, orgEvtNames))
