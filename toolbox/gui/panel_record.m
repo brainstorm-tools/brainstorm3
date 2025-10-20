@@ -160,7 +160,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
         % HED TAGGING
-        gui_component('MenuItem', jMenu, [], 'Add HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)AddHedCtagger);
+        gui_component('MenuItem', jMenu, [], 'Edit HED tags with CTagger', IconLoader.ICON_MENU, [], @(h,ev)AddHedCtagger);
         gui_component('MenuItem', jMenu, [], 'Uniform protocol HED tags', IconLoader.ICON_MENU, [], @(h,ev)CallProcessOnRaw('process_evt_uniformhed'));
         jMenu.addSeparator();
 
@@ -2520,16 +2520,21 @@ function AddHedCtagger()
     bst_plugin('Unload', 'ctagger');
     % Returned JSON string only has HED
     [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
-    if ~isempty(setdiff(orgEvtNames, newEvtNames))
-        disp('EVENTS CREATED');
+    if ~isempty(setdiff(newEvtNames, orgEvtNames))
+        disp('Error: CTagger should not create new events.');
         return
     end
-    % Update HED tags
+    % Update HED tags for each event
     isModified = 0;
     for iOrg = 1 : length(orgEvtNames)
+        iEvt = strcmp(orgEvtNames{iOrg}, {sEvents.label});
         iNew = strcmp(orgEvtNames{iOrg}, newEvtNames);
-        if ~isempty(setdiff(orgEvtHedTags{iOrg}, newEvtHedTags{iNew}))
-            iEvt = strcmp(orgEvtNames{iOrg}, {sEvents.label});
+        % All HED tags were deleted
+        if ~any(iNew)
+            sEvents(iEvt).hedTags = [];
+            isModified = 1;
+        % Added, updated or removed HED tag
+        elseif ~isempty(union(setdiff(newEvtHedTags{iNew}, orgEvtHedTags{iOrg}), setdiff(orgEvtHedTags{iOrg}, newEvtHedTags{iNew})))
             sEvents(iEvt).hedTags = newEvtHedTags;
             isModified = 1;
         end
