@@ -2553,6 +2553,48 @@ function AddHedCtagger()
 end
 
 
+%% ===== SHOW HED TAGS =====
+function ShowHedTags()
+    % Get selected events
+    iEvents = GetSelectedEvents();
+    % Get events (ignore current epoch)
+    sEvents = GetEvents(iEvents, 1);
+    if isempty(sEvents)
+        return
+    end
+    % Event names and HED tags
+    evtNames = {sEvents.label};
+    evtHedTags = {sEvents.hedTags};
+    % Add headers for table
+    evtNames =   [{'Event label',   '-----------' }, evtNames];
+    evtHedTags = [{{'HED tags'}}, {{'-----------'}} evtHedTags];
+    % Format string
+    maxField = max([cellfun(@length, evtNames)]);
+    evtNames = cellfun(@(x) ['  ', x, ': ', repmat(' ', 1, maxField-length(x))], evtNames, 'UniformOutput', 0);
+    % Remove ':' from headers
+    evtNames{1} = strrep(evtNames{1}, ':', ' ');
+    evtNames{2} = strrep(evtNames{2}, ':', ' ');
+    % Generate text rows
+    allEvtRows = {};
+    for iEvt = 1 : length(evtNames)
+        evtRows = {};
+        evtName = evtNames{iEvt};
+        nTags = length(evtHedTags{iEvt});
+        if nTags == 0
+                evtRows{end+1} = [evtName, ' ', 'No HED tags for this event.'];
+        else
+            for iTag = 1 : nTags
+                evtRows{end+1} = [evtName, ' ', evtHedTags{iEvt}{iTag}];
+                evtName = ['  ', repmat(' ', 1, maxField), '  '];
+            end
+        end
+        allEvtRows = [allEvtRows, evtRows, {''}];
+    end
+    evtHedText = strjoin(allEvtRows, char(10));
+    view_text(evtHedText, 'Events and HED tags');
+end
+
+
 %% ===== IMPORT IN DATABASE =====
 function ImportInDatabase()
     global GlobalData;
