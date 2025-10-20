@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Uniform HED tags in a Protocol';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 1002;
+    sProcess.Index       = 67;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'data', 'raw', 'matrix'};
