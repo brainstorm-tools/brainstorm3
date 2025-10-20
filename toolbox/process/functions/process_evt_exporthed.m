@@ -95,7 +95,7 @@ function OutputFiles = Run(sProcess, sInputs)
         % Check for uniformity of events and HED tags
         for iEvt = 1 : length(evtNames)
             ix = find(strcmp(evtNames{iEvt}, evtAllNames));
-            if ~isempty(ix) && ~isempty(setdiff(evtHedTags{iEvt}), evtAllHedTags{ix})
+            if ~isempty(ix) && ~isequal(sort(evtHedTags{iEvt}), sort(evtAllHedTags{ix}))
                 bst_report('Error', sProcess, sInputs, 'HED tags must be uniform across input files');
                 return
             else
