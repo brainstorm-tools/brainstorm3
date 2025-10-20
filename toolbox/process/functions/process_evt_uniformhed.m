@@ -24,7 +24,7 @@ function varargout = process_evt_uniformhed(varargin)
 % Authors: Anna Zaidi, 2024
 %          Raymundo Cassani, 2025
 
-    eval(macro_method);
+eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
