@@ -172,7 +172,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     [~, iSubject]  = bst_get('MriFile', MriFilePreOp);
     % Post-op MRI surgical resection mask warped in pre-op space
     ResecMaskPreOpNii   = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
-    ResecMaskFilePreOp  = import_mri(iSubjectPreOp, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
+    ResecMaskFilePreOp  = import_mri(iSubject, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
     import_surfaces(iSubject, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
     % Post-op MRI surgical resection mask
     ResecMaskPostOpNii  = bst_fullfile(TmpDir, 'postop.resection.mask.nii.gz');
