@@ -91,9 +91,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Post-op MRI is either missing or its name is incorrect.');
         return
     end
-    
+
     % Call processing function
-    [isOk, errMsg] = Compute(sSubject.Anatomy(sSubject.iAnatomy).FileName, sSubject.Anatomy(iPostOpMri).FileName);
+    [isOk, errMsg] = Compute(sSubject.Anatomy(sSubject.iAnatomy).FileName, sSubject.Anatomy(iPostOpMri).FileName, 0);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -106,47 +106,44 @@ end
 
 
 %% ===== COMPUTE RESECTION-IDENTIFICATION =====
-function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp] = Compute(MriFilePreOp, MriFilePostOp)
+function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp] = Compute(MriFilePreOp, MriFilePostOp, isInteractive)
     isOk = 0;
     errMsg = '';
     ResecMaskFilePreOp  = [];
     ResecMaskFilePostOp = [];
     MriFilePost2PreOp   = [];
     
-    % Get subjects
-    [~, iSubjectPreOp]  = bst_get('MriFile', MriFilePreOp);
-    [~, iSubjectPostOp] = bst_get('MriFile', MriFilePostOp);
-    % The subject(s) can't be using the default anatomy
-    if any([iSubjectPreOp, iSubjectPostOp] == 0)
-        bst_report('Error', sProcess, [], 'Default anatomy cannot be used (read-only).');
-        return
-    end
-    % Make sure both MRIs come from the same subject
-    if (iSubjectPreOp ~= iSubjectPostOp)
-        bst_report('Error', sProcess, [], 'Both MRIs are not from the same subject.');
-        return
-    end
-
     disp(['RESEC_ID> pre-op MRI:  ' MriFilePreOp]);
     disp(['RESEC_ID> post-op MRI: ' MriFilePostOp]);
+    
+    % Verify fiducials in pre-op MRI
+    sMriPreOp = in_mri_bst(MriFilePreOp);
+    if isempty(sMriPreOp) || ~isfield(sMriPreOp, 'SCS') || ...
+       ~isfield(sMriPreOp.SCS, 'NAS') || ~isfield(sMriPreOp.SCS, 'LPA') || ~isfield(sMriPreOp.SCS, 'RPA') || ...
+       (length(sMriPreOp.SCS.NAS)~=3) || (length(sMriPreOp.SCS.LPA)~=3) || (length(sMriPreOp.SCS.RPA)~=3) || ...
+       ~isfield(sMriPreOp.SCS, 'R') || isempty(sMriPreOp.SCS.R) || ~isfield(sMriPreOp.SCS, 'T') || isempty(sMriPreOp.SCS.T)
+        errMsg = 'The fiducials (NAS, LPA, RPA) are missing. Set them first before proceeding.'; 
+        return;
+    end
 
     % Install/load resection-identification plugin
-    [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-identification');
+    [isOk, errInstall, PlugDesc] = bst_plugin('Install', 'resection-identification', isInteractive);
     if ~isOk
         errMsg = [errMsg, errInstall];
         return;
     end
 
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('start', 'Resection identification', 'Exporting pre- and post-op MRI...');
+    bst_progress('text', 'Exporting pre- and post-op MRI...');
     % Create temporary folder
     TmpDir = bst_get('BrainstormTmpDir', 0, 'resection_identification');
     % Save pre-op MRI
     preOpNii = bst_fullfile(TmpDir, 'preop.nii');
-    out_mri_nii(in_mri_bst(MriFilePreOp), preOpNii);
+    out_mri_nii(sMriPreOp, preOpNii);
     % Save post-op MRI
     postOpNii = bst_fullfile(TmpDir, 'postop.nii');
-    out_mri_nii(in_mri_bst(MriFilePostOp), postOpNii);
+    sMriPostOp = in_mri_bst(MriFilePostOp);
+    out_mri_nii(sMriPostOp, postOpNii);
     
     % === CALL RESECTION-IDENTIFICATION PIPELINE ===
     bst_progress('text', 'Calling resection-identification...');
@@ -166,22 +163,38 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
 
     % === SAVE OUTPUTS ===
     bst_progress('text', 'Saving outputs...');
+    % Get subjects
+    [~, iSubject]  = bst_get('MriFile', MriFilePreOp);
     % Post-op MRI surgical resection mask warped in pre-op space
     ResecMaskPreOpNii   = bst_fullfile(TmpDir, 'preop.resection.mask.nii.gz');
     ResecMaskFilePreOp  = import_mri(iSubjectPreOp, ResecMaskPreOpNii,  'ALL-ATLAS', 0, 1, 'preop_resection_mask');
-    import_surfaces(iSubjectPreOp, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
+    import_surfaces(iSubject, ResecMaskFilePreOp,  'MRI-MASK', 0, [], [], 'preop_resection');
     % Post-op MRI surgical resection mask
     ResecMaskPostOpNii  = bst_fullfile(TmpDir, 'postop.resection.mask.nii.gz');
-    ResecMaskFilePostOp = import_mri(iSubjectPreOp, ResecMaskPostOpNii, 'ALL-ATLAS', 0, 1, 'postop_resection_mask');
-    import_surfaces(iSubjectPreOp, ResecMaskFilePostOp, 'MRI-MASK', 0, [], [], 'postop_resection'); 
+    ResecMaskFilePostOp = import_mri(iSubject, ResecMaskPostOpNii, 'ALL-ATLAS', 0, 1, 'postop_resection_mask');
+    import_surfaces(iSubject, ResecMaskFilePostOp, 'MRI-MASK', 0, [], [], 'postop_resection'); 
     % Post-op MRI non-linearly coregisterd to pre-op MRI
     Post2PreOpNii  = bst_fullfile(TmpDir, 'postop.nonlin.post2pre.nii.gz');
-    MriFilePost2PreOp = import_mri(iSubjectPreOp, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
+    MriFilePost2PreOp = import_mri(iSubject, Post2PreOpNii, 'Nifti1', 0, 1, 'postop_coreg_preop');
     
     % Delete the temporary files
     file_delete(TmpDir, 1, 1);
-    % Close progress bar
-    bst_progress('stop');
     % Return success
     isOk = 1;
+end
+
+%% ===== COMPUTE/INTERACTIVE =====
+function ComputeInteractive(MriFilePreOp, MriFilePostOp) %#ok<DEFNU>
+    % Open progress bar
+    bst_progress('start', 'Resection identification', 'Starting resection-identification...');
+    % Run resection identification
+    [isOk, errMsg] = Compute(MriFilePreOp, MriFilePostOp, 1);
+    % Error handling
+    if ~isOk
+        bst_error(errMsg, 'Resection identification', 0);
+    elseif ~isempty(errMsg)
+        java_dialog('msgbox', ['Warning: ' errMsg]);
+    end
+    % Close progress bar
+    bst_progress('stop');
 end

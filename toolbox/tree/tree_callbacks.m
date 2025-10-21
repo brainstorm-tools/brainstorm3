@@ -3187,7 +3187,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt, isPe
         if (length(iAnatomy) == 1) && iSubject ~= 0 && ~isempty(sSubject.iAnatomy) && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
             AddSeparator(jMenu);
             MriFilePostOp = sSubject.Anatomy(iAnatomy).FileName;
-            gui_component('MenuItem', jMenu, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'Compute', MriFile, MriFilePostOp));
+            gui_component('MenuItem', jMenu, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'ComputeInteractive', MriFile, MriFilePostOp));
         end
         % === MRI SEGMENTATION ===
         if (length(iAnatomy) <= 1) && ~isCt && ~isPet
