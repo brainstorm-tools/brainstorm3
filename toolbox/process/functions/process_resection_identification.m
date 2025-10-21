@@ -85,7 +85,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Get post-op MRI
     PostOpMriName = sProcess.options.postopmriname.Value;
-    iPostOpMri    = find(cellfun(@(x) ~isempty(regexp(x, sprintf('^%s$', PostOpMriName), 'match')), {sSubject.Anatomy.Comment}));
+    iPostOpMri = find(strcmp({sSubject.Anatomy.Comment},  PostOpMriName) | ...
+                      strcmp({sSubject.Anatomy.FileName}, PostOpMriName));
     if isempty(iPostOpMri)
         bst_report('Error', sProcess, [], 'Post-op MRI is either missing or its name is incorrect.');
         return
