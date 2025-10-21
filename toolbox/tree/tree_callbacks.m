@@ -1150,12 +1150,6 @@ switch (lower(action))
                         if (length(iAnatomy) == 1) && iSubject ~=0 && ~isPet
                             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', filenameRelative));
                         end
-                        % === RESECTION IDENTIFICATION ===
-                        if (length(iAnatomy) == 1) && iSubject ~= 0 && ~isempty(sSubject.iAnatomy) && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
-                            MriFilePreOp  = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                            MriFilePostOp = sSubject.Anatomy(iAnatomy).FileName;
-                            gui_component('MenuItem', jPopup, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'Compute', MriFilePreOp, MriFilePostOp));
-                        end
                     end
                 end
                 % === MENU: EXPORT ===
@@ -3188,6 +3182,12 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt, isPe
         % === GENERATE FEM ===
         if (length(iAnatomy) <= 2) && ~isCt && ~isPet  % T1 + optional T2
             jItemFem = gui_component('MenuItem', jMenu, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === RESECTION IDENTIFICATION ===
+        if (length(iAnatomy) == 1) && iSubject ~= 0 && ~isempty(sSubject.iAnatomy) && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
+            AddSeparator(jMenu);
+            MriFilePostOp = sSubject.Anatomy(iAnatomy).FileName;
+            gui_component('MenuItem', jMenu, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'Compute', MriFile, MriFilePostOp));
         end
         % === MRI SEGMENTATION ===
         if (length(iAnatomy) <= 1) && ~isCt && ~isPet
