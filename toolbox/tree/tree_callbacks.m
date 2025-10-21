@@ -1151,7 +1151,7 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', filenameRelative));
                         end
                         % === RESECTION IDENTIFICATION ===
-                        if (length(iAnatomy) == 1) && iSubject ~= 0 && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
+                        if (length(iAnatomy) == 1) && iSubject ~= 0 && ~isempty(sSubject.iAnatomy) && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
                             MriFilePreOp  = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                             MriFilePostOp = sSubject.Anatomy(iAnatomy).FileName;
                             gui_component('MenuItem', jPopup, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'Compute', MriFilePreOp, MriFilePostOp));

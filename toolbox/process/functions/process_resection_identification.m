@@ -74,7 +74,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
         return
     end
-    if isempty(sSubject.Anatomy)
+    if isempty(sSubject.iAnatomy)
         bst_report('Error', sProcess, [], 'Pre-op MRI does not exist. Import it and define the fiducials.');
         return
     end
