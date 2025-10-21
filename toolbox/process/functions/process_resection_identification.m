@@ -165,7 +165,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
         bst_progress('stop');
         return;
     end
-    disp(['RESEC_ID > Computation completed in: ' num2str(toc) 's']);
+    disp(['RESEC_ID > Computation completed in: ' num2str(round(toc)) ' s']);
 
     % === SAVE OUTPUTS ===
     bst_progress('text', 'Saving outputs...');
