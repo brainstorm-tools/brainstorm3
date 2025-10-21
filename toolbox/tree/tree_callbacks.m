@@ -1085,13 +1085,33 @@ switch (lower(action))
                         end
                         AddSeparator(jMenuDisplay);
                         % Display as overlay
-                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
+                        if ~bstNodes(1).isMarked()
                             % Get subject structure
                             sSubject = bst_get('MriFile', filenameRelative);
-                            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                            % Overlay menus
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            % Overlay on default MRI
+                            if ~isempty(sSubject.iAnatomy)
+                                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            end
+                            % Overlay, other valid target volumes
+                            iVols = find(cellfun(@(c)isempty(strfind(c, '_volatlas')) && isempty(strfind(c, '_tissues')), {sSubject.Anatomy.FileName}));
+                            iVols = setdiff(iVols, [sSubject.iAnatomy, iAnatomy]);
+                            if ~isempty(iVols)
+                                jMenuOverlayVr = gui_component('Menu', jMenuDisplay, [], 'Overlay on... (MRI Viewer)', IconLoader.ICON_ANATOMY, [], []);
+                                jMenuOverlay3d = gui_component('Menu', jMenuDisplay, [], 'Overlay on... (3D)', IconLoader.ICON_ANATOMY, [], []);
+                                for iVol = 1:length(iVols)
+                                    volFile = sSubject.Anatomy(iVols(iVol)).FileName;
+                                    volIconOver = 'ICON_ANATOMY';
+                                    if ~isempty(strfind(volFile, '_volct'))
+                                        volIconOver = 'ICON_VOLCT';
+                                    elseif ~isempty(strfind(volFile, '_volpet'))
+                                        volIconOver = 'ICON_VOLPET';
+                                    end
+                                    gui_component('MenuItem', jMenuOverlayVr, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                    gui_component('MenuItem', jMenuOverlay3d, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri_3d(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                end
+                            end
                             AddSeparator(jMenuDisplay);
                         end
                         gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
