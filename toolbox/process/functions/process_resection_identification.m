@@ -75,7 +75,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     if isempty(sSubject.iAnatomy)
-        bst_report('Error', sProcess, [], 'Pre-op MRI does not exist. Import it and define the fiducials.');
+        bst_report('Error', sProcess, [], 'Pre-op (default) MRI does not exist. Import it and define the fiducials.');
         return
     end
     % The subject can't be using the default anatomy
@@ -127,7 +127,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
        ~isfield(sMriPreOp.SCS, 'NAS') || ~isfield(sMriPreOp.SCS, 'LPA') || ~isfield(sMriPreOp.SCS, 'RPA') || ...
        (length(sMriPreOp.SCS.NAS)~=3) || (length(sMriPreOp.SCS.LPA)~=3) || (length(sMriPreOp.SCS.RPA)~=3) || ...
        ~isfield(sMriPreOp.SCS, 'R') || isempty(sMriPreOp.SCS.R) || ~isfield(sMriPreOp.SCS, 'T') || isempty(sMriPreOp.SCS.T)
-        errMsg = 'The fiducials (NAS, LPA, RPA) are missing. Set them first before proceeding.'; 
+        errMsg = 'The fiducials (NAS, LPA, RPA) are missing in the pre-op (default) MRI. Set them first before proceeding.';
         return;
     end
 
