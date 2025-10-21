@@ -551,20 +551,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === STATISTICS: MVGC ===
     PlugDesc(end+1)              = GetStruct('mvgc');
-    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).URLzip         = 'https://github.com/brainstorm-tools/MVGC1/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/brainstorm-tools/MVGC1';
     PlugDesc(end).TestFile       = 'startup_mvgc.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {''};
     PlugDesc(end).DeleteFiles    = {'C', 'deprecated', 'utils/legacy', 'maintainer'};
-    PlugDesc(end).DownloadedFcn  = ['file_move(  fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
-                                                'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));' ...
-                                    'file_delete(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo.m''), 1);', ...
-                                    'file_copy(  fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo_statespace.m''), ' ...
-                                                'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo.m''));' ];
+    PlugDesc(end).DownloadedFcn  = ['file_move(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup_mvgc.m''));' ...
+                                    'file_delete(fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''), 1);', ...
+                                    'file_copy(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo_statespace.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''));' ];
     PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
 
     % === STATISTICS: PICARD ===
