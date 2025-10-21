@@ -42,17 +42,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'import'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 0;
-    % File selection options
-    SelectOptions = {...
-        '', ...                            % Filename
-        '', ...                            % FileFormat
-        'open', ...                        % Dialog type: {open,save}
-        'Import MRI...', ...               % Window title
-        'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
-        'single', ...                      % Selection mode: {single,multiple}
-        'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
-        bst_get('FileFilters', 'mri'), ... % Get all the available file formats
-        'MriIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
