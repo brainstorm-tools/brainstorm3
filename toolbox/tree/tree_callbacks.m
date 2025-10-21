@@ -1102,14 +1102,14 @@ switch (lower(action))
                                 jMenuOverlay3d = gui_component('Menu', jMenuDisplay, [], 'Overlay on... (3D)', IconLoader.ICON_ANATOMY, [], []);
                                 for iVol = 1:length(iVols)
                                     volFile = sSubject.Anatomy(iVols(iVol)).FileName;
-                                    volIcon = 'ICON_ANATOMY';
+                                    volIconOver = 'ICON_ANATOMY';
                                     if ~isempty(strfind(volFile, '_volct'))
-                                        volIcon = 'ICON_VOLCT';
+                                        volIconOver = 'ICON_VOLCT';
                                     elseif ~isempty(strfind(volFile, '_volpet'))
-                                        volIcon = 'ICON_VOLPET';
+                                        volIconOver = 'ICON_VOLPET';
                                     end
-                                    gui_component('MenuItem', jMenuOverlayVr, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIcon), [], @(h,ev)view_mri(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
-                                    gui_component('MenuItem', jMenuOverlay3d, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIcon), [], @(h,ev)view_mri_3d(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                    gui_component('MenuItem', jMenuOverlayVr, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                    gui_component('MenuItem', jMenuOverlay3d, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri_3d(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
                                 end
                             end
                             AddSeparator(jMenuDisplay);
