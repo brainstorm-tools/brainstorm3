@@ -151,10 +151,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     % === CALL RESECTION-IDENTIFICATION PIPELINE ===
     bst_progress('text', 'Calling resection-identification...');
     % Get resection-identification executable
-    ResecExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'resection_identification');
-    if ispc
-        ResecExe = [ResecExe, '.bat'];
-    end
+    ResecExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.TestFile);
     % Call resection-identification
     strCall = ['"' ResecExe '"' ' ' '"' preOpNii '"' ' ' '"' postOpNii '"' ' ' '"' TmpDir '"'];
     disp(['RESEC_ID > System call: ' strCall]);
