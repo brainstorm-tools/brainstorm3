@@ -91,6 +91,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Post-op MRI is either missing or its name is incorrect.');
         return
     end
+    % Make sure the post-op MRI name entered is not the pre-op (default) MRI
+    if strcmp(sSubject.Anatomy(iPostOpMri).FileName, sSubject.Anatomy(sSubject.iAnatomy).FileName)
+        bst_report('Error', sProcess, [], 'The post-op MRI should cannot be the pre-op (default) MRI. Enter the correct name.');
+        return
+    end
 
     % Call processing function
     [isOk, errMsg] = Compute(sSubject.Anatomy(sSubject.iAnatomy).FileName, sSubject.Anatomy(iPostOpMri).FileName, 0);
