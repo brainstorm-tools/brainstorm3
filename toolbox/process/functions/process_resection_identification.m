@@ -106,11 +106,12 @@ end
 
 
 %% ===== COMPUTE RESECTION-IDENTIFICATION =====
-function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = Compute(MriFilePreOp, MriFilePostOp)
+function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp] = Compute(MriFilePreOp, MriFilePostOp)
+    isOk = 0;
+    errMsg = '';
     ResecMaskFilePreOp  = [];
     ResecMaskFilePostOp = [];
     MriFilePost2PreOp   = [];
-    errMsg = '';
     
     % Get subjects
     [~, iSubjectPreOp]  = bst_get('MriFile', MriFilePreOp);
@@ -184,4 +185,6 @@ function [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = 
     file_delete(TmpDir, 1, 1);
     % Close progress bar
     bst_progress('stop');
+    % Return success
+    isOk = 1;
 end
