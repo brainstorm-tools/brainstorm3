@@ -546,7 +546,7 @@ function Channel = GetTableData(jTableChannel)
             Channel(iChannel).Loc = [];
             for iLoc = GlobalData.ChannelEditor.LocColumns
                 jLoc = jTableChannel.getValueAt(iChannel - 1, iLoc - 1);
-                if ~isempty(jLoc)
+                if ~isempty(jLoc) && ~all(isnan(double(jLoc)))
                     Channel(iChannel).Loc = [Channel(iChannel).Loc, [double(jLoc(1)); double(jLoc(2)); double(jLoc(3))]];
                 end
             end
@@ -554,7 +554,7 @@ function Channel = GetTableData(jTableChannel)
             Channel(iChannel).Orient = [];
             for iOrient = GlobalData.ChannelEditor.OrientColumns
                 jOrient = jTableChannel.getValueAt(iChannel - 1, iOrient - 1);
-                if ~isempty(jOrient)
+                if ~isempty(jOrient) && ~all(isnan(double(jOrient)))
                     Channel(iChannel).Orient = [Channel(iChannel).Orient, [double(jOrient(1));double(jOrient(2));double(jOrient(3))] ];
                 end
             end
@@ -562,7 +562,9 @@ function Channel = GetTableData(jTableChannel)
             Channel(iChannel).Weight = [];
             jWeight = jTableChannel.getValueAt(iChannel - 1, nbColumns - 1);
             for i = 1:length(jWeight)
-                Channel(iChannel).Weight(i) = double(jWeight(i));
+                if ~isnan(double(jWeight(i)))
+                    Channel(iChannel).Weight(i) = double(jWeight(i));
+                end
             end
         end
     end
