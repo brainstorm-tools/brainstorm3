@@ -56,10 +56,13 @@ end
 
 % Choose direction of association for multiplication
 if nMat == 3
+    % Cost is the number of scalar multiplications
     cost1 = matSizes{1}(1) * matSizes{1}(2) * matSizes{2}(2) + matSizes{1}(1) * matSizes{2}(2) * matSizes{3}(2);  % (A*B)*C
     cost2 = matSizes{2}(2) * matSizes{2}(1) * matSizes{3}(2) + matSizes{1}(1) * matSizes{2}(1) * matSizes{3}(2);  % A*(B*C)
     fromRight = cost2 < cost1;
 else
+    % Heuristic rule
+    % Note, the optimal association approach can be obtained computing the cost recursively
     fromRight = size(X{end}, 2) < size(X{1}, 1);
 end
 
