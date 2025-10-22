@@ -57,7 +57,13 @@ if ~isOkL
     error('Matrices cannot be multiplied')
 end
 
-
+% Keep useful indices for inner dimensions
+for im = 1 : length(nMat) - 1
+    usefulInnerIx       = any(X{im}, 1);
+    X{im}   = X{im}(:, usefulInnerIx);
+    X{im+1} = X{im+1}(usefulInnerIx, :);
+end
+            
 % Guess direction of multiplication
 fromRight = size(X{end}, 2) < size(X{1}, 1);
 

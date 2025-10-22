@@ -2209,15 +2209,11 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
             ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
             assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
             ResultsValues{end}   = ResultsValues{end}(:, iTime);
-            % Keep useful indices for inner dimensions
-            for im = 1 : length(ResultsValues) - 1
-                usefulInnerIx       = any(ResultsValues{im}, 1);
-                ResultsValues{im}   = ResultsValues{im}(:, usefulInnerIx);
-                ResultsValues{im+1} = ResultsValues{im+1}(usefulInnerIx, :);
-            end
+
             if ~isempty(iRows)
                 ResultsValues{1} = ResultsValues{1}(iRows, :);
             end
+            
             % Compute full results
             ResultsValues = double(bst_multiply_cellmat(ResultsValues));
             % Std should be empty if ImageGridAmp is a cell
