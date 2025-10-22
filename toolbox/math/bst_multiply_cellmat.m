@@ -8,8 +8,7 @@ function M = bst_multiply_cellmat(X)
 %
 % OUTPUT:
 %    - M : Result of chain matrix multiplication
-%          M = X{1} * X{2} * ... * X{N},   if fromLeft = 1
-%          M = X{N} * X{N-1} * ... * X{1}, if fromLeft = 0
+%          M = X{1} * X{2} * ... * X{N}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
