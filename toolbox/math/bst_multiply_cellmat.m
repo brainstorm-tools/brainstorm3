@@ -1,13 +1,10 @@
-function M = bst_multiply_cellmat(X, fromLeft)
+function M = bst_multiply_cellmat(X)
 % BST_MULTIPLY_CELLMAT: Multiply all the matrices in cell array
 %
-% USAGE: M = bst_multiply_cellmat(X, fromLeft=[])
+% USAGE: M = bst_multiply_cellmat(X)
 %
 % INPUT:
 %    - X        : 1D cell array of 2D matrices to be multiplied
-%    - fromLeft : If empty (default), guess direction from matrix sizes (left if both directions are valid)
-%                 If 1, multiply from left to right
-%                 If 0, multiply from right to left
 %
 % OUTPUT:
 %    - M : Result of chain matrix multiplication
@@ -35,11 +32,6 @@ function M = bst_multiply_cellmat(X, fromLeft)
 % Authors: Edouard Delaire, 2025
 %          Raymundo Cassani, 2025
 
-% Default direction
-if nargin < 2
-    fromLeft = [];
-end
-
 % Do nothing
 if ~iscell(X) || ~isvector(X)
     M = X;
@@ -52,40 +44,38 @@ if nMat == 1
     M = X{1};
     return
 end
+
 % Check sizes
 matSizes = cellfun(@size, X, 'UniformOutput', 0);
 if ~all(cellfun(@(x) length(x)==2, matSizes))
     error('All matrices in cell array must be 2D')
 end
 
-% Guess direction
-if isempty(fromLeft)
-    % Concatenate sizes
-    dimDiffL = diff([matSizes{1 : +1 : nMat}]);
-    dimDiffR = diff([matSizes{nMat : -1 : 1}]);
-    % Inner dimension diffs
-    isOkL = all(dimDiffL(2:2:nMat) == 0);
-    isOkR = all(dimDiffR(2:2:nMat) == 0);
-    % Choose direction
-    if isOkL
-        fromLeft = 1;
-    elseif isOkR
-        fromLeft = 0;
-    else
-        error('Matrices cannot be multiplied in any direction')
+dimDiffL = diff([matSizes{1 : +1 : nMat}]);
+isOkL = all(dimDiffL(2:2:nMat) == 0);
+if ~isOkL
+    error('Matrices cannot be multiplied')
+end
+
+
+% Guess direction of multiplication
+fromRight = size(X{end}, 2) < size(X{1}, 1);
+
+
+if fromRight
+    % multiply starting from the right
+    M = X{end};
+    for iDecomposition = (nMat - 1) : -1 : 1
+        M = X{iDecomposition} * M;
+    end
+else
+  % multiply starting from the left
+    M = X{1};
+    for iDecomposition = 2 : nMat
+        M = M * X{iDecomposition};
     end
 end
 
-% Indices for multiplication
-ixs = [1:nMat];
-if ~fromLeft
-    ixs = fliplr(ixs);
-end
-% Multiply following ixs order
-M = X{ixs(1)};
-for im = 2 : nMat
-    M = M * X{ixs(im)};
-end
 M = full(M);
 end
 
