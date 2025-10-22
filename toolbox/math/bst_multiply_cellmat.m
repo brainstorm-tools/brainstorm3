@@ -49,10 +49,8 @@ matSizes = cellfun(@size, X, 'UniformOutput', 0);
 if ~all(cellfun(@(x) length(x)==2, matSizes))
     error('All matrices in cell array must be 2D')
 end
-
-dimDiffL = diff([matSizes{1 : +1 : nMat}]);
-isOkL = all(dimDiffL(2:2:nMat) == 0);
-if ~isOkL
+dimDiff = diff([matSizes{1 : +1 : nMat}]);
+if ~all(dimDiff(2:2:nMat) == 0)
     error('Matrices cannot be multiplied')
 end
 
