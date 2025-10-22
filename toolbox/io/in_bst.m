@@ -88,20 +88,18 @@ switch(fileType)
         sMatrix = in_bst_results(FileName, 0, 'ImageGridAmp', dataFields{:});
         % FULL RESULTS
         if isfield(sMatrix, 'ImageGridAmp') && ~isempty(sMatrix.ImageGridAmp)
-
             iTime = GetTimeIndices(TimeBounds, sMatrix.Time);
             sMatrix.Time          = sMatrix.Time(iTime);
-
-            if iscell(sMatrix.ImageGridAmp)
-                sMatrix.ImageGridAmp{end} = sMatrix.ImageGridAmp{end}(:, iTime);
-            else
+            % Get results for iTime
+            if isnumeric(sMatrix.ImageGridAmp)
                 sMatrix.ImageGridAmp  = sMatrix.ImageGridAmp(:,iTime);
+            elseif iscell(sMatrix.ImageGridAmp)
+                % ImageGridAmp = {[nSources,a], [a,b], [b, nTimes]}
+                sMatrix.ImageGridAmp{end} = sMatrix.ImageGridAmp{end}(:, iTime);
+                if isLoadFull
+                    sMatrix.ImageGridAmp = bst_multiply_cells(sMatrix.ImageGridAmp);
+                end
             end
-
-            if isLoadFull && iscell(sMatrix.ImageGridAmp)
-                sMatrix.ImageGridAmp = bst_multiply_cells(sMatrix.ImageGridAmp);
-            end
-
             sMatrix.ImagingKernel = [];
             matName = 'ImageGridAmp';
         % KERNEL ONLY
