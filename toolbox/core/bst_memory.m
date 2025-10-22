@@ -2219,7 +2219,7 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
                 ResultsValues{1} = ResultsValues{1}(iRows, :);
             end
             % Compute full results
-            ResultsValues = double(bst_multiply_cells(ResultsValues));
+            ResultsValues = double(bst_multiply_cellmat(ResultsValues));
             % Std should be empty if ImageGridAmp is a cell
             Std = [];
         end

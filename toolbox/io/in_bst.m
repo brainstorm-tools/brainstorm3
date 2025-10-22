@@ -97,7 +97,7 @@ switch(fileType)
                 % ImageGridAmp = {[nSources,a], [a,b], [b, nTimes]}
                 sMatrix.ImageGridAmp{end} = sMatrix.ImageGridAmp{end}(:, iTime);
                 if isLoadFull
-                    sMatrix.ImageGridAmp = bst_multiply_cells(sMatrix.ImageGridAmp);
+                    sMatrix.ImageGridAmp = bst_multiply_cellmat(sMatrix.ImageGridAmp);
                 end
             end
             sMatrix.ImagingKernel = [];

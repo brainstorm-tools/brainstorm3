@@ -668,7 +668,7 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
                     if isnumeric(sResults.ImageGridAmp)
                         matSourceValues = sResults.ImageGridAmp;
                     elseif iscell(sResults.ImageGridAmp)
-                        matSourceValues = bst_multiply_cells(sResults.ImageGridAmp);
+                        matSourceValues = bst_multiply_cellmat(sResults.ImageGridAmp);
                     end
                 end
                 % Drop large data field.
