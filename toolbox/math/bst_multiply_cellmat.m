@@ -78,11 +78,13 @@ end
 
 % Multiply matrices 
 if fromRight
+    % M = X{1} * ( X{2} * ( X{3} * X{4} ) )
     M = X{end};
     for iDecomposition = (nMat - 1) : -1 : 1
         M = X{iDecomposition} * M;
     end
 else
+    % M = ( ( X{1} * X{2} ) * X{3} ) * X{4}
     M = X{1};
     for iDecomposition = 2 : nMat
         M = M * X{iDecomposition};
