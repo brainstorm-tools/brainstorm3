@@ -2188,42 +2188,40 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
 
     % ===== GET RESULTS VALUES =====
     % === FULL RESULTS ===
-    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp) && iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
-        % Get ImageGridAmp interesting sub-part
-        ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
-        assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
-        Std           = []; % Std should not be set if ImageGridAmp is a cell
-
-        if ~isempty(iTime)
-            ResultsValues{end} = ResultsValues{end}(:, iTime);
-
-            usedRow = any(ResultsValues{end}, 2);
-            ResultsValues{end} = ResultsValues{end}(usedRow, :);
-            ResultsValues{end-1} = ResultsValues{end-1}(:, usedRow);
-        end
-        
-        if ~isempty(iRows)
-            ResultsValues{1} = ResultsValues{1}(iRows, :);
-
-            usedCol = any(ResultsValues{1}, 1);
-            ResultsValues{1} = ResultsValues{1}(:, usedCol);
-            ResultsValues{2} = ResultsValues{2}(usedCol, :);
-        end
-
-        ResultsValues = double(bst_multiply_cells(ResultsValues));
-
-    elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
-        % Get ImageGridAmp interesting sub-part
-        if isempty(iRows)
-            ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
-            if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
+    if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+        % ImageGridAmp = [nSources, nTimes]
+        if isnumeric(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            % Get ImageGridAmp interesting sub-part
+            if isempty(iRows)
+                ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
+                if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
+                    Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
+                end
+            else
+                ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
+                if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
+                    Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
+                end
             end
-        else
-            ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
-            if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
+        % ImageGridAmp = {[nSources,a], [a,b], [b, nTimes]}
+        elseif iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            % Get ImageGridAmp interesting sub-part
+            ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+            assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
+            ResultsValues{end}   = ResultsValues{end}(:, iTime);
+            % Keep useful indices for inner dimensions
+            for im = 1 : length(ResultsValues) - 1
+                usefulInnerIx       = any(ResultsValues{im}, 1);
+                ResultsValues{im}   = ResultsValues{im}(:, usefulInnerIx);
+                ResultsValues{im+1} = ResultsValues{im+1}(usefulInnerIx, :);
             end
+            if ~isempty(iRows)
+                ResultsValues{1} = ResultsValues{1}(iRows, :);
+            end
+            % Compute full results
+            ResultsValues = double(bst_multiply_cells(ResultsValues));
+            % Std should be empty if ImageGridAmp is a cell
+            Std = [];
         end
     % === KERNEL ONLY ===
     elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel)
