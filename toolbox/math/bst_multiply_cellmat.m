@@ -57,31 +57,40 @@ if ~isOkL
     error('Matrices cannot be multiplied')
 end
 
-% Keep useful indices for inner dimensions
-for im = 1 : length(nMat) - 1
-    usefulInnerIx       = any(X{im}, 1);
-    X{im}   = X{im}(:, usefulInnerIx);
-    X{im+1} = X{im+1}(usefulInnerIx, :);
-end
-            
+
 % Guess direction of multiplication
 fromRight = size(X{end}, 2) < size(X{1}, 1);
 
-
+% Keep useful indices for inner dimensions
 if fromRight
-    % multiply starting from the right
+    for im = nMat : -1 : 2
+        usefulInnerIx       = any(X{im}, 2);
+        X{im}   = X{im}(usefulInnerIx, :);
+        X{im-1} = X{im-1}(:, usefulInnerIx);
+    end
+else
+    for im = 1 : nMat - 1
+        usefulInnerIx       = any(X{im}, 1);
+        X{im}   = X{im}(:, usefulInnerIx);
+        X{im+1} = X{im+1}(usefulInnerIx, :);
+    end
+
+end
+
+% Multiply matrices 
+if fromRight
     M = X{end};
     for iDecomposition = (nMat - 1) : -1 : 1
         M = X{iDecomposition} * M;
     end
 else
-  % multiply starting from the left
     M = X{1};
     for iDecomposition = 2 : nMat
         M = M * X{iDecomposition};
     end
 end
 
+% Ensure results are full matrices
 M = full(M);
 end
 
