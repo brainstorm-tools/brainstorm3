@@ -2608,25 +2608,27 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         [maxGFP, iMax] = max(GFP);
         % Get the results values at this particular time point
         sources = GetResultsValues(iDS, iResult, [], iMax);
-
         % Store minimum and maximum of displayed data
-        DataMinMax =  bst_bounds(sources);
+        DataMinMax = [min(sources(:)), max(sources(:))];
     % Full results
     else
-        % Get the maximum on the full results matrix 
-        window_length   = 500; % in sample
-        nWindow         = ceil(GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples /window_length);
-        DataMinMax      = [Inf, -Inf];
-
-        for k=0:(nWindow-1)
-            idx = (1+ k*window_length):(window_length*(k+1));
-            idx = idx( idx <= GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples);
-
-            sources = GetResultsValues(iDS, iResult, [], idx);
-            WindowMinMax = bst_bounds(sources);
-
-            DataMinMax(1) = min(DataMinMax(1),   WindowMinMax(1));
-            DataMinMax(2) = max(DataMinMax(2),   WindowMinMax(2));
+        % Get the maximum on the full results matrix (process by time blocks)
+        nSamples = GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples;
+        if isnumeric(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            nSources = size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp, 1);
+        elseif iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            nSources = size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp{1}, 1);
+        end
+        ProcessOptions = bst_get('ProcessOptions');
+        MaxSizeDouble = ProcessOptions.MaxBlockSize;
+        blockSize  = max(floor(MaxSizeDouble / nSources), 1);
+        nBlocks    = ceil(nSamples / blockSize);
+        DataMinMax = [Inf, -Inf];
+        for iBlock = 1 : nBlocks
+            iTime = [((iBlock-1) * blockSize + 1) : min(iBlock * blockSize, nSamples)];
+            sources = GetResultsValues(iDS, iResult, [], iTime);
+            DataMinMax(1) = min(DataMinMax(1), min(sources(:)));
+            DataMinMax(2) = max(DataMinMax(2), max(sources(:)));
         end
     end
 end
