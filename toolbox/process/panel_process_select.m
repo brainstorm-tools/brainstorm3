@@ -519,8 +519,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         hashGroups.(hashKey) = jParent;
                     end
                 end
+                % Get path for process function
+                pathProcess = which(func2str(sProcesses(iProc).Function));
                 % Create process menu
-                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], [], @(h,ev)AddProcess(iProc, AddMode));
+                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], pathProcess, @(h,ev)AddProcess(iProc, AddMode));
                 jItem.setMargin(Insets(5,0,4,0));
                 % Change menu color for unavailable menus
                 if ~isSelected
