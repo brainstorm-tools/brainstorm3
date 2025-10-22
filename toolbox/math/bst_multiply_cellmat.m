@@ -54,9 +54,14 @@ if ~all(dimDiff(2:2:nMat) == 0)
     error('Matrices cannot be multiplied')
 end
 
-
-% Guess direction of multiplication
-fromRight = size(X{end}, 2) < size(X{1}, 1);
+% Choose direction of association for multiplication
+if nMat == 3
+    cost1 = matSizes{1}(1) * matSizes{1}(2) * matSizes{2}(2) + matSizes{1}(1) * matSizes{2}(2) * matSizes{3}(2);  % (A*B)*C
+    cost2 = matSizes{2}(2) * matSizes{2}(1) * matSizes{3}(2) + matSizes{1}(1) * matSizes{2}(1) * matSizes{3}(2);  % A*(B*C)
+    fromRight = cost2 < cost1;
+else
+    fromRight = size(X{end}, 2) < size(X{1}, 1);
+end
 
 % Keep useful indices for inner dimensions
 if fromRight
