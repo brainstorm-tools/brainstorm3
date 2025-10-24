@@ -2874,6 +2874,13 @@ switch contextName
             argout1 = 0;
         end
 
+    case 'ShowProcessTooltip'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowProcessTooltip')
+            argout1 = GlobalData.Preferences.ShowProcessTooltip;
+        else
+            argout1 = 0;
+        end
+
     case 'DisableOpenGL'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DisableOpenGL')
             argout1 = GlobalData.Preferences.DisableOpenGL;
