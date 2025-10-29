@@ -1038,7 +1038,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 % the same file format in this list, listed as separate lines.
                 KnownCoregFormats = {'CTF', 'ctf'}; 
 
-                isCoregOk = true;
+                isCoregOk = false;
                 % First check: known format, files were found, and fids found on the MRI side
                 isKnown = strcmpi(FileFormat, KnownCoregFormats(:,1));
                 if any(isKnown) && ...
@@ -1048,8 +1048,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     sFid = allMeegElecFiducials{iFile};
                     sMriFid = load(file_fullpath(allMeegElecAnatRef{iFile}), 'SCS'); 
                     if isfield(sFid.SCS, 'NAS') && isfield(sFid.SCS, 'LPA') && isfield(sFid.SCS, 'RPA')
-                        % With all this necessary coreg info, give warnings if something else doesn't work.
+                        % Necessary coreg info all found; give warnings if something else doesn't work.
                         % Third check: expected coordinate systems. Assume ok if some are missing.
+                        isCoregOk = true; % still few cases where it can change back to false below.
                         if ~isempty(allMeegElecCoordSys{iFile})
                             BidsSystem = allMeegElecCoordSys{iFile};
                             if ~isempty(allMeegLmCoordSys{iFile}) && ~strcmpi(BidsSystem, allMeegLmCoordSys{iFile})
@@ -1080,18 +1081,20 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                 end % coreg checks
                 if isCoregOk
-                    % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm but converted to m by GetFiducials.
+                    % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm
+                    % but converted to m when obtained by GetFiducials.
                     MriFidDist = [sMriFid.SCS.NAS; sMriFid.SCS.LPA; sMriFid.SCS.RPA];
                     MriFidDist = sqrt(sum( (MriFidDist - circshift(MriFidDist, 1, 1)).^2, 2));
                     MeegFidDist = [sFid.SCS.NAS; sFid.SCS.LPA; sFid.SCS.RPA];
                     MeegFidDist = sqrt(sum( (MeegFidDist - circshift(MeegFidDist, 1, 1)).^2, 2));
-                    MeegFidDist = MeegFidDist * 1e3; % cm to mm
-                    % Warn if distances differ by more than a um, indicating they are not the
-                    % same triplet of points.
-                    % We could accept this by assuming the points define the same SCS or are
-                    % roughly the same, like when we mark fids on MRI vs digitized fids, but
-                    % for BIDS, I believe it is expected to have the exact same points.
-                    if any(abs(MeegFidDist - MriFidDist) > 1e-2) % > 10 um (precision limited: rounded to um when saving in json)
+                    MeegFidDist = MeegFidDist * 1e3; % m to mm
+                    % Warn if distances differ by more than 10 um, indicating they are not the same
+                    % triplet of points. (The precision is limited: rounded to um when saving in
+                    % json.)
+                    % We could accept this, assuming the points define the same SCS or are roughly
+                    % the same, like when we mark fids on MRI vs digitized fids, but for BIDS, I
+                    % believe it is expected to have the exact same points.
+                    if any(abs(MeegFidDist - MriFidDist) > 1e-2) % > 10 um 
                         msg = ['Unexpected distance inconsistency for anat landmarks in MRI vs MEG. ' ...
                             'Imported co-registration may be wrong and should be verified: ', allMeegFiles{iFile}];
                         disp(['BIDS> Warning: ' msg]);
@@ -1122,7 +1125,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 Transf = cs_compute(sFid, 'scs');
                                 T = eye(4);
                                 T(1:3,1:3) = Transf.R;
-                                T(1:3,4) = - Transf.T;
+                                T(1:3,4) =   Transf.T;
                             otherwise
                                 % This should not happen unless there's a coding error, e.g. formats
                                 % were added above but not here. Add Matlab warning just in case.
