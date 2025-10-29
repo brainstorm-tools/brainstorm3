@@ -2805,6 +2805,12 @@ end % END SWITCH( ACTION )
                 if ~isempty(sStudy) && ~isempty(sStudy.Result(iRes).HeadModelType)
                     HeadModelType = sStudy.Result(iRes).HeadModelType;
                 end
+            % Try to get source model indicated in 1xN connectivity file
+            elseif ~isempty(sStudy) && ~isempty(strfind(ResultFiles{1}, '_connect1')) && strcmpi(sStudy.Timefreq(iTf).DataType, 'results')
+                TimeFreq = in_bst_timefreq(ResultFiles{1}, 0, 'HeadModelFile', 'HeadModelType');
+                if ~isempty(TimeFreq.HeadModelFile) && ~isempty(TimeFreq.HeadModelType)
+                    HeadModelType = TimeFreq.HeadModelType;
+                end
             end
         else
             % Get all the Results files that are classified in the input nodes
