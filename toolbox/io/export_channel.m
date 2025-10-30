@@ -66,6 +66,7 @@ if isempty(OutputChannelFile)
         case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-channel',   DefaultExt = '_channels.tsv';
         otherwise,                  DefaultExt = '.pos';
     end
 
