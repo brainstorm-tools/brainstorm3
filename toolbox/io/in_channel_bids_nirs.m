@@ -55,9 +55,9 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'NIRSCWHBO', 'NIRSCWHBR'}
-                ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%d', channel_name, channel_type(end));
+                ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%s', channel_name, channel_type(end));
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
-                ChannelMat.Channel(iChannel).Group  = sprintf('Hb%d', channel_type(end));
+                ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
                 ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
                 isValidChannel(iChannel) = false;

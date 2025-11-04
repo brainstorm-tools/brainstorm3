@@ -1,9 +1,9 @@
-function out_nirs_channel(BstChannelFile, OutputChannelFile)
+function out_nirs_channel(BstChannelFile, OutputChannelFile, units, status)
 % out_nirs_channel: Exports a Brainstorm channel file in an BIDS
-%                   _channels.tsv file. Can only export raw
-%                   (NIRSCWAMPLITUDE) channel data right now.
+%                   _channels.tsv file. 
+%
 % 
-% USAGE:  out_nirs_channel(BstChannelFile, OutputChannelFile);
+% USAGE:  out_nirs_channel(BstChannelFile, OutputChannelFile, Units);
 %
 % INPUT: 
 %     - BstChannelFile    : full path to Brainstorm file to export
@@ -29,28 +29,67 @@ function out_nirs_channel(BstChannelFile, OutputChannelFile)
 %
 % Authors: Jacob Busgang, 2025
 
+if nargin < 3
+    units = '';
+end
+
+if nargin < 4
+    status = [];
+end
 
 % Load brainstorm channel file
 BstMat = in_bst_channel(BstChannelFile);
 
-% Get all the positions
-Name = {};
-Type = {};
-Source = {};
-Detector = {};
-WavelengthNominal = {};
-Units = {};
+T = table({}, {} , {}, {}, {}, {}, {}, 'VariableNames', {'name','type', 'source', 'detector', 'wavelength_nominal', 'units', 'status'});
 
-for i = 1:length(BstMat.Channel)
-    tokens = regexp(BstMat.Channel(i).Name, 'S([0-9]+)D([0-9]+)WL([0-9]+)', 'tokens');
-    if ~isempty(tokens)
-        Name{end+1}         = sprintf('S%s-D%s', tokens{1}{1}, tokens{1}{2});
-        Type{end+1}         = 'NIRSCWAMPLITUDE';
-        Source{end+1}       = sprintf('S%s', tokens{1}{1}); 
-        Detector{end+1}     = sprintf('D%s', tokens{1}{2}); 
-        WavelengthNominal{end+1} =  tokens{1}{3}; 
-        Units{end+1} = 'V';
+iNIRS       = good_channel(BstMat.Channel, [], 'NIRS');
+channels    = BstMat.Channel(iNIRS);
+
+for i = 1:length(channels)
+    tokens = regexp(channels(i).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
+    Name   = sprintf('S%s-D%s', tokens{1}{1}, tokens{1}{2});
+
+    if contains(channels(i).Group, 'WL') 
+        if isempty(units)  && ~(contains(units, {'unitless', 'OD', 'dOD'}))
+            Type          = 'NIRSCWAMPLITUDE'; 
+            WavelengthNominal  =  tokens{1}{3}; 
+        else
+            Type          = 'NIRSCWOPTICALDENSITY';
+            WavelengthNominal  =  tokens{1}{3}; 
+            units         = 'unitless';
+        end
+    elseif contains(channels(i).Group, 'HbO')
+        Type          = 'NIRSCWHBO';
+        WavelengthNominal  =  'n/a'; 
+    elseif contains(channels(i).Group, 'HbR')
+        Type       = 'NIRSCWHBR';
+        WavelengthNominal  =  'n/a'; 
+    elseif contains(channels(i).Group, 'HbT')
+        continue;
+    else
+        warning('Channel %d (%s) cannot be exported', i, channels(i).Name)
     end
+
+    if isempty(units) 
+        switch(Type)
+            case 'NIRSCWAMPLITUDE'
+                units = 'V';
+            case {'NIRSCWHBO', 'NIRSCWHBR'}
+                units = 'mol/l';
+        end
+    end
+
+    if isempty(status) || status(i)  
+        chan_status  = 'good';
+    else
+        chan_status  = 'bad';
+    end
+
+    Source       = sprintf('S%s', tokens{1}{1}); 
+    Detector     = sprintf('D%s', tokens{1}{2}); 
+
+    T(end+1, :) = {Name, Type, Source, Detector, WavelengthNominal, units, chan_status};
+
 end
 
 fid = fopen(OutputChannelFile, 'w');
@@ -58,11 +97,7 @@ if (fid < 0)
    error('Cannot open file'); 
 end
 
-% Write header: column names
-ColNames = {'name','type', 'source', 'detector', 'wavelength_nominal', 'units'};
-
-T = table(Name',Type', Source',Detector', WavelengthNominal', Units', 'VariableNames',ColNames);
-writetable(T,OutputChannelFile,"FileType","text", "Delimiter",'\t' );
+writetable(T, OutputChannelFile, 'FileType', 'text', 'Delimiter','\t' );
 
 end
 
