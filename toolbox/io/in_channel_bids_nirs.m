@@ -73,8 +73,10 @@ end
 
 
 function chann_name = parse_name(name)
-    tokens_source = regexp(name,'S([0-9]+)','tokens');
-    tokens_detectors = regexp(name,'D([0-9]+)','tokens');
+
+    name                = TxRxtoSD(name);
+    tokens_source       = regexp(name,'S([0-9]+)','tokens');
+    tokens_detectors    = regexp(name,'D([0-9]+)','tokens');
 
     if isempty(tokens_source) || isempty(tokens_detectors)
         error('Umable to parse %s', name)
@@ -82,6 +84,13 @@ function chann_name = parse_name(name)
 
     chann_name = sprintf('S%sD%s', tokens_source{1}{1}, tokens_detectors{1}{1});
 
+end
+
+
+function channel_name = TxRxtoSD(channel_name)
+% Convert channel names from Tx1Rx1WL760 to S1D1WL760
+    channel_name = strrep(channel_name, 'Tx','S');
+    channel_name = strrep(channel_name, 'Rx','D');
 end
 
 
