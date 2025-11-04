@@ -41,12 +41,25 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChan]);
     [ChannelMat.Channel.Loc] = deal([0;0;0]);
     
+    isValidChannel = true(1, nChan);
+
     for iChannel = 1:nChan
-        ChannelMat.Channel(iChannel).Name  = sprintf('%s%sWL%d',tsvValues{iChannel,3}, tsvValues{iChannel,4}, str2double(tsvValues{iChannel,5}));
-        ChannelMat.Channel(iChannel).Type  = 'NIRS';
-        ChannelMat.Channel(iChannel).Group = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
-        ChannelMat.Channel(iChannel).Weight = 1;
+
+        switch(upper(tsvValues{iChannel,2}))
+            case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
+                ChannelMat.Channel(iChannel).Name  = sprintf('%s%sWL%d',tsvValues{iChannel,3}, tsvValues{iChannel,4}, str2double(tsvValues{iChannel,5}));
+                ChannelMat.Channel(iChannel).Type  = 'NIRS';
+                ChannelMat.Channel(iChannel).Group = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
+                ChannelMat.Channel(iChannel).Weight = 1;
+            
+            otherwise
+                isValidChannel(iChannel) = false;
+                warning('Unsoprted channel %s with type %s', tsvValues{iChannel,1}, tsvValues{iChannel,2} )
+                continue;
+        end
     end
+
+    ChannelMat.Channel = ChannelMat.Channel(isValidChannel);
 
 end
 
