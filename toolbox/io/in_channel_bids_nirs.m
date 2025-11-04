@@ -36,9 +36,9 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     nChan = size(tsvValues,1);
     
     % Initialize returned structure
-    ChannelMat = db_template('channelmat');
-    ChannelMat.Comment = 'BIDS channels';
-    ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChan]);
+    ChannelMat          = db_template('channelmat');
+    ChannelMat.Comment  = 'BIDS channels';
+    ChannelMat.Channel  = repmat(db_template('channeldesc'), [1, nChan]);
     [ChannelMat.Channel.Loc] = deal([0;0;0]);
     
     isValidChannel = true(1, nChan);
@@ -46,15 +46,19 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     for iChannel = 1:nChan
 
         channel_name = parse_name(tsvValues{iChannel,1});
+        channel_type = upper(tsvValues{iChannel,2});
 
-        switch(upper(tsvValues{iChannel,2}))
+        switch(channel_type)
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
                 ChannelMat.Channel(iChannel).Name   = sprintf('%sWL%d', channel_name, str2double(tsvValues{iChannel,5}));
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
                 ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
                 ChannelMat.Channel(iChannel).Weight = 1;
-            case {'NIRSCWHBO', 'NIRSCWHBR', 'NIRSCWHBT'}
-                continue;
+            case {'NIRSCWHBO', 'NIRSCWHBR'}
+                ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%d', channel_name, channel_type(end));
+                ChannelMat.Channel(iChannel).Type   = 'NIRS';
+                ChannelMat.Channel(iChannel).Group  = sprintf('Hb%d', channel_type(end));
+                ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
                 isValidChannel(iChannel) = false;
                 warning('Unsoprted channel %s with type %s', tsvValues{iChannel,1}, tsvValues{iChannel,2} )
@@ -77,7 +81,7 @@ function chann_name = parse_name(name)
     end
 
     chann_name = sprintf('S%sD%s', tokens_source{1}{1}, tokens_detectors{1}{1});
-    
+
 end
 
 
