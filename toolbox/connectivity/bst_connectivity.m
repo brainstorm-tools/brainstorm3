@@ -674,15 +674,20 @@ for iFile = 1 : length(FilesA)
                         % Modeling for conditional GC
                         if ~isempty(X)
                             % Model order to use, Akaike information criteria
-                            [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR');
+                            [~, ~, moAIC] = tsdata_to_infocrit(X, OPTIONS.GrangerOrder, 'LWR', 1);
                             OPTIONS.GrangerOrderAic = moAIC;
                             Message = sprintf('Model order to be used (found with AIC): %d', moAIC);
                             disp(Message);
                             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                             % Fit VAR model
-                            [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
+                            [A,SIG] = tsdata_to_var(X, 3, 'LWR');
                             % Autocovariance for VAR model
-                            G = var_to_autocov(A, SIG);
+                            [G, info] = var_to_autocov(A, SIG);
+                            if info.error
+                                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), info.errmsg);
+                                return;
+                            end
+                            
                             % Initialize R for (spectral granger)
                             if isSpectral
                                 R = repmat(R, [1, 1, size(G,3)+1]); % [To, From, Freq]
