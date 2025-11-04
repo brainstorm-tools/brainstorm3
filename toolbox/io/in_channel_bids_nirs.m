@@ -45,13 +45,16 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 
     for iChannel = 1:nChan
 
+        channel_name = parse_name(tsvValues{iChannel,1});
+
         switch(upper(tsvValues{iChannel,2}))
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
-                ChannelMat.Channel(iChannel).Name  = sprintf('%s%sWL%d',tsvValues{iChannel,3}, tsvValues{iChannel,4}, str2double(tsvValues{iChannel,5}));
-                ChannelMat.Channel(iChannel).Type  = 'NIRS';
-                ChannelMat.Channel(iChannel).Group = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
+                ChannelMat.Channel(iChannel).Name   = sprintf('%sWL%d', channel_name, str2double(tsvValues{iChannel,5}));
+                ChannelMat.Channel(iChannel).Type   = 'NIRS';
+                ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
                 ChannelMat.Channel(iChannel).Weight = 1;
-            
+            case {'NIRSCWHBO', 'NIRSCWHBR', 'NIRSCWHBT'}
+                continue;
             otherwise
                 isValidChannel(iChannel) = false;
                 warning('Unsoprted channel %s with type %s', tsvValues{iChannel,1}, tsvValues{iChannel,2} )
@@ -65,5 +68,16 @@ end
 
 
 
+function chann_name = parse_name(name)
+    tokens_source = regexp(name,'S([0-9]+)','tokens');
+    tokens_detectors = regexp(name,'D([0-9]+)','tokens');
+
+    if isempty(tokens_source) || isempty(tokens_detectors)
+        error('Umable to parse %s', name)
+    end
+
+    chann_name = sprintf('S%sD%s', tokens_source{1}{1}, tokens_detectors{1}{1});
+    
+end
 
 
