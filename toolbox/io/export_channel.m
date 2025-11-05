@@ -239,9 +239,10 @@ switch FileFormat
     case 'BIDS-NIRS-ALS-MM'
         % No transformation: export unchanged SCS/CTF space
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
-    case 'BIDS-NIRS-channel'
-        % Export nirs channel.tsv
-        out_nirs_channel(BstChannelFile, OutputChannelFile);
+    case 'BIDS-NIRS-CHANNEL'
+        % Export NIRS channel.tsv
+        out_channel_bids_nirs(BstChannelFile, OutputChannelFile);
+
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);
         
