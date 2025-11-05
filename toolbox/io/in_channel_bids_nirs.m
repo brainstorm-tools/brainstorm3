@@ -1,7 +1,7 @@
 function ChannelMat = in_channel_bids_nirs(ChannelFile)
-% IN_CHANNEL_BIDS_nirs:  Read NIRS channels file from a BIDS _channels.tsv file.
+% IN_CHANNEL_BIDS_NIRS:  Read NIRS channels file from a BIDS _channels.tsv file.
 %
-% USAGE:  ChannelMat = in_channel_bids(ChannelFile)
+% USAGE:  ChannelMat = in_channel_bids_nirs(ChannelFile)
 %
 % INPUTS: 
 %     - ChannelFile : Full path to the .tsv file
