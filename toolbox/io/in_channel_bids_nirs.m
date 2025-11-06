@@ -27,7 +27,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 % Authors: Edouard Delaire, 2025
 
     % Read the TSV file
-    tsvValues = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'});
+    tsvValues = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
     if isempty(tsvValues) || isempty(tsvValues{1,1})
         disp('BIDS> Error: Invalid _channels.tsv file.');
         ChannelMat = [];
