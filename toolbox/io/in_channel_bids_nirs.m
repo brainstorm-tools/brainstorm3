@@ -27,7 +27,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 % Authors: Edouard Delaire, 2025
 
     % Read the TSV file
-    tsvValues = in_tsv(ChannelFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+    tsvValues = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'});
     if isempty(tsvValues) || isempty(tsvValues{1,1})
         disp('BIDS> Error: Invalid _channels.tsv file.');
         ChannelMat = [];
@@ -71,6 +71,15 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%s', channel_name, channel_type(end));
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
                 ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
+                ChannelMat.Channel(iChannel).Weight = 1;
+            case {'ACCEL', 'GYRO', 'MAGN'}
+                if isempty(tsvValues{iChannel,7})
+                    error('Componnent for channel %s is not defnied', channel_name)
+                end
+
+                ChannelMat.Channel(iChannel).Name   = sprintf('%s_%s', channel_name, tsvValues{iChannel,7});
+                ChannelMat.Channel(iChannel).Type   = 'Misc'; % Is there a better type ?
+                ChannelMat.Channel(iChannel).Group  =  [];
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'MISC'}
                 ChannelMat.Channel(iChannel).Name   = channel_name;
