@@ -33,6 +33,14 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
         ChannelMat = [];
         return;
     end
+    
+    OptodeFile = strrep(ChannelFile, '_channels.tsv', '_optodes.tsv');
+    if exist(OptodeFile, 'file')
+        tsvOptodes = in_tsv(OptodeFile, {'name','type', 'x', 'y',	'z', 'template_x', 'template_y', 'template_z'}, 0);
+    else
+        tsvOptodes = {};
+    end
+
     nChan = size(tsvValues,1);
     
     % Initialize returned structure
@@ -47,6 +55,8 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 
         channel_name = parse_name(tsvValues{iChannel,1});
         channel_type = upper(tsvValues{iChannel,2});
+        
+
 
         switch(channel_type)
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
@@ -64,6 +74,10 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 warning('Unsoprted channel %s with type %s', tsvValues{iChannel,1}, tsvValues{iChannel,2} )
                 continue;
         end
+
+        if ~isempty(tsvOptodes)
+            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(tsvOptodes, tsvValues{iChannel,3}, tsvValues{iChannel,4});
+        end 
     end
 
     ChannelMat.Channel = ChannelMat.Channel(isValidChannel);
@@ -93,4 +107,51 @@ function channel_name = TxRxtoSD(channel_name)
     channel_name = strrep(channel_name, 'Rx','D');
 end
 
+function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName)
+    coordinates = [];
 
+    if strcmp(detectorName, 'n/a') || strcmp(sourceName, 'n/a') 
+        return;
+    end
+
+    % Read optodes coordinate
+    iSource = find(strcmp(tsvOptodes(:,1),   sourceName));
+    if isempty(iSource) 
+        warning('Unable to find source %s in optodes.tsv', sourceName)
+        return;
+    elseif ~strcmp(tsvOptodes{iSource,2}, 'source')
+        warning('%s should be a source but is labelled as a %s in optodes.tsv', sourceName, tsvOptodes{iSource,2});
+        return;
+    end
+
+    if ~isempty(tsvOptodes{iSource,4}) && ~isempty(tsvOptodes{iSource,5})  && ~isempty(tsvOptodes{iSource,6})
+        source_coord = [str2double(tsvOptodes{iSource,4}); str2double(tsvOptodes{iSource,5}); str2double(tsvOptodes{iSource,6})];
+    elseif ~isempty(tsvOptodes{iSource,7}) && ~isempty(tsvOptodes{iSource,8})  && ~isempty(tsvOptodes{iSource,9})
+        source_coord = [str2double(tsvOptodes{iSource,7}); str2double(tsvOptodes{iSource,8}); str2double(tsvOptodes{iSource,9})];
+    else
+        warning('No coordinate available for %s in optodes.tsv', sourceName)
+        return;
+    end
+
+    iDetector = find(strcmp(tsvOptodes(:,1), detectorName));
+    if isempty(iDetector) 
+        warning('Unable to find detector %s in optodes.tsv', detectorName)
+        return;
+    elseif ~strcmp(tsvOptodes{iDetector,2}, 'detector')
+        warning('%s should be a detector but is labelled as a %s in optodes.tsv', detectorName, tsvOptodes{iSource,2});
+        return;
+    end
+
+    if ~isempty(tsvOptodes{iDetector,4}) && ~isempty(tsvOptodes{iDetector,5})  && ~isempty(tsvOptodes{iDetector,6})
+        detector_coord = [str2double(tsvOptodes{iDetector,4}) ; str2double(tsvOptodes{iDetector,5}); str2double(tsvOptodes{iDetector,6})];
+    elseif ~isempty(tsvOptodes{iDetector,7}) && ~isempty(tsvOptodes{iDetector,8})  && ~isempty(tsvOptodes{iDetector,9})
+        detector_coord = [str2double(tsvOptodes{iDetector,7}) ; str2double(tsvOptodes{iDetector,8}); str2double(tsvOptodes{iDetector,9})];
+    else
+        warning('No coordinate available for %s in optodes.tsv', detectorName)
+        return;
+    end
+
+
+    coordinates = [source_coord, detector_coord];
+
+end
