@@ -74,7 +74,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'MISC'}
                 ChannelMat.Channel(iChannel).Name   = channel_name;
-                ChannelMat.Channel(iChannel).Type   = 'Miscs';
+                ChannelMat.Channel(iChannel).Type   = 'Misc';
                 ChannelMat.Channel(iChannel).Group  =  [];
                 ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
