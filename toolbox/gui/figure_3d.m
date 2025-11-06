@@ -4473,6 +4473,9 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'NIRS');
     end
     Channels = GlobalData.DataSet(iDS).Channel(iChannels);
+    hasLoc   = cellfun(@(c)size(c,2), {Channels.Loc}) > 0;
+    Channels = Channels(hasLoc);
+
     % Check for errors in the channel definition: Loc needs 2 set of positions (source, detector)
     if any(cellfun(@(c)size(c,2), {Channels.Loc}) ~= 2)
         error('NIRS sensors need to be defined by two positions: the source and and the detector.');
