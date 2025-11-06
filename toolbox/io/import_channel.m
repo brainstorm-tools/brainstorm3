@@ -137,7 +137,7 @@ switch (FileFormat)
     % ===== NIRS ONLY =====
     case 'BIDS-NIRS-CHANNEL'
         ChannelMat = in_channel_bids_nirs(ChannelFile);
-        FileUnits = ''; % Note: the file doesn't contains coordinates        
+        FileUnits = 'm';  
     % ===== EEG ONLY =====
     case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM', 'BIDS-CAPTRAK-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
