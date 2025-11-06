@@ -30,7 +30,7 @@ function out_channel_bids_nirs(BstChannelFile, OutputChannelFile, units, status)
 % Authors: Jacob Busgang, 2025
 
 if nargin < 3
-    units = '';
+    file_units = '';
 end
 
 if nargin < 4
@@ -42,41 +42,60 @@ BstMat = in_bst_channel(BstChannelFile);
 
 T = table({}, {} , {}, {}, {}, {}, {}, 'VariableNames', {'name','type', 'source', 'detector', 'wavelength_nominal', 'units', 'status'});
 
-iNIRS       = good_channel(BstMat.Channel, [], 'NIRS');
-channels    = BstMat.Channel(iNIRS);
+channels = BstMat.Channel;
 
 for i = 1:length(channels)
-    tokens = regexp(channels(i).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
-    Name   = sprintf('S%s-D%s', tokens{1}{1}, tokens{1}{2});
+    
+    units = '';
 
-    if contains(channels(i).Group, 'WL') 
-        if isempty(units)  && ~(contains(units, {'unitless', 'OD', 'dOD'}))
-            Type          = 'NIRSCWAMPLITUDE'; 
-            WavelengthNominal  =  tokens{1}{3}; 
+    if  strcmp(channels(i).Type, 'NIRS')
+        tokens = regexp(channels(i).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
+        Name   = sprintf('S%s-D%s', tokens{1}{1}, tokens{1}{2});
+    
+        if contains(channels(i).Group, 'WL') 
+            if isempty(file_units)  && ~(contains(file_units, {'unitless', 'OD', 'dOD'}))
+                Type          = 'NIRSCWAMPLITUDE'; 
+                WavelengthNominal  =  strrep(tokens{1}{3}, 'WL', ''); 
+            else
+                Type          = 'NIRSCWOPTICALDENSITY';
+                WavelengthNominal  =  strrep(tokens{1}{3}, 'WL', ''); 
+                units         = 'unitless';
+            end
+        elseif contains(channels(i).Group, 'HbO')
+            Type          = 'NIRSCWHBO';
+            WavelengthNominal  =  'n/a'; 
+        elseif contains(channels(i).Group, 'HbR')
+            Type       = 'NIRSCWHBR';
+            WavelengthNominal  =  'n/a'; 
+        elseif contains(channels(i).Group, 'HbT')
+            continue;
         else
-            Type          = 'NIRSCWOPTICALDENSITY';
-            WavelengthNominal  =  tokens{1}{3}; 
-            units         = 'unitless';
+            warning('Channel %d (%s) cannot be exported', i, channels(i).Name)
         end
-    elseif contains(channels(i).Group, 'HbO')
-        Type          = 'NIRSCWHBO';
-        WavelengthNominal  =  'n/a'; 
-    elseif contains(channels(i).Group, 'HbR')
-        Type       = 'NIRSCWHBR';
-        WavelengthNominal  =  'n/a'; 
-    elseif contains(channels(i).Group, 'HbT')
-        continue;
-    else
-        warning('Channel %d (%s) cannot be exported', i, channels(i).Name)
-    end
+    
+        if isempty(units) 
+            switch(Type)
+                case 'NIRSCWAMPLITUDE'
+                    units = 'V';
+                case {'NIRSCWHBO', 'NIRSCWHBR'}
+                    units = 'mol/l';
+            end
+        end
+    
 
-    if isempty(units) 
-        switch(Type)
-            case 'NIRSCWAMPLITUDE'
-                units = 'V';
-            case {'NIRSCWHBO', 'NIRSCWHBR'}
-                units = 'mol/l';
-        end
+    
+        Source       = sprintf('S%s', tokens{1}{1}); 
+        Detector     = sprintf('D%s', tokens{1}{2}); 
+    
+    else
+
+        Name         = channels(i).Name;
+        Type         = 'MISC';
+        Source       = 'n/a'; 
+        Detector     = 'n/a'; 
+        WavelengthNominal = 'n/a';
+        units        = 'unitlesss';
+
     end
 
     if isempty(status) || status(i)  
@@ -84,9 +103,6 @@ for i = 1:length(channels)
     else
         chan_status  = 'bad';
     end
-
-    Source       = sprintf('S%s', tokens{1}{1}); 
-    Detector     = sprintf('D%s', tokens{1}{2}); 
 
     T(end+1, :) = {Name, Type, Source, Detector, WavelengthNominal, units, chan_status};
 

@@ -52,10 +52,13 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     isValidChannel = true(1, nChan);
 
     for iChannel = 1:nChan
-
-        channel_name = parse_name(tsvValues{iChannel,1});
-        channel_type = upper(tsvValues{iChannel,2});
         
+        channel_type = upper(tsvValues{iChannel,2});
+        if any(strcmp(channel_type, {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY', 'NIRSCWHBO', 'NIRSCWHBR'}))
+            channel_name = parse_name(tsvValues{iChannel,1});
+        else
+            channel_name = tsvValues{iChannel,1};
+        end
 
 
         switch(channel_type)
@@ -68,6 +71,11 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%s', channel_name, channel_type(end));
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
                 ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
+                ChannelMat.Channel(iChannel).Weight = 1;
+            case {'MISC'}
+                ChannelMat.Channel(iChannel).Name   = channel_name;
+                ChannelMat.Channel(iChannel).Type   = 'Miscs';
+                ChannelMat.Channel(iChannel).Group  =  [];
                 ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
                 isValidChannel(iChannel) = false;
