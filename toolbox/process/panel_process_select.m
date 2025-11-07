@@ -1217,7 +1217,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jList = GetClusterList(sProcess, optNames{iOpt});
                     % If no clusters
                     if isempty(jList) && strcmp(option.Type, 'cluster')
-                        gui_component('label', jPanelOpt, [], '<HTML>Error: No clusters available in channel file.');
+                        gui_component('label', jPanelOpt, [], '<html><p style="color:red;">Error: No clusters available in channel file.</p></html>');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1229,10 +1229,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
                             
                             if ~isempty(jList)
-                            jCheckCluster.setSelected(1)
-                            jList.setEnabled(1);
+                                jCheckCluster.setSelected(1)
+                                jList.setEnabled(1);
                                 java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []));
-                        else
+                            else
                                 jList = GetEmptyClusterList(sProcess, optNames{iOpt});
                                 jCheckCluster.setSelected(0)
                                 jCheckCluster.setEnabled(0);
@@ -1256,7 +1256,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [AtlasList, iAtlasList] = GetAtlasList(sProcess, optNames{iOpt});
                     % If no scouts are available
                     if isempty(AtlasList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.');
+                        gui_component('label', jPanelOpt, [], '<html><p style="color:red;">Error: No scouts available.</p></html>');
                     else
                         % Create list
                         jList = java_create('javax.swing.JList');
