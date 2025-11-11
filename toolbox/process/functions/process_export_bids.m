@@ -477,7 +477,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
         
         if isNirs
-            coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
+            coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'CTF'); % Make sure it isnt CapRAS
             coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
             coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
         end
@@ -539,7 +539,6 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             mkdir(dataFolder);
         end
 
-        newName = [prefixTask taskName rest modSuffix];
         % Copy raw file to output folder
         if isCtf
             rawExt = '.ds';
@@ -548,8 +547,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isNirs 
             rawExt = '.snirf';
         end
+        
+        baseName = [prefixTask taskName rest];
+        newName = [baseName modSuffix];
         newPath = bst_fullfile(dataFolder, [newName, rawExt]);
-        if exist(newPath, 'file') == 0 || overwrite
+        
+        if ~exist(newPath, 'file') || overwrite
             if isCtf
                 % Rename internal DS files
                 dsFolder = fileparts(sFile.filename);
@@ -573,8 +576,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isNirs 
 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
-                export_channel(sInput.ChannelFile,  strrep(newPath, '_nirs.snirf', '_optodes.tsv'), 'BIDS-NIRS-SCANRAS-MM', 0);
-                out_channel_bids_nirs(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), DataMat.DisplayUnits, DataMat.F.channelflag);
+                export_channel(sInput.ChannelFile, bst_fullfile(dataFolder, [baseName, '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                out_channel_bids_nirs(sInput.ChannelFile, bst_fullfile(dataFolder, [baseName, '_channels.tsv']), DataMat.DisplayUnits, DataMat.F.channelflag);
 
             else
                 % Copy raw data file
@@ -593,6 +596,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
+
             % Create JSON sidecar
             jsonFile = bst_fullfile(dataFolder, [newName '.json']);
             WriteJson(jsonFile, metadata);
@@ -602,8 +606,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
 
             % Create event TSV file
-            tsvEventsFile = strrep(newPath, [modSuffix '.snirf'], '_events.tsv');
-            out_events_bids(sFile, tsvEventsFile);
+            out_events_bids(sFile, bst_fullfile(dataFolder, [baseName, '_events.tsv']));
 
             % Create coordinates JSON
             jsonCoord = bst_fullfile(dataFolder, [prefix '_coordsystem.json']);
