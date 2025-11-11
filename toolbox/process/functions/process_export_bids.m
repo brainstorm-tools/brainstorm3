@@ -221,7 +221,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % Create dataset_description.json
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors, sInputs.FileType);
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors, 'raw');
     
     firstAcq = [];
     lastAcq = [];
@@ -585,7 +585,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Create JSON sidecar
             jsonFile = bst_fullfile(megFolder, [newName '.json']);
-            CreateMegJson(jsonFile, metadata);
+            WriteJson(jsonFile, metadata);
             
             % Create session TSV file
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
@@ -597,7 +597,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
             % Create coordinates JSON
             jsonCoord = bst_fullfile(megFolder, [prefix '_coordsystem.json']);
-            CreateMegJson(jsonCoord, coorddata);
+            WriteJson(jsonCoord, coorddata);
         end
         
         bst_progress('inc', 1);
@@ -774,17 +774,32 @@ function id = GetLastId(parentFolder, prefix)
     end
 end
 
-function CreateMegJson(jsonFile, metadata)
+function WriteJson(jsonFile, metadata)
     fid = fopen(jsonFile, 'wt');
+
+    if fid < 0
+        error('Unable to write %s', jsonFile);
+    end
+    
     jsonText = bst_jsonencode(metadata);
     fprintf(fid, strrep(jsonText, '%', '%%'));
     fclose(fid);
 end
 
 function CreateDatasetDescription(parentFolder, overwrite, description, authors, FileType)
+    
     if nargin < 3
         description = struct();
     end
+
+    if nargin < 4
+        authors = '';
+    end
+
+    if nargin < 4
+        FileType = 'raw';
+    end
+
 
     jsonFile = bst_fullfile(parentFolder, 'dataset_description.json');
     if exist(jsonFile, 'file') == 2 && ~overwrite
@@ -794,19 +809,10 @@ function CreateDatasetDescription(parentFolder, overwrite, description, authors,
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
-    [typetokens, typematch] = regexp(FileType,'raw|derivative', 'tokens', 'match');
-    if length(typematch)==1
-        description = addField(description, 'DatasetType', FileType);
-    else    
-        warning('FileType must be either raw or derivative. For backwards compatibility, the default value is "raw".'); % Using BIDS warning here.
-        description = addField(description, 'DatasetType', 'raw');
-    end
+    description = addField(description, 'DatasetType', FileType);
     description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     
-    fid = fopen(jsonFile, 'wt');
-    jsonText = bst_jsonencode(description);
-    fprintf(fid, jsonText);
-    fclose(fid);
+    WriteJson(jsonFile, description);
 end
 
 function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
