@@ -407,13 +407,16 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 taskName = ExtractFifTaskname(sFile);
             else
                 tokens = regexp(rawName,'task-([a-zA-Z0-9]+)','tokens');
-                taskName = tokens{1}{1};
+                if ~isempty(tokens)
+                    taskName = tokens{1}{1};
+                end
             end
             
             % Otherwise, extract task name from condition
             if isempty(taskName)
                 taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
             end
+
         end
         if ~isempty(runId) && ~isempty(FormatId(runId, runScheme))
             rest = [rest '_run-' FormatId(runId, runScheme)];
@@ -459,6 +462,8 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 EventNames{end + 1} = event;
             end
         end
+
+
         %% Prepare coordinate structure
         coorddata = struct();
         coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
@@ -473,6 +478,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm'); % assumed scale for now
         coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'SCANRAS'); % using the same values as the coords system.
         coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+        
+        
+        
         %% Prepare metadata structure
         metadata = megMetadata;
         metadata = addField(metadata, 'TaskName', taskName);
@@ -523,9 +531,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             modFolder = 'data';
             modSuffix = [];
         end
-        megFolder = bst_fullfile(sessionFolder, modFolder);
-        if exist(megFolder, 'dir') ~= 7
-            mkdir(megFolder);
+        
+        dataFolder = bst_fullfile(sessionFolder, modFolder);
+        if exist(dataFolder, 'dir') ~= 7
+            mkdir(dataFolder);
         end
 
         newName = [prefixTask taskName rest modSuffix];
@@ -537,19 +546,19 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isNirs 
             rawExt = '.snirf';
         end
-        newPath = bst_fullfile(megFolder, [newName, rawExt]);
+        newPath = bst_fullfile(dataFolder, [newName, rawExt]);
         if exist(newPath, 'file') == 0 || overwrite
             if isCtf
                 % Rename internal DS files
                 dsFolder = fileparts(sFile.filename);
-                tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
+                tempPath = bst_fullfile(dataFolder, [rawName, rawExt]);
                 file_copy(dsFolder, tempPath);
                 if ~strcmp(tempPath, newPath)
                     ctf_rename_ds(tempPath, newPath, []);
                 end
                 % Save Polhemus file
                 if hasHeadPoints
-                    posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
+                    posFile = bst_fullfile(dataFolder, [prefix '_headshape.pos']);
                     out_channel_pos(sInput.ChannelFile, posFile);
                 end
                 % Remove internal Polhemus files
@@ -560,11 +569,13 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
             elseif isNirs 
+
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
-                export_channel(sInput.ChannelFile,  bst_fullfile(megFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
-                export_channel(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), 'BIDS-NIRS-channel', 0);
+                export_channel(sInput.ChannelFile,  bst_fullfile(dataFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                
                 sData = in_bst_data(sInput.FileName);
                 out_channel_bids_nirs(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), sData.DisplayUnits, sData.F.channelflag);
+
 
             else
                 % Copy raw data file
@@ -574,17 +585,17 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Copy header file
                     VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
                     if file_exist(VhdrFile)
-                        file_copy(VhdrFile, bst_fullfile(megFolder, [newName, '.vhdr']));
+                        file_copy(VhdrFile, bst_fullfile(dataFolder, [newName, '.vhdr']));
                     end
                     % Copy marker file
                     VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
                     if file_exist(VmrkFile)
-                        file_copy(VmrkFile, bst_fullfile(megFolder, [newName, '.vmrk']));
+                        file_copy(VmrkFile, bst_fullfile(dataFolder, [newName, '.vmrk']));
                     end
                 end
             end
             % Create JSON sidecar
-            jsonFile = bst_fullfile(megFolder, [newName '.json']);
+            jsonFile = bst_fullfile(dataFolder, [newName '.json']);
             WriteJson(jsonFile, metadata);
             
             % Create session TSV file
@@ -596,7 +607,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             out_events_bids(sFile, tsvEventsFile);
 
             % Create coordinates JSON
-            jsonCoord = bst_fullfile(megFolder, [prefix '_coordsystem.json']);
+            jsonCoord = bst_fullfile(dataFolder, [prefix '_coordsystem.json']);
             WriteJson(jsonCoord, coorddata);
         end
         
@@ -780,7 +791,7 @@ function WriteJson(jsonFile, metadata)
     if fid < 0
         error('Unable to write %s', jsonFile);
     end
-    
+
     jsonText = bst_jsonencode(metadata);
     fprintf(fid, strrep(jsonText, '%', '%%'));
     fclose(fid);
