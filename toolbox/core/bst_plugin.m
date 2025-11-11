@@ -299,6 +299,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).GetVersionFcn  = @be_versions;
     PlugDesc(end).DeleteFiles    = {'docs', '.github'};
     
+
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -523,6 +524,18 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'fastica.m';
     PlugDesc(end).ReadmeFile     = 'Contents.m';
     PlugDesc(end).CompiledStatus = 2;
+
+    % === STATISTICS: GEDAI ===
+    PlugDesc(end+1)              = GetStruct('gedai');
+    PlugDesc(end).Version        = '1.2';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/releases/download/v1.2/GEDAI-master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
+    PlugDesc(end).TestFile       = 'process_GEDAI_Brainstorm.m';
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.git', 'example data'};
 
     % === STATISTICS: LIBSVM ===
     PlugDesc(end+1)              = GetStruct('libsvm');
