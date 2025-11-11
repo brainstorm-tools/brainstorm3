@@ -896,13 +896,15 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     if strcmp(fExt,'.snirf')
 
                         ChanInfo = {};
-                        [ChannelMat, status] = in_channel_bids_nirs(ChannelsFile);
+                        [newChannelMat, status] = in_channel_bids_nirs(ChannelsFile);
                         
                         % Save data file modifications
                         for iRaw = 1:length(newFiles)
-
+            
                             % Get channel file
                             [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', newFiles{iRaw});
+                            ChannelMat = in_bst_channel(ChannelFile);
+                            ChannelMat.Channel = newChannelMat.Channel;
 
                             % Save channel file modifications
                             % Update channel file
