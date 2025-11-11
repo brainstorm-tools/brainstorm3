@@ -1,4 +1,4 @@
-function ChannelMat = in_channel_bids_nirs(ChannelFile)
+function [ChannelMat, status]= in_channel_bids_nirs(ChannelFile)
 % IN_CHANNEL_BIDS_NIRS:  Read NIRS channels file from a BIDS _channels.tsv file.
 %
 % USAGE:  ChannelMat = in_channel_bids_nirs(ChannelFile)
@@ -50,6 +50,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     [ChannelMat.Channel.Loc] = deal([0;0;0]);
     
     isValidChannel = true(1, nChan);
+    status         = ones(1, nChan);
 
     for iChannel = 1:nChan
         
@@ -92,12 +93,17 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 continue;
         end
 
+        if ~isempty(tsvValues{iChannel,6}) && strcmp(tsvValues{iChannel,6}, 'bad')
+            status(iChannel) = -1;
+        end
+
         if ~isempty(tsvOptodes)
             ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(tsvOptodes, tsvValues{iChannel,3}, tsvValues{iChannel,4});
         end 
     end
 
     ChannelMat.Channel = ChannelMat.Channel(isValidChannel);
+    status             = status(isValidChannel);
 
 end
 
