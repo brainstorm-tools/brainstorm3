@@ -65,6 +65,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if isCompiled
             jCheckCrossPlatformJLF = gui_component('CheckBox', jPanelSystem, 'br', 'Use cross platform Java Look and Feel', [], [], []);
         end
+        jCheckProcessTooltip = gui_component('CheckBox', jPanelSystem, 'br', 'Show process path as tooltip in Pipeline editor', [], [], []);
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
     jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
@@ -217,6 +218,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     jRadioOpenSoft.setSelected(1);
                 end
         end
+        jCheckProcessTooltip.setSelected(bst_get('ShowProcessTooltip'));
         % Interface scaling
         switch (bst_get('InterfaceScaling'))
             case 100,       jSliderScaling.setValue(1);
@@ -298,6 +300,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if isCompiled
             changedJLF = bst_get('UseCrossPlatformJLF') ~= jCheckCrossPlatformJLF.isSelected();
             bst_set('UseCrossPlatformJLF', jCheckCrossPlatformJLF.isSelected());
+        end
+        % ===== CLEAR PROCESS MENU CACHE =====
+        if bst_get('ShowProcessTooltip') ~= jCheckProcessTooltip.isSelected()
+            % Clear menu cache
+            GlobalData.Program.ProcessMenuCache = struct();
+            bst_set('ShowProcessTooltip',  jCheckProcessTooltip.isSelected());
         end
 
         % ===== INTERFACE SCALING =====
@@ -541,13 +549,13 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         if isJSDesktop()
             switch s.Details.HardwareSupportLevel
                 case 'Full'
-                    disp('hardware');
+                    disp(['hardware: ' s.RendererDevice]);
                 case 'Basic'
-                    disp('hardware');
-                    disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
+                    disp(['hardware: ' s.RendererDevice]);
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is ''Basic'', this may cause the display to be slow and ugly.']);
                 otherwise
                     disp('software');
-                    disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is unavailable, this may cause the display to be slow and ugly.']);
             end
             % OpenGL is always available on New Desktop
             DisableOpenGL = 0;

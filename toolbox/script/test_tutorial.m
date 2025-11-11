@@ -127,8 +127,9 @@ for iTutorial = 1 : length(tutorialNames)
             tutorial_connectivity();
 
         case 'tutorial_coherence'
-            dataFile = bst_fullfile(dataDir, 'SubjectCMC.zip');
+            dataFile = get_tutorial_data(dataDir, 'SubjectCMC.zip', bstUser, bstPwd);
             if ~exist(dataFile, 'file')
+                dataFile = bst_fullfile(dataDir, 'SubjectCMC.zip');
                 bst_websave(dataFile, 'https://download.fieldtriptoolbox.org/tutorial/SubjectCMC.zip');
             end
             if exist(dataFile, 'file')

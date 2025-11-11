@@ -202,6 +202,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
+    
+    % === ANATOMY: RESECTION IDENTIFICATION ===
+    PlugDesc(end+1)              = GetStruct('resection-identification');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_' OsType '.zip'];
+    PlugDesc(end).TestFile       = 'resection_identification';
+    if strcmp(OsType, 'win64')
+        PlugDesc(end).TestFile   = [PlugDesc(end).TestFile, '.bat'];
+    end
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
+    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).LoadFolders    = {'bin'};
 
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -537,20 +551,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === STATISTICS: MVGC ===
     PlugDesc(end+1)              = GetStruct('mvgc');
-    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).URLzip         = 'https://github.com/brainstorm-tools/MVGC1/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/brainstorm-tools/MVGC1';
     PlugDesc(end).TestFile       = 'startup_mvgc.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {''};
     PlugDesc(end).DeleteFiles    = {'C', 'deprecated', 'utils/legacy', 'maintainer'};
-    PlugDesc(end).DownloadedFcn  = ['file_move(  fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
-                                                'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));' ...
-                                    'file_delete(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo.m''), 1);', ...
-                                    'file_copy(  fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo_statespace.m''), ' ...
-                                                'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''demo'', ''mvgc_demo.m''));' ];
+    PlugDesc(end).DownloadedFcn  = ['file_move(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup_mvgc.m''));' ...
+                                    'file_delete(fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''), 1);', ...
+                                    'file_copy(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo_statespace.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''));' ];
     PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
 
     % === STATISTICS: PICARD ===
@@ -1302,6 +1316,12 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                     end
                 end
                 PlugDesc(iPlug).isManaged = 0;
+                % Look for process_* functions in the process folder
+                PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
+                if ~isempty(PlugProc)
+                    % Remove absolute path: use only path relative to the plugin Path
+                    PlugDesc(iPlug).Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
+                end
             end
             PlugDesc(iPlug).Path = PlugPath;
         % Plugin installed: Managed by Brainstorm
@@ -1574,6 +1594,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         errMsg = 'Invalid call to Install()';
         PlugDesc = [];
         return;
+    end
+    % Backup calling progress bar;
+    isCallBar = bst_progress('isvisible');
+    if isCallBar
+        pBarParams = bst_progress('getbarparams');
     end
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugName);
@@ -1870,6 +1895,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     bst_progress('removeimage');
     % Return success
     isOk = 1;
+    % Restore calling progress bar
+    if isCallBar
+        bst_progress('setbarparams', pBarParams);
+    end
 end
 
 

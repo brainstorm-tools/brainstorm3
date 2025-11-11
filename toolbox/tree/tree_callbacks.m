@@ -575,8 +575,8 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
                     gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
-                    gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import CT'));
-                    gui_component('MenuItem', jPopup, [], 'Import PET', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'Import PET'));
+                    gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'CT Import'));
+                    gui_component('MenuItem', jPopup, [], 'Import PET', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'PET Import'));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
@@ -1085,13 +1085,33 @@ switch (lower(action))
                         end
                         AddSeparator(jMenuDisplay);
                         % Display as overlay
-                        if ~bstNodes(1).isMarked() && ~isempty(sSubject.iAnatomy)
+                        if ~bstNodes(1).isMarked()
                             % Get subject structure
                             sSubject = bst_get('MriFile', filenameRelative);
-                            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                            % Overlay menus
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            % Overlay on default MRI
+                            if ~isempty(sSubject.iAnatomy)
+                                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            end
+                            % Overlay, other valid target volumes
+                            iVols = find(cellfun(@(c)isempty(strfind(c, '_volatlas')) && isempty(strfind(c, '_tissues')), {sSubject.Anatomy.FileName}));
+                            iVols = setdiff(iVols, [sSubject.iAnatomy, iAnatomy]);
+                            if ~isempty(iVols)
+                                jMenuOverlayVr = gui_component('Menu', jMenuDisplay, [], 'Overlay on... (MRI Viewer)', IconLoader.ICON_ANATOMY, [], []);
+                                jMenuOverlay3d = gui_component('Menu', jMenuDisplay, [], 'Overlay on... (3D)', IconLoader.ICON_ANATOMY, [], []);
+                                for iVol = 1:length(iVols)
+                                    volFile = sSubject.Anatomy(iVols(iVol)).FileName;
+                                    volIconOver = 'ICON_ANATOMY';
+                                    if ~isempty(strfind(volFile, '_volct'))
+                                        volIconOver = 'ICON_VOLCT';
+                                    elseif ~isempty(strfind(volFile, '_volpet'))
+                                        volIconOver = 'ICON_VOLPET';
+                                    end
+                                    gui_component('MenuItem', jMenuOverlayVr, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                    gui_component('MenuItem', jMenuOverlay3d, [], sSubject.Anatomy(iVols(iVol)).Comment, IconLoader.(volIconOver), [], @(h,ev)view_mri_3d(sSubject.Anatomy(iVols(iVol)).FileName, filenameRelative));
+                                end
+                            end
                             AddSeparator(jMenuDisplay);
                         end
                         gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
@@ -2785,6 +2805,12 @@ end % END SWITCH( ACTION )
                 if ~isempty(sStudy) && ~isempty(sStudy.Result(iRes).HeadModelType)
                     HeadModelType = sStudy.Result(iRes).HeadModelType;
                 end
+            % Try to get source model indicated in 1xN connectivity file
+            elseif ~isempty(sStudy) && ~isempty(strfind(ResultFiles{1}, '_connect1')) && strcmpi(sStudy.Timefreq(iTf).DataType, 'results')
+                TimeFreq = in_bst_timefreq(ResultFiles{1}, 0, 'HeadModelFile', 'HeadModelType');
+                if ~isempty(TimeFreq.HeadModelFile) && ~isempty(TimeFreq.HeadModelType)
+                    HeadModelType = TimeFreq.HeadModelType;
+                end
             end
         else
             % Get all the Results files that are classified in the input nodes
@@ -3182,6 +3208,12 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas, isCt, isPe
         % === GENERATE FEM ===
         if (length(iAnatomy) <= 2) && ~isCt && ~isPet  % T1 + optional T2
             jItemFem = gui_component('MenuItem', jMenu, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === RESECTION IDENTIFICATION ===
+        if (length(iAnatomy) == 1) && iSubject ~= 0 && ~isempty(sSubject.iAnatomy) && iAnatomy ~= sSubject.iAnatomy && ~isCt && ~isPet
+            AddSeparator(jMenu);
+            MriFilePreOp = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+            gui_component('MenuItem', jMenu, [], 'Resection identification', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_resection_identification, 'ComputeInteractive', MriFilePreOp, MriFile));
         end
         % === MRI SEGMENTATION ===
         if (length(iAnatomy) <= 1) && ~isCt && ~isPet

@@ -132,12 +132,20 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels = {};
     end
 
-    % Convert cell array to string array 
+    % Convert to string array
     if iscell(jnirs.nirs.probe.sourceLabels)
         jnirs.nirs.probe.sourceLabels = convertCharsToStrings(jnirs.nirs.probe.sourceLabels);
+    elseif ischar(jnirs.nirs.probe.sourceLabels)
+        jnirs.nirs.probe.sourceLabels(end+1, :) = ' ';
+        jnirs.nirs.probe.sourceLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.sourceLabels), ' ');
+        jnirs.nirs.probe.sourceLabels = jnirs.nirs.probe.sourceLabels(jnirs.nirs.probe.sourceLabels ~= "");
     end
     if iscell(jnirs.nirs.probe.detectorLabels)
         jnirs.nirs.probe.detectorLabels = convertCharsToStrings(jnirs.nirs.probe.detectorLabels);
+    elseif ischar(jnirs.nirs.probe.detectorLabels)
+        jnirs.nirs.probe.detectorLabels(end+1, :) = ' ';
+        jnirs.nirs.probe.detectorLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.detectorLabels), ' ');
+        jnirs.nirs.probe.detectorLabels = jnirs.nirs.probe.detectorLabels( jnirs.nirs.probe.detectorLabels ~= "");
     end
 
     % Events. Convert cell array to struct array

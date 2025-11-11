@@ -443,7 +443,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         
         % Create cache hash: list of selected processes
         strCache = sprintf('pro_%s_%d_%d_%d_%d', procDataType, length(iSelProc), procFiles(1), isFirstProc, nInputsProc);
-        % If the enry is already cached, use it
+        % If the entry is already cached, use it
         if isfield(GlobalData.Program.ProcessMenuCache, strCache)
             % Get the cached items
             jPopup    = GlobalData.Program.ProcessMenuCache.(strCache).jPopup;
@@ -461,6 +461,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             hashGroups = struct();
             % List of menus (for later update of the callbacks)
             jMenusAll = javaArray('javax.swing.JMenuItem', length(sProcesses));
+            % Display process path as tooltip
+            isProcessTooltip = bst_get('ShowProcessTooltip');
+            % Get directories for processes
+            bst_home_dir = bst_get('BrainstormHomeDir');
+            bst_user_dir = bst_get('BrainstormUserDir');
             % Fill the combo box
             for iProc = 1:length(sProcesses)
                 % Ignore if Index is set to 0
@@ -519,8 +524,19 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         hashGroups.(hashKey) = jParent;
                     end
                 end
+                % Get path for process function
+                if isProcessTooltip
+                    pathProcess = which(func2str(sProcesses(iProc).Function));
+                    if bst_plugin('strMatchEdge', pathProcess, bst_home_dir, 'start')
+                        pathProcess = bst_fullfile('BSTHOMEDIR', regexprep(pathProcess, ['^', regexptranslate('escape', bst_home_dir)], ''));
+                    elseif bst_plugin('strMatchEdge', pathProcess, bst_user_dir, 'start')
+                        pathProcess = bst_fullfile('BSTUSERDIR', regexprep(pathProcess, ['^', regexptranslate('escape', bst_user_dir)], ''));
+                    end
+                else
+                    pathProcess = [];
+                end
                 % Create process menu
-                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], [], @(h,ev)AddProcess(iProc, AddMode));
+                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], pathProcess, @(h,ev)AddProcess(iProc, AddMode));
                 jItem.setMargin(Insets(5,0,4,0));
                 % Change menu color for unavailable menus
                 if ~isSelected
