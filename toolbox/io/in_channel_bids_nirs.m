@@ -34,9 +34,11 @@ function [ChannelMat, status]= in_channel_bids_nirs(ChannelFile)
         return;
     end
     
-    OptodeFile = strrep(ChannelFile, '_channels.tsv', '_optodes.tsv');
-    if exist(OptodeFile, 'file')
-        tsvOptodes = in_tsv(OptodeFile, {'name','type', 'x', 'y',	'z', 'template_x', 'template_y', 'template_z'}, 0);
+    dirName = fileparts(ChannelFile);
+    OptodeFile = dir(fullfile(dirName, '*_optodes.tsv'));
+
+    if ~isempty(OptodeFile)
+        tsvOptodes = in_tsv(fullfile(OptodeFile.folder, OptodeFile.name), {'name','type', 'x', 'y',	'z', 'template_x', 'template_y', 'template_z'}, 0);
     else
         tsvOptodes = {};
     end

@@ -576,7 +576,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isNirs 
 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
-                export_channel(sInput.ChannelFile, bst_fullfile(dataFolder, [baseName, '_optodes.tsv']), 'BIDS-NIRS-ALS-MM', 0);
+                export_channel(sInput.ChannelFile, bst_fullfile(dataFolder, [prefix, '_optodes.tsv']), 'BIDS-NIRS-ALS-MM', 0);
                 out_channel_bids_nirs(sInput.ChannelFile, bst_fullfile(dataFolder, [baseName, '_channels.tsv']), DataMat.DisplayUnits, DataMat.F.channelflag);
 
             else
