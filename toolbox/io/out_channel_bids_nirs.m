@@ -53,7 +53,7 @@ for i = 1:length(channels)
         Name   = sprintf('S%s-D%s', tokens{1}{1}, tokens{1}{2});
     
         if contains(channels(i).Group, 'WL') 
-            if isempty(file_units)  && ~(contains(file_units, {'unitless', 'OD', 'dOD'}))
+            if isempty(file_units)  || ~(contains(file_units, {'unitless', 'OD', 'dOD'}))
                 Type          = 'NIRSCWAMPLITUDE'; 
                 WavelengthNominal  =  strrep(tokens{1}{3}, 'WL', ''); 
             else
@@ -98,7 +98,7 @@ for i = 1:length(channels)
 
     end
 
-    if isempty(status) || status(i)  
+    if isempty(status) || status(i) == 1 
         chan_status  = 'good';
     else
         chan_status  = 'bad';
