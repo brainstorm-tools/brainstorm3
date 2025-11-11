@@ -1,4 +1,4 @@
-function out_channel_bids_nirs(BstChannelFile, OutputChannelFile, units, status)
+function out_channel_bids_nirs(BstChannelFile, OutputChannelFile, file_units, status)
 % OUT_CHANNELK_BIDS_NIRS: Exports a Brainstorm NIRS channel file in an BIDS
 %                   _channels.tsv file. 
 %
