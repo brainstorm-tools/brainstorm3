@@ -1698,4 +1698,3 @@ function Files = GetFileNames(Files)
         end
     end
 end
-
