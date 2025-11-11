@@ -466,19 +466,21 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
         %% Prepare coordinate structure
         coorddata = struct();
-        coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
-        coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
-        coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
+        
         SCSfields = fieldnames(ChannelMat.SCS);
         field_to_keep = {'LPA', 'NAS', 'RPA'};        
-        SCSprint = struct()
         field_to_remove = setdiff(SCSfields, field_to_keep);
         SCSprint = rmfield(ChannelMat.SCS, field_to_remove);
         coorddata = addField(coorddata, 'FiducialsCoordinates', SCSprint);
-        coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm'); % assumed scale for now
-        coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'SCANRAS'); % using the same values as the coords system.
+        coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm'); 
+        coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'CTF');  
         coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
         
+        if isNirs
+            coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'SCANRAS'); % Make sure it isnt CapRAS
+            coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+            coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
+        end
         
         
         %% Prepare metadata structure
@@ -571,11 +573,10 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isNirs 
 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
-                export_channel(sInput.ChannelFile,  bst_fullfile(dataFolder, [prefix '_optodes.tsv']), 'BIDS-NIRS-SCANRAS-MM', 0);
+                export_channel(sInput.ChannelFile,  strrep(newPath, '_nirs.snirf', '_optodes.tsv'), 'BIDS-NIRS-SCANRAS-MM', 0);
                 
                 sData = in_bst_data(sInput.FileName);
                 out_channel_bids_nirs(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), sData.DisplayUnits, sData.F.channelflag);
-
 
             else
                 % Copy raw data file
