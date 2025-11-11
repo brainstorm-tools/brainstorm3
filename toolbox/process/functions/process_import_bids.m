@@ -887,26 +887,43 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 
                 % Load _channels.tsv
                 ChannelsFile = [baseName, '_channels.tsv'];
+
                 if file_exist(ChannelsFile)
+
                     % Read tsv file
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     if strcmp(fExt,'.snirf')
-                        ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
-                        ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
-                        ChanInfo(:,2)  = ChanInfo_tmp(:,2);
-                        ChanInfo(:,4)  = ChanInfo_tmp(:,6);
-                        for i = 1:size(ChanInfo,1)
-                            ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
-                            ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
+
+                        ChanInfo = {};
+                        [ChannelMat, status] = in_channel_bids_nirs(ChannelsFile);
+                        
+                        % Save data file modifications
+                        for iRaw = 1:length(newFiles)
+
+                            % Get channel file
+                            [ChannelFile, sStudy, iStudy] = bst_get('ChannelFileForStudy', newFiles{iRaw});
+
+                            % Save channel file modifications
+                            % Update channel file
+                            bst_save(file_fullpath(ChannelFile), ChannelMat, 'v7');
+                            
+                            % Update database
+                            [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
+                            bst_set('Study', iStudy, sStudy);
+
+                            DataMat = in_bst_data(newFiles{iRaw}, 'ChannelFlag', 'F');
+                            DataMat.F.channelflag = status;
+                            bst_save(newFiles{iRaw}, DataMat, 'v6', 1);
                         end
                     else
                         % Silence warnings for missing columns that are not required.
                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     end  
+
                     % Try to add info to the existing Brainstorm channel file
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
-                    if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
+                    if ~(isempty(ChanInfo) || isempty(ChanInfo{1,1}))
                         % For all the loaded files
                         for iRaw = 1:length(newFiles)
                             % Get channel file
@@ -971,6 +988,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                     isModifiedData = 1;
                                 end
                             end
+    
                             % Save channel file modifications
                             if isModifiedChan
                                 % Update channel file

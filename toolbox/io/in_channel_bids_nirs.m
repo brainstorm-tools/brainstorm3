@@ -147,10 +147,10 @@ function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName
         return;
     end
 
-    if ~isempty(tsvOptodes{iSource,4}) && ~isempty(tsvOptodes{iSource,5})  && ~isempty(tsvOptodes{iSource,6})
-        source_coord = [str2double(tsvOptodes{iSource,4}); str2double(tsvOptodes{iSource,5}); str2double(tsvOptodes{iSource,6})];
-    elseif ~isempty(tsvOptodes{iSource,7}) && ~isempty(tsvOptodes{iSource,8})  && ~isempty(tsvOptodes{iSource,9})
-        source_coord = [str2double(tsvOptodes{iSource,7}); str2double(tsvOptodes{iSource,8}); str2double(tsvOptodes{iSource,9})];
+    if ~isempty(tsvOptodes{iSource,3}) && ~isempty(tsvOptodes{iSource,4})  && ~isempty(tsvOptodes{iSource,5})
+        source_coord = [str2double(tsvOptodes{iSource,3}); str2double(tsvOptodes{iSource,4}); str2double(tsvOptodes{iSource,5})];
+    elseif ~isempty(tsvOptodes{iSource,6}) && ~isempty(tsvOptodes{iSource,7})  && ~isempty(tsvOptodes{iSource,8})
+        source_coord = [str2double(tsvOptodes{iSource,6}); str2double(tsvOptodes{iSource,7}); str2double(tsvOptodes{iSource,8})];
     else
         warning('No coordinate available for %s in optodes.tsv', sourceName)
         return;
@@ -165,10 +165,10 @@ function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName
         return;
     end
 
-    if ~isempty(tsvOptodes{iDetector,4}) && ~isempty(tsvOptodes{iDetector,5})  && ~isempty(tsvOptodes{iDetector,6})
-        detector_coord = [str2double(tsvOptodes{iDetector,4}) ; str2double(tsvOptodes{iDetector,5}); str2double(tsvOptodes{iDetector,6})];
-    elseif ~isempty(tsvOptodes{iDetector,7}) && ~isempty(tsvOptodes{iDetector,8})  && ~isempty(tsvOptodes{iDetector,9})
-        detector_coord = [str2double(tsvOptodes{iDetector,7}) ; str2double(tsvOptodes{iDetector,8}); str2double(tsvOptodes{iDetector,9})];
+    if ~isempty(tsvOptodes{iDetector,3}) && ~isempty(tsvOptodes{iDetector,4})  && ~isempty(tsvOptodes{iDetector,5})
+        detector_coord = [str2double(tsvOptodes{iDetector,3}) ; str2double(tsvOptodes{iDetector,4}); str2double(tsvOptodes{iDetector,5})];
+    elseif ~isempty(tsvOptodes{iDetector,6}) && ~isempty(tsvOptodes{iDetector,7})  && ~isempty(tsvOptodes{iDetector,8})
+        detector_coord = [str2double(tsvOptodes{iDetector,6}) ; str2double(tsvOptodes{iDetector,7}); str2double(tsvOptodes{iDetector,8})];
     else
         warning('No coordinate available for %s in optodes.tsv', detectorName)
         return;
