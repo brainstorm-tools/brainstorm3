@@ -680,14 +680,13 @@ for iFile = 1 : length(FilesA)
                             disp(Message);
                             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                             % Fit VAR model
-                            [A,SIG] = tsdata_to_var(X, moAIC, 'LWR'); 
+                            [A,SIG] = tsdata_to_var(X, moAIC, 'LWR');
                             % Autocovariance for VAR model
                             [G, info] = var_to_autocov(A, SIG);
                             if info.error
                                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), info.errmsg);
                                 return;
                             end
-                            
                             % Initialize R for (spectral granger)
                             if isSpectral
                                 R = repmat(R, [1, 1, size(G,3)+1]); % [To, From, Freq]
@@ -1699,3 +1698,4 @@ function Files = GetFileNames(Files)
         end
     end
 end
+
