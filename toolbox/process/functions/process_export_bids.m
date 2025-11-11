@@ -574,9 +574,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
 
                 export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
                 export_channel(sInput.ChannelFile,  strrep(newPath, '_nirs.snirf', '_optodes.tsv'), 'BIDS-NIRS-SCANRAS-MM', 0);
-                
-                sData = in_bst_data(sInput.FileName);
-                out_channel_bids_nirs(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), sData.DisplayUnits, sData.F.channelflag);
+                out_channel_bids_nirs(sInput.ChannelFile, strrep(newPath, '_nirs.snirf', '_channels.tsv'), DataMat.DisplayUnits, DataMat.F.channelflag);
 
             else
                 % Copy raw data file
