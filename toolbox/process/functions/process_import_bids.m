@@ -915,6 +915,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             bst_set('Study', iStudy, sStudy);
 
                             DataMat = in_bst_data(newFiles{iRaw}, 'ChannelFlag', 'F');
+                            DataMat.ChannelFlag = status;
                             DataMat.F.channelflag = status;
                             bst_save(newFiles{iRaw}, DataMat, 'v6', 1);
                         end
