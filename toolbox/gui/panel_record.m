@@ -2533,7 +2533,7 @@ function AddHedCtagger()
             isModified = 1;
         % Added, updated or removed HED tag
         elseif ~isempty(union(setdiff(newEvtHedTags{iNew}, orgEvtHedTags{iOrg}), setdiff(orgEvtHedTags{iOrg}, newEvtHedTags{iNew})))
-            sEvents(iEvt).hedTags = newEvtHedTags;
+            sEvents(iEvt).hedTags = newEvtHedTags{iNew};
             isModified = 1;
         end
     end
