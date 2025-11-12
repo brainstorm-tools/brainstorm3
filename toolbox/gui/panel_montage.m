@@ -840,6 +840,11 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
                                 'To change the reference permanently, consider using a projector instead:' 10 ...
                                 ' - In the Record tab, menu "Artifacts > Re-reference EEG"' 10 ...
                                 ' - Process "Standardize > Re-reference EEG"'], 'Re-referencing montage');
+    elseif strcmpi(MontageType, 'addrefback')
+        java_dialog('warning', ['Adding back the reference channel to EEG data will only affect the display ' 10 ...
+                                'of the signals but will not be considered when processing them.' 10 10 ...
+                                'To create a new EEG recording that includes the reference channel, apply this montage:' 10 ...
+                                ' - Process "Standardize > Apply montage"'], 'Add back reference channel montage');
     end
     % Ask user the name for the new montage
     newName = java_dialog('input', 'New montage name:', 'New montage');
@@ -891,6 +896,40 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
         % Channel names
         DispNames = ChanNames(iChannelsDisp);
         ChanNames = ChanNames(iChannelsRef);
+        % Real montage type: text
+        MontageType = 'text';
+
+    elseif strcmpi(MontageType, 'addrefback')
+        % Find figure info
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        % Get channels displayed in this figure
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
+        % Remove all the spaces in channels names
+        ChanNames = cellfun(@(c)c(c~=' '), ChanNames, 'UniformOutput', 0);
+        % Ask the user the name of the reference channel to add back
+        addRefChan = java_dialog('input', 'Reference channel to add back:', '');
+        if isempty(addRefChan)
+            return
+        end
+        % This channel should not be present in displayed channels
+        iRef = find(strcmpi(addRefChan, ChanNames));
+        if ~isempty(iRef)
+            java_dialog('error');
+            return
+        end
+        % Create a identity montage with an extra row for the added reference
+        MontageMatrix = [eye(length(ChanNames)); zeros(1, length(ChanNames))];
+        ChanNamesDisp = [ChanNames, addRefChan];
+        iChannelsDisp = [iChannels, length(ChanNamesDisp)];
+        % Remove all the unecessary rows/columns
+        iAllDisp = 1:length(ChanNamesDisp);
+        iAll = 1:length(ChanNames);
+        MontageMatrix(setdiff(iAllDisp,iChannelsDisp), :) = [];
+        MontageMatrix(:, setdiff(iAll,iChannels)) = [];
+        % Channel names
+        DispNames = ChanNamesDisp(iChannelsDisp);
+        ChanNames = ChanNames(iChannels);
         % Real montage type: text
         MontageType = 'text';
     else
@@ -1900,6 +1939,7 @@ function CreateMontageMenu(jButton, hFig)
     if ~isempty(hFig) 
         gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig));
         gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig));
+        gui_component('MenuItem', jPopup, [], 'New add-reference-channel-back montage', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('addrefback', [], hFig));
     end
     gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
     jPopup.addSeparator();

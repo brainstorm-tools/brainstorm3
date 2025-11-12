@@ -830,6 +830,9 @@ function ButtonAddSurfaceCallback(surfaceType)
         if ~isempty(sSubject.iFEM)
             typesList{end+1} = 'FEM';
         end
+        if ismember('Other', {sSubject.Surface.SurfaceType})
+            typesList{end+1} = 'Other';
+        end
         
         % Get low resolution white surface
         iWhite = find(~cellfun(@(c)isempty(strfind(lower(c),'white')), {sSubject.Surface.Comment}));
@@ -874,15 +877,13 @@ function ButtonAddSurfaceCallback(surfaceType)
             typesList = setdiff(typesList, {TessInfo.Name});
         end
         % Order of surfacetypes
-        typeListOrder = {'Anatomy', 'Scalp', 'OuterSkull', 'InnerSkull', 'Cortex', 'White', 'Fibers', 'FEM', 'IsoSurface'};
+        typeListOrder = {'Anatomy', 'Scalp', 'OuterSkull', 'InnerSkull', 'Cortex', 'White', 'Fibers', 'FEM', 'IsoSurface', 'Other'};
         typesList = intersect(typeListOrder, typesList, 'stable');
         % Nothing more
         if isempty(typesList)
             bst_error('There are no additional anatomy files that you can add to this figure.', 'Add surface', 0);
             return;
         end
-        % Add "other", to allow importing all the other surfaces
-        typesList{end+1} = 'Other';
         % Ask user which kind of surface he wants to add to the figure 3DViz
         surfaceType = java_dialog('question', 'What kind of surface would you like to display ?', 'Add surface', [], typesList, typesList{1});
     end

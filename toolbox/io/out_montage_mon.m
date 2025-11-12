@@ -29,6 +29,10 @@ for iDisp = 1:length(sMontage.DispNames)
     strFile = [strFile, sMontage.DispNames{iDisp}, ' : '];
     % Write list of channels
     iEntry = find(sMontage.Matrix(iDisp,:));
+    if isempty(iEntry)
+        % If all entries == 0, set to 0*FirstChannel
+        iEntry = 1;
+    end
     for i = 1:length(iEntry)
         iChan = iEntry(i);
         fchan = sMontage.Matrix(iDisp,iChan);

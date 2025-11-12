@@ -1,3 +1,15 @@
+October 2025
+- EEG: Add montage to "Add reference channel back"
+- iEEG: Menu to select auxiliar figures to perform implantation
+- Plugin: Resection identification using pre- and post-surgical MRIs
+- Process: Extend "Add time offset" to support related and standalone results
+- Process: Extend "Import MRI" to support CT and PET volumes
+- Sources: Improve memory usage for results saved as matrix decompositions
+- Viz: MRI viewer, add option "View in 3D orthogonal slices"
+- Viz: Coodinate panel, "View in MRI viewer", updates all related MRI viewers
+- Viz: iEEG, improve behaviour of MRI viewers on selecting electrodes
+- Viz: Allow overlaying Anatomy volumes on volume of choice
+--------------------------------------------------------------
 September 2025
 - Anatomy: Option to export fiducal locations alongside MRI file
 - Anatomy: Option to align Surface to MRI, by setting fiducials in surface

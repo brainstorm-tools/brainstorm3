@@ -3028,9 +3028,17 @@ end
 
 
 %% ===== APPLY COORDINATES TO ALL FIGURES =====
-function ApplyCoordsToAllFigures(hSrcFig, cs)
+function ApplyCoordsToAllFigures(hSrcFig, cs, onlySameDS)
+    if nargin < 3 || isempty(onlySameDS)
+        onlySameDS = 0;
+    end
     % Get all figures
-    hAllFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    [hAllFig, ~, iAllDS] = bst_figures('GetFiguresByType', {'MriViewer'});
+    % Apply only to MRI viewers for same DS
+    if onlySameDS
+        [~,~,iDS] = bst_figures('GetFigure', hSrcFig);
+        hAllFig = hAllFig(iAllDS == iDS);
+    end
     hAllFig = setdiff(hAllFig, hSrcFig);
     % Get MRI and Handles
     srcMri = panel_surface('GetSurfaceMri', hSrcFig);
@@ -3273,13 +3281,13 @@ function SetVolumeAtlas(hFig, AnatAtlas)
 end
 
 
-%% ===== iEEG: UPDATE OTHER MRI VIEWERS =====
+%% ===== iEEG: UPDATE COORDS IN ALL MRI VIEWERS IN DS =====
 function iEegMoveAllMriCrossHairs(hFig)
     if gui_brainstorm('isTabVisible', 'iEEG')
         global GlobalData
         [~, ~, iDS] = bst_figures('GetFigure', hFig);
         if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
-            ApplyCoordsToAllFigures(hFig, 'scs');
+            ApplyCoordsToAllFigures(hFig, 'scs', 1);
         end
     end
 end
