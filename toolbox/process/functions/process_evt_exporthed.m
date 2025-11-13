@@ -47,7 +47,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ExportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                         % Selection mode: {single,multiple}
         'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
-        {{'_events.json'}, {'HED tags (*_events.json)'}, ''}, ...
+        {{'_events.json'}, {'HED tags (*_events.json)'}, 'JSON'}, ...
         ''};
     sProcess.options.sidecar.Type    = 'filename';
     sProcess.options.sidecar.Comment = 'JSON sidecar';
