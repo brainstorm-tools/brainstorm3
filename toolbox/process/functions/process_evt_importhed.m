@@ -57,7 +57,7 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment()
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
