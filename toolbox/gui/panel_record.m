@@ -2541,6 +2541,7 @@ function AddHedCtagger()
                 errMsg = [errMsg, 10 evtInfo, 10, '   ', issues, 10];
             end
         end
+        bst_plugin('Unload', hed-matlab');
         if ~isempty(errMsg)
             errMsg = errMsg(1:end-1); % Remove last empty line
             bst_error(errMsg, 'HED tag validation', 0);
