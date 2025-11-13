@@ -884,7 +884,27 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         'evtfile', {EventsFile, 'BIDS'}, ...
                         'delete',  1);
                 end
-                
+                % Load _events.json sidecar (HED tags)
+                EventsJsonFile = '';
+                if file_exist([baseName, '_events.json'])
+                    % Local JSON sidecar
+                    EventsJsonFile = [baseName, '_events.json'];
+                else
+                    % Try to find global (high) level JSON sidecar
+                    [~, fBase] = bst_fileparts(baseName);
+                    tmp = regexp(fBase, 'task-[^_]*', 'match');
+                    if ~isempty(tmp)
+                        tmp = bst_fullfile(BidsDir, [tmp{1}, '_events.json']);
+                        if file_exist(tmp)
+                            EventsJsonFile = tmp;
+                        end
+                    end
+                end
+                if ~isempty(EventsJsonFile)
+                    bst_process('CallProcess', 'process_evt_importhed', newFiles, [], ...
+                        'sidecar', {EventsJsonFile, 'JSON'});
+                end
+
                 % Load _channels.tsv
                 ChannelsFile = [baseName, '_channels.tsv'];
                 if file_exist(ChannelsFile)
