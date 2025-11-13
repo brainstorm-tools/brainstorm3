@@ -32,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Select files: HED tags';
+    sProcess.Comment     = 'Select files: By HED tags';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 1013.6;
