@@ -2298,10 +2298,19 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                 break;
             % Otherwise, check in any of the subfolders
             elseif ~isempty(PlugDesc.LoadFolders)
-                for iSubDir = 1:length(PlugDesc.LoadFolders)
-                    if file_exist(bst_fullfile(PlugPath, dirList(iDir).name, PlugDesc.LoadFolders{iSubDir}, PlugDesc.TestFile))
+                % All subfolders
+                if isequal(PlugDesc.LoadFolders, '*') || isequal(PlugDesc.LoadFolders, {'*'})
+                    if ~isempty(file_find(bst_fullfile(PlugPath, dirList(iDir).name), PlugDesc.TestFile))
                         PlugDesc.SubFolder = dirList(iDir).name;
                         break;
+                    end
+                % Specific subfolders
+                else
+                    for iSubDir = 1:length(PlugDesc.LoadFolders)
+                        if file_exist(bst_fullfile(PlugPath, dirList(iDir).name, PlugDesc.LoadFolders{iSubDir}, PlugDesc.TestFile))
+                            PlugDesc.SubFolder = dirList(iDir).name;
+                            break;
+                        end
                     end
                 end
             end
