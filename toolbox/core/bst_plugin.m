@@ -529,9 +529,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('gedai');
     PlugDesc(end).Version        = '1.2';
     PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/releases/download/v1.2/GEDAI-master.zip';
+    % TEST URL: TO BE CHANGED FOR THE neurotuning UPSTREAM
+    PlugDesc(end).URLzip         = 'https://github.com/rcassani/GEDAI-master/archive/refs/heads/bst-plugin-process.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
-    PlugDesc(end).TestFile       = 'process_GEDAI_Brainstorm.m';
+    PlugDesc(end).TestFile       = 'process_gedai.m';
     PlugDesc(end).AutoLoad       = 0;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
