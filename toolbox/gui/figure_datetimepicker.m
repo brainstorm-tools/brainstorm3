@@ -1,0 +1,107 @@
+function dt = figure_datetimepicker(initialValue)
+%figure_datetimepicker  Open a small GUI to select a date and time.
+%
+%   DT = figure_datetimepicker() opens a dialog allowing the user to pick a date,
+%   hour, and minute. The function returns a datetime object if the user
+%   presses OK, or an empty array [] if the user cancels or closes the
+%   window.
+%
+%   DT = figure_datetimepicker(INITIALVALUE) initializes the GUI with a previously
+%   selected date/time. INITIALVALUE may be:
+%       - a datetime object
+%       - a char or string in the format 'YYYY/MM/DD HH:mm'
+%       - empty [] (equivalent to calling with no input)
+%
+%   Example:
+%       dt = figure_datetimepicker('2025/03/10 14:20');
+%       dt = figure_datetimepicker(datetime(2024,12,25,8,30,0));
+%       dt = figure_datetimepicker([]);
+%
+%   The function uses:
+%       - uidatepicker for selecting the date
+%       - uispinner for selecting hour and minute
+%
+%   Closing the dialog via Cancel or the window's red X returns [].
+%
+
+    % ------------------------------------------
+    % Parse input
+    % ------------------------------------------
+    if nargin == 0 || isempty(initialValue)
+        base = datetime('now');
+    elseif isa(initialValue, 'datetime')
+        base = initialValue;
+    elseif ischar(initialValue) || isstring(initialValue)
+        try
+            base = datetime(initialValue, 'InputFormat', 'yyyy/MM/dd HH:mm');
+        catch
+            error('Input string must be in format YYYY/MM/DD HH:mm');
+        end
+    else
+        error('Input must be datetime, char, string, or empty.');
+    end
+
+    
+    % Default return value
+    dt = [];
+
+    % Create dialog
+    d = uifigure('Position',[100 100 260 200], ...
+                'Name','Select Date & Time', ...
+                'CloseRequestFcn', @onClose);
+
+    % Date picker
+    uilabel(d,'Position',[20 150 60 20],'Text','Date:');
+    dp = uidatepicker(d,'Position',[80 150 150 22], 'Value', base);
+    dp.DisplayFormat = 'dd/MM/yyyy';
+
+    % Hour selector
+    uilabel(d,'Position',[20 110 60 20],'Text','Hour:');
+    hSpinner = uispinner(d, ...
+        'Position',[80 110 60 22], ...
+        'Limits',[0 23], ...
+        'Value', hour(base));
+
+    % Minute selector
+    uilabel(d,'Position',[20 70 60 20],'Text','Minutes:');
+    mSpinner = uispinner(d, ...
+        'Position',[80 70 60 22], ...
+        'Limits',[0 59], ...
+        'Value', minute(base));
+
+    % OK button
+    uibutton(d,'Position',[30 20 80 30],'Text','OK', ...
+        'ButtonPushedFcn', @(btn,event) onOK());
+    
+    % Cancel button
+    uibutton(d,'Position',[150 20 80 30],'Text','Cancel', ...
+        'ButtonPushedFcn', @(btn,event) onCancel());
+
+    % Wait for user choice
+    uiwait(d);
+
+    % --- Nested callback: OK pressed ---
+    function onOK()
+        selectedDate = dp.Value;
+        selectedHour = hSpinner.Value;
+        selectedMinute = mSpinner.Value;
+
+        dt = datetime(selectedDate.Year, selectedDate.Month, selectedDate.Day, ...
+                      selectedHour, selectedMinute, 0);
+
+        delete(d);
+    end
+
+    function onCancel()
+        dt = [];
+        uiresume(d);
+        delete(d);
+    end
+
+    function onClose(~,~)
+        % Handles clicking the red X
+        dt = [];
+        uiresume(d);  % wake up uiwait immediately
+        delete(d);
+    end
+end
