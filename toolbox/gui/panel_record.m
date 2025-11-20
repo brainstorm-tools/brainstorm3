@@ -2522,36 +2522,6 @@ function AddHedCtagger()
         disp('BST> Error: CTagger should not create new events.');
         return
     end
-    % Validate sidecar JSON file online
-    if bst_check_internet()
-        % Initialize HED-MATLAB
-        [isInstalled, errMsg] = bst_plugin('Install', 'hed-matlab', 0);
-        if ~isInstalled
-            disp(errMsg);
-            return;
-        end
-        % Check against 8.0.0 as this is CTagger status
-        hed = getHedTools('8.0.0', 'https://hedtools.org/hed');
-        errMsg = '';
-        % Validate HED tags for each event
-        for iEvt = 1 : length(newEvtHedTags)
-            issues = validateTags(hed, strjoin(newEvtHedTags{iEvt}, ', '));
-            if ~isempty(issues)
-                evtInfo = sprintf('== Event: "%s" ==', newEvtNames{iEvt});
-                errMsg = [errMsg, 10 evtInfo, 10, '   ', issues, 10];
-            end
-        end
-        bst_plugin('Unload', hed-matlab');
-        if ~isempty(errMsg)
-            errMsg = errMsg(1:end-1); % Remove last empty line
-            bst_error(errMsg, 'HED tag validation', 0);
-            return
-        else
-            disp('BST > HED tags online validation = OK.');
-        end
-    else
-        disp('BST > Error: HED tags could not be online validated.');
-    end
     % Update HED tags for each event
     isModified = 0;
     for iOrg = 1 : length(orgEvtNames)
