@@ -2964,52 +2964,76 @@ end
 
 %% ===== SET ACQUISITION DATE =====
 function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
-    % Parse inputs
-    if (nargin < 2) || isempty(newDate)
+%SETACQUISITIONDATE  Update the acquisition date of a study using a GUI.
+%
+%   SETACQUISITIONDATE(iStudy) opens a graphical date/time picker.
+%   SETACQUISITIONDATE(iStudy, NEWDATE) directly sets the new date.
+%
+%   NEWDATE may be:
+%       - a datetime
+%       - a char string 'YYYY/MM/DD HH:mm'
+%       - empty [] → GUI picker
+%
+%   If the user cancels the GUI, the function returns with no changes.
+%
+    if nargin < 2 || isempty(newDate)
         newDate = [];
     end
-    % Get data info
+
+    % Retrieve study
     sStudy = bst_get('Study', iStudy);
     if isempty(sStudy)
         return;
     end
-    % Parse existing string
-    oldDate = [1900, 1, 1];
+
+    %  Parse existing stored date
     if ~isempty(sStudy.DateOfStudy)
         try
-            oldDate = datevec(sStudy.DateOfStudy);
+            oldDate = datetime(sStudy.DateOfStudy);
         catch
-        end
-    end
-    % If new date is not given in argument: ask user
-    if isempty(newDate)
-        % Ask for new date
-        res = java_dialog('input', {'Day:', 'Month:', 'Year:'}, 'Set date', [], {num2str(oldDate(3)), num2str(oldDate(2)), num2str(oldDate(1))});
-        if isempty(res) || (length(res) < 3)
-            return;
-        end
-        vecDate = [str2num(res{1}), str2num(res{2}), str2num(res{3})];
-        try
-            if (length(vecDate) < 3) || (vecDate(3) < 1700)
-                error('Invalid year');
-            end
-            % Get a new date string
-            newDate = datetime(sprintf('%02d%02d%04d', vecDate), 'InputFormat', 'ddMMyyyy');
-        catch
-            bst_error('Invalid date.', 'Set date', 0);
-            return;
+            % fallback: use today
+            oldDate = datetime('now');
         end
     else
-        % Fix data format
-        newDate = str_date(newDate);
+        % no date in study => default now
+        oldDate = datetime('now');
+    end
+
+    % If new date not provided → ask user
+    if isempty(newDate)
+        % User selects date/time using modern GUI
+        newDate = pickDateTime(oldDate);
+
+        % User cancelled → exit cleanly
         if isempty(newDate)
-            error('Invalid date format. Input must be ''DD-MMM-YYYY''.');
+            return;
+        end
+
+    else
+        % If date provided as argument → normalize
+        try
+            % Accept datetime or string
+            if isa(newDate, 'datetime')
+                % ok
+            elseif ischar(newDate) || isstring(newDate)
+                newDate = datetime(newDate);
+            else
+                error('Invalid newDate type.');
+            end
+        catch
+            bst_error('Invalid date format. Expected datetime or ''YYYY/MM/DD HH:mm''.', 'Set date', 0);
+            return;
         end
     end
-    % If the date didn't change: exit
-    if strcmpi(newDate, sStudy.DateOfStudy)
+
+    % Convert to Brainstorm's expected string format
+    newDateStr = char(newDate);   % Brainstorm stores dates as char
+
+    % If nothing changed, then exit
+    if strcmpi(newDateStr, sStudy.DateOfStudy)
         return;
     end
+
     % Save acquisition data in study file
     StudyFile = file_fullpath(sStudy.FileName);
     StudyMat = load(StudyFile);
