@@ -3001,7 +3001,7 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
 
     % If new date not provided → ask user
     if isempty(newDate)
-        
+
         % User selects date/time
         newDate = figure_datetimepicker(oldDate);
 
@@ -3031,23 +3031,23 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
     newDateStr = char(newDate);   % Brainstorm stores dates as char
 
     % If nothing changed, then exit
-    if strcmpi(newDateStr, sStudy.DateOfStudy)
+    if strcmpi(newDateStr, char(sStudy.DateOfStudy))
         return;
     end
 
     % Save acquisition data in study file
     StudyFile = file_fullpath(sStudy.FileName);
     StudyMat = load(StudyFile);
-    StudyMat.DateOfStudy = newDate;
+    StudyMat.DateOfStudy = newDateStr;
     bst_save(StudyFile, StudyMat, 'v7');
     % Update database representation
-    sStudy.DateOfStudy = newDate;
+    sStudy.DateOfStudy = newDateStr;
     bst_set('Study', iStudy, sStudy);
     % Update raw links if applicable
     if ~isempty(strfind(sStudy.FileName, '@raw')) && ~isempty(sStudy.Data) && strcmpi(sStudy.Data(1).DataType, 'raw')
         % Read link
         DataMat = in_bst_data(sStudy.Data(1).FileName, 'F');
-        DataMat.F.acq_date = newDate;
+        DataMat.F.acq_date = newDateStr;
         % Save modified link
         bst_save(file_fullpath(sStudy.Data(1).FileName), DataMat, 'v6', 1);
     end
