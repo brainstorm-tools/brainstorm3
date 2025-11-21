@@ -55,19 +55,20 @@ function dt = figure_datetimepicker(initialValue)
     dp = uidatepicker(d,'Position',[80 150 150 22], 'Value', base);
     dp.DisplayFormat = 'dd/MM/yyyy';
 
-    % Hour selector
-    uilabel(d,'Position',[20 110 60 20],'Text','Hour:');
-    hSpinner = uispinner(d, ...
-        'Position',[80 110 60 22], ...
-        'Limits',[0 23], ...
-        'Value', hour(base));
 
-    % Minute selector
-    uilabel(d,'Position',[20 70 60 20],'Text','Minutes:');
-    mSpinner = uispinner(d, ...
-        'Position',[80 70 60 22], ...
-        'Limits',[0 59], ...
-        'Value', minute(base));
+    %% Checkbox: Specify time?
+    cb = uicheckbox(d, 'Text','Specify time', ...
+        'Position',[20 130 120 20], ...
+        'Value', true, ...
+        'ValueChangedFcn', @(src,event) onToggleTime());
+
+    %% Time entry text field
+    labelTime = uilabel(d,'Position',[20 95 60 20],'Text','Time:');
+    tfTime = uitextarea(d, ...
+        'Position',[80 95 120 25], ...
+        'Value',{datestr(base,'HH:MM:SS')}, ...
+        'Editable','on');
+
 
     % OK button
     uibutton(d,'Position',[30 20 80 30],'Text','OK', ...
@@ -83,19 +84,58 @@ function dt = figure_datetimepicker(initialValue)
     % --- Nested callback: OK pressed ---
     function onOK()
         selectedDate = dp.Value;
-        selectedHour = hSpinner.Value;
-        selectedMinute = mSpinner.Value;
 
-        dt = datetime(selectedDate.Year, selectedDate.Month, selectedDate.Day, ...
-                      selectedHour, selectedMinute, 0);
+        % If user wants to specify the time:
+        if cb.Value
+            timestr = strtrim(tfTime.Value{1});
 
+            % Try parsing HH:mm or HH:mm:ss formats
+            timeParsed = parseTime(timestr);
+            if isempty(timeParsed)
+                uialert(d,'Invalid time format. Use HH:mm or HH:mm:ss','Time Error');                
+                return;
+            end
+
+            dt = datetime(selectedDate.Year, selectedDate.Month, selectedDate.Day, hour(timeParsed), minute(timeParsed), second(timeParsed));            
+        else
+            dt = datetime(selectedDate.Year, selectedDate.Month, selectedDate.Day);
+        end
+        
+        uiresume(d);  % wake up uiwait immediately
         delete(d);
     end
 
+
+    function timeParsed = parseTime(timestr)
+
+        % Accept HH:mm or HH:mm:ss using regex
+        timePattern = '^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
+        tokens = regexp(timestr, timePattern, 'tokens', 'once');
+        
+        if isempty(tokens)
+            timeParsed = [];
+        end
+        
+        hour   = str2double(tokens{1});
+        minute = str2double(tokens{2});
+        
+        if length(tokens) == 4 && ~isempty(tokens{4})
+            second = str2double(tokens{4});
+        else
+            second = 0;
+        end
+        
+        timeParsed = datetime([0, 0, 0, hour, minute, second]);
+
+    end
+
+    function onToggleTime()
+        tfTime.Enable = cb.Value();
+        labelTime.Enable = cb.Value();
+    end
+
     function onCancel()
-        dt = [];
-        uiresume(d);
-        delete(d);
+        close(d);
     end
 
     function onClose(~,~)

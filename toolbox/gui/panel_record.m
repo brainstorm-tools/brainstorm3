@@ -3022,7 +3022,7 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
                 error('Invalid newDate type.');
             end
         catch
-            bst_error('Invalid date format. Expected datetime or ''YYYY/MM/DD HH:mm''.', 'Set date', 0);
+            bst_error('Invalid date format. Expected datetime or ''YYYY/MM/DD HH:mm:ss''.', 'Set date', 0);
             return;
         end
     end
