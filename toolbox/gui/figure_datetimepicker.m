@@ -78,6 +78,7 @@ function dt = figure_datetimepicker(initialValue)
     uibutton(d,'Position',[150 20 80 30],'Text','Cancel', ...
         'ButtonPushedFcn', @(btn,event) onCancel());
 
+    drawnow
     % Wait for user choice
     uiwait(d);
 
@@ -100,7 +101,7 @@ function dt = figure_datetimepicker(initialValue)
         else
             dt = datetime(selectedDate.Year, selectedDate.Month, selectedDate.Day);
         end
-        
+
         uiresume(d);  % wake up uiwait immediately
         delete(d);
     end
@@ -114,13 +115,14 @@ function dt = figure_datetimepicker(initialValue)
         
         if isempty(tokens)
             timeParsed = [];
+            return;
         end
         
         hour   = str2double(tokens{1});
         minute = str2double(tokens{2});
         
-        if length(tokens) == 4 && ~isempty(tokens{4})
-            second = str2double(tokens{4});
+        if length(tokens) == 3 && ~isempty(tokens{3})
+            second = str2double(tokens{3}(2:end));
         else
             second = 0;
         end
