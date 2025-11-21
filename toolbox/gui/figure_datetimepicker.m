@@ -130,7 +130,7 @@ function dt = figure_datetimepicker(initialValue)
             error('Input must be a char or string.');
         end
     
-        str = char(str);
+        str = strtrim(char(str));
     
         % ---- Pattern 1: yyyy/MM/dd (DATE ONLY) ----
         pat_date_only = '^(\d{4})/(\d{2})/(\d{2})$';
