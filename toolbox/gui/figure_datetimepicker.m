@@ -31,14 +31,12 @@ function dt = figure_datetimepicker(initialValue)
         base = datetime('now');
     elseif isa(initialValue, 'datetime')
         base = initialValue;
-    elseif ischar(initialValue) || isstring(initialValue)
+    else
         try
-            base = datetime(initialValue, 'InputFormat', 'yyyy/MM/dd HH:mm');
+            base = parseInitialDate(initialValue);
         catch
             error('Input string must be in format YYYY/MM/DD HH:mm');
         end
-    else
-        error('Input must be datetime, char, string, or empty.');
     end
 
     
@@ -105,6 +103,65 @@ function dt = figure_datetimepicker(initialValue)
         uiresume(d);  % wake up uiwait immediately
         delete(d);
     end
+
+    function dt = parseInitialDate(str)
+    %PARSEINITIALDATE Parse initial date strings for figure_datetimepicker.
+    %
+    %   DT = parseInitialDate(STR)
+    %       STR may be in one of the following formats:
+    %           'yyyy/MM/dd'
+    %           'yyyy/MM/dd HH:mm'
+    %           'yyyy/MM/dd HH:mm:ss'
+    %
+    %   Returns a datetime object.
+    %   Throws an error if the format does not match.
+
+    if ~ischar(str) && ~isstring(str)
+        error('Input must be a char or string.');
+    end
+
+    str = char(str);
+
+    % ---- Pattern 1: yyyy/MM/dd (DATE ONLY) ----
+    pat_date_only = '^(\d{4})/(\d{2})/(\d{2})$';
+
+    % ---- Pattern 2: yyyy/MM/dd HH:mm or HH:mm:ss ----
+    pat_date_time = '^(\d{4})/(\d{2})/(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
+
+    % Try date only
+    tok = regexp(str, pat_date_only, 'tokens', 'once');
+    if ~isempty(tok)
+        yyyy = str2double(tok{1});
+        MM   = str2double(tok{2});
+        dd   = str2double(tok{3});
+        dt   = datetime(yyyy, MM, dd, 0, 0, 0);   % default to midnight
+        return;
+    end
+
+    % Try date + time
+    tok = regexp(str, pat_date_time, 'tokens', 'once');
+    if isempty(tok)
+        error(['Invalid format. Expected one of:' newline ...
+               '  yyyy/MM/dd' newline ...
+               '  yyyy/MM/dd HH:mm' newline ...
+               '  yyyy/MM/dd HH:mm:ss']);
+    end
+
+    yyyy = str2double(tok{1});
+    MM   = str2double(tok{2});
+    dd   = str2double(tok{3});
+    HH   = str2double(tok{4});
+    mm   = str2double(tok{5});
+
+    % Nested seconds group → only appears in tok{7}
+    if numel(tok) >= 6 && ~isempty(tok{6})
+        ss = str2double(tok{6}(2:end));
+    else
+        ss = 0;
+    end
+
+    dt = datetime(yyyy, MM, dd, HH, mm, ss);
+end
 
 
     function timeParsed = parseTime(timestr)
