@@ -1214,10 +1214,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case {'cluster', 'cluster_confirm'}
                     % Get available and selected clusters
-                    jList = GetClusterList(sProcess, optNames{iOpt});
+                    [jList, nClusters] = GetClusterList(sProcess, optNames{iOpt});
                     % If no clusters
-                    if isempty(jList)
-                        gui_component('label', jPanelOpt, [], '<HTML>Error: No clusters available in channel file.');
+                    if nClusters == 0 && strcmpi(option.Type, 'cluster')
+                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No clusters available in channel file.');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1228,8 +1228,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             end
                             jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
                             java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []));
-                            jCheckCluster.setSelected(1)
-                            jList.setEnabled(1);
+                            if nClusters == 0
+                                jCheckCluster.setSelected(0);
+                                jCheckCluster.setEnabled(0);
+                            else
+                                jCheckCluster.setSelected(1);
+                            end
                         else
                             jCheckCluster = [];
                             gui_component('label', jPanelOpt, [], ' Select cluster:');
@@ -1249,7 +1253,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [AtlasList, iAtlasList] = GetAtlasList(sProcess, optNames{iOpt});
                     % If no scouts are available
                     if isempty(AtlasList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.');
+                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No scouts available.');
                     else
                         % Create list
                         jList = java_create('javax.swing.JList');
@@ -2053,10 +2057,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
     %% ===== OPTIONS: GET CLUSTER LIST =====
-    function jList = GetClusterList(sProcess, optName)
+    function [jList, nClusters] = GetClusterList(sProcess, optName)
         import org.brainstorm.list.*;
         % Initialize returned values
         jList = [];
+        nClusters = 0;
 
         % Get the current channel file
         if isfield(sProcess.options.(optName), 'InputTypesB') && ~isempty(sFiles2)
@@ -2070,15 +2075,18 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Load clusters from channel file
         ChannelMat = in_bst_channel(ChannelFile, 'Clusters');
         if isempty(ChannelMat.Clusters)
-            return;
+            % No clusters
+            nClusters = 0;
+            allLabels = {'No clusters available in channel file.'};
+        else
+            % Get all clusters labels
+            allLabels = {ChannelMat.Clusters.Label};
+            nClusters = length(allLabels);
         end
-
-        % Get all clusters labels
-        allLabels = {ChannelMat.Clusters.Label};
         % Create a list mode of the existing clusters/scouts
         listModel = javax.swing.DefaultListModel();
-        for iClust = 1:length(ChannelMat.Clusters)
-            listModel.addElement(BstListItem(ChannelMat.Clusters(iClust).Label, '', [' ' allLabels{iClust} ' '], iClust));
+        for iClust = 1:length(allLabels)
+            listModel.addElement(BstListItem(allLabels{iClust}, '', [' ' allLabels{iClust} ' '], iClust));
         end
 
         % Create list
