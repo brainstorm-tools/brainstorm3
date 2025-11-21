@@ -49,14 +49,21 @@ function dt = figure_datetimepicker(initialValue)
                 'CloseRequestFcn', @onClose);
 
     % Date picker
-    uilabel(d,'Position',[20 150 60 20],'Text','Date:');
-    dp = uidatepicker(d,'Position',[80 150 150 22], 'Value', base);
-    dp.DisplayFormat = 'dd/MM/yyyy';
-
+    if ( bst_get('MatlabVersion') >= 907) % Matlab 2019b
+        uilabel(d,'Position',[20 150 60 20],'Text','Date:');
+        dp = uidatepicker(d,'Position',[80 150 150 22], 'Value', base);
+        dp.DisplayFormat = 'dd/MM/yyyy';
+    else
+        
+        uilabel(d,'Position',[20 150 60 20],'Text','Date:');
+        dp = uitextarea(d,...
+                    'Value', {datestr(base, 'yyyy/mm/dd')}, ...
+                    'Position',[80 150 150 22]);
+    end
 
     %% Checkbox: Specify time?
     cb = uicheckbox(d, 'Text','Specify time', ...
-        'Position',[20 130 120 20], ...
+        'Position',[20 125 120 20], ...
         'Value', true, ...
         'ValueChangedFcn', @(src,event) onToggleTime());
 
@@ -82,8 +89,11 @@ function dt = figure_datetimepicker(initialValue)
 
     % --- Nested callback: OK pressed ---
     function onOK()
-        selectedDate = dp.Value;
-
+        if isa(dp, 'matlab.ui.control.TextArea')
+            selectedDate = parseInitialDate(dp.Value{1});
+        else
+            selectedDate = dp.Value;
+        end
         % If user wants to specify the time:
         if cb.Value
             timestr = strtrim(tfTime.Value{1});
@@ -105,63 +115,63 @@ function dt = figure_datetimepicker(initialValue)
     end
 
     function dt = parseInitialDate(str)
-    %PARSEINITIALDATE Parse initial date strings for figure_datetimepicker.
-    %
-    %   DT = parseInitialDate(STR)
-    %       STR may be in one of the following formats:
-    %           'yyyy/MM/dd'
-    %           'yyyy/MM/dd HH:mm'
-    %           'yyyy/MM/dd HH:mm:ss'
-    %
-    %   Returns a datetime object.
-    %   Throws an error if the format does not match.
+        %PARSEINITIALDATE Parse initial date strings for figure_datetimepicker.
+        %
+        %   DT = parseInitialDate(STR)
+        %       STR may be in one of the following formats:
+        %           'yyyy/MM/dd'
+        %           'yyyy/MM/dd HH:mm'
+        %           'yyyy/MM/dd HH:mm:ss'
+        %
+        %   Returns a datetime object.
+        %   Throws an error if the format does not match.
 
-    if ~ischar(str) && ~isstring(str)
-        error('Input must be a char or string.');
-    end
+        if ~ischar(str) && ~isstring(str)
+            error('Input must be a char or string.');
+        end
+    
+        str = char(str);
+    
+        % ---- Pattern 1: yyyy/MM/dd (DATE ONLY) ----
+        pat_date_only = '^(\d{4})/(\d{2})/(\d{2})$';
+    
+        % ---- Pattern 2: yyyy/MM/dd HH:mm or HH:mm:ss ----
+        pat_date_time = '^(\d{4})/(\d{2})/(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
+    
+        % Try date only
+        tok = regexp(str, pat_date_only, 'tokens', 'once');
+        if ~isempty(tok)
+            yyyy = str2double(tok{1});
+            MM   = str2double(tok{2});
+            dd   = str2double(tok{3});
+            dt   = datetime(yyyy, MM, dd, 0, 0, 0);   % default to midnight
+            return;
+        end
+    
+        % Try date + time
+        tok = regexp(str, pat_date_time, 'tokens', 'once');
+        if isempty(tok)
+            error(['Invalid format. Expected one of:' newline ...
+                   '  yyyy/MM/dd' newline ...
+                   '  yyyy/MM/dd HH:mm' newline ...
+                   '  yyyy/MM/dd HH:mm:ss']);
+        end
 
-    str = char(str);
-
-    % ---- Pattern 1: yyyy/MM/dd (DATE ONLY) ----
-    pat_date_only = '^(\d{4})/(\d{2})/(\d{2})$';
-
-    % ---- Pattern 2: yyyy/MM/dd HH:mm or HH:mm:ss ----
-    pat_date_time = '^(\d{4})/(\d{2})/(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
-
-    % Try date only
-    tok = regexp(str, pat_date_only, 'tokens', 'once');
-    if ~isempty(tok)
         yyyy = str2double(tok{1});
         MM   = str2double(tok{2});
         dd   = str2double(tok{3});
-        dt   = datetime(yyyy, MM, dd, 0, 0, 0);   % default to midnight
-        return;
+        HH   = str2double(tok{4});
+        mm   = str2double(tok{5});
+    
+        % Nested seconds group → only appears in tok{7}
+        if numel(tok) >= 6 && ~isempty(tok{6})
+            ss = str2double(tok{6}(2:end));
+        else
+            ss = 0;
+        end
+    
+        dt = datetime(yyyy, MM, dd, HH, mm, ss);
     end
-
-    % Try date + time
-    tok = regexp(str, pat_date_time, 'tokens', 'once');
-    if isempty(tok)
-        error(['Invalid format. Expected one of:' newline ...
-               '  yyyy/MM/dd' newline ...
-               '  yyyy/MM/dd HH:mm' newline ...
-               '  yyyy/MM/dd HH:mm:ss']);
-    end
-
-    yyyy = str2double(tok{1});
-    MM   = str2double(tok{2});
-    dd   = str2double(tok{3});
-    HH   = str2double(tok{4});
-    mm   = str2double(tok{5});
-
-    % Nested seconds group → only appears in tok{7}
-    if numel(tok) >= 6 && ~isempty(tok{6})
-        ss = str2double(tok{6}(2:end));
-    else
-        ss = 0;
-    end
-
-    dt = datetime(yyyy, MM, dd, HH, mm, ss);
-end
 
 
     function timeParsed = parseTime(timestr)
