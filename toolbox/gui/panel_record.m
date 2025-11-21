@@ -3001,8 +3001,9 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
 
     % If new date not provided → ask user
     if isempty(newDate)
-        % User selects date/time using modern GUI
-        newDate = pickDateTime(oldDate);
+        
+        % User selects date/time
+        newDate = figure_datetimepicker(oldDate);
 
         % User cancelled → exit cleanly
         if isempty(newDate)
