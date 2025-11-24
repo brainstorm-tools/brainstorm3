@@ -1,4 +1,4 @@
-function varargout = process_fast_basic( varargin )
+function varargout = process_fast_graph( varargin )
 
 % PROCESS_FAST_BASIC: Fast graphs with minimal functionality
 
@@ -398,7 +398,7 @@ PlotWindowIndx = 1:size(Fcell{subplotNum},2);
 chLink = file_fullpath(sInput(1).ChannelFile);
 ch = load(chLink);
 SEEGcontacts = find(strcmp('SEEG',{ch.Channel.Type}));
-aaa = xml2struct('D:\ATLAS\private\matlab_code\_labeling_script\USCBrainMulti\USCLobes\brainsuite_labeldescription.xml');  
+aaa = xml2struct('C:\Users\chinm\OneDrive\Desktop\brainsuite_labeldescription.xml');  
 if ~isempty(subplotData.Left)
 
     Fout = Fcell{subplotNum};
