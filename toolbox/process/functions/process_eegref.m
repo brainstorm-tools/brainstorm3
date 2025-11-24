@@ -42,6 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.title.Comment = ['This process creates a linear projector that re-refences the EEG.<BR>' ...
                                       'Enter below the name of one or more electrodes, separated with commas.<BR>' ...
                                       'For average reference, enter "<B>AVERAGE</B>" (EEG).<BR>' ...
+                                      'For infinity reference, enter "<B>REST</B>" (EEG).<BR>' ...
                                       'For local average reference, enter "<B>LOCAL AVERAGE</B>" (SEEG/ECOG).<BR><BR>' ...
                                       'To view or delete this operator: open the file, go the Record tab<BR>' ...
                                       'and select the menu "Artifacts > Select active projectors".<BR><BR>'];
@@ -83,6 +84,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get data files
         iFilesIn = find(strcmp({sInputs.ChannelFile}, uniqueChanFiles{iFile}));
         DataFiles = {sInputs(iFilesIn).FileName};
+        iStudy    = sInputs(iFilesIn(1)).iStudy;
         % Get bad channels
         ChannelFlag = [];
         for i = 1:length(DataFiles)
@@ -133,6 +135,18 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             iEegRef = iChannels;
             sMontage = panel_montage('GetMontageAvgRef', [], ChannelMat.Channel(iChannels), ChannelFlag(iChannels), 1);
             W(iChannels,iChannels) = sMontage.Matrix;
+        % REST AVERAGE: Local average reference
+        elseif isempty(iEegRef) && ismember(lower(EegRef), {'infinity reference', 'rest'})
+            iEegRef = iChannels;
+            % Get leadfield matrix
+            sHeadModel = bst_get('HeadModelForStudy', iStudy);
+            if isempty(sHeadModel) || isempty(sHeadModel.EEGMethod)
+                bst_report('Error', sProcess, [], ['The montage "', 'Infinity reference (REST)', '" requires requires a EEG head model.']);
+                return
+            end
+            HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
+            sMontage = panel_montage('GetMontageRestRef', [], ChannelMat.Channel(iChannels), ChannelFlag(iChannels), HeadModelMat.Gain(iChannels,:));
+            W(iChannels,iChannels) = sMontage.Matrix;
         elseif isempty(iEegRef)
             bst_report('Error', sProcess, [], ['EEG reference channels were not found: "' EegRef '".']);
             return;
@@ -153,11 +167,12 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         proj.Components = W;
         proj.CompMask   = [];
         proj.Status     = 1;
-        proj.SingVal    = 'REF';
+        proj.SingVal    = [];
+        proj.Method     = 'REF';
                
         % === SAVE PROJECTOR ===
         % Check for existing re-referencing projector
-        if ~isempty(ChannelMat.Projector) && any(cellfun(@(c)isequal(c,'REF'), {ChannelMat.Projector.SingVal}))
+        if ~isempty(ChannelMat.Projector) && any(cellfun(@(c)isequal(c,'REF'), {ChannelMat.Projector.Method}))
             %bst_report('Warning', sProcess, [], 'There was already a re-referencing projector.');
             disp('BST> EEGREF: There was already a re-referencing projector.');
         end

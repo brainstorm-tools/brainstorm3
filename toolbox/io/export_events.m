@@ -67,6 +67,8 @@ if isempty(OutputFile)
         fPath = '';
         fBase = 'export';
     end
+    % Generate BIDS event file
+    fBaseBids = regexprep(fBase, '_meg$|_eeg$|_ieeg$', '');
     % Get default directories and formats
     DefaultFormats = bst_get('DefaultFormats');
     if isempty(DefaultFormats.EventsOut)
@@ -92,6 +94,8 @@ if isempty(OutputFile)
             OutputFile = bst_fullfile(fPath, [fBase, '.csv']);
         case 'CTFVIDEO'
             OutputFile = bst_fullfile(fPath, 'video_events.txt');
+        case 'BIDS'
+            OutputFile = bst_fullfile(fPath, [fBaseBids, '_events.tsv']);
         otherwise
             OutputFile = bst_fullfile(fPath, [fBase, '.eve']);
     end
@@ -102,7 +106,7 @@ if isempty(OutputFile)
         OutputFile, ...          % Default filename
         'single', 'files', ...   % Selection mode
         bst_get('FileFilters', 'eventsout'), ...
-         DefaultFormats.EventsOut);
+        DefaultFormats.EventsOut);
     % If no file was selected: exit
     if isempty(OutputFile)
         return

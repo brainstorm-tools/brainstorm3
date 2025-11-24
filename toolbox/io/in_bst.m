@@ -89,8 +89,17 @@ switch(fileType)
         % FULL RESULTS
         if isfield(sMatrix, 'ImageGridAmp') && ~isempty(sMatrix.ImageGridAmp)
             iTime = GetTimeIndices(TimeBounds, sMatrix.Time);
-            sMatrix.ImageGridAmp  = sMatrix.ImageGridAmp(:,iTime);
             sMatrix.Time          = sMatrix.Time(iTime);
+            % Get results for iTime
+            if isnumeric(sMatrix.ImageGridAmp)
+                sMatrix.ImageGridAmp  = sMatrix.ImageGridAmp(:,iTime);
+            elseif iscell(sMatrix.ImageGridAmp)
+                % ImageGridAmp = {[nSources,a], [a,b], [b, nTimes]}
+                sMatrix.ImageGridAmp{end} = sMatrix.ImageGridAmp{end}(:, iTime);
+                if isLoadFull
+                    sMatrix.ImageGridAmp = bst_multiply_cellmat(sMatrix.ImageGridAmp);
+                end
+            end
             sMatrix.ImagingKernel = [];
             matName = 'ImageGridAmp';
         % KERNEL ONLY
@@ -205,6 +214,11 @@ switch(fileType)
         dataFields = fieldnames(db_template('timefreqmat'));
         sMatrix = in_bst_timefreq( FileName, 0, dataFields{:});
         isKernel = ~isempty(strfind(FileName, '_KERNEL_'));
+        % Define TimeBounds for TimeBands
+        if isempty(TimeBounds) && isfield(sMatrix, 'TimeBands') && ~isempty(sMatrix.TimeBands)
+            iTime = GetTimeIndices(TimeBounds, sMatrix.Time);
+            TimeBounds = sMatrix.Time([iTime(1), iTime(end)]);
+        end
         % Keep required values
         if ~isempty(TimeBounds) && (size(sMatrix.TF,2) > 1)
             if isfield(sMatrix, 'TimeBands') && ~isempty(sMatrix.TimeBands)

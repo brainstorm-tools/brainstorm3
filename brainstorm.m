@@ -98,9 +98,20 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
     % Add Brainstorm JARs to classpath
-    javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
-    javaaddpath(BstJar);
+    MSG = javachk('jvm');
+    if isempty(MSG)
+        javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
+        javaaddpath(BstJar);
+    else
+        disp('');
+        disp('BST> Error: Brainstorm cannot be started without Java.');
+        disp(MSG.message);
+        rethrow(MSG);
+    end
 end
+
+% Default anatomy template
+TemplateName = 'ICBM152_2023b';
 
 % Default action : start
 if (nargin == 0)
@@ -120,17 +131,17 @@ res = 1;
 switch action
     case 'start'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, 1, BrainstormDbDir);
+        bst_startup(BrainstormHomeDir, 1, BrainstormDbDir, TemplateName);
     case 'nogui'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, 0, BrainstormDbDir);
+        bst_startup(BrainstormHomeDir, 0, BrainstormDbDir, TemplateName);
     case 'server'
         bst_set_path(BrainstormHomeDir);
-        bst_startup(BrainstormHomeDir, -1, BrainstormDbDir);
+        bst_startup(BrainstormHomeDir, -1, BrainstormDbDir, TemplateName);
     case 'autopilot'
         if ~isappdata(0, 'BrainstormRunning')
             bst_set_path(BrainstormHomeDir);
-            bst_startup(BrainstormHomeDir, 2, BrainstormDbDir);
+            bst_startup(BrainstormHomeDir, 2, BrainstormDbDir, TemplateName);
         end
         res = bst_autopilot(varargin{2:end});
     case 'digitize'
@@ -211,7 +222,7 @@ switch action
         % Runs Brainstorm normally (asks for brainstorm_db)
         if ~isappdata(0, 'BrainstormRunning')
             bst_set_path(BrainstormHomeDir);
-            bst_startup(BrainstormHomeDir, 1, BrainstormDbDir);
+            bst_startup(BrainstormHomeDir, 1, BrainstormDbDir, TemplateName);
         end
         % Message
         java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');

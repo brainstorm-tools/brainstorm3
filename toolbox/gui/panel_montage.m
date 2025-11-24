@@ -840,6 +840,11 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
                                 'To change the reference permanently, consider using a projector instead:' 10 ...
                                 ' - In the Record tab, menu "Artifacts > Re-reference EEG"' 10 ...
                                 ' - Process "Standardize > Re-reference EEG"'], 'Re-referencing montage');
+    elseif strcmpi(MontageType, 'addrefback')
+        java_dialog('warning', ['Adding back the reference channel to EEG data will only affect the display ' 10 ...
+                                'of the signals but will not be considered when processing them.' 10 10 ...
+                                'To create a new EEG recording that includes the reference channel, apply this montage:' 10 ...
+                                ' - Process "Standardize > Apply montage"'], 'Add back reference channel montage');
     end
     % Ask user the name for the new montage
     newName = java_dialog('input', 'New montage name:', 'New montage');
@@ -893,6 +898,40 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
         ChanNames = ChanNames(iChannelsRef);
         % Real montage type: text
         MontageType = 'text';
+
+    elseif strcmpi(MontageType, 'addrefback')
+        % Find figure info
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        % Get channels displayed in this figure
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        ChanNames = {GlobalData.DataSet(iDS).Channel.Name};
+        % Remove all the spaces in channels names
+        ChanNames = cellfun(@(c)c(c~=' '), ChanNames, 'UniformOutput', 0);
+        % Ask the user the name of the reference channel to add back
+        addRefChan = java_dialog('input', 'Reference channel to add back:', '');
+        if isempty(addRefChan)
+            return
+        end
+        % This channel should not be present in displayed channels
+        iRef = find(strcmpi(addRefChan, ChanNames));
+        if ~isempty(iRef)
+            java_dialog('error');
+            return
+        end
+        % Create a identity montage with an extra row for the added reference
+        MontageMatrix = [eye(length(ChanNames)); zeros(1, length(ChanNames))];
+        ChanNamesDisp = [ChanNames, addRefChan];
+        iChannelsDisp = [iChannels, length(ChanNamesDisp)];
+        % Remove all the unecessary rows/columns
+        iAllDisp = 1:length(ChanNamesDisp);
+        iAll = 1:length(ChanNames);
+        MontageMatrix(setdiff(iAllDisp,iChannelsDisp), :) = [];
+        MontageMatrix(:, setdiff(iAll,iChannels)) = [];
+        % Channel names
+        DispNames = ChanNamesDisp(iChannelsDisp);
+        ChanNames = ChanNames(iChannels);
+        % Real montage type: text
+        MontageType = 'text';
     else
         % Identity matrix
         MontageMatrix = eye(length(ChanNames));
@@ -933,6 +972,15 @@ end
 
 %% ===== LOAD DEFAULT MONTAGES ======
 function LoadDefaultMontages() %#ok<DEFNU>
+    global GlobalData
+    restoreMontageBak = 0;
+    % Load default montages in empty GlobalData.ChannelMontages so first
+    if ~isempty(GlobalData.ChannelMontages.Montages)
+        % Make backup of loaded montages
+        sMontageBak = GlobalData.ChannelMontages.Montages;
+        restoreMontageBak = 1;
+        GlobalData.ChannelMontages.Montages = [];
+    end
     % Set average reference montage
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference';
@@ -941,6 +989,16 @@ function LoadDefaultMontages() %#ok<DEFNU>
     % Set average reference montage (sorted Left>Right)
     sMontage = db_template('Montage');
     sMontage.Name = 'Average reference (L -> R)';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
+    % Set infinity reference (REST) montage
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Infinity reference (REST)';
+    sMontage.Type = 'matrix';
+    SetMontage(sMontage.Name, sMontage);
+    % Set infinity reference (REST) montage (sorted Left>Right)
+    sMontage = db_template('Montage');
+    sMontage.Name = 'Infinity reference (REST) (L -> R)';
     sMontage.Type = 'matrix';
     SetMontage(sMontage.Name, sMontage);
     % Set scalp current density montage
@@ -974,6 +1032,12 @@ function LoadDefaultMontages() %#ok<DEFNU>
     MontageFiles = dir(bst_fullfile(MontagePath, '*.mon'));
     for i = 1:length(MontageFiles)
         LoadMontageFiles(bst_fullfile(MontagePath, MontageFiles(i).name), 'MON', 1);
+    end
+    % Restore backup of loaded montages
+    if restoreMontageBak
+        for ix = 1 : length(sMontageBak)
+            SetMontage(sMontageBak(ix).Name, sMontageBak(ix));
+        end
     end
 end
    
@@ -1011,6 +1075,21 @@ function [sMontage, iMontage] = GetMontage(MontageName, hFig)
             iAvgRef = find(strcmpi({sMontage.Name}, 'Average reference (L -> R)'));
             if ~isempty(iAvgRef) && ~isempty(hFig)
                 sTmp = GetMontageAvgRef(sMontage(iAvgRef), hFig, [], 0);  % Global average reference sorted L -> R
+                if ~isempty(sTmp)
+                    sMontage(iAvgRef) = sTmp;
+                end
+            end
+            % Find infinity reference (REST) montage
+            iAvgRef = find(strcmpi({sMontage.Name}, 'Infinity reference (REST)'));
+            if ~isempty(iAvgRef) && ~isempty(hFig)
+                sTmp = GetMontageRestRef(sMontage(iAvgRef), hFig, [], []);    % Infinity reference (REST)
+                if ~isempty(sTmp)
+                    sMontage(iAvgRef) = sTmp;
+                end
+            end
+            iAvgRef = find(strcmpi({sMontage.Name}, 'Infinity reference (REST) (L -> R)'));
+            if ~isempty(iAvgRef) && ~isempty(hFig)
+                sTmp = GetMontageRestRef(sMontage(iAvgRef), hFig, [], []);    % Infinity reference (REST) sorted L -> R
                 if ~isempty(sTmp)
                     sMontage(iAvgRef) = sTmp;
                 end
@@ -1161,7 +1240,11 @@ function DeleteMontage(MontageName)
         iMontage = iMontage(1);
     end
     % If this is a non-editable montage: error
-    if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
+    if ismember(sMontage.Name, {'Bad channels', ...
+                                'Average reference', 'Average reference (L -> R)', ...
+                                'Infinity reference (REST)', 'Infinity reference (REST) (L -> R)', ...
+                                'Scalp current density', 'Scalp current density (L -> R)', ...
+                                'Head distance'})
         return;
     end    
     % Remove montage if it exists
@@ -1232,6 +1315,14 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             end
             % Not 10-20 EEG: Skip average reference L -> R (only available for recordings figures)
             if ismember(GlobalData.ChannelMontages.Montages(i).Name, {'Average reference (L -> R)', 'Scalp current density (L -> R)'}) && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG','SEEG','ECOG','ECOG+SEEG'})) || ~Is1020Setup(FigChannels))
+                continue;
+            end
+            % Not EEG: Skip infinity reference (REST)
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Infinity reference (REST)') && ~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG'})
+                continue;
+            end
+            % Not EEG: Skip infinity reference (REST) L -> R (only available for recordings figures)
+            if strcmpi(GlobalData.ChannelMontages.Montages(i).Name, 'Infinity reference (REST) (L -> R)') && (~strcmpi(FigId.Type, 'DataTimeSeries') || (~isempty(FigId.Modality) && ~ismember(FigId.Modality, {'EEG'})) || ~Is1020Setup(FigChannels))
                 continue;
             end
             % Not EEG or no 3D positions or less than 4 unique points: Skip scalp current density
@@ -1445,6 +1536,108 @@ function sMontage = SortLeftRight(sMontage)
     sMontage.Matrix = sMontage.Matrix(iOrder, iOrder);
 end
 
+%% ===== GET INFINITY REFERENCE (REST) MONTAGE =====
+% USAGE:  sMontage = GetMontageRestRef(sMontage, hFig)
+%         sMontage = GetMontageRestRef(sMontage, Channels, ChannelFlag, Leadfield)
+function sMontage = GetMontageRestRef(sMontage, Channels, ChannelFlag, Leadfield)
+    global GlobalData;
+    % Headmodel
+    if (nargin < 4) || isempty(Leadfield)
+        Leadfield = [];
+    end
+    % Get info from figure
+    if (nargin < 3) || isempty(ChannelFlag)
+        hFig = Channels;
+        % Create EEG menu
+        TsInfo = getappdata(hFig,'TsInfo');
+        if isempty(TsInfo.Modality) || ~strcmp(TsInfo.Modality, 'EEG')
+            sMontage = [];
+            return;
+        end
+        % Get figure description
+        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+        % Check that this figure can handle montages
+        if isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) || isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Measures.ChannelFlag)
+            sMontage = [];
+            return;
+        end
+        % Get selected channels
+        iChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+        Channels = GlobalData.DataSet(iDS).Channel(iChannels);
+        ChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag(iChannels);
+        % Get leadfield matrix
+        sHeadModel = bst_get('HeadModelForStudy', GlobalData.DataSet(iDS).StudyFile);
+        if ~isempty(sHeadModel) && ~isempty(sHeadModel.EEGMethod)
+            HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
+            Leadfield = HeadModelMat.Gain;
+        end
+    else
+        iChannels = 1:length(Channels);
+    end
+    % If no montage in input: get the Infinity reference (REST)
+    if isempty(sMontage)
+        iMontage = find(strcmpi({GlobalData.ChannelMontages.Montages.Name}, 'Infinity reference (REST)'), 1);
+        if isempty(iMontage)
+            return;
+        end
+        sMontage = GlobalData.ChannelMontages.Montages(iMontage(1));
+    end
+    if isempty(Leadfield)
+        disp('BST> Infinity reference (REST) requires a EEG head model');
+        % Compute 'Average reference' instead
+        sMontage.Name = 'Average reference';
+    end
+    % Update montage
+    numChannels = length(iChannels);
+    sMontage.DispNames = {Channels.Name};
+    sMontage.ChanNames = {Channels.Name};
+    sMontage.Matrix    = eye(numChannels);
+    % Get EEG groups
+    iEEG = GetEegGroups(Channels, ChannelFlag);
+    iChannels = iChannels(iEEG{1});
+    nChan = length(iChannels);
+    % Computation
+    % === Infinity reference (REST) ===
+    if ismember(sMontage.Name, {'Infinity reference (REST)', 'Infinity reference (REST) (L -> R)'})
+        %   Main function of Reference Electrode Standardization Technique
+        %   Reference:
+        %  Yao D (2001) A method to standardize a reference of scalp EEG recordings to a point at infinity.
+        %                       Physiol Meas 22:693?11. doi: 10.1088/0967-3334/22/4/305
+        %  Li Dong*, Fali Li, Qiang Liu, Xin Wen, Yongxiu Lai, Peng Xu and Dezhong Yao*.
+        %              MATLAB Toolboxes for Reference Electrode Standardization Technique (REST)
+        %              of Scalp EEG. Frontiers in Neuroscience,  2017:11(601).
+        % Algorithm:
+        %   'data'  : EEG data size                  size [nChannels, nSamples]
+        %   'G'     : Leadfield matrix               size [nChannels, nSources]
+        %   'data_z': EEG data with zero reference   size [nChannels, nSamples]
+        %
+        %   data   = data - repmat(mean(data),Nchans,1);        % data   = (I - ones(nChannels)./nChannels) * data = (I - A) * data = Av * data
+        %   Gar    = G - repmat(mean(G),size(G,1),1);           % Gar    = Av * G
+        %   data_z = G * pinv(Gar,0.05) * data_a;               % data_z = G * pinv(Av * G) * Av * data = R * Av * data
+        %   data_z = data + repmat(mean(data_z),size(G,1),1);   % data_z = data + A * data_z = (Av * data) + (A * R * Av * data) = (I + A*R) * Av *data
+        G = Leadfield(iChannels, :);
+        % Average (across channels) projector
+        A = ones(nChan)./nChan;
+        % Average reference projector
+        Av = eye(nChan) - A;
+        % Standardization matrix
+        R = G * pinv(Av * G, 0.05);
+        % data_z = data + mean(data_z)
+        % data_z = (Av * data) + mean(R * Av * data) = (I + A*R) * Av * data =  W * data
+        W = (eye(nChan) + A * R) * Av;
+
+    elseif strcmp(sMontage.Name, 'Average reference')
+        W = eye(nChan) - ones(nChan)./nChan;
+    end
+    if (nChan >= 2)
+        sMontage.Matrix(iEEG{1},iEEG{1}) = W;
+    end
+    % Sort electrodes per hemisphere if required
+    if ~isempty(sMontage) && strcmpi(sMontage.Name, 'Infinity reference (REST) (L -> R)')
+        sMontage = SortLeftRight(sMontage);
+    end
+end
+
 %% ===== GET SCALP CURRENT DENSITY MONTAGE =====
 % USAGE:  sMontage = GetMontageScd(sMontage, hFig)
 %         sMontage = GetMontageScd(sMontage, Channels, ChannelFlag)
@@ -1629,10 +1822,12 @@ function SetCurrentMontage(Modality, MontageName)
         TsInfo = getappdata(hFig, 'TsInfo');
         TsInfo.MontageName = MontageName;
         setappdata(hFig, 'TsInfo', TsInfo);
-        % Update panel Recorf
+        % Update panel Record
         panel_record('UpdateDisplayOptions', hFig);
         % Update figure plot
         bst_figures('ReloadFigures', hFig, 0);
+        % Update panel Record
+        panel_record('UpdateDisplayOptions', hFig);
         % Close progress bar
         bst_progress('stop');
     end
@@ -1744,6 +1939,7 @@ function CreateMontageMenu(jButton, hFig)
     if ~isempty(hFig) 
         gui_component('MenuItem', jPopup, [], 'New re-referencing montage (single ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('ref', [], hFig));
         gui_component('MenuItem', jPopup, [], 'New re-referencing montage (linked ref)', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('linkref', [], hFig));
+        gui_component('MenuItem', jPopup, [], 'New add-reference-channel-back montage', IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('addrefback', [], hFig));
     end
     gui_component('MenuItem', jPopup, [], 'New custom montage',  IconLoader.ICON_EEG_NEW, [], @(h,ev)NewMontage('text', [], hFig));
     jPopup.addSeparator();
@@ -2389,27 +2585,30 @@ function AddAutoMontagesProj(ChannelMat, isInteractive)
         if (length(sCat.Comment) < 3) || strcmpi(sCat.Comment(1:3), 'EEG')
             continue;
         end
-        % ICA
-        if isequal(sCat.SingVal, 'ICA')
-            % Field Components stores the mixing matrix W
-            W = sCat.Components(iChannels, :)';
-            % Display name
-            strDisplay = 'IC';
-        % SSP
-        else
-            % Field Components stores the spatial components U
-            U = sCat.Components(iChannels, :);
-            % SSP/PCA results
-            if ~isempty(sCat.SingVal) 
-                Singular = sCat.SingVal ./ sum(sCat.SingVal);
-            % SSP/Mean results
-            else
-                Singular = eye(size(U,2));
-            end
-            % Rebuild mixing matrix
-            W = diag(sqrt(Singular)) * pinv(U);
-            % Display name
-            strDisplay = 'SSP';
+        componentType = sCat.Method(1:3);
+        switch lower(componentType)
+            % ICA
+            case 'ica'
+                % Field Components stores the mixing matrix W
+                W = sCat.Components(iChannels, :)';
+                % Display name
+                strDisplay = 'IC';
+            % SSP
+            case 'ssp'
+                % Field Components stores the spatial components U
+                U = sCat.Components(iChannels, :);
+                switch(sCat.Method)
+                    case 'SSP_pca'
+                        % SSP/PCA results
+                        Singular = sCat.SingVal ./ sum(sCat.SingVal);
+                    case 'SSP_mean'
+                        % SSP/Mean results
+                        Singular = eye(size(U,2));
+                end
+                % Rebuild mixing matrix
+                W = diag(sqrt(Singular)) * pinv(U);
+                % Display name
+                strDisplay = 'SSP';
         end
         % Create line labels
         LinesLabels = cell(size(W,1), 1);

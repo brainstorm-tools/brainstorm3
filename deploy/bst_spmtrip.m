@@ -7,7 +7,10 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 %
 % Brainstorm features using external SPM functions:
 %  - Anatomy: Import MRI > DICOM converter
-%  - Anatomy: Import MRI > MRI coregistration (SPM)
+%  - Anatomy: Import MRI > MNI normalization (SPM 'segment' method)
+%  - Anatomy: Import MRI > MRI coregistration (SPM) and reslice (SPM)
+%  - Anatomy: Import MRI > MRI realign (SPM)
+%  - Anatomy: Import MRI > MRI skul stripping (SPM)
 %  - Input: Read SPM .mat/.dat recordings
 %  - Output: Save SPM .mat/.dat recordings
 %  - Process1: Import > Import anatomy > Generate SPM canonical surfaces
@@ -53,22 +56,23 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 
 % ===== SPM STANDALONE =====
 if ~exist(fullfile(SpmDir, 'Contents.txt'), 'file') || ~exist(fullfile(fileparts(SpmDir), 'standalone'), 'file')
+    bst_plugin('Load', 'spm12');
     disp('SPMTRIP> Compiling SPM...');
     spm eeg;
     spm quit;
     spm_make_standalone();
+    bst_plugin('Unload', 'spm12');
 end
 
 % ===== REQUIRED FUNCTIONS =====
 % List required functions, valid for:
-%   FieldTrip v.20210920
-%   SPM12 v7771
+%   FieldTrip 20250915
+%   SPM12     v7771
 needFunc = {...
     ... % === FIELDTRIP ====
     fullfile(FieldTripDir, 'ft_defaults.m'), ...
     fullfile(FieldTripDir, 'compat', 'matlablt2017b', 'isfolder.m'), ...
     fullfile(FieldTripDir, 'fileio', 'ft_read_headshape.m'), ...
-    fullfile(FieldTripDir, 'forward', 'ft_apply_montage.m'), ...
     fullfile(FieldTripDir, 'forward', 'ft_convert_units.m'), ...
     fullfile(FieldTripDir, 'forward', 'ft_compute_leadfield.m'), ...
     fullfile(FieldTripDir, 'forward', 'ft_headmodel_concentricspheres.m'), ...
@@ -109,6 +113,7 @@ needFunc = {...
     fullfile(FieldTripDir, 'plotting', 'ft_plot_sens.m'), ...
     fullfile(FieldTripDir, 'compat', 'obsolete', 'ft_plot_vol.m'), ...
     fullfile(FieldTripDir, 'specest', 'ft_specest_mtmconvol.m'), ...
+    fullfile(FieldTripDir, 'utilities', 'ft_apply_montage.m'), ...
     fullfile(FieldTripDir, 'utilities', 'ft_datatype_sens.m'), ...
     fullfile(FieldTripDir, 'external', 'freesurfer', 'load_nifti.m'), ...
     fullfile(FieldTripDir, 'external', 'freesurfer', 'load_nifti_hdr.m'), ...
@@ -258,7 +263,7 @@ warning off
 rmpath(genpath(OutputDir));
 warning on
 % Initalize FieldTrip
-addpath(FieldTripDir);
+bst_plugin('Load', 'fieldtrip');
 ft_defaults;
 if ~exist('contains', 'builtin')
     addpath(fullfile(FieldTripDir, 'compat', 'matlablt2016b'));
@@ -318,10 +323,6 @@ listDep = unique(listDep);
 
 % ===== COPY FILES =====
 disp('SPMTRIP> Copying files...');
-% Copy the FieldTrip class folders entirely
-for className = {'@config'}
-    copydir(fullfile(FieldTripDir, className{1}), fullfile(OutputDir, className{1}));
-end
 % Copy the SPM class folders entirely
 for className = {'@file_array', '@gifti', '@meeg', '@nifti', '@xmltree'}
     copydir(fullfile(SpmDir, className{1}), fullfile(OutputDir, className{1}));
@@ -329,6 +330,7 @@ end
 % Copy SPM matlabbatch
 copydir(fullfile(SpmDir, 'config'), fullfile(OutputDir, 'config'));
 copydir(fullfile(SpmDir, 'matlabbatch'), fullfile(OutputDir, 'matlabbatch'));
+mkdir(fullfile(OutputDir, 'toolbox'));
 copydir(fullfile(SpmDir, 'toolbox', 'DAiSS'), fullfile(OutputDir, 'toolbox', 'DAiSS'));
 copydir(fullfile(SpmDir, 'toolbox', 'TSSS'), fullfile(OutputDir, 'toolbox', 'TSSS'));
 % Copy all the dependency files
@@ -400,7 +402,7 @@ function copydir(src, dest)
     if ispc
         system(['xcopy "', src, '" "', dest, '" /s /e /y /q /i']);
     else
-        system(['cp -rf "', src, '" "', dest, '"']);
+        system(['cp -raf "', src, '" "', dest, '"']);
     end
 end
 

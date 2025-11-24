@@ -83,7 +83,7 @@ TpmFile = bst_get('SpmTpmAtlas');
 % If it is not found: download
 if isempty(TpmFile)
     % URL to download
-    tpmUrl = 'http://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
+    tpmUrl = 'https://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
     % Path to downloaded file
     tpmZip = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'SPM_TPM.zip');
     % Create 'spm' folder if needed
@@ -173,10 +173,12 @@ try
             
         % SPM12 SEGMENT 
         case 'segment'
-            % Initialize SPM
-            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-            if ~isInstalled
-                return;
+            if ~bst_iscompiled
+                % Initialize SPM
+                [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+                if ~isInstalled
+                    return;
+                end
             end
             % Progress bar
             bst_progress('text', 'Running SPM batch... (see command window)');

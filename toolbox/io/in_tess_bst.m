@@ -52,6 +52,7 @@ TessMat = load(TessFile);
 % - Remove cells: Old Brainstorm surface files contained more than one tesselation, now one tesselation = file
 % - Check matrix orientations
 % - Convert to double
+% - Add Color field
 UpdateFile = 0;
 if isfield(TessMat, 'Faces')
     TessMat.Faces = double(TessMat.Faces);
@@ -85,6 +86,10 @@ if isfield(TessMat, 'VertConn') && iscell(TessMat.VertConn)
 end
 if isfield(TessMat, 'Curvature') && iscell(TessMat.Curvature)
     TessMat.Curvature = TessMat.Curvature{1};
+    UpdateFile = 1;
+end
+if ~isfield(TessMat, 'Color')
+    TessMat.Color = [];
     UpdateFile = 1;
 end
 

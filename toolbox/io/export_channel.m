@@ -4,7 +4,7 @@ function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isInterac
 % USAGE:  export_channel(BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask], isInteractive=1)
 %
 % INPUTS: 
-%     - BstChannelFile    : Full path to input Brainstorm MRI file to be exported
+%     - BstChannelFile    : Full path to input Brainstorm file to be exported
 %     - OutputChannelFile : Full path to target file (extension will determine the format)
 %     - FileFormat        : String, format of the exported channel file
 %     - isInteractive     : If 1, the function is allowed to ask questions interactively to the user
@@ -66,6 +66,7 @@ if isempty(OutputChannelFile)
         case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-CHANNEL',   DefaultExt = '_channels.tsv';
         otherwise,                  DefaultExt = '.pos';
     end
 
@@ -75,6 +76,11 @@ if isempty(OutputChannelFile)
     % Default output filename
     if (iSubject == 0) || isequal(sSubject.UseDefaultChannel, 2)
         baseFile = 'channel';
+    elseif strcmpi(sSubject.Name, 'Digitize') && strcmpi(DefaultExt, '.pos')
+        % When digitizing head points, use condition name instead of subject name, which is always "Digitize".
+        [BstPath, baseFile] = bst_fileparts(BstChannelFile);
+        baseFile = strrep(baseFile, 'channel_', '');
+        baseFile = strrep(baseFile, '_channel', '');
     else
         baseFile = sSubject.Name;
     end
@@ -233,6 +239,9 @@ switch FileFormat
     case 'BIDS-NIRS-ALS-MM'
         % No transformation: export unchanged SCS/CTF space
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
+    case 'BIDS-NIRS-CHANNEL'
+        % Export NIRS channel.tsv
+        out_channel_bids_nirs(BstChannelFile, OutputChannelFile);
 
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);

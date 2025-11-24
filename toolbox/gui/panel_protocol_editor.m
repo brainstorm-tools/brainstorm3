@@ -305,6 +305,12 @@ function [subjectDir, studyDir, protocolName] = SelectProtocolDir(protocolDir)
         return
     end
 
+    % Check if 'anat' or 'data' dirs were seletect
+    % Windows users loading Protocols from a symbolic link need to select any of these subfolders
+    [dirProtocolDir, protocolName] = bst_fileparts(protocolDir, 1);
+    if ismember(protocolName, {'data', 'anat'})
+        protocolDir = dirProtocolDir;
+    end
     % Look for a "brainstormsubject" file and a "brainstormstudy" file
     subjectFile = file_find(protocolDir, 'brainstormsubject*.mat', 3);
     studyFile   = file_find(protocolDir, 'brainstormstudy*.mat',   4);

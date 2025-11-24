@@ -153,6 +153,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)CallWithAccelerator(@EventTypeToggleVisible));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
+        gui_component('MenuItem', jMenu, [], 'Uniform protocol event colors', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)CallProcessOnRaw('process_evt_uniformcolors'));
         jMenu.addSeparator();
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
@@ -161,6 +162,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Duplicate groups', IconLoader.ICON_COPY, [], @(h,ev)bst_call(@EventTypesDuplicate));
         gui_component('MenuItem', jMenu, [], 'Convert to simple event', [], [], @(h,ev)bst_call(@EventConvertToSimple));
         gui_component('MenuItem', jMenu, [], 'Convert to extended event', [], [], @(h,ev)bst_call(@EventConvertToExtended));
+        gui_component('MenuItem', jMenu, [], 'Set channel info', IconLoader.ICON_CHANNEL, [], @(h,ev)CallProcessOnRaw('process_evt_channelinfo'));        
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Combine stim/response', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_combine'));
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
@@ -715,6 +717,11 @@ function UpdateDisplayOptions(hFig)
             DispName = 'Avg Ref';
         elseif strcmpi(TsInfo.MontageName, 'Average reference (L -> R)')
             DispName = 'Avg Ref LR';
+        % Infinity reference (REST)
+        elseif strcmpi(TsInfo.MontageName, 'Infinity reference (REST)')
+            DispName = 'REST Ref';
+        elseif strcmpi(TsInfo.MontageName, 'Infinity reference (REST) (L -> R)')
+            DispName = 'REST Ref LR';
         % Scalp current density
         elseif strcmpi(TsInfo.MontageName, 'Scalp current density')
             DispName = 'SCD';
@@ -1085,6 +1092,9 @@ function ReloadRecordings(isForced)
         end
         % Get epoch indice
         iEpoch = ctrl.jSpinnerEpoch.getValue();
+        if iEpoch <= 0
+            return
+        end
         Time = GlobalData.FullTimeWindow.Epochs(iEpoch).Time;
         % Get new time window
         iStart = double(ctrl.jSliderStart.getValue());
@@ -1149,7 +1159,9 @@ function ReloadRecordings(isForced)
     % Refresh time panel
     panel_time('UpdatePanel');
     % Reload recordings matrix from raw file
-    bst_memory('LoadRecordingsMatrix', iDS);
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        bst_memory('LoadRecordingsMatrix', iDS);
+    end
     % Replot all figures
     bst_figures('ReloadFigures', [], 1, 1);
     % Flushes the display updates
@@ -1976,46 +1988,10 @@ function EventTypesMerge()
     end
     % Get ALL events (ignore current epoch)
     events = GetEvents([], 1);
-    
-    % Inialize new event group
-    newEvent = events(iEvents(1));
-    newEvent.label    = newLabel;
-    newEvent.times    = [events(iEvents).times];
-    newEvent.epochs   = [events(iEvents).epochs];
-    % Reaction time, notes, channels: only if all the events have them
-    if all(~cellfun(@isempty, {events(iEvents).channels}))
-        newEvent.channels = [events(iEvents).channels];
-    else
-        newEvent.channels = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).notes}))
-        newEvent.notes = [events(iEvents).notes];
-    else
-        newEvent.notes = [];
-    end
-    if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
-        newEvent.reactTimes = [events(iEvents).reactTimes];
-    else
-        newEvent.reactTimes = [];
-    end
-    % Sort by samples indices, and remove redundant values
-    [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
-    newEvent.times    = newEvent.times(:,iSort);
-    newEvent.epochs   = newEvent.epochs(iSort);
-    if ~isempty(newEvent.channels)
-        newEvent.channels = newEvent.channels(iSort);
-    end
-    if ~isempty(newEvent.notes)
-        newEvent.notes = newEvent.notes(iSort);
-    end
-    if ~isempty(newEvent.reactTimes)
-        newEvent.reactTimes = newEvent.reactTimes(iSort);
-    end
-    
-    % Remove merged events
-    events(iEvents) = [];
-    % Add new event
-    events(end + 1) = newEvent;
+
+    % Call process_evt_merge
+    events = process_evt_merge('Compute', '', events, {events(iEvents).label}, newLabel, 1);
+
     % Update dataset
     SetEvents(events);
     % Update events list
@@ -2705,7 +2681,14 @@ function CallProcessOnRaw(ProcessName)
     % Save current modifications
     SaveModifications(iDS);
     % Get filename
-    DataFile = GlobalData.DataSet(iDS).DataFile;
+    if ~isempty(GlobalData.DataSet(iDS).DataFile)
+        DataFile = GlobalData.DataSet(iDS).DataFile;
+    else
+        % Look for open figures
+        for iMat = 1:length(GlobalData.DataSet(iDS).Matrix)
+            DataFile = file_fullpath(GlobalData.DataSet(iDS).Matrix(iMat).FileName);
+        end
+    end
     % File time
     if isRaw
         FileTimeVector = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time;

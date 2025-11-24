@@ -260,6 +260,9 @@ if isKernel
             Results.Leff = DataMat.Leff;
         end
     end
+% If full results are saved as factor decomposition
+elseif LoadFull &&  isfield(Results,'ImageGridAmp') && iscell(Results.ImageGridAmp)
+    Results.ImageGridAmp = bst_multiply_cellmat(Results.ImageGridAmp);
 end
 
 

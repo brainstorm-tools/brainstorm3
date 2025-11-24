@@ -134,7 +134,10 @@ switch (FileFormat)
     case 'BST'
         ChannelMat = in_bst_channel(ChannelFile);
         FileUnits = 'm';
-        
+    % ===== NIRS ONLY =====
+    case 'BIDS-NIRS-CHANNEL'
+        ChannelMat = in_channel_bids_nirs(ChannelFile);
+        FileUnits = 'm';  
     % ===== EEG ONLY =====
     case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM', 'BIDS-CAPTRAK-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
@@ -557,7 +560,7 @@ end
 
 
 %% ===== DETECT CHANNEL TYPES =====
-% Remove fiducials (expect for BIDS files)
+% Remove fiducials (except for BIDS files)
 isRemoveFid = isempty(strfind(FileFormat, 'BIDS-'));
 % Detect auxiliary EEG channels + align channel
 ChannelMat = channel_detect_type(ChannelMat, isAlignScs, isRemoveFid);

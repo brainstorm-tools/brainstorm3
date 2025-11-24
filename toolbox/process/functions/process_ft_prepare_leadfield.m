@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 355;
-    sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/headmodel_meg';
+    sProcess.Description = 'https://www.fieldtriptoolbox.org/tutorial/headmodel_meg';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw', 'matrix'};
     sProcess.OutputTypes = {'data', 'raw', 'matrix'};

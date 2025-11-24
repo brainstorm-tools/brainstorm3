@@ -1,3 +1,145 @@
+October 2025
+- EEG: Add montage to "Add reference channel back"
+- iEEG: Menu to select auxiliar figures to perform implantation
+- Plugin: Resection identification using pre- and post-surgical MRIs
+- Process: Extend "Add time offset" to support related and standalone results
+- Process: Extend "Import MRI" to support CT and PET volumes
+- Sources: Improve memory usage for results saved as matrix decompositions
+- Viz: MRI viewer, add option "View in 3D orthogonal slices"
+- Viz: Coodinate panel, "View in MRI viewer", updates all related MRI viewers
+- Viz: iEEG, improve behaviour of MRI viewers on selecting electrodes
+- Viz: Allow overlaying Anatomy volumes on volume of choice
+--------------------------------------------------------------
+September 2025
+- Anatomy: Option to export fiducal locations alongside MRI file
+- Anatomy: Option to align Surface to MRI, by setting fiducials in surface
+- EEG: REST aka Infinity reference available as montage
+- iEEG: Online update generation of isosurface from CT thresholding
+- IO: Add support for text (.jnii) and binary (.bnii) JNIfTI files
+- PET: Add PET volume processing: SUVR, ROI masking, projection to surface
+- NIRS: Display sensitivity map for NIRS
+- Viz: Use Lambert azimultal equal-area proj for 2D proj of 3D sensor locs
+- Bugfix: Update FEM tensor viz to follow moved slice within figure3D
+- Bugfix: Allow exporting files in any of their valid extensions
+- Compile: Update 'spmtrip' functions
+- Distrib: Add option for cross-platform Java Look and Feel in compiled
+- Distrib: Compilation with Matlab 2025b
+--------------------------------------------------------------
+August 2025
+- Anatomy: Skull stripping MRI/CT/PET and diff-size coregistered volumes
+- BIDS: Resolve BIDS URI for same Dataset
+- Connectivity: MVGC method (recommended) for Time and Freq Granger causality
+- DB: Bugfix, keep default anatomies for moved or copied Subject
+- DB: Update: include 'NIRSmethod' field in Study.HeadModel struct
+- iEEG: Improvements and bugfix for iEEG panel
+- IO: Extended support for XDF files
+- IO: Bugfix for Axion files
+- Reports: Support screenshots of jFrame windows
+- Viz: Improved 2D-Layout plot positioning for MEG, EEG, NIRS, ECOG and SEEG
+- Viz: Show all pairs for AxB connectivity metrics
+- Distrib: Brainstorm compilation fetches latest brainstorm.jar
+- Distrib: Script to run the ECOG tutorial
+--------------------------------------------------------------
+July 2025
+- Anatomy: Prefer sform over qform if both are present in NIfTI files
+- Anatomy: Allow non-interactive call for tess_force_envelop
+- Anatomy: Compute mesh statistics for surface and volume meshes
+- Anatomy: Add various methods to smooth a surface mesh
+- BIDS: Sensor positions from `_electrodes.tsv` after importing `_channels.tsv`
+- Events: in/out events as BIDS, onset is relative to beginning of recording
+- Events: Improve event merging, merge channel and notes information
+- iEEG: Automatic contact localization with GARDEL
+- Process: Extend FieldTrip-based SCD to work on imported and raw data
+- Plugins: Expand symbolic links and improve handling of paths
+- Distrib: Coregister, realign and skullstrip with SPM12 in compiled version
+- Distrib: Scripting, support string arrays "text" and char vectors 'text'
+--------------------------------------------------------------
+June 2025
+- Bugfix: Correct conversion of EEG points from .pos file on reviewing CTF data
+- Digitizer: Improved support for Polhemus-Patriot device
+- Connectivity: Allow NaN as value for connectivity metrics
+- Viz: Improved figures for FOOOF at source level
+- Viz: Remember last display option for TF representations
+- Distrib: Script to run the Seizure fingerprinting tutorial
+--------------------------------------------------------------
+May 2025
+- NIRS: Correct units of dOD
+- NIRS: Automatic fix of badly formatted SNIRF files
+- BIDS: Allow importing BIDS dataset with ANT .cnt EEG files
+- iEEG: Bugfixes and improvements in iEEG panel
+--------------------------------------------------------------
+April 2025
+- Anatomy: Add support for PET volumes
+- Process: Apply montages on raw continuous recordings
+- SEEG/ECOG: Improvements for iEEG implantation: Add/remove individual contacts
+- Events: Allow event processes in record panel for Matrix files
+- Events: Add process to uniform event colors in Protocol
+- Distrib: Update neuroimage.usc.edu URLs to HTTPS
+--------------------------------------------------------------
+March 2025
+- Anatomy: Export surface scouts as MRI mask
+- Anatomy: Improved isosurface threshold slider
+- TimeFreq: Correct sign of imaginary part in complex TF computed with Hilbert
+- Distrib: Improved detection of write permissions in Windows symlinks
+--------------------------------------------------------------
+February 2025
+- Anatomy: Import MRI BESA volumes and surfaces
+- Anatomy: Export surfaces as STL files
+- Process: Add frequency band support to process PSD features
+- Process: Add z-score output to process Compare to normative PSD
+- Process: GUI, handle nested controller-classes in process options
+- Distrib: Compilation with Matlab 2025a
+--------------------------------------------------------------
+December 2024
+- Anatomy: Copy/Paste scout operations
+- Anatomy: Scalp scouts from sensor positions
+- Distrib: Compilation with Matlab 2024a
+- Distrib: Compilation with Matlab 2024b
+--------------------------------------------------------------
+November 2024
+- SEEG/ECOG: Allow iEEG implantation using MRI and/or CT and/or IsoSurface
+- Registration: Manual and auto localization of EEG sensors with 3D scanner mesh
+- Registration: Project EEG sensors for default caps in Colin27 def anat
+- Anatomy: Add skull stripping in Brainstorm (uses SPM or BrainSuite)
+- Anatomy: Add template 'Colin27 4NIRS' (2024)
+- IO: Process to merge (channel-wise) raw continue recordings
+- Distrib: Update script for epilepsy tutorial, add source estimation with MEM
+- Distrib: Script to run the BEst (Brain Entropy in space and time) tutorial
+- Plugins: iso2mesh, brain2mesh and xdf now support Apple Silicon
+--------------------------------------------------------------
+October 2024
+- Anatomy: Spatial correlations and brain annotations: 'bst-neuromaps' plugin
+- Anatomy: Support exporting mixed sources as NIfTI
+- Registration: Allow selecting and deleting head points
+- TimeFreq: Add model selection to FOOOF and SPRiNT
+- IO: Support of EDF files with multiple sampling rates (using FielTrip plugin)
+- Bugfix: Importing MEG sensor locations from FieldTrip data
+--------------------------------------------------------------
+September 2024
+- Artifacts: ICA, display explaned variance for ICs
+- Distrib: Function 'test_tutorial.m' and GitHub workflow 'run_tutorial.yaml'
+- Plugins: Bugfix, interaction between SPM and FieldTrip
+- Plugins: Bugfix, always read FIFF with functions in 'brainstorm3/external'
+- GUI: Show/hide hidden files (Linux, Windows and macOS)
+--------------------------------------------------------------
+August 2024
+- Anatomy: Improve volume computation, use 'boundary'
+- Coreg: New digitization panel
+- SEEG/ECOG: Improvements and bugfix for IEEG panel
+- IO: EDF+ support negative gains
+- Distrib: Linux and macOS, find Matlab runtime in full Matlab installation
+- Distrib: Add deep-brain-activity script
+- Distrib: Add deviation-maps tutorial
+--------------------------------------------------------------
+July 2024
+- Anatomy: Import output from FreeSurfer recon-all-clinical
+- Bugfix: Importing non-Atlas MRI volumes given in MNI space
+- Inverse: Process to apply exclusion zone around sensors for volume grids
+- Artifacts: New process for automatic detection of artifacts on MEG
+- Plugins: Add mTRF-Toolbox and Zeffiro
+- Plugins: OpenMEEG and MCXLAB now support Apple Silicon
+- Distrib: Menu option to retrieve system information
+--------------------------------------------------------------
 June 2024
 - Anatomy: Bugfix, set proper subtype on importing Fibers and FEM
 - Viz: Allow combination of resection options in Fig3D

@@ -140,6 +140,36 @@ jFileChooser = java_call(jBstSelector, 'getJFileChooser');
 % Set dialog callback 
 java_setcb(jFileChooser, 'ActionPerformedCallback', @FileSelectorAction, ...
                          'PropertyChangeCallback',  @FileSelectorPropertyChanged);
+% Search for panel to add show/hide hidden menu
+jObjects  = jFileChooser;
+jFilePane = [];
+while ~isempty(jObjects)
+    switch class(jObjects(1))
+        case 'sun.swing.FilePane'
+            jFilePane = jObjects(1);
+            break
+        case {'javax.swing.JPanel', 'javax.swing.JFileChooser'}
+            jObjects = [jObjects, jObjects(1).getComponents];
+        otherwise
+            % do nothing
+    end
+    jObjects = jObjects(2:end);
+end
+% Linux and Windows have a JFilePane object with a PopupMenu
+if ~isempty(jFilePane)
+    jPopup = jFilePane.getComponentPopupMenu;
+    jFont  = jPopup.getFont;
+% macOs does not have JFilePane object, add PopupMenu to jFileChooser
+else
+    jPopup = java_create('javax.swing.JPopupMenu');
+    jFont  = [];
+    jFileChooser.setComponentPopupMenu(jPopup);
+end
+jCheckHidden = gui_component('CheckBoxMenuItem', jPopup, [], 'Show hidden files', [], [], @(h,ev)ToogleHiddenFiles(), jFont);
+showHiddenFiles = bst_get('ShowHiddenFiles');
+jCheckHidden.setSelected(showHiddenFiles);
+jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+
 drawnow;
 % Display file selector
 java_call(jBstSelector, 'showSameThread');
@@ -176,8 +206,17 @@ if FileSelectorStatus
         % If SAVE dialog
         if (DialogType == BstFileSelector.TYPE_SAVE)
             % Get required extension
+            [~, ~, selExt] = bst_fileparts(fileList);
+            % Validate required extension with valid extensions from Filters
             suffix = fileFilter.getSuffixes();
-            suffix = char(suffix(1));
+            iValidSuffix = 1;
+            for iSuffix = 1 : length(suffix)
+                if strcmp(selExt, char(suffix(iSuffix)))
+                    iValidSuffix = iSuffix;
+                    break
+                end
+            end
+            suffix = char(suffix(iValidSuffix));
             % Replace current extension with required extension (ONLY IF SUFFIX IS EXTENSION)
             if (suffix(1) == '.') && ~isequal(suffix, '.folder')
                 [selPath, selBase, selExt] = bst_fileparts(fileList);
@@ -228,12 +267,20 @@ end
 
     function FileSelectorPropertyChanged(h, ev)
         import org.brainstorm.file.*;
+        % Release mutex if Dialog was closed
+        propertyName = char(java_call(ev, 'getPropertyName'));
+        if strcmpi(propertyName, 'JFileChooserDialogIsClosingProperty') && isempty(java_call(ev, 'getNewValue'))
+            bst_mutex('release', 'FileSelector');
+            return
+        end
         % Only when saving 
         if (DialogType == BstFileSelector.TYPE_SAVE)
             switch char(java_call(ev, 'getPropertyName'))
                 case 'fileFilterChanged'
                     % Get new filter
                     newFilter = java_call(ev, 'getNewValue');
+                    % New format name
+                    newFormatName = java_call(newFilter, 'getFormatName');
                     % New suffix
                     newSuffix = java_call(newFilter, 'getSuffixes');
                     newSuffix = char(newSuffix(1));
@@ -251,14 +298,19 @@ end
 
                     % Replace old extension by new one
                     [fPath, fBase, fExt] = bst_fileparts(oldFilename);
-                    % Brainstorm or external file
-                    if ~isempty(newSuffix) && (newSuffix(1) == '_')
+                    % Suffix =       '_TAG' (e.g. '_events'     > events_FILENAME.mat)
+                    if ~isempty(newSuffix) && strncmpi(newFormatName, 'BST', 3) && (newSuffix(1) == '_') && isempty(strfind(newSuffix, '.'))
                         fBase = strrep(fBase, ['_' newSuffix(2:end)], '');
                         fBase = strrep(fBase, [newSuffix(2:end) '_'], '');
                         fBase = [newSuffix(2:end) '_' fBase];
                         fExt  = '.mat';
-                    else
+                    % Suffix =       '.EXT' (e.g. '.csv'        > FILENAME.csv)
+                    % Suffix = 'STRING.EXT' (e.g. '_string.ext' > FILENAME_string.ext)
+                    elseif (newSuffix(1) == '.') || (newSuffix(1) == '_')
                         fExt = newSuffix;
+                    % Suffix = 'BASE.EXT'   (e.g. 'text.txt'    > text.txt)
+                    else
+                        [~, fBase, fExt] = bst_fileparts(newSuffix);
                     end
                     newFilename = bst_fullfile(fPath, [fBase, fExt]);
                     % Update default filename
@@ -268,6 +320,14 @@ end
                     DefaultDir = strrep(DefaultDir, char(java_call(ev, 'getOldValue')), char(java_call(ev, 'getNewValue')));
             end
         end
+    end
+
+    function ToogleHiddenFiles()
+        showHiddenFiles = bst_get('ShowHiddenFiles');
+        showHiddenFiles = ~showHiddenFiles;
+        bst_set('ShowHiddenFiles', showHiddenFiles);
+        jFileChooser.setFileHidingEnabled(~showHiddenFiles);
+        jCheckHidden.setSelected(showHiddenFiles);
     end
 end
 

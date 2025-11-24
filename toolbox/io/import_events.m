@@ -250,7 +250,7 @@ for iNew = 1:length(newEvents)
         sFile.events(iEvt).notes      = [sFile.events(iEvt).notes, newEvents(iNew).notes];
         % Sort by time
         if (size(sFile.events(iEvt).times, 2) > 1)
-            [tmp__, iSort] = unique(bst_round(sFile.events(iEvt).times(1,:), 9));
+            [tmp__, iSort] = sort(bst_round(sFile.events(iEvt).times(1,:), 9));
             sFile.events(iEvt).times   = sFile.events(iEvt).times(:,iSort);
             sFile.events(iEvt).epochs  = sFile.events(iEvt).epochs(iSort);
             if ~isempty(sFile.events(iEvt).reactTimes)
@@ -294,6 +294,11 @@ for iNew = 1:length(newEvents)
         end
         sFile.events(iEvt).color = ColorTable(iColor,:);
     end
+end
+
+% Merge simultaneous event occurences
+for iEvt = 1:length(sFile.events)
+    sFile.events(iEvt) = process_evt_merge('MergeOccurrences', sFile.events(iEvt));
 end
 
 % %% ===== SORT EVENTS BY LABEL =====

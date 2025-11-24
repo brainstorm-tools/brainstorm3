@@ -66,8 +66,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ChannelIn'};                          % DefaultFormats
     % Option: Default channel files
     sProcess.options.usedefault.Comment = 'Or use default:';
-    sProcess.options.usedefault.Type    = 'combobox';
-    sProcess.options.usedefault.Value   = {1, strList};
+    sProcess.options.usedefault.Type    = 'combobox_label';
+    sProcess.options.usedefault.Value   = {'', cat(1, strList, strList)};
     % Separator
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
@@ -100,14 +100,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get filename to import
     ChannelFile = sProcess.options.channelfile.Value{1};
     FileFormat  = sProcess.options.channelfile.Value{2};
+
+    % HANDLING ISSUE #591: https://github.com/brainstorm-tools/brainstorm3/issues/591
+    % The list of default caps is changing between versions of Brainstorm, therefore the index of a "combobox" option can't be considered a reliable information.
+    % On 6-Jan-2022: The option "usedefault" was changed from type "combobox" to "combobox_label" and the use of previous syntax is now an error.
+    % Users with existing scripts will get an error and will be requested to update their scripts.
+    if isempty(ChannelFile) && ~ischar(sProcess.options.usedefault.Value{1})
+        bst_report('Error', sProcess, [], [...
+            'On 6-Jan-2023, the option "usedefault" of process_channel_add loc was changed from type "combobox" to "combobox_label".' 10 ...
+            'This parameter was previously an integer, indicating an index in a list that unfortunately changes across versions of Brainstorm.' 10 ...
+            'The value now must be a string, which points at a specific default EEG cap with no amibiguity.' 10 10 ...
+            'Scripts generated before 30-Jun-2022 and executed with a version of Brainstorm posterior to 30-Jun-2022' 10 ...
+            'might have been selecting the wrong EEG cap, and should be fixed and executed again.' 10 10 ...
+            'If you get this error, you must edit your processing script:' 10 ...
+            'Use the pipeline editor to generate a new script to call process_channel_add.' 10 10 ...
+            'More information in GitHub issue #591: ' 10 ...
+            'https://github.com/brainstorm-tools/brainstorm3/issues/591']);
+        return
+    end
     
     % ===== GET DEFAULT =====
     if isempty(ChannelFile)
         % Get registered Brainstorm EEG defaults
         bstDefaults = bst_get('EegDefaults');
         % Get default channel file
-        iSel   = sProcess.options.usedefault.Value{1};
-        strDef = sProcess.options.usedefault.Value{2}{iSel};
+        strDef = sProcess.options.usedefault.Value{1};
         % If there is something selected
         if ~isempty(strDef)
             % Format: "group: name"

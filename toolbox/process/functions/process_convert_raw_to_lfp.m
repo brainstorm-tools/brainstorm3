@@ -168,8 +168,9 @@ function OutputFiles = Run(sProcess, sInput)
     RawFileFormat = 'BST-BIN';
 
     % Number of time points in output file
-    newTimeVector = downsample(DataMat.Time, round(Fs/LFP_fs));
-    nTimeOut = length(newTimeVector);
+    tmpResampled = process_resample('Compute', DataMat.Time, DataMat.Time, LFP_fs);
+    nTimeOut = length(tmpResampled);
+    newTimeVector = DataMat.Time(1) + (0:nTimeOut-1) ./ LFP_fs;
     % Template structure for the creation of the output raw file
     sFileTemplate = sFileIn;
     sFileTemplate.prop.sfreq = LFP_fs;
@@ -242,7 +243,7 @@ function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileI
     % Band-pass filter
     data = bst_bandpass_hfilter(data, sr, BandPass(1), BandPass(2), 0, 0);
     % Resample
-    data = process_resample('Compute', data, linspace(0, size(data,2)/sr, size(data,2)), LFP_fs);
+    data = process_resample('Compute', data, (0:(size(data,2)-1))./sr, LFP_fs);
 end
 
 
