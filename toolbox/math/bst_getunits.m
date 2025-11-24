@@ -114,7 +114,7 @@ else
                 valUnits  = 'No units';
             end
             
-        case {'eeg', '$eeg', 'ecog', '$ecog', 'seeg', '$seeg', 'eog', '$eog', 'ecg', '$ecg', 'emg', '$emg'}
+        case {'eeg', '$eeg', 'ecog', '$ecog', 'seeg', '$seeg', 'eog', '$eog', 'ecg', '$ecg', 'emg', '$emg', 'ecog+seeg', '$ecog+seeg'}
             % EEG data in Volts, displayed in microVolts
             if (val < 0.01)
                 valFactor = 1e6;

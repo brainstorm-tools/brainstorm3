@@ -201,36 +201,23 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
         end
         newEvent.reactTimes = [events(iEvents).reactTimes];
     end
-    % Find duplicated events
-    iRemoveDuplicate = [];
-    [~, ics, ias] = unique(bst_round(newEvent.times', 9), 'rows', 'stable');
-    % Check if duplicated times are really duplicated events
-    for ix = 1 : length(ics)
-        ids = find(ias == ix);
-        for iy = 2 : length(ids)
-            id = ids(iy);
-            if (isempty(newEvent.channels)   || isequal(newEvent.channels{ids(1)}, newEvent.channels{id})) && ...
-               (isempty(newEvent.notes)      || isequal(newEvent.notes{ids(1)}, newEvent.notes{id})) && ...
-               (isempty(newEvent.reactTimes) || isequal(newEvent.reactTimes(ids(1)), newEvent(id).reactTimes))
-               iRemoveDuplicate = [iRemoveDuplicate, id];
-            end
+    % Sort by time
+    if (size(newEvent.times, 2) > 1)
+        [tmp__, iSort] = sort(bst_round(newEvent.times(1,:), 9));
+        newEvent.times   = newEvent.times(:,iSort);
+        newEvent.epochs  = newEvent.epochs(iSort);
+        if ~isempty(newEvent.reactTimes)
+            newEvent.reactTimes = newEvent.reactTimes(iSort);
+        end
+        if ~isempty(newEvent.channels)
+            newEvent.channels = newEvent.channels(iSort);
+        end
+        if ~isempty(newEvent.notes)
+            newEvent.notes = newEvent.notes(iSort);
         end
     end
-    % Sort by samples indices
-    [~, iSort] = sort(bst_round(newEvent.times(1,:), 9));
-    % Remove indices of duplicated events
-    iSort = iSort(~ismember(iSort, iRemoveDuplicate));
-    newEvent.times    = newEvent.times(:,iSort);
-    newEvent.epochs   = newEvent.epochs(iSort);
-    if ~isempty(newEvent.channels)
-        newEvent.channels = newEvent.channels(iSort);
-    end
-    if ~isempty(newEvent.notes)
-        newEvent.notes = newEvent.notes(iSort);
-    end
-    if ~isempty(newEvent.reactTimes)
-        newEvent.reactTimes = newEvent.reactTimes(iSort);
-    end
+    % Merge simultaneous event occurences
+    newEvent = MergeOccurrences(newEvent);
     % Return events to its original state
     events = eventsOrg;
     % Remove merged events
@@ -242,11 +229,64 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDel
     end
     % Add new event
     events(end + 1) = newEvent;
-
     % File was modified
     isModified = 1;
 end
 
+
+%% ===== MERGE REPEATED OCCURRENCES =====
+function sEvents = MergeOccurrences(sEvents)
+    % Indices of repeated occurences, aka indices to delete after merge
+    idel = [];
+    % Simultaneous occurences (checks simple and extended event types)
+    [~, ics, ias] = unique(bst_round(sEvents.times', 9), 'rows', 'stable');
+    % Shape as row vectors
+    ics = ics(:)';
+    ias = ias(:)';
+    for ic = 1 : numel(ics)
+        irep = find(ias == ic);
+        if numel(irep) < 2
+            continue
+        end
+        % Merge event occurences IFF: there are not Notes OR all Notes are the same for repeated occurrences
+        if isempty(sEvents.notes) || isequal(sEvents.notes{irep})
+            % Check channel info
+            if isempty(sEvents.channels)
+                irepNoChannel = irep;
+                irepChannel   = [];
+            else
+                irepNoChannel = cellfun(@isempty, sEvents.channels(irep));
+                irepChannel   = ~irepNoChannel;
+                irepNoChannel = irep(irepNoChannel);
+                irepChannel   = irep(irepChannel);
+            end
+            % Merge occurences without channel information
+            if length(irepNoChannel) >= 2
+                % Mark repeated occurences to be deleted
+                idel = [idel, irepNoChannel(2:end)];
+            end
+            % Merge occurences with channel information
+            if length(irepChannel) >= 2
+                % Merge channel list in first occurence of repeated the occurences
+                sEvents.channels{irepChannel(1)} = unique([sEvents.channels{irepChannel}]);
+                % Mark repeated occurence to be deleted
+                idel = [idel, irepChannel(2:end)];
+            end
+        end
+    end
+    % Delete merged occurences
+    sEvents.times(:, idel) = [];
+    sEvents.epochs(idel)   = [];
+    if ~isempty(sEvents.channels)
+        sEvents.channels(idel) = [];
+    end
+    if ~isempty(sEvents.notes)
+        sEvents.notes(idel) = [];
+    end
+    if ~isempty(sEvents.reactTimes)
+        sEvents.reactTimes(idel) = [];
+    end
+end
 
 
 

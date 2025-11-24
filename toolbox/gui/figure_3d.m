@@ -597,7 +597,6 @@ function FigureMouseUpCallback(hFig, varargin)
     % Check if clicked object is still available
     if ~isempty(clickObject) && ~ishandle(clickObject)
         clickObject = [];
-        clickAction = [];
     end
     
     % ===== SIMPLE CLICK ===== 
@@ -1705,6 +1704,10 @@ function DisplayFigurePopup(hFig)
         jItem.setSelected(TopoLayoutOptions.ShowLegend);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
         jItem.setSelected(TopoLayoutOptions.FlipYAxis);
+        if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, {'EEG', 'MEG', 'NIRS'})
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show head lines', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ShowHeadLines', ~TopoLayoutOptions.ShowHeadLines));
+            jItem.setSelected(TopoLayoutOptions.ShowHeadLines);
+        end
         jPopup.addSeparator();
     end
     
@@ -3297,8 +3300,8 @@ end
 function SmoothSurface(hFig, iTess, smoothValue)
     % Get surfaces list 
     TessInfo = getappdata(hFig, 'Surface');
-    % Ignore MRI slices
-    if ismember(TessInfo(iTess).Name, {'Anatomy', 'FEM'})
+    % Ignore for MRI slices, FEM tetrahedral mesh and IsoSurface
+    if ismember(TessInfo(iTess).Name, {'Anatomy', 'FEM'}) || ~isempty(regexp(TessInfo(iTess).SurfaceFile, 'tess_isosurface', 'match'))
         return
     end
     % Get surfaces vertices
@@ -4470,6 +4473,9 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'NIRS');
     end
     Channels = GlobalData.DataSet(iDS).Channel(iChannels);
+    hasLoc   = cellfun(@(c)size(c,2), {Channels.Loc}) > 0;
+    Channels = Channels(hasLoc);
+
     % Check for errors in the channel definition: Loc needs 2 set of positions (source, detector)
     if any(cellfun(@(c)size(c,2), {Channels.Loc}) ~= 2)
         error('NIRS sensors need to be defined by two positions: the source and and the detector.');

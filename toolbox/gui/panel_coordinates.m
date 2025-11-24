@@ -434,13 +434,19 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'LineWidth',       2, ...
          'Parent',          hAxes, ...
          'Tag',             'ptCoordinates');
+    % Automatically update MRI viewers in viewing iEEG sensors
+    if gui_brainstorm('isTabVisible', 'iEEG')
+        global GlobalData
+        [~, ~, iDS] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+            hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
+            if ~isempty(hFigMri)
+                ViewInMriViewer(0);
+            end
+        end
+    end
     % Update "Coordinates" panel
     UpdatePanel();
-    % Update MRI viewer (if open)
-    hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
-    if ~isempty(hFigMri)
-        ViewInMriViewer();
-    end
 end
 
 
@@ -465,7 +471,7 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     % Get camera position
     CameraPosition = get(hAxes, 'CameraPosition');
     % Get all the surfaces in the figure
-    [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+    TessInfo = getappdata(hFig, 'Surface');
     if isempty(TessInfo)
         return
     end
@@ -482,16 +488,22 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     end
     
     % ===== GET SELECTION ON THE CLOSEST SURFACE =====
-    % Get the closest point for all the surfaces and patches
+    % List of patches and surfaces they belong
     hPatch = [TessInfo(iAcceptableTess).hPatch];
     hPatch = hPatch(ishandle(hPatch));
+    iTess  = [];
+    for i = 1 : length(iAcceptableTess)
+        iTess = [iTess, repmat(iAcceptableTess(i), 1, length(TessInfo(iAcceptableTess(i)).hPatch))];
+    end
     patchDist = zeros(1,length(hPatch));
+    % Get the closest point for all the surfaces and patches
     for i = 1:length(hPatch)
         [pout{i}, vout{i}, vi{i}] = select3d(hPatch(i));
         if ~isempty(pout{i})
             patchDist(i) = norm(pout{i}' - CameraPosition);
             % Find centroid the blob mesh that contains the vertex 'vi'
             if isCentroid
+                sSurf = bst_memory('LoadSurface', TessInfo(iTess(i)).SurfaceFile);
                 VertexList = FindCentroid(sSurf, find(sSurf.VertConn(vi{i},:)), [], 1, 6);
                 vout{i} = mean(sSurf.Vertices(VertexList(:), :))'; % SCS of the centroid
                 vi{i} = []; % No surface vertex associated to centroid
@@ -514,27 +526,18 @@ function [TessInfo, iTess, pout, vout, vi, hPatch] = ClickPointInSurface(hFig, S
     pout   = pout{iClosestPatch};
     vout   = vout{iClosestPatch};
     vi     = vi{iClosestPatch};
-
-    % Find to which surface this tesselation belongs
-    for i = 1:length(TessInfo)
-        if any(TessInfo(i).hPatch == hPatch);
-            iTess = i;
-            break;
-        end
-    end
+    iTess  = iTess(iClosestPatch);
 end
 
 %% ===== SET CENTROID SELECTION =====
 function SetCentroidSelection(isSelected)
+    import org.brainstorm.icon.*;
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         return;
     end
     setappdata(hFig, 'isSelectingCentroid', isSelected);
-    ctrl = bst_get('PanelControls', 'iEEG');
-    if ~isempty(ctrl)
-        ctrl.jButtonCentroid.setSelected(isSelected);
-    end
+    panel_ieeg('UpdateIsCentriodButton', isSelected);
 end
 
 %% ===== FIND CENTROID OF A MESH BLOB =====
@@ -576,7 +579,15 @@ end
 
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
+    % ViewInMriViewer(h, ev)    Call from panel button
+    % ViewInMriViewer(newFig=1) If newFig, open the MRI Viewer is not present
     global GlobalData;
+    % Call: ViewInMriViewer(newFig)
+    if nargin == 1 && ~isempty(varargin{1})
+        newFig = varargin{1};
+    else
+        newFig = 1;
+    end
     % Get current 3D figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
@@ -584,7 +595,7 @@ function ViewInMriViewer(varargin)
     end
     % Get current selected point
     CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
-    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.SCS)
         return
     end
     % Get subject and subject's MRI
@@ -593,12 +604,17 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    hFig = bst_figures('GetFiguresByType', 'MriViewer');
-    if isempty(hFig)
-        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    hFig = bst_figures('GetFigureWithSurface', sSubject.Anatomy(sSubject.iAnatomy).FileName, [], 'MriViewer', '');
+    if isempty(hFig) && newFig
+        view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
+    % Get all MRI Viewer figures for same DataSet
+    [hAllFig, ~, iAllDS] = bst_figures('GetFiguresByType', 'MriViewer');
+    hFig = hAllFig(iAllDS == iDS);
     % Select the required point
-    figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
+    for iFig = 1 : length(hFig)
+        figure_mri('SetLocation', 'scs', hFig(iFig), [], CoordinatesSelector.SCS);
+    end
 end
 
 

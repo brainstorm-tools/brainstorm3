@@ -427,6 +427,7 @@ return
     %    |- EEGMethod
     %    |- ECOGMethod
     %    |- SEEGMethod
+    %    |- NIRSMethod
     % or an empty structure if error
     function sInfo = io_getHeadModelInfo(relativeFilename)
         sInfo = repmat(db_template('HeadModel'),0);
@@ -436,7 +437,7 @@ return
                 % Try to load information
                 warning off MATLAB:load:variableNotFound
                 infoMat = in_bst_headmodel(bst_fullfile(studiesDir, relativeFilename), 0, ...
-                    'Comment', 'HeadModelType', 'MEGMethod', 'EEGMethod', 'ECOGMethod', 'SEEGMethod');
+                    'Comment', 'HeadModelType', 'MEGMethod', 'EEGMethod', 'ECOGMethod', 'SEEGMethod', 'NIRSMethod');
                 warning on MATLAB:load:variableNotFound
                 % Try to copy information
                 if isfield(infoMat, 'Comment')
@@ -456,6 +457,9 @@ return
                 end
                 if isfield(infoMat, 'SEEGMethod')
                     sInfo(1).SEEGMethod   = infoMat.SEEGMethod;
+                end
+                if isfield(infoMat, 'NIRSMethod')
+                    sInfo(1).NIRSMethod   = infoMat.NIRSMethod;
                 end
                 % Copy filename
                 sInfo(1).FileName = relativeFilename;

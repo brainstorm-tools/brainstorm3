@@ -57,6 +57,7 @@ if ischar(tutorialNames)
         tutorialNames = {'tutorial_introduction', ...
                          'tutorial_connectivity', ...
                          'tutorial_coherence', ...
+                         'tutorial_ecog', ...
                          'tutorial_ephys', ...
                          'tutorial_dba', ...
                          'tutorial_epilepsy', ...
@@ -126,8 +127,9 @@ for iTutorial = 1 : length(tutorialNames)
             tutorial_connectivity();
 
         case 'tutorial_coherence'
-            dataFile = bst_fullfile(dataDir, 'SubjectCMC.zip');
+            dataFile = get_tutorial_data(dataDir, 'SubjectCMC.zip', bstUser, bstPwd);
             if ~exist(dataFile, 'file')
+                dataFile = bst_fullfile(dataDir, 'SubjectCMC.zip');
                 bst_websave(dataFile, 'https://download.fieldtriptoolbox.org/tutorial/SubjectCMC.zip');
             end
             if exist(dataFile, 'file')
@@ -139,6 +141,13 @@ for iTutorial = 1 : length(tutorialNames)
             dataFile = get_tutorial_data(dataDir, 'TutorialDba.zip', bstUser, bstPwd);
             if exist(dataFile, 'file')
                 tutorial_dba(dataFile);
+            end
+
+        case 'tutorial_ecog'
+            dataFile = get_tutorial_data(dataDir, 'sample_ecog.zip', bstUser, bstPwd);
+            if exist(dataFile, 'file')
+                bst_unzip(dataFile, dataDir);
+                tutorial_ecog(dataDir);
             end
 
         case 'tutorial_ephys'
