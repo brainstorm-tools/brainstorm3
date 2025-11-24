@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 38;
-    sProcess.Description = 'https://www.fieldtriptoolbox.org/faq/source/datatype_segmentation/';
+    sProcess.Description = 'http://www.fieldtriptoolbox.org/faq/how_is_the_segmentation_defined';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'data'};
     sProcess.OutputTypes = {'import', 'data'};

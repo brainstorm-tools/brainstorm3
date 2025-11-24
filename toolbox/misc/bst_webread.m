@@ -1,4 +1,4 @@
-function str = bst_webread(url, outfile, timeout)
+function str = bst_webread(url, outfile)
 % BST_WEBREAD: Read the content of a URL, and optionally save it to a file
 %
 % USAGE:  str = bst_webread(url)             % Return URL contents as a string
@@ -7,7 +7,6 @@ function str = bst_webread(url, outfile, timeout)
 % INPUTS:
 %    - url     : URL using FTP, HTTP or HTTPS
 %    - outfile : Full path to a file in which to save the results 
-%    - timeout : Timeout in seconds. Default 30 s
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -33,9 +32,6 @@ function str = bst_webread(url, outfile, timeout)
 if (nargin < 2) || isempty(outfile)
     outfile = [];
 end
-if (nargin < 3) || isempty(timeout)
-    timeout = 30;
-end
 
 % FTP listing with Matlab >= 2021b
 if (bst_get('MatlabVersion') >= 911) && ~isempty(strfind(url, 'ftp://'))
@@ -58,13 +54,11 @@ end
 
 % Reading function: urlread replaced with webread in Matlab 2014b
 if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @(u)urlread(u, 'Timeout', timeout);
+    url_read_fcn = @urlread;
     url_read_alt = @webread;
 else
-    options = weboptions;
-    options.Timeout = timeout;
-    url_read_fcn = @(u)webread(u, options);
-    url_read_alt = @(u)urlread(u, 'Timeout', timeout);
+    url_read_fcn = @webread;
+    url_read_alt = @(u)urlread(u, 'Timeout', 5);
 end
 % Read online version.txt
 try

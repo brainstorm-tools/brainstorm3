@@ -93,9 +93,15 @@ function Start(varargin) %#ok<DEFNU>
         surfaceFile = varargin{4};
     end
     Digitize.Type = DigitizerType;
-    if ~ismember(DigitizerType, {'Digitize', '3DScanner'})
-        bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
-        return
+    switch DigitizerType
+        case 'Digitize'
+            % Do nothing
+        case '3DScanner'
+            % Simulate
+            SetSimulate(1);
+        otherwise
+            bst_error(sprintf('DigitizerType : "%s" is not supported', DigitizerType));
+            return
     end
 
     % Get Digitize options
@@ -108,20 +114,6 @@ function Start(varargin) %#ok<DEFNU>
             bst_call(@panel_digitize_2024, 'Start');
         end
         return;
-    end
-
-    % Warning for Simulation mode
-    if strcmpi(DigitizerType, 'Digitize') && DigitizeOptions.isSimulate
-        options_dialog = {'Yes', 'No'};
-        res = java_dialog('question', ...
-            ['<HTML>Simulation mode is <B>ON</B><BR>', ...
-            'All incoming data is <B>simulated</B> and <B>not</B> from the actual digitizer device. <BR><BR>' ...
-            'Do you want to turn <B>OFF</B> the Simulation mode?</HTML>'], 'Digitizer', [], ...
-            options_dialog, options_dialog{2});
-        if strcmpi(res, options_dialog{1})
-            SetSimulate(0);
-            bst_call(@panel_digitize, 'Start');
-        end
     end
 
     % ===== PREPARE DATABASE =====
@@ -320,11 +312,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Edit settings...',    IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EditSettings), []);
     gui_component('MenuItem', jMenu, [], 'Switch to Digitize "2024"', [], [], @(h,ev)bst_call(@SwitchVersion), []);
-    if strcmpi(Digitize.Type, 'Digitize')
+    if ~strcmpi(Digitize.Type, '3DScanner')
         gui_component('MenuItem', jMenu, [], 'Reset serial connection', IconLoader.ICON_FLIP, [], @(h,ev)bst_call(@CreateSerialConnection), []);
     end
     jMenu.addSeparator();
-    if exist('bst_headtracking', 'file') && strcmpi(Digitize.Type, 'Digitize')
+    if exist('bst_headtracking', 'file') && ~strcmpi(Digitize.Type, '3DScanner')
         gui_component('MenuItem', jMenu, [], 'Start head tracking',     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)bst_call(@(h,ev)bst_headtracking([],1,1)), []);
         jMenu.addSeparator();
     end
@@ -440,7 +432,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     
     % ===== EXTRA BUTTONS =====
     jPanelMisc = gui_river([5,4], [2,4,4,0]);
-        if strcmpi(Digitize.Type, 'Digitize')
+        if ~strcmpi(Digitize.Type, '3DScanner')
             gui_component('button', jPanelMisc, [], 'Collect point', [], [], @(h,ev)bst_call(@ManualCollect_Callback));
         end
         jButtonDeletePoint = gui_component('button', jPanelMisc, 'hfill', 'Delete last point', [], [], @DeletePoint_Callback);
@@ -1127,8 +1119,8 @@ function ManualCollect_Callback()
 
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
-    % Simulation or 3DScanner: call the callback directly
-    if DigitizeOptions.isSimulate || strcmpi(Digitize.Type, '3DScanner')
+    % Simulation: call the callback directly
+    if DigitizeOptions.isSimulate
         BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
@@ -1474,7 +1466,7 @@ function CreateHeadpointsFigure()
         [~, iSubject] = bst_get('Subject', Digitize.SubjectName);
         db_reload_subjects(iSubject);
         % Hide head surface
-        if strcmpi(Digitize.Type, 'Digitize')
+        if ~strcmpi(Digitize.Type, '3DScanner')
             panel_surface('SetSurfaceTransparency', hFig, 1, 0.8);
         end
         % Get Digitizer JFrame
@@ -1533,7 +1525,7 @@ function PlotCoordinate(Loc, Label, Type, iPoint)
     figure_3d('ViewHeadPoints', Digitize.hFig, 1);
     figure_3d('ViewSensors',Digitize.hFig, 1, 1, 0,'EEG');
     % Hide head surface
-    if strcmpi(Digitize.Type, 'Digitize')
+    if ~strcmpi(Digitize.Type, '3DScanner')
         panel_surface('SetSurfaceTransparency', Digitize.hFig, 1, 1);
     end
 end
@@ -1898,8 +1890,8 @@ function isOk = CreateSerialConnection(h, ev) %#ok<INUSD>
     while ~isOk
         % Get COM port options
         DigitizeOptions = bst_get('DigitizeOptions');
-        % Simulation or 3DScanner: exit
-        if DigitizeOptions.isSimulate || strcmpi(Digitize.Type, '3DScanner')
+        % Simulation: exit
+        if DigitizeOptions.isSimulate
             isOk = 1;
             return;
         end
@@ -1964,8 +1956,8 @@ function BytesAvailable_Callback(h, ev)
     % Get digitizer options
     DigitizeOptions = bst_get('DigitizeOptions');
 
-    % Simulate or 3DScanner: Do not read serial connection
-    if DigitizeOptions.isSimulate || strcmpi(Digitize.Type, '3DScanner')
+    % Simulate: Generate random points
+    if DigitizeOptions.isSimulate
         if strcmpi(Digitize.Type, '3DScanner')
             % Get current 3D figure
             [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');
@@ -1985,7 +1977,6 @@ function BytesAvailable_Callback(h, ev)
             Digitize.hFig = hFig;
             Digitize.iDS = iDS;
         else
-            % Generate points
             switch (Digitize.Mode)
                 case 1,     pointCoord = [.08 0 -.01];
                 case 2,     pointCoord = [-.01 .07 0];
@@ -2044,7 +2035,7 @@ function BytesAvailable_Callback(h, ev)
         sound(Digitize.BeepWav.data, Digitize.BeepWav.fs);
     end
     % Check for change in Mode (click at least 1 meter away from transmitter)
-    if strcmpi(Digitize.Type, 'Digitize') && any(abs(pointCoord) > 1.5)
+    if ~strcmpi(Digitize.Type, '3DScanner') && any(abs(pointCoord) > 1.5)
         newMode = Digitize.Mode +1;
         SwitchToNewMode(newMode);
         return;

@@ -81,15 +81,16 @@ bst_set('TSDisplayMode', 'column');
 panel_scout('SetScoutShowSelection', 'none');
 
 %% ===== IMPORT MRI AND CT VOLUMES =====
-% Process: Import MRI
-bst_process('CallProcess', 'process_import_mri', [], [], ...
-    'subjectname', SubjectName, ...
-    'voltype',     'mri', ...  % MRI
-    'comment',     'pre_T1', ...
-    'mrifile',     {MriFilePre, 'ALL'}, ...
-    'nas',         [104, 207, 85], ...
-    'lpa',         [ 26, 113, 78], ...
-    'rpa',         [176, 113, 78]);
+% Create subject
+[~, iSubject] = db_add_subject(SubjectName, [], 0, 0);
+% Import MRI volume
+DbMriFilePre  = import_mri(iSubject, MriFilePre, 'ALL', 0, 0, 'pre_T1');
+% Set fiducials in MRI coordinates
+NAS = [104, 207, 85];
+LPA = [ 26, 113, 78];
+RPA = [176, 113, 78];
+figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, [], [], []);
+
 % Process: Segment MRI with CAT12
 bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'subjectname', SubjectName, ...
@@ -99,18 +100,9 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'vol',         0, ... % No volume parcellations
     'extramaps',   0, ... % No additional cortical maps
     'cerebellum',  0);
-% Process: Import CT
-bst_process('CallProcess', 'process_import_mri', [], [], ...
-    'subjectname', SubjectName, ...
-    'voltype',     'ct', ...  % CT
-    'comment',     'post_CT', ...
-    'mrifile',     {CtFilePost, 'ALL'});
-% Get filename for imported volumes
-sSubject = bst_get('Subject', SubjectName);
-% Reference MRI
-DbMriFilePre = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-% Imported CT (last volume)
-DbCtFilePost = sSubject.Anatomy(end).FileName;
+
+% Import CT volume
+DbCtFilePost = import_mri(iSubject, CtFilePost, 'ALL', 0, 0, 'post_CT');
 % Register and reslice CT to reference MRI using 'SPM'
 DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
 % Skull strip the CT volume using 'SPM'

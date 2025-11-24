@@ -82,26 +82,11 @@ else
 end
 
 % Check that same size
-isReslice = 0;
 refSize = size(sMriRef.Cube(:,:,:,1));
 srcSize = size(sMriSrc.Cube(:,:,:,1));
 if ~all(refSize == srcSize) || ~all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMriSrc.Voxsize(1:3) .* 1000))
-    % Check if volumes are coregistered (vox2ras)
-    refVox2ras = isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras'));
-    srcVox2ras = isfield(sMriSrc, 'InitTransf') && ~isempty(sMriSrc.InitTransf) && any(ismember(sMriSrc.InitTransf(:,1), 'vox2ras'));
-    if ~refVox2ras || ~srcVox2ras
-        errMsg = ['Skull stripping cannot be performed:'
-                 10 '  - The reference and target volumes have different size'];
-        errVox2rasMsg = 'No vox2ras transformation available for %s volume.';
-        if ~refVox2ras
-            errMsg = [errMsg, 10, sprintf(errVox2rasMsg, 'reference')];
-        end
-        if ~srcVox2ras
-            errMsg = [errMsg, 10, sprintf(errVox2rasMsg, 'target')];
-        end
-        return
-    end
-    isReslice = 1;
+    errMsg = 'Skull stripping cannot be performed if the reference MRI has different size';
+    return
 end
 
 % === SKULL STRIPPING ===
@@ -183,53 +168,45 @@ end
 % Reset logo
 bst_progress('removeimage');
 
-% Reslice brain mask to source MRI
-if isReslice
-    sMriMask = sMriRef;
-    sMriMask.Cube = int16(binBrainMask);
-    sMriMask = mri_reslice(sMriMask, sMriSrc, 'vox2ras', 'vox2ras', 1);
-    binBrainMask = sMriMask.Cube;
-end
-
 % Apply brain mask
-sMriMasked = sMriSrc;
-sMriMasked.Cube(~binBrainMask) = 0;
+sMriMask = sMriSrc;
+sMriMask.Cube(~binBrainMask) = 0;
 % File tag
 fileTag = sprintf('_masked_%s', lower(Method));
 
 % ===== SAVE NEW FILE =====
 % Add file tag
-sMriMasked.Comment = [sMriSrc.Comment, fileTag];
+sMriMask.Comment = [sMriSrc.Comment, fileTag];
 % Save output
 if ~isempty(MriFileSrc)
     bst_progress('text', 'Saving new file...');
     % Get subject
     [sSubject, iSubject] = bst_get('MriFile', MriFileSrc);
     % Update comment
-    sMriMasked.Comment = file_unique(sMriMasked.Comment, {sSubject.Anatomy.Comment});
+    sMriMask.Comment = file_unique(sMriMask.Comment, {sSubject.Anatomy.Comment});
     % Add history entry
-    sMriMasked = bst_history('add', sMriMasked, 'resample', ['Skull stripping with "' Method '" using on default file: ' MriFileRef]);
+    sMriMask = bst_history('add', sMriMask, 'resample', ['Skull stripping with "' Method '" using on default file: ' MriFileRef]);
     % Save new file
     MriFileMaskFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));
     MriFileMask = file_short(MriFileMaskFull);
     % Save new MRI in Brainstorm format
-    sMriMasked = out_mri_bst(sMriMasked, MriFileMaskFull);
+    sMriMask = out_mri_bst(sMriMask, MriFileMaskFull);
 
     % Register new MRI
     iAnatomy = length(sSubject.Anatomy) + 1;
     sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
     sSubject.Anatomy(iAnatomy).FileName = MriFileMask;
-    sSubject.Anatomy(iAnatomy).Comment  = sMriMasked.Comment;
+    sSubject.Anatomy(iAnatomy).Comment  = sMriMask.Comment;
     % Update subject structure
     bst_set('Subject', iSubject, sSubject);
     % Refresh tree
-    db_reload_subjects(iSubject);
+    panel_protocols('UpdateNode', 'Subject', iSubject);
     panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
     % Save database
     db_save();
 else
     % Return output structure
-    MriFileMask = sMriMasked;
+    MriFileMask = sMriMask;
 end
 
 % Delete the temporary files

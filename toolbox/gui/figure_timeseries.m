@@ -2800,8 +2800,6 @@ function [F, TsInfo, Std] = GetFigureData(iDS, iFig)
         sMontage = panel_montage('GetMontage', TsInfo.MontageName, hFig);
         % Get channel indices in the figure montage
         if ~isempty(sMontage)
-            % Set name to retrieved montage
-            TsInfo.MontageName = sMontage.Name;
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, ChanNames, ChannelFlag);
             % No signal to display
             if isempty(iMatrixDisp) && ~isempty(sMontage.ChanNames)
@@ -3383,13 +3381,13 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
             GroupNames{i} = GlobalData.DataSet(iDS).Channel(strcmpi(ChanName, {GlobalData.DataSet(iDS).Channel.Name})).Group;
         end
         % Create legend
-        legend(PlotHandles.hLines(iLinesGroup), strrep(GroupNames, '_', '-'));
+        [hLegend, hLegendObjects] = legend(PlotHandles.hLines(iLinesGroup), strrep(GroupNames, '_', '-'));
     % Plotting the names of the channels
     elseif strcmpi(TsInfo.DisplayMode, 'butterfly') && ~isFastUpdate && ~isempty(LinesLabels) && TsInfo.ShowLegend && ((length(LinesLabels) > 1) || ~isempty(LinesLabels{1}))
         if (length(LinesLabels) == 1) && (length(PlotHandles.hLines) > 1)
-            legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
+            [hLegend, hLegendObjects] = legend(PlotHandles.hLines(1), strrep(LinesLabels{1}, '_', '-'));
         elseif (length(PlotHandles.hLines) == length(LinesLabels))
-            legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
+            [hLegend, hLegendObjects] = legend(PlotHandles.hLines, strrep(LinesLabels(:), '_', '-'));
         else
             disp('BST> Error: Number of legend entries do not match the number of lines. Ignoring...');
         end

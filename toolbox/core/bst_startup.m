@@ -46,24 +46,10 @@ if (MatlabVersion < 701)
 end
 % Is Matlab running (if not it is a compiled version)
 isCompiled = bst_iscompiled();
-% Compiled version: Java Look and Feel (JLF)
+% Compiled version: Force system look and feel
 if isCompiled
-    useCrossPlatformJL = 0;
-    % Get user database file : brainstorm.mat
-    dbFile = bst_get('BrainstormDbFile');
-    % Import preference
-    if file_exist(dbFile)
-        bstOptions = load(dbFile, 'Preferences');
-        useCrossPlatformJL = isfield(bstOptions, 'Preferences') && isstruct(bstOptions.Preferences) && isfield(bstOptions.Preferences, 'UseCrossPlatformJLF') && bstOptions.Preferences.UseCrossPlatformJLF;
-    end
     try
-        if ~useCrossPlatformJL
-            % System Look and Feel
-            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
-        else
-            % Cross platform Look and Feel
-            javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
-        end
+        javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
     catch
         % Whatever....
     end
@@ -219,7 +205,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 5.03;
+CurrentDbVersion = 5.02;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -322,11 +308,7 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-montagesToCheck = {'CTF LF', 'Bad channels', 'Average reference (L -> R)', ...
-                   'Scalp current density', 'Scalp current density (L -> R)', ...
-                   'Head distance', ...
-                   'Infinity reference (REST)', 'Infinity reference (REST) (L -> R)'};
-if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesToCheck, {GlobalData.ChannelMontages.Montages.Name}))
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
     % Load default selections
     panel_montage('LoadDefaultMontages');

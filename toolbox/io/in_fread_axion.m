@@ -51,10 +51,6 @@ end
 
 
 %% ===== READ FILE =====
-% Open a new handle to an Axis File if needed
-if isempty(sFile.header.FileObj)
-    sFile.header.FileObj = AxisFile(sFile.filename);
-end
 % Open the file again
 sFile.header.FileObj.reopen();
 

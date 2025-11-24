@@ -1,8 +1,7 @@
-function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, Comment, isInteractive)
+function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
 % IN_DATA_FIELDTRIP: Read recordings from FieldTrip structures (ft_datatype_timelock, ft_datatype_raw)
 %
-% USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip(DataFile,     Comment, isInteractive)
-%         [DataMat, ChannelMat] = in_data_fieldtrip(FtDataStruct, Comment, isInteractive)
+% USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,23 +24,12 @@ function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, Comment, isInteract
 % Authors: Francois Tadel, 2015-2021
 
 % Parse inputs
-if (nargin < 2) || isempty(Comment)
-    Comment = 'FieldTripData';
-end
-if (nargin < 3) || isempty(isInteractive)
+if (nargin < 2) || isempty(isInteractive)
     isInteractive = 1;
 end
 
 % Get format
-% Data is loaded FieldTrip struct
-if isstruct(DataFile)
-    ftMat = DataFile;
-    fBase = Comment;
-% Data is FieldTrip struct saved in .mat
-else
-    [~, fBase] = bst_fileparts(DataFile);
-    ftMat = load(DataFile);
-end
+[fPath, fBase, fExt] = bst_fileparts(DataFile);
 % Initialize returned structure
 DataMat = db_template('DataMat');
 DataMat.Comment  = fBase;
@@ -52,6 +40,7 @@ DataMat.nAvg     = 1;
 
 % ===== LOAD FILE =====
 % Load structure
+ftMat = load(DataFile);
 fields = fieldnames(ftMat);
 % If the .time field is not directly accessible, try one level down
 if ~isfield(ftMat, 'time')

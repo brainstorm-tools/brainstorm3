@@ -206,17 +206,8 @@ if FileSelectorStatus
         % If SAVE dialog
         if (DialogType == BstFileSelector.TYPE_SAVE)
             % Get required extension
-            [~, ~, selExt] = bst_fileparts(fileList);
-            % Validate required extension with valid extensions from Filters
             suffix = fileFilter.getSuffixes();
-            iValidSuffix = 1;
-            for iSuffix = 1 : length(suffix)
-                if strcmp(selExt, char(suffix(iSuffix)))
-                    iValidSuffix = iSuffix;
-                    break
-                end
-            end
-            suffix = char(suffix(iValidSuffix));
+            suffix = char(suffix(1));
             % Replace current extension with required extension (ONLY IF SUFFIX IS EXTENSION)
             if (suffix(1) == '.') && ~isequal(suffix, '.folder')
                 [selPath, selBase, selExt] = bst_fileparts(fileList);

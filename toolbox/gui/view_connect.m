@@ -125,21 +125,12 @@ if strcmpi(DisplayMode, 'Image')
     else
         TimeVector = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Time;
     end
-    % Process2 AxB, add the file information
-    if isempty(regexp(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName, '1[n]*$', 'once'))
-        rowFileStr = ' (A)';
-        colFileStr = ' (B)';
-    % Process1, either NxN or 1xN
-    else
-        rowFileStr = '';
-        colFileStr = '';
-    end
     % In Granger 1xN "in" case: reverse the xlabel/ylabel
     if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'granger', 'spgranger'}) && isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'GrangerDir') ...
             && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.GrangerDir, 'in')
-        DimLabels = {['To' rowFileStr],   ['From' colFileStr]};
+        DimLabels = {'To (A)', 'From (B)'};
     else
-        DimLabels = {['From' rowFileStr], ['To' colFileStr]};
+        DimLabels = {'From (A)', 'To (B)'};
     end
     % Plot as a flat image
     Labels = {GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, ...

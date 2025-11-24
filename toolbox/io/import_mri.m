@@ -72,12 +72,10 @@ else
 end
 % Volume type
 volType = 'MRI';
-if ~isempty(Comment) && ~isempty(regexp(Comment, '^CT', 'once'))
-    Comment = regexprep(Comment, '^CT\s*', '');
+if ~isempty(strfind(Comment, 'CT'))
     volType = 'CT';
 end
-if ~isempty(Comment) && ~isempty(regexp(Comment, '^PET', 'once'))
-    Comment = regexprep(Comment, '^PET\s*', '');
+if ~isempty(strfind(Comment, 'PET'))
     volType = 'PET';
 end
 % Get node comment from filename
@@ -353,9 +351,6 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
             RegMethod = 'Ignore';
             % Reslice: never reslice
             isReslice = 0;
-            if isPet
-                petImportFileTag = '';
-            end
         end
 
         % Check that reference volume has set fiducials for reslicing

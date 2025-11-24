@@ -137,15 +137,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Build average reference
             if ~isempty(strfind(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
-            elseif ~isempty(strfind(sMontage.Name, 'Infinity reference (REST)'))
-                % Get leadfield matrix
-                sHeadModel = bst_get('HeadModelForStudy', iStudyIn);
-                if isempty(sHeadModel) || isempty(sHeadModel.EEGMethod)
-                    bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" requires requires a EEG head model.']);
-                    return
-                end
-                HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
-                sMontage = panel_montage('GetMontageRestRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, HeadModelMat.Gain);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
             elseif ~isempty(strfind(sMontage.Name, 'Scalp current density'))
@@ -240,23 +231,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                 end
                             end
                         end
+                        % Channel still not found: set to defaults
                         if isempty(iInputChan)
-                            useDefaultChanDesc = 1;
-                            % If new channel that is reference
-                            if all(sMontage.Matrix(iChanOut,:) == 0) && (length(unique({ChannelMat.Channel(iChannels).Type})) == 1) && ismember(ChannelMat.Channel(iChannels(1)).Type, {'EEG'})
-                                ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
-                                ChannelMatOut.Channel(iChanOut).Type = ChannelMat.Channel(iChannels(1)).Type;
-                                ChannelMatOut.Channel(iChanOut).Loc = [0;0;0];
-                                ChannelMatOut.Channel(iChanOut).Weight = 1;
-                                useDefaultChanDesc = 0;
-                            end
-                            % Channel still not set: use defaults
-                            if useDefaultChanDesc
-                                %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
-                                %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
-                                ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
-                                ChannelMatOut.Channel(iChanOut).Type = 'Montage';
-                            end
+                            %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
+                            %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                            ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
+                            ChannelMatOut.Channel(iChanOut).Type = 'Montage';
                         % Else: copy input channel info
                         else
                             ChannelMatOut.Channel(iChanOut).Name    = ChanNameOut;
@@ -411,7 +391,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
         % === PROCESS HEAD MODELS ===
-        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel) && isCompatibleChan
+        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel)
             % Info message about the list of bad channels used for the head models
             bst_report('Info', sProcess, sInputs, ['The montage applied on the head model and noise covariance used the list of bad channels from data file: ' sInputs(iInput).FileName]);
             % Loop through all the head models

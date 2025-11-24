@@ -443,7 +443,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         
         % Create cache hash: list of selected processes
         strCache = sprintf('pro_%s_%d_%d_%d_%d', procDataType, length(iSelProc), procFiles(1), isFirstProc, nInputsProc);
-        % If the entry is already cached, use it
+        % If the enry is already cached, use it
         if isfield(GlobalData.Program.ProcessMenuCache, strCache)
             % Get the cached items
             jPopup    = GlobalData.Program.ProcessMenuCache.(strCache).jPopup;
@@ -461,11 +461,6 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             hashGroups = struct();
             % List of menus (for later update of the callbacks)
             jMenusAll = javaArray('javax.swing.JMenuItem', length(sProcesses));
-            % Display process path as tooltip
-            isProcessTooltip = bst_get('ShowProcessTooltip');
-            % Get directories for processes
-            bst_home_dir = bst_get('BrainstormHomeDir');
-            bst_user_dir = bst_get('BrainstormUserDir');
             % Fill the combo box
             for iProc = 1:length(sProcesses)
                 % Ignore if Index is set to 0
@@ -524,19 +519,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         hashGroups.(hashKey) = jParent;
                     end
                 end
-                % Get path for process function
-                if isProcessTooltip
-                    pathProcess = which(func2str(sProcesses(iProc).Function));
-                    if bst_plugin('strMatchEdge', pathProcess, bst_home_dir, 'start')
-                        pathProcess = bst_fullfile('BSTHOMEDIR', regexprep(pathProcess, ['^', regexptranslate('escape', bst_home_dir)], ''));
-                    elseif bst_plugin('strMatchEdge', pathProcess, bst_user_dir, 'start')
-                        pathProcess = bst_fullfile('BSTUSERDIR', regexprep(pathProcess, ['^', regexptranslate('escape', bst_user_dir)], ''));
-                    end
-                else
-                    pathProcess = [];
-                end
                 % Create process menu
-                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], pathProcess, @(h,ev)AddProcess(iProc, AddMode));
+                jItem = gui_component('MenuItem', jParent, [], sProcesses(iProc).Comment, [], [], @(h,ev)AddProcess(iProc, AddMode));
                 jItem.setMargin(Insets(5,0,4,0));
                 % Change menu color for unavailable menus
                 if ~isSelected
@@ -1214,10 +1198,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case {'cluster', 'cluster_confirm'}
                     % Get available and selected clusters
-                    [jList, nClusters] = GetClusterList(sProcess, optNames{iOpt});
+                    jList = GetClusterList(sProcess, optNames{iOpt});
                     % If no clusters
-                    if nClusters == 0 && strcmpi(option.Type, 'cluster')
-                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No clusters available in channel file.');
+                    if isempty(jList)
+                        gui_component('label', jPanelOpt, [], '<HTML>Error: No clusters available in channel file.');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1228,12 +1212,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             end
                             jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
                             java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []));
-                            if nClusters == 0
-                                jCheckCluster.setSelected(0);
-                                jCheckCluster.setEnabled(0);
-                            else
-                                jCheckCluster.setSelected(1);
-                            end
+                            jCheckCluster.setSelected(1)
+                            jList.setEnabled(1);
                         else
                             jCheckCluster = [];
                             gui_component('label', jPanelOpt, [], ' Select cluster:');
@@ -1253,7 +1233,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [AtlasList, iAtlasList] = GetAtlasList(sProcess, optNames{iOpt});
                     % If no scouts are available
                     if isempty(AtlasList)
-                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No scouts available.');
+                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.');
                     else
                         % Create list
                         jList = java_create('javax.swing.JList');
@@ -2057,11 +2037,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
     %% ===== OPTIONS: GET CLUSTER LIST =====
-    function [jList, nClusters] = GetClusterList(sProcess, optName)
+    function jList = GetClusterList(sProcess, optName)
         import org.brainstorm.list.*;
         % Initialize returned values
         jList = [];
-        nClusters = 0;
 
         % Get the current channel file
         if isfield(sProcess.options.(optName), 'InputTypesB') && ~isempty(sFiles2)
@@ -2075,18 +2054,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Load clusters from channel file
         ChannelMat = in_bst_channel(ChannelFile, 'Clusters');
         if isempty(ChannelMat.Clusters)
-            % No clusters
-            nClusters = 0;
-            allLabels = {'No clusters available in channel file.'};
-        else
-            % Get all clusters labels
-            allLabels = {ChannelMat.Clusters.Label};
-            nClusters = length(allLabels);
+            return;
         end
+
+        % Get all clusters labels
+        allLabels = {ChannelMat.Clusters.Label};
         % Create a list mode of the existing clusters/scouts
         listModel = javax.swing.DefaultListModel();
-        for iClust = 1:length(allLabels)
-            listModel.addElement(BstListItem(allLabels{iClust}, '', [' ' allLabels{iClust} ' '], iClust));
+        for iClust = 1:length(ChannelMat.Clusters)
+            listModel.addElement(BstListItem(ChannelMat.Clusters(iClust).Label, '', [' ' allLabels{iClust} ' '], iClust));
         end
 
         % Create list

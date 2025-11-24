@@ -114,7 +114,7 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
         tstat.MeshQualityMin = min(quality);
         tstat.MeshQualityStd = std(quality);
         tstat.MeshQualityMean = mean(quality);
-        tstat.MeshQualityUnit = MeshQualityUnit;
+        tstat.MeshQualityUnit = MeshQuality;
 
         % 3. Volume of elem
         bst_progress('text', sprintf('Computing volume of elements...  [%d/%d]', iTissue, length(TissueID)));
@@ -136,20 +136,17 @@ if strcmpi(meshType, 'volume_tetrahedron') && (length(TissueID) > 1)
             nbins = 30;
             subplot(3,1,1)
             histogram(EdgeLength,nbins);
-            title('Edge length (mm)');
-            xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', tstat.EdgeLengthMean, tstat.EdgeLengthStd, tstat.EdgeLengthMin, tstat.EdgeLengthMax))
+            xlabel(sprintf('Edge length (mm):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', tstat.EdgeLengthMean, tstat.EdgeLengthStd, tstat.EdgeLengthMin, tstat.EdgeLengthMax))
             drawnow
 
             subplot(3,1,2)
             histogram(quality,nbins);
-            title('Mesh quality (%)');
-            xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', tstat.MeshQualityMean, tstat.MeshQualityStd, tstat.MeshQualityMin, tstat.MeshQualityMax))
+            xlabel(sprintf('Mesh quality (%%):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', tstat.MeshQualityMean, tstat.MeshQualityStd, tstat.MeshQualityMin, tstat.MeshQualityMax))
             drawnow
 
             subplot(3,1,3)
             histogram(voli,nbins);
-            title('Tetrahedron volume (mm3)');
-            xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', tstat.MeshVolumeMean, tstat.MeshVolumeStd, tstat.MeshVolumeMin, tstat.MeshVolumeMax, tstat.MeshVolumeSum))
+            xlabel(sprintf('Tetrahedron volume (mm3):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', tstat.MeshVolumeMean, tstat.MeshVolumeStd, tstat.MeshVolumeMin, tstat.MeshVolumeMax, tstat.MeshVolumeSum))
             drawnow
         end
     end
@@ -215,26 +212,23 @@ if isDisplay
     nbins = 30;
     subplot(3,1,1)
     histogram(EdgeLength,nbins);
-    title('Edge length (mm)');
-    xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', MeshStat.FullModel.EdgeLengthMean, MeshStat.FullModel.EdgeLengthStd, MeshStat.FullModel.EdgeLengthMin, MeshStat.FullModel.EdgeLengthMax))
+    xlabel(sprintf('Edge length (mm):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', MeshStat.FullModel.EdgeLengthMean, MeshStat.FullModel.EdgeLengthStd, MeshStat.FullModel.EdgeLengthMin, MeshStat.FullModel.EdgeLengthMax))
     drawnow
 
     subplot(3,1,2)
     histogram(quality,nbins);
-    title('Mesh quality (%)');
-    xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', MeshStat.FullModel.MeshQualityMean, MeshStat.FullModel.MeshQualityStd, MeshStat.FullModel.MeshQualityMin, MeshStat.FullModel.MeshQualityMax))
+    xlabel(sprintf('Mesh quality (%%):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f', MeshStat.FullModel.MeshQualityMean, MeshStat.FullModel.MeshQualityStd, MeshStat.FullModel.MeshQualityMin, MeshStat.FullModel.MeshQualityMax))
     drawnow
     
     subplot(3,1,3)
     histogram(voli,nbins);
-    title(sprintf('%s (%s)', measureType, measureUnit));
     switch meshType
         case 'surface_triangle'
-            xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f\n[Enclosed Volume=%1.2f mm3]', MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f\n[Enclosed Volume=%1.2f mm3]', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
                 MeshStat.FullModel.([measureFieldName 'Min']), MeshStat.FullModel.([measureFieldName 'Max']), MeshStat.FullModel.([measureFieldName 'Sum']), MeshStat.FullModel.VolumeClosedSurface))
 
         case 'volume_tetrahedron'
-            xlabel(sprintf('mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
+            xlabel(sprintf('%s (%s):   mean=%1.2f | std=%1.2f | min=%1.2f | max=%1.2f | sum=%1.2f', measureType, measureUnit, MeshStat.FullModel.([measureFieldName 'Mean']), MeshStat.FullModel.([measureFieldName 'Std']),...
                 MeshStat.FullModel.([measureFieldName 'Min']), MeshStat.FullModel.([measureFieldName 'Max']), MeshStat.FullModel.([measureFieldName 'Sum'])))
     end
 % Close all the figures at once
