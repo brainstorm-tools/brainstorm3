@@ -214,7 +214,7 @@ switch (FileFormat)
     case 'EEG-XDF'
         [DataMat, ChannelMat] = in_data_xdf(DataFile);
     case 'FT-TIMELOCK'
-        [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, ImportOptions.DisplayMessages);
+        [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, [], ImportOptions.DisplayMessages);
         % Check that time is linear
         if ~isempty(DataMat) && (length(DataMat(1).Time) > 2) && any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
             error(['The input file has a non-linear time vector.' 10 'This is currently not supported, please interpolate your recordings on continuous time vector first.']);

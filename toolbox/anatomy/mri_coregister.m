@@ -121,6 +121,7 @@ switch lower(Method)
         Zindex = find(max(XYZref(3,:))-XYZref(3,:)<200);
         index = intersect(Iindex,Zindex);
         CentroidRef = mean(XYZref(:,index),2);
+        clear Vref Iref XYZref
         % Volume to register
         V2 = spm_vol([NiiSrcFile, ',1']);
         [I2,XYZ2] = spm_read_vols(V2);
@@ -133,6 +134,7 @@ switch lower(Method)
         M = spm_matrix(B);
         Mat = spm_get_space(V2.fname);
         spm_get_space(V2.fname, M*Mat);
+        clear V2 I2 XYZ2
         
         % Create coregistration batch
         if isReslice

@@ -98,7 +98,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jButtonGroupCoord = ButtonGroup();
                 jRadioScs   = gui_component('radio', jPanelModelCoord, 'br', 'SCS ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('SCS'));
                 jRadioScs.setSelected(1);
-                jRadioMri   = gui_component('radio', jPanelModelCoord, '',   'MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
+                jRadioMri   = gui_component('radio', jPanelModelCoord, '', 'Def. MRI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MRI'));
                 jRadioWorld = gui_component('radio', jPanelModelCoord, '', 'World ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('World'));
                 jRadioMni   = gui_component('radio', jPanelModelCoord, '',   'MNI ', jButtonGroupCoord, '', @(h,ev)UpdateContactList('MNI'));
                 jPanelElecList.add(jPanelModelCoord, BorderLayout.NORTH);
@@ -408,11 +408,10 @@ function UpdatePanel()
     % Get current figure
     [hFigall, iFigall, iDSall] = bst_figures('GetCurrentFigure');
     if ~isempty(hFigall) && ~isempty(GlobalData.DataSet(iDSall(end)).ChannelFile)
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 1);
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 1);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE, ctrl.jToolbarC], 1);
+        ctrl.jButtonCentroid.setEnabled(0);
         ctrl.jListElec.setBackground(java.awt.Color(1,1,1));
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
-        ctrl.jButtonCentroid.setEnabled(0);
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
         isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
@@ -420,14 +419,13 @@ function UpdatePanel()
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
-            ctrl.jButtonCentroid.setSelected(isSelectingCentroid);
+            panel_coordinates('SetCentroidSelection', isSelectingCentroid);
         else
             panel_coordinates('SetCentroidSelection', 0);
         end
     % Else: no figure associated with the panel, or not loaded channel file : disable all controls
     else
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE], 0);
-        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarC], 0);
+        gui_enable([ctrl.jPanelElecList, ctrl.jToolbarE, ctrl.jToolbarC], 0);
         ctrl.jListElec.setBackground(java.awt.Color(.9,.9,.9));
     end
     % Select appropriate display mode button
@@ -565,6 +563,7 @@ function UpdateContactList(varargin)
         listModel.addElement(BstListItem('', [], 'Updating', 1));
         ctrl.jListCont.setModel(listModel);
         sSubject = bst_get('Subject', GlobalData.DataSet(iDS(1)).SubjectFile);
+        % Get default MRI for Subject
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
         sMri = bst_memory('LoadMri', MriFile);
         contacLocsMm = cs_convert(sMri, 'scs', lower(CoordSpace), [sContacts.Loc]') * 1000;
@@ -814,6 +813,33 @@ function UpdateElecProperties(isUpdateModelList)
 end
 
 
+%% ===== UPDATE ISCENTROID BUTTON =====
+function UpdateIsCentriodButton(isSelected)
+    % Disabled = Gray (either ON or OFF)
+    % ON       = Selected and GREEN
+    % OFF      = Non-selected and RED
+    import org.brainstorm.icon.*;
+    % Get panel controls
+    ctrl = bst_get('PanelControls', 'iEEG');
+    if isempty(ctrl)
+        return;
+    end
+    ctrl.jButtonCentroid.setSelected(isSelected);
+    % Change icon depending of isSelected
+    if isSelected
+        compIcon = IconLoader.ICON_GOOD;
+    else
+        compIcon = IconLoader.ICON_BAD;
+    end
+    InterfaceScaling = bst_get('InterfaceScaling');
+    if (InterfaceScaling ~= 100)
+        ctrl.jButtonCentroid.setIcon(IconLoader.scaleIcon(compIcon, InterfaceScaling / 100));
+    else
+        ctrl.jButtonCentroid.setIcon(compIcon);
+    end
+end
+
+
 %% ===== SET CROSSHAIR POSITION ON MRI =====
 function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     % Get the handles
@@ -821,8 +847,10 @@ function SetMriCrosshair(sSelContacts) %#ok<DEFNU>
     if isempty(hFig) || isempty(sSelContacts)
         return
     end
-    % Update the cross-hair position on the MRI
-    figure_mri('SetLocation', 'scs', hFig, [], [sSelContacts(end).Loc]);
+    for ix = 1 : length(hFig)
+        % Update the cross-hair position on the MRI
+        figure_mri('SetLocation', 'scs', hFig(ix), [], [sSelContacts(end).Loc]);
+    end
 end
 
 %% ===== GET SELECTED ELECTRODES =====
@@ -2423,19 +2451,27 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         iGroupChan = iGroupChan(I);
         % Default color
         iColor = mod(iGroup-1, length(ColorTable)) + 1;
-        newElec.Color = ColorTable(iColor,:);
+        if isempty(newElec.Color)
+            newElec.Color = ColorTable(iColor,:);
+        end
         % Try to get positions of the electrode: 2 contacts minimum with positions
         if strcmpi(Modality, 'SEEG') && (length(iGroupChan) >= 2) && all(cellfun(@(c)and(size(c,2) == 1, ~isequal(c,[0;0;0])), {ChannelMat.Channel(iMod(iGroupChan)).Loc}))
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
             % Get all channels locations for this electrode
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
             % Detect average spacing between adjacent contacts (precision: 0.000001)
-            newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
-            
+            contactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
+            contactSpacing = bst_round(contactSpacing, 6);
+            if isempty(newElec.ContactSpacing)
+                newElec.ContactSpacing = contactSpacing;
+            end
+
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
@@ -2450,11 +2486,13 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLocFix = sum(bst_bsxfun(@times, W, orient), 2);
             ElecLocFix = bst_bsxfun(@times, ElecLocFix, orient);
             ElecLocFix = bst_bsxfun(@plus, ElecLocFix, M);
-
-            % Set tip: Compute the position of the first contact
-            newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * newElec.ContactSpacing * orient)';
-            % Set entry point: last contact is good enough
-            newElec.Loc(:,2) = ElecLocFix(end,:)';
+            % Set tip and entry if required
+            if isempty(newElec.Loc) || (size(newElec.Loc, 1) ~=3 && size(newElec.Loc, 2) ~=newElec.ContactNumber)
+                % Set tip: Compute the position of the first contact
+                newElec.Loc(:,1) = (ElecLocFix(1,:) - (AllInd(1) - 1) * contactSpacing * orient)';
+                % Set entry point: last contact is good enough
+                newElec.Loc(:,2) = ElecLocFix(end,:)';
+            end
 
             % Duplicate to set orientation and fixed position for all the channels of the strip
             ChanOrient(iMod(iGroupChan),:) = repmat(orient, length(iGroupChan), 1);
@@ -2462,15 +2500,20 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
         % SEEG with no locations
         elseif strcmpi(Modality, 'SEEG')
             % Number of contacts: maximum contact index found in the file
-            newElec.ContactNumber = max(AllInd(iGroupChan));
+            contactNumber = max(AllInd(iGroupChan));
+            if isempty(newElec.ContactNumber) || (newElec.ContactNumber ~= contactNumber)
+                newElec.ContactNumber = contactNumber;
+            end
         elseif strcmpi(Modality, 'ECOG')
-            % Guess format of the ECOG device
-            switch (length(iGroupChan))
-                case 12,   newElec.ContactNumber = [6, 2];
-                case 16,   newElec.ContactNumber = [8, 2];
-                case 32,   newElec.ContactNumber = [8, 4];
-                case 64,   newElec.ContactNumber = [8, 8];
-                otherwise, newElec.ContactNumber = length(iGroupChan);
+            if isempty(newElec.ContactNumber) || prod(newElec.ContactNumber) ~= length(iGroupChan)
+                % Guess format of the ECOG device
+                switch (length(iGroupChan))
+                    case 12,   newElec.ContactNumber = [6, 2];
+                    case 16,   newElec.ContactNumber = [8, 2];
+                    case 32,   newElec.ContactNumber = [8, 4];
+                    case 64,   newElec.ContactNumber = [8, 8];
+                    otherwise, newElec.ContactNumber = length(iGroupChan);
+                end
             end
         end
         % Add to existing list of electrodes
@@ -3558,11 +3601,23 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
             error('The subject uses a shared channel file, it should not be edited in this way.');
     end
 
-    % Ask user about implantation volume and surface files
-    iVol1 = [];
-    iVol2 = [];
-    iSrf  = [];
-    if isempty(MriFiles)
+    % Get files and figures to perform implantation
+    mriVolFile  = '';
+    ctVolFile   = '';
+    isoSurfFile = '';
+    % Call: CreateImplantation(MriFile)
+    if ~isempty(MriFiles)
+        impFigs = panel_ieeg_implantation('GetDefaultFigures');
+        if isempty(regexp(MriFiles{1}, '_volct', 'match'))
+            impFigs.Mri = 1;
+            mriVolFile = MriFiles{1};
+        else
+            impFigs.Ct = 1;
+            ctVolFile = MriFiles{1};
+        end
+
+    % CAll: CreateImplantation(sSubject)
+    else
         if isempty(sSubject.Anatomy)
             return
         end
@@ -3570,132 +3625,100 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
         iCtVol  = find(cellfun(@(x) ~isempty(regexp(x, '_volct', 'match')), {sSubject.Anatomy.FileName}));
         iIsoSrf = find(cellfun(@(x) ~isempty(regexp(x, '_isosurface', 'match')), {sSubject.Surface.FileName}));
         iMriVol = setdiff(iMriVol, iCtVol);
-        impOptions = {};
-        if ~isempty(iMriVol)
-            impOptions = [impOptions, {'MRI'}];
-        end
-        if ~isempty(iCtVol)
-            impOptions = [impOptions, {'CT'}];
-        end
-        if ~isempty(iMriVol) && ~isempty(iCtVol)
-            impOptions = [impOptions, {'MRI+CT'}];
-        end
-        if ~isempty(iCtVol) && ~isempty(iIsoSrf)
-            tmpOption = 'CT+IsoSurf';
-            if ~isempty(iMriVol)
-                tmpOption = ['MRI+' tmpOption];
-            end
-            impOptions = [impOptions, {tmpOption}];
-        end
-        impOptions = [impOptions, {'Cancel'}];
         % User dialog
-        [res, isCancel] = java_dialog('question', ['There are multiple volumes for this Subject.' 10 10 ...
-                                                   'How do you want to continue with the existing implantation?'], ...
-                                                   'SEEG/ECOG implantation', [], impOptions, 'Cancel');
-        if strcmpi(res, 'cancel') || isCancel
+        impFigs = gui_show_dialog('SEEG/ECOG implantation', @panel_ieeg_implantation, 1, [], ~isempty(iMriVol), ~isempty(iCtVol), ~isempty(iIsoSrf));        
+        if isempty(impFigs) || (isstruct(impFigs) && all(structfun(@(x) x==0, impFigs)))
             return
         end
-        switch lower(res)
-            case 'mri'
-                iVol1 = iMriVol;
-            case 'ct'
-                iVol1 = iCtVol;
-            case 'mri+ct'
-                iVol1 = iMriVol;
-                iVol2 = iCtVol;
-            case 'mri+ct+isosurf'
-                iVol1 = iMriVol;
-                iVol2 = iCtVol;
-                iSrf  = iIsoSrf;
-            case 'ct+isosurf'
-                iVol1 = iCtVol;
-                iVol2 = [];
-                iSrf  = iIsoSrf;
+        % Get MRI file
+        if ~isempty(iMriVol)
+            mriVolFile = sSubject.Anatomy(iMriVol).FileName;
         end
-
-        if ~isempty(iSrf)
-            if length(iSrf) > 1
+        % Get IsoSurface file
+        if ~isempty(iIsoSrf)
+            if length(iIsoSrf) > 1
                 % Prompt for the IsoSurf file selection
-                isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iSrf).Comment});
+                isoComment = java_dialog('combo', '<HTML>Select the IsoSurf file:<BR><BR>', 'Choose IsoSurface file', [], {sSubject.Surface(iIsoSrf).Comment});
                 if isempty(isoComment)
                     return
                 end
                 [~, ix] = ismember(isoComment, {sSubject.Surface(iSrf).Comment});
-                iSrf = iSrf(ix);
-            end
-            % Get CT from IsoSurf
-            ctFile = panel_surface('GetIsosurfaceParams', sSubject.Surface(iSrf).FileName);
-            if isempty(ctFile)
-                return;
-            end
-            [sSubjectCt, ~, iCtVol] = bst_get('MriFile', ctFile);
-            if isempty(sSubjectCt)
-                bst_error(sprintf('CT file %s is not in the Protocol database.', ctFile), 'CT implantation');
-                return;
-            end
-            if ~strcmp(sSubjectCt.FileName, sSubject.FileName)
-                bst_error('Subject for CT and IsoSurface is not the same', 'CT implantation');
-                return;
-            end
-
-        end
-        if ~strcmpi(res, 'mri') && length(iCtVol) > 1
-            % Prompt for the CT file selection
-            ctComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtVol).Comment});
-            if isempty(ctComment)
-                return
-            end
-            [~, ix] = ismember(ctComment, {sSubject.Anatomy(iCtVol).Comment});
-            iCtVol = iCtVol(ix);
-        end
-        % Update vol1 or vol2 to have single CT
-        switch lower(res)
-            case {'mri+ct', 'mri+ct+isosurf'}
-                iVol2 = iCtVol;
-            case {'ct', 'ct+isosurf'}
-                iVol1 = iCtVol;
-        end
-        % Get Volume filenames
-        if ~isempty(iVol1)
-            MriFiles{1} = sSubject.Anatomy(iVol1).FileName;
-        end
-        if ~isempty(iVol2)
-            MriFiles{2} = sSubject.Anatomy(iVol2).FileName;
-        end
-    end
-    % Check SCS coordinates and coregistration of MRI files
-    errMsg = '';
-    for iVol=1:length(MriFiles)
-        sMri = bst_memory('LoadMri', MriFiles{iVol});
-        hasFiducials = isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
-        if iVol == 1
-            if hasFiducials
-                refCubeSize = size(sMri.Cube(:,:,:,1));
-                refVoxSize  = round(sMri.Voxsize(1:3) .* 1000); % mm
-                refSCS      = sMri.SCS;
+                isoSurfFile = sSubject.Surface(iIsoSrf(ix)).FileName;
             else
-                errMsg = 'You need to set the fiducial points in the MRI first.';
-                break;
-            end
-        elseif iVol == 2
-            isSameSize = isequal(refCubeSize, size(sMri.Cube(:,:,:,1))) && isequal(refVoxSize, round(sMri.Voxsize(1:3) .* 1000));
-            if ~isSameSize || ~hasFiducials || ~isequal(refSCS.NAS, sMri.SCS.NAS) || ~isequal(refSCS.LPA, sMri.SCS.LPA) || ~isequal(refSCS.RPA, sMri.SCS.RPA)
-                errMsg = ['You need to co-register ' MriFiles{iVol} ' to the MRI first.'];
-                break;
+                isoSurfFile = sSubject.Surface(iIsoSrf).FileName;
             end
         end
-    end
-    if ~isempty(errMsg)
-        % Unload all MRIs that have been loaded
-        for iiVol = 1 : iVol
-            bst_memory('UnloadMri', MriFiles{iiVol});
+        % Get CT file
+        if ~isempty(iCtVol)
+            % Select CT from IsoSurface file
+            if ~isempty(isoSurfFile)
+                ctVolFile = panel_surface('GetIsosurfaceParams', isoSurfFile);
+                % Validate CT file
+                if ~isempty(ctVolFile)
+                    sSubjectCt = bst_get('MriFile', ctVolFile);
+                    if isempty(sSubjectCt)
+                        warning(['CT file used to compute isosurface is not in the Protocol database.', 10 , '%s'], ctVolFile);
+                        ctVolFile = '';
+                    end
+                    if ~strcmp(sSubjectCt.FileName, sSubject.FileName)
+                        warning(['Subject for CT and IsoSurface is not the same', 10 , '%s'], ctVolFile);
+                        ctVolFile = '';
+                    end
+                end
+            end
+            % CT has not be defined
+            if isempty(ctVolFile)
+                if length(iCtVol) > 1
+                    % Prompt for the CT file selection
+                    ctComment = java_dialog('combo', '<HTML>Select the CT file:<BR><BR>', 'Choose CT file', [], {sSubject.Anatomy(iCtVol).Comment});
+                    if isempty(ctComment)
+                        return
+                    end
+                    [~, ix] = ismember(ctComment, {sSubject.Anatomy(iCtVol).Comment});
+                    ctVolFile = sSubject.Anatomy(iCtVol(ix)).FileName;
+                else
+                    ctVolFile = sSubject.Anatomy(iCtVol).FileName;
+                end
+            end
         end
-        bst_error(errMsg, 'SEEG/ECOG implantation', 0);
-        return
     end
 
-    % Progress bar
-    bst_progress('start', 'Implantation', 'Updating display...');
+    % Preparing files for implantation
+    bst_progress('start', 'SEEG/ECOG implantation', 'Loading and verifying files for implantation...');
+    % Check SCS coordinates in MRI
+    if ~isempty(mriVolFile)
+        sMri = bst_memory('LoadMri', mriVolFile);
+        hasFiducials = isfield(sMri, 'SCS') && ~isempty(sMri.SCS) && all(isfield(sMri.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sMri.SCS.NAS, sMri.SCS.LPA, sMri.SCS.RPA}));
+        if hasFiducials
+            refCubeSize = size(sMri.Cube(:,:,:,1));
+            refVoxSize  = round(sMri.Voxsize(1:3) .* 1000); % mm
+        else
+            bst_memory('UnloadMri', mriVolFile);
+            bst_error('You need to set the fiducial points in the MRI first.', 'SEEG/ECOG implantation', 0);
+            return
+        end
+    end
+    % Check SCS coordinates in CT
+    if ~isempty(ctVolFile)
+        sCt = bst_memory('LoadMri', ctVolFile);
+        hasFiducials = isfield(sCt, 'SCS') && ~isempty(sCt.SCS) && all(isfield(sCt.SCS, {'NAS','LPA','RPA'})) && ~any(cellfun(@isempty, {sCt.SCS.NAS, sCt.SCS.LPA, sCt.SCS.RPA}));
+        if hasFiducials
+            % Validate overlay figure
+            if ~isempty(mriVolFile)
+                if ~isequal(refCubeSize, size(sCt.Cube(:,:,:,1))) || ~isequal(refVoxSize, round(sCt.Voxsize(1:3) .* 1000)) && impFigs.MriCt
+                    disp(['BST> MRI and CT cube sizes do not match, overlap figure is not possible.', 10, ...
+                          '     MRI and CT volumes will be plotted in different figures.']);
+                    impFigs.MriCt = 0;
+                    impFigs.Mri   = 1;
+                    impFigs.Ct    = 1;
+                end
+            end
+        else
+            bst_memory('UnloadMri', ctVolFile);
+            bst_error('You need to set the fiducial points in the CT first.', 'SEEG/ECOG implantation', 0);
+            return
+        end
+    end
     % Channel file
     if isempty(sStudy.Channel) || isempty(sStudy.Channel(1).FileName)
         % Create empty channel file structure
@@ -3712,14 +3735,29 @@ function CreateImplantation(MriFile) %#ok<DEFNU>
     gui_brainstorm('SetExplorationMode', 'StudiesSubj');
     % Select new file
     panel_protocols('SelectNode', [], ChannelFile);
-    % Display channels on MRI viewer
-    DisplayChannelsMri(ChannelFile, 'SEEG', MriFiles, 0);
-    if ~isempty(iSrf)
-        % Display isosurface
-        DisplayIsosurface(sSubject, iSrf, ChannelFile, 'SEEG');
-    end
     % Close progress bar
     bst_progress('stop');
+    % === FIGURES ===
+    % Display channels on MRI (MRI viewer)
+    if impFigs.Mri
+        DisplayChannelsMri(ChannelFile, 'SEEG', mriVolFile, 0);
+    end
+    % Display channels on CT (MRI viewer)
+    if impFigs.Ct
+        DisplayChannelsMri(ChannelFile, 'SEEG', ctVolFile, 0);
+    end
+    % Display channels on CT overlay on MRI (MRI viewer)
+    if impFigs.MriCt
+        DisplayChannelsMri(ChannelFile, 'SEEG', {mriVolFile, ctVolFile}, 0);
+    end
+    % Display channels on IsoSurface on MRI (3D figure)
+    if impFigs.MriIso
+        DisplayIsosurface(mriVolFile, isoSurfFile, ChannelFile, 'SEEG');
+    end
+    % Display channels on IsoSurface on Ct (3D figure)
+    if impFigs.CtIso
+        DisplayIsosurface(ctVolFile, isoSurfFile, ChannelFile, 'SEEG');
+    end
 end
 
 
@@ -3789,43 +3827,49 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy,
         if isempty(sSubject) || isempty(sSubject.Anatomy)
             bst_error('No MRI available for this subject.', 'Display electrodes', 0);
         end
-        % MRI volumes
+        % Default MRI volume
         MriFiles = {sSubject.Anatomy(iAnatomy).FileName};
     end
-
-    % If MRI Viewer is open don't open another one
-    hFig = bst_figures('GetFiguresByType', 'MriViewer');
-    if ~isempty(hFig)
-        return
-    end
-
-    % == DISPLAY THE MRI VIEWER
     if length(MriFiles) == 1
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, [], [], 2);
-    else
-        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2);
+        MriFiles{2} = [];
     end
+    % Get Figure with requested MriFiles
+    [hFig, iFig, iDS] = bst_figures('GetFigureWithSurface', MriFiles{1}, MriFiles{2}, 'MriViewer', '');
     if isempty(hFig)
-        return;
+        iDS = bst_memory('GetDataSetChannel', ChannelFile);
+        % Create MRI viewer with requested MriFiles
+        [hFig, iDS, iFig] = view_mri(MriFiles{1}, MriFiles{2}, [], 2, iDS);
+        if isempty(hFig)
+            return;
+        end
     end
-    % Add channels to the figure
-    LoadElectrodes(hFig, ChannelFile, Modality);
+    % Detect other MRI viewer figures in dataset
+    [hFig2, ~, iDS2] = bst_figures('GetFiguresByType','MriViewer');
+    hFig2 = hFig2(iDS2 == iDS);
+    hFigs = unique([hFig, hFig2]);
+    % Add channels to the figures
+    for ix = 1 : length(hFigs)
+        % Add channels to the figure
+        LoadElectrodes(hFigs(ix), ChannelFile, Modality);
+        % Make electrodes editable
+        if isEdit
+            figure_mri('SetEditChannels', hFigs(ix), isEdit);
+        end
+    end
     % SEEG and ECOG: Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
     end
-    % Make electrodes editable
-    if isEdit
-        figure_mri('SetEditChannels', hFig, isEdit);
-    end
 end
 
 %% ===== DISPLAY ISOSURFACE =====
-function [hFig, iDS, iFig] = DisplayIsosurface(sSubject, iSurface, ChannelFile, Modality)
+function [hFig, iDS, iFig] = DisplayIsosurface(volFile, isoSurfFile, ChannelFile, Modality)
     % Get dataset with ChannelFile
     iDS = bst_memory('GetDataSetChannel', ChannelFile);
-    hFig = view_mri_3d(sSubject.Anatomy(1).FileName, [], 0.3, iDS);
-    [hFig, iDS, iFig] = view_surface(sSubject.Surface(iSurface).FileName, [], [], hFig, []);
+    if ~isempty(volFile)
+        hFig = view_mri_3d(volFile, [], 0.3, iDS);
+    end
+    [hFig, iDS, iFig] = view_surface(isoSurfFile, [], [], hFig, []);
     % Add channels to the figure
     LoadElectrodes(hFig, ChannelFile, Modality);
     % SEEG and ECOG: Open tab "iEEG"

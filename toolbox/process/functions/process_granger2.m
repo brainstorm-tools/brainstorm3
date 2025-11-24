@@ -20,6 +20,7 @@ function varargout = process_granger2( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2020
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -47,6 +48,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
+    % === GRANGER METHOD
+    sProcess.options.label.Comment = 'Granger causility method:';
+    sProcess.options.label.Type    = 'label';
+    sProcess.options.grangermethod.Comment = {['Conditional Granger causality<BR>', ...
+                                             '<FONT color="#777777">(MVGC Toolbox implementation)</FONT>'], ...
+                                             ['<FONT color="#777777">Unconditional Granger causality (Not recommended)</FONT><BR>', ...
+                                             '<FONT color="#777777">Default before Sep 2025</FONT>']; ...
+                                             'mvgc', 'bst'};
+    sProcess.options.grangermethod.Type    = 'radio_label';
+    sProcess.options.grangermethod.Value   = 'bst';
     % === GRANGER ORDER
     sProcess.options.grangerorder.Comment = 'Maximum Granger model order (default=10):';
     sProcess.options.grangerorder.Type    = 'value';
@@ -76,6 +87,10 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     
     % Metric options
     OPTIONS.Method = 'granger';
+    OPTIONS.GrangerMethod = 'bst';
+    if isfield(sProcess.options, 'grangermethod') && ~isempty(sProcess.options.grangermethod.Value)
+        OPTIONS.GrangerMethod = sProcess.options.grangermethod.Value;
+    end
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
     OPTIONS.GrangerOrder = sProcess.options.grangerorder.Value{1};
     OPTIONS.pThresh      = 0.05;  % sProcess.options.pthresh.Value{1};

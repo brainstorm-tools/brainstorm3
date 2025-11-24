@@ -37,6 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
+    isCompiled = bst_iscompiled;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -61,6 +62,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         else
             jCheckSystemCopy = [];
         end
+        if isCompiled
+            jCheckCrossPlatformJLF = gui_component('CheckBox', jPanelSystem, 'br', 'Use cross platform Java Look and Feel', [], [], []);
+        end
+        jCheckProcessTooltip = gui_component('CheckBox', jPanelSystem, 'br', 'Show process path as tooltip in Pipeline editor', [], [], []);
     jPanelLeft.add('hfill', jPanelSystem);
     % ===== LEFT: OPEN GL =====
     jPanelOpengl = gui_river([5 2], [0 15 8 15], 'OpenGL rendering');
@@ -192,6 +197,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckGfp.setSelected(bst_get('DisplayGFP'));
         jCheckDownsample.setSelected(bst_get('DownsampleTimeSeries') > 0);
         jCheckIgnoreMem.setSelected(bst_get('IgnoreMemoryWarnings'));
+        if isCompiled
+            jCheckCrossPlatformJLF.setSelected(bst_get('UseCrossPlatformJLF'));
+        end
         if ~isempty(jCheckSmooth)
             jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
         end
@@ -210,6 +218,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     jRadioOpenSoft.setSelected(1);
                 end
         end
+        jCheckProcessTooltip.setSelected(bst_get('ShowProcessTooltip'));
         % Interface scaling
         switch (bst_get('InterfaceScaling'))
             case 100,       jSliderScaling.setValue(1);
@@ -286,6 +295,19 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             StartOpenGL();
         end
         
+        % ===== JAVA LOOK AND FEEL =====
+        changedJLF = 0;
+        if isCompiled
+            changedJLF = bst_get('UseCrossPlatformJLF') ~= jCheckCrossPlatformJLF.isSelected();
+            bst_set('UseCrossPlatformJLF', jCheckCrossPlatformJLF.isSelected());
+        end
+        % ===== CLEAR PROCESS MENU CACHE =====
+        if bst_get('ShowProcessTooltip') ~= jCheckProcessTooltip.isSelected()
+            % Clear menu cache
+            GlobalData.Program.ProcessMenuCache = struct();
+            bst_set('ShowProcessTooltip',  jCheckProcessTooltip.isSelected());
+        end
+
         % ===== INTERFACE SCALING =====
         previousScaling = bst_get('InterfaceScaling');
         switch (jSliderScaling.getValue())
@@ -368,7 +390,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         bst_progress('stop');
         
         % If the scaling was changed: Restart brainstorm
-        if (previousScaling ~= InterfaceScaling)
+        if (previousScaling ~= InterfaceScaling) || changedJLF
             brainstorm stop;
             brainstorm;
         end
@@ -379,8 +401,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     function ButtonSave_Callback(varargin)
         % Save options
         SaveOptions()
-        % Hide panel
-        gui_hide(panelName);
+        if ~isempty(GlobalData)
+            % Hide panel
+            gui_hide(panelName);
+        end
     end
 
 %% ===== CANCEL BUTTON =====
@@ -516,69 +540,42 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
     DisableOpenGL = bst_get('DisableOpenGL');
     isOpenGL = 1;
     isUnixWarning = 0;
-
-    % ===== New JS MATLAB Desktop (Beta in R2023a and R2023b) =====
-    if isJSDesktop()
-        info = rendererinfo();
-        switch info.Details.HardwareSupportLevel
-            case 'Full'
-                disp('hardware');
-            case 'Basic'
-                disp('hardware');
-                disp('BST> Warning: OpenGL Hardware support is ''Basic'', this may cause the display to be slow and ugly.');
-            otherwise
-                disp('software');
-                disp('BST> Warning: OpenGL Hardware support is unavailable, this may cause the display to be slow and ugly.');
-        end
-        % OpenGL is always available on New Desktop
-        DisableOpenGL = 0;
-        return
-    end
     
-    % ===== MATLAB < 2014b =====
-    if (bst_get('MatlabVersion') < 804)
-        % Define OpenGL options
-        switch DisableOpenGL
-            case 0
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'hardware';
-                end
-                FigureRenderer = 'opengl';
-            case 1
-                OpenGLMode = 'neverselect';
-                FigureRenderer = 'zbuffer';
-            case 2
-                if strncmp(computer,'MAC',3)
-                    OpenGLMode = 'autoselect';
-                elseif isunix && ~isempty(GlobalOpenGLStatus)
-                    OpenGLMode = 'autoselect';
-                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
-                else
-                    OpenGLMode = 'software';
-                end
-                FigureRenderer = 'opengl';
+    % ===== MATLAB >= 2022a =====
+    if (bst_get('MatlabVersion') >= 912)
+        % From 2022a, rendererinfo() can be called without arguments, and it is recommended over opengl()
+        s = rendererinfo();
+        % New JS MATLAB Desktop (Started from R2023a)
+        if isJSDesktop()
+            switch s.Details.HardwareSupportLevel
+                case 'Full'
+                    disp(['hardware: ' s.RendererDevice]);
+                case 'Basic'
+                    disp(['hardware: ' s.RendererDevice]);
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is ''Basic'', this may cause the display to be slow and ugly.']);
+                otherwise
+                    disp('software');
+                    disp(['BST> Warning: ' s.GraphicsRenderer ', Hardware support is unavailable, this may cause the display to be slow and ugly.']);
+            end
+            % OpenGL is always available on New Desktop
+            DisableOpenGL = 0;
+            return
+        else
+            if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
+                isOpenGL = 1;
+                s.Software = 0;
+            elseif strcmp(s.GraphicsRenderer,  'OpenGL Software')
+                isOpenGL = 1;
+                s.Software = 1;
+            else
+                isOpenGL = 0;
+            end
+            % Figure types for which the OpenGL renderer is used
+            figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
         end
-        % Configure OpenGL
-        try
-            opengl(OpenGLMode);
-        catch
-            isOpenGL = 0;
-        end
-        % Check that OpenGL is running
-        s = opengl('data');
-        if isempty(s) || isempty(s.Version)
-            isOpenGL = 0;
-        end
-        % Figure types for which the OpenGL renderer is used
-        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
-        
-    % ===== MATLAB >= 2014b =====
-    else
+
+    % ===== MATLAB >= 2014b and MATLAB < 2022a =====
+    elseif (bst_get('MatlabVersion') >= 804)
         % Start OpenGL
         s = opengl('data');
         if isempty(s) || isempty(s.Version)
@@ -622,6 +619,48 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
         end
         % Figure types for which the OpenGL renderer is used
         figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
+
+    % ===== MATLAB < 2014b =====
+    else
+        % Define OpenGL options
+        switch DisableOpenGL
+            case 0
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'hardware';
+                end
+                FigureRenderer = 'opengl';
+            case 1
+                OpenGLMode = 'neverselect';
+                FigureRenderer = 'zbuffer';
+            case 2
+                if strncmp(computer,'MAC',3)
+                    OpenGLMode = 'autoselect';
+                elseif isunix && ~isempty(GlobalOpenGLStatus)
+                    OpenGLMode = 'autoselect';
+                    disp('BST> Warning: You have to restart Matlab to switch between software and hardware OpenGL.');
+                else
+                    OpenGLMode = 'software';
+                end
+                FigureRenderer = 'opengl';
+        end
+        % Configure OpenGL
+        try
+            opengl(OpenGLMode);
+        catch
+            isOpenGL = 0;
+        end
+        % Check that OpenGL is running
+        s = opengl('data');
+        if isempty(s) || isempty(s.Version)
+            isOpenGL = 0;
+        end
+        % Figure types for which the OpenGL renderer is used
+        figTypes = {'3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};
     end
     
     % Add comment if not running Brainstorm
@@ -757,11 +796,10 @@ end
 
 %% ===== Check if running in New JS MATLAB Desktop =====
 function TF = isJSDesktop()
-
     % Fastest way to check for New JS Desktop is with undocumented
     % "feature" command. If this command fails to run properly, it is safe
-    % to expect MATLAB is NOT running with New JS Desktop. 
-    % This may need changes in R2024a or newer.
+    % to expect MATLAB is NOT running with New JS Desktop.
+    % Available from 2022a
     try
         TF = feature('webui');
     catch

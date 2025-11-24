@@ -587,6 +587,8 @@ function FigureKeyPress_Callback(hFig, keyEvent)
             ApplyCoordsToAllFigures(hFig, 'mni');
         case '*'
             ApplyCoordsToAllFigures(hFig, 'scs');
+        case {'/'}
+            ViewIn3DView(hFig, 'scs');
             
         otherwise
             % ===== PROCESS BY KEYS =====
@@ -681,6 +683,7 @@ function sliderClicked_Callback(hFig, iSlider, ev)
     if ~ev.getSource.getModel.getValueIsAdjusting
         % Update MRI display
         UpdateMriDisplay(hFig, iSlider);
+        iEegMoveAllMriCrossHairs(hFig);
     end
 end
 
@@ -859,6 +862,7 @@ function ButtonSetCoordinates_Callback(hFig)
     end
     % Move the slices
     SetLocation('mri', sMri, Handles, MRI);
+    iEegMoveAllMriCrossHairs(hFig);
 end
 
 %% ===== BUTTON VIEW 3D HEAD =====
@@ -1081,6 +1085,8 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke('=', 0));
         jItem = gui_component('MenuItem', jMenuView, [], 'Apply SCS coordinates to all figures', [], [], @(h,ev)ApplyCoordsToAllFigures(hFig, 'scs'));
         jItem.setAccelerator(KeyStroke.getKeyStroke('*', 0));
+        jItem = gui_component('MenuItem', jMenuView, [], 'View in 3D orthogonal slices', [], [], @(h,ev)ViewIn3DView(hFig, 'scs'));
+        jItem.setAccelerator(KeyStroke.getKeyStroke('/', 0));
         if isOverlay
             jItem = gui_component('MenuItem', jMenuView, [], 'Find maximum', [], [], @(h,ev)JumpMaximum(hFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke('m', 0));
@@ -1626,6 +1632,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
                 % Move crosshair according to mouse position
                 if ~isempty(hAxes)
                     MouseMoveCrosshair(hAxes, sMri, Handles);
+                    iEegMoveAllMriCrossHairs(hFig);
                 end
             % CTRL+Mouse, or Mouse right
             case 'alt'
@@ -2613,6 +2620,9 @@ function UpdateSurfaceCS(SurfaceFiles, sMriOld, sMriNew)
         sSurfNew.Vertices = sSurf.Vertices;
         sSurfNew.Faces    = sSurf.Faces;
         sSurfNew.Comment  = sSurf.Comment;
+        if isfield(sSurf, 'Color')
+            sSurfNew.Color  = sSurf.Color;
+        end
         if isfield(sSurf, 'History')
             sSurfNew.History  = sSurf.History;
         end
@@ -3018,20 +3028,79 @@ end
 
 
 %% ===== APPLY COORDINATES TO ALL FIGURES =====
-function ApplyCoordsToAllFigures(hSrcFig, cs)
+function ApplyCoordsToAllFigures(hSrcFig, cs, onlySameDS)
+    if nargin < 3 || isempty(onlySameDS)
+        onlySameDS = 0;
+    end
     % Get all figures
-    hAllFig = bst_figures('GetFiguresByType', {'MriViewer'});
+    [hAllFig, ~, iAllDS] = bst_figures('GetFiguresByType', {'MriViewer'});
+    % Apply only to MRI viewers for same DS
+    if onlySameDS
+        [~,~,iDS] = bst_figures('GetFigure', hSrcFig);
+        hAllFig = hAllFig(iAllDS == iDS);
+    end
     hAllFig = setdiff(hAllFig, hSrcFig);
     % Get MRI and Handles
     srcMri = panel_surface('GetSurfaceMri', hSrcFig);
+    srcSub = bst_fileparts(srcMri.FileName);
+    srcSize = size(srcMri.Cube);
+    % Check for linear or non-linear MNI transformations
+    isMni = isfield(srcMri,'NCS') && ...
+            (isfield(srcMri.NCS,'R') && ~isempty(srcMri.NCS.R) && isfield(srcMri.NCS,'T') && ~isempty(srcMri.NCS.T)) || ...
+            (isfield(srcMri.NCS,'y') && ~isempty(srcMri.NCS.y));
+    % Check for SCS transformation
+    isScs = isfield(srcMri,'SCS') && ...
+            (isfield(srcMri.SCS,'R') && ~isempty(srcMri.SCS.R) && isfield(srcMri.SCS,'T') && ~isempty(srcMri.SCS.T));
+    if (strcmpi(cs, 'mni') && ~isMni) || (strcmpi(cs, 'scs') && ~isScs)
+        warning(['Transformation "%s" not available in source MRI.', 10, ...
+        '         Applying "voxel" coordinates only to same-subject same-size volumes.'], upper(cs));
+        cs = 'voxel';
+    end
     srcHandles = bst_figures('GetFigureHandles', hSrcFig);
     % Get slices locations
     XYZ = GetLocation(cs, srcMri, srcHandles);
     % Go through all figures, set new location
     for ii = 1:length(hAllFig)
         destMri = panel_surface('GetSurfaceMri', hAllFig(ii));
+        % Check for linear or non-linear MNI transformations
+        isMni = isfield(destMri,'NCS') && ...
+                (isfield(destMri.NCS,'R') && ~isempty(destMri.NCS.R) && isfield(destMri.NCS,'T') && ~isempty(destMri.NCS.T)) || ...
+                (isfield(destMri.NCS,'y') && ~isempty(destMri.NCS.y));
+        % Check for SCS transformation
+        isScs = isfield(destMri,'SCS') && ...
+                (isfield(destMri.SCS,'R') && ~isempty(destMri.SCS.R) && isfield(destMri.SCS,'T') && ~isempty(destMri.SCS.T));
+        % Check for same subject as same cube size as source MRI
+        isSameSub = strcmp(srcSub, bst_fileparts(destMri.FileName));
+        isSameSize = isequal(srcSize, size(destMri.Cube));
+        if (strcmpi(cs, 'mni') && ~isMni) || (strcmpi(cs, 'scs') && ~isScs) || (strcmpi(cs, 'voxel') && ~isSameSub && ~isSameSize)           
+            continue
+        end
         destHandles = bst_figures('GetFigureHandles', hAllFig(ii));
         SetLocation(cs, destMri, destHandles, XYZ);
+    end
+end
+
+
+%% ===== VIEW IN 3D SLICES =====
+function ViewIn3DView(hFig, cs)
+    % Get figure and dataset
+    [~, ~, iDS] = bst_figures('GetFigure', hFig);
+    % Get the MRI in this figure
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    % Get slices locations
+    srcHandles = bst_figures('GetFigureHandles', hFig);
+    XYZ = GetLocation(cs, sMri, srcHandles);
+    % Display subject's anatomy in MRI Viewer
+    hFig = bst_figures('GetFigureWithSurface', sMri.FileName, [], '3DViz', '');
+    if isempty(hFig)
+        view_mri_3d(sMri.FileName);
+    end
+    % Get all 3D figures figures for same DataSet
+    [hAllFig, ~, iAllDS] = bst_figures('GetFiguresByType', '3DViz');
+    hFig = hAllFig(iAllDS == iDS);
+    % Select the required point
+    for iFig = 1 : length(hFig)
+        figure_3d('SetLocationMri', hFig(iFig), cs, XYZ);
     end
 end
 
@@ -3212,3 +3281,13 @@ function SetVolumeAtlas(hFig, AnatAtlas)
 end
 
 
+%% ===== iEEG: UPDATE COORDS IN ALL MRI VIEWERS IN DS =====
+function iEegMoveAllMriCrossHairs(hFig)
+    if gui_brainstorm('isTabVisible', 'iEEG')
+        global GlobalData
+        [~, ~, iDS] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+            ApplyCoordsToAllFigures(hFig, 'scs', 1);
+        end
+    end
+end
