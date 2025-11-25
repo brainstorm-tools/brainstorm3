@@ -1578,11 +1578,11 @@ function errMsg = RefineMesh(filenameRelative)
     end
     % Ask what area to refine
     MeshRefineMode = {'layer_refine', 'roi_refine'};
-    [refineMode, isCancel]  = java_dialog('radio', '<HTML><B>Please select refinement options:', 'Refine FEM Mesh', [], ...
+    [refineMode, isCancel]  = java_dialog('radio', '<HTML><B>Select the FEM refinement method:', 'Refine FEM mesh', [], ...
         {['<HTML>Refine specific tissue(s) in the FEM model <BR>' ...
           '<FONT COLOR="#707070">Select the tissue(s) to refine'], ...
-         ['<HTML>Refine mesh(es) within a specific in the model <BR>' ...
-          '<FONT COLOR="#707070">Define a ROI to refine']}, 1);
+         ['<HTML>Refine FEM mesh(es) within a specific ROI <BR>' ...
+          '<FONT COLOR="#707070">Select or define a closed surface as ROI']}, 1);
     if isCancel || isempty(refineMode)
         bst_progress('stop');
         return
@@ -1605,7 +1605,7 @@ function errMsg = RefineMesh(filenameRelative)
         % Refine specific FEM layer(s)
         case 'layer_refine'
             % Ask user to select the layer to refine  with panel_refinefem
-            LayerRefineOptions = gui_show_dialog('Refine FEM Mesh', @panel_refinefem, 1, [], OPTIONS);
+            LayerRefineOptions = gui_show_dialog('Refine FEM mesh', @panel_refinefem, 1, [], OPTIONS);
             if isempty(LayerRefineOptions)
                 return;
             end
@@ -1634,13 +1634,14 @@ function errMsg = RefineMesh(filenameRelative)
             surfFileNames = [repmat({''}, 1, length(surfGeoComments)), surfFileNames];
             surfComments  = [surfGeoComments, surfComments];
             % Ask user to select the ROI area
-            [surfSelectComment, isCancel] = java_dialog('combo', ['Select the ROI area where to apply the refinement.' 10 10 ...
-                'Warning: The ROI surface can be selected from the available surfaces on the subject files.' 10 ...
-                'Once the edit of the ROI is completed hit the OK button on the top right of the editing panel.' 10 ...
-                'Do not apply the change to all the other surface=> Reply NO to the message box (ask Ray for better option here (tess_align_manual)).' 10 10 ...
-                'Select the ROI for the refinement:'], ...
-                'Refine FEM Mesh within the selected ROI', [], surfComments, surfComments{1});
+            [surfSelectComment, isCancel] = java_dialog('combo', [...
+                'The ROI can be a geometric surface or a surface in the Subject.' 10 ...
+                '1) Edit the ROI (if needed), then' 10 ...
+                '2) Click on the [OK] button on figure toolbar.' 10 10 ...
+                'Select the ROI to apply the refinement.' 10], ...
+                'Refine FEM mesh(es) within a specific ROI', [], surfComments, surfComments{1});
             if isempty(surfSelectComment) || isCancel
+                bst_progress('stop');
                 return
             end
             % Generate geometric surface if needed
@@ -1707,7 +1708,7 @@ function errMsg = RefineMesh(filenameRelative)
     % Remove one element to make the size different than Elements
     centroid(end, :) = [];
 
-    bst_progress('text', 'Refining Mesh ...');
+    bst_progress('text', 'Refining mesh ...');
     % if opt is a vector with a length that equals to that of node,
     [newnode,newelem] = meshrefine(FemMat.Vertices,[FemMat.Elements FemMat.Tissue], centroid);
     % Postprocess the mesh
@@ -1715,7 +1716,7 @@ function errMsg = RefineMesh(filenameRelative)
     newelemOriented = [newelemOriented newelem(:,5)];
 
     % Save refined FEM mesh
-    bst_progress('text', 'Saving Refined Mesh ...');
+    bst_progress('text', 'Saving refined mesh ...');
 
     FemMat.Vertices = newnode;
     FemMat.Elements = newelemOriented(:,1:4);
