@@ -1676,9 +1676,9 @@ function errMsg = RefineMesh(filenameRelative)
 
             % Open the GUI for ROI alignement on the FEM Mesh
             SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};
-            % Get the handle of the figure and wait until closed to continue {check with Ray a better solution}
+            % Get the handle of the figure and wait until closed to continue
             global gTessAlign;
-            tess_align_manual(OPTIONS.FemFile, file_fullpath(SurfaceFile));
+            tess_align_manual(OPTIONS.FemFile, file_fullpath(SurfaceFile), 0);
             waitfor(gTessAlign.hFig)
 
             % GET THE REFINEMENT POINTS
