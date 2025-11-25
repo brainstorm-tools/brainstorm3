@@ -1,10 +1,28 @@
 function varargout = process_fast_graph( varargin )
+% PROCESS_FAST_GRAPH: Fast graphs - A novel framework for the anatomically-guided visualization and analysis (of CCEPs)
+% USAGE:                                                           OutputFiles = process_resection_identification('Run',     sProcess, sInputs)
+%         [ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2PreOp, errMsg] = process_resection_identification('Compute', MriFilePreOp, MriFilePostOp)
 
-% PROCESS_FAST_BASIC: Fast graphs with minimal functionality
-
-% Authors: Ken Taylor, 8/12/2024
-
-% initial version from old code 8/12/2024
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Ken Taylor, 2020-2024
+%          Chinmay Chinara, 2025
 
 eval(macro_method);
 end
@@ -17,6 +35,7 @@ function sProcess = GetDescription()
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Plots';
     sProcess.Index       = 1100;
+    sProcess.Description = 'https://pubmed.ncbi.nlm.nih.gov/32086098/';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
     sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};
@@ -43,7 +62,7 @@ function OutputFiles = Run(~, sInput)
     fig = figure;
     max_axis = [];
     clear ax
-    set(gcf, 'Position', get(0,'Screensize')); % Maximize figure.
+    set(gcf, 'Position', get(0,'Screensize') / 2); % Maximize figure.
     
     % load in the SEEG data block
     [Dcell,Fcell,ch] = getSEEG(sInput);
@@ -65,14 +84,22 @@ function OutputFiles = Run(~, sInput)
         % plotting multiple sets of data at once
         m = max([floor(numSubplots/6) 1]);
         n = ceil(numSubplots/max([floor(sqrt(numSubplots/1.5)) 1]));
-        subtightplot(m,n,subplotNum,[0.075 0.0175],0.03,0.015)
+
+        
+        subtightplot(m,n,subplotNum,[0.075 0.0175],0.1,0.1)
         % [h1, h2] = createSubplot(subplotNum,sInput,Dcell{subplotNum},subplotData,Fcell,Inds,noLocations,cortex);
-        [h1, h2] = createSubplot(subplotNum,sInput,Dcell{subplotNum},sorted.Vals,Fcell,sorted.Inds,noLocations,cortex);
+        [h1, h2, leftRegions, rightRegions] = createSubplot(subplotNum,sInput,Dcell{subplotNum},sorted.Vals,Fcell,sorted.Inds,noLocations,cortex);
     
         % manipulate plots to make them more readable
         axis tight
         axis_temp = axis;
         ax(subplotNum) = gca;
+        % Set the label strings via object properties
+        ax(subplotNum).XLabel.String = 'Time (ms)';
+        ax(subplotNum).YLabel.String = 'Amplitude (V)';
+        [~, idxMaxL] = cellfun(@max, {sorted.Vals.Left});
+        [~, idxMaxR] = cellfun(@max, {sorted.Vals.Right});
+        ax(subplotNum).Title.String = sprintf('LeftRegion (%s) | RightRegion (%s)', leftRegions{idxMaxL}, rightRegions{idxMaxR});
         if subplotNum == 1
             max_axis = axis_temp;
         else
@@ -92,7 +119,7 @@ function OutputFiles = Run(~, sInput)
         ax(subplotNum).YLim = max_axis(3:4);
     end
     linkaxes(ax)
-    set(gcf,'units','normalized','outerposition',[0 0 1 1])
+    set(gcf,'units','normalized','outerposition',[0.5 0.5 0.5 0.5])
     shg
     zoom yon
 end
@@ -100,19 +127,19 @@ end
 %%
 function [Dcell,Fcell,ch] = getSEEG(sInput)
     % load in the SEEG data block
-    Fcell = cell(length(sInput),1);
+    % Fcell = cell(length(sInput),1);
     
     % I think channel file has to be the same for each input so only need to
     % get ch once, doing it each time for now anyway just in case
-    for k = 1:length(sInput)
-        % get the channel information & SEEG data
-        ch = load(file_fullpath(sInput(k).ChannelFile));
-        data = load(file_fullpath(sInput(k).FileName));
-        data.F(data.ChannelFlag<0,:) = NaN;
-        SEEGcontacts = find(strcmp('SEEG',{ch.Channel.Type}));
-        Fcell(k) = {data.F(SEEGcontacts,:)};
-        Dcell(k) = {data};
-    end
+    % for k = 1:length(sInput)
+    % get the channel information & SEEG data
+    ch = load(file_fullpath(sInput.ChannelFile));
+    data = load(file_fullpath(sInput.FileName));
+    data.F(data.ChannelFlag<0,:) = NaN;
+    SEEGcontacts = find(strcmp('SEEG',{ch.Channel.Type}));
+    Fcell = {data.F(SEEGcontacts,:)};
+    Dcell = {data};
+    % end
 end
 
 %%
@@ -313,7 +340,8 @@ function region = applyRegionColor(loc_region,cortex,aaa)
     if m < length(aaa.labelset.label)
         region.Name = aaa.labelset.label{m}.Attributes.fullname;
         region.Color = aaa.labelset.label{m}.Attributes.color;
-        region.Color = hex2rgb(region.Color(3:end));
+        % Convert color from hexadecimal to RGB [0, 1]
+        region.Color = sscanf(region.Color(3:end), '%2x%2x%2x')' / 255;
     else
         region.Color = [1, 1, 1]*0.5;
         region.Name = '?';
@@ -391,7 +419,7 @@ function h=subtightplot(m,n,p,gap,marg_h,marg_w,varargin)
 end
 
 %%
-function [h1, h2] = createSubplot(subplotNum,sInput,data,subplotData,Fcell,Inds,noLocations,cortex)
+function [h1, h2, leftRegions, rightRegions] = createSubplot(subplotNum,sInput,data,subplotData,Fcell,Inds,noLocations,cortex)
     h1 = [];
     h2 = [];
     
@@ -402,7 +430,7 @@ function [h1, h2] = createSubplot(subplotNum,sInput,data,subplotData,Fcell,Inds,
     chLink = file_fullpath(sInput(1).ChannelFile);
     ch = load(chLink);
     SEEGcontacts = find(strcmp('SEEG',{ch.Channel.Type}));
-    aaa = xml2struct('C:\Users\chinm\OneDrive\Desktop\brainsuite_labeldescription.xml');  
+    aaa = xml2struct('brainsuite_labeldescription.xml');  
     if ~isempty(subplotData.Left)
     
         Fout = Fcell{subplotNum};
