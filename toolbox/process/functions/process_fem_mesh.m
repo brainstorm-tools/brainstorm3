@@ -1624,8 +1624,8 @@ function errMsg = RefineMesh(filenameRelative)
             % List of all the available surfaces in the subject database
             surfFileNames = {sSubject.Surface.FileName};
             surfComments  = {sSubject.Surface.Comment};
-            % Ignore target FEM mesh
-            iSurfFem = strcmp(filenameRelative, surfFileNames);
+            % Ignore target FEM meshes
+            iSurfFem = strcmpi({sSubject.Surface.SurfaceType}, 'fem');
             surfFileNames(iSurfFem) = [];
             surfComments(iSurfFem)  = [];
             % Add geometric surfaces
