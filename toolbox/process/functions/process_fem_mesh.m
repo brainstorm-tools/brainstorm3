@@ -1560,4 +1560,3 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
 end
-
