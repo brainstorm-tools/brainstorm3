@@ -19,7 +19,8 @@ function varargout = process_fem_refine(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani, Takfarinas Medani, 2025
+% Authors: Raymundo Cassani, 2025
+%          Takfarinas Medani, 2025
 
 eval(macro_method);
 end
@@ -43,12 +44,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
-    % Refine using a ROI surface or selecting FEM layers
-
-    % Options: FEM layers
-    sProcess.options.femcond.Comment = {'panel_femrefine', 'Tissue conductivities: '};
-    sProcess.options.femcond.Type    = 'editpref';
-    sProcess.options.femcond.Value   = defFem;
+    % FEM refine method
+    sProcess.options.refinemethod.Comment    = {'By layer(s)&nbsp', 'By ROI surface&nbsp', 'Refine method: ' ; ...
+                                               'layer_refine', 'roi_refine', ''};
+    sProcess.options.refinemethod.Type       = 'radio_linelabel';
+    sProcess.options.refinemethod.Value      = 'layer_refine';
+    sProcess.options.refinemethod.Controller = struct('layer_refine', 'layer_refine', 'roi_refine', 'roi_refine');
+    % Refine selected FEM layer(s)
+    sProcess.options.femrefine.Comment = {'panel_femrefine', 'Select layers: '};
+    sProcess.options.femrefine.Type    = 'editpref';
+    sProcess.options.femrefine.Value   = [];
+    sProcess.options.femrefine.Class   = 'layer_refine';
+    % Refine using a ROI surface
+    sProcess.options.roiname.Comment = 'Comment (name) of ROI surface: ';
+    sProcess.options.roiname.Type    = 'text';
+    sProcess.options.roiname.Value   = '';
+    sProcess.options.roiname.Class   = 'roi_refine';
 end
 
 
@@ -61,9 +72,34 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Get options
-    OPTIONS = sProcess.options.femcond.Value;
+    % Get FEM file
+    subjectName = sProcess.options.subjectname.Value;
+    sSubject = bst_get('Subject', sProcess.options.subjectname.Value);
+    if isempty(sSubject.iFEM)
+        bst_report('Error', sProcess, sInputs, ...
+            ['No available FEM file subject "' subjectName '"']);
+        return
+    end
+    FemFile = sSubject.Surface(sSubject.iFEM).FileName;
+    % Refine method
+    RefineMethod = sProcess.options.refinemethod.Value;
+    % Argument for refine method
+    switch(RefineMethod)
+        case 'layer_refine'
+            OPTIONS = sProcess.options.femrefine.Value;
+            RefineMethodArg = OPTIONS.LayerSelect;
+            % Default FEM file should be the same for the selected tissues
+            if ~strcmp(FemFile, OPTIONS.FemFile)
+                bst_report('Error', sProcess, sInputs, ...
+                    ['Default FEM file for subject "' subjectName '" ' ...
+                    'does not match the FEM file provided in option "femrefine"']);
+                return
+            end
+        case 'roi_refine'
+            RefineMethodArg = sProcess.options.roiname.Value;
+    end
     % Compute
+    Compute(FemFile, RefineMethod, RefineMethodArg);
 end
 
 %% ===== COMPUTE =====
@@ -83,7 +119,6 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     % === Load target FEM meshes
     bst_progress('start', 'Refine FEM mesh ','Loading the FEM mesh ');
     FemFullFile = file_fullpath(FemFileName);
-    OPTIONS.FemFile = FemFullFile;
     FemMat = load(FemFullFile);
     % Hexahedral meshes not supported
     if (size(FemMat.Elements,2) > 4)
@@ -104,26 +139,25 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
         end
         RefineMethod = RefineMethods{refineMode};
     end    
-    OPTIONS.Method = RefineMethod;
     % Get file in database
     [sSubject, iSubject] = bst_get('SurfaceFile', FemFileName);
     % === Identify points to insert into the mesh {the elements centroides} for each method
-    switch OPTIONS.Method
-        % Refine specific FEM layer(s)
+    switch RefineMethod
+        % Refine selected FEM layer(s)
         case 'layer_refine'
             if isempty(RefineMethodArg)
                 % Ask user to select the layer to refine with panel_femrefine
-                LayerRefineOptions = gui_show_dialog('Refine FEM mesh', @panel_femrefine, 1, [], OPTIONS);
-                if isempty(LayerRefineOptions)
+                OPTIONS = gui_show_dialog('Refine FEM mesh', @panel_femrefine, 1, [], FemFileName);
+                if isempty(OPTIONS)
                     return;
                 end
+                LayerSelect = OPTIONS.LayerSelect;
             else                
-                LayerRefineOptions = RefineMethodArg;
+                LayerSelect = RefineMethodArg;
             end
-            OPTIONS.LayerRefineOptions = LayerRefineOptions;
             % Get index of the element to refine
             elementsToRefine = [];
-            layerToRefine = find(LayerRefineOptions.LayerRefine);
+            layerToRefine = find(LayerSelect);
             for iRefine = 1 : length(layerToRefine)
                 elementsToRefine(:,iRefine) = (FemMat.Tissue == layerToRefine(iRefine));
             end
@@ -177,7 +211,7 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
                     OutputMat.Vertices = geo_vert;
                     OutputMat.Faces    = geo_faces;
                     % Output filename
-                    OutputFile = bst_fullfile(bst_fileparts(OPTIONS.FemFile), 'tess_roi_refine.mat');
+                    OutputFile = bst_fullfile(bst_fileparts(FemFullFile), 'tess_roi_refine.mat');
                     OutputFile = file_unique(OutputFile);
                     % Save file
                     bst_save(OutputFile, OutputMat, 'v7');
@@ -190,7 +224,7 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
                 SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};            
                 % Get the handle of the figure and wait until closed to continue
                 global gTessAlign;
-                tess_align_manual(OPTIONS.FemFile, file_fullpath(SurfaceFile), 0);
+                tess_align_manual(FemFullFile, file_fullpath(SurfaceFile), 0);
                 waitfor(gTessAlign.hFig)
             else
                 % Name (Comment) of ROI surface was provided
@@ -245,7 +279,7 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
         FemMat.Tissue = ones(1,size(newelemOriented,1));
     end
     % File comment
-    switch OPTIONS.Method
+    switch RefineMethod
         case 'layer_refine'
             tag = strjoin(FemMat.TissueLabels(layerToRefine), ', ');
         case 'roi_refine'
@@ -254,9 +288,9 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     refinedStr = ['Refined: ' num2str(length(newnode)) 'V'];
     FemMat.Comment = [FemMat.Comment ' | ' refinedStr ' - ' tag];
     % Add history
-    FemMat = bst_history('add', FemMat, 'process_fem_mesh', [refinedStr, 'method = ' OPTIONS.Method ', ' tag]);
+    FemMat = bst_history('add', FemMat, 'process_fem_mesh', [refinedStr, 'method = ' RefineMethod ', ' tag]);
     % Save to database
-    FemFile = file_unique(bst_fullfile(bst_fileparts(OPTIONS.FemFile), sprintf('tess_fem_%s_%dV.mat', OPTIONS.Method, length(FemMat.Vertices))));
+    FemFile = file_unique(bst_fullfile(bst_fileparts(FemFullFile), sprintf('tess_fem_%s_%dV.mat', RefineMethod, length(FemMat.Vertices))));
     bst_save(FemFile, FemMat, 'v7');
     db_add_surface(iSubject, FemFile, FemMat.Comment);
     bst_progress('stop');
