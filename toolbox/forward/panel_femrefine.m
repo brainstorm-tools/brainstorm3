@@ -1,9 +1,9 @@
-function varargout = panel_refinefem(varargin)
+function varargout = panel_femrefine(varargin)
 % PANEL_REFINEFEM Edit FEM conductivity for a list of named layers (isotropic/anisotropic).
 %
-% USAGE:  bstPanel = panel_refinefem('CreatePanel', OPTIONS)           : Call from the interactive interface
-%         bstPanel = panel_refinefem('CreatePanel', sProcess, sFiles)  : Call from the process editor
-%                s = panel_refinefem('GetPanelContents')
+% USAGE:  bstPanel = panel_femrefine('CreatePanel', OPTIONS)           : Call from the interactive interface
+%         bstPanel = panel_femrefine('CreatePanel', sProcess, sFiles)  : Call from the process editor
+%                s = panel_femrefine('GetPanelContents')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -36,12 +36,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
 
-    % GUI CALL:  panel_refinefem('CreatePanel', OPTIONS)
+    % GUI CALL:  panel_femrefine('CreatePanel', OPTIONS)
     if (nargin == 1)
         OPTIONS = sProcess;
-    % PROCESS CALL:  panel_refinefem('CreatePanel', sProcess, sFiles)
+    % PROCESS CALL:  panel_femrefine('CreatePanel', sProcess, sFiles)
     else % I'm not sure about this=> check with Ray
-        OPTIONS = sProcess.options.panel_refinefem.Value;
+        OPTIONS = sProcess.options.panel_femrefine.Value;
         % Get FEM files
         sSubject = bst_get('Subject', sProcess.options.subjectname.Value);
         if isempty(sSubject.iFEM)

@@ -1604,8 +1604,8 @@ function errMsg = RefineMesh(filenameRelative)
     switch OPTIONS.Method
         % Refine specific FEM layer(s)
         case 'layer_refine'
-            % Ask user to select the layer to refine  with panel_refinefem
-            LayerRefineOptions = gui_show_dialog('Refine FEM mesh', @panel_refinefem, 1, [], OPTIONS);
+            % Ask user to select the layer to refine with panel_femrefine
+            LayerRefineOptions = gui_show_dialog('Refine FEM mesh', @panel_femrefine, 1, [], OPTIONS);
             if isempty(LayerRefineOptions)
                 return;
             end
