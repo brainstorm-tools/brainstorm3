@@ -1,9 +1,9 @@
-function varargout = panel_femrefine(varargin)
-% PANEL_REFINEFEM Edit FEM conductivity for a list of named layers (isotropic/anisotropic).
+function varargout = panel_femselect(varargin)
+% PANEL_FEMSELECT Select tissues (layers) from a FEM mesh file
 %
-% USAGE:  bstPanel = panel_femrefine('CreatePanel', OPTIONS)           : Call from the interactive interface
-%         bstPanel = panel_femrefine('CreatePanel', sProcess, sFiles)  : Call from the process editor
-%                s = panel_femrefine('GetPanelContents')
+% USAGE:  bstPanel = panel_femselect('CreatePanel', FemFile)           : Call from the interactive interface
+%         bstPanel = panel_femselect('CreatePanel', sProcess, sFiles)  : Call from the process editor
+%                s = panel_femselect('GetPanelContents')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -37,10 +37,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     import java.awt.*;
     import javax.swing.*;
 
-    % GUI CALL:  panel_femrefine('CreatePanel', FemFile)
+    % GUI CALL:  panel_femselect('CreatePanel', FemFile)
     if (nargin == 1)
         FemFile = sProcess;
-    % PROCESS CALL:  panel_femrefine('CreatePanel', sProcess, sFiles)
+    % PROCESS CALL:  panel_femselect('CreatePanel', sProcess, sFiles)
     else
         % Get FEM file
         sSubject = bst_get('Subject', sProcess.options.subjectname.Value);
@@ -49,29 +49,29 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         end
         FemFile = sSubject.Surface(sSubject.iFEM).FileName;
     end
-    
+
     % ==== GET MESH INFO ====
     % Load tissue labels
     FemMat = load(file_fullpath(FemFile), 'TissueLabels');
     LayerNames = FemMat.TissueLabels;
-    
+
     % ==== FRAME STRUCTURE ====
     jPanelNew = java_create('javax.swing.JPanel');
     jPanelNew.setLayout(BoxLayout(jPanelNew, BoxLayout.PAGE_AXIS));
     jPanelNew.setBorder(BorderFactory.createEmptyBorder(12,12,12,12));
 
     % ===== FEM LAYERS =====
-    jPanelLayers = gui_river([6,6], [-5,6,15,6], 'FEM tissue(s) to refine');
+    jPanelLayers = gui_river([6,6], [-5,6,15,6], 'Select FEM tissue(s)');
         nLayers = length(LayerNames);
         jCheckLayerSelect = javaArray('javax.swing.JCheckBox', nLayers);
         % Loop on each layer
         for i = 1:nLayers
             gui_component('label', jPanelLayers, 'br', [LayerNames{i} ':'], [], [], [], []);
-            jCheckLayerSelect(i) = gui_component('checkbox', jPanelLayers, 'tab', 'Select');
+            jCheckLayerSelect(i) = gui_component('checkbox', jPanelLayers, 'tab', '');
             jCheckLayerSelect(i).setSelected(1);
         end
     jPanelNew.add(jPanelLayers);
-    
+
     % ===== VALIDATION BUTTONS =====
     jPanelValidation = gui_river([10 0], [6 10 0 10]);
         gui_component('Button', jPanelValidation, 'br right', 'Cancel', [], [], @ButtonCancel_Callback, []);
@@ -87,7 +87,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     ctrl.FemFile    = FemFile;
 
     % Create the BstPanel object that is returned by the function
-    bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);    
+    bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
 
 
 %% =================================================================================
@@ -116,7 +116,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     ctrl = bst_get('PanelControls', 'FemRefineOptions');
     if isempty(ctrl)
         s = [];
-        return; 
+        return;
     end
     % FEM selected layers
     for i = 1:length(ctrl.jCheckLayerSelect)

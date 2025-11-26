@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.refinemethod.Value      = 'layer_refine';
     sProcess.options.refinemethod.Controller = struct('layer_refine', 'layer_refine', 'roi_refine', 'roi_refine');
     % Refine selected FEM layer(s)
-    sProcess.options.femrefine.Comment = {'panel_femrefine', 'Select layers: '};
+    sProcess.options.femrefine.Comment = {'panel_femselect', 'Select layers: '};
     sProcess.options.femrefine.Type    = 'editpref';
     sProcess.options.femrefine.Value   = [];
     sProcess.options.femrefine.Class   = 'layer_refine';
@@ -146,8 +146,8 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
         % Refine selected FEM layer(s)
         case 'layer_refine'
             if isempty(RefineMethodArg)
-                % Ask user to select the layer to refine with panel_femrefine
-                OPTIONS = gui_show_dialog('Refine FEM mesh', @panel_femrefine, 1, [], FemFileName);
+                % Ask user to select the layer to refine with panel_femselect
+                OPTIONS = gui_show_dialog('Refine FEM mesh', @panel_femselect, 1, [], FemFileName);
                 if isempty(OPTIONS)
                     return;
                 end
