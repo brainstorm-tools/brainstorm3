@@ -99,22 +99,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             RefineMethodArg = sProcess.options.roiname.Value;
     end
     % Compute
-    Compute(FemFile, RefineMethod, RefineMethodArg);
+    [isOk, errMsg] = Compute(FemFile, RefineMethod, RefineMethodArg);
+    % Handling errors
+    if ~isOk
+        bst_report('Error', sProcess, [], errMsg);
+    elseif ~isempty(errMsg)
+        bst_report('Warning', sProcess, [], errMsg);
+    end
+    % Return an empty structure
+    OutputFiles = {'import'};
 end
 
 %% ===== COMPUTE =====
 % Refines the FEM mesh(es)
-function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
+function [isOk, errMsg] = Compute(FemFileName, RefineMethod, RefineMethodArg)
+    isOk = 0;
+    errMsg = '';
     if nargin < 3
         RefineMethodArg = [];
     end
     if nargin < 2
         RefineMethod = [];
     end
+    isInteractive = isempty(RefineMethod) && isempty(RefineMethodArg);
     % === Install/load required plugin: 'iso2mesh'
     [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
     if ~isInstalled
-        error(['Could not install or load plugin: iso2mesh' 10 errMsg]);
+        errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
+        if isInteractive
+            bst_error(errMsg);
+        end
+        return
     end
     % === Load target FEM meshes
     bst_progress('start', 'Refine FEM mesh ','Loading the FEM mesh ');
@@ -123,7 +138,12 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     % Hexahedral meshes not supported
     if (size(FemMat.Elements,2) > 4)
         bst_progress('stop');
-        error('Hexahedral meshes are not supported.');
+        errMsg = ['Hexahedral FEM meshes are not supported.' 10 ...
+                  'Try converting them to tetrahedral FEM meshes with the popup menu option.'];
+        if isInteractive
+            bst_error(errMsg);
+        end
+        return
     end
     % === Get refine method
     if isempty(RefineMethod)
@@ -299,4 +319,6 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     bst_save(FemFile, FemMat, 'v7');
     db_add_surface(iSubject, FemFile, FemMat.Comment);
     bst_progress('stop');
+    % Return success
+    isOk = 1;
 end
