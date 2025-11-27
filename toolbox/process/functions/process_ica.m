@@ -42,7 +42,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % === SELECT INPUT SIGNALS ===
     % Time window
     sProcess.options.timewindow.Comment = 'Time window: ';

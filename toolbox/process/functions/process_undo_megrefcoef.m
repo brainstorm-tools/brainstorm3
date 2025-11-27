@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'undo';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Artifacts';
-    sProcess.Index       = 113;
+    sProcess.Index       = 113.9;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
