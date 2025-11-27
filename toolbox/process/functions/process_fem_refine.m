@@ -263,6 +263,9 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     bst_progress('text', 'Refining mesh ...');
     % if opt is a vector with a length that equals to that of node,
     [newnode,newelem] = meshrefine(FemMat.Vertices,[FemMat.Elements FemMat.Tissue], centroid);
+    % Delete temporary files
+    deletemeshfile(mwpath('pre_refine.*'));
+    deletemeshfile(mwpath('post_refine.*'));
     % Postprocess the mesh
     newelemOriented = meshreorient(newnode, newelem(:,1:4));
     newelemOriented = [newelemOriented newelem(:,5)];
