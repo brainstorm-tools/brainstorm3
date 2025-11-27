@@ -179,10 +179,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.8';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
@@ -1484,8 +1484,8 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
+            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
