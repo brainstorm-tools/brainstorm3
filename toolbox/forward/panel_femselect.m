@@ -125,7 +125,3 @@ function s = GetPanelContents() %#ok<DEFNU>
     s.LayerNames = ctrl.LayerNames;
     s.FemFile    = ctrl.FemFile;
 end
-
-
-
-
