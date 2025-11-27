@@ -135,9 +135,9 @@ function [isOk, errMsg] = Compute(FemFileName, RefineMethod, RefineMethodArg)
     bst_progress('start', 'Refine FEM mesh ','Loading the FEM mesh ');
     FemFullFile = file_fullpath(FemFileName);
     FemMat = load(FemFullFile);
+    bst_progress('stop');
     % Hexahedral meshes not supported
     if (size(FemMat.Elements,2) > 4)
-        bst_progress('stop');
         errMsg = ['Hexahedral FEM meshes are not supported.' 10 ...
                   'Try converting them to tetrahedral FEM meshes with the popup menu option.'];
         if isInteractive
@@ -154,7 +154,6 @@ function [isOk, errMsg] = Compute(FemFileName, RefineMethod, RefineMethodArg)
              ['<HTML>Refine FEM mesh(es) within a specific ROI <BR>' ...
               '<FONT COLOR="#707070">Select or define a closed surface as ROI']}, 1);
         if isCancel || isempty(refineMode)
-            bst_progress('stop');
             return
         end
         RefineMethod = RefineMethods{refineMode};
@@ -280,7 +279,7 @@ function [isOk, errMsg] = Compute(FemFileName, RefineMethod, RefineMethodArg)
     centroid(end, :) = [];
 
     % === Refine FEM mesh(es)
-    bst_progress('text', 'Refining mesh ...');
+    bst_progress('start', 'Refine FEM mesh ','Refining FEM mesh...');
     % if opt is a vector with a length that equals to that of node,
     [newnode,newelem] = meshrefine(FemMat.Vertices,[FemMat.Elements FemMat.Tissue], centroid);
     % Delete temporary files
