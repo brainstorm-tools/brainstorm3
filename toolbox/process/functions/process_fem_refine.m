@@ -269,6 +269,8 @@ function errMsg = Compute(FemFileName, RefineMethod, RefineMethodArg)
     % Postprocess the mesh
     newelemOriented = meshreorient(newnode, newelem(:,1:4));
     newelemOriented = [newelemOriented newelem(:,5)];
+    % Unload plugin: 'iso2mesh'
+    bst_plugin('Unload', 'iso2mesh', 1);
 
     % === Save refined FEM mesh
     bst_progress('text', 'Saving refined mesh ...');
