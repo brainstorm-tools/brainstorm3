@@ -1523,11 +1523,25 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
         % === COPY SURFACES PROPERTIES ===
         if isSurfProp
             DestTessInfo = getappdata(hDestFig, 'Surface');
+            % Process Source and Destination tess names
+            AllTessInfo = [SrcTessInfo, DestTessInfo];
+            AllTessNames = {AllTessInfo.Name};
+            for iTess = 1 : length(AllTessInfo)
+                % Use 'FEM_layerName' as name for FEM layers
+                if strcmpi(AllTessInfo(iTess).Name, 'FEM')
+                    layerName = regexp(AllTessInfo(iTess).SurfaceFile, '^#.*\((\w*)\)_*\d*$', 'tokens');
+                    if ~isempty(layerName) && ~isempty(layerName{1}) && ~isempty(layerName{1}{1})
+                    AllTessNames{iTess} = ['FEM_' layerName{1}{1}];
+                    end
+                end
+            end
+            SrcTessNames  = AllTessNames(1 : length(SrcTessInfo));
+            DestTessNames = AllTessNames(length(SrcTessInfo)+1 : end);
             % Process each surface of the figure
             for iTess = 1:length(DestTessInfo)
                 % Find surface name in source figure
                 if (length(DestTessInfo) > 1)
-                    iTessInSrc = find(strcmpi(DestTessInfo(iTess).Name, {SrcTessInfo.Name}));
+                    iTessInSrc = find(strcmpi(DestTessNames{iTess}, SrcTessNames));
                 else
                     iTessInSrc = 1;
                 end
@@ -1539,7 +1553,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     DestTessInfo(iTess).DataAlpha        = SrcTessInfo(iTessInSrc).DataAlpha;
                     DestTessInfo(iTess).SizeThreshold    = SrcTessInfo(iTessInSrc).SizeThreshold;
                     % Copy only if surfaces have the same type                    
-                    if strcmpi(DestTessInfo(iTess).Name, SrcTessInfo(iTessInSrc).Name)
+                    if strcmpi(DestTessNames{iTess}, SrcTessNames{iTessInSrc})
                         DestTessInfo(iTess).SurfShowSulci    = SrcTessInfo(iTessInSrc).SurfShowSulci;
                         DestTessInfo(iTess).SurfShowEdges    = SrcTessInfo(iTessInSrc).SurfShowEdges;
                         DestTessInfo(iTess).AnatomyColor     = SrcTessInfo(iTessInSrc).AnatomyColor;
@@ -1554,7 +1568,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     % Update surfaces structure
                     setappdata(hDestFig, 'Surface', DestTessInfo);
                     % Update display
-                    if strcmpi(DestTessInfo(iTess).Name, 'Anatomy')
+                    if strcmpi(DestTessNames{iTess}, 'Anatomy')
                         if strcmpi(FigureId.Type, 'MriViewer')
                             figure_mri('UpdateMriDisplay', hDestFig, [], DestTessInfo, iTess);
                         else
