@@ -52,6 +52,11 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2019-2023
+%          Raymundo Cassani, 2025
+
+% ===== MEX EXTENSION =====
+% Extension (with dot) for the mex files in the compiling OS
+dotMexext = ['.' mexext];
 
 
 % ===== SPM STANDALONE =====
@@ -86,7 +91,7 @@ needFunc = {...
     fullfile(FieldTripDir, 'forward', 'private', 'eeg_leadfieldb.m'), ...
     fullfile(FieldTripDir, 'forward', 'private', 'meg_forward.m'), ...
     fullfile(FieldTripDir, 'forward', 'private', 'meg_ini.m'), ...
-    fullfile(FieldTripDir, 'forward', 'private', 'meg_leadfield1.mexw64'), ...
+    fullfile(FieldTripDir, 'forward', 'private', ['meg_leadfield1' dotMexext]), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesFmultivariate.m'), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesFunivariate.m'), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesregrT.m'), ...
@@ -306,10 +311,10 @@ listDep(iClass) = [];
 iSignal = find(~cellfun(@(c)isempty(strfind(c, ['external' filesep 'signal'])), listDep));
 listDep(iSignal) = [];
 % Add all the 64bit versions of all the included mex-files
-iMex = find(~cellfun(@(c)isempty(strfind(c, '.mexw64')), listDep));
+iMex = find(~cellfun(@(c)isempty(strfind(c, dotMexext)), listDep));
 for i = 1:length(iMex)
-    for ext = {'.mexa64', '.mexmaci64'}
-        extFile = strrep(listDep{iMex(i)}, '.mexw64', ext{1});
+    for ext = setdiff({'.mexw64', '.mexa64', '.mexmaci64'}, dotMexext)
+        extFile = strrep(listDep{iMex(i)}, dotMexext, ext{1});
         if exist(extFile, 'file') && ~ismember(extFile, listDep)
             listDep{end+1} = extFile;
         end

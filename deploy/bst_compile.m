@@ -196,7 +196,7 @@ if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     SpmDir = fullfile(PlugSpm.Path, PlugSpm.SubFolder);
     % If CAT12 is installed, it must be unlinked before compiling SPM
     if ~isempty(bst_plugin('GetInstalled', 'cat12'))
-        bst_plugin('LinkCatSpm', 0);
+        bst_plugin('LinkSpmToolbox', 0, 'cat12');
     end
     % Unload FieldTrip and SPM plugins
     bst_plugin('Unload', 'fieldtrip');
