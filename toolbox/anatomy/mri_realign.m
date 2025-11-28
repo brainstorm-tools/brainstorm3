@@ -116,6 +116,7 @@ if ~isempty(Method)
                     if ~isProgress
                         bst_progress('stop');
                     end
+                    error(errMsg);
                     return;
                 end
             end
