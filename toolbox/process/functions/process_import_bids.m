@@ -1135,12 +1135,17 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 warning('Unexpected BIDS coordinate system. Coregistration not loaded. Please report: this is a coding error.');
                                 break;
                         end
+                        % Add note to history about loading the coregistration, even if there is no
+                        % additional transformation to do.
                         % If coregistration was done with this recording session, the alignment may
                         % have been saved in the MRI fiducials, so the transformation will be
                         % identity here. In this case, avoid adding unneeded transformation.
                         if max(abs(T(:)' - [1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1])) > 1e-4
+                            bst_history('add', file_fullpath(ChannelFile), 'align', 'Coregistration imported from BIDS files (transformation below).');
                             % Apply to channel file, saving transformation as a 'manual correction'.
                             channel_apply_transf(ChannelFile, T);
+                        else
+                            bst_history('add', file_fullpath(ChannelFile), 'align', 'Coregistration imported from BIDS files (no transformation needed).');
                         end
                     end
                 end
