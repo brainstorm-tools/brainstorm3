@@ -1620,10 +1620,21 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     % Compiled version
     isCompiled = bst_iscompiled();
-    if isCompiled && (PlugDesc.CompiledStatus == 0)
-        errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
-        return;
+    if isCompiled
+        % Needed FieldTrip and SPM functions are available in compiled version of Brainstorm. See bst_spmtrip.m
+        if ismember(PlugDesc.Name, {'fieldtrip', 'spm12'})
+            disp(['BST> Some functions of ' PlugDesc.Name ' are compiled with Brainstorm']);
+            isOk = 1;
+            errMsg = [];
+            return;
+        end
+        % Plugin is included in the compiled version
+        if PlugDesc.CompiledStatus == 0
+            errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
+            return;
+        end
     end
+
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
@@ -3331,10 +3342,16 @@ function SetProgressLogo(PlugDesc)
         if ischar(PlugDesc)
             PlugDesc = GetSupported(PlugDesc);
         end
-        % Set logo file
+        % Get logo if not defined in the plugin structure
         if isempty(PlugDesc.LogoFile)
             PlugDesc.LogoFile = GetLogoFile(PlugDesc);
         end
+        % Start progress bar if needed
+        isNewProgressBar = ~bst_progress('isVisible');
+        if isNewProgressBar
+            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
+        end
+        % Set logo file
         if ~isempty(PlugDesc.LogoFile)
             bst_progress('setimage', PlugDesc.LogoFile);
         end

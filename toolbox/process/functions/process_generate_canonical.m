@@ -93,13 +93,10 @@ end
 %% ===== COMPUTE CANONICAL SURFACES =====
 function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     isOk = 0;
-    errMsg = '';
-    if ~bst_iscompiled
-        % Initialize SPM
-        [isInstalled, errMsg] = bst_plugin('Install', 'spm12', isInteractive);
-        if ~isInstalled
-            return;
-        end
+    % Initialize SPM
+    [isInstalled, errMsg] = bst_plugin('Install', 'spm12', isInteractive);
+    if ~isInstalled
+        return;
     end
     bst_plugin('SetProgressLogo', 'spm12');
 
