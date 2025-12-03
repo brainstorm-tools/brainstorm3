@@ -123,7 +123,6 @@ for iFile = 1:length(VideoFiles)
     elseif file_exist(jsonFile)
         % Open the file 
         metadata = bst_jsondecode(jsonFile);
-
         if isfield(metadata, 'VideoStart') && ~isempty(metadata.VideoStart)
             VideoStart = metadata.VideoStart;
         end
