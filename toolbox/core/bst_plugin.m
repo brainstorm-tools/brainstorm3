@@ -2046,6 +2046,9 @@ end
 % If multiple plugins provide the same functions (eg. FieldTrip and SPM): make sure at least one is installed
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice', PlugNames, isInteractive)
 function [isOk, errMsg, PlugDesc] = InstallMultipleChoice(PlugNames, isInteractive)
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
     % Check if one of the plugins is loaded
     for iPlug = 1:length(PlugNames)
         PlugInst = GetInstalled(PlugNames{iPlug});
