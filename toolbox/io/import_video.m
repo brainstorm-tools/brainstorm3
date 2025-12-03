@@ -98,7 +98,6 @@ for iFile = 1:length(VideoFiles)
     % Try to find an .smi file corresponding to the video and use it for the synchronization
     SmiFile = bst_fullfile(fPath, [fBase, '.smi']);
     jsonFile = bst_fullfile(fPath, [fBase, '.json']);
-    
     if file_exist(SmiFile)
         % Open the file 
         fid = fopen(SmiFile, 'r');
@@ -129,7 +128,7 @@ for iFile = 1:length(VideoFiles)
             VideoStart = metadata.VideoStart;
         end
     end
-
+    
     % === CREATE STRUCTURE ===
     % Create new empty videolink structure
     VideoLinkMat = struct();
