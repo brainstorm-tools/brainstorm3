@@ -1,5 +1,5 @@
 function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iStudies, isBids, ...
-        RecreateMegCoordJson, isOverwrite)
+        RecreateMegCoordJson, isOverwrite, isDryRun)
     % Save MRI-MEG coregistration info in imported raw BIDS dataset, or MRI fiducials only if not BIDS.
     % IMPORTANT: isSuccess currently not working, can often be true despite skipping studies or subjects.
     %
@@ -31,8 +31,10 @@ function [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iStudie
     isInteractive = true;
     % Another potential option, to back up json files under derivatives
     isBackup = true;
-    isDryRun = true;
 
+    if nargin < 5 || isempty(isDryRun)
+        isDryRun = false;
+    end
     if nargin < 4 || isempty(isOverwrite)
         isOverwrite = true;
     end
