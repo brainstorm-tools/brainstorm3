@@ -244,6 +244,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
 
 
+    % === ARTIFACTS: GEDAI ===
+    PlugDesc(end+1)              = GetStruct('gedai');
+    PlugDesc(end).Version        = 'main';
+    PlugDesc(end).Category       = 'Artifacts';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
+    PlugDesc(end).TestFile       = 'process_gedai.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.git', 'example data'};
+
+
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
     PlugDesc(end).Version        = '2.4.1';
@@ -524,19 +538,6 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'fastica.m';
     PlugDesc(end).ReadmeFile     = 'Contents.m';
     PlugDesc(end).CompiledStatus = 2;
-
-    % === STATISTICS: GEDAI ===
-    PlugDesc(end+1)              = GetStruct('gedai');
-    PlugDesc(end).Version        = 'main';
-    PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/refs/heads/main.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
-    PlugDesc(end).TestFile       = 'process_gedai.m';
-    PlugDesc(end).ReadmeFile     = 'README.md';
-    PlugDesc(end).AutoLoad       = 0;
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).DeleteFiles    = {'.git', 'example data'};
 
     % === STATISTICS: LIBSVM ===
     PlugDesc(end+1)              = GetStruct('libsvm');
