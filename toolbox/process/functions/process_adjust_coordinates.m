@@ -641,6 +641,10 @@ function [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, sInputs, sProces
     
     bst_progress('text', 'Correcting head position...');
     MedianLoc = MedianLocation(Locations);
+    if isempty(MedianLoc)
+        isError = true;
+        return;
+    end
     %         disp(MedianLoc);
     
     % Also get the initial reference position.  We only use it to estimate how much the adjustment moves.
@@ -885,6 +889,8 @@ function MedianLoc = MedianLocation(Locations)
     
     if size(Locations, 1) ~= 9
         bst_error('Expecting 9 HLU channels in first dimension.');
+        MedianLoc = [];
+        return;
     end
     
     nSxnT = size(Locations, 2) * size(Locations, 3);
@@ -1022,7 +1028,6 @@ function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = Che
         switch lower(ChannelMat.History{iAlign(end),3}(1:5))
             case 'remov' % ['Removed transform: ' TransfLabel]
                 % Removed a previous step. Ignore corresponding adjustment and look again.
-                iAlign(end) = [];
                 if strncmpi(ChannelMat.History{iAlign(end),3}(20:24), 'AdjustedNative', 5)
                     iAlignRemoved = find(cellfun(@(c)strcmpi(c(1:5), 'added'), ChannelMat.History(iAlign,3)), 1, 'last');
                 elseif strncmpi(ChannelMat.History{iAlign(end),3}(20:24), 'refine registration: head points', 5)
@@ -1031,9 +1036,12 @@ function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = Che
                     iAlignRemoved = find(cellfun(@(c)strcmpi(c(1:5), 'align'), ChannelMat.History(iAlign,3)), 1, 'last');
                 else
                     bst_error('Unrecognized removed transformation in history.');
+                    return;
                 end
+                iAlign(end) = [];
                 if isempty(iAlignRemoved)
                     bst_error('Missing removed transformation in history.');
+                    return;
                 else
                     iAlign(iAlignRemoved) = [];
                 end
