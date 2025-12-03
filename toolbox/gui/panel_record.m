@@ -2962,60 +2962,87 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
 end
 
 
-%% ===== SET ACQUISITION DATE =====
-function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>  
-
+%% ===== SET ACQUISITION DATE AND TIME =====
+function SetAcquisitionDate(iStudy, newDatetime) %#ok<DEFNU>
     % Parse inputs
-    if (nargin < 2) || isempty(newDate)
-        newDate = [];
+    if (nargin < 2) || isempty(newDatetime)
+        newDatetime = [];
     end
     % Get data info
     sStudy = bst_get('Study', iStudy);
     if isempty(sStudy)
         return;
     end
-
-    % Parse existing string
-    oldDate = datetime('now');
+    % Parse existing string YYYY-MM-DDThh:mm:ss
+    oldDatetime = '1900-01-01T00:00:00';
     if ~isempty(sStudy.DateOfStudy)
+        oldDatetime = datetime(sStudy.DateOfStudy);
         try
-            oldDate = datetime(sStudy.DateOfStudy);
+            oldDatetime = datetime(oldDatetime);
         catch
-            error('Invalid date format. Input must be ''DD-MMM-YYYY''.');
+            error('Invalid date format. Input must be ''DD-MMM-YYYY'' or ''YYYY-MM-DDThh:mm:ss''');
         end
     end
-
     % If new date is not given in argument: ask user
-    if isempty(newDate)
-
+    if isempty(newDatetime)
+        % Prepare default Date and Time strings
+        oldDateStr = sprintf('%04d-%02d-%02d', oldDatetime.Year,  oldDatetime.Month, oldDatetime.Day);
+        oldTimeStr = '';
+        if any([oldDatetime.Hour, oldDatetime.Minute, oldDatetime.Second] ~= 0)
+            oldTimeStr = sprintf('%02d:%02d:%02d', oldDatetime.Hour,  oldDatetime.Minute, oldDatetime.Second);
+        end
         % Ask for new date
-        res = java_dialog('input', {'Date (YYYY/MM/DD):', '24-hour time (HH:MM:SS) [ignore if empty]:'}, ...
-            'Recording start datetime', [], ...
-            {sprintf('%04d/%02d/%02d',year(oldDate),  month(oldDate), day(oldDate)),...
-            datestr(oldDate,'HH:MM:SS')});
-        
-        if isempty(res)
+        res = java_dialog('input', {'Date (YYYY-MM-DD):', '24-hour time (HH:MM:SS) [ignore if empty]:'}, ...
+            'Recording start datetime', [], {oldDateStr, oldTimeStr});
+        if isempty(res) || isempty(res{1})
             return;
         end
-        
-        if length(res) >= 1
-            newDate = datetime(res{1},'InputFormat', 'yyyy/MM/dd');
-        end
-
-        if length(res) >= 2 && ~isempty(res{2})
-            newTime =  parseTime(res{2});
-            newDate = newDate + newTime;
+        inputFormat = 'yyyy-MM-dd';
+        newDatetime = res{1};
+        if length(res) > 1 && ~isempty(res{2})
+            inputFormat = [inputFormat ' ' 'HH:mm:ss'];
+            newDatetime = [newDatetime ' ' res{2}];
         end
     else
-        newDate = parseInitialDate(newDate);
+        % Use space as separator between date and time
+        ix = strfind(newDatetime, 'T');
+        if ~isempty(ix)
+            newDatetime(ix) = ' ';
+        end
+        % Keep only date string
+        datetimeStrs = strsplit(newDatetime, ' ');
+        if length(datetimeStrs) < 1
+            return
+        end
+        % Change date input to dd-MMM-yyyy
+        dateStrDMY = str_date(datetimeStrs{1});
+        % Replace in original input
+        newDatetime = strrep(newDatetime, datetimeStrs{1}, dateStrDMY);
+        inputFormat = 'dd-MMM-yyyy';
+        if length(datetimeStrs) > 1
+            nValues = length(sscanf(datetimeStrs{2}, '%d:%d:%d'));
+            if nValues == 2
+                inputFormat = [inputFormat, ' ', 'HH:mm'];
+            elseif nValues == 3
+                inputFormat = [inputFormat, ' ', 'HH:mm:ss'];
+            end
+        end
     end
+    % Try to generate datetime object from GUI or argin
+    try
+        newDatetime = datetime(newDatetime, 'InputFormat', inputFormat);
+    catch
+        error('Invalid date format. Input must be ''DD-MMM-YYYY'', ''YYYY-MM-DD hh:mm:ss'', ''YYYY-MM-DD hh:mm''');
+    end
+    % New datetime string to convert to char
+    newDatetime.Format = 'yyyy-MM-dd''T''HH:mm:ss';
 
     % If the date didn't change: exit
-    if strcmpi(char(newDate), sStudy.DateOfStudy)
+    if strcmpi(char(newDatetime), sStudy.DateOfStudy)
         return;
     end
 
-    newDate = char(newDate);
+    newDate = char(newDatetime);
     % Save acquisition data in study file
     StudyFile = file_fullpath(sStudy.FileName);
     StudyMat = load(StudyFile);
@@ -3035,88 +3062,6 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
     % Refresh tree
     panel_protocols('UpdateTree');
     panel_protocols('SelectNode', [], sStudy.FileName);
-end
-
- function dt = parseInitialDate(str)
-    %PARSEINITIALDATE Parse initial date strings for figure_datetimepicker.
-    %
-    %   DT = parseInitialDate(STR)
-    %       STR may be in one of the following formats:
-    %           'yyyy/MM/dd'
-    %           'yyyy/MM/dd HH:mm'
-    %           'yyyy/MM/dd HH:mm:ss'
-    %
-    %   Returns a datetime object.
-    %   Throws an error if the format does not match.
-
-    if ~ischar(str) && ~isstring(str)
-        error('Input must be a char or string.');
-    end
-
-    str = strtrim(char(str));
-
-    % ---- Pattern 1: yyyy/MM/dd (DATE ONLY) ----
-    pat_date_only = '^(\d{4})/(\d{2})/(\d{2})$';
-
-    % ---- Pattern 2: yyyy/MM/dd HH:mm or HH:mm:ss ----
-    pat_date_time = '^(\d{4})/(\d{2})/(\d{2})\s+([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
-
-    % Try date only
-    tok = regexp(str, pat_date_only, 'tokens', 'once');
-    if ~isempty(tok)
-        yyyy = str2double(tok{1});
-        MM   = str2double(tok{2});
-        dd   = str2double(tok{3});
-        dt   = datetime(yyyy, MM, dd, 0, 0, 0);   % default to midnight
-        return;
-    end
-
-    % Try date + time
-    tok = regexp(str, pat_date_time, 'tokens', 'once');
-    if isempty(tok)
-        error(['Invalid format. Expected one of:' newline ...
-               '  yyyy/MM/dd' newline ...
-               '  yyyy/MM/dd HH:mm' newline ...
-               '  yyyy/MM/dd HH:mm:ss']);
-    end
-
-    yyyy = str2double(tok{1});
-    MM   = str2double(tok{2});
-    dd   = str2double(tok{3});
-    HH   = str2double(tok{4});
-    mm   = str2double(tok{5});
-
-    % Nested seconds group → only appears in tok{7}
-    if numel(tok) >= 6 && ~isempty(tok{6})
-        ss = str2double(tok{6}(2:end));
-    else
-        ss = 0;
-    end
-
-    dt = datetime(yyyy, MM, dd, HH, mm, ss);
-end
-
-function timeParsed = parseTime(timestr)
-
-        % Accept HH:mm or HH:mm:ss using regex
-        timePattern = '^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$';
-        tokens = regexp(timestr, timePattern, 'tokens', 'once');
-        
-        if isempty(tokens)
-            timeParsed = [];
-            return;
-        end
-        
-        hour   = str2double(tokens{1});
-        minute = str2double(tokens{2});
-        
-        if length(tokens) == 3 && ~isempty(tokens{3})
-            second = str2double(tokens{3}(2:end));
-        else
-            second = 0;
-        end
-        
-        timeParsed = duration([ hour, minute, second]);
 end
 
 
