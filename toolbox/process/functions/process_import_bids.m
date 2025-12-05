@@ -1099,6 +1099,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             'Imported co-registration may be wrong and should be verified: ', allMeegFiles{iFile}];
                         disp(['BIDS> Warning: ' msg]);
                         Messages = [Messages 10 msg];
+                        CoregHistWarning = ', with inconsistencies';
+                    else
+                        CoregHistWarning = '';
                     end
                     % Unsure what data formats would lead to multiple new raw files per load, but
                     % looping here the same as above.
@@ -1141,11 +1144,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         % have been saved in the MRI fiducials, so the transformation will be
                         % identity here. In this case, avoid adding unneeded transformation.
                         if max(abs(T(:)' - [1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1])) > 1e-4
-                            bst_history('add', file_fullpath(ChannelFile), 'align', 'Coregistration imported from BIDS files (transformation below).');
+                            bst_history('add', file_fullpath(ChannelFile), 'align', ...
+                                ['Coregistration imported from BIDS files' CoregHistWarning ' (transformation below).']);
                             % Apply to channel file, saving transformation as a 'manual correction'.
                             channel_apply_transf(ChannelFile, T);
                         else
-                            bst_history('add', file_fullpath(ChannelFile), 'align', 'Coregistration imported from BIDS files (no transformation needed).');
+                            bst_history('add', file_fullpath(ChannelFile), 'align', ...
+                                ['Coregistration imported from BIDS files' CoregHistWarning ' (no transformation needed).']);
                         end
                     end
                 end
