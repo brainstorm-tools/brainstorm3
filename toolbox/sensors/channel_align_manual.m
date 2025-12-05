@@ -1248,6 +1248,7 @@ function RemoveElectrodes(varargin)
         gChanAlign.iGlobal2Local(indInc) = gChanAlign.iGlobal2Local(indInc) - 1;
     end
     gChanAlign.iGlobal2Local(iSelChan) = [];
+    gChanAlign.isChanged = 1;
 
     % Remove from sensors patch
     if ~isempty(gChanAlign.hSensorsPatch)
@@ -1257,7 +1258,6 @@ function RemoveElectrodes(varargin)
         [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iLocalChan);
         FaceVertexCData(iLocalChan, :) = [];
         set(gChanAlign.hSensorsPatch, 'Vertices', Vertices, 'Faces', Faces, 'FaceVertexCData', FaceVertexCData);
-        gChanAlign.isChanged = 1;
     elseif ~isempty(gChanAlign.hSensorsMarkers)
         UserData = get(gChanAlign.hSensorsMarkers, 'UserData');
         if iscell(UserData)
