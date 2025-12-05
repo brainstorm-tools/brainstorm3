@@ -1087,7 +1087,7 @@ function acqTime = ExtractAcquisitionTime(sFile, iStudy)
     % Otherwise, get study date
     sStudy = bst_get('Study', iStudy);
     if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
-        acqTime = datenum(sStudy.DateOfStudy);
+        acqTime = datetime(sStudy.DateOfStudy);
     else
         % When all else fails, return today's date...
         acqTime = now;
