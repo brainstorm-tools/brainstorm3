@@ -1,11 +1,34 @@
 function varargout = process_apc(varargin)
-    eval(macro_method);
+% PROCESS_APC: Compute the Amplitude-Phase coupling for time series
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Niloofar Gharesi, 2025
+%          Raymundo Cassani, 2025
+
+eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     sProcess.Comment     = 'APC (Custom)';
-    sProcess.Category    = 'Custom';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 656;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
@@ -78,8 +101,7 @@ end
 
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInput)
-
-    sInputType = sInput.FileType;
+    OutputFiles = {};
 
     % Collect options
     OPTIONS.fA           = sProcess.options.fA.Value{1};
@@ -93,67 +115,58 @@ function OutputFiles = Run(sProcess, sInput)
     OPTIONS.num_perm     = sProcess.options.num_perm.Value{1};
     OPTIONS.numPhaseBins = sProcess.options.varargin.Value{1};
 
-    % Load data based on input type
-    switch sInputType
-        
-        case 'results'
-            resultsIn = in_bst_results(sInput.FileName);
-            data = resultsIn.ImageGridAmp;
-            Time = resultsIn.Time;
-        
-        case 'data'
-            dataIn = in_bst_data(sInput.FileName);
-            data = dataIn.F;
-            Time = dataIn.Time;
-        
-        case 'matrix'
-            matIn = in_bst_matrix(sInput.FileName);
-            data = matIn.Value;
-            Time = matIn.Time;
-        
-        otherwise
-            error('Unsupported input type.');
-    end
+    % Load timeseries
+    [sMatIn, matName] = in_bst(sInput.FileName);
+    sMatApc.data = sMatIn.(matName);
+    sMatApc.time = sMatIn.Time;
 
-    % Compute APC
-    [A, B, C, D] = bst_apc(data, OPTIONS);
+    % Compute APC features
+    [pacStr, phaseFreq, ampFreq, prefPhase] = bst_apc(sMatApc, OPTIONS);
+    %%% Four lines below are for quick testing
+    %pacStr = sMatApc.data(:,1);
+    %phaseFreq = sMatApc.data(:,1);
+    %ampFreq = sMatApc.data(:,1);
+    %prefPhase = sMatApc.data(:,1);
 
-    Outputs = {A, B, C, D};
-    Labels = {'A','B','C','D'};
-    OutputFiles = {};
+    % Save APC results
+    apcFeatures = {pacStr, phaseFreq, ampFreq, prefPhase};
+    apcLabels   = {'pacStr','phaseFreq','ampFreq','prefPhase'};
+    apcUnits    = {'??', 'Hz', 'Hz', '??'};
+    apcTime     = [0,1]; % One sample
 
-    sStudy = bst_get('Study', sInput.iStudy);
-
-    for i = 1:4
-        X = Outputs{i};
-
-        switch sInputType
+    for iFeature = 1 : length(apcFeatures)
+        % Create output structure based on type
+        switch sInput.FileType
             case 'results'
-                structMat = db_template('resultsmat');
-                structMat.ImageGridAmp = [X,X];
-                structMat.SurfaceFile = resultsIn.SurfaceFile;
-                structMat.HeadModelFile = resultsIn.HeadModelFile;
-                structMat.Time = [0,1];
+                sMatOut = db_template('resultsmat');
+                sMatOut.ImageGridAmp  = apcFeatures{iFeature};
+                sMatOut.SurfaceFile   = sMatIn.SurfaceFile;
+                sMatOut.HeadModelFile = sMatIn.HeadModelFile;
 
             case 'data'
-                structMat = db_template('datamat');
-                structMat.F = X;
-                structMat.Time = Time;
+                sMatOut = db_template('datamat');
+                sMatOut.F           = apcFeatures{iFeature};
+                sMatOut.ChannelFlag = sMatIn.ChannelFlag;
+                sMatOut.DataType    = '';  % Clear to avoid having a source link
 
             case 'matrix'
-                structMat = db_template('matrixmat');
-                structMat.Value = X;
-                structMat.Time = Time;
+                sMatOut = db_template('matrixmat');
+                sMatOut.Value = X;
         end
-
+        % Common elements
+        sMatOut.Time         = apcTime;
+        sMatOut.Comment      = [sMatIn.Comment, ' | ', apcLabels{iFeature}];
+        sMatOut.DisplayUnits = apcUnits{iFeature};
+        % Add history
+        sMatOut = bst_history('add', sMatOut, 'process', ...
+            sprintf('process_apc: APC %s, file: %s', apcLabels{iFeature}, sInput.FileName));
         % Create filename
-        OutputFile = bst_process('GetNewFilename', ...
-                bst_fileparts(sStudy.FileName), ...
-                ['apc_', Labels{i}]);
-
-        % Save
-        bst_save(OutputFile, structMat, 'v7');
+        [originalPath, originalBase, originalExt] = bst_fileparts(file_fullpath(sInput.FileName));
+        OutputFile = bst_fullfile(originalPath, [originalBase, '_apc_', apcLabels{iFeature}, originalExt]);
+        OutputFile = file_unique(OutputFile);
+        % Save and add to database
+        bst_save(OutputFile, sMatOut);
+        db_add_data(sInput.iStudy, OutputFile, sMatOut);
         OutputFiles{end+1} = OutputFile;
     end
 end
-
