@@ -1,4 +1,4 @@
-function [pacStr, phaseFreq, ampFreq, prefPhase] = bst_apc(sMatrix, matName, OPTIONS)
+function [pacStr, phaseFreq, ampFreq, prefPhase] = bst_apc(sMatrix, OPTIONS)
 
   
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -34,8 +34,8 @@ function [pacStr, phaseFreq, ampFreq, prefPhase] = bst_apc(sMatrix, matName, OPT
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     
-    data = sMatrix.(matName); % Extract ImageGridAmp
-    t = sMatrix.Time;
+    data = sMatrix.data;
+    t    = sMatrix.time;
     % Parameters 
     isMirror = 0; 
     isRelax = 40;
