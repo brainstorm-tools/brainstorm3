@@ -1080,6 +1080,12 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                     end
                 end % coreg checks
+                % Note: we don't skip empty-room noise recordings where there is no head to
+                % coregister. It doesn't matter either way what coordinates we give the sensors in
+                % this case. We could avoid unnecessary warnings and history about coregistration
+                % for these, but we'd also have to delay the warning until after the channel file is
+                % read (e.g. for CTF once .infods flag about nominal head coil positions is saved in
+                % the channel file).
                 if isCoregOk
                     % Fourth check: size of fids triangles match on both sides. MRI in mm, CTF in cm
                     % but converted to m when obtained by GetFiducials.
@@ -1145,12 +1151,12 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         % identity here. In this case, avoid adding unneeded transformation.
                         if max(abs(T(:)' - [1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1])) > 1e-4
                             bst_history('add', file_fullpath(ChannelFile), 'align', ...
-                                ['Coregistration imported from BIDS files' CoregHistWarning ' (transformation below).']);
+                                ['Coregistration imported from BIDS files for this session' CoregHistWarning ' (transformation below).']);
                             % Apply to channel file, saving transformation as a 'manual correction'.
                             channel_apply_transf(ChannelFile, T);
                         else
                             bst_history('add', file_fullpath(ChannelFile), 'align', ...
-                                ['Coregistration imported from BIDS files' CoregHistWarning ' (no transformation needed).']);
+                                ['Coregistration imported from BIDS files for this session' CoregHistWarning ' (no transformation needed).']);
                         end
                     end
                 end
