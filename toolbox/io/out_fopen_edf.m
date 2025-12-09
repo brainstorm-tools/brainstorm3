@@ -272,7 +272,7 @@ function acq_date = getAcquisitionDate(sFileIn)
     if ~isempty(sFileIn.acq_date)
         acq_date = datetime(sFileIn.acq_date);
     elseif isRawEdf
-        acq_date  = datetime([ sFileIn.header.startdate, ' ', sFileIn.header.starttime], 'Format','MM.DD.uu HH.mm.ss');
+        acq_date  = datetime([ hdr.startdate, ' ', hdr.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
     else
         acq_date = datetime('now');
     end
