@@ -1,4 +1,4 @@
-function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat, iChannels)
+function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat, iChannels, EpochSize)
 % OUT_FOPEN: Saves the header of a new empty binary file.
 %
 % INPUTS:
@@ -7,6 +7,7 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 %    - sFileIn    : Structure of the header of the file to create
 %    - ChannelMat : Channel file associated with the file to save
 %    - iChannels  : Subset of channels from input file to save in output file
+%    - EpochSize  : Epoch size for the file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -32,11 +33,14 @@ function [sFileOut, errMsg] = out_fopen(RawFile, FileFormat, sFileIn, ChannelMat
 if (nargin < 5) || isempty(iChannels)
     iChannels = [];
 end
+if (nargin < 6)  || isempty(EpochSize)
+    % Get default epoch size
+    EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
+end
+
 % Output variables
 sFileOut = [];
 errMsg = [];
-% Get default epoch size
-EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
 
 % Select channels in channel file
 if ~isempty(iChannels)

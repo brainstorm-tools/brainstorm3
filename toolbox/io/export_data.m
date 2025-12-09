@@ -246,7 +246,10 @@ end
 isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF', 'EEG-BRAINAMP'});
 % Open output file 
 if isRawOut
-    [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMatOut, iChannelsIn);
+    % Get default epoch size
+    EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
+    % Export header
+    [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMatOut, iChannelsIn, EpochSize);
     % Error management
     if isempty(sFileOut) && ~isempty(errMsg)
         error(errMsg);
@@ -261,8 +264,7 @@ if isRawIn && isRawOut
     if file_compare(sFileIn.filename, sFileOut.filename)
         error('Input and output files are the same.');
     end
-    % Get default epoch size
-    EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
+
     % Process by sample blocks
     nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
     nBlocks = ceil(nSamples / EpochSize);
