@@ -181,8 +181,6 @@ end
 if isRawEdf
     header.patient_id = sFileIn.header.patient_id;
     header.rec_id     = sFileIn.header.rec_id;
-    header.startdate  = sFileIn.header.startdate;
-    header.starttime  = sFileIn.header.starttime;
     header.unknown1   = sFileIn.header.unknown1;
     for i = 1:sFileIn.header.nsignal
         header.signal(i).label        = sFileIn.header.signal(i).label;
