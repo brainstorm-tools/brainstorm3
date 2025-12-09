@@ -127,6 +127,10 @@ function CurrentTimeChangedCallback(iDS, iFig)
         % Move text cursor to current time frame
         set(DisplayHandles(1).hTextCursor, 'String', textCursor);
     end
+
+     SetTimeToHour(iDS, iFig);
+     SetTimeToHour(iDS, iFig);
+
 end
 
 
@@ -2549,6 +2553,18 @@ function DisplayConfigMenu(hFig, jParent)
         if strcmpi(FigureId.Type, 'DataTimeSeries')
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+
+            if ~isfield (TsInfo, 'XMode')
+                TsInfo.XMode = 'onset';
+            end
+
+            switch (TsInfo.XMode)
+                case 'onset'
+                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)SetTimeToHour(iDS, iFig));
+                case 'time'
+                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)SetTimeToHour(iDS, iFig));
+
+            end
         end
         % Log scale
         if strcmpi(FigureId.Type, 'Spectrum')
@@ -2586,7 +2602,7 @@ function DisplayConfigMenu(hFig, jParent)
             % Set fixed resolution
             if isRaw
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK));
             end
             % Uniform amplitude scales
             if ~isRaw && (length(hFigAll) > 1)
@@ -4313,6 +4329,54 @@ function SetResolution(iDS, iFig, newResX, newResY)
     end
 end
 
+%% ===== SET FIXED RESOLUTION =====
+function SetTimeToHour(iDS, iFig)
+    global GlobalData;
+
+    % Get current figure structure
+    Figure = GlobalData.DataSet(iDS).Figure(iFig);
+    hFig = Figure.hFigure;
+    hAxes = findobj(hFig, 'Tag', 'AxesGraph');
+    isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    assert(isRaw, 'This function is only available for raw files');
+    
+
+    TsInfo = getappdata(hFig, 'TsInfo');
+    
+    % Switch from HH:MM:ss to time onset
+
+    if isfield(TsInfo, 'XMode') && strcmp(TsInfo.XMode, 'time')
+        previous_tick = hAxes.XTick;
+        new_labels = hAxes.XTickLabel;
+    
+        for iLabel = 1:length(new_labels)
+            new_labels{iLabel} = num2str(previous_tick(iLabel));
+        end
+
+        hAxes.XTickLabel = new_labels;
+        TsInfo.XMode = 'onset';
+    % Switch from time onset to HH:MM:ss
+    else
+        start_file = datetime(GlobalData.DataSet(iDS).Measures.sFile.acq_date);
+        if isempty(start_file)
+            start_file = datetime('17:00:00', 'InputFormat','HH:mm:ss');
+        end
+    
+        previous_tick = start_file + duration(0, 0, hAxes.XTick);
+        previous_tick.Format = 'HH:mm:ss';
+        
+        new_labels = hAxes.XTickLabel;
+    
+        for iLabel = 1:length(new_labels)
+            new_labels{iLabel} = char(previous_tick(iLabel));
+        end
+        
+        hAxes.XTickLabel = new_labels;
+        TsInfo.XMode = 'time';
+    end
+    setappdata(hFig, 'TsInfo', TsInfo);
+
+end
 
 %% ===== SET AUTO SCALE =====
 function SetAutoScale(hFig, isAutoScale)
