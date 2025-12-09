@@ -26,11 +26,10 @@ function [DataMat, ChannelMat] = in_data_edf_ft(DataFile)
 %          Raymundo Cassani 2024
 
 %% ===== INSTALL PLUGIN FIELDTRIP =====
-if ~exist('edf2fieldtrip', 'file')
-    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
-    if ~isInstalled
-        error(errMsg);
-    end
+% Check for FieldTrip installation
+[isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+if ~isInstalled
+    error(errMsg);
 end
 % Read EDF using FieldTrip
 ftData = edf2fieldtrip(DataFile);

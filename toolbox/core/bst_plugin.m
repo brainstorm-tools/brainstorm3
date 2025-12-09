@@ -179,10 +179,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.8';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
@@ -244,6 +244,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
 
 
+    % === ARTIFACTS: GEDAI ===
+    PlugDesc(end+1)              = GetStruct('gedai');
+    PlugDesc(end).Version        = 'main';
+    PlugDesc(end).Category       = 'Artifacts';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
+    PlugDesc(end).TestFile       = 'process_gedai.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.git', 'example data'};
+
+
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
     PlugDesc(end).Version        = '2.4.1';
@@ -299,6 +313,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).GetVersionFcn  = @be_versions;
     PlugDesc(end).DeleteFiles    = {'docs', '.github'};
     
+
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -456,7 +471,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('plexon');
     PlugDesc(end).Version        = '1.8.4';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://plexon-prod.s3.amazonaws.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+    PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
     PlugDesc(end).TestFile       = 'plx_info.m';
     PlugDesc(end).ReadmeFile     = 'Change Log.txt';
@@ -764,6 +779,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
                                     'ft_default = []; ' ...
                                     'clear ft_defaults; ' ...
+                                    'clear global defaults; ', ...
                                     'if exist(''filtfilt'', ''file''), ft_default.toolbox.signal=''matlab''; end; ' ...
                                     'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
                                     'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
@@ -1513,8 +1529,8 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
+            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
@@ -1649,10 +1665,21 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     % Compiled version
     isCompiled = bst_iscompiled();
-    if isCompiled && (PlugDesc.CompiledStatus == 0)
-        errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
-        return;
+    if isCompiled
+        % Needed FieldTrip and SPM functions are available in compiled version of Brainstorm. See bst_spmtrip.m
+        if ismember(PlugDesc.Name, {'fieldtrip', 'spm12'})
+            disp(['BST> Some functions of ' PlugDesc.Name ' are compiled with Brainstorm']);
+            isOk = 1;
+            errMsg = [];
+            return;
+        end
+        % Plugin is included in the compiled version
+        if PlugDesc.CompiledStatus == 0
+            errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
+            return;
+        end
     end
+
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
@@ -2049,6 +2076,9 @@ end
 % If multiple plugins provide the same functions (eg. FieldTrip and SPM): make sure at least one is installed
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice', PlugNames, isInteractive)
 function [isOk, errMsg, PlugDesc] = InstallMultipleChoice(PlugNames, isInteractive)
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
     % Check if one of the plugins is loaded
     for iPlug = 1:length(PlugNames)
         PlugInst = GetInstalled(PlugNames{iPlug});
@@ -3360,10 +3390,16 @@ function SetProgressLogo(PlugDesc)
         if ischar(PlugDesc)
             PlugDesc = GetSupported(PlugDesc);
         end
-        % Set logo file
+        % Get logo if not defined in the plugin structure
         if isempty(PlugDesc.LogoFile)
             PlugDesc.LogoFile = GetLogoFile(PlugDesc);
         end
+        % Start progress bar if needed
+        isNewProgressBar = ~bst_progress('isVisible');
+        if isNewProgressBar
+            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
+        end
+        % Set logo file
         if ~isempty(PlugDesc.LogoFile)
             bst_progress('setimage', PlugDesc.LogoFile);
         end

@@ -25,7 +25,7 @@ function out_fwrite_edf(sFile, sfid, SamplesBounds, ChannelsRange, F)
 % ===== PARSE INPUTS =====
 [nSignals, nSamples] = size(F);
 if isempty(SamplesBounds)
-    SamplesBounds = [0, nSamples];
+    SamplesBounds = [0, nSamples-1];
 end
 if isempty(ChannelsRange)
     ChannelsRange = [1, nSignals];
@@ -80,7 +80,7 @@ end
 
 % Write to file record per record
 nSamplesPerRecord = sFile.prop.sfreq * sFile.header.reclen;
-nRecords          = ceil((SamplesBounds(2) - SamplesBounds(1)) / nSamplesPerRecord);
+nRecords          = ceil(nSamples / nSamplesPerRecord);
 ncount            = 0;
 bounds            = [1, nSamplesPerRecord];
 timeOffset        = SamplesBounds(1) / sFile.prop.sfreq;

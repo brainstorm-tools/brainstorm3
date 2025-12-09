@@ -19,6 +19,7 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 %  
 % Brainstorm features using external FieldTrip:
 %  - Input: Read FieldTrip data structure
+%  - Input: Read EDF files using FieldTrip (resamples to highest fs if there are different fs)
 %  - Process1: Frequency > FieldTrip: ft_mtmconvol (multitaper)
 %  - Process1: Standardize > FieldTrip: ft_channelrepair
 %  - Process1: Standardize > FieldTrip: ft_scalpcurrentdensity
@@ -52,6 +53,11 @@ function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2019-2023
+%          Raymundo Cassani, 2025
+
+% ===== MEX EXTENSION =====
+% Extension (with dot) for the mex files in the compiling OS
+dotMexext = ['.' mexext];
 
 
 % ===== SPM STANDALONE =====
@@ -86,7 +92,7 @@ needFunc = {...
     fullfile(FieldTripDir, 'forward', 'private', 'eeg_leadfieldb.m'), ...
     fullfile(FieldTripDir, 'forward', 'private', 'meg_forward.m'), ...
     fullfile(FieldTripDir, 'forward', 'private', 'meg_ini.m'), ...
-    fullfile(FieldTripDir, 'forward', 'private', 'meg_leadfield1.mexw64'), ...
+    fullfile(FieldTripDir, 'forward', 'private', ['meg_leadfield1' dotMexext]), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesFmultivariate.m'), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesFunivariate.m'), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_depsamplesregrT.m'), ...
@@ -95,6 +101,7 @@ needFunc = {...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_indepsamplesregrT.m'), ...
     fullfile(FieldTripDir, 'statfun', 'ft_statfun_indepsamplesT.m'), ...
     ... fullfile(FieldTripDir, 'statfun', 'ft_statfun_indepsamplesregrT.m'), ...
+    fullfile(FieldTripDir, 'edf2fieldtrip.m'), ...
     fullfile(FieldTripDir, 'ft_channelrepair.m'), ...
     fullfile(FieldTripDir, 'ft_dipolefitting.m'), ...
     fullfile(FieldTripDir, 'ft_freqstatistics.m'), ...
@@ -306,10 +313,10 @@ listDep(iClass) = [];
 iSignal = find(~cellfun(@(c)isempty(strfind(c, ['external' filesep 'signal'])), listDep));
 listDep(iSignal) = [];
 % Add all the 64bit versions of all the included mex-files
-iMex = find(~cellfun(@(c)isempty(strfind(c, '.mexw64')), listDep));
+iMex = find(~cellfun(@(c)isempty(strfind(c, dotMexext)), listDep));
 for i = 1:length(iMex)
-    for ext = {'.mexa64', '.mexmaci64'}
-        extFile = strrep(listDep{iMex(i)}, '.mexw64', ext{1});
+    for ext = setdiff({'.mexw64', '.mexa64', '.mexmaci64'}, dotMexext)
+        extFile = strrep(listDep{iMex(i)}, dotMexext, ext{1});
         if exist(extFile, 'file') && ~ismember(extFile, listDep)
             listDep{end+1} = extFile;
         end
@@ -363,8 +370,8 @@ for i = 1:length(listDep)
     % Copy file to include folder
     copyfile(listDep{i}, destDir);
     % Replace references to TPM.nii with Brainstorm's version
-    if ismember(fBase, {'ft_volumebiascorrect', 'ft_volumenormalise', 'ft_volumesegment', 'ft_convert_coordsys', ...
-            'spm_cfg_norm', 'spm_cfg_preproc8', 'spm_cfg_preproc8', 'spm_cfg_tissue_volumes', 'spm_rewrite_job', ...
+    if ismember(fBase, {'ft_volumebiascorrect', 'ft_volumenormalise', 'ft_volumesegment', ...
+            'spm_cfg_norm', 'spm_cfg_preproc8', 'spm_cfg_tissue_volumes', 'spm_deface', 'spm_rewrite_job', ...
             'spm_deformations', 'spm_eeg_inv_spatnorm', 'spm_get_matdim', 'spm_dartel_norm_fun', 'spm_klaff', 'spm_shoot_norm'})
         % Read file
         ScriptFile = fullfile(destDir, [fBase, '.m']);
@@ -372,10 +379,10 @@ for i = 1:length(listDep)
         txtScript = fread(fid, [1, Inf], '*char');
         fclose(fid);
         % Replace references to TPM.nii
-        txtScript = strrep(txtScript, 'spm(''dir''),''tpm'',''TPM.nii''', 'bst_get(''BrainstormUserDir''), ''defaults'', ''spm'', ''TPM.nii''');
-        txtScript = strrep(txtScript, 'spm(''Dir''),''tpm'',''TPM.nii''', 'bst_get(''BrainstormUserDir''), ''defaults'', ''spm'', ''TPM.nii''');
-        txtScript = strrep(txtScript, 'spm(''dir''),''tpm'',''TPM.nii,''', 'bst_get(''BrainstormUserDir''), ''defaults'', ''spm'', ''TPM.nii,''');
-        txtScript = strrep(txtScript, 'spm(''dir''), ''tpm'', ''TPM.nii''', 'bst_get(''BrainstormUserDir''), ''defaults'', ''spm'', ''TPM.nii''');
+        txtScript = strrep(txtScript, 'spm(''dir''),''tpm'',''TPM.nii''', 'bst_get(''SpmTpmAtlas'')');
+        txtScript = strrep(txtScript, 'spm(''Dir''),''tpm'',''TPM.nii''', 'bst_get(''SpmTpmAtlas'')');
+        txtScript = strrep(txtScript, 'spm(''dir''),''tpm'',''TPM.nii,''', '[bst_get(''SpmTpmAtlas'') '','']');
+        txtScript = strrep(txtScript, 'spm(''dir''), ''tpm'', ''TPM.nii''', 'bst_get(''SpmTpmAtlas'')');
         % Only for fieldtrip: consider it is not deployed
         if strcmpi(fBase(1:3), 'ft_')
             txtScript = strrep(txtScript, 'isdeployed', '0');

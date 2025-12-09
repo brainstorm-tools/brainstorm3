@@ -122,6 +122,9 @@ if isempty(TpmFile)
 end
 % If only installing: exit
 if isInstall
+    if ~isProgress
+        bst_progress('stop');
+    end
     return;
 end
 
@@ -173,12 +176,10 @@ try
             
         % SPM12 SEGMENT 
         case 'segment'
-            if ~bst_iscompiled
-                % Initialize SPM
-                [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-                if ~isInstalled
-                    return;
-                end
+            % Initialize SPM
+            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+            if ~isInstalled
+                return;
             end
             % Progress bar
             bst_progress('text', 'Running SPM batch... (see command window)');

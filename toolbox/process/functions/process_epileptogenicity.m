@@ -95,13 +95,11 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
-    if ~bst_iscompiled
-        % Initialize SPM
-        [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'spm12');
-        if ~isInstalled
-            bst_report('Error', sProcess, [], errMsg);
-            return;
-        end
+    % Initialize SPM
+    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
     end
     
     % ===== GET OPTIONS =====

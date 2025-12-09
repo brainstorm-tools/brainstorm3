@@ -39,12 +39,10 @@ if (nargin < 2) || isempty(OutputFolder)
     OutputFolder = pwd;
 end
 
-if ~bst_iscompiled
-    % Initialize SPM
-    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-    if ~isInstalled
-        error(errMsg);
-    end
+% Initialize SPM
+[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    error(errMsg);
 end
 
 % Progress bar

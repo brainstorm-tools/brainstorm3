@@ -12,7 +12,9 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh, Date
 %                       If empty or ommitted, asked to the user
 %     - isRefresh     : If 0, tree is not refreshed after adding condition
 %                       If 1, tree is refreshed
-%     - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date
+%     - DateOfStudy   : String 'dd-MMM-yyyy' or 'yyyy-MM-ddTHH:mm:ss'
+%                       force Study entries created in the database to use this acquisition date
+%                       If empty `DateOfStudy = datetime();`
 % OUTPUT: 
 %     - iStudies : Indices of the studies that were created. 
 %                  Returns [] if an error occurs
@@ -40,7 +42,13 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh, Date
 
 %% ===== PARSE INPUTS =====
 if (nargin < 4) || isempty(DateOfStudy)
-    DateOfStudy = date;
+    DateOfStudy = datetime;
+else
+    try
+        DateOfStudy = datetime(DateOfStudy);
+    catch
+        % Keep original DateOfStudy
+    end
 end
 if (nargin < 3) || isempty(isRefresh)
     isRefresh = 1;
@@ -54,6 +62,12 @@ end
 if (nargin < 1) || isempty(SubjectName)
     error('You must define the first argument "SubjectName".');
 end
+% Try datetime as YYYY-MM-DDThh:mm:ss
+if isdatetime(DateOfStudy)
+    DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+    DateOfStudy = char(DateOfStudy);
+end
+
 % Normalize names (in order to create a directory out of it)
 ConditionName = file_standardize(ConditionName, 1);
 % Get protocol subjects database

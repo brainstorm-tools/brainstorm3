@@ -1,3 +1,15 @@
+November 2025
+- BIDS: NIRS export optode locations as channel.tsv
+- Events: Keep events that were used on importing data by events
+- FEM: Allow refinement of tetrahedral meshes, by layer or ROI
+- iEEG: implantation, sync coordinates only for same-subject anat volumes
+- IO: NIRS, fix SNIRF badly formatted optode labels
+- Plugin: Set iso2mesh to follow GitHub master
+- Plugin: Bugfix, interaction between SPM and FieldTrip, setting SPM defaults
+- Process: Add process to select/ignore files using event name(s)
+- Distrib: Distrib: Bugfix, generating `spmtrip` folder on different OS
+- Viz: Update FEM visualization: resection and "Apply this view for all figures"
+--------------------------------------------------------------
 October 2025
 - EEG: Add montage to "Add reference channel back"
 - iEEG: Menu to select auxiliar figures to perform implantation
