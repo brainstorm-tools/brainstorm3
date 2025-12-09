@@ -328,9 +328,15 @@ function Fmax = getFileMaximum(sFileIn, ChannelMat, iChannels)
     end
 
 
+
     % Extracts the minimum and maximum values for each sensor over all the file (by blocks of 1s).
     % This helps optimizing the conversion of the recordings to int16 values.
-    BlockSize = sFileIn.prop.sfreq; % 1-second blocks
+
+    ProcessOptions  = bst_get('ProcessOptions');
+    MaxSizeDouble   = ProcessOptions.MaxBlockSize;
+    nsignal         = length(ChannelMat.Channel);
+    BlockSize       = max(floor(MaxSizeDouble / nsignal), 1);
+
     nBlocks = ceil(nSamples ./ BlockSize);
     % Initialize min/max matrices
     Fmax = 0 * ones(length(ChannelMat.Channel), 1);
