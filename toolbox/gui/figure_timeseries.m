@@ -128,9 +128,7 @@ function CurrentTimeChangedCallback(iDS, iFig)
         set(DisplayHandles(1).hTextCursor, 'String', textCursor);
     end
 
-     SetTimeToHour(iDS, iFig);
-     SetTimeToHour(iDS, iFig);
-
+     UpdateLabelXAxis(iDS, iFig);
 end
 
 
@@ -2560,9 +2558,9 @@ function DisplayConfigMenu(hFig, jParent)
 
             switch (TsInfo.XMode)
                 case 'onset'
-                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)SetTimeToHour(iDS, iFig));
+                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'time'));
                 case 'time'
-                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)SetTimeToHour(iDS, iFig));
+                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'onset'));
 
             end
         end
@@ -4330,8 +4328,12 @@ function SetResolution(iDS, iFig, newResX, newResY)
 end
 
 %% ===== SET FIXED RESOLUTION =====
-function SetTimeToHour(iDS, iFig)
+function UpdateLabelXAxis(iDS, iFig, display_mode)
     global GlobalData;
+
+    if nargin < 3 || isempty(display_mode)
+        display_mode = [];
+    end
 
     % Get current figure structure
     Figure = GlobalData.DataSet(iDS).Figure(iFig);
@@ -4339,15 +4341,22 @@ function SetTimeToHour(iDS, iFig)
     hAxes = findobj(hFig, 'Tag', 'AxesGraph');
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
     assert(isRaw, 'This function is only available for raw files');
-    
-
     TsInfo = getappdata(hFig, 'TsInfo');
     
+    if isempty(display_mode) 
+        if isfield(TsInfo, 'XMode') && ~isempty(TsInfo.XMode)
+            display_mode = TsInfo.XMode;
+        else
+            display_mode = 'onset';
+        end
+    end
+    
+
     % Switch from HH:MM:ss to time onset
 
-    if isfield(TsInfo, 'XMode') && strcmp(TsInfo.XMode, 'time')
+    if strcmp(display_mode, 'onset')
         previous_tick = hAxes.XTick;
-        new_labels = hAxes.XTickLabel;
+        new_labels = cell(length(previous_tick), 1);
     
         for iLabel = 1:length(new_labels)
             new_labels{iLabel} = num2str(previous_tick(iLabel));
@@ -4377,6 +4386,7 @@ function SetTimeToHour(iDS, iFig)
     setappdata(hFig, 'TsInfo', TsInfo);
 
 end
+
 
 %% ===== SET AUTO SCALE =====
 function SetAutoScale(hFig, isAutoScale)
