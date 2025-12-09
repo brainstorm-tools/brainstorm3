@@ -133,10 +133,10 @@ function OutputFiles = Run(sProcess, sInputs)
     for iInput = 2:nInputs
         isSameNumberEvts = size(sEvtSync(iInput).times, 2) == size(sEvtSync(1).times, 2);
         % Require same number of events
-        % if ~isSameNumberEvts
-        %     bst_report('Error', sProcess, sInputs, 'Files doesnt have the same number of sync events.');
-        %     return
-        % end
+        if ~isSameNumberEvts
+            bst_report('Error', sProcess, sInputs, 'Files doesnt have the same number of sync events.');
+            return
+        end
         % Sync
         if strcmpi(sProcess.options.method.Value, 'mean')
             % Mean difference
