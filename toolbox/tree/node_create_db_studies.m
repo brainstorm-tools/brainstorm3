@@ -167,7 +167,7 @@ isNonRaw = find(~listRaw);
 % Get list of noraw "Implantation" conditions
 isImplantation = [];
 if ~isempty(isNonRaw)
-    isImplantation  = strncmpi([ProtocolStudies.Study(isNonRaw).Condition], 'implantation', 12);
+    isImplantation  = strncmpi(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0), 'implantation', 12);
 end
 isNonRawImplant = isNonRaw(isImplantation);
 isNonRaw        = isNonRaw(~isImplantation);
