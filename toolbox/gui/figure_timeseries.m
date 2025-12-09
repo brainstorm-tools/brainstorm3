@@ -2552,10 +2552,6 @@ function DisplayConfigMenu(hFig, jParent)
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
 
-            if ~isfield (TsInfo, 'XMode')
-                TsInfo.XMode = 'onset';
-            end
-
             switch (TsInfo.XMode)
                 case 'onset'
                     gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'time'));
@@ -4344,11 +4340,7 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
     TsInfo = getappdata(hFig, 'TsInfo');
     
     if isempty(display_mode) 
-        if isfield(TsInfo, 'XMode') && ~isempty(TsInfo.XMode)
-            display_mode = TsInfo.XMode;
-        else
-            display_mode = 'onset';
-        end
+        display_mode = TsInfo.XMode;
     end
     
 
