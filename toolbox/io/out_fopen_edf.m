@@ -45,6 +45,9 @@ end
 %% ===== GET MAXIMUM VALUES =====
 Fmax = getFileMaximum(sFileIn, ChannelMat, iChannels);
 
+%% ===== GET Acquisition date =====
+acq_date = getAcquisitionDate(sFileIn);
+
 %% ===== WRITE EDF HEADER =====
 bst_progress('text', 'Writing EDF+ header...');
 % Get file comment
@@ -58,13 +61,12 @@ sFileOut.format    = 'EEG-EDF';
 sFileOut.byteorder = 'l';
 sFileOut.comment   = fBase;
 sFileOut.encoding  = 'UTF-8';
-date = datetime;
 
 % Create a new header structure
 header            = struct();
 header.version    = 0;
-header.startdate  = datestr(date, 'dd.mm.yy');
-header.starttime  = datestr(date, 'HH.MM.SS');
+header.startdate  = datestr(acq_date, 'dd.mm.yy');
+header.starttime  = datestr(acq_date, 'HH.MM.SS');
 header.nsignal    = length(ChannelMat.Channel);
 header.nrec       = nSamples / sFileIn.prop.sfreq;
 
@@ -96,7 +98,7 @@ header.nrec = ceil(header.nrec / header.reclen);
     % Some EDF+ fields are required by strict viewers such as EDFbrowser
     header.unknown1    = 'EDF+C';
     header.patient_id  = 'UNKNOWN M 01-JAN-1900 Unknown_Patient';
-    header.rec_id      = ['Startdate ', upper(datestr(date, 'dd-mmm-yyyy')), ...
+    header.rec_id      = ['Startdate ', upper(datestr(acq_date, 'dd-mmm-yyyy')), ...
                           ' Unknown_Hospital Unknown_Technician Unknown_Equipment'];
 
     % Compute annotations
@@ -263,6 +265,20 @@ end
 
 
 %% ===== HELPER FUNCTIONS =====
+function acq_date = getAcquisitionDate(sFileIn)
+
+    isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
+    
+    if ~isempty(sFileIn.acq_date)
+        acq_date = datetime(sFileIn.acq_date);
+    elseif isRawEdf
+        acq_date  = datetime([ sFileIn.header.startdate, ' ', sFileIn.header.starttime], 'Format','MM.DD.uu HH.mm.ss');
+    else
+        acq_date = datetime('now');
+    end
+
+end
+
 function sout = str_zeros(sin, N)
     if (isnumeric(sin))
         sin_str = num2str(sin);
@@ -327,9 +343,7 @@ function Fmax = getFileMaximum(sFileIn, ChannelMat, iChannels)
         return;
     end
 
-
-
-    % Extracts the minimum and maximum values for each sensor over all the file (by blocks of 1s).
+    % Extracts the minimum and maximum values for each sensor over all the file.
     % This helps optimizing the conversion of the recordings to int16 values.
 
     ProcessOptions  = bst_get('ProcessOptions');
