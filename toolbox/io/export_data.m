@@ -262,7 +262,7 @@ if isRawIn && isRawOut
         error('Input and output files are the same.');
     end
     % Get default epoch size
-    EpochSize = bst_process('GetDefaultEpochSize', sFileOut);
+    EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
     % Process by sample blocks
     nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
     nBlocks = ceil(nSamples / EpochSize);
