@@ -59,11 +59,12 @@ switch lower(csname)
         % Estimate transformation: rotation+translation
         Transf.Origin = Origin;
         Transf.R = inv([vx,vy,vz]); 
-        Transf.T = - Transf.R * Origin; % Translation
         % If it was not possible to compute inverse matrix: Use pseudo-inverse instead
+        % (It would only happen with co-linear fiducials; the v's will be NaN and this won't help.)
         if any(isinf(Transf.R(:))) || any(isnan(Transf.R(:)))
             Transf.R = pinv([vx,vy,vz]);
         end
+        Transf.T = - Transf.R * Origin; % Translation
         % Copy to MRI structure
         if (nargout >= 2)
             sMri.SCS.Origin = Transf.Origin;
