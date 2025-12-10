@@ -23,11 +23,11 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 %         |- max[4]     : array of the 4 most important maxima (structure)
 %         |    |- x     : intensity of the given maximum
 %         |    |- y     : amplitude of this maximum (number of MRI voxels with this value)
-%         |    |- power : difference of this maximum and the adjacent minima
+%         |    |- power : difference of this maximum and the adjacent minimum
 %         |- min[4]     : array of the 3 most important minima (structure)
 %         |    |- x     : intensity of the given minimum
 %         |    |- y     : amplitude of this minimum (number of MRI voxels with this value)
-%         |    |- power : difference of this minimum and the adjacent maxima
+%         |    |- power : difference of this minimum and the adjacent maximum
 %         |- bgLevel    : intensity value that separates the background and the objects (estimation)
 %         |- whiteLevel : white matter threshold
 %         |- intensityMax : maximum value in the volume
@@ -102,11 +102,11 @@ if (length(Histogram.cumulFncY) > 257)
 end
 
 % Construct a regular Histogram function 
-% Suppress all indices that has zero-values (to avoid previous normalizations)
-% NOTA : Do not consider the values at the intensity value 0, it may
+% Suppress all indices that have zero values (to avoid previous normalizations)
+% NOTA : Do not consider the first bin (intensity 0), it may
 % not correspond to the real image Histogram...
 index = find(Histogram.fncY > 10);   % PREVIOUSLY: 100 instead of 10
-index = index(2:length(index));
+index = index(2:length(index)); % discard first bin
 histoX = [0 Histogram.fncX(index)];
 histoY = [0 Histogram.fncY(index)];
 
@@ -136,7 +136,7 @@ if (length(maxIndex) - length(minIndex) > 1)
     minIndex(diff(minIndex) == 1) = [];
 end
     
-% Detect and deleting all "wrong" extrema (that are too close to each other)
+% Detect and delete all "wrong" extrema (that are too close to each other)
 epsilon = max(histoX)*.02;
 i = 1;
 while(i <= length(maxIndex))
@@ -179,7 +179,7 @@ else
         Histogram.max(i).y = histoY(maxIndex(i));
         if(length(minIndex)>=1)
             % If there is at least a minimum, power = distance between
-            % maximum and adjacent minima
+            % maximum and adjacent minimum
             Histogram.max(i).power = histoY(maxIndex(i)) - (histoY(minIndex(max(1, i-1))) + histoY(minIndex(min(length(minIndex), i))))./2;
         else
             % Else power = maximum value
@@ -223,26 +223,28 @@ switch(volumeType)
         defaultWhite = round(interp1(unikCumulFncY, unikFncX, .8));
         Histogram.bgLevel = defaultBg;
         Histogram.whiteLevel = defaultWhite;
-        % Detect if the background has already been removed :
-        % ie. if there is a unique 0 valued interval a the beginning of the Histogram
-        % Practically : - nzero =  length of the first 0-valued interval
-        %               - nnonzero = length of the first non-0-valued interval
-        %               - bg removed if : (nzero > 1) and (nnonzero > nzero)
-        nzero = find(Histogram.fncY(2:length(Histogram.fncY)) ~= 0);
-        nnonzero = find(Histogram.fncY((nzero(1)+1):length(Histogram.fncY)) == 0);
-        if ((nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1)))
-            Histogram.bgLevel = nzero(1);
+        % Detect if the background has already been removed, i.e. if a range of low intensity values
+        % were replaced by zeros in the volume, producing an interval of empty bins at the beginning
+        % of the Histogram, after the first (zero-intensity) bin. Require also that the zero bin be
+        % the largest, as it seems denoising can produce this background removal effect but with a
+        % very low threshold which is not appropriate.
+        [~, iMaxBin] = max(Histogram.fncY);
+        % First non-empty bin after first bin.
+        iNonZero = find(Histogram.fncY(2:end) ~= 0, 1) + 1;
+        if iMaxBin == 1 && ~isempty(iNonZero) && iNonZero > 2
+            % There was an interval of empty bins. Set threshold at last empty bin intensity.
+            Histogram.bgLevel = Histogram.fncX(iNonZero - 1);
         % Else, background has not been removed yet
-        % If there is less than two maxima : use the default background threshold
+        % If there are fewer than two maxima : use the default background threshold
         elseif (length(cat(1,Histogram.max.x)) < 2)
             Histogram.bgLevel = defaultBg;
             Histogram.whiteLevel = defaultWhite;
-        % Else if there is more than one maxima :
+        % Else if there is more than one maximum :
         else
-            % If the highest maxima is > (3*second highest maxima) : 
-            % it is a background maxima : use the first minima after the
-            % background maxima as background threshold
-            % (and if this minima exist)
+            % If the highest maximum is > (3*second highest maximum) : 
+            % it is a background maximum : use the first minimum after the
+            % background maximum as background threshold
+            % (and if this minimum exists)
             [orderedMaxVal, orderedMaxInd] = sort(cat(1,Histogram.max.y), 'descend');
             if ((orderedMaxVal(1) > 3*orderedMaxVal(2)) && (length(Histogram.min) >= orderedMaxInd(1)))
                 Histogram.bgLevel = Histogram.min(orderedMaxInd(1)).x;
@@ -251,7 +253,20 @@ switch(volumeType)
                 Histogram.bgLevel = defaultBg;
             end
         end
-        
+
+    case 'headgrad'
+        dX = mean(diff(Histogram.smoothFncX));
+        %Deriv = gradient(Histogram.smoothFncY, dX);
+        %SecondDeriv = gradient(Deriv, dX);
+        RemainderCumul = Histogram.smoothFncY ./ cumsum(Histogram.smoothFncY, 2, 'reverse');
+        DerivRC = gradient(RemainderCumul, dX);
+        %DerivRC2 = Deriv ./ cumsum(Histogram.smoothFncY, 2, 'reverse');
+        %figure; plot(Histogram.smoothFncX', [RemainderCumul', DerivRC']); legend({'hist/remaining', 'derivative'});
+        % Pick point where things flatten.
+        Histogram.bgLevel = Histogram.smoothFncX(find(DerivRC > -0.005 & DerivRC < DerivRC([2:end, end]), 1) + 2);
+        % Can't get white matter with gradient.
+        Histogram.whiteLevel = 0;
+
     case 'brain'
         % Determine an intensity value for the background/gray matter limit
         % and the gray matter/white matter level
@@ -327,6 +342,5 @@ switch(volumeType)
 end % --- END SWITCH ---
 
 end
-
 
     
