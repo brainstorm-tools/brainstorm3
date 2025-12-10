@@ -118,15 +118,20 @@ function OutputFiles = Run(sProcess, sInputs)
 end
 
 function jsonStr = events2json(evtNames, evtHedTags)
-    % Generate structure for sidecar
-    sHed = struct('Levels', struct(), 'HED', struct());
+    % Generate maps for Level and HED
+    levelsMap = containers.Map('KeyType','char','ValueType','char');
+    hedMap    = containers.Map('KeyType','char','ValueType','char');
     for iEvt = 1 : length(evtNames)
-        evtKey    = evtNames{iEvt};
-        evtHedStr = strjoin(evtHedTags{iEvt}, ', ');
-        sHed.Levels.(evtKey) = sprintf('Brainstorm event ''%s'' label exported for HED tags', evtKey);
-        sHed.HED.(evtKey) = evtHedStr;
+        evtName   = evtNames{iEvt};
+        evtHedStr = '';
+        if ~isempty(evtHedTags{iEvt})
+            evtHedStr = strjoin(evtHedTags{iEvt}, ', ');
+        end
+        levelsMap(evtName) = sprintf('Brainstorm event "%s" label exported for HED tags', evtName);
+        hedMap(evtName)    = evtHedStr;
     end
-    sSidecar = struct('trial_type', sHed);
+    % Generate structure to be written as JSON sidecar
+    sSidecar = struct('trial_type', struct('Levels', levelsMap, 'HED', hedMap));
     % Write JSON sidecar
     jsonStr = bst_jsonencode(sSidecar, 1);
 end
