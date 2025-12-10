@@ -150,11 +150,21 @@ function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
         bst_error('TODO');
         return
     end
-    hedEvtNames = fieldnames(sHed.Levels);
-    hedEvtHedTags = repmat({''}, length(hedEvtNames), 1);
-    % Get HED tags
-    for iHed = 1 : length(hedEvtNames)
-        hedEvtHedTags{iHed} = parsHedStr(sHed.HED.(hedEvtNames{iHed}));
+    evtKeys = fieldnames(sHed.Levels);
+    % Get event names and HED tags
+    hedEvtNames   = repmat({''}, length(evtKeys), 1);
+    hedEvtHedTags = repmat({''}, length(evtKeys), 1);
+    for iEvtKey = 1 : length(evtKeys)
+        % Get name
+        hedEvtNames{iEvtKey} = evtKeys{iEvtKey};
+        % Replace with original name, in case Matlab changed to be a valid fieldname on reading the JSON file
+        levelStr = sHed.Levels.(evtKeys{iEvtKey});
+        tmp = regexp(levelStr, '^Brainstorm event "(.*)"', 'tokens');
+        if ~isempty(tmp) && length(tmp) == 1 && length(tmp{1}) == 1 && strcmp(evtKeys{iEvtKey}, matlab.lang.makeValidName(tmp{1}{1}))
+            hedEvtNames{iEvtKey} = tmp{1}{1};
+        end
+        % Get HED tags
+        hedEvtHedTags{iEvtKey} = parsHedStr(sHed.HED.(evtKeys{iEvtKey}));
     end
 end
 

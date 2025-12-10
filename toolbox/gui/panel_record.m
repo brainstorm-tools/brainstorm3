@@ -2519,8 +2519,16 @@ function AddHedCtagger()
     % Decode JSON file as EventNames and EventHedTags
     [newEvtNames, newEvtHedTags] = process_evt_importhed('json2events', newJsonStr, 1);
     if ~isempty(setdiff(newEvtNames, orgEvtNames))
-        disp('BST> Error: CTagger should not create new events.');
-        return
+        % Check for sanitized names
+        cleanOrgEvtNames = matlab.lang.makeValidName(orgEvtNames);
+        if isempty(setdiff(newEvtNames, cleanOrgEvtNames))
+            % Correct imported names
+            [~, ib] = ismember(newEvtNames, cleanOrgEvtNames);
+            newEvtNames = orgEvtNames(ib);
+        else
+            disp('BST> Error: CTagger should not create new events.');
+            return
+        end
     end
     % Update HED tags for each event
     isModified = 0;
