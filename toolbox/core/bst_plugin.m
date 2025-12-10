@@ -678,9 +678,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).LoadedFcn      = @Configure;
     PlugDesc(end).TestFile       = 'CTagger.jar';
-    PlugDesc(end).DeleteFiles    = {'docs', 'gradle', 'src', '.gradle', '.idea' ...
+    PlugDesc(end).DeleteFiles    = {'assets', 'gradle', 'src', '.gradle', '.github', '.vscode', ...
                                     'build.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat', ...
-                                    'readthedocs.yml', 'settings.gradle', '.codeclimate.yml', '.gitignore'};
+                                    'settings.gradle', '.codeclimate.yml', '.gitignore'};
 
 
     % === fNIRS: NIRSTORM ===

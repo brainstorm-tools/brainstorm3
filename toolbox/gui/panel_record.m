@@ -2487,7 +2487,7 @@ function AddHedCtagger()
     orgEvtNames = {sEvents.label};
     orgEvtHedTags = {sEvents.hedTags};
     % Initialize CTagger
-    [isInstalled, errMsg] = bst_plugin('Install', 'ctagger', 0);
+    [isInstalled, errMsg] = bst_plugin('Install', 'ctagger', 1);
     if ~isInstalled
         disp(errMsg);
         return;
