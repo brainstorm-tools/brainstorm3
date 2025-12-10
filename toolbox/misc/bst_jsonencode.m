@@ -33,8 +33,12 @@ if nargin < 2
 end
 
 % If possible, call built-in function
-if ~forceBstVersion && ~indent && exist('jsonencode', 'builtin') == 5
-    outString = jsonencode(inStruct);
+if ~forceBstVersion && exist('jsonencode', 'builtin') == 5
+    if indent
+        outString = jsonencode(inStruct, 'PrettyPrint', true);
+    else
+        outString = jsonencode(inStruct);
+    end
     return;
 end
 
