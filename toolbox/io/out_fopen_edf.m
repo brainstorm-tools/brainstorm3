@@ -276,7 +276,7 @@ function acq_date = getAcquisitionDate(sFileIn)
     end
 
     % EDF file start at 0s: removed the start file time
-    acq_date = acq_date - duration(0, 0, sFileIn.prop.times(1));
+    acq_date = acq_date + duration(0, 0, sFileIn.prop.times(1));
 end
 
 function sout = str_zeros(sin, N)
