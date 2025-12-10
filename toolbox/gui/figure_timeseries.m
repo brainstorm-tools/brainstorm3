@@ -15,6 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
+%                figure_timeseries('UpdateLabelXAxis,             iDS, iFig, display_mode=['onset', 'time'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -4344,19 +4345,18 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
     end
     
 
-    % Switch from HH:MM:ss to time onset
-
+    % Display x-label as time onset (s from the recording start)
     if strcmp(display_mode, 'onset')
         previous_tick = hAxes.XTick;
+
         new_labels = cell(length(previous_tick), 1);
-    
         for iLabel = 1:length(new_labels)
             new_labels{iLabel} = num2str(previous_tick(iLabel));
         end
 
         hAxes.XTickLabel = new_labels;
         TsInfo.XMode = 'onset';
-    % Switch from time onset to HH:MM:ss
+    % Display x-label as actual time HH:MM:SS
     else
         start_file = datetime(GlobalData.DataSet(iDS).Measures.sFile.acq_date);
         if isempty(start_file)
@@ -4366,8 +4366,7 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
         previous_tick = start_file + duration(0, 0, hAxes.XTick);
         previous_tick.Format = 'HH:mm:ss';
         
-        new_labels = hAxes.XTickLabel;
-    
+        new_labels = cell(length(previous_tick), 1);
         for iLabel = 1:length(new_labels)
             new_labels{iLabel} = char(previous_tick(iLabel));
         end
