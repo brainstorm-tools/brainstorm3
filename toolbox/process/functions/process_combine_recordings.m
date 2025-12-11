@@ -99,8 +99,34 @@ function OutputFiles = Run(sProcess, sInputs)
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
+
+    % Find new metadate 
+    acq_dates = {};
+    for iFile = 1:length(sMetaData)
+        if ~isempty(sMetaData(iFile).F.acq_date)
+            acq_dates{end+1} = sMetaData(iFile).F.acq_date;
+        end
+    end
+    [acq_dates, Ia, Ic] = unique(cellfun(@datetime, acq_dates));
+    if length(acq_dates) == 1
+        DateOfStudy = acq_dates;
+    elseif length(acq_dates) > 1
+        file_str = cell(length(sInputs), 1);
+        for iFile = 1:length(sInputs)
+            file_date = datetime(sMetaData(iFile).F.acq_date);
+            file_str{iFile} = sprintf('%s : %s', sInputs(iFile).Condition, file_date );
+        end
+        ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
+        DateOfStudy = datetime(sMetaData(ind).F.acq_date);
+    else
+        DateOfStudy = datetime('now');
+    end
+    
+    DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+    DateOfStudy = char(DateOfStudy);
+
     % Study for combined recordings
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, DateOfStudy);
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
