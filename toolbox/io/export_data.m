@@ -324,6 +324,7 @@ else
             case 'NIRS-SNIRF'
                 if isRawIn
                     DataMat.Events = DataMat.F.events;
+                    DataMat.acq_date = DataMat.F.acq_date;
                 end
                 DataMat.F = F;
                 out_data_snirf(ExportFile, DataMat, ChannelMatOut);
