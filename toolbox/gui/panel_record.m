@@ -144,7 +144,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Export all events',      IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_events));
         gui_component('MenuItem', jMenu, [], 'Export selected events', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportSelectedEvents));
-        gui_component('MenuItem', jMenu, [], 'Export HED tags to file',   IconLoader.ICON_SAVE,    [], @(h,ev)CallProcessOnRaw('process_evt_exporthed'));        
+        gui_component('MenuItem', jMenu, [], 'Export HED tags to file',   IconLoader.ICON_SAVE,    [], @(h,ev)CallProcessOnRaw('process_evt_exporthed'));
         % EVENT TYPES
         jMenu = gui_component('Menu', jMenuBar, [], 'Events', IconLoader.ICON_MENU, [], [], 11);
         gui_component('MenuItem', jMenu, [], 'Add group',    IconLoader.ICON_EVT_TYPE_ADD, [], @(h,ev)bst_call(@EventTypeAdd));

@@ -135,6 +135,3 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Return only the requested filenames
     OutputFiles = {sInputs(iFiles).FileName};
 end
-
-
-
