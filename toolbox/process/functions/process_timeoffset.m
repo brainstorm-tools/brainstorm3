@@ -64,6 +64,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.offset.Comment = 'Time offset:';
     sProcess.options.offset.Type    = 'value';
     sProcess.options.offset.Value   = {0, 'ms', []};
+    % === Adjust acquisition date
+    sProcess.options.infodate.Comment   = '<B>Adjust Acquisition date</B>';
+    sProcess.options.infodate.Type       = 'label';
+    sProcess.options.infodate.Value      = [];
+    sProcess.options.infodate.InputTypes = {'data', 'raw'};
+
+    sProcess.options.adjustdate.Comment    = 'Adjust the acquisition date to maintain the event time';
+    sProcess.options.adjustdate.Type       = 'checkbox';
+    sProcess.options.adjustdate.Value      = 0;
+    sProcess.options.adjustdate.InputTypes = {'data', 'raw'};
     % === Overwrite
     sProcess.options.overwrite.Comment = 'Overwrite input files';
     sProcess.options.overwrite.Type    = 'checkbox';
@@ -103,7 +113,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             end
             % Read date of study
             sStudy = bst_get('Study',  sInput.iStudy);
-            acq_date = sStudy.DateOfStudy;
+            DateOfStudy = sStudy.DateOfStudy;
 
             % ===== PROCESS =====
             % Apply offset to time
@@ -123,6 +133,13 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 DataMat.F.events = sEvents;
             else
                 DataMat.Events = sEvents;
+            end
+            
+            % Add the offset to the acquisition date
+            if sProcess.options.adjustdate.Value && ~isempty(DateOfStudy)
+                DateOfStudy = datetime(DateOfStudy) + duration(0, 0, OffsetTime);
+                DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+                DateOfStudy = char(DateOfStudy);
             end
 
             % ===== SAVE FILE =====
@@ -164,7 +181,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                     % Unique new condition name
                     sSubjStudies = bst_get('StudyWithSubject', sInput.SubjectFile);
                     newCondition = file_unique(newCondition, [sSubjStudies.Condition]);
-                    iStudy = db_add_condition(sInput.SubjectName, newCondition, 1, acq_date);
+                    iStudy = db_add_condition(sInput.SubjectName, newCondition, 1, DateOfStudy);
                     sNewStudy = bst_get('Study', iStudy);
                     db_set_channel(iStudy, ChannelFile, 0, 0);
                     newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
