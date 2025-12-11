@@ -2553,7 +2553,9 @@ function AddHedCtagger()
     if isempty(iEvents)
         SetEvents(sEvents);
     else
-        SetEvents(sEvents, iEvents);
+        for i = 1:length(sEvents)
+            SetEvents(sEvents(i), iEvents(i));
+        end
     end
     % Save modifications
     iDS = GetCurrentDataset();
