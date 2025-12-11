@@ -67,8 +67,11 @@ function OutputFile = Run(sProcess, sInput)
     OutputFile = sInput.FileName;
     % ===== GET OPTIONS =====
     jsonFile = sProcess.options.sidecar.Value{1};
-    if isempty(jsonFile) || ~exist(jsonFile,'file')
-        bst_error('TODO');
+    if isempty(jsonFile)
+        bst_report('Error', sProcess, sInput, 'JSON file was not provided');
+        return
+    elseif ~exist(jsonFile,'file')
+        bst_report('Error', sProcess, sInput, ['JSON file does not exist', 10, jsonFile]);
         return
     end
     % ===== GET EVENTS TO PROCESS =====
@@ -81,7 +84,7 @@ function OutputFile = Run(sProcess, sInput)
         sEvents = DataMat.Events;
     end
     if isempty(sEvents)
-        bst_error('TODO');
+        bst_report('Warning', sProcess, sInput, 'There are not events in input file');
         return
     end
 
@@ -132,7 +135,7 @@ function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
     elseif ismember('event_type', evtSidecarFields)
         fieldEvtName = 'event_type';
     else
-        bst_error('TODO');
+        bst_error('JSON file should annotate events in column "trial_type" or "event_type"');
         return
     end
     sHed = evtSidecar.(fieldEvtName);
@@ -142,12 +145,12 @@ function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
     end
     % Must contain 'Levels' and 'HED'
     if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
-        bst_error('TODO');
+        bst_error('JSON file should the fields "Levels" and "HED"');
         return
     end
     % One HED for each Level
     if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
-        bst_error('TODO');
+        bst_error('JSON file should the same keynames for "Levels" and "HED"');
         return
     end
     evtKeys = fieldnames(sHed.Levels);
