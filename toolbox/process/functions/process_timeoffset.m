@@ -140,7 +140,11 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 DateOfStudy = datetime(DateOfStudy) - duration(0, 0, OffsetTime);
                 DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
                 DateOfStudy = char(DateOfStudy);
-            end
+                
+                if isRaw
+                    DataMat.F.acq_date = DateOfStudy;
+                end
+            end 
 
             % ===== SAVE FILE =====
             % Add history entry
