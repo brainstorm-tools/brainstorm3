@@ -481,7 +481,8 @@ switch lower(structureName)
             'reactTimes', [], ...      % empty, or array of double (reaction times), size: (1, nb of event items).
             'select',     1, ...       % int: display flag (0 or 1).
             'channels',   [], ...      % empty, or cell array of cell arrays of str, size: (1, nb of event items:(1, nb of associated channels))
-            'notes',      []);         % empty, cell array of str, size: (1, nb of event items)
+            'notes',      [], ...      % empty, cell array of str, size: (1, nb of event items)
+            'hedTags',    []);         % empty, cell array of str, size: (1, nTags)
         
     % ==== EPOCH ====
     case 'epoch'
