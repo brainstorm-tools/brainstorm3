@@ -137,7 +137,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             
             % Add the offset to the acquisition date
             if sProcess.options.adjustdate.Value && ~isempty(DateOfStudy)
-                DateOfStudy = datetime(DateOfStudy) + duration(0, 0, OffsetTime);
+                DateOfStudy = datetime(DateOfStudy) - duration(0, 0, OffsetTime);
                 DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
                 DateOfStudy = char(DateOfStudy);
             end
