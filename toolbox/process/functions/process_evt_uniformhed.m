@@ -124,10 +124,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sEvents = sData.Events;
         end
         % Update HED tags
+        isModified = 0;
         for iEvent = 1 : length(sEvents)
             iHed = find(strcmp(sEvents(iEvent).label, evtAllNames));
             if ~isempty(iHed)
-                isModified = 0;
                 if ~isequal(sort(sEvents(iEvent).hedTags), sort(evtAllHedTags{iHed}))
                     sEvents(iEvent).hedTags = evtAllHedTags{iHed};
                     isModified = 1;
