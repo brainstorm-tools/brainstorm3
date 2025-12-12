@@ -670,13 +670,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         for iDate = 1:size(tsvValues,1)
                             fDate = [];
                             try
-                                % Date format: YYYY-MM-DDTHH:MM:SS
-                                if  contains(tsvValues{iDate,2}, 'T')
-                                    fDate = datetime(tsvValues{iDate,2},'InputFormat','yyyy-MM-dd''T''HH:mm:ss.SSSZ','TimeZone','Etc/UTC');
-                                % Date format: YYYYMMDDTHHMMSS
-                                else 
-                                    fDate = datetime(tsvValues{iDate,2},'InputFormat','yyyy-MM-dd');
-                                end
+                                tsvValues{iDate,2}  = strrep(tsvValues{iDate,2}, 'Z', '');
+                                fDate = datetime(tsvValues{iDate,2});
+                                
                             catch
                                 % Not recognized
                                 if (length(fDate) ~= 3)
