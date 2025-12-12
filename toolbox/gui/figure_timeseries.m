@@ -4336,8 +4336,6 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
     Figure = GlobalData.DataSet(iDS).Figure(iFig);
     hFig = Figure.hFigure;
     hAxes = findobj(hFig, 'Tag', 'AxesGraph');
-    isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    assert(isRaw, 'This function is only available for raw files');
     TsInfo = getappdata(hFig, 'TsInfo');
     
     if isempty(display_mode) 
