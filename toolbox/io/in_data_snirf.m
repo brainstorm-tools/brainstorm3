@@ -203,7 +203,10 @@ function DateOfStudy = readDateOfStudy(metaDataTags)
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
         try
-            TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
+            MeasurementTime  = toLine(metaDataTags.MeasurementTime);
+            MeasurementTime  = strrep(MeasurementTime, 'Z', '');
+            
+            TimeOfStudy = duration(MeasurementTime);
         catch
             warning('Unable to read the Measurement Time')
         end
