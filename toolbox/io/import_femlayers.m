@@ -34,7 +34,7 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
-
+%          Takfarinas Medani, 2025: Add an option for non-overlapping surfaces 
 
 %% ===== PARSE INPUTS =====
 % Check command line
@@ -65,6 +65,12 @@ ProtocolInfo = bst_get('ProtocolInfo');
 sSubject = bst_get('Subject', iSubject);
 subjectSubDir = bst_fileparts(sSubject.FileName);
 
+% Ask user if the FEM mesh has overlapping surfaces
+overlappingSurface = java_dialog('question', 'Does the FEM mesh has overlapping tissues?', 'Surface mesh extraction method', [], {'NO','YES'}, 'NO');
+if isempty(overlappingSurface)
+    return
+end
+overlappingSurface = lower(overlappingSurface);
 
 %% ===== INSTALL ISO2MESH =====
 % Install/load iso2mesh plugin
@@ -73,7 +79,6 @@ if ~isInstalled
     error(errMsg);
 end
             
-
 %% ===== SELECT INPUT FILES =====
 % If surface files to load are not defined : open a dialog box to select it
 if isempty(FemFiles)
@@ -117,8 +122,13 @@ for iFile = 1:length(FemFiles)
         
         % ===== EXTRACT SURFACE =====
         % Select elements of this tissue
-        Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
-        % Create a surface for the outside surface of this tissue
+        % Other options: Switch depending on the method
+        switch overlappingSurface
+            case 'yes'
+                Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
+            case 'no'
+                Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
+        end
         Faces = tess_voledge(FemMat.Vertices, Elements);
         if isempty(Faces)
             continue;
