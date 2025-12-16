@@ -993,7 +993,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
     if ~isempty(ChannelFiles)
 
         isFileSelected = java_dialog('checkbox', 'Select datasets to align:', 'Align sensors', [], ChannelFiles, ones(length(ChannelFiles), 1));
-        if ~any(isChanSelected)
+        if ~any(isFileSelected)
             return;
         end
         ChannelFiles = ChannelFiles(isFileSelected == 1);
