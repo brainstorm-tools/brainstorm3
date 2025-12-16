@@ -991,6 +991,13 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
     end
     % Apply transformation
     if ~isempty(ChannelFiles)
+
+        isFileSelected = java_dialog('checkbox', 'Select datasets to align:', 'Align sensors', [], ChannelFiles, ones(length(ChannelFiles), 1));
+        if ~any(isChanSelected)
+            return;
+        end
+        ChannelFiles = ChannelFiles(isFileSelected == 1);
+
         % Progress bar
         bst_progress('start', 'Align sensors', 'Updating other datasets...');
         % Update files
