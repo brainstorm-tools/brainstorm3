@@ -4,8 +4,10 @@
 java/brainstorm.jar
 # Anatomy defaults
 defaults/anatomy/*
-# Compiled Brainstorm
+# Compiled Brainstorm and wrappers
 bin/*/brainstorm3.jar
+bin/*/brainstorm3.bat
+bin/*/brainstorm3.command
 # macOS desktop service store files
 .DS_Store
 

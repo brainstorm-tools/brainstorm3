@@ -57,33 +57,13 @@ if ~wasBstRunning
     brainstorm nogui
 end
 isGUI = bst_get('isGUI');
-% Check that current 'brainstorm.jar' is the latest
-if ~bst_check_internet()
-    error('COMPILE> Brainstorm compile requres internet connection.');
-else
-    BstJar   = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstorm.jar');
-    BstJarGH = fullfile(bst_get('BrainstormHomeDir'), 'java', 'brainstormGH.jar');
-    bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJarGH);
-    fid1 = fopen(BstJar,   'rb');
-    fid2 = fopen(BstJarGH, 'rb');
-    data1 = fread(fid1, inf, '*uint8');
-    data2 = fread(fid2, inf, '*uint8');
-    fclose(fid1);
-    fclose(fid2);
-    delete(BstJarGH);
-    if ~isequal(data1, data2)
-        % Create file to indicate that brainstorm.jar should be deleted one next Brainstorm startup
-        UpdateFile = fullfile(bst_get('BrainstormHomeDir'), 'java', 'outdated_jar.txt');
-        fid = fopen(UpdateFile, 'w');
-        fwrite(fid, ['delete(''' BstJar ''');']);
-        fclose(fid);
-        % === RESTART MATLAB ===
-        h = msgbox(['Brainstorm compilation could not verify the latest brainstorm.jar' 10 10 ...
-                    'Matlab will now close.' 10 ...
-                    'Restart Matlab and run brainstorm.m to update brainstorm.jar' 10 10], 'Compile');
-        waitfor(h);
-        exit;
-    end
+% Check that compiling release is supported for compilation with bst_compile
+if bst_get('MatlabVersion') < 908 % 2020a
+    error('Brainstorm compilation script bst_compile requires a Matlab release >= 2020a.');
+end
+% Check if 'brainstorm.jar' is up to date with the one on GitHub
+if bst_check_appjar() == 0
+    warning('Local version of "brainstorm.jar" does not match the version on GitHub.')
 end
 % Delete current default anatomy and download it
 templateDir = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'anatomy');
@@ -115,9 +95,17 @@ ReleaseName = bst_get('MatlabReleaseName');
 % Javabuilder output
 compilerDir = fullfile(TmpDir, ReleaseName, 'bst_javabuilder');
 outputDir = fullfile(compilerDir, 'for_testing');
+% Get current Matlab release for Brainstorm compilation
+foundFiles = file_find(fullfile(bstDir, 'bin'), 'README.md', [], 1);
+[~, currentReleaseName] = bst_fileparts(bst_fileparts(foundFiles));
+if ~strcmpi(ReleaseName, currentReleaseName)
+    warning('Compiling with "%s". Current Matlab release for Brainstorm compilation: "%s".', ReleaseName, currentReleaseName);
+end
+% Get Linux, macOS and Windows wrappers
+binDir = fullfile(bstDir, 'bin', ReleaseName);
+copyfile(fullfile(bstDir, 'deploy', 'Wrappers', ReleaseName, '*.*'), binDir);
 % Packaging folders
 packageDir = fullfile(TmpDir, ReleaseName, 'package');
-binDir = fullfile(bstDir, 'bin', ReleaseName);
 jarDir = fullfile(packageDir, 'jar');
 % Delete existing folders
 if exist(compilerDir, 'dir')
@@ -164,7 +152,7 @@ copyfile(classFileFull, destFolder);
 
 %% ===== COPY CLASS: RUN COMPILED =====
 % Located in the deploy folder, must be compiled from the corresponding bst-java package after compiling Brainstorm a first time
-classFile = fullfile(bstDir, 'deploy', ['RunCompiled_' ReleaseName(2:end) '.class']);
+classFile = fullfile(bstDir, 'deploy', 'RunCompiled', ['RunCompiled_' ReleaseName(2:end) '.class']);
 % Copy application runner
 if file_exist(classFile)
     destFile = fullfile(jarDir, 'org', 'brainstorm', 'RunCompiled.class');
@@ -333,8 +321,10 @@ end
 if ~mkdir(destDir)
     error(['Cannot create output directory:' destDir]);
 end
-% Copy everything from binDir to destDir
-copyfile(fullfile(binDir, '*.*'), destDir);
+% Copy compiled Brainstorm and wrappers from binDir to destDir
+copyfile(fullfile(binDir, 'brainstorm3.jar'), destDir);
+copyfile(fullfile(binDir, 'brainstorm3.bat'), destDir);
+copyfile(fullfile(binDir, 'brainstorm3.command'), destDir);
 % Create output filename
 c = clock;
 strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
