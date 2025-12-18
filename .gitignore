@@ -8,6 +8,8 @@ defaults/anatomy/*
 bin/*/brainstorm3.jar
 bin/*/brainstorm3.bat
 bin/*/brainstorm3.command
+# Ignore all .fuse files
+*.fuse
 # macOS desktop service store files
 .DS_Store
 
