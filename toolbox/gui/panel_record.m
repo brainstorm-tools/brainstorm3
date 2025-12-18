@@ -3000,7 +3000,12 @@ function SetAcquisitionDate(iStudy, newDatetime) %#ok<DEFNU>
         inputFormat = 'yyyy-MM-dd';
         newDatetime = res{1};
         if length(res) > 1 && ~isempty(res{2})
-            inputFormat = [inputFormat ' ' 'HH:mm:ss'];
+            nValues = length(sscanf(res{2}, '%d:%d:%d'));
+            if nValues == 2
+                inputFormat = [inputFormat, ' ', 'HH:mm'];
+            elseif nValues == 3
+                inputFormat = [inputFormat, ' ', 'HH:mm:ss'];
+            end
             newDatetime = [newDatetime ' ' res{2}];
         end
     else
