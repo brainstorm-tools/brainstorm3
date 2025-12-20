@@ -997,6 +997,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
     end
     % Apply transformation
     if ~isempty(ChannelFiles)
+        StudyNames = regexprep(StudyNames, '^@raw', '[RAW] ');
         isFileSelected = java_dialog('checkbox', 'Select the folders for the channel files to apply the same transformation:', ...
                                      'Align sensors', [], StudyNames, ones(length(StudyNames), 1));
         if ~any(isFileSelected)
