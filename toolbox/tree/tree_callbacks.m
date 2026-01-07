@@ -771,7 +771,7 @@ switch (lower(action))
                     % === SIMULATIONS ===
                     if (length(bstNodes) == 1) && ~isRaw
                         AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@bst_simmeeg, 'GUI', iStudy));
+                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)SimulateSimmeeg(iStudy));
                     end
                     % === EXPORT RAW FILE ===
                     if isRaw
@@ -3938,4 +3938,34 @@ end
 function ViewTexturedSurface(filenameRelative)
     sSurf = bst_memory('LoadSurface', filenameRelative);
     view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
+end
+
+%% ===== SIMULATE SIMMEEG =====
+function SimulateSimmeeg(iStudy)
+    PlugName = 'simmeeg';
+    % Check that SimMEEG is installed
+    PlugDesc = bst_plugin('GetInstalled', PlugName);
+    if isempty(PlugDesc)
+        [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, 1);
+    else
+        [isOk, errMsg, PlugDesc] = bst_plugin('Load', PlugName);
+    end
+    % Check the plugin has the function 'bst_simmeeg.m'
+    if isOk && ~exist(fullfile(PlugDesc.Path, 'SimMEEG-master', 'bst_simmeeg.m'), 'file')
+        % Ask user to confirm plugin update
+        isConfirm = java_dialog('confirm', [...
+            'Function "bst_simmeeg.m" was not found within the SimMEEG plugin folder.' 10 10 ...
+            'Updating the SimMEEG plugin is needed.' 10 ...
+            'Update now?' 10 10], ...
+           'Simulate SimMEEG');
+        if isConfirm
+            [isOk, errMsg] = bst_plugin('Install', PlugName, 0);
+        end
+    end
+    % Print error
+    if ~isOk
+        bst_error(errMsg, 'Simulate SimMEEG', 0);
+    end
+    % Call SimMEEG
+    bst_simmeeg('GUI', iStudy);
 end

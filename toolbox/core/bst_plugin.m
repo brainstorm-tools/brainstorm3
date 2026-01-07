@@ -526,6 +526,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'SimMEEG_GUI.m';
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
     PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).DownloadedFcn  = ['file_copy(  fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg_new.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg.m''));' ];
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
 
