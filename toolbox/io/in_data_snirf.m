@@ -96,7 +96,7 @@ DataMat             = db_template('DataMat');
 DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = readDeviceName(jnirs.nirs.metaDataTags);
-[DataMat.acq_date, TimeOfStudy] = readDateOfStudy(jnirs.nirs.metaDataTags);
+DataMat.acq_date    = readDateOfStudy(jnirs.nirs.metaDataTags);
 DataMat.F           = readData(jnirs, data_scale, good_channel, good_aux);
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
@@ -188,9 +188,9 @@ function Device      = readDeviceName(metaDataTags)
     end
 end
 
-function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
+function DateOfStudy = readDateOfStudy(metaDataTags)
     
-    DateOfStudy = [];
+    DateOfStudy = datetime('now');
     TimeOfStudy = [];
 
     if isfield(metaDataTags,'MeasurementDate') && ~isempty(metaDataTags.MeasurementDate)
@@ -203,13 +203,21 @@ function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
         try
-            TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
+            MeasurementTime  = toLine(metaDataTags.MeasurementTime);
+            MeasurementTime  = strrep(MeasurementTime, 'Z', '');
+            
+            TimeOfStudy = duration(MeasurementTime);
         catch
             warning('Unable to read the Measurement Time')
         end
+    end
         
+    if ~isempty(TimeOfStudy)
+        DateOfStudy = DateOfStudy + TimeOfStudy;
     end
 
+    DateOfStudy.Format  = 'yyyy-MM-dd''T''HH:mm:ss';
+    DateOfStudy         = char(DateOfStudy);
 end 
 function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     
