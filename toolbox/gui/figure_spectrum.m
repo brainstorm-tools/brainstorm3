@@ -169,6 +169,8 @@ end
 %  ===========================================================================
 %% ===== FIGURE MOUSE DOWN =====
 function FigureMouseDownCallback(hFig, ev)
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get selected object in this figure
     hObj = get(hFig,'CurrentObject');
     if isempty(hObj)

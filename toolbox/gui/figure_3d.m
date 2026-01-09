@@ -255,6 +255,8 @@ end
 
 %% ===== FIGURE CLICK CALLBACK =====
 function FigureClickCallback(hFig, varargin)
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get selected object in this figure
     hObj = get(hFig,'CurrentObject');
     % Find axes

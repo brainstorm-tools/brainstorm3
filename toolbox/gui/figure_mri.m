@@ -1586,6 +1586,8 @@ end
 %% ===== MOUSE CLICK: FIGURE =====
 function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
     global GlobalData;
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get clicked axes
     hObj = get(hFig,'CurrentObject');
     if isempty(hObj)
