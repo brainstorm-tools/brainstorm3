@@ -1,4 +1,4 @@
-function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, FileFormat, isInteractive)
+function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, FileFormat, isNested)
 % IMPORT_FEMLAYERS: Extracts surfaces from FEM 3D mesh and saves them in the database
 % 
 % USAGE: iNewSurfaces = import_surfaces(iSubject, FemFiles, FileFormat)
@@ -11,7 +11,9 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 %                     => if not specified : files to import are asked to the user
 %    - FileFormat   : String representing the file format to import.
 %                     Please see in_tess.m to get the list of supported file formats
-%    - isInteractive: {0,1} If 0, do not ask any question to the user and use default values
+%    - isNested:    : 0, only elements for layer 'i', are used to generate surface 'i'
+%                     1, all elements for layers <='i', are used to generate surface 'i'
+%                     [] (default), ask user about using not-nested or nested approach
 % OUTPUT:
 %    - iNewSurfaces : Indices of the surfaces added in database
 
@@ -34,15 +36,15 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
-%          Takfarinas Medani, 2025: Add an option for non-overlapping surfaces 
+%          Takfarinas Medani, 2025
 
 %% ===== PARSE INPUTS =====
 % Check command line
 if ~isnumeric(iSubject) || (iSubject < 0)
     error('Invalid subject indice.');
 end
-if (nargin < 4) || isempty(isInteractive)
-    isInteractive = 0;
+if (nargin < 4)
+    isNested = [];
 end
 if (nargin < 3) || isempty(FemFiles)
     FemFiles = {};
@@ -66,19 +68,26 @@ sSubject = bst_get('Subject', iSubject);
 subjectSubDir = bst_fileparts(sSubject.FileName);
 
 % Ask user if the FEM mesh has overlapping surfaces
-overlappingSurface = java_dialog('question', 'Does the FEM mesh has overlapping tissues?', 'Surface mesh extraction method', [], {'NO','YES'}, 'NO');
-if isempty(overlappingSurface)
-    return
+if isempty(isNested)
+    [res, isCancel] = java_dialog('question', 'Does the FEM mesh has overlapping tissues?', 'Surface mesh extraction method', [], {'No','Yes'}, 'No');
+    if isempty(res) || isCancel
+        return
+    end
 end
-overlappingSurface = lower(overlappingSurface);
+if strcmpi(res, 'yes')
+    isNested = 1;
+else
+    isNested = 0;
+end
 
 %% ===== INSTALL ISO2MESH =====
 % Install/load iso2mesh plugin
-[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
+[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh');
 if ~isInstalled
     error(errMsg);
 end
             
+
 %% ===== SELECT INPUT FILES =====
 % If surface files to load are not defined : open a dialog box to select it
 if isempty(FemFiles)
@@ -122,12 +131,10 @@ for iFile = 1:length(FemFiles)
         
         % ===== EXTRACT SURFACE =====
         % Select elements of this tissue
-        % Other options: Switch depending on the method
-        switch overlappingSurface
-            case 'yes'
-                Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
-            case 'no'
-                Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
+        if isNested
+            Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
+        else
+            Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
         end
         Faces = tess_voledge(FemMat.Vertices, Elements);
         if isempty(Faces)
