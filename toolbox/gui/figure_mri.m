@@ -2550,10 +2550,22 @@ end
 
 
 %% ===== SAVE MRI =====
+% Update MRI fiducials and adjust surfaces.
+% Input can be figure handle or sMri.
 function [isCloseAccepted, MriFile] = SaveMri(hFig)
     ProtocolInfo = bst_get('ProtocolInfo');
     % Get MRI
-    sMri = panel_surface('GetSurfaceMri', hFig);
+    if ishandle(hFig)
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        isUser = true;
+    elseif isstruct(hFig)
+        sMri = hFig;
+        isUser = false;
+    else
+        bst_error('SaveMri: Unexpected input: %s.', class(hFig));
+        isCloseAccepted = 0;
+        return;
+    end
     MriFile = sMri.FileName;
     MriFileFull = bst_fullfile(ProtocolInfo.SUBJECTS, MriFile);
     % Do not accept "Save" if user did not select all the fiducials
@@ -2571,21 +2583,26 @@ function [isCloseAccepted, MriFile] = SaveMri(hFig)
     warning('off', 'MATLAB:load:variableNotFound');
     sMriOld = load(MriFileFull, 'SCS');
     warning('on', 'MATLAB:load:variableNotFound');
-    % If the fiducials were modified
+    % Check if the fiducials were modified (> 1um), to realign surfaces below
     if isfield(sMriOld, 'SCS') && all(isfield(sMriOld.SCS,{'NAS','LPA','RPA'})) ...
             && ~isempty(sMriOld.SCS.NAS) && ~isempty(sMriOld.SCS.LPA) && ~isempty(sMriOld.SCS.RPA) ...
-            && ((max(sMri.SCS.NAS - sMriOld.SCS.NAS) > 1e-3) || ...
-                (max(sMri.SCS.LPA - sMriOld.SCS.LPA) > 1e-3) || ...
-                (max(sMri.SCS.RPA - sMriOld.SCS.RPA) > 1e-3))
+            && ((max(abs(sMri.SCS.NAS - sMriOld.SCS.NAS)) > 1e-3) || ...
+                (max(abs(sMri.SCS.LPA - sMriOld.SCS.LPA)) > 1e-3) || ...
+                (max(abs(sMri.SCS.RPA - sMriOld.SCS.RPA)) > 1e-3))
         % Nothing to do...
     else
+        % sMri.SCS.R, T and Origin are updated before calling this function.
         sMriOld = [];
     end
     
     % === HISTORY ===
     % History: Edited the fiducials
     if ~isfield(sMriOld, 'SCS') || ~isequal(sMriOld.SCS, sMri.SCS) || ~isfield(sMriOld, 'NCS') || ~isequal(sMriOld.NCS, sMri.NCS)
-        sMri = bst_history('add', sMri, 'edit', 'User edited the fiducials');
+        if isUser
+            sMri = bst_history('add', sMri, 'edit', 'User edited the fiducials');
+        else
+            sMri = bst_history('add', sMri, 'edit', 'Applied digitized anatomical fiducials'); % string used to verify elsewhere
+        end
     end
     
     % ==== SAVE MRI ====

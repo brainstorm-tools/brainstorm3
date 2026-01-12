@@ -203,7 +203,7 @@ end
 
 % ===== DISPLAY HEAD POINTS =====
 % Display head points
-figure_3d('ViewHeadPoints', hFig, 1);
+figure_3d('ViewHeadPoints', hFig, 1, 1); % visible and color-coded
 % Get patch and vertices
 hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
 hHeadPointsLabels  = findobj(hFig, 'Tag', 'HeadPointsLabels');
@@ -216,7 +216,9 @@ HeadPointsFidLoc     = [];
 HeadPointsHpiLoc     = [];
 if isHeadPoints
     % More transparency to view points inside.
-    panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
+    panel_surface('SetSurfaceTransparency', hFig, 1, 0.4);
+    % Hide MEG helmet
+    set(hHelmetPatch, 'visible', 'off');
     % Get markers positions
     HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
@@ -244,7 +246,7 @@ end
     
 % ===== DISPLAY MRI FIDUCIALS =====
 % Get the fiducials positions defined in the MRI volume
-sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS');
+sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS', 'History');
 if ~isempty(sMri.SCS.NAS) && ~isempty(sMri.SCS.LPA) && ~isempty(sMri.SCS.RPA)
     % Convert coordinates MRI => SCS
     MriFidLoc = [cs_convert(sMri, 'mri', 'scs', sMri.SCS.NAS ./ 1000); ...
@@ -425,6 +427,8 @@ if isProgress
     bst_progress('stop');
 end
 
+% Check and print to command window if previously auto/manual registration, and if MRI fids updated.
+process_adjust_coordinates('CheckPrevAdjustments', in_bst_channel(ChannelFile), sMri);
 end
 
 %% ===== MOUSE CALLBACKS =====  
@@ -776,6 +780,7 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     end
     % Ask if needed to update also the other modalities
     if isempty(isAll)
+        % TODO We might have < 10 but still want to update electrodes. Verify instead if there are real EEG (not just ECG EOG)
         if (gChanAlign.isMeg || gChanAlign.isNirs) && (length(iEeg) > 10)
             isAll = java_dialog('confirm', 'Do you want to apply the same transformation to the EEG electrodes ?', 'Align sensors');
         elseif ~gChanAlign.isMeg && ~isempty(iMeg)
@@ -890,49 +895,48 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
-        % Sensors or headpoints changed
+        isCancel = false;
         strTitle = 'Align sensors';
         strType  = 'sensor';
-        if gChanAlign.isHp
-            strTitle = 'Head points';
-            strType  = 'head points';
-        end
-
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
-            SaveChanged = 1;
+            SaveChanges = 1;
         else
-            SaveChanged = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
-                    'Would you like to save changes? ' 10 10], 'Align sensors');
+            [SaveChanges, isCancel] = java_dialog('confirm', ['The ' strType ' locations changed.' 10 10 ...
+                'Would you like to save changes? ' 10 10], strTitle);
+        end
+        % Don't close figure if cancelled.
+        if isCancel
+            return;
+        end
+        % Get new positions
+        [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
+        % Load original channel file
+        ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
+        % Report (in command window) max head and sensor displacements from changes.
+        if SaveChanges || gChanAlign.isHeadPoints
+            process_adjust_coordinates('CheckCurrentAdjustments', ChannelMat, ChannelMatOrig);
         end
         % Save changes to channel file and close figure
-        if SaveChanged
+        if SaveChanges
             % Progress bar
             bst_progress('start', strTitle, 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
-            % Get new positions
-            [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
-            % Load original channel file
-            ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
             % Save new electrodes positions in ChannelFile
             bst_save(gChanAlign.ChannelFile, ChannelMat, 'v7');
             % Get study associated with channel file
             [sStudy, iStudy] = bst_get('ChannelFile', gChanAlign.ChannelFile);
             % Reload study file
             db_reload_studies(iStudy);
+            % Apply to other recordings with same sensor locations in the same subject
+            CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
             bst_progress('stop');
         end
-    else
-        SaveChanged = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
-    % Apply to other recordings with same sensor locations in the same subject
-    if SaveChanged && ~gChanAlign.isHp
-        CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
-    end
 end
 
 
@@ -1439,7 +1443,7 @@ end
 
 %% ===== DELETE HEADPOINTS =====
 function RemoveHeadpoints(varargin)
-    global GlobalData gChanAlign;
+    global gChanAlign;
     if isempty(gChanAlign.HeadPointsMarkersSel)
         % Nothing to do
         return

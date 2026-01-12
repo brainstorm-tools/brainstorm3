@@ -183,12 +183,10 @@ if (ChannelAlign >= 1)
     [ChannelMat, R, T, isSkip, isUserCancel, strReport, Tolerance] = channel_align_auto(OutputFile, [], 0, isConfirm, Tolerance);
     % User validated: keep this answer for the next round (force alignment for next call)
     if ~isSkip
-        if isUserCancel
+        if isUserCancel || isempty(ChannelMat)
             ChannelAlign = 0;
-        elseif ~isempty(ChannelMat)
+        elseif ChannelAlign < 2
             ChannelAlign = 2;
-        else
-            ChannelAlign = 0;
         end
     end
 end

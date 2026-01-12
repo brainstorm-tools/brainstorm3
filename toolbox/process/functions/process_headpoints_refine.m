@@ -41,7 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.title.Comment = [...
         'Refine the MEG/MRI registration using digitized head points.<BR>' ...
         '<FONT color="#707070">If (tolerance > 0): fit the head points, remove the digitized points the most<BR>' ...
-        'distant to the scalp surface, and fit again the the head points on the scalp.</FONT><BR><BR>'];
+        'distant to the scalp surface, and fit again the head points on the scalp.</FONT><BR><BR>'];
     sProcess.options.title.Type    = 'label';
     % Tolerance
     sProcess.options.tolerance.Comment = 'Tolerance (outlier points to ignore):';
@@ -61,13 +61,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     tolerance = sProcess.options.tolerance.Value{1} / 100;
     % Get all the channel files 
-    uniqueChan = unique({sInputs.ChannelFile});
+    [uniqueChan, iUniqFiles] = unique({sInputs.ChannelFile});
     % Loop on all the channel files
     for i = 1:length(uniqueChan)
         % Refine registration
         [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(uniqueChan{i}, [], 0, 0, tolerance);
         if ~isempty(strReport)
-            bst_report('Info', sProcess, sInputs, strReport);
+            bst_report('Info', sProcess, sInputs(iUniqFiles(i)), strReport);
         end
     end
     % Return all the files in input

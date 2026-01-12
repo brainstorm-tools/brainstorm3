@@ -291,6 +291,12 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     % Load and downsample continuous head localization channels.
     % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
     % Locations are in meters, [nChannels, nSamples, nEpochs] possibly converted to continuous.
+    % Data is returned for each epoch (concatenated if converted to continuous), for the provided
+    % sample bounds.
+    % The coordinate system is "CTF dewar", with X & Y axes at 45 degrees, and the origin inside the
+    % dewar.
+    % However, with CTF software version 3847, the extra coil is mislocalized near the coordinate
+    % system origin, which doesn't make sense for any coordinate system.
     
     % For now removing bad segments is done in process_adjust_coordinates only.
     %     , RemoveBadSegments
@@ -467,8 +473,7 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
     if nargin < 3 || isempty(StopThreshold)
         StopThreshold = false;
     end
-    
-    if size(Locations, 1) ~= 9 || size(Reference, 1) ~= 9
+    if size(Locations, 1) ~= 9 %|| size(Reference, 1) ~= 9
         bst_error('Expecting 9 HLU channels in first dimension.');
     end
     nS = size(Locations, 2);
@@ -476,15 +481,24 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
     
     % Calculate distances.
     
-    Reference = reshape(Reference, [3, 3]);
-    % Reference "head origin" and inverse "orientation matrix".
-    [YO, YR] = RigidCoordinates(Reference);
-    % Sphere radius.
-    r = max( sqrt(sum((Reference - YO(:, [1, 1, 1])).^2, 1)) );
-    if any(YR(:)) % any ignores NaN and returns false for empty.
-        YI = inv(YR); % Faster to calculate inverse once here than "/" in loop.
+    if nargin < 2 || isempty(Reference)
+        % Assume reference defines coordinate system.
+        YO = zeros(3, 1);
+        YI = eye(3);
+        % Use first location to estimate sphere radius.
+        r = max(sqrt(sum(bsxfun(@minus, reshape(Locations(1:9), [3,3]), ...
+            (Locations(4:6) + Locations(7:9))/2).^2, 1)));
     else
-        YI = YR;
+        Reference = reshape(Reference, [3, 3]);
+        % Reference "head origin" and inverse "orientation matrix".
+        [YO, YR] = RigidCoordinates(Reference);
+        % Sphere radius, estimate from reference.
+        r = max( sqrt(sum((Reference - YO(:, [1, 1, 1])).^2, 1)) );
+        if any(YR(:)) % any ignores NaN and returns false for empty.
+            YI = inv(YR); % Faster to calculate inverse once here than "/" in loop.
+        else
+            YI = YR;
+        end
     end
     
     %   SinHalf = zeros([nS, 1, nT]);
@@ -499,21 +513,8 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
             % it is a rotation around an axis through the real origin).
             R = XR * YI; % %#ok<MINV>
             
-            % Sine of half the rotation angle.
-            %       SinHalf = sqrt(3 - trace(R)) / 2;
-            %   For very small angles, this formula is not accurate compared to
-            %   w, since diagonal elements are around 1, and eps(1) = 2.2e-16.
-            %   This will be the order of magnitude of non-diag. elements due to
-            %   errors. So we should get SinHalf from w.
-            % Rotation axis with amplitude = SinHalf (like in rotation quaternions).
-            w = [R(3, 2) - R(2, 3); R(1, 3) - R(3, 1); R(2, 1) - R(1, 2)] / ...
-                (2 * sqrt(1 + R(1, 1) + R(2, 2) + R(3, 3)));
-            SinHalf = sqrt(sum(w.^2));
-            TNormSq = sum(T.^2);
-            % Maximum sphere distance for translation + rotation, as described
-            % above.
-            D(s, t) = sqrt( TNormSq + (2 * r * SinHalf)^2 + ...
-                4 * r * sqrt(TNormSq * SinHalf^2 - (T' * w)^2) );
+            % Maximum sphere distance for translation + rotation, as described above.
+            D(s, t) = RigidDistTransform(R, T, r);
             % CHECK should be comparable AND >= to max coil movement.
             
             % Option to interrupt when past a distance threshold.
@@ -524,6 +525,28 @@ function D = RigidDistances(Locations, Reference, StopThreshold)
     end
     
 end % RigidDistances
+
+
+
+function D = RigidDistTransform(R, T, rad)
+    % Maximum sphere distance for translation + rotation, as described above.
+    if isempty(T) && size(R,1) == 4
+        T = R(1:3, 4);
+        R = R(1:3, 1:3);
+    end
+    % Sine of half the rotation angle.
+    %       SinHalf = sqrt(3 - trace(R)) / 2;
+    %   For very small angles, this formula is not accurate compared to w, since diagonal
+    %   elements are around 1, and eps(1) = 2.2e-16. This will be the order of magnitude of
+    %   non-diag. elements due to errors. So we should get SinHalf from w.
+    % Rotation axis with amplitude = SinHalf (like in rotation quaternions).
+    w = [R(3, 2) - R(2, 3); R(1, 3) - R(3, 1); R(2, 1) - R(1, 2)] / ...
+        (2 * sqrt(1 + R(1, 1) + R(2, 2) + R(3, 3)));
+    SinHalf = sqrt(sum(w.^2));
+    TNormSq = sum(T.^2);
+
+    D = sqrt( TNormSq + (2 * rad * SinHalf)^2 + 4 * rad * sqrt(TNormSq * SinHalf^2 - (T' * w)^2) );
+end % RigidDistTransform
 
 
 

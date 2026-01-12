@@ -4110,18 +4110,22 @@ function ViewAxis(hFig, isVisible)
         isVisible = isempty(findobj(hAxes, 'Tag', 'AxisXYZ'));
     end
     if isVisible
+        % Works but now default zoom is too tight >:(
         % Get dimensions of current axes
+        set(hAxes, 'XLimitMethod', 'tight', 'YLimitMethod', 'tight', 'ZLimitMethod', 'tight');
         XLim = get(hAxes, 'XLim');
-        YLim = get(hAxes, 'XLim');
-        ZLim = get(hAxes, 'XLim');
-        d = max(abs([XLim(:); YLim(:); ZLim(:)]));
+        YLim = get(hAxes, 'YLim');
+        ZLim = get(hAxes, 'ZLim');
         % Draw axis lines
+        d = XLim(2) * 1.04;
         line([0 d], [0 0], [0 0], 'Color', [1 0 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(d * 1.04, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        d = YLim(2) * 1.04;
         line([0 0], [0 d], [0 0], 'Color', [0 1 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, d * 1.04, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        d = ZLim(2) * 1.04;
         line([0 0], [0 0], [0 d], 'Color', [0 0 1], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(d+0.002, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, d+0.002, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, 0, d+0.002, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, 0, d * 1.04, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
         % Enforce camera target at (0,0,0)
         % camtarget(hAxes, [0,0,0]);
     else

@@ -14,7 +14,7 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channe
 %
 % INPUTS:
 %     - ChannelFile : Channel file to align on its anatomy
-%     - ChannelMat  : If specified, do not read or write any information from/to ChannelFile
+%     - ChannelMat  : If specified, do not read or write any information from/to ChannelFile (except to get scalp surface). 
 %     - isWarning   : If 1, display warning in case of errors (default = 1)
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding
 %     - tolerance   : Percentage of outliers head points, ignored in the final fit
@@ -101,7 +101,7 @@ sStudy = bst_get('ChannelFile', ChannelFile);
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 if isempty(sSubject) || isempty(sSubject.iScalp)
     if isWarning
-        bst_error('No scalp surface available for this subject', 'Align EEG sensors', 0);
+        bst_error('No scalp surface available for this subject', 'Automatic EEG-MEG/MRI registration', 0);
     else
         disp('BST> No scalp surface available for this subject.');
     end
@@ -162,19 +162,19 @@ end
 
 %% ===== FIND OPTIMAL FIT =====
 % Find best possible rigid transformation (rotation+translation)
-[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP, tolerance);
 % Remove outliers and fit again
-if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
-    % Sort points by distance to scalp
-    [tmp__, iSort] = sort(dist, 1, 'descend');
-    iRemove = iSort(1:nRemove);
-    % Remove from list of destination points
-    HP(iRemove,:) = [];
-    % Fit again
-    [R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
-else
-    nRemove = 0;
-end
+% if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
+%     % Sort points by distance to scalp
+%     [tmp__, iSort] = sort(dist, 1, 'descend');
+%     iRemove = iSort(1:nRemove);
+%     % Remove from list of destination points
+%     HP(iRemove,:) = [];
+%     % Fit again
+%     [R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+% else
+%     nRemove = 0;
+% end
 % Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');
@@ -190,24 +190,32 @@ strReport = ['Distance between ' num2str(length(dist)) ' head points and head su
     ' |  Number of outlier points removed: ' sprintf('%d (%d%%)', nRemove, round(tolerance*100)), 10 ...
     ' |  Initial number of head points: ' num2str(size(HeadPoints.Loc,2))];
 
+% Create [4,4] transform matrix from digitized SCS to MRI SCS according to this fit.
+DigToMriTransf = eye(4);
+DigToMriTransf(1:3,1:3) = R;
+DigToMriTransf(1:3,4)   = T;
+
 %% ===== ROTATE SENSORS AND HEADPOINTS =====
-for i = 1:length(ChannelMat.Channel) 
-    % Rotate and translate location of channel
-    if ~isempty(ChannelMat.Channel(i).Loc) && ~all(ChannelMat.Channel(i).Loc(:) == 0)
-        ChannelMat.Channel(i).Loc = R * ChannelMat.Channel(i).Loc + T * ones(1,size(ChannelMat.Channel(i).Loc, 2));
+if ~isequal(DigToMriTransf, eye(4))
+    for i = 1:length(ChannelMat.Channel)
+        % Rotate and translate location of channel
+        if ~isempty(ChannelMat.Channel(i).Loc) && ~all(ChannelMat.Channel(i).Loc(:) == 0)
+            ChannelMat.Channel(i).Loc = R * ChannelMat.Channel(i).Loc + T * ones(1,size(ChannelMat.Channel(i).Loc, 2));
+        end
+        % Only rotate normal vector to channel
+        if ~isempty(ChannelMat.Channel(i).Orient) && ~all(ChannelMat.Channel(i).Orient(:) == 0)
+            ChannelMat.Channel(i).Orient = R * ChannelMat.Channel(i).Orient;
+        end
     end
-    % Only rotate normal vector to channel
-    if ~isempty(ChannelMat.Channel(i).Orient) && ~all(ChannelMat.Channel(i).Orient(:) == 0)
-        ChannelMat.Channel(i).Orient = R * ChannelMat.Channel(i).Orient;
+    % Rotate and translate head points
+    if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
+        ChannelMat.HeadPoints.Loc = R * ChannelMat.HeadPoints.Loc + ...
+            T * ones(1, size(ChannelMat.HeadPoints.Loc, 2));
     end
-end
-% Rotate and translate head points
-if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
-    ChannelMat.HeadPoints.Loc = R * ChannelMat.HeadPoints.Loc + ...
-                                T * ones(1, size(ChannelMat.HeadPoints.Loc, 2));
 end
 
 %% ===== SAVE TRANSFORMATION =====
+% We could decide to skip this if the transformation is identity.
 % Initialize fields
 if ~isfield(ChannelMat, 'TransfEeg') || ~iscell(ChannelMat.TransfEeg)
     ChannelMat.TransfEeg = {};
@@ -221,13 +229,9 @@ end
 if ~isfield(ChannelMat, 'TransfEegLabels') || ~iscell(ChannelMat.TransfEegLabels) || (length(ChannelMat.TransfEeg) ~= length(ChannelMat.TransfEegLabels))
     ChannelMat.TransfEegLabels = cell(size(ChannelMat.TransfEeg));
 end
-% Create [4,4] transform matrix
-newtransf = eye(4);
-newtransf(1:3,1:3) = R;
-newtransf(1:3,4)   = T;
 % Add a rotation/translation to the lists
-ChannelMat.TransfMeg{end+1} = newtransf;
-ChannelMat.TransfEeg{end+1} = newtransf;
+ChannelMat.TransfMeg{end+1} = DigToMriTransf;
+ChannelMat.TransfEeg{end+1} = DigToMriTransf;
 % Add the comments
 ChannelMat.TransfMegLabels{end+1} = 'refine registration: head points';
 ChannelMat.TransfEegLabels{end+1} = 'refine registration: head points';
