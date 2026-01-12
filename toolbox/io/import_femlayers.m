@@ -38,6 +38,7 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 % Authors: Francois Tadel, 2020
 %          Takfarinas Medani, 2025
 
+
 %% ===== PARSE INPUTS =====
 % Check command line
 if ~isnumeric(iSubject) || (iSubject < 0)
@@ -69,7 +70,7 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 
 % Ask user if the FEM mesh has overlapping surfaces
 if isempty(isNested)
-    [res, isCancel] = java_dialog('question', 'Does the FEM mesh has overlapping tissues?', 'Surface mesh extraction method', [], {'No','Yes'}, 'No');
+    [res, isCancel] = java_dialog('question', 'Are FEM tissue layers fully nested?', 'Surface mesh extraction method', [], {'No','Yes'}, 'Yes');
     if isempty(res) || isCancel
         return
     end
