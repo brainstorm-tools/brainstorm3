@@ -45,11 +45,11 @@ end
 ChannelMats = {};
 % Get the transformation rotation and translation
 if isnumeric(Transf)
-    TransfMat = Transf;
     R = Transf(1:3,1:3);
     T = Transf(1:3,4);
-    Transf = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
+    TransfFcn = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
 else
+    TransfFcn = Transf;
     R = [];
 end
 
@@ -83,7 +83,7 @@ for iFile = 1:length(ChannelFiles)
         Orient = ChannelMat.Channel(iChan(i)).Orient;
         % Update location
         if ~isempty(Loc) && ~isequal(Loc, [0;0;0])
-            ChannelMat.Channel(iChan(i)).Loc = Transf(Loc);
+            ChannelMat.Channel(iChan(i)).Loc = TransfFcn(Loc);
         end
         % Update orientation
         if ~isempty(Orient) && ~isequal(Orient, [0;0;0])
@@ -96,7 +96,7 @@ for iFile = 1:length(ChannelFiles)
     end
     % If needed: transform the digitized head points
     if isHeadPoints && ~isempty(ChannelMat.HeadPoints.Loc)
-        ChannelMat.HeadPoints.Loc = Transf(ChannelMat.HeadPoints.Loc);
+        ChannelMat.HeadPoints.Loc = TransfFcn(ChannelMat.HeadPoints.Loc);
     end
 
     % If a TransfMeg field with translations/rotations available
@@ -107,8 +107,8 @@ for iFile = 1:length(ChannelFiles)
         if ~isfield(ChannelMat, 'TransfMegLabels') || ~iscell(ChannelMat.TransfMegLabels) || (length(ChannelMat.TransfMeg) ~= length(ChannelMat.TransfMegLabels))
             ChannelMat.TransfMegLabels = cell(size(ChannelMat.TransfMeg));
         end
-        % Add a new transform to the list. Save 4x4 matrix here, not function handle.
-        ChannelMat.TransfMeg{end+1} = TransfMat;
+        % Add a new transform to the list
+        ChannelMat.TransfMeg{end+1} = Transf;
         ChannelMat.TransfMegLabels{end+1} = 'manual correction';
     end
     % If also need to apply it to the EEG
@@ -119,7 +119,7 @@ for iFile = 1:length(ChannelFiles)
         if ~isfield(ChannelMat, 'TransfEegLabels') || ~iscell(ChannelMat.TransfEegLabels) || (length(ChannelMat.TransfEeg) ~= length(ChannelMat.TransfEegLabels))
             ChannelMat.TransfEegLabels = cell(size(ChannelMat.TransfEeg));
         end
-        ChannelMat.TransfEeg{end+1} = TransfMat;
+        ChannelMat.TransfEeg{end+1} = Transf;
         ChannelMat.TransfEegLabels{end+1} = 'manual correction';
     end
 
