@@ -737,7 +737,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                  posUnits = sCoordsystem.NIRSCoordinateUnits;
                             end
                             % Get fiducials structure (returns in m)
-                            sFid.SCS = GetFiducials(sCoordsystem, posUnits);
+                            sFid = GetFiducials(sCoordsystem, posUnits);
                             % If there are no fiducials: there is no easy way to match with the anatomy, 
                             % and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG).
                             % Note coordinate systems also for potentially loading saved co-registration.
@@ -1047,7 +1047,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Second check: coreg fids also present on MEEG side
                     sFid = allMeegElecFiducials{iFile};
                     sMriFid = load(file_fullpath(allMeegElecAnatRef{iFile}), 'SCS'); 
-                    if isfield(sFid.SCS, 'NAS') && isfield(sFid.SCS, 'LPA') && isfield(sFid.SCS, 'RPA')
+                    if isfield(sFid, 'NAS') && isfield(sFid, 'LPA') && isfield(sFid, 'RPA')
                         % Necessary coreg info all found; give warnings if something else doesn't work.
                         % Third check: expected coordinate systems. Assume ok if some are missing.
                         isCoregOk = true; % still few cases where it can change back to false below.
@@ -1091,7 +1091,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % but converted to m when obtained by GetFiducials.
                     MriFidDist = [sMriFid.SCS.NAS; sMriFid.SCS.LPA; sMriFid.SCS.RPA];
                     MriFidDist = sqrt(sum( (MriFidDist - circshift(MriFidDist, 1, 1)).^2, 2));
-                    MeegFidDist = [sFid.SCS.NAS; sFid.SCS.LPA; sFid.SCS.RPA];
+                    MeegFidDist = [sFid.NAS; sFid.LPA; sFid.RPA];
                     MeegFidDist = sqrt(sum( (MeegFidDist - circshift(MeegFidDist, 1, 1)).^2, 2));
                     MeegFidDist = MeegFidDist * 1e3; % m to mm
                     % Warn if distances differ by more than 10 um, indicating they are not the same
@@ -1124,14 +1124,15 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
                                 if ~isempty(iTransf)
                                     T = ChannelMat.TransfMeg{iTransf}(1:3, :);
-                                    sFid.SCS.NAS = T * [sFid.SCS.NAS'; 1];
-                                    sFid.SCS.LPA = T * [sFid.SCS.LPA'; 1];
-                                    sFid.SCS.RPA = T * [sFid.SCS.RPA'; 1];
+                                    sFid.NAS = T * [sFid.NAS'; 1];
+                                    sFid.LPA = T * [sFid.LPA'; 1];
+                                    sFid.RPA = T * [sFid.RPA'; 1];
                                 end
                                 % Compute "current Bst system" to "co-registered" tranformation. Current
                                 % system might be "raw scs" computed from digitized anat fids of this
                                 % session, or "native" based on CTF head coils.
-                                Transf = cs_compute(sFid, 'scs');
+                                sTmp.SCS = sFid;
+                                Transf = cs_compute(sTmp, 'scs');
                                 T = eye(4);
                                 T(1:3,1:3) = Transf.R;
                                 T(1:3,4) =   Transf.T;
