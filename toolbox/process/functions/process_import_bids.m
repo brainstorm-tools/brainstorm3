@@ -846,9 +846,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         allMeegElecCoordSys{end+1} = electrodesCoordSystem;
                         allMeegLmCoordSys{end+1} = landmarkCoordSystem;
                     end
-                end % modality loop
+                end
             end
-        end % session loop
+        end
         
         % === IMPORT RECORDINGS ===
         % Try import them all, one by one
@@ -878,7 +878,6 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
                 OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
-
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
                 if isempty(iLast)
