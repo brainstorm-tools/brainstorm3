@@ -60,7 +60,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() 
+function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Import BIDS dataset';
     sProcess.Category    = 'Custom';
@@ -117,13 +117,13 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) 
+function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) 
+function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % === GET OPTIONS ===
     % Get folder to import
