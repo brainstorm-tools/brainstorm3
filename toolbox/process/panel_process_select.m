@@ -2646,7 +2646,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Loop on each process to apply
         for iProc = 1:length(sExportProc)
             % Get process info
-            procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
+            try
+                procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
+            catch
+                procComment = sExportProc(iProc).Comment;
+            end
             procFunc    = func2str(sExportProc(iProc).Function);
             % Timefreq and Connectivity: make sure the advanced options were selected
             if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
