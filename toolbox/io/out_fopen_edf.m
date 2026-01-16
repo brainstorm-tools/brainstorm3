@@ -73,8 +73,18 @@ else
     Fmax = 1 * ones(length(ChannelMat.Channel), 1);
 end
 
-%% ===== GET Acquisition date =====
-acq_date = getAcquisitionDate(sFileIn);
+
+%% ===== GET ACQUISITION DATE =====
+if ~isempty(sFileIn.acq_date)
+    acq_date = datetime(sFileIn.acq_date);
+elseif isRawEdf && isfield(sFileIn.header, 'startdate') && isfield(sFileIn.header, 'starttime')
+    acq_date  = datetime([sFileIn.header.startdate, ' ', sFileIn.header.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
+else
+    acq_date = datetime('now');
+end
+% EDF file start at 0s: removed the start file time
+acq_date = acq_date + duration(0, 0, sFileIn.prop.times(1));
+
 
 %% ===== WRITE EDF HEADER =====
 bst_progress('text', 'Writing EDF+ header...');
@@ -293,18 +303,6 @@ end
 %% ===== HELPER FUNCTIONS =====
 function acq_date = getAcquisitionDate(sFileIn)
 
-    isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
-    
-    if ~isempty(sFileIn.acq_date)
-        acq_date = datetime(sFileIn.acq_date);
-    elseif isRawEdf
-        acq_date  = datetime([ hdr.startdate, ' ', hdr.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
-    else
-        acq_date = datetime('now');
-    end
-
-    % EDF file start at 0s: removed the start file time
-    acq_date = acq_date + duration(0, 0, sFileIn.prop.times(1));
 end
 
 function sout = str_zeros(sin, N)
