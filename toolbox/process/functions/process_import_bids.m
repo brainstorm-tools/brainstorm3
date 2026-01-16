@@ -752,7 +752,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             elseif ~isempty(coordsystemSpace)
                                 electrodesCoordSystem = coordsystemSpace;
                             end
-                            if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinateSystem') %&& ~isempty(sCoordsystem.AnatomicalLandmarkCoordinateSystem)
+                            if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinateSystem')
                                 landmarkCoordSystem = sCoordsystem.AnatomicalLandmarkCoordinateSystem;
                             end
                             % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
