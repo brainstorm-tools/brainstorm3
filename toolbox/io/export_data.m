@@ -261,11 +261,15 @@ if isRawIn && isRawOut
     if file_compare(sFileIn.filename, sFileOut.filename)
         error('Input and output files are the same.');
     end
-    % Get default epoch size
+    % Optimize read block size to multiple of read EpochSize
     EpochSize = bst_process('GetDefaultEpochSize', sFileIn);
+    nSignal = length(iChannelsIn);
+    ProcessOptions = bst_get('ProcessOptions');
+    nEpochs = max(floor(ProcessOptions.MaxBlockSize / (EpochSize * nSignal)) ,1);
+    BlockSize = EpochSize * nEpochs;
     % Process by sample blocks
     nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
-    nBlocks = ceil(nSamples / EpochSize);
+    nBlocks = ceil(nSamples / BlockSize);
     % Show progress bar
     if ~isProgress
         bst_progress('start', 'Export EEG/MEG recordings', 'Exporting file...', 0, nBlocks);
@@ -273,7 +277,7 @@ if isRawIn && isRawOut
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
-        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
+        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * BlockSize, min(iBlock*BlockSize-1, nSamples-1)];
         % Read from input file
         F = in_fread(sFileIn, ChannelMatIn, 1, SamplesBounds, iChannelsIn, ImportOptions);
         % Save to output file
@@ -322,6 +326,7 @@ else
             case 'NIRS-SNIRF'
                 if isRawIn
                     DataMat.Events = DataMat.F.events;
+                    DataMat.acq_date = DataMat.F.acq_date;
                 end
                 DataMat.F = F;
                 out_data_snirf(ExportFile, DataMat, ChannelMatOut);

@@ -140,7 +140,7 @@ sFile.channelflag = ChannelFlag;
 sFile.byteorder = 'b';
 % Acquisition date (saved in POSIX format in FIF file)
 if isfield(info, 'meas_date') && ~isempty(info.meas_date)
-    sFile.acq_date = str_date(info.meas_date(1), 'posix');
+    sFile.acq_date = datestr(datetime(info.meas_date(2),'ConvertFrom', 'posixtime'),'yyyy-MM-dd''T''HH:mm:ss');
 end
 
 
