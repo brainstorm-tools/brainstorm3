@@ -301,10 +301,6 @@ end
 
 
 %% ===== HELPER FUNCTIONS =====
-function acq_date = getAcquisitionDate(sFileIn)
-
-end
-
 function sout = str_zeros(sin, N)
     if (isnumeric(sin))
         sin_str = num2str(sin);
