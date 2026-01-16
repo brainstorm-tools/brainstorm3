@@ -549,7 +549,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             disp(' ');
-            if iBem>=2
+            if nBem >= 2
                 % Merge all the surfaces
                 bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
                 switch (OPTIONS.MergeMethod)
@@ -1390,7 +1390,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case 'iso2mesh-2021'
-            if length(BemFiles)>=2
+            if length(BemFiles) >= 2
                 % Ask merging method
                 res = java_dialog('question', [...
                     '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
@@ -1420,7 +1420,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             end
             
         case 'iso2mesh'
-            if length(BemFiles)>=2
+            if length(BemFiles) >=2
                 % Ask merging method
                 res = java_dialog('question', [...
                     '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
@@ -1434,7 +1434,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 end
                 OPTIONS.MergeMethod = lower(res);
             end
-             % Ask BEM meshing options
+            % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
             if isempty(res)
