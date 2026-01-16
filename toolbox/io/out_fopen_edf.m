@@ -153,8 +153,8 @@ header.nrec = ceil(header.nrec / header.reclen);
             annot = sprintf('+%f', startTime);
             
             if (size(event.times,1) == 2)
-                duration = event.times(2,iEpc) - startTime;
-                annot    = [annot, sprintf('%c%f', char(21), duration)];
+                durationEvt = event.times(2,iEpc) - startTime;
+                annot    = [annot, sprintf('%c%f', char(21), durationEvt)];
             end
             
             annot = [annot, sprintf('%c%s%c%c', char(20), event.label, char(20), char(0))];
