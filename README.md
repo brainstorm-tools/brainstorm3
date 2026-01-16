@@ -17,9 +17,8 @@ http://neuroimage.usc.edu/brainstorm
 </p>
 
 ## How to cite Brainstorm
-Please cite the following reference in your publications if you have used our software for your data analyses. This citation is available in APA and BibTeX formats in the "*Cite this repository*" at the right menu of this page. In addition, to cite specific Brainstorm features, check [this page](https://neuroimage.usc.edu/brainstorm/CiteBrainstorm).
+Please cite the following reference in your publications if you have used our software for your data analyses. This citation is available in APA and BibTeX formats in the "*Cite this repository*" at the right menu of this page. In addition, to cite specific Brainstorm features check [this page](https://neuroimage.usc.edu/brainstorm/CiteBrainstorm).
 
 > Tadel F, Baillet S, Mosher JC, Pantazis D, Leahy RM (2011)  
 > [Brainstorm: A User-Friendly Application for MEG/EEG Analysis](http://www.hindawi.com/journals/cin/2011/879716/)  
 > Computational Intelligence and Neuroscience, vol. 2011, ID 879716
-
