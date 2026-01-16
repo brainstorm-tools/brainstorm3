@@ -669,21 +669,25 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         tsvFiles = tsvValues(:,1);
                         for iDate = 1:size(tsvValues,1)
                             fDate = [];
-                            try
-                                tsvValues{iDate,2}  = strrep(tsvValues{iDate,2}, 'Z', '');
-                                fDate = datetime(tsvValues{iDate,2});
-                                
-                            catch
-                                % Not recognized
-                                if (length(fDate) ~= 3)
-                                    % Display warning only if something was set but not interpreted
-                                    if ~isempty(tsvValues{iDate,2}) && ~isequal(lower(tsvValues{iDate,2}), 'n/a')
-                                        msg = ['Date format not recognized: "' tsvValues{iDate,2} '"'];
-                                        disp(['BIDS> Warning: ' msg]);
-                                        Messages = [Messages 10 msg];
-                                    end
-                                    fDate = datetime('now');
+                            % DateTime format: YYYY-MM-DDTHH:MM:SS
+                            if (length(tsvValues{iDate,2}) >= 19) && strcmpi(tsvValues{iDate,2}(11), 'T')
+                                % Remove optional fractional seconds and optional time offset
+                                tsvValues{iDate,2} = tsvValues{iDate,2}(1:19);
+                                fDate = datetime(tsvValues{iDate,2}, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss');
+                            % DateTime format: YYYYMMDDTHHMMSS
+                            elseif (length(tsvValues{iDate,2}) >= 15) && strcmpi(tsvValues{iDate,2}(9), 'T')
+                                tsvValues{iDate,2} = tsvValues{iDate,2}(1:15);
+                                fDate = datetime(tsvValues{iDate,2}, 'InputFormat', 'yyyyMMdd''T''HHmmss');
+                            end
+                            % Not recognized
+                            if isempty(fDate)
+                                % Display warning only if something was set but not interpreted
+                                if ~isempty(tsvValues{iDate,2}) && ~isequal(lower(tsvValues{iDate,2}), 'n/a')
+                                    msg = ['Date format not recognized: "' tsvValues{iDate,2} '"'];
+                                    disp(['BIDS> Warning: ' msg]);
+                                    Messages = [Messages 10 msg];
                                 end
+                                fDate = datetime('now');
                             end
                             fDate.Format = 'yyyy-MM-dd''T''HH:mm:ss';
                             tsvDates{iDate} = char(fDate);
