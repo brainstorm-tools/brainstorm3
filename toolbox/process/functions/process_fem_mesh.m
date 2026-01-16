@@ -404,28 +404,32 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             listPointasSeed = bst_bsxfun(@minus, listPointasSeed, [0 0.002 0]);
             listPointasSeed(1,:) = center_inner;
             disp(' ');
-            % Merge all the surfaces
-            bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
-            switch (OPTIONS.MergeMethod)
-                % Faster and simpler: Simple concatenation without intersection checks
-                case 'mergemesh'
-                    % Concatenate meshes
-                    [newnode, newelem] = mergemesh(bemMerge{:});
-                    % Remove duplicated elements
-                    % newelem = unique(sort(newelem,2),'rows');
-                % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
-                case 'mergesurf'
-                    try
-                        [newnode, newelem] = mergesurf(bemMerge{:});
-                    catch
-                        errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
-                        bst_progress('stop');
-                        return;
-                    end
-                otherwise
-                    error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+            if nBem >= 2
+                % Merge all the surfaces
+                bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
+                switch (OPTIONS.MergeMethod)
+                    % Faster and simpler: Simple concatenation without intersection checks
+                    case 'mergemesh'
+                        % Concatenate meshes
+                        [newnode, newelem] = mergemesh(bemMerge{:});
+                        % Remove duplicated elements
+                        % newelem = unique(sort(newelem,2),'rows');
+                        % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
+                    case 'mergesurf'
+                        try
+                            [newnode, newelem] = mergesurf(bemMerge{:});
+                        catch
+                            errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
+                            bst_progress('stop');
+                            return;
+                        end
+                    otherwise
+                        error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+                end
+            else
+                newnode = bemMerge{1};
+                newelem = bemMerge{2};
             end
-
             % Find the intersection between the vertical axis (from the head center to the vertex) and all the BEM layers
             regions = listPointasSeed;
             % Create tetrahedral mesh
@@ -545,26 +549,31 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             disp(' ');
-            % Merge all the surfaces
-            bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
-            switch (OPTIONS.MergeMethod)
-                % Faster and simpler: Simple concatenation without intersection checks
-                case 'mergemesh'
-                    % Concatenate meshes
-                    [newnode, newelem] = mergemesh(bemMerge{:});
-                    % Remove duplicated elements
-                    % newelem = unique(sort(newelem,2),'rows');
-                % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
-                case 'mergesurf'
-                    try
-                        [newnode, newelem] = mergesurf(bemMerge{:});
-                    catch
-                        errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
-                        bst_progress('stop');
-                        return;
-                    end
-                otherwise
-                    error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+            if iBem>=2
+                % Merge all the surfaces
+                bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
+                switch (OPTIONS.MergeMethod)
+                    % Faster and simpler: Simple concatenation without intersection checks
+                    case 'mergemesh'
+                        % Concatenate meshes
+                        [newnode, newelem] = mergemesh(bemMerge{:});
+                        % Remove duplicated elements
+                        % newelem = unique(sort(newelem,2),'rows');
+                        % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
+                    case 'mergesurf'
+                        try
+                            [newnode, newelem] = mergesurf(bemMerge{:});
+                        catch
+                            errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
+                            bst_progress('stop');
+                            return;
+                        end
+                    otherwise
+                        error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+                end
+            else
+                newnode = bemMerge{1};
+                newelem = bemMerge{2};
             end
             % Center of the head = barycenter of the innermost BEM layer (hopefully the inner skull?)
             center_inner = mean(bemMerge{1}, 1);
@@ -1381,18 +1390,20 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case 'iso2mesh-2021'
-            % Ask merging method
-            res = java_dialog('question', [...
-                '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
-                '<B>MergeMesh</B>: Default option (faster).<BR>' ...
-                'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
-                '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
-                'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
-                ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
-            if isempty(res)
-                return
+            if length(BemFiles)>=2
+                % Ask merging method
+                res = java_dialog('question', [...
+                    '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
+                    '<B>MergeMesh</B>: Default option (faster).<BR>' ...
+                    'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
+                    '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
+                    'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
+                    ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
+                if isempty(res)
+                    return
+                end
+                OPTIONS.MergeMethod = lower(res);
             end
-            OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
             res = java_dialog('input', {['Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):'], 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
@@ -1409,19 +1420,21 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             end
             
         case 'iso2mesh'
-            % Ask merging method
-            res = java_dialog('question', [...
-                '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
-                '<B>MergeMesh</B>: Default option (faster).<BR>' ...
-                'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
-                '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
-                'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
-                ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
-            if isempty(res)
-                return
+            if length(BemFiles)>=2
+                % Ask merging method
+                res = java_dialog('question', [...
+                    '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
+                    '<B>MergeMesh</B>: Default option (faster).<BR>' ...
+                    'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
+                    '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
+                    'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
+                    ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
+                if isempty(res)
+                    return
+                end
+                OPTIONS.MergeMethod = lower(res);
             end
-            OPTIONS.MergeMethod = lower(res);
-            % Ask BEM meshing options
+             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
             if isempty(res)
