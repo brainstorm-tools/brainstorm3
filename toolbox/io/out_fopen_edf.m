@@ -43,7 +43,35 @@ end
 
 
 %% ===== GET MAXIMUM VALUES =====
-Fmax = getFileMaximum(sFileIn, ChannelMat, iChannels);
+if ~isRawEdf
+    % Extracts the maximum values for each sensor over all the file.
+    % This helps optimizing the conversion of the recordings to int16 values.
+    ProcessOptions  = bst_get('ProcessOptions');
+    MaxSizeDouble   = ProcessOptions.MaxBlockSize;
+    nsignal         = length(ChannelMat.Channel);
+    BlockSize       = max(floor(MaxSizeDouble / nsignal), 1);
+    nBlocks = ceil(nSamples ./ BlockSize);
+    % Initialize max matrix
+    Fmax = 0 * ones(length(ChannelMat.Channel), 1);
+    % Loop on all the blocks
+    for iBlock = 1:nBlocks
+        bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
+        % Get sample indices for a block of 1s
+        SamplesBounds = round([(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)]);
+        % Read the block from the file
+        Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
+        % Keep only the files to be saved in the output file
+        if ~isempty(iChannels)
+            Fblock = Fblock(iChannels, :);
+        end
+        % Extract absolute max
+        Fmax = max(Fmax, max(abs(Fblock),[],2));
+    end
+    % Make sure we don't have cases where the maximum is zero
+    Fmax(Fmax == 0) = 1;
+else
+    Fmax = 1 * ones(length(ChannelMat.Channel), 1);
+end
 
 %% ===== GET Acquisition date =====
 acq_date = getAcquisitionDate(sFileIn);
@@ -330,45 +358,4 @@ function factors = full_factors(n)
         end
     end
     factors = unique(possibleFactors(1:iPos-1));
-end
-
-function Fmax = getFileMaximum(sFileIn, ChannelMat, iChannels)
-    
-    fileSamples = round(sFileIn.prop.times .* sFileIn.prop.sfreq);
-    isRawEdf = strcmpi(sFileIn.format, 'EEG-EDF') && ~isempty(sFileIn.header) && isfield(sFileIn.header, 'patient_id') && isfield(sFileIn.header, 'signal');
-    nSamples = fileSamples(2) - fileSamples(1) + 1;
-    
-    if isRawEdf
-        Fmax =  1 * ones(length(ChannelMat.Channel), 1);
-        return;
-    end
-
-    % Extracts the minimum and maximum values for each sensor over all the file.
-    % This helps optimizing the conversion of the recordings to int16 values.
-
-    ProcessOptions  = bst_get('ProcessOptions');
-    MaxSizeDouble   = ProcessOptions.MaxBlockSize;
-    nsignal         = length(ChannelMat.Channel);
-    BlockSize       = max(floor(MaxSizeDouble / nsignal), 1);
-
-    nBlocks = ceil(nSamples ./ BlockSize);
-    % Initialize min/max matrices
-    Fmax = 0 * ones(length(ChannelMat.Channel), 1);
-    % Loop on all the blocks
-    for iBlock = 1:nBlocks
-        bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
-        % Get sample indices for a block of 1s
-        SamplesBounds = round([(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)]);
-        % Read the block from the file
-        Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
-        % Keep only the files to be saved in the output file
-        if ~isempty(iChannels)
-            Fblock = Fblock(iChannels, :);
-        end
-        % Extract absolute max
-        Fmax = max(Fmax, max(abs(Fblock),[],2));
-    end
-    % Make sure we don't have cases where the maximum is zero
-    Fmax(Fmax == 0) = 1;
-
 end
