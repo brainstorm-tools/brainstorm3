@@ -369,31 +369,26 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             for i = 3:2:length(bemMerge)
                 no = bemMerge{i};
                 el = bemMerge{i + 1};
-                [newnode, newelem] = surfboolean(newnode, newelem, 'all', no, el);
-                
+                [newnode, newelem] = surfboolean(newnode, newelem, 'all', no, el);                
             end
             % Create tetrahedral mesh
             bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
             factor_bst = 1.e-6;
-            [node, elem] = s2m(newnode, newelem, OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, 'tetgen1.5'); % tessellate the boolean-created combined surface
-            % Removing the label 0 (Tetgen 1.4) or higher than number of layers (Tetgen 1.5)
-            bst_progress('text', 'Fixing 3D mesh...');            
-            % Check labelling from 1 to nBem
+            % tessellate the boolean-created combined surface
+            [node, elem] = s2m(newnode, newelem, OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, 'tetgen1.5'); 
             allLabels = unique(elem(:,5));
             TissueLabels = cellstr(string(allLabels))';
             % id =1; figure; plotmesh(node,elem(elem(:,5)==id,:),'facealpha',0.2,'edgecolor','none'); hold on; plotmesh(orig,'ko') 
             % id =3; figure; plotmesh(node,elem(elem(:,5)==id,:),'x>0');  
             % Process the outputs:  compute the distances
-            bst_progress('text', 'Identification of the 3D volumes...');
             % Mesh check and repair
             [no,el] = removeisolatednode(node,elem(:,1:4));
             % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
             newelem = meshreorient(no, el(:,1:4));
             elem = [newelem elem(:,5)];
-            node = no; % need to updates the new list of nodes (it's wiered that it was working before)
+            node = no;  
             % Only tetra could be generated from this method
-            OPTIONS.MeshType = 'tetrahedral';    
-
+            OPTIONS.MeshType = 'tetrahedral';  
         case 'iso2mesh-2021'
             % Install/load iso2mesh plugin
             [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
