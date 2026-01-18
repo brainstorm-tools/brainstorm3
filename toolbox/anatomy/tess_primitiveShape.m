@@ -23,8 +23,6 @@ function [vert, face] = tess_primitiveShape(iSubject, primitiveShape)
 %
 % See also:
 %   meshasphere, meshabox, meshacylinder, meshanellip, removeisolatedvert, meshreorient
-
-
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -58,7 +56,6 @@ if(nargin == 1)
     primitiveShape = 'sphere' ;
 end
 
-
 % Surface choice
 if (nargin >=2) && isempty(primitiveShape)
     % Ask user the new number of vertices
@@ -83,11 +80,8 @@ end
 
 [vert, face] = generatePrimitiveSurface(lower(primitiveShape));
 
-
-
 %% ===== SAVE RESULTS IN FILE =====
 bst_progress('text', 'Saving new file...');
-
 % Output structure
 bst_progress('text', 'Saving new file...');
 % Create output filenames
@@ -101,12 +95,9 @@ ShapeFile  = file_unique(bst_fullfile(SurfaceDir, ['tess_' primitiveShape ' .mat
 sShape.Vertices = vert;
 sShape.Faces    = face;
 sShape.Comment = primitiveShape;
-
 sHead = bst_history('add', sShape, 'tess_createPrimitiveShape', primitiveShape);
 bst_save(ShapeFile, sShape, 'v7');
 iSurface = db_add_surface( iSubject, ShapeFile, sShape.Comment);
-
-
 % Close, success
 bst_progress('stop');
 
@@ -272,7 +263,6 @@ switch lower(primitiveShape)
         vert = vert + c0;
     otherwise
         disp('Unknown method.')
-
 end
 % clean mesh
 [vert, face] = removeisolatednode(vert,face);
