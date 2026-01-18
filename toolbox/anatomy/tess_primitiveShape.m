@@ -92,7 +92,7 @@ MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
 ShapeFile  = file_unique(bst_fullfile(SurfaceDir, ['tess_' primitiveShape ' .mat']));
 % Save head
-sShape.Vertices = vert;
+sShape.Vertices = vert/1000;
 sShape.Faces    = face;
 sShape.Comment = primitiveShape;
 sHead = bst_history('add', sShape, 'tess_createPrimitiveShape', primitiveShape);
