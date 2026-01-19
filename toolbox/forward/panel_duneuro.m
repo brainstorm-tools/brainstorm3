@@ -60,7 +60,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if isempty(sSubject.iFEM)
             error('No available FEM mesh file for this subject.');
         end
-        OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);
+        OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM).FileName;
     end
     % Default options
     % defOPTIONS = bst_get('DuneuroOptions');
@@ -69,7 +69,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
 
     % ==== GET MESH INFO ====
     % Load tissue labels
-    FemMat = load(OPTIONS.FemFile, 'TissueLabels');
+    FemMat = load(file_fullpath(OPTIONS.FemFile), 'TissueLabels');
     % Get default conductivities
     OPTIONS.FemNames = FemMat.TissueLabels;
     OPTIONS.FemCond = GetDefaultCondutivity(OPTIONS.FemNames);
@@ -81,7 +81,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         OPTIONS.FemSelect = ones(size(OPTIONS.FemCond));
     end
     % Get size of Tensors matrix
-    Tensors = whos('-file', OPTIONS.FemFile, 'Tensors');
+    Tensors = whos('-file', file_fullpath(OPTIONS.FemFile), 'Tensors');
     OPTIONS.UseTensor = (~isempty(Tensors) && all(Tensors.size > 0));
     
     % ==== FRAME STRUCTURE ====
