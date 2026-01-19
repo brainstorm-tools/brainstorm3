@@ -59,6 +59,12 @@ function sProcess = GetDescription()
 end
 
 
+%% ===== FORMAT COMMENT =====
+function Comment = FormatComment(sProcess) %#ok<DEFNU>
+    Comment = sProcess.Comment;
+end
+
+
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};

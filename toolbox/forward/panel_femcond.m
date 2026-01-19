@@ -47,12 +47,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if isempty(sSubject.iFEM)
             error('No available FEM mesh file for this subject.');
         end
-        OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM).FileName);
+        OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM).FileName;
     end
     
     % ==== GET MESH INFO ====
     % Load tissue labels
-    FemMat = load(OPTIONS.FemFile, 'TissueLabels');
+    FemMat = load(file_fullpath(OPTIONS.FemFile), 'TissueLabels');
     % Get default conductivities
     OPTIONS.FemNames = FemMat.TissueLabels;
     OPTIONS.FemCond = panel_duneuro('GetDefaultCondutivity', OPTIONS.FemNames);

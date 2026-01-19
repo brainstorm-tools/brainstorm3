@@ -526,6 +526,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'SimMEEG_GUI.m';
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
     PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).DownloadedFcn  = ['file_copy(  fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg_new.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg.m''));' ];
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
 
@@ -664,6 +666,24 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
+
+    % === EVENTS: CTAGGER ===
+    PlugDesc(end+1)              = GetStruct('ctagger');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Events';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/hed-standard/CTagger/archive/main.zip';
+    PlugDesc(end).URLinfo        = 'https://www.hed-resources.org/en/latest/CTaggerGuiTaggingTool.html';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).LoadedFcn      = @Configure;
+    PlugDesc(end).TestFile       = 'CTagger.jar';
+    PlugDesc(end).DeleteFiles    = {'assets', 'gradle', 'src', '.gradle', '.github', '.vscode', ...
+                                    'build.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat', ...
+                                    'settings.gradle', '.codeclimate.yml', '.gitignore'};
+
 
     % === fNIRS: NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -1021,6 +1041,18 @@ function Configure(PlugDesc)
             generateCore();
             % Restore current directory
             cd(curDir);           
+
+        case 'ctagger'
+            % Add .jar file to static classpath
+            if ~exist('TaggerLoader', 'class')
+                jarList = dir(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'CTagger.jar'));
+                jarPath = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, jarList(1).name);
+                disp(['BST> Adding to Java classpath: ' jarPath]);
+                warning off
+                javaaddpathstatic(jarPath);
+                javaaddpath(jarPath);
+                warning on
+            end
     end
 end
 

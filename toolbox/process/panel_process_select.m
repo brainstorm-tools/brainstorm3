@@ -2646,7 +2646,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Loop on each process to apply
         for iProc = 1:length(sExportProc)
             % Get process info
-            procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
+            try
+                procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
+            catch
+                procComment = sExportProc(iProc).Comment;
+            end
             procFunc    = func2str(sExportProc(iProc).Function);
             % Timefreq and Connectivity: make sure the advanced options were selected
             if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
@@ -3003,6 +3007,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     matlabPath = [];
     % Get description for each file
     for iFile = 1:length(bstFunc)
+        errMsg = '';
         % Skip python support functions
         if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
@@ -3024,6 +3029,25 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 isChangeDir = 1;
             end
         end
+        % Check presence of required functions in process file
+        reqFncs = {'GetDescription', 'FormatComment', 'Run'};
+        reqFncsMissing = [];
+        txt = fileread([fName fExt]);
+        for iReqFnc = 1 : length(reqFncs)
+            expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
+            res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
+            if isempty(res)
+                reqFncsMissing(end+1) = iReqFnc;
+            end
+        end
+        if ~isempty(reqFncsMissing)
+            errMsg = 'Missing function';
+            if length(reqFncsMissing) == 1
+                errMsg = [errMsg, ': ', reqFncs{reqFncsMissing}];
+            else
+                errMsg = [errMsg, 's: ', strjoin(reqFncs{reqFncsMissing}, ',')];
+            end
+        end
         % Get function handle
         Function = str2func(fName);
         % Restore previous dir
@@ -3031,9 +3055,15 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             cd(curDir);
         end
         % Call description function
-        try
-            desc = Function('GetDescription');
-        catch
+        if isempty(errMsg)
+            try
+                desc = Function('GetDescription');
+            catch
+                errMsg = 'Could not run GetDescription()';
+            end
+        end
+        % Report error and skip process
+        if ~isempty(errMsg)
             if ismember(bstFunc{iFile}, usrFunc)
                 processType = 'User';
             elseif ismember(bstFunc{iFile}, {bstList.name})
@@ -3044,6 +3074,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 processType = char(8); % backspace
             end
             disp(['BST> Invalid ' processType ' function: "' bstFunc{iFile} '"']);
+            disp(['     ' errMsg]);
             continue;
         end
         % Copy fields to returned structure

@@ -335,6 +335,8 @@ end
 %% ===== FIGURE MOUSE DOWN =====
 function FigureMouseDownCallback(hFig, ev)
     global GlobalData;
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get selected object in this figure
     hObj = get(hFig,'CurrentObject');
     if isempty(hObj)
@@ -2730,7 +2732,7 @@ function DisplayConfigMenu(hFig, jParent)
             jPopup.show(jParent, -jPopup.getWidth(), 0);
         else
             % Show initial popup
-            gui_popup(jPopup);
+            gui_popup(jPopup, hFig);
             % Get offset from the corner of the button that was clicked
             matlabFig = get(hFig, 'Position');
             matlabButton = get(jParent, 'Position');

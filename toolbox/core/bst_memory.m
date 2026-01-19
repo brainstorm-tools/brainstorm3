@@ -1359,6 +1359,9 @@ function LoadResultsMatrix(iDS, iResult)
     % Duplicate time if only one time frame
     if (size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,2) == 1)
         GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp = repmat(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp, [1 2]);
+        if isfield(FileMat, 'Std') && ~isempty(FileMat.Std) && (size(GlobalData.DataSet(iDS).Results(iResult).Std,2) == 1)
+            GlobalData.DataSet(iDS).Results(iResult).Std = repmat(GlobalData.DataSet(iDS).Results(iResult).Std, [1 2]);
+        end
     end
     % Common fields
     GlobalData.DataSet(iDS).Results(iResult).nComponents = FileMat.nComponents;

@@ -29,8 +29,8 @@ for iDisp = 1:length(sMontage.DispNames)
     strFile = [strFile, sMontage.DispNames{iDisp}, ' : '];
     % Write list of channels
     iEntry = find(sMontage.Matrix(iDisp,:));
-    if isempty(iEntry)
-        % If all entries == 0, set to 0*FirstChannel
+    % Add ref channel (0*Chan_1): all entries == 0 AND it is not separator line
+    if isempty(iEntry) && ~isempty(strtrim(sMontage.DispNames{iDisp}))
         iEntry = 1;
     end
     for i = 1:length(iEntry)
