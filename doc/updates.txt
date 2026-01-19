@@ -1,3 +1,13 @@
+December 2025
+- DB: Allow adding time to the Acquisition date of a Study
+- IO: Add support for HED tags in Events
+- IO: Improve exporting recordings as EDF files
+- Plugin: Add, edit and remove HED tags within Brainstorm GUI with CTagger
+- Plugin: Automatic EEG artifact removal with GEDAI
+- Compile: Update 'spmtrip' functions
+- Compile: Linux/macOS and Windows wrappers for BST compiled with >= R2020a
+- Distrib: Compilation with Matlab 2026a
+--------------------------------------------------------------
 November 2025
 - BIDS: NIRS export optode locations as channel.tsv
 - Events: Keep events that were used on importing data by events

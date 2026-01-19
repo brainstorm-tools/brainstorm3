@@ -581,7 +581,8 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
-                    
+                    gui_component('MenuItem', jPopup, [], 'Generate primitive surface', IconLoader.ICON_SURFACE, [],@(h,ev)bst_call(@tess_primitiveShape, iSubject, []));
+                    AddSeparator(jPopup);
                     % === ANATOMY TEMPLATE ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
@@ -771,7 +772,7 @@ switch (lower(action))
                     % === SIMULATIONS ===
                     if (length(bstNodes) == 1) && ~isRaw
                         AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@bst_simmeeg, 'GUI', iStudy));
+                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)SimulateSimmeeg(iStudy));
                     end
                     % === EXPORT RAW FILE ===
                     if isRaw
@@ -1320,7 +1321,7 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
+                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));
@@ -3938,4 +3939,34 @@ end
 function ViewTexturedSurface(filenameRelative)
     sSurf = bst_memory('LoadSurface', filenameRelative);
     view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
+end
+
+%% ===== SIMULATE SIMMEEG =====
+function SimulateSimmeeg(iStudy)
+    PlugName = 'simmeeg';
+    % Check that SimMEEG is installed
+    PlugDesc = bst_plugin('GetInstalled', PlugName);
+    if isempty(PlugDesc)
+        [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, 1);
+    else
+        [isOk, errMsg, PlugDesc] = bst_plugin('Load', PlugName);
+    end
+    % Check the plugin has the function 'bst_simmeeg.m'
+    if isOk && ~exist(fullfile(PlugDesc.Path, 'SimMEEG-master', 'bst_simmeeg.m'), 'file')
+        % Ask user to confirm plugin update
+        isConfirm = java_dialog('confirm', [...
+            'Function "bst_simmeeg.m" was not found within the SimMEEG plugin folder.' 10 10 ...
+            'Updating the SimMEEG plugin is needed.' 10 ...
+            'Update now?' 10 10], ...
+           'Simulate SimMEEG');
+        if isConfirm
+            [isOk, errMsg] = bst_plugin('Install', PlugName, 0);
+        end
+    end
+    % Print error
+    if ~isOk
+        bst_error(errMsg, 'Simulate SimMEEG', 0);
+    end
+    % Call SimMEEG
+    bst_simmeeg('GUI', iStudy);
 end

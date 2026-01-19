@@ -38,6 +38,10 @@ if ~isjava(jParent) && ~isempty(jParent)
     % Fix stupid bug in some older Matlab versions
     if any(bst_get('MatlabVersion') == [709, 710, 711])
         jParent = jPopup;
+    % Matlab >= 2023b JPopupMenu is not hidden properly, keep its reference and hide it on figure mouse down callback
+    elseif (bst_get('MatlabVersion') >= 2302)
+        setappdata(jParent, 'jPopupMenu', jPopup);
+        jParent = jPopup;
     % Matlab >= 2019b deprecated the JavaFrame property, impossible to attach JPopupMenu to a figure
     elseif (bst_get('MatlabVersion') >= 907)
         jParent = jPopup;
