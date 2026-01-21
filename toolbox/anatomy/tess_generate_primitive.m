@@ -178,7 +178,7 @@ switch lower(primitiveShape)
         % Processing
         p0 = [r(1), 0, 0];        % coordinates (x,y,z) for one end of the box diagonal
         p1 = [0, r(2), r(3)];     % coordinates (x,y,z) for the other end of the box diagonal
-        tsize = min([p0, p1])/10; % maximum volume of the tetrahedral elements
+        tsize = mean([p0, p1])/10; % maximum volume of the tetrahedral elements
         [vert,face] = meshabox(p0,p1,tsize);
         % Move to the new center
         vert = vert + c0;
