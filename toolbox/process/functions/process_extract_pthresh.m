@@ -286,12 +286,10 @@ end
         % Correction for multiple comparisons
         [pmask, pthresh] = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
-        if ~bst_iscompiled
-            % Initialize SPM
-            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
-            if ~isInstalled
-                error(errMsg);
-            end
+        % Initialize SPM
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
+            error(errMsg);
         end
         % SPM must be installed
         if ~exist('spm_uc', 'file')

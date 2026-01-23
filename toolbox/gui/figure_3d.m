@@ -255,6 +255,8 @@ end
 
 %% ===== FIGURE CLICK CALLBACK =====
 function FigureClickCallback(hFig, varargin)
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get selected object in this figure
     hObj = get(hFig,'CurrentObject');
     % Find axes
@@ -1523,11 +1525,25 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
         % === COPY SURFACES PROPERTIES ===
         if isSurfProp
             DestTessInfo = getappdata(hDestFig, 'Surface');
+            % Process Source and Destination tess names
+            AllTessInfo = [SrcTessInfo, DestTessInfo];
+            AllTessNames = {AllTessInfo.Name};
+            for iTess = 1 : length(AllTessInfo)
+                % Use 'FEM_layerName' as name for FEM layers
+                if strcmpi(AllTessInfo(iTess).Name, 'FEM')
+                    layerName = regexp(AllTessInfo(iTess).SurfaceFile, '^#.*\((\w*)\)_*\d*$', 'tokens');
+                    if ~isempty(layerName) && ~isempty(layerName{1}) && ~isempty(layerName{1}{1})
+                    AllTessNames{iTess} = ['FEM_' layerName{1}{1}];
+                    end
+                end
+            end
+            SrcTessNames  = AllTessNames(1 : length(SrcTessInfo));
+            DestTessNames = AllTessNames(length(SrcTessInfo)+1 : end);
             % Process each surface of the figure
             for iTess = 1:length(DestTessInfo)
                 % Find surface name in source figure
                 if (length(DestTessInfo) > 1)
-                    iTessInSrc = find(strcmpi(DestTessInfo(iTess).Name, {SrcTessInfo.Name}));
+                    iTessInSrc = find(strcmpi(DestTessNames{iTess}, SrcTessNames));
                 else
                     iTessInSrc = 1;
                 end
@@ -1539,7 +1555,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     DestTessInfo(iTess).DataAlpha        = SrcTessInfo(iTessInSrc).DataAlpha;
                     DestTessInfo(iTess).SizeThreshold    = SrcTessInfo(iTessInSrc).SizeThreshold;
                     % Copy only if surfaces have the same type                    
-                    if strcmpi(DestTessInfo(iTess).Name, SrcTessInfo(iTessInSrc).Name)
+                    if strcmpi(DestTessNames{iTess}, SrcTessNames{iTessInSrc})
                         DestTessInfo(iTess).SurfShowSulci    = SrcTessInfo(iTessInSrc).SurfShowSulci;
                         DestTessInfo(iTess).SurfShowEdges    = SrcTessInfo(iTessInSrc).SurfShowEdges;
                         DestTessInfo(iTess).AnatomyColor     = SrcTessInfo(iTessInSrc).AnatomyColor;
@@ -1554,7 +1570,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     % Update surfaces structure
                     setappdata(hDestFig, 'Surface', DestTessInfo);
                     % Update display
-                    if strcmpi(DestTessInfo(iTess).Name, 'Anatomy')
+                    if strcmpi(DestTessNames{iTess}, 'Anatomy')
                         if strcmpi(FigureId.Type, 'MriViewer')
                             figure_mri('UpdateMriDisplay', hDestFig, [], DestTessInfo, iTess);
                         else
@@ -4477,6 +4493,9 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         iChannels = channel_find(GlobalData.DataSet(iDS).Channel, 'NIRS');
     end
     Channels = GlobalData.DataSet(iDS).Channel(iChannels);
+    hasLoc   = cellfun(@(c)size(c,2), {Channels.Loc}) > 0;
+    Channels = Channels(hasLoc);
+
     % Check for errors in the channel definition: Loc needs 2 set of positions (source, detector)
     if any(cellfun(@(c)size(c,2), {Channels.Loc}) ~= 2)
         error('NIRS sensors need to be defined by two positions: the source and and the detector.');

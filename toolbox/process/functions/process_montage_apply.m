@@ -240,12 +240,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                 end
                             end
                         end
-                        % Channel still not found: set to defaults
                         if isempty(iInputChan)
-                            %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
-                            %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
-                            ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
-                            ChannelMatOut.Channel(iChanOut).Type = 'Montage';
+                            useDefaultChanDesc = 1;
+                            % If new channel that is reference
+                            if all(sMontage.Matrix(iChanOut,:) == 0) && (length(unique({ChannelMat.Channel(iChannels).Type})) == 1) && ismember(ChannelMat.Channel(iChannels(1)).Type, {'EEG'})
+                                ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
+                                ChannelMatOut.Channel(iChanOut).Type = ChannelMat.Channel(iChannels(1)).Type;
+                                ChannelMatOut.Channel(iChanOut).Loc = [0;0;0];
+                                ChannelMatOut.Channel(iChanOut).Weight = 1;
+                                useDefaultChanDesc = 0;
+                            end
+                            % Channel still not set: use defaults
+                            if useDefaultChanDesc
+                                %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
+                                %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                                ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
+                                ChannelMatOut.Channel(iChanOut).Type = 'Montage';
+                            end
                         % Else: copy input channel info
                         else
                             ChannelMatOut.Channel(iChanOut).Name    = ChanNameOut;
@@ -400,7 +411,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
         % === PROCESS HEAD MODELS ===
-        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel)
+        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel) && isCompatibleChan
             % Info message about the list of bad channels used for the head models
             bst_report('Info', sProcess, sInputs, ['The montage applied on the head model and noise covariance used the list of bad channels from data file: ' sInputs(iInput).FileName]);
             % Loop through all the head models

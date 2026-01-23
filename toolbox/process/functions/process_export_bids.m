@@ -426,7 +426,7 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     else
                         origMri = sSubject.Anatomy(1).FileName;
                     end
-                    export_mri(origMri, mriFile);
+                    export_mri(origMri, mriFile, 'bids');
                     mriGzFile = gzip(mriFile);
                     if ~isempty(mriGzFile)
                         delete(mriFile);
@@ -1087,7 +1087,7 @@ function acqTime = ExtractAcquisitionTime(sFile, iStudy)
     % Otherwise, get study date
     sStudy = bst_get('Study', iStudy);
     if isfield(sStudy, 'DateOfStudy') && ~isempty(sStudy.DateOfStudy)
-        acqTime = datenum(sStudy.DateOfStudy);
+        acqTime = datetime(sStudy.DateOfStudy);
     else
         % When all else fails, return today's date...
         acqTime = now;
@@ -1128,4 +1128,3 @@ function defacedMri = GetDefacedMri(sSubject)
         end
     end
 end
-

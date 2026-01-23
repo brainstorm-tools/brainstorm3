@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Standardize';
     sProcess.Index       = 309;
-    sProcess.Description = 'http://www.fieldtriptoolbox.org/reference/ft_channelrepair';
+    sProcess.Description = 'https://www.fieldtriptoolbox.org/reference/ft_channelrepair';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};

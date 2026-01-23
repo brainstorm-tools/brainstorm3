@@ -257,7 +257,7 @@ function OpenSpikeFile(SpikeFile)
                     end
                     if strcmpi(res, 'Download')
                         % Display web page
-                        klusters_url = 'http://neurosuite.sourceforge.net/';
+                        klusters_url = 'https://neurosuite.sourceforge.net/';
                         status = web(klusters_url, '-browser');
                         if (status ~= 0)
                             web(klusters_url);

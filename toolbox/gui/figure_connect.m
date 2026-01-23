@@ -269,6 +269,8 @@ function FigureMouseDownCallback(hFig, ev)
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig, 'clickAction'), 'MouseDownNotConsumed')
         return;
     end   
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % click from Matlab figure
     if ~isempty(ev)
         if strcmpi(get(hFig, 'SelectionType'), 'alt') % right-click or CTRL+Click

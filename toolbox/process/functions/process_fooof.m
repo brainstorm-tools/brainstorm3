@@ -58,7 +58,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === POWER LINE
     sProcess.options.powerline.Comment = {'None', '50 Hz', '60 Hz', 'Ignore power line frequencies:'; '-5', '50', '60', ''};
     sProcess.options.powerline.Type    = 'radio_linelabel';
-    sProcess.options.powerline.Value   = 'None';
+    sProcess.options.powerline.Value   = '-5';
     sProcess.options.powerline.Class   = 'Matlab';
     % === MODEL SELECTION
     sProcess.options.method.Comment = {'Default', 'Model selection (experimental)', 'Optimization method:'; 'leastsquare', 'negloglike', ''};

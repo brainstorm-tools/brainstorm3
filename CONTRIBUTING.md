@@ -7,7 +7,7 @@ When contributing, please ***first discuss the change*** you wish to make in one
 
 - A post in the [Brainstorm forum](https://neuroimage.usc.edu/forums/) (preferred communication method)
 - A [GitHub issue](https://github.com/brainstorm-tools/brainstorm3/issues)
-- An [email](brainstorm@sipi.usc.edu) to the [Brainstorm team](https://neuroimage.usc.edu/brainstorm/AboutUs)
+- An [email](mailto:brainstorm@sipi.usc.edu) to the [Brainstorm team](https://neuroimage.usc.edu/brainstorm/AboutUs)
 
 Contributions to ***this*** repository include:
 - :beetle: Solving [Issues](https://github.com/brainstorm-tools/brainstorm3/issues)

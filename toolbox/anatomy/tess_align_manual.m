@@ -1,11 +1,12 @@
-function tess_align_manual( RefFile, SurfaceFile )
+function tess_align_manual( RefFile, SurfaceFile, AskAlignAllSurfs )
 % TESS_ALIGN_MANUAL: Align manually a surface on a MRI or on another surface.
 % 
 % USAGE:  tess_align_manual( RefFile, SurfaceFile )
 %
 % INPUT:
-%     - RefFile     : full path to the reference file (surface or MRI)
-%     - SurfaceFile : full path to the surface to align
+%     - RefFile          : full path to the reference file (surface or MRI)
+%     - SurfaceFile      : full path to the surface to align
+%     - AskAlignAllSurfs : ask if the alignment should be applied to other surfaces
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -27,10 +28,15 @@ function tess_align_manual( RefFile, SurfaceFile )
 %
 % Authors: Francois Tadel, 2008-2021
 
+if nargin < 3 || isempty(AskAlignAllSurfs)
+    AskAlignAllSurfs = 1;
+end
+
 global gTessAlign;
 gTessAlign = [];
 gTessAlign.SurfaceFile = SurfaceFile;
 gTessAlign.FinalTransf = eye(4);
+gTessAlign.AskAlignAllSurfs = AskAlignAllSurfs;
 % Save current scouts modifications
 panel_scout('SaveModifications');
 
@@ -308,7 +314,7 @@ function buttonOk_Callback(varargin)
     % Get subject in database
     sSubject = bst_get('SurfaceFile', gTessAlign.SurfaceFile);
     % If there are more than one surface in this subject
-    if (length(sSubject.Surface) > 1)
+    if (length(sSubject.Surface) > 1) && gTessAlign.AskAlignAllSurfs
         % Ask if we should apply the transformation to all the surfaces
         isAll = java_dialog('confirm', ['Apply the same transformation to all the surfaces ?' 10 10], 'Align surfaces');
         % Take all the subjects surfaces

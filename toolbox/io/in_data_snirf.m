@@ -96,7 +96,7 @@ DataMat             = db_template('DataMat');
 DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = readDeviceName(jnirs.nirs.metaDataTags);
-[DataMat.acq_date, TimeOfStudy] = readDateOfStudy(jnirs.nirs.metaDataTags);
+DataMat.acq_date    = readDateOfStudy(jnirs.nirs.metaDataTags);
 DataMat.F           = readData(jnirs, data_scale, good_channel, good_aux);
 DataMat.Time        = expendTime(jnirs.nirs.data.time, nSample);
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
@@ -132,12 +132,20 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels = {};
     end
 
-    % Convert cell array to string array 
+    % Convert to string array
     if iscell(jnirs.nirs.probe.sourceLabels)
         jnirs.nirs.probe.sourceLabels = convertCharsToStrings(jnirs.nirs.probe.sourceLabels);
+    elseif ischar(jnirs.nirs.probe.sourceLabels)
+        jnirs.nirs.probe.sourceLabels(end+1, :) = ' ';
+        jnirs.nirs.probe.sourceLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.sourceLabels), ' ');
+        jnirs.nirs.probe.sourceLabels = jnirs.nirs.probe.sourceLabels(jnirs.nirs.probe.sourceLabels ~= "");
     end
     if iscell(jnirs.nirs.probe.detectorLabels)
         jnirs.nirs.probe.detectorLabels = convertCharsToStrings(jnirs.nirs.probe.detectorLabels);
+    elseif ischar(jnirs.nirs.probe.detectorLabels)
+        jnirs.nirs.probe.detectorLabels(end+1, :) = ' ';
+        jnirs.nirs.probe.detectorLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.detectorLabels), ' ');
+        jnirs.nirs.probe.detectorLabels = jnirs.nirs.probe.detectorLabels( jnirs.nirs.probe.detectorLabels ~= "");
     end
 
     % Events. Convert cell array to struct array
@@ -180,9 +188,9 @@ function Device      = readDeviceName(metaDataTags)
     end
 end
 
-function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
+function DateOfStudy = readDateOfStudy(metaDataTags)
     
-    DateOfStudy = [];
+    DateOfStudy = datetime('now');
     TimeOfStudy = [];
 
     if isfield(metaDataTags,'MeasurementDate') && ~isempty(metaDataTags.MeasurementDate)
@@ -195,13 +203,21 @@ function [DateOfStudy, TimeOfStudy] = readDateOfStudy(metaDataTags)
 
     if isfield(metaDataTags,'MeasurementTime') && ~isempty(metaDataTags.MeasurementTime)
         try
-            TimeOfStudy = duration(toLine(metaDataTags.MeasurementTime));
+            MeasurementTime  = toLine(metaDataTags.MeasurementTime);
+            MeasurementTime  = strrep(MeasurementTime, 'Z', '');
+            
+            TimeOfStudy = duration(MeasurementTime);
         catch
             warning('Unable to read the Measurement Time')
         end
+    end
         
+    if ~isempty(TimeOfStudy)
+        DateOfStudy = DateOfStudy + TimeOfStudy;
     end
 
+    DateOfStudy.Format  = 'yyyy-MM-dd''T''HH:mm:ss';
+    DateOfStudy         = char(DateOfStudy);
 end 
 function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     

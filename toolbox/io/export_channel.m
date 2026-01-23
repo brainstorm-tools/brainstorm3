@@ -66,6 +66,7 @@ if isempty(OutputChannelFile)
         case 'BIDS-NIRS-SCANRAS-MM',DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-MNI-MM',    DefaultExt = '_optodes.tsv';
         case 'BIDS-NIRS-ALS-MM',    DefaultExt = '_optodes.tsv';
+        case 'BIDS-NIRS-CHANNEL',   DefaultExt = '_channels.tsv';
         otherwise,                  DefaultExt = '.pos';
     end
 
@@ -238,6 +239,9 @@ switch FileFormat
     case 'BIDS-NIRS-ALS-MM'
         % No transformation: export unchanged SCS/CTF space
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, [], 1);
+    case 'BIDS-NIRS-CHANNEL'
+        % Export NIRS channel.tsv
+        out_channel_bids_nirs(BstChannelFile, OutputChannelFile);
 
     otherwise
         error(['Unsupported file format : "' FileFormat '"']);

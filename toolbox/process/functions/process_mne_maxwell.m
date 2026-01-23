@@ -129,6 +129,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
 end
 
 
+%% ===== FORMAT COMMENT =====
+function Comment = FormatComment(sProcess) %#ok<DEFNU>
+    Comment = sProcess.Comment;
+end
+
+
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFile = process_mne_maxwell_py('Run', sProcess, sInput);

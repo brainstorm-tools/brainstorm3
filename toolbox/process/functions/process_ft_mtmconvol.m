@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 506;
-    sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/timefrequencyanalysis';
+    sProcess.Description = 'https://www.fieldtriptoolbox.org/tutorial/timefrequencyanalysis';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import', 'data'};
     sProcess.OutputTypes = {'import', 'data'};

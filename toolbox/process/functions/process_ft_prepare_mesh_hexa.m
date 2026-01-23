@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 39;
-    sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/headmodel_eeg_fem';
+    sProcess.Description = 'https://www.fieldtriptoolbox.org/tutorial/headmodel_eeg_fem';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};

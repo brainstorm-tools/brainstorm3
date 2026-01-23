@@ -40,6 +40,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Description
     sProcess.options.info.Comment = ['Set the channel info for all occurrences for the indicated event names.<BR>' ...
                                      'Channel info will be <B>replaced</B>, be careful as there is not undo.<BR><BR>'];

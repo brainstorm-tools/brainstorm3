@@ -87,11 +87,15 @@ function Compute(ChannelFile, Modality)
     ChannelFile = file_fullpath(ChannelFile);
     ChannelMat = in_bst_channel(ChannelFile);        
     % Get channels classified as EEG
-    iEEG = channel_find(ChannelMat.Channel, 'EEG,SEEG,ECOG,ECG,EKG');
+    iEEG = channel_find(ChannelMat.Channel, 'EEG,SEEG,ECOG');
+    % Get channels classified as ECG
+    iECG = channel_find(ChannelMat.Channel, 'ECG,EKG');
     % If there are no channels classified at EEG, take all the channels
     if isempty(iEEG)
         warning('Warning: No EEG channels identified, trying to use all the channels...');
         iEEG = 1:length(ChannelMat.Channel);
+    else
+        iEEG = union(iEEG, iECG);
     end
     % Detect channels of interest
     [iSelEeg, iEcg] = ImaGIN_select_channels({ChannelMat.Channel(iEEG).Name}, 1);

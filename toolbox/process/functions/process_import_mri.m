@@ -1,5 +1,5 @@
 function varargout = process_import_mri( varargin )
-% PROCESS_IMPORT_MRI: Import MRI in the database.
+% PROCESS_IMPORT_MRI: Import MRI, CT or PET volumes in the database.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -20,6 +20,7 @@ function varargout = process_import_mri( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012
+%          Raymundo Cassani, 2025
 
 eval(macro_method);
 end
@@ -28,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Import MRI';
+    sProcess.Comment     = 'Import MRI, CT or PET';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 2;
@@ -43,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...                            % Filename
         '', ...                            % FileFormat
         'open', ...                        % Dialog type: {open,save}
-        'Import MRI...', ...               % Window title
+        'Import volume...', ...            % Window title
         'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                      % Selection mode: {single,multiple}
         'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
@@ -53,42 +54,62 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = 'NewSubject';
-    % Option: MRI file
-    sProcess.options.mrifile.Comment = 'MRI filename:';
+    % Option: Volume type
+    sProcess.options.voltype.Comment    = {'MRI', 'CT', 'PET', 'Volume type'; ...
+                                           'mri', 'ct', 'pet', ''};
+    sProcess.options.voltype.Type       = 'radio_linelabel';
+    sProcess.options.voltype.Value      = 'mri';
+    sProcess.options.voltype.Controller.mri = 'mri';
+    % Option: Volume comment
+    sProcess.options.comment.Comment = 'Volume name (empty = default name):';
+    sProcess.options.comment.Type    = 'text';
+    sProcess.options.comment.Value   = '';
+    % Option: Volume file
+    sProcess.options.mrifile.Comment = 'Volume filename:';
     sProcess.options.mrifile.Type    = 'filename';
     sProcess.options.mrifile.Value   = SelectOptions;
     % Option: NAS
     sProcess.options.label1.Comment = '<BR>Fiducial coordinates in millimeters (x,y,z):';
     sProcess.options.label1.Type    = 'label';
+    sProcess.options.label1.Class   = 'mri';
     sProcess.options.nas.Comment = 'NAS:&nbsp;&nbsp;&nbsp;';
     sProcess.options.nas.Type    = 'value';
     sProcess.options.nas.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.nas.Class   = 'mri';
     % Option: LPA
     sProcess.options.lpa.Comment = 'LPA:&nbsp;&nbsp;&nbsp;';
     sProcess.options.lpa.Type    = 'value';
     sProcess.options.lpa.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.lpa.Class   = 'mri';
     % Option: RPA
     sProcess.options.rpa.Comment = 'RPA:&nbsp;&nbsp;&nbsp;';
     sProcess.options.rpa.Type    = 'value';
     sProcess.options.rpa.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.rpa.Class   = 'mri';
     % Option: AC
     sProcess.options.ac.Comment = 'AC:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
     sProcess.options.ac.Type    = 'value';
     sProcess.options.ac.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.ac.Class   = 'mri';
     % Option: PC
     sProcess.options.pc.Comment = 'PC:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
     sProcess.options.pc.Type    = 'value';
     sProcess.options.pc.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.pc.Class   = 'mri';
     % Option: IH
     sProcess.options.ih.Comment = 'IH:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
     sProcess.options.ih.Type    = 'value';
     sProcess.options.ih.Value   = {[0 0 0], 'list', 2};
+    sProcess.options.ih.Class   = 'mri';
 end
 
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
+    if isfield(sProcess.options, 'voltype') && ~isempty(sProcess.options.voltype) && ~isempty(sProcess.options.voltype.Value)
+        Comment = ['Import ' upper(sProcess.options.voltype.Value)];
+    end
 end
 
 
@@ -101,6 +122,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if isempty(SubjectName)
         bst_report('Error', sProcess, [], 'Subject name is empty.');
         return
+    end
+    % Get volume type
+    VolType = 'mri';
+    if isfield(sProcess.options, 'voltype') && ~isempty(sProcess.options.voltype) && ~isempty(sProcess.options.voltype.Value)
+        VolType = sProcess.options.voltype.Value;
+    end
+    % Get volume type
+    Comment = '';
+    if isfield(sProcess.options, 'comment') && ~isempty(sProcess.options.comment) && ~isempty(sProcess.options.comment.Value)
+        Comment = sProcess.options.comment.Value;
     end
     % Get filenames to import
     MriFile = sProcess.options.mrifile.Value{1};
@@ -155,17 +186,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" is using the default anatomy (read-only).']);
         return
     end
-    
+
     % ===== IMPORT FILES =====
-    % Import MRI file
-    DbMriFile = import_mri(iSubject, MriFile, FileFormat);
+    % Comment for volume
+    if isempty(Comment)
+        [~, fBase] = bst_fileparts(MriFile);
+        Comment = strrep(fBase, '.nii', '');
+    end
+    % For CT and PET, pass VolType in Comment to import_mri()
+    if ismember(VolType, {'ct', 'pet'})
+        Comment = [upper(VolType), ' ', Comment];
+    end
+    % Import volume file
+    DbMriFile = import_mri(iSubject, MriFile, FileFormat, 0, 0, Comment);
     if isempty(DbMriFile)
         bst_report('Error', sProcess, [], ['Cannot import file: "' MriFile '".']);
         return
     end
-    % Save fiducials in MRI
-    figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
-    
+    % Save fiducials in MRI if it is the default anatomy
+    if ~(isempty(NAS) || isempty(LPA) || isempty(RPA)) || ~(isempty(AC) || isempty(PC) || isempty(IH))
+        sSubject = bst_get('Subject', SubjectName);
+        if strcmp(file_short(DbMriFile), sSubject.Anatomy(sSubject.iAnatomy).FileName)
+            figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
+        end
+    end
     OutputFiles = {'import'};
 end
 

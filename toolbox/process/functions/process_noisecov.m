@@ -283,7 +283,7 @@ function studyDate = GetStudyDate(iStudy)
     sStudy = bst_get('Study', iStudy);
     % Get its acquisition date
     if ~isempty(sStudy.DateOfStudy)
-        studyDate = datenum(sStudy.DateOfStudy);
+        studyDate = datetime(sStudy.DateOfStudy);
     else
         studyDate = [];
     end

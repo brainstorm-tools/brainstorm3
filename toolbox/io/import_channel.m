@@ -134,7 +134,10 @@ switch (FileFormat)
     case 'BST'
         ChannelMat = in_bst_channel(ChannelFile);
         FileUnits = 'm';
-        
+    % ===== NIRS ONLY =====
+    case 'BIDS-NIRS-CHANNEL'
+        ChannelMat = in_channel_bids_nirs(ChannelFile);
+        FileUnits = 'm';  
     % ===== EEG ONLY =====
     case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM', 'BIDS-CAPTRAK-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);

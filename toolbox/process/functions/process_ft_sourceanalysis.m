@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 356;
-    sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/minimumnormestimate';
+    sProcess.Description = 'https://www.fieldtriptoolbox.org/tutorial/minimumnormestimate';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};

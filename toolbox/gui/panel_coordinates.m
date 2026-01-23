@@ -434,13 +434,19 @@ function vi = SelectPoint(hFig, AcceptMri, isCentroid) %#ok<DEFNU>
          'LineWidth',       2, ...
          'Parent',          hAxes, ...
          'Tag',             'ptCoordinates');
+    % Automatically update MRI viewers in viewing iEEG sensors
+    if gui_brainstorm('isTabVisible', 'iEEG')
+        global GlobalData
+        [~, ~, iDS] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+            hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
+            if ~isempty(hFigMri)
+                ViewInMriViewer(0);
+            end
+        end
+    end
     % Update "Coordinates" panel
     UpdatePanel();
-    % Update MRI viewer (if open)
-    hFigMri = bst_figures('GetFiguresByType', 'MriViewer');
-    if ~isempty(hFigMri)
-        ViewInMriViewer();
-    end
 end
 
 
@@ -573,7 +579,15 @@ end
 
 %% ===== VIEW IN MRI VIEWER =====
 function ViewInMriViewer(varargin)
+    % ViewInMriViewer(h, ev)    Call from panel button
+    % ViewInMriViewer(newFig=1) If newFig, open the MRI Viewer is not present
     global GlobalData;
+    % Call: ViewInMriViewer(newFig)
+    if nargin == 1 && ~isempty(varargin{1})
+        newFig = varargin{1};
+    else
+        newFig = 1;
+    end
     % Get current 3D figure
     [hFig,iFig,iDS] = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
@@ -581,7 +595,7 @@ function ViewInMriViewer(varargin)
     end
     % Get current selected point
     CoordinatesSelector = getappdata(hFig, 'CoordinatesSelector');
-    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+    if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.SCS)
         return
     end
     % Get subject and subject's MRI
@@ -590,12 +604,17 @@ function ViewInMriViewer(varargin)
         return 
     end
     % Display subject's anatomy in MRI Viewer
-    hFig = bst_figures('GetFiguresByType', 'MriViewer');
-    if isempty(hFig)
-        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    hFig = bst_figures('GetFigureWithSurface', sSubject.Anatomy(sSubject.iAnatomy).FileName, [], 'MriViewer', '');
+    if isempty(hFig) && newFig
+        view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     end
+    % Get all MRI Viewer figures for same DataSet
+    [hAllFig, ~, iAllDS] = bst_figures('GetFiguresByType', 'MriViewer');
+    hFig = hAllFig(iAllDS == iDS);
     % Select the required point
-    figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
+    for iFig = 1 : length(hFig)
+        figure_mri('SetLocation', 'scs', hFig(iFig), [], CoordinatesSelector.SCS);
+    end
 end
 
 

@@ -8,7 +8,7 @@ function [ varargout ] = bst_memory( varargin )
 %      [iDS, iResult] = bst_memory('LoadResultsFileFull',  ResultsFile)
 %      [iDS, iDipole] = bst_memory('LoadDipolesFile',      DipolesFile)
 %       [iDS, iTimef] = bst_memory('LoadTimefreqFile',     TimefreqFile)
-%        [sMri, iMri] = bst_memory('LoadMri',              iDS, MriFile);
+%        [sMri, iMri] = bst_memory('LoadMri',              MriFile/iSubject);
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
@@ -1359,6 +1359,9 @@ function LoadResultsMatrix(iDS, iResult)
     % Duplicate time if only one time frame
     if (size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,2) == 1)
         GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp = repmat(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp, [1 2]);
+        if isfield(FileMat, 'Std') && ~isempty(FileMat.Std) && (size(GlobalData.DataSet(iDS).Results(iResult).Std,2) == 1)
+            GlobalData.DataSet(iDS).Results(iResult).Std = repmat(GlobalData.DataSet(iDS).Results(iResult).Std, [1 2]);
+        end
     end
     % Common fields
     GlobalData.DataSet(iDS).Results(iResult).nComponents = FileMat.nComponents;
@@ -2189,17 +2192,35 @@ function [ResultsValues, nComponents, Std] = GetResultsValues(iDS, iResult, iVer
     % ===== GET RESULTS VALUES =====
     % === FULL RESULTS ===
     if ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
-        % Get ImageGridAmp interesting sub-part
-        if isempty(iRows)
-            ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
-            if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
+        % ImageGridAmp = [nSources, nTimes]
+        if isnumeric(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            % Get ImageGridAmp interesting sub-part
+            if isempty(iRows)
+                ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(:, iTime));
+                if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
+                    Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(:, iTime, :, :));
+                end
+            else
+                ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
+                if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
+                    Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
+                end
             end
-        else
-            ResultsValues = double(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp(iRows, iTime));
-            if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Std)
-                Std = double(GlobalData.DataSet(iDS).Results(iResult).Std(iRows, iTime, :, :));
+        % ImageGridAmp = {[nSources,a], [a,b], [b, nTimes]}
+        elseif iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            % Get ImageGridAmp interesting sub-part
+            ResultsValues = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+            assert(isempty(GlobalData.DataSet(iDS).Results(iResult).Std), 'Storing Std a cell is not supported yet.')
+            ResultsValues{end}   = ResultsValues{end}(:, iTime);
+
+            if ~isempty(iRows)
+                ResultsValues{1} = ResultsValues{1}(iRows, :);
             end
+            
+            % Compute full results
+            ResultsValues = double(bst_multiply_cellmat(ResultsValues));
+            % Std should be empty if ImageGridAmp is a cell
+            Std = [];
         end
     % === KERNEL ONLY ===
     elseif ~isempty(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel)
@@ -2586,13 +2607,29 @@ function DataMinMax = GetResultsMaximum(iDS, iResult) %#ok<DEFNU>
         [maxGFP, iMax] = max(GFP);
         % Get the results values at this particular time point
         sources = GetResultsValues(iDS, iResult, [], iMax);
+        % Store minimum and maximum of displayed data
+        DataMinMax = [min(sources(:)), max(sources(:))];
     % Full results
     else
-        % Get the maximum on the full results matrix
-        sources = GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp;
+        % Get the maximum on the full results matrix (process by time blocks)
+        nSamples = GlobalData.DataSet(iDS).Results(iResult).NumberOfSamples;
+        if isnumeric(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            nSources = size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp, 1);
+        elseif iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+            nSources = size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp{1}, 1);
+        end
+        ProcessOptions = bst_get('ProcessOptions');
+        MaxSizeDouble = ProcessOptions.MaxBlockSize;
+        blockSize  = max(floor(MaxSizeDouble / nSources), 1);
+        nBlocks    = ceil(nSamples / blockSize);
+        DataMinMax = [Inf, -Inf];
+        for iBlock = 1 : nBlocks
+            iTime = [((iBlock-1) * blockSize + 1) : min(iBlock * blockSize, nSamples)];
+            sources = GetResultsValues(iDS, iResult, [], iTime);
+            DataMinMax(1) = min(DataMinMax(1), min(sources(:)));
+            DataMinMax(2) = max(DataMinMax(2), max(sources(:)));
+        end
     end
-    % Store minimum and maximum of displayed data
-    DataMinMax = [min(sources(:)), max(sources(:))];
 end
 
 

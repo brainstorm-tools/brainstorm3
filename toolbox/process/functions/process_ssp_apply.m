@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.FileTag     = 'clean';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Artifacts';
-    sProcess.Index       = 113;
+    sProcess.Index       = 113.8;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutMindNeuromag?highlight=(Apply+SSP)#Remove:_60Hz_and_harmonics';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};

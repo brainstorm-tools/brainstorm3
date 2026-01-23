@@ -359,7 +359,7 @@ end
     if ~isempty(sStudy.HeadModel)
         [sStudy.HeadModel.NIRSMethod] = deal('');
     else
-        sStudy.Data = repmat(db_template('headmodel'), 0);
+        sStudy.HeadModel = repmat(db_template('headmodel'), 0);
     end
 end
 % Modification: Add 'NIRSMethod' to the Headmodel structure

@@ -1128,7 +1128,7 @@ function ManualCollect_Callback()
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Simulation or 3DScanner: call the callback directly
-    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
+    if DigitizeOptions.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         BytesAvailable_Callback([], []);
     % Else: Send a collection request to the Polhemus
     else
@@ -1965,7 +1965,7 @@ function BytesAvailable_Callback(h, ev)
     DigitizeOptions = bst_get('DigitizeOptions');
 
     % Simulate or 3DScanner: Do not read serial connection
-    if Digitize.Options.isSimulate || strcmpi(Digitize.Type, '3DScanner')
+    if DigitizeOptions.isSimulate || strcmpi(Digitize.Type, '3DScanner')
         if strcmpi(Digitize.Type, '3DScanner')
             % Get current 3D figure
             [hFig,~,iDS] = bst_figures('GetCurrentFigure', '3D');

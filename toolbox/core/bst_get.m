@@ -2525,12 +2525,12 @@ switch contextName
         if ~ismember('brainnetome', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
             sTemplates(end).Name = 'Brainnetome';
-            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+            sTemplates(end).Info = 'https://atlas.brainnetome.org/';
         end
         if ~ismember('brainnetome_leaddbs', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
             sTemplates(end).Name = 'Brainnetome_leaddbs';
-            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+            sTemplates(end).Info = 'https://atlas.brainnetome.org/';
         end
         if ~ismember('brodmann', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
@@ -2540,7 +2540,7 @@ switch contextName
         if ~ismember('hammers83', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
             sTemplates(end).Name = 'Hammers';
-            sTemplates(end).Info = 'http://brain-development.org/brain-atlases/adult-brain-atlases/';
+            sTemplates(end).Info = 'https://brain-development.org/brain-atlases/adult-brain-atlases/';
         end
         if ~ismember('neuromorphometrics', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
@@ -2867,6 +2867,20 @@ switch contextName
             argout1 = 5;
         end
         
+    case 'UseCrossPlatformJLF'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseCrossPlatformJLF')
+            argout1 = GlobalData.Preferences.UseCrossPlatformJLF;
+        else
+            argout1 = 0;
+        end
+
+    case 'ShowProcessTooltip'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowProcessTooltip')
+            argout1 = GlobalData.Preferences.ShowProcessTooltip;
+        else
+            argout1 = 0;
+        end
+
     case 'DisableOpenGL'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'DisableOpenGL')
             argout1 = GlobalData.Preferences.DisableOpenGL;
@@ -3875,7 +3889,7 @@ switch contextName
                     {'.txt'},          'Array of samples (*.txt)',     'ARRAY-SAMPLES'; ...
                     {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
                     {'.txt'},          'CTF Video Times (*.txt)',      'CTFVIDEO'; ...
-                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type (*_events.tsv)', 'BIDS'; ...
+                    {'_events.tsv'},   'BIDS events: onset, duration, trial_type, channel (*_events.tsv)', 'BIDS'; ...
                     };
             case 'channel'
                 argout1 = {...
@@ -3925,6 +3939,7 @@ switch contextName
                     {'*'},                         'EEG: ASCII: XYZ_World,Name (*.*)', 'ASCII_XYZN_WORLD'; ...
                     {'*'},                         'EEG: ASCII: Name,Theta,Phi (*.*)', 'ASCII_NTP'; ...
                     {'*'},                         'EEG: ASCII: Theta,Phi (*.*)',      'ASCII_TP'; ...
+                    {'_channels.tsv'},             'NIRS: BIDS channels.tsv, (*_channels.tsv)', 'BIDS-NIRS-CHANNEL'; ...
                     };
             case 'channelout'
                 argout1 = {...
@@ -3956,9 +3971,10 @@ switch contextName
                     {'.txt'}, 'EEG/NIRS: ASCII: XYZ_MNI,Name (*.txt)',    'ASCII_XYZN_MNI-EEG'; ...
                     {'.txt'}, 'EEG/NIRS: ASCII: XYZ_World,Name (*.txt)',  'ASCII_XYZN_WORLD-EEG'; ...
                     {'.txt'}, 'EEG/NIRS: Brainsight (*.txt)',             'BRAINSIGHT-TXT'; ...
-                    {'.tsv'}, 'NIRS: BIDS optrodes.tsv, subject space mm (*.tsv)',     'BIDS-NIRS-SCANRAS-MM'; ...
-                    {'.tsv'}, 'NIRS: BIDS optrodes.tsv, MNI space mm (*.tsv)',         'BIDS-NIRS-MNI-MM'; ...
-                    {'.tsv'}, 'NIRS: BIDS optrodes.tsv, ALS/SCS/CTF space mm (*.tsv)', 'BIDS-NIRS-ALS-MM'; ...
+                    {'_optodes.tsv'},  'NIRS: BIDS optodes.tsv, subject space mm (*.tsv)',     'BIDS-NIRS-SCANRAS-MM'; ...
+                    {'_optodes.tsv'},  'NIRS: BIDS optodes.tsv, MNI space mm (*.tsv)',         'BIDS-NIRS-MNI-MM'; ...
+                    {'_optodes.tsv'},  'NIRS: BIDS optodes.tsv, ALS/SCS/CTF space mm (*.tsv)', 'BIDS-NIRS-ALS-MM'; ...
+                    {'_channels.tsv'}, 'NIRS: BIDS channels.tsv, (*_channels.tsv)',            'BIDS-NIRS-CHANNEL'; ...
                     };
             case 'labelin'
                 argout1 = {...

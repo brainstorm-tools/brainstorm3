@@ -102,7 +102,7 @@ end
 
 %% ===== HEAD MODEL =====
 % Load FEM mesh
-FemMat = load(cfg.FemFile);
+FemMat = load(file_fullpath(cfg.FemFile));
 % Get mesh type
 switch size(FemMat.Elements,2)
     case 4,  ElementType = 'tetrahedron';

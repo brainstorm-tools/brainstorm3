@@ -47,6 +47,10 @@ end
 if (nargin < 3)
     % Read all fields
     HeadModel = load(HeadModelFile);
+    % Default structure
+    defMat = db_template('headmodelmat');
+    % Add file fields
+    HeadModel = struct_copy_fields(defMat, HeadModel, 1);
 else
     % Get fields to read
     FieldsToRead = varargin;

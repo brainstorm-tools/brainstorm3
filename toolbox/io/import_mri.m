@@ -72,10 +72,12 @@ else
 end
 % Volume type
 volType = 'MRI';
-if ~isempty(strfind(Comment, 'CT'))
+if ~isempty(Comment) && ~isempty(regexp(Comment, '^CT', 'once'))
+    Comment = regexprep(Comment, '^CT\s*', '');
     volType = 'CT';
 end
-if ~isempty(strfind(Comment, 'PET'))
+if ~isempty(Comment) && ~isempty(regexp(Comment, '^PET', 'once'))
+    Comment = regexprep(Comment, '^PET\s*', '');
     volType = 'PET';
 end
 % Get node comment from filename

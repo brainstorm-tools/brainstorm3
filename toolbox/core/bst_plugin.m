@@ -139,7 +139,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).URLzip         = 'https://github.com/fangq/brain2mesh/archive/master.zip';
-    PlugDesc(end).URLinfo        = 'http://mcx.space/brain2mesh/';
+    PlugDesc(end).URLinfo        = 'https://mcx.space/brain2mesh/';
     PlugDesc(end).TestFile       = 'brain2mesh.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
@@ -151,8 +151,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neuro.uni-jena.de/cat/';
+    PlugDesc(end).URLzip         = 'https://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
+    PlugDesc(end).URLinfo        = 'https://www.neuro.uni-jena.de/cat/';
     PlugDesc(end).TestFile       = 'cat_version.m';
     PlugDesc(end).ReadmeFile     = 'Contents.txt';
     PlugDesc(end).CompiledStatus = 0;
@@ -179,11 +179,11 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.8';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/refs/tags/v1.9.8.zip';
-    PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
@@ -202,6 +202,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_nmp_fetch_maps.m';
+    
+    % === ANATOMY: RESECTION IDENTIFICATION ===
+    PlugDesc(end+1)              = GetStruct('resection-identification');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_' OsType '.zip'];
+    PlugDesc(end).TestFile       = 'resection_identification';
+    if strcmp(OsType, 'win64')
+        PlugDesc(end).TestFile   = [PlugDesc(end).TestFile, '.bat'];
+    end
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
+    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).LoadFolders    = {'bin'};
 
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -230,6 +244,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).DeleteFiles    = {'.gitignore'};
 
 
+    % === ARTIFACTS: GEDAI ===
+    PlugDesc(end+1)              = GetStruct('gedai');
+    PlugDesc(end).Version        = 'main';
+    PlugDesc(end).Category       = 'Artifacts';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
+    PlugDesc(end).TestFile       = 'process_gedai.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).AutoLoad       = 0;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'.git', 'example data'};
+
+
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
     PlugDesc(end).Version        = '2.4.1';
@@ -255,7 +283,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     end
     PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
     PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''https://files.inria.fr/OpenMEEG/download/'', ''-browser'')'; ...
-                                    'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
+                                    'Download Visual C++', 'web(''https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'', ''-browser'')'; ...
                                     'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin', 'lib'};
@@ -285,6 +313,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).GetVersionFcn  = @be_versions;
     PlugDesc(end).DeleteFiles    = {'docs', '.github'};
     
+
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -442,7 +471,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('plexon');
     PlugDesc(end).Version        = '1.8.4';
     PlugDesc(end).Category       = 'I/O';
-    PlugDesc(end).URLzip         = 'https://plexon-prod.s3.amazonaws.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+    PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
     PlugDesc(end).TestFile       = 'plx_info.m';
     PlugDesc(end).ReadmeFile     = 'Change Log.txt';
@@ -497,6 +526,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).TestFile       = 'SimMEEG_GUI.m';
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
     PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).DownloadedFcn  = ['file_copy(  fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg_new.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''SimMEEG-master'', ''bst_simmeeg.m''));' ];
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
 
@@ -537,17 +568,20 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === STATISTICS: MVGC ===
     PlugDesc(end+1)              = GetStruct('mvgc');
-    PlugDesc(end).Version        = '1.3';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Statistics';
-    PlugDesc(end).URLzip         = 'https://github.com/lcbarnett/MVGC1/archive/refs/tags/v1.3.zip';
-    PlugDesc(end).URLinfo        = 'https://github.com/lcbarnett/MVGC1';
+    PlugDesc(end).URLzip         = 'https://github.com/brainstorm-tools/MVGC1/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/brainstorm-tools/MVGC1';
     PlugDesc(end).TestFile       = 'startup_mvgc.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {''};
-    PlugDesc(end).DeleteFiles    = {'testing', 'maintainer'};
-    PlugDesc(end).DownloadedFcn  = ['movefile(fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup.m''), ' ...
-                                    'fullfile(PlugDesc.Path, [''MVGC1-'', PlugDesc.Version], ''startup_mvgc.m''));'];
+    PlugDesc(end).DeleteFiles    = {'C', 'deprecated', 'utils/legacy', 'maintainer'};
+    PlugDesc(end).DownloadedFcn  = ['file_move(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''startup_mvgc.m''));' ...
+                                    'file_delete(fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''), 1);', ...
+                                    'file_copy(  fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo_statespace.m''), ' ...
+                                                'fullfile(PlugDesc.Path, ''MVGC1-master'', ''demo'', ''mvgc_demo.m''));' ];
     PlugDesc(end).LoadedFcn      = 'startup_mvgc;';
 
     % === STATISTICS: PICARD ===
@@ -566,7 +600,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = '1.0';
     PlugDesc(end).Category       = 'e-phys';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'http://packlab.mcgill.ca/despikingtoolbox.zip';
+    PlugDesc(end).URLzip         = 'https://packlab.mcgill.ca/despikingtoolbox.zip';
     PlugDesc(end).URLinfo        = 'https://journals.physiology.org/doi/full/10.1152/jn.00642.2010';
     PlugDesc(end).TestFile       = 'despikeLFP.m';
     PlugDesc(end).ReadmeFile     = 'readme.txt';
@@ -632,6 +666,24 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
+
+    % === EVENTS: CTAGGER ===
+    PlugDesc(end+1)              = GetStruct('ctagger');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Events';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/hed-standard/CTagger/archive/main.zip';
+    PlugDesc(end).URLinfo        = 'https://www.hed-resources.org/en/latest/CTaggerGuiTaggingTool.html';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).LoadedFcn      = @Configure;
+    PlugDesc(end).TestFile       = 'CTagger.jar';
+    PlugDesc(end).DeleteFiles    = {'assets', 'gradle', 'src', '.gradle', '.github', '.vscode', ...
+                                    'build.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat', ...
+                                    'settings.gradle', '.codeclimate.yml', '.gitignore'};
+
 
     % === fNIRS: NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -707,7 +759,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
+    PlugDesc(end).URLinfo        = 'https://www.neurotrack.fr/mia/';
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
@@ -719,7 +771,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).URLzip         = 'https://download.fieldtriptoolbox.org/fieldtrip-lite-20240405.zip';
-    PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
+    PlugDesc(end).URLinfo        = 'https://www.fieldtriptoolbox.org';
     PlugDesc(end).TestFile       = 'ft_defaults.m';
     PlugDesc(end).ReadmeFile     = 'README';
     PlugDesc(end).CompiledStatus = 2;
@@ -729,6 +781,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
                                     'ft_default = []; ' ...
                                     'clear ft_defaults; ' ...
+                                    'clear global defaults; ', ...
                                     'if exist(''filtfilt'', ''file''), ft_default.toolbox.signal=''matlab''; end; ' ...
                                     'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
                                     'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
@@ -988,6 +1041,18 @@ function Configure(PlugDesc)
             generateCore();
             % Restore current directory
             cd(curDir);           
+
+        case 'ctagger'
+            % Add .jar file to static classpath
+            if ~exist('TaggerLoader', 'class')
+                jarList = dir(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'CTagger.jar'));
+                jarPath = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, jarList(1).name);
+                disp(['BST> Adding to Java classpath: ' jarPath]);
+                warning off
+                javaaddpathstatic(jarPath);
+                javaaddpath(jarPath);
+                warning on
+            end
     end
 end
 
@@ -1022,7 +1087,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'spm12'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('http://www.fil.ion.ucl.ac.uk/spm/download/spm12_updates/');
+                s = bst_webread('https://www.fil.ion.ucl.ac.uk/spm/download/spm12_updates/');
                 if ~isempty(s)
                     n = regexp(s,'spm12_updates_r(\d.*?)\.zip','tokens','once');
                     if ~isempty(n) && ~isempty(n{1})
@@ -1032,7 +1097,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'cat12'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('http://www.neuro.uni-jena.de/cat12/');
+                s = bst_webread('https://www.neuro.uni-jena.de/cat12/');
                 if ~isempty(s)
                     n = regexp(s,'cat12_r(\d.*?)\.zip','tokens');
                     if ~isempty(n)
@@ -1299,6 +1364,12 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                     end
                 end
                 PlugDesc(iPlug).isManaged = 0;
+                % Look for process_* functions in the process folder
+                PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
+                if ~isempty(PlugProc)
+                    % Remove absolute path: use only path relative to the plugin Path
+                    PlugDesc(iPlug).Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
+                end
             end
             PlugDesc(iPlug).Path = PlugPath;
         % Plugin installed: Managed by Brainstorm
@@ -1460,8 +1531,8 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab and jsnirfy: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy')
+            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
@@ -1572,6 +1643,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         PlugDesc = [];
         return;
     end
+    % Backup calling progress bar;
+    isCallBar = bst_progress('isvisible');
+    if isCallBar
+        pBarParams = bst_progress('getbarparams');
+    end
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugName);
     if ~isempty(errMsg)
@@ -1591,10 +1667,21 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     % Compiled version
     isCompiled = bst_iscompiled();
-    if isCompiled && (PlugDesc.CompiledStatus == 0)
-        errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
-        return;
+    if isCompiled
+        % Needed FieldTrip and SPM functions are available in compiled version of Brainstorm. See bst_spmtrip.m
+        if ismember(PlugDesc.Name, {'fieldtrip', 'spm12'})
+            disp(['BST> Some functions of ' PlugDesc.Name ' are compiled with Brainstorm']);
+            isOk = 1;
+            errMsg = [];
+            return;
+        end
+        % Plugin is included in the compiled version
+        if PlugDesc.CompiledStatus == 0
+            errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
+            return;
+        end
     end
+
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
@@ -1867,6 +1954,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     bst_progress('removeimage');
     % Return success
     isOk = 1;
+    % Restore calling progress bar
+    if isCallBar
+        bst_progress('setbarparams', pBarParams);
+    end
 end
 
 
@@ -1987,6 +2078,9 @@ end
 % If multiple plugins provide the same functions (eg. FieldTrip and SPM): make sure at least one is installed
 % USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice', PlugNames, isInteractive)
 function [isOk, errMsg, PlugDesc] = InstallMultipleChoice(PlugNames, isInteractive)
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
     % Check if one of the plugins is loaded
     for iPlug = 1:length(PlugNames)
         PlugInst = GetInstalled(PlugNames{iPlug});
@@ -2266,10 +2360,19 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                 break;
             % Otherwise, check in any of the subfolders
             elseif ~isempty(PlugDesc.LoadFolders)
-                for iSubDir = 1:length(PlugDesc.LoadFolders)
-                    if file_exist(bst_fullfile(PlugPath, dirList(iDir).name, PlugDesc.LoadFolders{iSubDir}, PlugDesc.TestFile))
+                % All subfolders
+                if isequal(PlugDesc.LoadFolders, '*') || isequal(PlugDesc.LoadFolders, {'*'})
+                    if ~isempty(file_find(bst_fullfile(PlugPath, dirList(iDir).name), PlugDesc.TestFile))
                         PlugDesc.SubFolder = dirList(iDir).name;
                         break;
+                    end
+                % Specific subfolders
+                else
+                    for iSubDir = 1:length(PlugDesc.LoadFolders)
+                        if file_exist(bst_fullfile(PlugPath, dirList(iDir).name, PlugDesc.LoadFolders{iSubDir}, PlugDesc.TestFile))
+                            PlugDesc.SubFolder = dirList(iDir).name;
+                            break;
+                        end
                     end
                 end
             end
@@ -3289,10 +3392,16 @@ function SetProgressLogo(PlugDesc)
         if ischar(PlugDesc)
             PlugDesc = GetSupported(PlugDesc);
         end
-        % Set logo file
+        % Get logo if not defined in the plugin structure
         if isempty(PlugDesc.LogoFile)
             PlugDesc.LogoFile = GetLogoFile(PlugDesc);
         end
+        % Start progress bar if needed
+        isNewProgressBar = ~bst_progress('isVisible');
+        if isNewProgressBar
+            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
+        end
+        % Set logo file
         if ~isempty(PlugDesc.LogoFile)
             bst_progress('setimage', PlugDesc.LogoFile);
         end

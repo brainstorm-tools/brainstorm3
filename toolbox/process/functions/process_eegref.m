@@ -141,7 +141,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             % Get leadfield matrix
             sHeadModel = bst_get('HeadModelForStudy', iStudy);
             if isempty(sHeadModel) || isempty(sHeadModel.EEGMethod)
-                bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" requires requires a EEG head model.']);
+                bst_report('Error', sProcess, [], ['The montage "', 'Infinity reference (REST)', '" requires requires a EEG head model.']);
                 return
             end
             HeadModelMat = in_bst_headmodel(sHeadModel.FileName);

@@ -150,6 +150,8 @@ end
 %  ===========================================================================
 %% ===== FIGURE MOUSE DOWN =====
 function FigureMouseDownCallback(hFig, ev)
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % disp('Figure MouseDown')
 end
            

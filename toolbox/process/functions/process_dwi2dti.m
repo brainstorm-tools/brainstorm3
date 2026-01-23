@@ -61,7 +61,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Title
     sProcess.options.doc.Comment = ['<HTML><B>BrainSuite</B> must be installed on the computer,<BR>' ...
                                     'the command "bdp" must be available in the system path.<BR>' ...
-                                    'Website: http://brainsuite.org<BR><BR>'];
+                                    'Website: https://brainsuite.org<BR><BR>'];
     sProcess.options.doc.Type    = 'label';
     % Option: Subject name
     sProcess.options.subjectname.Comment = 'Subject name:';
@@ -176,7 +176,7 @@ function [bdp_exe, errMsg] = CheckBrainSuiteInstall()
         % Brainsuite is not installed
         if (status ~= 0)
             errMsg = ['BrainSuite is not installed on your computer.' 10 ...
-                      'Download it from http://brainsuite.org and install it.' 10 ...
+                      'Download it from https://brainsuite.org and install it.' 10 ...
                       'Then set its installation folder in the Brainstorm options (File > Edit preferences)'];
             return
         end

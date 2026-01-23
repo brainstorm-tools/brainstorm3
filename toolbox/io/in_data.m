@@ -420,8 +420,8 @@ if isRaw
         for iEvt = 1:length(sFile.events)
             evtSamples  = round(sFile.events(iEvt).times * sFile.prop.sfreq);
             readSamples = BlocksToRead(iFile).iTimes;
-            % If there are no occurrences, or if it the event of interest: skip to next event type
-            if isempty(evtSamples) || (strcmpi(ImportOptions.ImportMode, 'event') && any(strcmpi({ImportOptions.events.label}, sFile.events(iEvt).label)))
+            % If there are no occurrences
+            if isempty(evtSamples)
                 continue;
             end
             % Set the number of read samples for epochs
