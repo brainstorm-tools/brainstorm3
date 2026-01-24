@@ -4354,7 +4354,7 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
             new_labels{iLabel} = num2str(previous_tick(iLabel));
         end
 
-        hAxes.XTickLabel = new_labels;
+        xticklabels(hAxes, new_labels);   
         TsInfo.XMode = 'onset';
     % Display x-label as actual time HH:MM:SS
     else
