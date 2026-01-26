@@ -4371,7 +4371,7 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
             new_labels{iLabel} = char(previous_tick(iLabel));
         end
         
-        hAxes.XTickLabel = new_labels;
+        xticklabels(hAxes, new_labels); 
         TsInfo.XMode = 'time';
     end
     setappdata(hFig, 'TsInfo', TsInfo);
