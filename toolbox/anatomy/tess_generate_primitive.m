@@ -181,7 +181,7 @@ switch lower(primitiveShape)
         tsize = mean([p0, p1])/10; % maximum volume of the tetrahedral elements
         [vert,face] = meshabox(p0,p1,tsize);
         % Move to the new center
-        vert = vert + c0;
+        vert = (vert - mean(vert))+ c0;
 
     % Cylinder and cone
     case {'cylinder', 'cone'}
