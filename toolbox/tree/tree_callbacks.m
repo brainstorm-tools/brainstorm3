@@ -19,7 +19,7 @@ function jPopup = tree_callbacks( varargin )
 % Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
-% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
@@ -1322,6 +1322,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
+                    gui_component('MenuItem', jPopup, [], '=>Extract FEM tissues', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@extract_femlayers, iSubject, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));
