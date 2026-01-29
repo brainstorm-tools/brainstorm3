@@ -109,9 +109,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end  
         % Load Channel file
         sChannel = bst_get('ChannelForStudy', iStudy);
-        ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');             
+        ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');
+        % Find selected channels
+        iChannels = channel_find(ChannelMat.Channel, Modality);
+        if isempty(iChannels)
+            errMsg = ['Could not load any sensor for modality: ' Modality];
+            return;
+        end
+        % Get channel locations
+        channelLocs = [ChannelMat.Channel(iChannels).Loc]';
+
         % Compute exclusion zone
-        [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, ChannelMat, Modality, ExclusionRadius);
+        [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, channelLocs, Modality, ExclusionRadius);
         if ~isempty(errMsg)
             bst_report('Error', sProcess, [], errMsg);
             continue;
@@ -137,28 +146,20 @@ end
 
 
 %% ===== COMPUTE =====
-function [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, ChannelMat, Modality, ExclusionRadius)
-    % Computes the exclusion zone in the HeadmodelMat based on the sensor locations, and ExclusionRadius. Only for volumetric grids
-    
+function [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, Modality, ExclusionRadius)
+    % Computes the exclusion zone in the HeadmodelMat based on the sensor or 3d points locations, 
+    % and ExclusionRadius. Only for volumetric grids
     newHeadmodelMat = [];
     errMsg = '';
     % Check that is volumetric
     if ~strcmpi(HeadmodelMat.HeadModelType, 'volume')
         errMsg = 'Head model must be volumetric';
         return
-    end
-    % Find selected channels
-    iChannels = channel_find(ChannelMat.Channel, Modality);
-   if isempty(iChannels)
-        errMsg = ['Could not load any sensor for modality: ' Modality];
-        return;
-   end
-    % Get channel locations
-    channelLocs = [ChannelMat.Channel(iChannels).Loc]';
+    end 
     % Indices of grid points in exclusion zone
     iBadVertices = [];
-    for iLocation = 1 : size(channelLocs, 1)
-        iBadVerticesLoc = find(sqrt(sum(bst_bsxfun(@minus, HeadmodelMat.GridLoc, channelLocs(iLocation, :)) .^ 2, 2)) <= ExclusionRadius);
+    for iLocation = 1 : size(pointLocs, 1)
+        iBadVerticesLoc = find(sqrt(sum(bst_bsxfun(@minus, HeadmodelMat.GridLoc, pointLocs(iLocation, :)) .^ 2, 2)) <= ExclusionRadius);
         iBadVertices = [iBadVertices, iBadVerticesLoc'];
     end    
     if isempty(iBadVertices)
@@ -180,7 +181,8 @@ end
 
 %% ===== COMPUTE/INTERACTIVE =====
 function ComputeInteractive(HeadmodelFileName, Modality, iStudy)
-    windowTitle = 'Leadfield exclusion zone';
+    windowTitle = 'Leadfield exclusion zone';   
+    % Get file in database
     HeadmodelMat = in_bst_headmodel(HeadmodelFileName);
     % Check that is volumetric
     if ~strcmpi(HeadmodelMat.HeadModelType, 'volume')
@@ -200,13 +202,59 @@ function ComputeInteractive(HeadmodelFileName, Modality, iStudy)
         bst_error('You must define an exclusion distance greater than zero.', 'Leadfield exclusion zone', 0);
         return;
     end
+    % Ask user the how to define the exlusion zone
+    methods_str = {'Around the sensor positions from the channel file', 'Around the Selected surface from the Anatomy tab',...
+        'Around the 3D points Loaded from Matlab variable [Nx3 double]', };
+    ind = java_dialog('radio', 'Select the Exlusion Zone method:', 'Exlusion Method', [], methods_str, 1);
+    if isempty(ind)
+        return
+    end
+    % Select corresponding method name
+    switch (ind)
+        case 1,  Method = 'ChannelPosition';
+        case 2,  Method = 'BrainstormSurface';
+        case 3,  Method = 'MatlabVariable';
+    end
+
     % Start the progress bar
     bst_progress('start', windowTitle, 'Computing leadfield exclusion zone...');
-    % Load Channel file
-    sChannel = bst_get('ChannelForStudy', iStudy);
-    ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');             
+    switch (Method)
+        case 'ChannelPosition'
+            % Load Channel file
+            sChannel = bst_get('ChannelForStudy', iStudy);
+            ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');
+            % Find selected channels
+            iChannels = channel_find(ChannelMat.Channel, Modality);
+            if isempty(iChannels)
+                errMsg = ['Could not load any sensor for modality: ' Modality];
+                return;
+            end
+            % Get channel locations
+            pointLocs = [ChannelMat.Channel(iChannels).Loc]';
+        case 'BrainstormSurface'
+            % Ask for surface and allow user to select from combo list
+            % List of all the available surfaces in the subject database
+            sSubject = bst_get('Subject');
+            surfFileNames = {sSubject.Surface.FileName};
+            surfComments  = {sSubject.Surface.Comment};
+            % Ask user to select the Surface area
+            [surfSelectComment, isCancel] = java_dialog('combo', [...
+                'The exlusion zone can be defined by the vertices of a surface.' 10 ...
+                'Select the surface of the exlusion zone' 10], ...
+                'Exlusion from a specific surface', [], surfComments, surfComments{1});
+            if isempty(surfSelectComment) || isCancel
+                bst_progress('stop');
+                return
+            end
+            SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};
+            TessMat = in_tess_bst(SurfaceFile, 0);
+            pointLocs = TessMat.Vertices;
+        case 'MatlabVariable'
+            % can be read from var in the workspace
+            pointLocs = in_matlab_var();
+     end
     % Compute exclusion zone
-    [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, ChannelMat, Modality, ExclusionRadius);
+    [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, Modality, ExclusionRadius);
     if ~isempty(errMsg)
         bst_progress('stop');
         bst_error(errMsg, windowTitle, 0);
@@ -230,8 +278,8 @@ function usageHtmlText = GetUsageText(Modality)
     if nargin < 1 || isempty(Modality)
         Modality = '';
     end
-    usageHtmlText = ['Define the exclusion zone around the ' Modality ' sensors. <BR><BR>'  ...
-                     '<B>Warning</B> This approach will remove the leadfield vectors located near the sensors. <BR>' ...
+    usageHtmlText = ['Define the exclusion zone around the ' Modality ' sensors or the 3D points. <BR><BR>'  ...
+                     '<B>Warning</B> This approach will remove the leadfield vectors located near the sensors or selected 3D points. <BR>' ...
                      'This method also remove the sources located in the exlusion zone <BR>'...
-                     'The exclusion zone is defined by the distance from the sensors to the sources.'];
+                     'The exclusion zone is defined by the distance from the sensors/3D points to the sources.'];
 end
