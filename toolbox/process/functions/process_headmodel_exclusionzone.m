@@ -91,7 +91,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Keep only once each channel file
     iChanStudies = unique(iChanStudies);
     newDefaultHM = {}; % Pairs [iStudy, newHeadmodelFileName]
-
     % ===== COMPUTE EXCLUSION ZONE =====    
     % Start the progress bar
     bst_progress('start', 'Leadfield exclusion zone', 'Computing leadfield exclusion zone...', 0, 100);
@@ -118,7 +117,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Get channel locations
         channelLocs = [ChannelMat.Channel(iChannels).Loc]';
-
         % Compute exclusion zone
         [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, channelLocs, Modality, ExclusionRadius);
         if ~isempty(errMsg)
