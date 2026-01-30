@@ -113,8 +113,23 @@ bst_save(NewTessFile, NewTess, 'v7');
 NewTessFile = file_short(NewTessFile);
 % Get subject
 [sSubject, iSubject, iFirstSurf] = bst_get('SurfaceFile', TessFiles{1});
+% Get current default surface for type of TessFiles{1}
+SurfaceType = sSubject.Surface(iFirstSurf).SurfaceType;
+iDefaultSurf = sSubject.(['i' SurfaceType]);
+if ~isempty(iDefaultSurf)
+    defSurfFile = sSubject.Surface(iDefaultSurf).FileName;
+end
 % Register this file in Brainstorm database
-db_add_surface(iSubject, NewTessFile, NewTess.Comment, sSubject.Surface(iFirstSurf).SurfaceType);
+iNewSurface = db_add_surface(iSubject, NewTessFile, NewTess.Comment, SurfaceType);
+% Reset default surface for type of TessFiles{1}
+if ~isempty(iDefaultSurf)
+    sSubject = bst_get('Subject', iSubject);
+    iDefaultSurf = find(file_compare({sSubject.Surface.FileName}, defSurfFile), 1);
+    db_surface_default(iSubject, SurfaceType, iDefaultSurf, 1);
+    panel_protocols('UpdateNode', 'Subject', iSubject);
+end
+% Select result surface
+panel_protocols('SelectNode', [], lower(SurfaceType), iSubject, iNewSurface);
 % Close progress bar
 bst_progress('stop');
 
