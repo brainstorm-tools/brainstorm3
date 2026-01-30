@@ -1575,15 +1575,16 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     end
 end
 
+
+%% ===== EXTRACT LAYERS FROM FEM =====
 function NewFemFile = ExtractFemlayers(FemFile)
     % Ask user to select the layer to refine with panel_femselect
-    OPTIONS = gui_show_dialog('Refine FEM mesh', @panel_femselect, 1, [], FemFile);
-    if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect)
+    OPTIONS = gui_show_dialog('Extract layers', @panel_femselect, 1, [], FemFile);
     if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect) || all(OPTIONS.LayerSelect)
         return;
     end
     % Load FEM mesh
-    bst_progress('start', 'Convert FEM mesh', ['Loading file: "' FemFile '"...']);
+    bst_progress('start', 'Extract layers', ['Loading file: "' FemFile '"...']);
     FemFile = file_fullpath(FemFile);
     FemMat = load(FemFile);
     % Get tissues marked
@@ -1609,10 +1610,11 @@ function NewFemFile = ExtractFemlayers(FemFile)
         end
         return
     end
+    bst_progress('text', 'Removing isolated nodes...');
     [NewNode, NewElem] = removeisolatednode(FemMat.Vertices, [NewElem tissueId]);
     % Unload plugin: 'iso2mesh'
     bst_plugin('Unload', 'iso2mesh', 1);
-    % figure; plotmesh(NewNode, NewElem, 'x>0')
+    % New FEM file
     FemMat.Vertices = NewNode;
     FemMat.Elements = NewElem(:, 1:4);
     FemMat.Tissue = tissueId;
@@ -1633,14 +1635,12 @@ function NewFemFile = ExtractFemlayers(FemFile)
     FemMat = bst_history('add', FemMat, 'extract', ['Extracted layers: ', strjoin(tissueLabel, ', '), ' from: ' FemFile]);
     bst_progress('text', 'Saving new FEM mesh...');
     % Output filename
-    [fPath, fBase, fExt] = bst_fileparts(FemFile);
-    NewFile = file_unique(bst_fullfile(fPath, [fBase, '_merge', fExt]));
+    [~, iSubject] = bst_get('SurfaceFile', FemFile);
+    NewFemFile = file_unique(FemFile);
     % Save new surface in Brainstorm format
-    bst_progress('text', 'Saving new mesh...');
-    bst_save(NewFile, FemMat, 'v7');
+    bst_save(NewFemFile, FemMat, 'v7');
     % Add to database
-    [sSubject, iSubject] = bst_get('SurfaceFile', FemFile);
-    db_add_surface(iSubject, NewFile, FemMat.Comment);
+    db_add_surface(iSubject, NewFemFile, FemMat.Comment);
     % Close progress bar
     bst_progress('stop');
 end
