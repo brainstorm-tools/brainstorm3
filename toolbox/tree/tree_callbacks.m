@@ -1248,6 +1248,9 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
+                        if (length(bstNodes) == 2) % Only for two surfaces
+                            gui_component('MenuItem', jPopup, [], 'Surface Boolean operation', IconLoader.ICON_FUSION, [], @(h,ev)SurfaceBoolean(GetAllFilenames(bstNodes)));
+                        end
                     end
                 else
                     % === MENU: "ALIGN WITH MRI" ===
@@ -3548,6 +3551,19 @@ function SurfaceAverage(TessFiles)
         panel_protocols('SelectNode', [], NewFile);
     elseif ~isempty(errMsg)
         bst_error(errMsg, 'Average surfaces', 0);
+    end
+end
+
+%% ===== SURFACE BOOLEAN OPERATIONS =====
+function SurfaceBoolean(TessFiles)
+    % Surface Boolean files
+    [NewFile, errMsg] = tess_boolean(TessFiles);
+    % Select new file in the tree
+    if ~isempty(NewFile)
+        panel_protocols('SelectNode', [], NewFile);
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Surface Boolean operation', 0);
     end
 end
 
