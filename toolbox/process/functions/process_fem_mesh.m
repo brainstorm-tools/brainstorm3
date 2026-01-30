@@ -1629,6 +1629,9 @@ function NewFemFile = ExtractFemlayers(FemFile)
     if ~isempty(oldNvert)
         FemMat.Comment = strrep(FemMat.Comment, oldNvert{1}, sprintf('%dV', size(FemMat.Vertices, 1)));
     end
+    % Add history
+    FemMat = bst_history('add', FemMat, 'extract', ['Extracted layers: ', strjoin(tissueLabel, ', '), ' from: ' FemFile]);
+    bst_progress('text', 'Saving new FEM mesh...');
     % Output filename
     [fPath, fBase, fExt] = bst_fileparts(FemFile);
     NewFile = file_unique(bst_fullfile(fPath, [fBase, '_merge', fExt]));
