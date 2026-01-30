@@ -1,8 +1,8 @@
 function  [NewTessFile, errMsg] = tess_boolean(TessFiles, Operation)
-% TESS_BOOLEAN: Boolean combination of two surface meshes (triangulations).
+% TESS_BOOLEAN: Boolean operation of two surface meshes (triangulations).
 %
 % Performs a set-like boolean operation (union / intersection / difference)
-% between **two** input surface files (triangular meshes) using SURFBOOLEAN,
+% between two surface files (triangular meshes) using SURFBOOLEAN (ISO),
 % resolves intersections, and saves the resulting surface as a new Brainstorm
 % surface file registered in the database.
 %
@@ -11,28 +11,26 @@ function  [NewTessFile, errMsg] = tess_boolean(TessFiles, Operation)
 %
 % INPUT:
 %    - TessFiles  : 1x2 cell-array of full/relative paths to Brainstorm surface
-%                  files (.mat) that contain fields: Vertices (Nx3), Faces (Mx3)
-%                  Example: {surfFile1, surfFile2}
+%                   files (.mat) that contain fields: Vertices (Nx3), Faces (Mx3)
+%
 %    - Operation  : String specifying the boolean operation.
-%                  Supported values (aliases):
-%                     * 'or'   | 'union'        : surf1 U surf2 (outer surface)
-%                     * 'and'  | 'inter'        : surf1 ∩ surf2
-%                     * 'diff' | '-'            : surf1 - surf2
-%                  If empty or not provided, a GUI dialog prompts the user.
+%                   Supported values (aliases):
+%                   'or'   | 'union'        : surf1 U surf2 (outer surface)
+%                   'and'  | 'inter'        : surf1 ∩ surf2
+%                   'diff' | '-'            : surf1 - surf2
+%                   ''     | []             : Ask user (Default)
 %
 % OUTPUT:
 %    - NewTessFile : Filename (database-relative) of the newly created surface.
-%                   Empty if the operation is cancelled or fails.
+%                    Empty if the operation is cancelled or fails.
 %    - errMsg      : Error message string (empty if successful).
 %
 % NOTES:
 %    - This function currently supports **exactly two** input surfaces.
 %    - The output may be empty (eg. no intersection); in this case an error is returned.
-%    - Output is saved next to the first input surface as: tess_<operation>*.mat
+%    - Output is saved within the Subject for TessFiles{1} as: tess_<operation>*.mat
 %      and is added to the Brainstorm database with the same SurfaceType as TessFiles{1}.
 %
-% DEPENDENCIES:
-%    - surfboolean()  (Iso2mesh @Qianqian Fang) for mesh boolean operations
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -57,8 +55,11 @@ function  [NewTessFile, errMsg] = tess_boolean(TessFiles, Operation)
 NewTessFile = [];
 errMsg = [];
 
-% Initialize new structure
-NewTess = db_template('surfacemat');
+% Verify number of input surfaces
+if length(TessFiles) > 2
+    errMsg = 'This function suports only 2 input surfaces';
+    return;
+end
 
 % Parse inputs
 if (nargin < 2) || isempty(Operation)
@@ -66,10 +67,10 @@ if (nargin < 2) || isempty(Operation)
 end
 
 %% ===== USER INTERACTION =====
-if (nargin < 2) || isempty(Operation)
+if isempty(Operation)
     operation_str = {'union (surf1 U surf2)', 'intersection (surf1 ∩ surf2)', 'difference (surf1 - surf2)'};
     % Ask method
-    ind = java_dialog('radio', 'Select the boolean operation:', 'surface boolean operation', [], operation_str, 1);
+    ind = java_dialog('radio', 'Select the Boolean operation:', 'Surface Boolean operation', [], operation_str, 1);
     if isempty(ind)
         return
     end
@@ -82,34 +83,23 @@ if (nargin < 2) || isempty(Operation)
 end
 
 % Progress bar
-bst_progress('start', 'Boolean Operation', operation_str{ind});
+bst_progress('start', 'Boolean operation', 'Loading surfaces...');
 
-% Process all the files to process
-if length(TessFiles) > 2
-    errMsg = 'This function suports only 2 input surfaces';
-    return;
-end
-% load the surfaces
+% Load the surfaces
 tess1 = in_tess_bst(TessFiles{1});
 tess2 = in_tess_bst(TessFiles{2});
-% apply boolean operation
+% Boolean operation
+bst_progress('start', 'Boolean operation', ['Computing ' operation_str{ind}]);
 [no, fc] = surfboolean( tess1.Vertices, tess1.Faces, operation,  tess2.Vertices, tess2.Faces);
 if isempty(no)
-        errMsg = ['The output of this operation is empty'];
+        errMsg = 'The output of this operation is empty';
     return;
 end
-% To check
-% figure
-% plotmesh(no, fc,  'facealpha', 0.4)
-% % [nocyl1, fccyl1] = removeisolatednode(no, fc(:, 1:3));
-% [nocyl2, fccyl2] = meshcheckrepair(nocyl1, fccyl1);
-
+% Initialize new structure
+NewTess = db_template('surfacemat');
 NewTess.Vertices = no;
 NewTess.Faces    = fc;
-NewTess.Atlas    = [];
-NewTess.iAtlas   = 0;
-NewTess.History  = [];
-% History: Merged surface #i
+% History: Result surface
 NewTess = bst_history('add', NewTess, 'boolean', sprintf('Boolean: [%s] %s [%s]', tess1.Comment, operation, tess2.Comment ));
 NewTess.Comment = operation_str{ind};
 
