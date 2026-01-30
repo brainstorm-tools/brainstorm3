@@ -1247,8 +1247,8 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
-                        if (length(bstNodes) == 2) % only two surface
-                            gui_component('MenuItem', jPopup, [], 'Surface Boolean Operations',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceBoolean(GetAllFilenames(bstNodes)));
+                        if (length(bstNodes) == 2) % Only for two surfaces
+                            gui_component('MenuItem', jPopup, [], 'Surface Boolean operation', IconLoader.ICON_FUSION, [], @(h,ev)SurfaceBoolean(GetAllFilenames(bstNodes)));
                         end
                     end
                 else
@@ -3561,7 +3561,7 @@ function SurfaceBoolean(TessFiles)
         panel_protocols('SelectNode', [], NewFile);
     end
     if ~isempty(errMsg)
-        bst_error(errMsg, 'boolean operations', 0);
+        bst_error(errMsg, 'Surface Boolean operation', 0);
     end
 end
 
