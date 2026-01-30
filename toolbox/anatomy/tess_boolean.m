@@ -88,13 +88,21 @@ bst_progress('start', 'Boolean operation', 'Loading surfaces...');
 % Load the surfaces
 tess1 = in_tess_bst(TessFiles{1});
 tess2 = in_tess_bst(TessFiles{2});
+% Install/load required plugin: 'iso2mesh'
+[isOk, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+if ~isOk
+    errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
+    return
+end
 % Boolean operation
 bst_progress('start', 'Boolean operation', ['Computing ' operation_str{ind}]);
 [no, fc] = surfboolean( tess1.Vertices, tess1.Faces, operation,  tess2.Vertices, tess2.Faces);
 if isempty(no)
-        errMsg = 'The output of this operation is empty';
-    return;
+    errMsg = 'The output of this operation is empty';
+    return
 end
+% Unload plugin: 'iso2mesh'
+bst_plugin('Unload', 'iso2mesh', 1);
 % Initialize new structure
 NewTess = db_template('surfacemat');
 NewTess.Vertices = no;

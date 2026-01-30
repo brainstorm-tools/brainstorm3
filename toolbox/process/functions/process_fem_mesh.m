@@ -1601,14 +1601,10 @@ function NewFemFile = ExtractFemlayers(FemFile)
         end
     end
     NewElem = FemMat.Elements(selectedElementIndex, :);
-    % === Install/load required plugin: 'iso2mesh'
-    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
-    if ~isInstalled
-        errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
-        if isInteractive
-            bst_error(errMsg);
-        end
-        return
+    % Install/load required plugin: 'iso2mesh'
+    [isOk, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+    if ~isOk
+        error(['Could not install or load plugin: iso2mesh' 10 errMsg]);
     end
     bst_progress('text', 'Removing isolated nodes...');
     [NewNode, NewElem] = removeisolatednode(FemMat.Vertices, [NewElem tissueId]);
