@@ -6,6 +6,7 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
+%             NewFemFile = process_fem_mesh('ExtractFemlayers', FemFile)
 %  [sSubject, T1File, T2File, errMsg] = process_fem_mesh('GetT1T2', iSubject, iMris=[])
 
 % @=============================================================================
@@ -404,28 +405,32 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             listPointasSeed = bst_bsxfun(@minus, listPointasSeed, [0 0.002 0]);
             listPointasSeed(1,:) = center_inner;
             disp(' ');
-            % Merge all the surfaces
-            bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
-            switch (OPTIONS.MergeMethod)
-                % Faster and simpler: Simple concatenation without intersection checks
-                case 'mergemesh'
-                    % Concatenate meshes
-                    [newnode, newelem] = mergemesh(bemMerge{:});
-                    % Remove duplicated elements
-                    % newelem = unique(sort(newelem,2),'rows');
-                % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
-                case 'mergesurf'
-                    try
-                        [newnode, newelem] = mergesurf(bemMerge{:});
-                    catch
-                        errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
-                        bst_progress('stop');
-                        return;
-                    end
-                otherwise
-                    error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+            if nBem >= 2
+                % Merge all the surfaces
+                bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
+                switch (OPTIONS.MergeMethod)
+                    % Faster and simpler: Simple concatenation without intersection checks
+                    case 'mergemesh'
+                        % Concatenate meshes
+                        [newnode, newelem] = mergemesh(bemMerge{:});
+                        % Remove duplicated elements
+                        % newelem = unique(sort(newelem,2),'rows');
+                        % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
+                    case 'mergesurf'
+                        try
+                            [newnode, newelem] = mergesurf(bemMerge{:});
+                        catch
+                            errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
+                            bst_progress('stop');
+                            return;
+                        end
+                    otherwise
+                        error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+                end
+            else
+                newnode = bemMerge{1};
+                newelem = bemMerge{2};
             end
-
             % Find the intersection between the vertical axis (from the head center to the vertex) and all the BEM layers
             regions = listPointasSeed;
             % Create tetrahedral mesh
@@ -545,26 +550,31 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
             end
             disp(' ');
-            % Merge all the surfaces
-            bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
-            switch (OPTIONS.MergeMethod)
-                % Faster and simpler: Simple concatenation without intersection checks
-                case 'mergemesh'
-                    % Concatenate meshes
-                    [newnode, newelem] = mergemesh(bemMerge{:});
-                    % Remove duplicated elements
-                    % newelem = unique(sort(newelem,2),'rows');
-                % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
-                case 'mergesurf'
-                    try
-                        [newnode, newelem] = mergesurf(bemMerge{:});
-                    catch
-                        errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
-                        bst_progress('stop');
-                        return;
-                    end
-                otherwise
-                    error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+            if nBem >= 2
+                % Merge all the surfaces
+                bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
+                switch (OPTIONS.MergeMethod)
+                    % Faster and simpler: Simple concatenation without intersection checks
+                    case 'mergemesh'
+                        % Concatenate meshes
+                        [newnode, newelem] = mergemesh(bemMerge{:});
+                        % Remove duplicated elements
+                        % newelem = unique(sort(newelem,2),'rows');
+                        % Slower and more robust: Concatenates and checks for intersections (split intersecting elements)
+                    case 'mergesurf'
+                        try
+                            [newnode, newelem] = mergesurf(bemMerge{:});
+                        catch
+                            errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
+                            bst_progress('stop');
+                            return;
+                        end
+                    otherwise
+                        error(['Invalid merge method: ' OPTIONS.MergeMethod]);
+                end
+            else
+                newnode = bemMerge{1};
+                newelem = bemMerge{2};
             end
             % Center of the head = barycenter of the innermost BEM layer (hopefully the inner skull?)
             center_inner = mean(bemMerge{1}, 1);
@@ -1381,18 +1391,20 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case 'iso2mesh-2021'
-            % Ask merging method
-            res = java_dialog('question', [...
-                '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
-                '<B>MergeMesh</B>: Default option (faster).<BR>' ...
-                'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
-                '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
-                'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
-                ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
-            if isempty(res)
-                return
+            if length(BemFiles) >= 2
+                % Ask merging method
+                res = java_dialog('question', [...
+                    '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
+                    '<B>MergeMesh</B>: Default option (faster).<BR>' ...
+                    'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
+                    '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
+                    'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
+                    ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
+                if isempty(res)
+                    return
+                end
+                OPTIONS.MergeMethod = lower(res);
             end
-            OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
             res = java_dialog('input', {['Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):'], 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
@@ -1409,18 +1421,20 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             end
             
         case 'iso2mesh'
-            % Ask merging method
-            res = java_dialog('question', [...
-                '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
-                '<B>MergeMesh</B>: Default option (faster).<BR>' ...
-                'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
-                '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
-                'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
-                ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
-            if isempty(res)
-                return
+            if length(BemFiles) >=2
+                % Ask merging method
+                res = java_dialog('question', [...
+                    '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
+                    '<B>MergeMesh</B>: Default option (faster).<BR>' ...
+                    'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
+                    '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
+                    'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
+                    ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
+                if isempty(res)
+                    return
+                end
+                OPTIONS.MergeMethod = lower(res);
             end
-            OPTIONS.MergeMethod = lower(res);
             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
@@ -1559,4 +1573,74 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     elseif (elemSize.size(2) == 4)
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
+end
+
+
+%% ===== EXTRACT LAYERS FROM FEM =====
+function NewFemFile = ExtractFemlayers(FemFile)
+    % Ask user to select the layer to refine with panel_femselect
+    OPTIONS = gui_show_dialog('Extract layers', @panel_femselect, 1, [], FemFile);
+    if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect) || all(OPTIONS.LayerSelect)
+        return;
+    end
+    % Load FEM mesh
+    bst_progress('start', 'Extract layers', ['Loading file: "' FemFile '"...']);
+    FemFile = file_fullpath(FemFile);
+    FemMat = load(FemFile);
+    % Get tissues marked
+    selectedTissue = find(OPTIONS.LayerSelect);
+    selectedElementIndex = [];
+    tissueId = [];
+    tissueLabel = {};
+    if ~isempty(selectedTissue)
+        for iTissue = 1 : length(selectedTissue)
+            tmpIndx = find(FemMat.Tissue == selectedTissue(iTissue));
+            selectedElementIndex = [selectedElementIndex; tmpIndx];
+            tissueId = [tissueId; repmat(iTissue, length(tmpIndx),1)];
+            tissueLabel{iTissue} =  FemMat.TissueLabels{selectedTissue(iTissue)};
+        end
+    end
+    NewElem = FemMat.Elements(selectedElementIndex, :);
+    % === Install/load required plugin: 'iso2mesh'
+    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+    if ~isInstalled
+        errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
+        if isInteractive
+            bst_error(errMsg);
+        end
+        return
+    end
+    bst_progress('text', 'Removing isolated nodes...');
+    [NewNode, NewElem] = removeisolatednode(FemMat.Vertices, [NewElem tissueId]);
+    % Unload plugin: 'iso2mesh'
+    bst_plugin('Unload', 'iso2mesh', 1);
+    % New FEM file
+    FemMat.Vertices = NewNode;
+    FemMat.Elements = NewElem(:, 1:4);
+    FemMat.Tissue = tissueId;
+    FemMat.TissueLabels = tissueLabel;
+    % Edit file comment: number of layers
+    oldNlayers = regexp(FemMat.Comment, '\d+ layers', 'match');
+    if ~isempty(oldNlayers)
+        FemMat.Comment = strrep(FemMat.Comment, oldNlayers{1}, sprintf('%d layers', length(FemMat.TissueLabels)));
+    else
+        FemMat.Comment = sprintf('%s (%d layers)', str_remove_parenth(FemMat.Comment), length(FemMat.TissueLabels));
+    end
+    % Edit file comment: number of nodes
+    oldNvert = regexp(FemMat.Comment, '\d+V', 'match');
+    if ~isempty(oldNvert)
+        FemMat.Comment = strrep(FemMat.Comment, oldNvert{1}, sprintf('%dV', size(FemMat.Vertices, 1)));
+    end
+    % Add history
+    FemMat = bst_history('add', FemMat, 'extract', ['Extracted layers: ', strjoin(tissueLabel, ', '), ' from: ' FemFile]);
+    bst_progress('text', 'Saving new FEM mesh...');
+    % Output filename
+    [~, iSubject] = bst_get('SurfaceFile', FemFile);
+    NewFemFile = file_unique(FemFile);
+    % Save new surface in Brainstorm format
+    bst_save(NewFemFile, FemMat, 'v7');
+    % Add to database
+    db_add_surface(iSubject, NewFemFile, FemMat.Comment);
+    % Close progress bar
+    bst_progress('stop');
 end

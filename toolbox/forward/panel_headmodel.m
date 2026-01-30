@@ -686,7 +686,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                 errMessage = 'No FEM head model available for this subject.';
                 return;
             end
-            OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM(1)).FileName);
+            OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM(1)).FileName;
             % Interactive interface to set the OpenMEEG options
             if OPTIONS.Interactive
                 DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);

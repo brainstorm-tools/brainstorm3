@@ -581,7 +581,8 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
-                    
+                    gui_component('MenuItem', jPopup, [], 'Generate primitive surface', IconLoader.ICON_SURFACE, [],@(h,ev)bst_call(@tess_generate_primitive, iSubject, []));
+                    AddSeparator(jPopup);
                     % === ANATOMY TEMPLATE ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
@@ -1324,6 +1325,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
+                    gui_component('MenuItem', jPopup, [], 'Extract layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ExtractFemlayers', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));

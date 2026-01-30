@@ -3,7 +3,7 @@ function out_events_anywave( sFile, EventsFile )
 %
 % USAGE:  out_events_anywave( sFile, EventsFile )
 %
-% REFERENCE: https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
+% REFERENCE: https://web.archive.org/web/20221122022800/https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,18 +24,21 @@ function out_events_anywave( sFile, EventsFile )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2022
+%          Raymundo Cassani, 2026
 
 % Concatenate all the events together
 allTime = zeros(2,0);
 allInd = [];
 allChan = {};
 for i = 1:length(sFile.events)
+    % Convert event real timings to latencies from the first sample in the file
+    % https://web.archive.org/web/20221122022800/https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
     % Simple events
     if (size(sFile.events(i).times, 1) == 1)
-        allTime = [allTime, [sFile.events(i).times; 0*sFile.events(i).times]];
+        allTime = [allTime, [sFile.events(i).times - sFile.prop.times(1); 0*sFile.events(i).times]];
     % Extented events
     elseif (size(sFile.events(i).times, 1) == 2)
-        allTime = [allTime, sFile.events(i).times];
+        allTime = [allTime, sFile.events(i).times - sFile.prop.times(1)];
     end
     allInd = [allInd, repmat(i, 1, size(sFile.events(i).times,2))];
     if iscell(sFile.events(i).channels) && (size(sFile.events(i).channels,1) == 1) && (size(sFile.events(i).channels,2) == size(sFile.events(i).times,2))

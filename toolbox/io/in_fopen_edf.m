@@ -206,8 +206,19 @@ sFile.header = hdr;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
 % Acquisition date
-sFile.acq_date = str_date(hdr.startdate);
+acq_date = datetime([ hdr.startdate, ' ', hdr.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
 
+% In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem. 
+% So, the years 1985-1999 must be represented by yy=85-99 and the years 2000-2084 by yy=00-84. 
+% After 2084, yy must be 'yy' and only item 4 of this paragraph defines the date.
+if year(acq_date) >= 85
+    acq_date.Year = 1900 + year(acq_date);
+else
+    acq_date.Year = 2000 + year(acq_date);
+end
+
+acq_date.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+sFile.acq_date = char(acq_date);
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====
