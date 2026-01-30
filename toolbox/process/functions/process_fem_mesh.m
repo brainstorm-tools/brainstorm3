@@ -1578,7 +1578,8 @@ end
 function NewFemFile = ExtractFemlayers(FemFile)
     % Ask user to select the layer to refine with panel_femselect
     OPTIONS = gui_show_dialog('Refine FEM mesh', @panel_femselect, 1, [], FemFile);
-    if isempty(OPTIONS)
+    if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect)
+    if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect) || all(OPTIONS.LayerSelect)
         return;
     end
     % Load FEM mesh
