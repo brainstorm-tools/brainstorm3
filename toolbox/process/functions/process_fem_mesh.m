@@ -1600,7 +1600,18 @@ function NewFemFile = ExtractFemlayers(FemFile)
         end
     end
     NewElem = FemMat.Elements(selectedElementIndex, :);
+    % === Install/load required plugin: 'iso2mesh'
+    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+    if ~isInstalled
+        errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
+        if isInteractive
+            bst_error(errMsg);
+        end
+        return
+    end
     [NewNode, NewElem] = removeisolatednode(FemMat.Vertices, [NewElem tissueId]);
+    % Unload plugin: 'iso2mesh'
+    bst_plugin('Unload', 'iso2mesh', 1);
     % figure; plotmesh(NewNode, NewElem, 'x>0')
     FemMat.Vertices = NewNode;
     FemMat.Elements = NewElem(:, 1:4);
