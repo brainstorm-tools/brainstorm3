@@ -228,7 +228,7 @@ acq_date.Format = 'dd-MMM-yyyy';
 sFile.acq_date = char(acq_date);
 % Timestamp for 0s
 t0 = datetime([sFile.acq_date, ' ', hdr.starttime], 'InputFormat', 'dd-MMM-yyyy HH.mm.ss');
-t0.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+t0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
 sFile.t0 = char(t0);
 
 

@@ -353,7 +353,7 @@ if isRaw
         end
         % Update t0 for imported data file
         if ~isempty(sFile.t0) && (BlocksToRead(iFile).TimeZero ~= 0)
-            ts0 = datetime(sFile.t0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss');
+            ts0 = datetime(sFile.t0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
             ts0 = ts0 + seconds(BlocksToRead(iFile).TimeZero);
             ts0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
             t0 = char(ts0);

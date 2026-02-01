@@ -87,7 +87,7 @@ sFile.acq_date = str_date(header.res4.data_date);
 sFile.t0 = '';
 if isfield(header.res4, 'data_time') && ~isempty(header.res4.data_time)
     t0 = datetime([sFile.acq_date, ' ', deblank(header.res4.data_time)], 'InputFormat', 'dd-MMM-yyyy HH:mm');
-    t0.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+    t0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
     sFile.t0 = char(t0);
 end
 
