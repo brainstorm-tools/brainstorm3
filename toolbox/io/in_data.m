@@ -145,6 +145,17 @@ if isRaw
         case 'epoch'
             % If all data sets have the same comment: consider them as trials
             isTrials = (length(sFile.epochs) > 1) && all(strcmpi({sFile.epochs.label}, sFile.epochs(1).label));
+            % Rebuild epoch sample offsets for this file
+            for ieph = 1:length(ImportOptions.iEpochs)
+                nSamples = round((sFile.epochs(ieph).times(2) - sFile.epochs(ieph).times(1)) .* sFile.prop.sfreq) + 1;
+                if (ieph == 1)
+                    epochSmp = [0, nSamples-1];
+                else
+                    epochSmp = [epochSmp; epochSmp(ieph-1,2) + [1, nSamples]];
+                end
+            end
+            % Epoch beginning times
+            epochStartTimes = epochSmp(:,1) ./ sFile.prop.sfreq;
             % Loop on all epochs
             for ieph = 1:length(ImportOptions.iEpochs)
                 % Get epoch number
@@ -154,6 +165,7 @@ if isRaw
                 BlocksToRead(end).Comment    = sFile.epochs(iEpoch).label;
                 BlocksToRead(end).TimeOffset = 0;
                 BlocksToRead(end).ImportTime = sFile.epochs(iEpoch).times;
+                BlocksToRead(end).TimeZero   = epochStartTimes(ieph);
                 % Copy optional fields
                 if isfield(sFile.epochs(iEpoch), 'bad') && (sFile.epochs(iEpoch).bad == 1)
                     BlocksToRead(end).isBad = 1;
