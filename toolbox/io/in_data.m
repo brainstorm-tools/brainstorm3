@@ -203,6 +203,7 @@ if isRaw
                 BlocksToRead(end).iTimes     = smpBlock;
                 BlocksToRead(end).FileTag    = sprintf('block%03d', iBlock);
                 BlocksToRead(end).TimeOffset = 0;
+                BlocksToRead(end).TimeZero   = 0;
                 % Build comment (seconds or miliseconds)
                 BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
                 if (BlocksToRead(end).ImportTime(2) > 2)
