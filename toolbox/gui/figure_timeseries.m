@@ -4367,10 +4367,6 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
             return
         end
         start_file = datetime(GlobalData.DataSet(iDS).Measures.sFile.t0);
-        if isempty(start_file)
-            start_file = datetime('17:00:00', 'InputFormat','HH:mm:ss');
-        end
-    
         previous_tick = start_file + duration(0, 0, hAxes.XTick);
         previous_tick.Format = 'HH:mm:ss';
         
