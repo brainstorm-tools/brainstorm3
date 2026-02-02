@@ -2505,6 +2505,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isT0 = ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
@@ -2542,25 +2543,29 @@ function DisplayConfigMenu(hFig, jParent)
         end
 
     % === X-AXIS ===
-    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+    if isRaw || isT0 || strcmpi(FigureId.Type, 'Spectrum')
         % Menu name
         if strcmpi(FigureId.Type, 'Spectrum')
             strX = 'Frequency';
         else
             strX = 'Time';
         end
+        % Time axis options
         jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
-        % Axis resolution
         if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
-
-            switch (TsInfo.XMode)
-                case 'onset'
-                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'time'));
-                case 'time'
-                    gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'onset'));
-
+            % Axis resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+            % Tick label mode
+            if isT0
+                switch (TsInfo.XMode)
+                    case 'onset'
+                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'time'));
+                    case 'time'
+                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'onset'));
+                end
             end
         end
         % Log scale
@@ -4358,7 +4363,10 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
         TsInfo.XMode = 'onset';
     % Display x-label as actual time HH:MM:SS
     else
-        start_file = datetime(GlobalData.DataSet(iDS).Measures.sFile.acq_date);
+        if isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+            return
+        end
+        start_file = datetime(GlobalData.DataSet(iDS).Measures.sFile.t0);
         if isempty(start_file)
             start_file = datetime('17:00:00', 'InputFormat','HH:mm:ss');
         end

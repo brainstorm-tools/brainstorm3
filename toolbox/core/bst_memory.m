@@ -687,7 +687,7 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             bst_save(file_fullpath(DataFile), DataMat, 'v6', 1);
         end
     else
-        MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits');
+        MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits', 'T0');
         Time = MeasuresMat.Time;
         % Duplicate time if only one time frame
         if (length(Time) == 1)
@@ -700,6 +700,10 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile.events = MeasuresMat.Events;
         else
             sFile.events = repmat(db_template('event'), 0);
+        end
+        % Store timestamp for time 0s
+        if isfield(MeasuresMat, 'T0')
+            sFile.t0 = MeasuresMat.T0;
         end
         sFile.format       = 'BST';
         sFile.filename     = DataFile;
