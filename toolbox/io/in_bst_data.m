@@ -88,6 +88,11 @@ if isRaw && ismember('Time', FieldsToRead)
     DataMat.Time = panel_time('GetRawTimeVector', DataMat.F);
 end
 
+% ===== RAW: MISSING FIELD t0 IN F =====
+if isRaw && ismember('F', FieldsToRead) && ~isfield(DataMat.F, 't0')
+    DataMat.F.t0 = [];
+end
+
 % ===== MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
     if ~isfield(DataMat, FieldsToRead{i}) || isempty(DataMat.(FieldsToRead{i}))
