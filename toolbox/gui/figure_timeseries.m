@@ -128,7 +128,6 @@ function CurrentTimeChangedCallback(iDS, iFig)
         % Move text cursor to current time frame
         set(DisplayHandles(1).hTextCursor, 'String', textCursor);
     end
-    UpdateLabelXAxis(iDS, iFig);
 end
 
 
@@ -923,6 +922,7 @@ function FigureMouseWheelCallback(hFig, event)
     % Regular scroll
     else
         FigureScroll(hFig, event.VerticalScrollCount, 'horizontal');
+        UpdateXAxisTimeLabels(hFig, 'update');
     end
 end
 
@@ -1525,14 +1525,8 @@ function FigureKeyPressedCallback(hFig, ev)
             end
         % CTRL+X : Toogle time X axis mode
         case 'x'
-            if isControl && isFullDataFile && ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
-                TsInfo = getappdata(hFig, 'TsInfo');
-                if isempty(TsInfo.TimestampZero)
-                    nextTimeZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
-                else
-                    nextTimeZero = [];
-                end
-                UpdateLabelXAxis(iDS, iFig, nextTimeZero)
+            if isControl && isFullDataFile
+                UpdateXAxisTimeLabels(hFig, 'toggle')
             end
         % Y : Scale to fit Y axis
         case 'y'
@@ -2574,13 +2568,11 @@ function DisplayConfigMenu(hFig, jParent)
             % Time display mode
             if isT0
                 if isempty(TsInfo.TimestampZero)
-                    strTime = 'Change to absolute time (HH:MM:ss)';
-                    nextTimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+                    strTime = 'Display time as absolute time (HH:MM:ss)';
                 else
-                    strTime = 'Change to relative time';
-                    nextTimestampZero = [];
+                    strTime = 'Display time as relative time';
                 end
-                jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, nextTimestampZero));
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
             end
         end
@@ -3189,6 +3181,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
             PlotRawTimeBar(iDS, iFig);
         end
     end
+
+    % ===== UPDATE X AXIS TIME DISPLAY =====
+    UpdateXAxisTimeLabels(hFig, 'update');
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if ~TsInfo.NormalizeAmp && strcmpi(TsInfo.DisplayMode, 'column') && (nAxes == 1)
@@ -4349,43 +4345,47 @@ end
 
 
 %% ===== UPDATE X AXIS TIME DISPLAY =====
-function UpdateLabelXAxis(iDS, iFig, nextTimestampZero)
+function UpdateXAxisTimeLabels(hFig, action)
     global GlobalData;
 
+    if nargin < 2 || isempty(action)
+        action = 'update';
+    end
+
     % Get current figure structure
-    hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
+    [hFig, ~, iDS] = bst_figures('GetFigure', hFig);
     hAxes = findobj(hFig, 'Tag', 'AxesGraph');
     TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = getappdata(hFig, 'FigureId');
+    t0 = GlobalData.DataSet(iDS).Measures.sFile.t0;
 
-    % Toogle if not indicated
-    if nargin < 3
-        nextTimestampZero = TsInfo.TimestampZero;
+    % Just for DataTimeseries with T0
+    if strcmpi(FigureId, 'Spectrum') || isempty(t0)
+        return
     end
 
-    % Display x-label as relative time (from the recording start)
-    if isempty(nextTimestampZero)
-        previous_tick = hAxes.XTick;
-        new_labels = cell(length(previous_tick), 1);
-        for iLabel = 1:length(new_labels)
-            new_labels{iLabel} = num2str(previous_tick(iLabel));
+    % Update TimestampZero in Figure TsInfo data
+    if strcmpi(action, 'toggle')
+        if isempty(TsInfo.TimestampZero)
+            TsInfo.TimestampZero = t0;
+        else
+            TsInfo.TimestampZero = [];
         end
-        hAxes.XTickLabel = new_labels;
-        TsInfo.TimestampZero = [];
-    % Display x-label as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+
+    % Display as relative time (from the recording start)
+    if isempty(TsInfo.TimestampZero)
+        tickValues = hAxes.XTick;
+        tickLabels = arrayfun(@num2str, tickValues, 'UniformOutput', 0);
+    % Display as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
     else
-        start_file = datetime(nextTimestampZero);
-        previous_tick = start_file + duration(0, 0, hAxes.XTick);
-        previous_tick.Format = 'HH:mm:ss';
-        
-        new_labels = cell(length(previous_tick), 1);
-        for iLabel = 1:length(new_labels)
-            new_labels{iLabel} = char(previous_tick(iLabel));
-        end
-        
-        hAxes.XTickLabel = new_labels;
-        TsInfo.TimestampZero = nextTimestampZero;
+        tickValues = hAxes.XTick;
+        tickTimeStamps = datetime(TsInfo.TimestampZero) + seconds(tickValues);
+        tickTimeStamps.Format = 'HH:mm:ss.SSS';
+        tickLabels = arrayfun(@char, tickTimeStamps, 'UniformOutput', 0);
     end
-    setappdata(hFig, 'TsInfo', TsInfo);
+    hAxes.XTickLabel = tickLabels;
 end
 
 
