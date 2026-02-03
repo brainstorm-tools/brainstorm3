@@ -15,7 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
-%                figure_timeseries('UpdateLabelXAxis,             iDS, iFig, display_mode=['onset', 'time'])
+%                figure_timeseries('UpdateLabelXAxis,             iDS, iFig, display_mode=['relative', 'absolute'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -2560,11 +2560,11 @@ function DisplayConfigMenu(hFig, jParent)
             end
             % Tick label mode
             if isT0
-                switch (TsInfo.XMode)
-                    case 'onset'
-                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to actual time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'time'));
-                    case 'time'
-                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to time onset', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'onset'));
+                switch (TsInfo.TimeDisplayMode)
+                    case 'relative'
+                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to absolute time (HH:MM:ss)', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'absolute'));
+                    case 'absolute'
+                        gui_component('CheckBoxMenuItem', jMenu, [], 'Change to relative time', IconLoader.ICON_MATRIX, [], @(h,ev)UpdateLabelXAxis(iDS, iFig, 'relative'));
                 end
             end
         end
@@ -4346,12 +4346,12 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
     TsInfo = getappdata(hFig, 'TsInfo');
     
     if isempty(display_mode) 
-        display_mode = TsInfo.XMode;
+        display_mode = TsInfo.TimeDisplayMode;
     end
     
 
-    % Display x-label as time onset (s from the recording start)
-    if strcmp(display_mode, 'onset')
+    % Display x-label as relative time (from the recording start)
+    if strcmp(display_mode, 'relative')
         previous_tick = hAxes.XTick;
 
         new_labels = cell(length(previous_tick), 1);
@@ -4360,8 +4360,8 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
         end
 
         hAxes.XTickLabel = new_labels;
-        TsInfo.XMode = 'onset';
-    % Display x-label as actual time HH:MM:SS
+        TsInfo.TimeDisplayMode = 'relative';
+    % Display x-label as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
     else
         if isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
             return
@@ -4376,7 +4376,7 @@ function UpdateLabelXAxis(iDS, iFig, display_mode)
         end
         
         hAxes.XTickLabel = new_labels;
-        TsInfo.XMode = 'time';
+        TsInfo.TimeDisplayMode = 'absolute';
     end
     setappdata(hFig, 'TsInfo', TsInfo);
 
