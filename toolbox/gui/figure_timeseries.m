@@ -4374,15 +4374,24 @@ function UpdateXAxisTimeLabels(hFig, action)
         setappdata(hFig, 'TsInfo', TsInfo);
     end
 
+    % Relative positions and tentative labels for current ticks
+    tickValues = hAxes.XTick;
+    tickLabels = arrayfun(@num2str, tickValues, 'UniformOutput', 0);
     % Display as relative time (from the recording start)
     if isempty(TsInfo.TimestampZero)
-        tickValues = hAxes.XTick;
-        tickLabels = arrayfun(@num2str, tickValues, 'UniformOutput', 0);
+        % Do nothing
     % Display as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
     else
-        tickValues = hAxes.XTick;
         tickTimeStamps = datetime(TsInfo.TimestampZero) + seconds(tickValues);
-        tickTimeStamps.Format = 'HH:mm:ss.SSS';
+        % Find number of decimals for seconds from tickLabels
+        tmp = regexp(tickLabels, '\.(\d*)$', 'tokens');
+        tmp = [tmp{:}];
+        d = max([cellfun(@(x) length(x{1}), tmp),0]);
+        tickFormat = 'HH:mm:ss';
+        if d > 0
+            tickFormat = [tickFormat, '.' repmat('S', 1, d)];
+        end
+        tickTimeStamps.Format = tickFormat;
         tickLabels = arrayfun(@char, tickTimeStamps, 'UniformOutput', 0);
     end
     hAxes.XTickLabel = tickLabels;
