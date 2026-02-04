@@ -327,68 +327,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
         % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
-        case 'iso2mesh-2026'
-            % Install/load iso2mesh plugin
-            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
-            if ~isInstalled
-                errMsg = [errMsg, errInstall];
-                return;
-            end
-            bst_plugin('SetProgressLogo', 'iso2mesh');
-            % Get tissue label
-            for iBem = 1:length(OPTIONS.BemFiles)
-                [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                % Get tissue label
-                if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
-                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
-                else
-                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
-                end
-            end
-            % If there is a CSF layer but nothing inside: rename into BRAIN
-            if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
-                TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
-            end
-            % Load surfaces
-            bst_progress('text', 'Loading surfaces...');
-            bemMerge = {};
-            disp(' ');
-            nBem = length(OPTIONS.BemFiles);
-            allNodes = [];
-            for iBem = 1:nBem                               
-                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));        
-                BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
-                bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
-                allNodes = [allNodes; BemMat.Vertices];
-            end
-           
-            disp(' ');
-            % Merging the surfaces using surfboolean
-            newnode = bemMerge{1};
-            newelem = bemMerge{2};
-            for i = 3:2:length(bemMerge)
-                no = bemMerge{i};
-                el = bemMerge{i + 1};
-                [newnode, newelem] = surfboolean(newnode, newelem, 'all', no, el);                
-            end
-            % Create tetrahedral mesh
-            bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
-            factor_bst = 1.e-6;
-            % tessellate the boolean-created combined surface
-            [node, elem] = s2m(newnode, newelem, OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, 'tetgen1.5'); 
-            allLabels = unique(elem(:,5));
-            TissueLabels = cellstr(string(allLabels))';
-            % id =1; figure; plotmesh(node,elem(elem(:,5)==id,:),'facealpha',0.2,'edgecolor','none'); hold on; plotmesh(orig,'ko') 
-            % id =3; figure; plotmesh(node,elem(elem(:,5)==id,:),'x>0');  
-            % Process the outputs:  compute the distances
-            % Mesh check and repair
-            [no,el] = removeisolatednode(node,elem(:,1:4));
-            % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
-            newelem = meshreorient(no, el(:,1:4));
-            elem = [newelem elem(:,5)];
-            node = no;  
-            % Only tetra could be generated from this method
-            OPTIONS.MeshType = 'tetrahedral';  
         case 'iso2mesh-2021'
             % Install/load iso2mesh plugin
             [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
@@ -683,6 +621,68 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             newelem = meshreorient(no, el(:,1:4));
             elem = [newelem elem(:,5)];
             node = no; % need to updates the new list of nodes (it's wiered that it was working before)
+            % Only tetra could be generated from this method
+            OPTIONS.MeshType = 'tetrahedral';
+
+        case 'iso2mesh-2026'
+            % Install/load iso2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
+            end
+            bst_plugin('SetProgressLogo', 'iso2mesh');
+            % Get tissue label
+            for iBem = 1:length(OPTIONS.BemFiles)
+                [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
+                % Get tissue label
+                if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
+                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
+                else
+                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
+                end
+            end
+            % If there is a CSF layer but nothing inside: rename into BRAIN
+            if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
+                TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
+            end
+            % Load surfaces
+            bst_progress('text', 'Loading surfaces...');
+            bemMerge = {};
+            disp(' ');
+            nBem = length(OPTIONS.BemFiles);
+            allNodes = [];
+            for iBem = 1:nBem
+                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
+                BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
+                bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
+                allNodes = [allNodes; BemMat.Vertices];
+            end
+            disp(' ');
+            % Merging the surfaces using surfboolean
+            newnode = bemMerge{1};
+            newelem = bemMerge{2};
+            for i = 3:2:length(bemMerge)
+                no = bemMerge{i};
+                el = bemMerge{i + 1};
+                [newnode, newelem] = surfboolean(newnode, newelem, 'all', no, el);
+            end
+            % Create tetrahedral mesh
+            bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
+            factor_bst = 1.e-6;
+            % tessellate the boolean-created combined surface
+            [node, elem] = s2m(newnode, newelem, OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, 'tetgen1.5');
+            allLabels = unique(elem(:,5));
+            TissueLabels = cellstr(string(allLabels))';
+            % id =1; figure; plotmesh(node,elem(elem(:,5)==id,:),'facealpha',0.2,'edgecolor','none'); hold on; plotmesh(orig,'ko')
+            % id =3; figure; plotmesh(node,elem(elem(:,5)==id,:),'x>0');
+            % Process the outputs:  compute the distances
+            % Mesh check and repair
+            [no,el] = removeisolatednode(node,elem(:,1:4));
+            % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
+            newelem = meshreorient(no, el(:,1:4));
+            elem = [newelem elem(:,5)];
+            node = no;
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
