@@ -44,16 +44,16 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 0;
     sProcess.isSeparator = 1;
     % === Usage label
-    sProcess.options.usage.Comment = GetUsageText();
+    sProcess.options.usage.Comment = GetUsageText('sensor locations');
     sProcess.options.usage.Type    = 'label';
     sProcess.options.usage.Value   = '';
     % === Modality
-    sProcess.options.modality.Comment    = 'Modality of sensors: ';
+    sProcess.options.modality.Comment    = 'Sensor types or names (empty=all): ';
     sProcess.options.modality.Type       = 'text';
     sProcess.options.modality.Value      = 'SEEG';
     sProcess.options.modality.InputTypes = {'data', 'raw'};     
     % === Exclusion radius
-    sProcess.options.exclusionradius.Comment = 'Exclusion distance: ';
+    sProcess.options.exclusionradius.Comment = 'Exclusion zone radius: ';
     sProcess.options.exclusionradius.Type    = 'value';
     sProcess.options.exclusionradius.Value   = {3,'mm',2};    
 end
@@ -77,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Exclusion radius
     ExclusionRadius = sProcess.options.exclusionradius.Value{1} ./ 1000;
     if ExclusionRadius <= 0
-        bst_report('Error', sProcess, [], 'You must define an exclusion distance greater than zero.');
+        bst_report('Error', sProcess, [], 'You must define an exclusion zone radius greater than zero.');
         return;
     end
     OutputFiles = sInputs;
@@ -187,50 +187,42 @@ function ComputeInteractive(HeadmodelFileName, iStudy)
     if ~strcmpi(HeadmodelMat.HeadModelType, 'volume')
         bst_error('Head model must be volumetric', windowTitle, 0);
         return
-    end        
-    % Ask user the distance of the exclusion zone
-    [res, isCancel] = java_dialog('input', ['<HTML>' GetUsageText(Modality) '<BR><BR>' ... 
-                                            'Exclusion distance (mm):'], ...
-                                             windowTitle, [], sprintf('%.2f', 1));
-    if isCancel || isempty(res)
-        return
-    end
-    % Exclusion radius in m
-    ExclusionRadius = str2double(res) ./ 1000;
-    if ExclusionRadius <= 0
-        bst_error('You must define an exclusion distance greater than zero.', 'Leadfield exclusion zone', 0);
-        return;
     end
     % Ask user the how to define the exlusion zone
-    methods_str = {'Around the sensor positions from the channel file', 'Around the Selected surface from the Anatomy tab',...
-        'Around the 3D points Loaded from Matlab variable [Nx3 double]', };
-    ind = java_dialog('radio', 'Select the Exlusion Zone method:', 'Exlusion Method', [], methods_str, 1);
+    methods_str = {'Around sensor locations from the channel file', ...
+                   'Around the vertices of a selected surface',...
+                   'Around 3D point locations (loaded from a Matlab variable [Nx3])'};
+    % Short name for methods
+    ez_modality = {'sensor locations', ...
+                   'vertex locations', ...
+                   '3D points'};
+    ind = java_dialog('radio', 'Select the exlusion zone method:', 'Exlusion Method', [], methods_str, 1);
     if isempty(ind)
         return
     end
-    % Select corresponding method name
-    switch (ind)
-        case 1,  Method = 'ChannelPosition';
-        case 2,  Method = 'BrainstormSurface';
-        case 3,  Method = 'MatlabVariable';
-    end
 
-    % Start the progress bar
-    bst_progress('start', windowTitle, 'Computing leadfield exclusion zone...');
-    switch (Method)
-        case 'ChannelPosition'
+    % Get locations according to each method
+    switch (ez_modality{ind})
+        case 'sensor locations'
+            % Ask user for modality of sensors
+            [res, isCancel] = java_dialog('input', '<HTML>Sensor types or names (empty=all): <BR>', ...
+                                                     windowTitle, [], '' );
+            if isCancel
+                return
+            end
             % Load Channel file
             sChannel = bst_get('ChannelForStudy', iStudy);
             ChannelMat = in_bst_channel(sChannel.FileName, 'Channel');
             % Find selected channels
-            iChannels = channel_find(ChannelMat.Channel, Modality);
+            iChannels = channel_find(ChannelMat.Channel, res);
             if isempty(iChannels)
-                errMsg = ['Could not load any sensor for modality: ' Modality];
+                bst_error(['Could not find any sensor with type or name: ' res]);
                 return;
             end
             % Get channel locations
             pointLocs = [ChannelMat.Channel(iChannels).Loc]';
-        case 'BrainstormSurface'
+
+        case 'vertex locations'
             % Ask for surface and allow user to select from combo list
             % List of all the available surfaces in the subject database
             sSubject = bst_get('Subject');
@@ -238,20 +230,44 @@ function ComputeInteractive(HeadmodelFileName, iStudy)
             surfComments  = {sSubject.Surface.Comment};
             % Ask user to select the Surface area
             [surfSelectComment, isCancel] = java_dialog('combo', [...
-                'The exlusion zone can be defined by the vertices of a surface.' 10 ...
-                'Select the surface of the exlusion zone' 10], ...
-                'Exlusion from a specific surface', [], surfComments, surfComments{1});
+                'The exlusion zone is defined around the vertices of a surface.' 10 ...
+                'Select the surface for the exlusion zone' 10], ...
+                windowTitle, [], surfComments, surfComments{1});
             if isempty(surfSelectComment) || isCancel
-                bst_progress('stop');
                 return
             end
             SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};
             TessMat = in_tess_bst(SurfaceFile, 0);
             pointLocs = TessMat.Vertices;
-        case 'MatlabVariable'
-            % can be read from var in the workspace
-            pointLocs = in_matlab_var();
-     end
+
+        case '3D points'
+            % Reade pointLocs from Matlab variable in the workspace
+            [pointLocs, varname] = in_matlab_var();
+            if isempty(varname)
+                % Cancelled by user
+                return
+            end
+            if ~ismatrix(pointLocs) || size(pointLocs, 2) ~= 3
+                bst_error('Imported variable with 3D points must have the size [N,3]');
+                return
+            end
+    end
+    % Ask user the radius of the exclusion zone
+    [res, isCancel] = java_dialog('input', ['<HTML>' GetUsageText(ez_modality{ind}) '<BR><BR>' ...
+                                            'Exclusion zone radius (mm): '], ...
+                                             windowTitle, [], sprintf('%.2f', 1));
+    if isCancel || isempty(res)
+        return
+    end
+    % Exclusion radius in m
+    ExclusionRadius = str2double(res) ./ 1000;
+    if ExclusionRadius <= 0
+        bst_error('You must define an exclusion zone radius greater than zero.', 'Leadfield exclusion zone', 0);
+        return;
+    end
+
+    % Start the progress bar
+    bst_progress('start', windowTitle, 'Computing leadfield exclusion zone...');
     % Compute exclusion zone
     [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, ExclusionRadius);
     if ~isempty(errMsg)
@@ -273,12 +289,9 @@ end
 
 
 %% ===== GET USAGE TEXT =====
-function usageHtmlText = GetUsageText(Modality)
-    if nargin < 1 || isempty(Modality)
-        Modality = '';
-    end
-    usageHtmlText = ['Define the exclusion zone around the ' Modality ' sensors or the 3D points. <BR><BR>'  ...
-                     '<B>Warning</B> This approach will remove the leadfield vectors located near the sensors or selected 3D points. <BR>' ...
-                     'This method also remove the sources located in the exlusion zone <BR>'...
-                     'The exclusion zone is defined by the distance from the sensors/3D points to the sources.'];
+function usageHtmlText = GetUsageText(ez_modality)
+    usageHtmlText = ['Define the exclusion zone around the ' ez_modality '.<BR><BR>'  ...
+                     '<B>Warning</B><BR>' ...
+                     'Grid points in the head models inside the exlusion zone will be removed.<BR>'...
+                     'The exclusion zone is a sphere with given radius around the ' ez_modality '.'];
 end
