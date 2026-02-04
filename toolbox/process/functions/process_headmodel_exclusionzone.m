@@ -179,7 +179,7 @@ end
 
 
 %% ===== COMPUTE/INTERACTIVE =====
-function ComputeInteractive(HeadmodelFileName, Modality, iStudy)
+function ComputeInteractive(HeadmodelFileName, iStudy)
     windowTitle = 'Leadfield exclusion zone';
     % Get file in database
     HeadmodelMat = in_bst_headmodel(HeadmodelFileName);
