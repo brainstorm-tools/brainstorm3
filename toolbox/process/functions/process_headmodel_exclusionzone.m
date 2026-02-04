@@ -180,7 +180,7 @@ end
 
 %% ===== COMPUTE/INTERACTIVE =====
 function ComputeInteractive(HeadmodelFileName, Modality, iStudy)
-    windowTitle = 'Leadfield exclusion zone';   
+    windowTitle = 'Leadfield exclusion zone';
     % Get file in database
     HeadmodelMat = in_bst_headmodel(HeadmodelFileName);
     % Check that is volumetric
