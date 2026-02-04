@@ -32,7 +32,7 @@ end
 
 %% ===== CREATE PANEL =====
 function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
-    panelName = 'FemRefineOptions';
+    panelName = 'FemSelectLayer';
     % Java initializations
     import java.awt.*;
     import javax.swing.*;
@@ -113,7 +113,7 @@ end
 %% ===== GET PANEL CONTENTS =====
 function s = GetPanelContents() %#ok<DEFNU>
     % Get panel controls handles
-    ctrl = bst_get('PanelControls', 'FemRefineOptions');
+    ctrl = bst_get('PanelControls', 'FemSelectLayer');
     if isempty(ctrl)
         s = [];
         return;

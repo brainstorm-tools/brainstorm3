@@ -6,6 +6,7 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
+%             NewFemFile = process_fem_mesh('ExtractFemlayers', FemFile)
 %  [sSubject, T1File, T2File, errMsg] = process_fem_mesh('GetT1T2', iSubject, iMris=[])
 
 % @=============================================================================
@@ -1572,4 +1573,70 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     elseif (elemSize.size(2) == 4)
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
+end
+
+
+%% ===== EXTRACT LAYERS FROM FEM =====
+function NewFemFile = ExtractFemlayers(FemFile)
+    % Ask user to select the layer to refine with panel_femselect
+    OPTIONS = gui_show_dialog('Extract layers', @panel_femselect, 1, [], FemFile);
+    if isempty(OPTIONS) || ~any(OPTIONS.LayerSelect) || all(OPTIONS.LayerSelect)
+        return;
+    end
+    % Load FEM mesh
+    bst_progress('start', 'Extract layers', ['Loading file: "' FemFile '"...']);
+    FemFile = file_fullpath(FemFile);
+    FemMat = load(FemFile);
+    % Get tissues marked
+    selectedTissue = find(OPTIONS.LayerSelect);
+    selectedElementIndex = [];
+    tissueId = [];
+    tissueLabel = {};
+    if ~isempty(selectedTissue)
+        for iTissue = 1 : length(selectedTissue)
+            tmpIndx = find(FemMat.Tissue == selectedTissue(iTissue));
+            selectedElementIndex = [selectedElementIndex; tmpIndx];
+            tissueId = [tissueId; repmat(iTissue, length(tmpIndx),1)];
+            tissueLabel{iTissue} =  FemMat.TissueLabels{selectedTissue(iTissue)};
+        end
+    end
+    NewElem = FemMat.Elements(selectedElementIndex, :);
+    % Install/load required plugin: 'iso2mesh'
+    [isOk, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+    if ~isOk
+        error(['Could not install or load plugin: iso2mesh' 10 errMsg]);
+    end
+    bst_progress('text', 'Removing isolated nodes...');
+    [NewNode, NewElem] = removeisolatednode(FemMat.Vertices, [NewElem tissueId]);
+    % Unload plugin: 'iso2mesh'
+    bst_plugin('Unload', 'iso2mesh', 1);
+    % New FEM file
+    FemMat.Vertices = NewNode;
+    FemMat.Elements = NewElem(:, 1:4);
+    FemMat.Tissue = tissueId;
+    FemMat.TissueLabels = tissueLabel;
+    % Edit file comment: number of layers
+    oldNlayers = regexp(FemMat.Comment, '\d+ layers', 'match');
+    if ~isempty(oldNlayers)
+        FemMat.Comment = strrep(FemMat.Comment, oldNlayers{1}, sprintf('%d layers', length(FemMat.TissueLabels)));
+    else
+        FemMat.Comment = sprintf('%s (%d layers)', str_remove_parenth(FemMat.Comment), length(FemMat.TissueLabels));
+    end
+    % Edit file comment: number of nodes
+    oldNvert = regexp(FemMat.Comment, '\d+V', 'match');
+    if ~isempty(oldNvert)
+        FemMat.Comment = strrep(FemMat.Comment, oldNvert{1}, sprintf('%dV', size(FemMat.Vertices, 1)));
+    end
+    % Add history
+    FemMat = bst_history('add', FemMat, 'extract', ['Extracted layers: ', strjoin(tissueLabel, ', '), ' from: ' FemFile]);
+    bst_progress('text', 'Saving new FEM mesh...');
+    % Output filename
+    [~, iSubject] = bst_get('SurfaceFile', FemFile);
+    NewFemFile = file_unique(FemFile);
+    % Save new surface in Brainstorm format
+    bst_save(NewFemFile, FemMat, 'v7');
+    % Add to database
+    db_add_surface(iSubject, NewFemFile, FemMat.Comment);
+    % Close progress bar
+    bst_progress('stop');
 end

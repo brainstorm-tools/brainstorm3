@@ -1248,6 +1248,9 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
+                        if (length(bstNodes) == 2) % Only for two surfaces
+                            gui_component('MenuItem', jPopup, [], 'Surface Boolean operation', IconLoader.ICON_FUSION, [], @(h,ev)SurfaceBoolean(GetAllFilenames(bstNodes)));
+                        end
                     end
                 else
                     % === MENU: "ALIGN WITH MRI" ===
@@ -1322,6 +1325,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
+                    gui_component('MenuItem', jPopup, [], 'Extract layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ExtractFemlayers', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));
@@ -3549,6 +3553,19 @@ function SurfaceAverage(TessFiles)
         panel_protocols('SelectNode', [], NewFile);
     elseif ~isempty(errMsg)
         bst_error(errMsg, 'Average surfaces', 0);
+    end
+end
+
+%% ===== SURFACE BOOLEAN OPERATIONS =====
+function SurfaceBoolean(TessFiles)
+    % Surface Boolean files
+    [NewFile, errMsg] = tess_boolean(TessFiles);
+    % Select new file in the tree
+    if ~isempty(NewFile)
+        panel_protocols('SelectNode', [], NewFile);
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Surface Boolean operation', 0);
     end
 end
 
