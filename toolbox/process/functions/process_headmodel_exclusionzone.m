@@ -119,7 +119,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get channel locations
         channelLocs = [ChannelMat.Channel(iChannels).Loc]';
         % Compute exclusion zone
-        [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, channelLocs, Modality, ExclusionRadius);
+        [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, channelLocs, ExclusionRadius);
         if ~isempty(errMsg)
             bst_report('Error', sProcess, [], errMsg);
             continue;
@@ -145,9 +145,9 @@ end
 
 
 %% ===== COMPUTE =====
-function [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, Modality, ExclusionRadius)
-    % Computes the exclusion zone in the HeadmodelMat based on the sensor or 3d points locations, 
-    % and ExclusionRadius. Only for volumetric grids
+function [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, ExclusionRadius)
+    % Computes the exclusion zone in the HeadmodelMat around pointLocs [Nx3],
+    % using a ExclusionRadius. Only for volumetric grids
     newHeadmodelMat = [];
     errMsg = '';
     % Check that is volumetric
@@ -253,7 +253,7 @@ function ComputeInteractive(HeadmodelFileName, Modality, iStudy)
             pointLocs = in_matlab_var();
      end
     % Compute exclusion zone
-    [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, Modality, ExclusionRadius);
+    [newHeadmodelMat, errMsg] = Compute(HeadmodelMat, pointLocs, ExclusionRadius);
     if ~isempty(errMsg)
         bst_progress('stop');
         bst_error(errMsg, windowTitle, 0);
