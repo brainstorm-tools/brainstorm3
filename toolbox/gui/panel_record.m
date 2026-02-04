@@ -3129,12 +3129,12 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
         % Prepare default Date strings
         oldDateStr = sprintf('%04d-%02d-%02d', oldDatetime.Year,  oldDatetime.Month, oldDatetime.Day);
         % Ask for new date
-        res = java_dialog('input', {'Date (YYYY-MM-DD):'}, 'Acquisition date', [], {oldDateStr});
-        if isempty(res) || isempty(res{1})
+        res = java_dialog('input', 'Date (YYYY-MM-DD):', 'Acquisition date', [], oldDateStr);
+        if isempty(res)
             return;
         end
         inputFormat = 'yyyy-MM-dd';
-        newDate = res{1};
+        newDate = res;
     else
         % Input is given as date and time YYYY-MM-DDThh:mm:ss
         if (length(newDate) >= 19) && strcmpi(newDate(11), 'T')
