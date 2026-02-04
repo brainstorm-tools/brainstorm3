@@ -1464,7 +1464,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case {'iso2mesh-2021', 'iso2mesh'}
-            if length(BemFiles)>=2
+            if length(BemFiles) >= 2
                 % Ask merging method
                 res = java_dialog('question', [...
                     '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
@@ -1479,7 +1479,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 OPTIONS.MergeMethod = lower(res);
             end
             % Ask BEM meshing options
-             res = java_dialog('input', {['Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):'], 'Percentage of elements kept (1-100%):'}, ...
+            res = java_dialog('input', {['Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):'], 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
             if isempty(res)
                 return
@@ -1492,6 +1492,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 bst_error('Invalid options.', 'FEM mesh', 0);
                 return
             end
+
         case 'iso2mesh-2026'
             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
@@ -1507,6 +1508,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 bst_error('Invalid options.', 'FEM mesh', 0);
                 return
             end
+
         case 'brain2mesh'
             % No extra options
             
