@@ -113,8 +113,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Find selected channels
         iChannels = channel_find(ChannelMat.Channel, Modality);
         if isempty(iChannels)
-            errMsg = ['Could not load any sensor for modality: ' Modality];
-            return;
+            bst_report('Error', sProcess, [], ['Could not load any sensor for modality: ' Modality]);
+            return
         end
         % Get channel locations
         channelLocs = [ChannelMat.Channel(iChannels).Loc]';
