@@ -3136,20 +3136,18 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
         inputFormat = 'yyyy-MM-dd';
         newDate = res{1};
     else
-        % Use space as separator between date and time
-        ix = strfind(newDate, 'T');
-        if ~isempty(ix)
-            newDate(ix) = ' ';
+        % Input is given as date and time YYYY-MM-DDThh:mm:ss
+        if (length(newDate) >= 19) && strcmpi(newDate(11), 'T')
+            newDate(11) = ' ';
         end
         % Keep only date string
         datetimeStrs = strsplit(newDate, ' ');
         if length(datetimeStrs) < 1
             return
         end
+        newDate = datetimeStrs{1};
         % Change date input to dd-MMM-yyyy
-        dateStrDMY = str_date(datetimeStrs{1});
-        % Replace in original input
-        newDate = strrep(newDate, datetimeStrs{1}, dateStrDMY);
+        newDate = str_date(newDate);
         inputFormat = 'dd-MMM-yyyy';
     end
     % Try to generate datetime object from GUI or argin
