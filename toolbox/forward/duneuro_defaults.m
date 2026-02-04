@@ -60,6 +60,7 @@ cfgDef.SolSubstractMean = false;
 cfgDef.SolSolverReduction = 1e-10;
 % [solution.source_model]
 cfgDef.SrcModel          = 'venant';  % partial_integration, venant, subtraction
+cfgDef.SrcModel2026      =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
 cfgDef.SrcIntorderadd    = 0;
 cfgDef.SrcIntorderadd_lb = 2;
 cfgDef.SrcNbMoments      = 3;

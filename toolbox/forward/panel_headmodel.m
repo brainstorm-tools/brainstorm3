@@ -80,6 +80,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodMEG.addItem(BstListItem('os_meg', '', 'Overlapping spheres', []));
         jComboMethodMEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodMEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
+        jComboMethodMEG.addItem(BstListItem('duneuro_2026', '', 'DUNEuro FEM 2026', []));
         jComboMethodMEG.setSelectedIndex(1);
     else
         jCheckMethodMEG = [];
@@ -95,6 +96,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodEEG.addItem(BstListItem('eeg_3sphereberg', '', '3-shell sphere', []));
         jComboMethodEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
+        jComboMethodEEG.addItem(BstListItem('duneuro_2026', '', 'DUNEuro FEM2026', []));
         jComboMethodEEG.setSelectedIndex(1);
     else
         jCheckMethodEEG = [];
@@ -109,6 +111,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodECOG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodECOG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodECOG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
+        jComboMethodECOG.addItem(BstListItem('duneuro_2026', '', 'DUNEuro FEM2026', []));
         jComboMethodECOG.setSelectedIndex(0);
     else
         jCheckMethodECOG = [];
@@ -123,6 +126,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodSEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodSEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodSEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
+        jComboMethodSEEG.addItem(BstListItem('duneuro_2026', '', 'DUNEuro FEM2026', []));
         jComboMethodSEEG.setSelectedIndex(0);
     else
         jCheckMethodSEEG = [];
@@ -439,6 +443,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
         sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
+        sMethod.Comment = strrep(sMethod.Comment, 'duneuro_2026',         'DUNEuro FEM2026');
         % Grid type
         if strcmpi(sMethod.HeadModelType, 'volume')
             sMethod.Comment = [sMethod.Comment ' (volume)'];
@@ -448,6 +453,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
     end
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
     isDuneuro = any(strcmpi(allMethods, 'duneuro'));
+    isDuneuro2026 = any(strcmpi(allMethods, 'duneuro_2026'));
     % Get protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
 
@@ -699,6 +705,25 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             end
         end
         
+        % ===== DUNEURO =====
+        if isDuneuro2026
+            % Get default FEM head model
+            if isempty(sSubject.iFEM)
+                errMessage = 'No FEM head model available for this subject.';
+                return;
+            end
+            OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM(1)).FileName;
+            % Interactive interface to set the OpenMEEG options
+            if OPTIONS.Interactive
+                DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro2026, 1, [], OPTIONS);
+                if isempty(DuneuroOptions)
+                    bst_progress('stop');
+                    return;
+                end
+                % Copy the selected options to the OPTIONS structure
+                OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
+            end
+        end
         % ===== COMPUTE HEADMODEL =====
         % Start process
         [OPTIONS, errMessage] = bst_headmodeler(OPTIONS);
