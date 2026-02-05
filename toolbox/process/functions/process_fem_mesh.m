@@ -53,13 +53,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Value   = '';
     % Method
     sProcess.options.method.Comment = {'<B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>', ...
-                                       '<B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails)<BR>', ...
+                                       '<B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the other versions fail)<BR>', ...
+                                       '<B>Iso2mesh-2026</B>:<BR>Supports non-nested surfaces, but requires manual tissue identification<BR>', ...
                                        '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh<BR>', ...
                                        '<B>SimNIBS 3.x</B>:<BR>Call SimNIBS/headreco to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
                                        '<B>SimNIBS 4.x</B>:<BR>Call SimNIBS/charm to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
                                        '<B>FieldTrip</B>:<BR> Call FieldTrip to create hexahedral mesh of the <B>T1 MRI</B>.', ...
                                        '<B>Zeffiro</B>:<BR> Call Zeffiro to create a tetrahedral mesh from the <B>BEM surfaces<BR>'; ...
-                                       'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'fieldtrip', 'zeffiro'};
+                                       'iso2mesh-2021', 'iso2mesh','iso2mesh-2026','brain2mesh', 'simnibs3', 'simnibs4', 'fieldtrip', 'zeffiro'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
     % Iso2mesh options: 
@@ -159,7 +160,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Method
     OPTIONS.Method = sProcess.options.method.Value;
-    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh-2021','iso2mesh','brain2mesh','simnibs3','simnibs4','fieldtrip','zeffiro'})
+    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method,...
+            {'iso2mesh-2021','iso2mesh','iso2mesh-2026','brain2mesh','simnibs3','simnibs4','fieldtrip','zeffiro'})
         bst_report('Error', sProcess, [], 'Invalid method.');
         return
     end
@@ -235,7 +237,7 @@ end
 %% ===== DEFAULT OPTIONS =====
 function OPTIONS = GetDefaultOptions()
     OPTIONS = struct(...
-        'Method',               'iso2mesh-2021', ... % {'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs3', 'simnibs4', 'roast', 'fieldtrip'}
+        'Method',               'iso2mesh-2021', ... % {'iso2mesh-2021', 'iso2mesh','iso2mesh-2026', 'brain2mesh', 'simnibs3', 'simnibs4', 'roast', 'fieldtrip'}
         'MeshType',             'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
         'MaxVol',               0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
         'KeepRatio',            100, ...             % iso2mesh: Percentage of elements kept (1-100%)
@@ -623,6 +625,68 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
 
+        case 'iso2mesh-2026'
+            % Install/load iso2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
+            end
+            bst_plugin('SetProgressLogo', 'iso2mesh');
+            % Get tissue label
+            for iBem = 1:length(OPTIONS.BemFiles)
+                [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
+                % Get tissue label
+                if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
+                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
+                else
+                    TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
+                end
+            end
+            % If there is a CSF layer but nothing inside: rename into BRAIN
+            if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
+                TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
+            end
+            % Load surfaces
+            bst_progress('text', 'Loading surfaces...');
+            bemMerge = {};
+            disp(' ');
+            nBem = length(OPTIONS.BemFiles);
+            allNodes = [];
+            for iBem = 1:nBem
+                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
+                BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
+                bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
+                allNodes = [allNodes; BemMat.Vertices];
+            end
+            disp(' ');
+            % Merging the surfaces using surfboolean
+            newnode = bemMerge{1};
+            newelem = bemMerge{2};
+            for i = 3:2:length(bemMerge)
+                no = bemMerge{i};
+                el = bemMerge{i + 1};
+                [newnode, newelem] = surfboolean(newnode, newelem, 'all', no, el);
+            end
+            % Create tetrahedral mesh
+            bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
+            factor_bst = 1.e-6;
+            % tessellate the boolean-created combined surface
+            [node, elem] = s2m(newnode, newelem, OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, 'tetgen1.5');
+            allLabels = unique(elem(:,5));
+            TissueLabels = cellstr(string(allLabels))';
+            % id =1; figure; plotmesh(node,elem(elem(:,5)==id,:),'facealpha',0.2,'edgecolor','none'); hold on; plotmesh(orig,'ko')
+            % id =3; figure; plotmesh(node,elem(elem(:,5)==id,:),'x>0');
+            % Process the outputs:  compute the distances
+            % Mesh check and repair
+            [no,el] = removeisolatednode(node,elem(:,1:4));
+            % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
+            newelem = meshreorient(no, el(:,1:4));
+            elem = [newelem elem(:,5)];
+            node = no;
+            % Only tetra could be generated from this method
+            OPTIONS.MeshType = 'tetrahedral';
+
         case 'brain2mesh'
             disp([10 'FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File 10]);
@@ -995,7 +1059,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % - Possible issues: very rare instabilities due to unknow issues
             %                  : when using low resolution >4.5mm hole in the meshes 
 
-            % Install/load iso2mesh plugin
+            % Install/load Zeffiro plugin
             [isInstalled, errInstall] = bst_plugin('Install', 'zeffiro', isInteractive);
             if ~isInstalled
                 errMsg = [errMsg, errInstall];
@@ -1316,7 +1380,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     OPTIONS.BemFiles = BemFiles;
     % If BEM surfaces are selected, the possible methods are "iso2mesh" or  "zeffiro"
     if ~isempty(BemFiles) && iscell(BemFiles)
-        FemMethods = {'Iso2mesh-2021','Iso2mesh', 'Zeffiro'};
+        FemMethods = {'Iso2mesh-2021','Iso2mesh','Iso2mesh-2026', 'Zeffiro'};
         DefMethod = 'Iso2mesh-2021';
     % More than 2 MRI selected: error
     elseif (length(iMris) > 2)
@@ -1332,7 +1396,8 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         DefMethod = 'SimNIBS4';
     % Otherwise: Use the defaults from the folder: Ask for method to use
     else
-        FemMethods = {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip', 'Zeffiro'};
+        FemMethods = {'Iso2mesh-2021','Iso2mesh','iso2mesh-2026',...
+                        'Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip', 'Zeffiro'};
         DefMethod = 'Iso2mesh-2021';
     end
     
@@ -1347,16 +1412,25 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             switch (FemMethods{i})
                 case 'Iso2mesh-2021'
                     strQuestion = [strQuestion, ...
-                        '<B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
-                        'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-                        '<FONT COLOR="#707070"><I>Iso2mesh is downloaded automatically as a plugin.</I></FONT><BR><BR>'];
+                        '<B>Iso2mesh-2021</B>:<BR>' ...
+                        'Generate a tetrahedral mesh from <B>nested BEM surfaces</B> ' ...
+                        '(head, inner skull, outer skull).<BR>' ...
+                        '<FONT COLOR="#707070"><I>Iso2mesh is automatically downloaded as a plugin.</I></FONT><BR><BR>'];
                 case 'Iso2mesh'
                     strQuestion = [strQuestion, ...
                         '<B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails).<BR><BR>'];
+                case 'Iso2mesh-2026'
+                    strQuestion = [strQuestion, ...
+                        '<B>Iso2mesh-2026</B>:<BR>' ...
+                        'Generate a tetrahedral mesh from <B>BEM surfaces</B> using iso2mesh.<BR>' ...
+                        'Supports intersecting and non-nested surfaces; requires manual FEM mesh selection.<BR>' ...
+                        '<FONT COLOR="#707070"><I>Iso2mesh is automatically downloaded as a plugin.</I></FONT><BR><BR>'];
                 case 'Brain2mesh'
                     strQuestion = [strQuestion, ...
-                        '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh.<BR>' ...
-                        '<FONT COLOR="#707070"><I>Brain2mesh and SPM12 are downloaded automatically as plugins.</I></FONT><BR><BR>'];
+                        '<B>Iso2mesh-2026</B>:<BR>' ...
+                        'Generate a tetrahedral mesh from <B>BEM surfaces</B> using iso2mesh.<BR>' ...
+                        'Supports intersecting and non-nested surfaces, but requires manual FEM mesh selection.<BR>' ...
+                        '<FONT COLOR="#707070"><I>Iso2mesh is automatically downloaded as a plugin.</I></FONT><BR><BR>'];
                 case 'SimNIBS3'
                     strQuestion = [strQuestion, ...
                         '<B>SimNIBS3</B>:<BR>Call SimNIBS/headreco to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.<BR>' ...
@@ -1390,7 +1464,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
 
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
-        case 'iso2mesh-2021'
+        case {'iso2mesh-2021', 'iso2mesh'}
             if length(BemFiles) >= 2
                 % Ask merging method
                 res = java_dialog('question', [...
@@ -1419,22 +1493,8 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
                 bst_error('Invalid options.', 'FEM mesh', 0);
                 return
             end
-            
-        case 'iso2mesh'
-            if length(BemFiles) >=2
-                % Ask merging method
-                res = java_dialog('question', [...
-                    '<HTML>Iso2mesh function used to merge the input surfaces:<BR><BR>', ...
-                    '<B>MergeMesh</B>: Default option (faster).<BR>' ...
-                    'Simply concatenates the meshes without any intersection checks.<BR><BR>' ...
-                    '<B>MergeSurf</B>: Advanced option (slower).<BR>' ...
-                    'Concatenates and checks for intersections, split intersecting elements.<BR><BR>' ...
-                    ], 'FEM mesh generation (Iso2mesh)', [], {'MergeMesh','MergeSurf'}, 'MergeMesh');
-                if isempty(res)
-                    return
-                end
-                OPTIONS.MergeMethod = lower(res);
-            end
+
+        case 'iso2mesh-2026'
             % Ask BEM meshing options
             res = java_dialog('input', {'Max tetrahedral volume (in cm^3) (10=coarse, 0.0001=fine):', 'Percentage of elements kept (1-100%):'}, ...
                 'FEM mesh', [], {num2str(OPTIONS.MaxVol), num2str(OPTIONS.KeepRatio)});
