@@ -295,7 +295,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Full mat file name
                 MatFile = bst_fullfile(studyOutPath, ['data_0raw_' rawBaseOut '.mat']);
                 % Load data file
-                DataMat = in_bst_data(sInputs(1).FileName, 'F', 'ChannelFlag', 'Time');
+                DataMat = in_bst_data(sInputs(iInput).FileName, 'F', 'ChannelFlag', 'Time');
                 sFileIn = DataMat.F;
                 % Get all good channels
                 iGoodChannels = DataMat.ChannelFlag;
@@ -326,7 +326,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     SamplesBounds = iTimesBlocks(iBlock, :) - 1;
                     % Load data from link to raw data
                     F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, [], ImportOptions);
-                    RawDataMat = in_bst_data(sInputs(1).FileName, 'ChannelFlag');
+                    RawDataMat = in_bst_data(sInputs(iInput).FileName, 'ChannelFlag');
                     RawDataMat.F = F;
                     % Apply montage
                     RawDataMat.F = panel_montage('ApplyMontage', sMontage, RawDataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
@@ -360,7 +360,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 bst_save(file_fullpath(sChannelOut.FileName), ChannelMatOut);
                 % Set and save output sFile structure (link to raw, a .mat file)
-                sInMat = in_bst(sInputs(1).FileName, [], 1);
+                sInMat = in_bst_data(sInputs(iInput).FileName);
                 sOutMat = sInMat;
                 sOutMat.ChannelFlag = sFileOut.channelflag;
                 sOutMat.F = sFileOut;
