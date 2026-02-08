@@ -21,28 +21,24 @@ function [Gain, errMsg] = bst_duneuro_2026(cfg)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Takfarinas Medani, Juan Garcia-Prieto, 2019-2026
+% Authors: Takfarinas Medani, 2019-2026
+%          Juan Garcia-Prieto, 2019-2021
 %          Francois Tadel 2020-2023
 
 % Initialize returned values
 Gain = [];
+%% ===== INSTALL AND GET THE EXECUTABLE =====
 % ***** ToDo: Define how to check the container *******
-% Install/load duneuro plugin
-[isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'duneuro', cfg.Interactive);
-if ~isInstalled
-    return;
-end
+% Install/load duneuro container
+% Install/load duneuro plugin TODO:
+% Note: For the current version of this function, we assume that the appropriate container is installed.
+% Three possible runners are possible:  
+% - via docker
+% - via podman
+% - via apptainer
+runner =  'docker';
+% Get DUNEuro container executable
 bst_plugin('SetProgressLogo', 'duneuro');
-
-% Get DUNEuro executable
-DuneuroExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'bin', ['bst_duneuro_meeg_', bst_get('OsType')]);
-if ispc
-    DuneuroExe = [DuneuroExe, '.exe'];
-else
-    DuneuroExe = [DuneuroExe, '.app'];
-end
-
-
 
 %% ===== SENSORS =====
 % Select modality for DUNEuro
@@ -109,7 +105,6 @@ FemMat = load(file_fullpath(cfg.FemFile));
 % Get mesh type
 switch size(FemMat.Elements,2)
     case 4,  ElementType = 'tetrahedron';
-    case 8,  ElementType = 'hexahedron';
 end
 % Remove unselected tissue from the head model (MEG only), this could be also done for sEEG later
 if strcmp(dnModality, 'meg')
@@ -122,62 +117,10 @@ elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.
     errMsg = 'Reduced head model cannot be used when computing MEG+EEG simultaneously.';
     return;
 end
-% Hexa mesh: detect whether the geometry was adapted
-if strcmpi(ElementType, 'hexahedron')
-    GeometryAdapted = [];
-    % Detect using the options of the Brainstorm process that created the file
-    if isfield(FemMat, 'History') && ~isempty(FemMat.History) && ~isempty(strfind([FemMat.History{:,3}], 'NodeShift'))
-        strOptions = [FemMat.History{:,3}];
-        iTag = strfind(strOptions, 'NodeShift');
-        val = sscanf(strOptions(iTag:end), 'NodeShift=%f');
-        if ~isempty(val)
-            GeometryAdapted = (val > 0);
-        end
-    end
-    % Otherwise, try to guess based on the geometry
-    if isempty(GeometryAdapted)
-        % Compute the distance between the first two nodes of each element
-        dist = sqrt(sum([FemMat.Vertices(FemMat.Elements(:,1),1) - FemMat.Vertices(FemMat.Elements(:,2),1), ...
-         FemMat.Vertices(FemMat.Elements(:,2),2) - FemMat.Vertices(FemMat.Elements(:,2),2), ...
-         FemMat.Vertices(FemMat.Elements(:,2),3) - FemMat.Vertices(FemMat.Elements(:,2),3)] .^ 2, 2));
-        % If the distance is not constant: then the geomtry is adapted
-        GeometryAdapted = (max(abs(dist - dist(1))) > 1e-9);
-    end
-    % Copy value in DUNEuro options
-    if ~isempty(GeometryAdapted)
-        cfg.GeometryAdapted = GeometryAdapted;
-        disp(['DUNEURO> Detected parameter: GeometryAdapted=', bool2str(GeometryAdapted)]);
-    end
-end
-% % Isotropic
-% if (cfg.Isotropic)
-%     % Isotropic without tensor
-%     if ~cfg.UseTensor
-%         if strcmp(ElementType,'hexahedron')
-%             MeshFile = 'head_model.dgf';
-%         else
-%             MeshFile = 'head_model.msh';
-%         end
-%     % Isotropic with tensor
-%     else    
-%         if strcmp(ElementType,'hexahedron')
-%             errMsg = 'Using the tensor model with hexahedral mesh is not supported for now.';
-%             return;
-%         end
-%         MeshFile = 'head_model.geo';
-%     end
-% % Anisotropic (with tensor)
-% else
-%     if strcmp(ElementType,'hexahedron')
-%         errMsg = 'Using the anisotropy model with hexahedral mesh is not supported for now.';
-%         return;
-%     end
-%     MeshFile = 'head_model.geo';
-%     cfg.UseTensor = true;
-% end
 
 % Get temp folder
 TmpDir = bst_get('BrainstormTmpDir', 0, 'duneuro');
+
 % Display message
 bst_progress('text', 'DUNEuro: Writing temporary files...');
 disp(['DUNEURO> Writing temporary files to: ' TmpDir]);
@@ -306,75 +249,13 @@ switch (cfg.HeadModelType)
                 end
             end
             % view_surface_matrix(cfg.GridLoc, sCortex.Faces)
-
-%             %%%% =============================================
-%             % Now similar process for the WM with an extra and unexpedted step ...
-%             if ~isempty(iWM)
-%                 disp('Checking the the WM ...');
-%                 %Extract WM surface
-%                 wm_tetra = FemMat.Elements(FemMat.Tissue <= iWM,:);
-%                 wm_face = volface(wm_tetra);
-%                 [nwmf, ewmf] = removeisolatednode(FemMat.Vertices,wm_face);
-%                 % check if any dipoles is inside the WM
-%                 wMfv.vertices = nwmf;
-%                 wMfv.faces = ewmf;
-%                 tic
-%                 wMin = inpolyhedron(wMfv, sCortex.Vertices);
-%                 wMindex_in = find(wMin);
-%                 disp(['There are ' num2str(sum(wMin)) ' dipoles inside the WM']);
-%                 disp('Moving these dipoles to the GM tissues ...');
-%                 twm = toc;
-%                 if ~isempty(wMindex_in)
-%                     % 1- move the dipole from inside the WM to the GM surface
-%                     % ==> this is for testing, when we use the centroide
-%                     % directely, some dipole remains within the WM ...
-%                     GMcentroide = 0; % just for testing, to use directely the GM centroides
-%                     if GMcentroide == 1
-%                         k = dsearchn(elem_centroide,sCortex.Vertices(wMindex_in,:));
-%                         NewVertices(wMindex_in ,:) = ElemCenter(k,:);
-%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
-%                         disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
-%                     else
-%                         k = dsearchn(gMfv.vertices,sCortex.Vertices(wMindex_in,:));
-%                         NewVertices(wMindex_in ,:) = gMfv.vertices(k,:);
-%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
-%                         disp(['There are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
-%                         disp(['These dipoles are moved to the GM outer surface nodes']);
-%                         disp(['Moving these dipoles to the nearest centroide of the GM element...']);
-%                         % Now, we move these same dipole from the surface to the
-%                         % nearest centroide ==> to be sure it's inside the GM
-%                         % ==> fill partially the FEM condition
-%                         % move again  to the centoide
-%                         k = dsearchn(ElemCenter,NewVertices(wMindex_in,:));
-%                         NewVertices(wMindex_in ,:) = ElemCenter(k,:);
-%                         % just to check
-%                         wMoutFinal = inpolyhedron(wMfv, NewVertices);
-%                         disp(['Now, there are ' num2str(sum(wMoutFinal)) ' dipoles inside  the WM']);
-%                         disp(['All the dipoles are moved to nearest centroid of the GM']);
-%                     end
-%                 end
-%             end
-
         end
     case 'mixed'
         % TODO : not used ?
 end
 
-
 %% ===== SOURCE MODEL =====
 bst_progress('text', 'DUNEuro: Writing temporary files...');
-% Write the source/dipole file
-% DipoleFile = fullfile(TmpDir, 'dipole_model.txt');
-% Unconstrained orientation for each dipole. ie the output file have 3*N dipoles (3 directions for each)
-%     [x1,y1,z1, 1, 0, 0,;
-%      x1,y1,z1, 0, 1, 0;
-%      x1,y1,z1, 0, 0, 1;
-%      x2,y2,z2, 1, 0, 0;
-%      .... ];
-% dipoles = [kron(cfg.GridLoc, ones(3,1)), kron(ones(size(cfg.GridLoc,1), 1), eye(3))];
-% fid = fopen(DipoleFile, 'wt+');
-% fprintf(fid, '%d %d %d %d %d %d \n', dipoles');
-% fclose(fid);
 [iOk, errMsg] = bstdn_write_source_space(TmpDir, cfg.GridLoc);
 
 %% ===== SENSOR MODEL =====
@@ -393,52 +274,11 @@ if isMeg
 end
 
 %% ===== CONDUCTIVITY MODEL =====
-% % Isotropic without tensor
-% if ~cfg.UseTensor
-%     CondFile = fullfile(TmpDir, 'conductivity_model.con');
-%     fid = fopen(CondFile, 'w');
-%     fprintf(fid, '%d\t', cfg.FemCond);
-%     fclose(fid);
-% % With tensor (isotropic or anisotropic)
-% else
-%     CondFile = fullfile(TmpDir, 'conductivity_model.knw'); 
-%     % Transformation matrix  and tensor mapping on each direction
-%     CondTensor = zeros(length(FemMat.Elements),6) ;
-%     for ind =1 : length(FemMat.Elements)
-%         temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
-%         T1 = temp0(:,1:3); % get the 3 eigen vectors
-%         l =  diag(temp0(:,4)); % get the eigen value as 3x3
-%         temp = T1 * l * T1'; % reconstruct the tensors
-%         CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
-%     end
-%     % write the tensors 
-%     out_fem_knw(FemMat, CondTensor, CondFile);
-% end
-% % Write mesh model
-% MeshFile = fullfile(TmpDir, MeshFile);
-% out_fem(FemMat, MeshFile);
-%% DN2026
-% export volume conductor model
-% write_volume_conductor(TmpDir, nodes, elements, labels, tensors);
-% write hdf5 files : 
-% online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond);
+% NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 
-
-% run DUNEuro container
-% Source Space configuration
-sourcespace_config = [];
-sourcespace_config.name = 'create_sourcespace';
-% sourcespace_config.sourcecompartment = '1';
-% sourcespace_config.gridsize = '2.0';
-% sourcespace_config.enforceDistanceCondition = 'True';
-% sourcespace_config.distanceThreshold = '0.5';
-sourcespace_config.enforceVenantCondition = 'True';
-% sourcespace_config.visualizeSourceSpace = 'True';
-
- 
-% Transfer Matrix configuration
-transfer_matrix_config = [];
+%%  ===== TRANSFER MATRIX CONFIGURATION =====
+ transfer_matrix_config = [];
 transfer_matrix_config.name = 'compute_transfer_matrix';
 if strcmp(dnModality, 'eeg')
     transfer_matrix_config.do_eeg = 'True';
@@ -453,47 +293,43 @@ if strcmp(dnModality, 'meeg')
     transfer_matrix_config.do_eeg = 'True';
 end
 transfer_matrix_config.residual_reduction = '1e-16';
-transfer_matrix_config.nr_threads = '-1';
+transfer_matrix_config.nr_threads = '-1'; % can be used as user parameters
+% Check with Malte is there is an optimised number without overwhelming the
+% user computer.
 
-% Leadfield configuration
+%%  ===== LEADFIELD MATRIX CONFIGURATION =====
 leadfield_config = [];
 leadfield_config.name = 'compute_leadfield';
 if strcmp(dnModality, 'eeg')
     leadfield_config.do_meg = 'False';
     leadfield_config.do_eeg = 'True';
-    leadfield_config.eeg_scaling = '1e0';
-    leadfield_config.meg_scaling = '1e5';
 end
 if strcmp(dnModality, 'meg')
     leadfield_config.do_meg = 'True';
     leadfield_config.do_eeg = 'False';
-    leadfield_config.eeg_scaling = '1e0';
-    leadfield_config.meg_scaling = '1e5';
 end
 if strcmp(dnModality, 'meeg')
     leadfield_config.do_meg = 'True';
     leadfield_config.do_eeg = 'True';
-    leadfield_config.eeg_scaling = '1e0';
-    leadfield_config.meg_scaling = '1e5';
 end
+leadfield_config.eeg_scaling = '1e0'; % check with Malte if those value are optimised
+leadfield_config.meg_scaling = '1e5';
+
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
-leadfield_config.nr_threads = '-1';
+leadfield_config.nr_threads = '-1'; % same as above
 
 %% ===== RUN DUNEURO ======
-% Assemble command line
-% callStr = ['"' DuneuroExe '"' ' ' '"' IniFile '"'];
 bst_progress('text', 'DUNEuro: Computing leadfield...');
-runner = 'docker';
 % disp(['DUNEURO> System call: ' callStr]);
 tic;
-% Call DUNEuro
-if 0
-    [status, errMsg ] = bst_run_duneuro_task(TmpDir, sourcespace_config, runner); % wheew is the outputs?
-end 
-% Compute transfer matrix
+% Call DUNEuro and Compute transfer matrix
 [status, errMsg ] = bst_run_duneuro_task(TmpDir, transfer_matrix_config, runner);
-% Compute the Leadfield
+transferMatrix_time = toc;
+
+tic;
+% Call DUNEuro and Compute the Leadfield
 [status, errMsg ] = bst_run_duneuro_task(TmpDir, leadfield_config, runner);
+leadField_time = toc;
 
 if (status ~= 0)
     errMsg = 'Error during the DUNEuro computation, see logs in the command window.';
@@ -503,11 +339,7 @@ disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
-% % EEG
-% if (isEeg || isEcog || isSeeg) 
-%     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
-% end
-% read data
+% For checking: read the used source space
 % source_positions = transpose(h5read(fullfile(TmpDir, 'duneuro_io.hdf5'), '/measurement/source_space/positions'));
 % EEG
 if (isEeg || isEcog || isSeeg) 
@@ -526,238 +358,24 @@ if isMeg
 end 
 if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
+    % ToDo: add ref electrode / identify the reference from the channel
+    % file and post process the final Leadfield
 end
-
-% Delete the temporary files
-% file_delete(TmpDir, 1, 1);
-
-
-%% ===== SAVE TRANSFER MATRIX ======
-disp('DUNEURO> TODO: Save transferOut.dat to database.')
 
 % Remove logo
 bst_plugin('SetProgressLogo', []);
-
-
-% %% ===== WRITE MINI FILE =====
-% % Open the mini file
-% IniFile = fullfile(TmpDir, 'duneuro_minifile.mini');
-% fid = fopen(IniFile, 'wt+');
-% % General setting
-% fprintf(fid, '__name = %s\n\n', IniFile);
-% if strcmp(cfg.SolverType, 'cg')
-%     fprintf(fid, 'type = %s\n', cfg.FemType);
-% end
-% fprintf(fid, 'element_type = %s\n', ElementType);
-% fprintf(fid, 'solver_type = %s\n', cfg.SolverType);
-% fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
-% fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
-% % [electrodes]
-% if isEcog || isSeeg 
-%     % Instead of selecting the electrode on the outer surface,
-%     % uses the nearest FEM node as the electrode location
-%     cfg.ElecType = 'closest_subentity_center';
-% end
-% if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
-%     fprintf(fid, '[electrodes]\n');
-%     fprintf(fid, 'filename = %s\n', fullfile(TmpDir, ElecFile));
-%     fprintf(fid, 'type = %s\n', cfg.ElecType);
-%     fprintf(fid, 'codims = %s\n', '3');
-% end
-% % [meg]
-% if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
-%     fprintf(fid, '[meg]\n');
-%     fprintf(fid, 'intorderadd = %d\n', cfg.MegIntorderadd);
-%     fprintf(fid, 'type = %s\n', cfg.MegType);
-%     fprintf(fid, 'cache.enable = %s\n',bool2str(cfg.EnableCacheMemory) );
-%     % [coils]
-%     fprintf(fid, '[coils]\n');
-%     fprintf(fid, 'filename = %s\n', CoilFile);
-%     % [projections]
-%     fprintf(fid, '[projections]\n');
-%     fprintf(fid, 'filename = %s\n', ProjFile);
-% end
-% % [dipoles]
-% fprintf(fid, '[dipoles]\n');
-% fprintf(fid, 'filename = %s\n', DipoleFile);
-% % [volume_conductor.grid]
-% fprintf(fid, '[volume_conductor.grid]\n');
-% fprintf(fid, 'filename = %s\n', MeshFile);
-% % [volume_conductor.tensors]
-% fprintf(fid, '[volume_conductor.tensors]\n');
-% fprintf(fid, 'filename = %s\n', CondFile);
-% % [solver]
-% fprintf(fid, '[solver]\n');
-% fprintf(fid, 'solver_type = %s\n', cfg.SolvSolverType);
-% fprintf(fid, 'preconditioner_type = %s\n', cfg.SolvPrecond);
-% if strcmp(cfg.SolverType, 'cg')
-%     fprintf(fid, 'cg_smoother_type = %s\n', cfg.SolvSmootherType);
-% end
-% fprintf(fid, 'intorderadd = %d\n', cfg.SolvIntorderadd);
-% % Discontinuous Galerkin
-% if strcmp(cfg.SolverType, 'dg')
-%     fprintf(fid, 'dg_smoother_type = %s\n', cfg.DgSmootherType);
-%     fprintf(fid, 'scheme = %s\n', cfg.DgScheme);
-%     fprintf(fid, 'penalty = %d\n', cfg.DgPenalty);
-%     fprintf(fid, 'edge_norm_type = %s\n', cfg.DgEdgeNormType);
-%     fprintf(fid, 'weights = %s\n', bool2str(cfg.DgWeights));
-%     fprintf(fid, 'reduction = %s\n', bool2str(cfg.DgReduction));
-% end
-% % [solution]
-% fprintf(fid, '[solution]\n');
-% fprintf(fid, 'post_process = %s\n', bool2str(cfg.SolPostProcess)); % true/false
-% fprintf(fid, 'subtract_mean = %s\n', bool2str(cfg.SolSubstractMean)); % boolean
-% % [solution.solver]
-% fprintf(fid, '[solution.solver]\n');
-% fprintf(fid, 'reduction = %d\n', cfg.SolSolverReduction);
-% % [solution.source_model]
-% fprintf(fid, '[solution.source_model]\n');
-% fprintf(fid, 'type = %s\n', cfg.SrcModel);
-% fprintf(fid, 'intorderadd = %d\n', cfg.SrcIntorderadd);
-% fprintf(fid, 'intorderadd_lb = %d\n', cfg.SrcIntorderadd_lb);
-% fprintf(fid, 'numberOfMoments = %d\n', cfg.SrcNbMoments);
-% fprintf(fid, 'referenceLength = %d\n', cfg.SrcRefLen);
-% fprintf(fid, 'weightingExponent = %d\n', cfg.SrcWeightExp);
-% fprintf(fid, 'relaxationFactor = %e\n', 10^(-cfg.SrcRelaxFactor));
-% fprintf(fid, 'mixedMoments = %s\n', bool2str(cfg.SrcMixedMoments));
-% fprintf(fid, 'restrict = %s\n', bool2str(cfg.SrcRestrict));
-% fprintf(fid, 'initialization = %s\n', cfg.SrcInit);
-% % [brainstorm]
-% fprintf(fid, '[brainstorm]\n');
-% fprintf(fid, 'modality = %s\n', dnModality);
-% fprintf(fid, 'output_folder = %s\n', [TmpDir, filesep]);
-% fprintf(fid, 'save_eeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-% fprintf(fid, 'save_meg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-% fprintf(fid, 'save_meeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-% fprintf(fid, 'eeg_transfer_filename = %s\n', cfg.BstEegTransferFile);
-% fprintf(fid, 'meg_transfer_filename = %s\n', cfg.BstMegTransferFile);
-% fprintf(fid, 'eeg_leadfield_filename = %s\n', cfg.BstEegLfFile);
-% fprintf(fid, 'meg_leadfield_filename = %s\n', cfg.BstMegLfFile);
-% % Close file
-% fclose(fid);
-
-
-% %% ===== RUN DUNEURO ======
-% % Assemble command line
-% callStr = ['"' DuneuroExe '"' ' ' '"' IniFile '"'];
-% bst_progress('text', 'DUNEuro: Computing leadfield...');
-% disp(['DUNEURO> System call: ' callStr]);
-% tic;
-% % Call DUNEuro
-% status = system(callStr)
-% if (status ~= 0)
-%     errMsg = 'Error during the DUNEuro computation, see logs in the command window.';
-%     return;
-% end
-% disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
-
-
-% %% ===== READ LEADFIELD ======
-% bst_progress('text', 'DUNEuro: Reading leadfield...');
-% % EEG
-% if (isEeg || isEcog || isSeeg) 
-%     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
-% end
-% 
-% %MEG
-% To check with Malte: is the MEG leadfield is the finla or just the
-% % seconday?
-% if isMeg
-%     GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
-%     % === POST-PROCESS MEG LEADFIELD ===
-%     % Compute the total magnetic field 
-%     dipoles_pos_orie = [kron(cfg.GridLoc,ones(3,1)), kron(ones(length(cfg.GridLoc),1), eye(3))];
-% 
-%     % a- Compute the MEG Primary Magnetic B-field analytically (formula of Sarvas)
-%     dip_pos = dipoles_pos_orie(:,1:3);
-%     dip_mom = dipoles_pos_orie(:,4:6);
-%     Bp = zeros(size(MegChannels,1), size(dip_pos,1));
-%     for i = 1:size(CoilsLoc,1)
-%         for j = 1 : size(dip_pos,1)
-%             R = CoilsLoc(i,:);
-%             R_0 = dip_pos(j,:);
-%             A = R - R_0;
-%             a = norm(A);
-%             aa = A./(a^3);
-%             BpHelp = cross(dip_mom(j,:),aa);
-%             Bp(i,j) = BpHelp * CoilsOrient(i, :)'; % projection of the primary B-field along the coil orientations
-%         end
-%     end
-% 
-%     % b- The total magnetic field B = Bp + Bs;
-%     %  full B-field
-%     Bs = GainMeg;
-%     mu = 4*pi*1e-4; % check the value of the units maybe it needs to be mu = 4*pi*1e-7
-%     Bfull = (mu/(4*pi)) * (Bp - Bs);
-% 
-%     % c- Apply the weight :
-%     [channelIndex] = unique(MegChannels(:,1));
-%     nbChannel = length(channelIndex);
-%     weighted_B = zeros(nbChannel,size(Bfull,2));
-%     for iCh = 1 : nbChannel
-%         communChannel = find(iCh==MegChannels(:,1));
-%         BcommunChannel = Bfull(communChannel(:),:);
-%         WcommunChannel =  MegChannels(communChannel(:), 8: end);
-%         weighted_B(iCh,:) = sum (BcommunChannel.*WcommunChannel,1);
-%     end    
-%     GainMeg = weighted_B;
-% end
-
-% % Fill the unused channels with NaN
-% Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
-% if isMeg
-%     Gain(cfg.iMeg,:) = GainMeg; 
-%     % scaling the MEG Gain matrix 
-%     Gain(cfg.iMeg,:) = GainMeg/1000; 
-% end 
-% if (isEeg || isEcog || isSeeg) 
-%     Gain(cfg.iEeg,:) = GainEeg; 
-% end
-% 
-% % Delete the temporary files
-% file_delete(TmpDir, 1, 1);
-% 
-% 
-% %% ===== SAVE TRANSFER MATRIX ======
-% disp('DUNEURO> TODO: Save transferOut.dat to database.')
-% 
-% % Remove logo
-% bst_plugin('SetProgressLogo', []);
-
 end
-
-
-
 
 %% =================================================================================
 %  === SUPPORT FUNCTIONS  =========================================================
 %  =================================================================================
-
-%% ===== BOOL => STR =====
-function str = bool2str(bool)
-    if bool
-        str = 'true';
-    else
-        str = 'false';
-    end
-end
-
-
 function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, isoCond)
     iOk = 0; errMsg = '';
-    
     nodes = FemMat.Vertices; 
     elements = FemMat.Elements - 1; 
     labels = FemMat.Tissue - 1; 
-
     io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
-    
-    % % we assume that this function create the IO file. We abort the execution
-    % % if the file already exists
-    % if isfile(io_file_path)
-    %     errMsg = ['There already exists a file at the location ', io_file_path];
-    % end
-    
+
     % get information about the input data
     nr_nodes = size(nodes, 1);
     nr_elements = size(elements, 1);
@@ -766,15 +384,12 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, is
     
     dim = 3;
     nr_nodes_per_tetrahedron = 4;
-    
     if nr_elements ~= nr_labels
         errMsg = 'Number of elements does not match number of labels';  return;
     end
-    
     if size(nodes, 2) ~= dim
         errMsg = 'Number of columns of nodes array must be 3';  return;
-    end
-    
+    end    
     if size(elements, 2) ~= nr_nodes_per_tetrahedron
         errMsg = 'The DUNEuro container interface currently only supports tetrahedral meshes (or the number of column of the elements array is wrong)';  return;
     end    
@@ -813,11 +428,6 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
     iOk = 0; errMsg = '';
 
     io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
-    
-    % % we assume that the output file already exists
-    % if ~isfile(io_file_path)
-    %     error('The DUNEuro IO file does not exist, please call write_volume_conductor first');
-    % end
     
     nr_magnetometers = size(coil_positions, 1);
     nr_channels = size(coil_to_channel_transform, 1);
@@ -910,49 +520,48 @@ function [iOk, errMsg] = bstdn_write_source_space(duneuro_io_dir, dipole_positio
 end
 
 
-
 function [status, errMsg ] = bst_run_duneuro_task(duneuro_io_dir, config, runner)
-status = 0; errMsg  = '';
-task_name = config.name;
-
-config_file_path = fullfile(duneuro_io_dir, 'config.ini');
-io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
-
-% first write config file
-file_handle = fopen(config_file_path, 'wt');
-
-fprintf(file_handle, ['[task_info]\ntask_list=' task_name '\n\n[' task_name '_config]\n']);
-
-config_keys = fieldnames(config);
-for i = 1:length(config_keys)
-  current_key = config_keys{i};
-  current_value = config.(current_key);
-  
-  % write everything except the task name 
-  if ~strcmp(current_key, 'name')
-    fprintf(file_handle, [current_key '=' current_value '\n']);
-  end
-end
-
-fclose(file_handle);
-
-% now execute system call to start the container
-if strcmp(runner, 'docker')
-  runner_system_call = ['docker run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-elseif strcmp(runner, 'podman')
-  % if we run podman in rootless mode, we need to make the IO directory writable 
-  % for the container user
-  duneuro_container_uid = '50000'; % this uid is explicitely set in the Dockerfile
-  change_ownership_in_container_command = ['podman unshare chown ' duneuro_container_uid ':' duneuro_container_uid ' -R ' duneuro_io_dir];
-  container_command = ['podman run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-  change_ownership_back_command = ['podman unshare chown 0:0 -R ' duneuro_io_dir];
-  runner_system_call = [change_ownership_in_container_command ' && ' container_command ' && ' change_ownership_back_command];
-elseif strcmp(runner, 'apptainer')
-  runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount docker://ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-else
-  errMsg = 'unknown runner';
-   return;
-end
-
-status = system(runner_system_call)
+    status = 0; errMsg  = '';
+    task_name = config.name;
+    
+    config_file_path = fullfile(duneuro_io_dir, 'config.ini');
+    io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
+    
+    % first write config file
+    file_handle = fopen(config_file_path, 'wt');
+    
+    fprintf(file_handle, ['[task_info]\ntask_list=' task_name '\n\n[' task_name '_config]\n']);
+    
+    config_keys = fieldnames(config);
+    for i = 1:length(config_keys)
+      current_key = config_keys{i};
+      current_value = config.(current_key);
+      
+      % write everything except the task name 
+      if ~strcmp(current_key, 'name')
+        fprintf(file_handle, [current_key '=' current_value '\n']);
+      end
+    end
+    
+    fclose(file_handle);
+    
+    % now execute system call to start the container
+    if strcmp(runner, 'docker')
+      runner_system_call = ['docker run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
+    elseif strcmp(runner, 'podman')
+      % if we run podman in rootless mode, we need to make the IO directory writable 
+      % for the container user
+      duneuro_container_uid = '50000'; % this uid is explicitely set in the Dockerfile
+      change_ownership_in_container_command = ['podman unshare chown ' duneuro_container_uid ':' duneuro_container_uid ' -R ' duneuro_io_dir];
+      container_command = ['podman run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
+      change_ownership_back_command = ['podman unshare chown 0:0 -R ' duneuro_io_dir];
+      runner_system_call = [change_ownership_in_container_command ' && ' container_command ' && ' change_ownership_back_command];
+    elseif strcmp(runner, 'apptainer')
+      runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount docker://ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
+    else
+      errMsg = 'unknown runner';
+       return;
+    end
+    
+    status = system(runner_system_call);
 end
