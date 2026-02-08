@@ -1,9 +1,9 @@
 function varargout = panel_duneuro2026(varargin)
-% PANEL_DUNEURO: DUNEuro options
+% PANEL_DUNEURO2026: DUNEuro2026 options
 %
-% USAGE:  bstPanel = panel_duneuro('CreatePanel', OPTIONS)           : Call from the interactive interface
-%         bstPanel = panel_duneuro('CreatePanel', sProcess, sFiles)  : Call from the process editor
-%                s = panel_duneuro('GetPanelContents')
+% USAGE:  bstPanel = panel_duneuro2026('CreatePanel', OPTIONS)           : Call from the interactive interface
+%         bstPanel = panel_duneuro2026('CreatePanel', sProcess, sFiles)  : Call from the process editor
+%                s = panel_duneuro2026('GetPanelContents')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,6 +24,7 @@ function varargout = panel_duneuro2026(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020
+%          Takfarinas Medani, 2026 : adapted from  panel_duneuro
 
 eval(macro_method);
 end
@@ -40,8 +41,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     if (nargin == 1)
         OPTIONS = sProcess;
         % Check if there is only MEG, for simplified model by default
-        isMegOnly = ~ismember('duneuro_2026', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
-        isMeg = isequal(OPTIONS.MEGMethod, 'duneuro_2026');
+        isMegOnly = ~ismember('duneuro2026', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
+        isMeg = isequal(OPTIONS.MEGMethod, 'duneuro2026');
         % PROCESS CALL:  panel_duneuro('CreatePanel', sProcess, sFiles)
     else
         OPTIONS = sProcess.options.duneuro.Value;
@@ -125,30 +126,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         end
     c.gridy = 1;
     jPanelLeft.add(jPanelLayers, c);
-
-%     % ==== PANEL LEFT: FEM METHOD TYPE ====
-%     jPanelType = gui_river([1,1], [0,6,6,6], 'FEM method type');
-%         jGroupFemType = ButtonGroup();
-%         jRadioFemTypeFit   = gui_component('radio', jPanelType, 'br', 'Fitted',   jGroupFemType, '', [], []);
-%         jRadioFemTypeUnfit = gui_component('radio', jPanelType, 'br', 'Unfitted', jGroupFemType, '', [], []);
-%         switch lower(OPTIONS.FemType)
-%             case 'fitted',   jRadioFemTypeFit.setSelected(1);
-%             case 'unfitted', jRadioFemTypeUnfit.setSelected(1);
-%         end
-%     c.gridy = 2;
-%     jPanelLeft.add(jPanelType, c);
-        
-    % ==== PANEL LEFT: FEM SOLVER TYPE ====
-%    jPanelSolverType = gui_river([1,1], [0,6,6,6], 'FEM solver type');
-%        jGroupSolverType = ButtonGroup();
-%        jRadioSolverTypeCg = gui_component('radio', jPanelSolverType, 'br', 'CG: Continuous Galerkin',   jGroupSolverType, '', [], []);
-%        jRadioSolverTypeDg = gui_component('radio', jPanelSolverType, 'br', 'DG: Discontinuous Galerkin', jGroupSolverType, '', [], []);
-%        switch lower(OPTIONS.SolverType)
-%            case 'cg', jRadioSolverTypeCg.setSelected(1);
-%            case 'dg', jRadioSolverTypeDg.setSelected(1);
-%        end
-%    c.gridy = 2;
-%    jPanelLeft.add(jPanelSolverType, c);
     
     % ==== PANEL RIGHT: FEM SOURCE MODEL ====
     jPanelSrcModel = gui_river([1,1], [0,6,6,6], 'FEM source model');
@@ -163,50 +140,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         end
     c.gridy = 3;
     jPanelLeft.add(jPanelSrcModel, c);
-    
-    % ==== PANEL RIGHT: VENANT OPTIONS ====
-%    jPanelOptVen = gui_river([3,3], [0,6,6,6], 'Venant options');
-%        % Number of moments
-%        gui_component('label', jPanelOptVen, [], 'Number of moments (1-5): ', [], '', [], []);
-%        jTextNbMoments = gui_component('texttime', jPanelOptVen, 'tab', '', [], '', [], []);
-%        gui_validate_text(jTextNbMoments, [], [], 1:5, '', 0, OPTIONS.SrcNbMoments, []);
-%        % Reference length
-%        gui_component('label', jPanelOptVen, 'br', 'Reference length (1-100): ', [], '', [], []);
-%        jTextRefLen = gui_component('texttime', jPanelOptVen, 'tab', '', [], '', [], []);
-%        gui_validate_text(jTextRefLen, [], [], 1:100, '', 0, OPTIONS.SrcRefLen, []);
-%        % Weighting exponent
-%        gui_component('label', jPanelOptVen, 'br', 'Weighting exponent (1-3): ', [], '', [], []);
-%        jTextWeightExp = gui_component('texttime', jPanelOptVen, 'tab', '', [], '', [], []);
-%        gui_validate_text(jTextWeightExp, [], [], 1:3, '', 0, OPTIONS.SrcWeightExp, []);
-%        % Relaxation Factor
-%        gui_component('label', jPanelOptVen, 'br', 'Relaxation factor exponent (3-9): ', [], '', [], []);
-%        jTextRelaxFactor = gui_component('texttime', jPanelOptVen, 'tab', sprintf('%e', OPTIONS.SrcRelaxFactor), [], '', [], []);
-%        gui_validate_text(jTextRelaxFactor, [], [], 3:9, '', 0, OPTIONS.SrcRelaxFactor, []);
-%        % Mixed moments
-%        jCheckMixedMoments = gui_component('checkbox', jPanelOptVen, 'br', 'Mixed moments', [], '', [], []);
-%        if (OPTIONS.SrcMixedMoments == 1)
-%            jCheckMixedMoments.setSelected(1);
-%        end
-%        % Restrict
-%        jCheckRestrict = gui_component('checkbox', jPanelOptVen, 'br', 'Restrict', [], '', [], []);
-%        if (OPTIONS.SrcRestrict == 1)
-%            jCheckRestrict.setSelected(1);
-%        end
-%    c.gridy = 1;
-%    jPanelRight.add(jPanelOptVen, c);
-    
-    % ==== PANEL RIGHT: SUBTRACTION OPTIONS ====
-%    jPanelOptSub = gui_river([3,3], [0,6,6,6], 'Subtraction options');
-%        % Number of moments
-%        gui_component('label', jPanelOptSub, [], 'intorderadd (1-5): ', [], '', [], []);
-%        jTextIntorderadd = gui_component('texttime', jPanelOptSub, 'tab', '', [], '', [], []);
-%        gui_validate_text(jTextIntorderadd, [], [], 0:5, '', 0, OPTIONS.SrcIntorderadd, []);
-%        % Number of moments
-%        gui_component('label', jPanelOptSub, 'br', 'intorderadd_lb (1-5): ', [], '', [], []);
-%        jTextIntorderadd_lb = gui_component('texttime', jPanelOptSub, 'tab', '', [], '', [], []);
-%        gui_validate_text(jTextIntorderadd_lb, [], [], 0:5, '', 0, OPTIONS.SrcIntorderadd_lb, []);
-%    c.gridy = 2;
-%    jPanelRight.add(jPanelOptSub, c);
     
     % ==== PANEL RIGHT: INPUT OPTIONS ====
     jPanelInput = gui_river([1,1], [0,6,6,6], 'Source space');
@@ -293,21 +226,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     % Create the BstPanel object that is returned by the function
     ctrl = struct('jCheckLayer',           jCheckLayer, ...
                   'jTextCond',             jTextCond, ...
-                  ... 'jRadioFemTypeFit',      jRadioFemTypeFit, ...
-                  ... 'jRadioFemTypeUnfit',    jRadioFemTypeUnfit, ...
-                  ... 'jRadioSolverTypeCg',    jRadioSolverTypeCg, ...
-                  ... 'jRadioSolverTypeDg',    jRadioSolverTypeDg, ...
                   'jRadioSrcModelVen',     jRadioSrcModelVen, ...
                   'jRadioSrcModelSub',     jRadioSrcModelSub, ...
                   'jRadioSrcModelPar',     jRadioSrcModelPar, ...
-                  ... 'jTextNbMoments',        jTextNbMoments, ...
-                  ... 'jTextRefLen',           jTextRefLen, ...
-                  ... 'jTextWeightExp',        jTextWeightExp, ...
-                  ... 'jTextRelaxFactor',      jTextRelaxFactor, ...
-                  ... 'jCheckMixedMoments',    jCheckMixedMoments, ...
-                  ... 'jCheckRestrict',        jCheckRestrict, ...
-                  ... 'jTextIntorderadd',      jTextIntorderadd, ...
-                  ... 'jTextIntorderadd_lb',   jTextIntorderadd_lb, ...
                   'jTextSrcShrink',        jTextSrcShrink, ...
                   'jCheckSrcForceInGM',   jCheckSrcForceInGM, ...
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
@@ -320,8 +241,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
     % Update comments
     UpdatePanel(1);
-    
-
 
 %% =================================================================================
 %  === LOCAL CALLBACKS  ============================================================
@@ -359,11 +278,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             ExpertMode = bst_get('ExpertMode');
             % Show/hide panels
             jPanelRight.setVisible(ExpertMode);
-%             jPanelType.setVisible(ExpertMode);
-%            jPanelSolverType.setVisible(ExpertMode);
             jPanelSrcModel.setVisible(ExpertMode);
-%            jPanelOptVen.setVisible(ExpertMode && jRadioSrcModelVen.isSelected());
-%            jPanelOptSub.setVisible(ExpertMode && jRadioSrcModelSub.isSelected());
             jPanelInput.setVisible(ExpertMode);
             jPanelOutput.setVisible(ExpertMode);
             jPanelMegComputationOption.setVisible(ExpertMode);
@@ -414,18 +329,6 @@ function s = GetPanelContents() %#ok<DEFNU>
         end
     end
     s.UseTensor = ctrl.UseTensor;
-%     % FEM method type
-%     if ctrl.jRadioFemTypeFit.isSelected()
-%         s.FemType = 'fitted';
-%     elseif ctrl.jRadioFemTypeUnfit.isSelected()
-%         s.FemType = 'unfitted';
-%     end
-    % FEM solver type
-    % if ctrl.jRadioSolverTypeCg.isSelected()
-    %     s.SolverType = 'cg';
-    % elseif ctrl.jRadioSolverTypeDg.isSelected()
-    %     s.SolverType = 'dg';
-    % end
     % Source model
     if ctrl.jRadioSrcModelVen.isSelected()
         s.SrcModel = 'multipolar_venant';
@@ -434,19 +337,6 @@ function s = GetPanelContents() %#ok<DEFNU>
     elseif ctrl.jRadioSrcModelPar.isSelected()
         s.SrcModel = 'partial_integration';
     end
-    % % Venant options
-    % if strcmpi(s.SrcModel, 'venant')
-    %     s.SrcNbMoments    = str2double(ctrl.jTextNbMoments.getText());
-    %     s.SrcRefLen       = str2double(ctrl.jTextRefLen.getText());
-    %     s.SrcWeightExp    = str2double(ctrl.jTextWeightExp.getText());
-    %     s.SrcRelaxFactor  = str2double(ctrl.jTextRelaxFactor.getText());
-    %     s.SrcMixedMoments = ctrl.jCheckMixedMoments.isSelected();
-    %     s.SrcRestrict     = ctrl.jCheckRestrict.isSelected();
-    % % Subtraction options
-    % elseif strcmpi(s.SrcModel, 'subtraction')
-    %     s.SrcIntorderadd    = str2double(ctrl.jTextIntorderadd.getText());
-    %     s.SrcIntorderadd_lb = str2double(ctrl.jTextIntorderadd_lb.getText());
-    % end
     % Input options
     s.SrcShrink = str2double(ctrl.jTextSrcShrink.getText());
     if ~isempty(ctrl.jCheckSrcForceInGM)
@@ -468,12 +358,6 @@ function s = GetPanelContents() %#ok<DEFNU>
     else
         s.EnableCacheMemory = 0;
     end
-
-%     if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
-%         s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
-%     else
-%         s.MegPerBlockOfSensor = 0;
-%     end
 end
 
 

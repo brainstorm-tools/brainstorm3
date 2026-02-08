@@ -102,10 +102,6 @@ end
 %% ===== HEAD MODEL =====
 % Load FEM mesh
 FemMat = load(file_fullpath(cfg.FemFile));
-% Get mesh type
-switch size(FemMat.Elements,2)
-    case 4,  ElementType = 'tetrahedron';
-end
 % Remove unselected tissue from the head model (MEG only), this could be also done for sEEG later
 if strcmp(dnModality, 'meg')
     % Remove the elements corresponding to the unselected tissues
@@ -129,6 +125,7 @@ disp(['DUNEURO> Writing temporary files to: ' TmpDir]);
 % Source space type
 switch (cfg.HeadModelType)
     case 'volume'
+        % Nothing to do as for now: 
         % TODO or keep it as it's now....
     case 'surface'
         bst_progress('text', 'DUNEuro: Fixing source space...');
@@ -256,7 +253,7 @@ end
 
 %% ===== SOURCE MODEL =====
 bst_progress('text', 'DUNEuro: Writing temporary files...');
-[iOk, errMsg] = bstdn_write_source_space(TmpDir, cfg.GridLoc);
+bstdn_write_source_space(TmpDir, cfg.GridLoc);
 
 %% ===== SENSOR MODEL =====
 % Write the EEG electrode file
@@ -266,8 +263,6 @@ end
 % Write the MEG sensors data 
 if isMeg
     % Write coil data
-    % ********* TODO ***********
-    % Get the correct weigh from the original channel file
     coil_to_channel_transform = eye(length(MegChannels));
     coil_to_channel_transform = coil_to_channel_transform.* MegChannels(:,end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
@@ -317,7 +312,6 @@ leadfield_config.meg_scaling = '1e5';
 
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
 leadfield_config.nr_threads = '-1'; % same as above
-
 %% ===== RUN DUNEURO ======
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 % disp(['DUNEURO> System call: ' callStr]);
@@ -351,16 +345,15 @@ end
 
 % Fill the unused channels with NaN
 Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
-if isMeg
-    Gain(cfg.iMeg,:) = GainMeg; 
-    % scaling the MEG Gain matrix 
-    Gain(cfg.iMeg,:) = GainMeg/1000; 
-end 
 if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
     % ToDo: add ref electrode / identify the reference from the channel
     % file and post process the final Leadfield
 end
+
+if isMeg % The MEG is not fully tested as we need to convert from integration points to final position
+    Gain(cfg.iMeg,:) = GainMeg; 
+end 
 
 % Remove logo
 bst_plugin('SetProgressLogo', []);
@@ -466,12 +459,7 @@ function [iOk, errMsg] = bstdn_write_pem_electrodes(duneuro_io_dir, electrode_po
     iOk = 0; errMsg = '';
 
     io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
-    
-    % % we assume that the output file already exists
-    % if ~isfile(io_file_path)
-    %   error('The DUNEuro IO file does not exist, please call write_volume_conductor first');
-    % end
-    
+       
     nr_electrodes = size(electrode_positions, 1);
     dim = 3;
     
@@ -505,18 +493,11 @@ function [iOk, errMsg] = bstdn_write_source_space(duneuro_io_dir, dipole_positio
     if size(dipole_positions, 2) ~= dim
       errMsg = 'The dipole position array must have 3 columns';  return;
     end
-    % if size(electrode_positions, 2) ~= dim
-    %     errMsg = 'The dipole orientation array must have 3 columns';
-    % end
     
-    % if strcmp(electrode_type_flag, 'measurement')
       h5create(io_file_path, "/measurement/source_space/positions", [dim nr_dipoles], Datatype="double");
       h5write(io_file_path, "/measurement/source_space/positions", dipole_positions');
- 
-    % else
-    %    errMsg = 'Dipole flag needs to be either "measurement"';  return;
-    % end
-    iOk = 1;
+
+      iOk = 1;
 end
 
 
