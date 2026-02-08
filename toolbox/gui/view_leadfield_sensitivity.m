@@ -127,6 +127,7 @@ isAvgRef = 1;
 iRef = [];
 % By default: the target is the first channel available
 iChannel = 1;
+iSensitivity = 1;
 % Isosurface threshold
 Thresh = [];
 % Update figure name
@@ -203,7 +204,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         isUpdate = 0;
         switch (keyEvent.Key)
             % === LEFT, RIGHT, UP, DOWN: CHANGE CHANNEL ===
-            case 'leftarrow'
+            case 'leftarrow'                
                 iChannel = iChannel - 1;
                 if ~isempty(iRef) && (iChannel == iRef)
                     iChannel = iChannel - 1;
@@ -215,6 +216,15 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                         iChannel = length(Channels);
                     end
                 end
+                if (iSensitivity > 1)
+                    iChannel = 0;
+                end
+                if (iChannel == 0)
+                    iSensitivity = iSensitivity - 1;
+                    if (iSensitivity < 0)
+                        iSensitivity = 1;
+                    end
+                end
                 isUpdate = 1;
             case 'rightarrow'
                 iChannel = iChannel + 1;
@@ -224,8 +234,15 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 if (iChannel > length(Channels))
                     iChannel = 0;   % Sum of all channels
                 end
+                if (iChannel == 0)
+                    iSensitivity = iSensitivity + 1;
+                    if (iSensitivity > 4)
+                        iSensitivity = 1;
+                    end
+                end
                 isUpdate = 1;
             case 'downarrow'
+                iSensitivity = 1;
                 if isEeg
                     if isempty(iRef)
                         iRef = length(Channels) + 1;
@@ -243,6 +260,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     isUpdate = 1;
                 end
             case 'uparrow'
+                iSensitivity = 1;
                 if isEeg
                     if isempty(iRef)
                         iRef = 0;
@@ -344,7 +362,16 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
             LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-            normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+            % % Compute the sensitivity for each direction:
+            if iSensitivity == 1 % norm of LF in ALL directions
+                normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+            elseif  iSensitivity == 2 % norm of LF in X direction
+                normLF = squeeze(sum(abs(LeadField(:,1,:)), 1));
+            elseif  iSensitivity == 3 % norm of LF in Y direction
+                normLF = squeeze(sum(abs(LeadField(:,2,:)), 1));
+            elseif  iSensitivity == 4 % norm of LF in Z direction
+                normLF = squeeze(sum(abs(LeadField(:,3,:)), 1));
+            end
         % Compute the sensitivity for one sensor
         else
             if isNirs
@@ -402,11 +429,11 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             end
         end
 
-        % Update legend
-        UpdateLegend();
         if is3D
             UpdateMarkers();
         end
+        % Update legend
+        UpdateLegend();
         % Close progress bar
         bst_progress('stop');
     end
@@ -415,7 +442,20 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 %% ===== UPDATE LEGEND =====
     function UpdateLegend()
         if (iChannel == 0)
-            strTarget = 'Sum of all channels';
+            % Compute the sensitivity for each direction:
+            if iSensitivity == 1 % norm of LF in ALL directions
+                strTarget = 'Sum of all channels (in all directions)';
+                iChannel = length(Channels);
+            elseif  iSensitivity == 2 % norm of LF in X direction
+                strTarget = 'Sum of all channels (in X direction)';
+                iChannel = length(Channels);
+            elseif  iSensitivity == 3 % norm of LF in Y direction
+                strTarget = 'Sum of all channels (in Y direction)';
+                iChannel = length(Channels);
+            elseif  iSensitivity == 4 % norm of LF in Z direction
+                strTarget = 'Sum of all channels (in Z direction)';
+                iChannel = length(Channels);
+            end
         elseif isNirs
             tokens = regexp(Channels(iChannel).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             strTarget = sprintf('Target channel #%d/%d : S%s (red) D%s (green)', iChannel, length(Channels), tokens{1}{1}, tokens{1}{2});
