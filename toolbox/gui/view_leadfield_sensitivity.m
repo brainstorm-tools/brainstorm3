@@ -81,7 +81,14 @@ isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 sMri = in_mri_bst(MriFile);
-
+% Get the cortex gridorient
+if strcmpi(HeadmodelMat.HeadModelType, 'surface');
+    % Get the surface data used for the grid of the LF
+    TessMat = in_tess(HeadmodelMat.SurfaceFile);
+    VertNormals = TessMat.VertNormals;
+else
+    VertNormals = [];
+end
 % ===== CREATE FIGURE =====
 is3D = 0;
 grid2mri_interp = [];
@@ -221,8 +228,9 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
                 if (iChannel == 0)
                     iSensitivity = iSensitivity - 1;
-                    if (iSensitivity < 0)
-                        iSensitivity = 1;
+                    if (iSensitivity <= 0)
+                        iSensitivity = 0;
+                        % iChannel = 1;
                     end
                 end
                 isUpdate = 1;
@@ -234,10 +242,15 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 if (iChannel > length(Channels))
                     iChannel = 0;   % Sum of all channels
                 end
+
+                if (iSensitivity > 1)
+                    iChannel = 0;
+                end
                 if (iChannel == 0)
                     iSensitivity = iSensitivity + 1;
-                    if (iSensitivity > 4)
-                        iSensitivity = 1;
+                    if (iSensitivity > 5)
+                        iSensitivity = 0;
+                        % iChannel = 1;
                     end
                 end
                 isUpdate = 1;
@@ -371,6 +384,14 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 normLF = squeeze(sum(abs(LeadField(:,2,:)), 1));
             elseif  iSensitivity == 4 % norm of LF in Z direction
                 normLF = squeeze(sum(abs(LeadField(:,3,:)), 1));
+            elseif  (iSensitivity == 5) % norm of LF in the normal direction
+                if (~isempty(VertNormals))
+                    LeadField = reshape(LeadField, size(LeadField,1), []);
+                    LeadField = bst_gain_orient(LeadField, VertNormals);
+                    normLF = squeeze(sum(abs(LeadField), 1));
+                else
+                    return;
+                end
             end
         % Compute the sensitivity for one sensor
         else
@@ -445,17 +466,16 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             % Compute the sensitivity for each direction:
             if iSensitivity == 1 % norm of LF in ALL directions
                 strTarget = 'Sum of all channels (in all directions)';
-                iChannel = length(Channels);
             elseif  iSensitivity == 2 % norm of LF in X direction
                 strTarget = 'Sum of all channels (in X direction)';
-                iChannel = length(Channels);
             elseif  iSensitivity == 3 % norm of LF in Y direction
                 strTarget = 'Sum of all channels (in Y direction)';
-                iChannel = length(Channels);
             elseif  iSensitivity == 4 % norm of LF in Z direction
                 strTarget = 'Sum of all channels (in Z direction)';
-                iChannel = length(Channels);
+            elseif  iSensitivity == 5 % norm of LF in Normal direction
+                strTarget = 'Sum of all channels (in Normal direction/cortex)';
             end
+            iChannel = length(Channels);
         elseif isNirs
             tokens = regexp(Channels(iChannel).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             strTarget = sprintf('Target channel #%d/%d : S%s (red) D%s (green)', iChannel, length(Channels), tokens{1}{1}, tokens{1}{2});
