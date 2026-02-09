@@ -38,10 +38,14 @@ snirfdata = jsnirfcreate();
 
 % Set meta data
 snirfdata.SNIRFData.metaDataTags.LengthUnit = 'm';
-if isfield(DataMat,'acq_date') && ~isempty(DataMat.acq_date)
-    MeasurementDate = datetime(DataMat.acq_date);
+if isfield(DataMat,'T0') && ~isempty(DataMat.T0)
+    MeasurementDate = datetime(DataMat.T0);
     snirfdata.SNIRFData.metaDataTags.MeasurementDate  = datestr(MeasurementDate, 'yyyy-mm-dd');
     snirfdata.SNIRFData.metaDataTags.MeasurementTime  = datestr(MeasurementDate, 'HH:MM:SS');
+elseif isfield(DataMat,'acq_date') && ~isempty(DataMat.acq_date)
+    MeasurementDate = datetime(DataMat.acq_date);
+    snirfdata.SNIRFData.metaDataTags.MeasurementDate  = datestr(MeasurementDate, 'yyyy-mm-dd');
+    snirfdata.SNIRFData.metaDataTags.MeasurementTime  = '00:00:00';
 end
 
 nirs_channels = strcmpi({ChannelMatOut.Channel.Type}, 'NIRS')';
