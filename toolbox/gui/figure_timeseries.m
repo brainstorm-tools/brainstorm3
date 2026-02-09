@@ -15,7 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
-%                figure_timeseries('UpdateLabelXAxis,             iDS, iFig, display_mode=['relative', 'absolute'])
+%                figure_timeseries('UpdateXAxisTimeLabels,        hFig, action=['update', 'toggle'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

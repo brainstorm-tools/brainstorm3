@@ -638,10 +638,6 @@ function ValidateTimeWindow(isProgress)
     end
     % Reload recordings
     ReloadRecordings();
-    
-    % Trigger time changed
-    bst_figures('FireCurrentTimeChanged')
-
     % Close progress bar
     if isProgress
         bst_progress('stop');
@@ -1160,7 +1156,6 @@ function ReloadRecordings(isForced)
         UpdatePanel();
         % Update lists
         UpdateEventsOccur();
-
         % Set selected events group
         if ~isempty(iSelEvt)
             SetSelectedEvent(iSelEvt(1));
