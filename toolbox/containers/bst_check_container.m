@@ -23,6 +23,7 @@ function [runtime, image, imageLocal] = bst_check_container(image)
 % NOTES:
 %   - This function may display GUI dialogs and download container images
 %   - No container is executed by this function
+%   current duneuro image: 'ghcr.io/maltehoel/duneuro_in_docker_testing:wip';   [for testing]   
 %
 % TUTORIAL:
 %   https://neuroimage.usc.edu/brainstorm/Tutorials/bstContainers
