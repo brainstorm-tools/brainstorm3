@@ -49,6 +49,9 @@ try
         strDate = datestr(datenum(s, 'dd-mmm-yyyy'), 'dd-mmm-yyyy');
     elseif isequal(find(s == '-'), [5 8]) && ((length(s) == 10) || (length(s) == 19))
         strDate = datestr(datenum(s, 'yyyy-mm-dd'), 'dd-mmm-yyyy');
+    elseif isequal(find(s == 'T'), 11) && (length(s) >= 19) % YYYY-MM-DDThh:mm:ss[.SSS]
+        s = s(1:10);
+        strDate = str_date(s, 'yyyy-mm-dd');
     else
         strDate = [];
     end

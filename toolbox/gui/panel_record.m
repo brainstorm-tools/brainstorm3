@@ -3136,16 +3136,6 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
         inputFormat = 'yyyy-MM-dd';
         newDate = res;
     else
-        % Input is given as date and time YYYY-MM-DDThh:mm:ss
-        if (length(newDate) >= 19) && strcmpi(newDate(11), 'T')
-            newDate(11) = ' ';
-        end
-        % Keep only date string
-        datetimeStrs = strsplit(newDate, ' ');
-        if length(datetimeStrs) < 1
-            return
-        end
-        newDate = datetimeStrs{1};
         % Change date input to dd-MMM-yyyy
         newDate = str_date(newDate);
         inputFormat = 'dd-MMM-yyyy';
