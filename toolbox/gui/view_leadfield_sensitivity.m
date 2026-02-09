@@ -229,7 +229,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 if (iChannel == 0)
                     iSensitivity = iSensitivity - 1;
                     if (iSensitivity <= 0)
-                        iSensitivity = 0;
+                        iSensitivity = 1;
                         % iChannel = 1;
                     end
                 end
