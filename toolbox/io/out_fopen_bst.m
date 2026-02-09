@@ -35,10 +35,12 @@ sFileOut.header    = struct();
 sFileOut.header.device    = sFileOut.device;
 sFileOut.header.sfreq     = sFileOut.prop.sfreq;
 sFileOut.header.starttime = sFileOut.prop.times(1);
+sFileOut.header.t0        = sFileOut.t0;
 sFileOut.header.navg      = sFileOut.prop.nAvg;
 % sFileOut.header.version   = 51;   % April 2019
 % sFileOut.header.version   = 52;   % March 2023
-sFileOut.header.version   = 53;   % September 2024
+% sFileOut.header.version   = 53;   % September 2024
+sFileOut.header.version   = 54;   % February 2024
 sFileOut.header.nsamples  = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
 sFileOut.header.epochsize = EpochSize;
 sFileOut.header.nchannels = length(ChannelMat.Channel);
@@ -57,6 +59,7 @@ fwrite(fid, sFileOut.header.version, 'uint8');               % UINT8(1)   : Vers
 fwrite(fid, str_zeros(sFileOut.header.device, 40), 'char');  % CHAR(40)   : Device used for recording
 fwrite(fid, sFileOut.header.sfreq, 'float32');               % UINT32(1)  : Sampling frequency
 fwrite(fid, sFileOut.header.starttime, 'float32');           % FLOAT32(1) : Start time
+fwrite(fid, str_zeros(sFileOut.header.t0, 30), 'char');      % CHAR(30)   : Timestamp 'yyyy-MM-ddTHH:mm:ss.SSS' for 0s
 fwrite(fid, sFileOut.header.navg, 'uint32');                 % UINT32(1)  : Number of files averaged
 if ~isempty(sFileOut.header.ctfcomp)
     fwrite(fid, sFileOut.header.ctfcomp, 'uint8');           % UINT8(1)   : CTF compensation status (0,1,2,3)
