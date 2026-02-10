@@ -100,7 +100,8 @@ if isRaw
                                  'TimeOffset',  0, ...
                                  'isBad',       [], ...
                                  'ChannelFlag', [], ...
-                                 'ImportTime',  ''), 0);
+                                 'ImportTime',  '', ...
+                                 'TimeZero',    0), 0);
     % If file not open yet: Open file
     if isempty(sFile)
         [sFile, ChannelMat, errMsg] = in_fopen(DataFile, FileFormat, ImportOptions);
@@ -144,6 +145,17 @@ if isRaw
         case 'epoch'
             % If all data sets have the same comment: consider them as trials
             isTrials = (length(sFile.epochs) > 1) && all(strcmpi({sFile.epochs.label}, sFile.epochs(1).label));
+            % Rebuild epoch sample offsets for this file
+            for ieph = 1:length(ImportOptions.iEpochs)
+                nSamples = round((sFile.epochs(ieph).times(2) - sFile.epochs(ieph).times(1)) .* sFile.prop.sfreq) + 1;
+                if (ieph == 1)
+                    epochSmp = [0, nSamples-1];
+                else
+                    epochSmp = [epochSmp; epochSmp(ieph-1,2) + [1, nSamples]];
+                end
+            end
+            % Epoch beginning times
+            epochStartTimes = epochSmp(:,1) ./ sFile.prop.sfreq;
             % Loop on all epochs
             for ieph = 1:length(ImportOptions.iEpochs)
                 % Get epoch number
@@ -153,6 +165,7 @@ if isRaw
                 BlocksToRead(end).Comment    = sFile.epochs(iEpoch).label;
                 BlocksToRead(end).TimeOffset = 0;
                 BlocksToRead(end).ImportTime = sFile.epochs(iEpoch).times;
+                BlocksToRead(end).TimeZero   = epochStartTimes(ieph);
                 % Copy optional fields
                 if isfield(sFile.epochs(iEpoch), 'bad') && (sFile.epochs(iEpoch).bad == 1)
                     BlocksToRead(end).isBad = 1;
@@ -202,6 +215,7 @@ if isRaw
                 BlocksToRead(end).iTimes     = smpBlock;
                 BlocksToRead(end).FileTag    = sprintf('block%03d', iBlock);
                 BlocksToRead(end).TimeOffset = 0;
+                BlocksToRead(end).TimeZero   = 0;
                 % Build comment (seconds or miliseconds)
                 BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
                 if (BlocksToRead(end).ImportTime(2) > 2)
@@ -264,6 +278,7 @@ if isRaw
                             BlocksToRead(end).TimeOffset = TimeOffset + (iBlock - 1) .* ImportOptions.SplitLength;
                             BlocksToRead(end).nAvg       = 1;
                             BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
+                            BlocksToRead(end).TimeZero   = ImportOptions.events(iEvent).times(1,iOccur);
                         end
                     % No splitting
                     else
@@ -275,6 +290,7 @@ if isRaw
                         BlocksToRead(end).TimeOffset = TimeOffset;
                         BlocksToRead(end).nAvg       = 1;
                         BlocksToRead(end).ImportTime = samplesEpoch / sFile.prop.sfreq;
+                        BlocksToRead(end).TimeZero   = ImportOptions.events(iEvent).times(1,iOccur);
                         % Add condition TAG, if required in input options structure
                         if ImportOptions.CreateConditions 
                             CondName = strrep(ImportOptions.events(iEvent).label, '#', '');
@@ -335,6 +351,15 @@ if isRaw
         if (BlocksToRead(iFile).TimeOffset ~= 0)
             TimeVector = TimeVector + BlocksToRead(iFile).TimeOffset;
         end
+        % Update t0 for imported data file
+        if ~isempty(sFile.t0) && (BlocksToRead(iFile).TimeZero ~= 0)
+            ts0 = datetime(sFile.t0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
+            ts0 = ts0 + seconds(BlocksToRead(iFile).TimeZero);
+            ts0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
+            t0 = char(ts0);
+        else
+            t0 = sFile.t0;
+        end
         % Build file structure
         DataMat = db_template('DataMat');
         DataMat.F        = F;
@@ -344,6 +369,7 @@ if isRaw
         DataMat.nAvg     = double(BlocksToRead(iFile).nAvg);
         DataMat.DisplayUnits = DisplayUnits;
         DataMat.DataType = 'recordings';
+        DataMat.T0       = t0;
         % Channel flag
         if ~isempty(BlocksToRead(iFile).ChannelFlag) 
             DataMat.ChannelFlag = BlocksToRead(iFile).ChannelFlag;

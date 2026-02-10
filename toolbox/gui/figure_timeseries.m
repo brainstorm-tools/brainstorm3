@@ -15,6 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
+%                figure_timeseries('UpdateXAxisTimeLabels,        hFig, action=['update', 'toggle'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -921,6 +922,7 @@ function FigureMouseWheelCallback(hFig, event)
     % Regular scroll
     else
         FigureScroll(hFig, event.VerticalScrollCount, 'horizontal');
+        UpdateXAxisTimeLabels(hFig, 'update');
     end
 end
 
@@ -1520,6 +1522,11 @@ function FigureKeyPressedCallback(hFig, ev)
         case 'v'           
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
+            end
+        % CTRL+X : Toogle time X axis mode
+        case 'x'
+            if isControl && isFullDataFile
+                UpdateXAxisTimeLabels(hFig, 'toggle')
             end
         % Y : Scale to fit Y axis
         case 'y'
@@ -2502,6 +2509,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isT0 = ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
@@ -2539,18 +2547,34 @@ function DisplayConfigMenu(hFig, jParent)
         end
 
     % === X-AXIS ===
-    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+    if isRaw || isT0 || strcmpi(FigureId.Type, 'Spectrum')
         % Menu name
         if strcmpi(FigureId.Type, 'Spectrum')
             strX = 'Frequency';
         else
             strX = 'Time';
         end
+        % Time axis options
         jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
-        % Axis resolution
         if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            % Axis resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+            if isRaw && isT0
+                jMenu.addSeparator();
+            end
+            % Time display mode
+            if isT0
+                if isempty(TsInfo.TimestampZero)
+                    strTime = 'Display time as absolute time (HH:MM:ss)';
+                else
+                    strTime = 'Display time as relative time';
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
+            end
         end
         % Log scale
         if strcmpi(FigureId.Type, 'Spectrum')
@@ -2588,7 +2612,7 @@ function DisplayConfigMenu(hFig, jParent)
             % Set fixed resolution
             if isRaw
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK));
             end
             % Uniform amplitude scales
             if ~isRaw && (length(hFigAll) > 1)
@@ -3157,6 +3181,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
             PlotRawTimeBar(iDS, iFig);
         end
     end
+
+    % ===== UPDATE X AXIS TIME DISPLAY =====
+    UpdateXAxisTimeLabels(hFig, 'update');
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if ~TsInfo.NormalizeAmp && strcmpi(TsInfo.DisplayMode, 'column') && (nAxes == 1)
@@ -4313,6 +4341,60 @@ function SetResolution(iDS, iFig, newResX, newResY)
     if ~isequal(Resolution, oldResolution)
         bst_set('Resolution', Resolution);
     end
+end
+
+
+%% ===== UPDATE X AXIS TIME DISPLAY =====
+function UpdateXAxisTimeLabels(hFig, action)
+    global GlobalData;
+
+    if nargin < 2 || isempty(action)
+        action = 'update';
+    end
+
+    % Get current figure structure
+    [hFig, ~, iDS] = bst_figures('GetFigure', hFig);
+    hAxes = findobj(hFig, 'Tag', 'AxesGraph');
+    TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = getappdata(hFig, 'FigureId');
+    t0 = GlobalData.DataSet(iDS).Measures.sFile.t0;
+
+    % Just for DataTimeseries with T0
+    if strcmpi(FigureId, 'Spectrum') || isempty(t0)
+        return
+    end
+
+    % Update TimestampZero in Figure TsInfo data
+    if strcmpi(action, 'toggle')
+        if isempty(TsInfo.TimestampZero)
+            TsInfo.TimestampZero = t0;
+        else
+            TsInfo.TimestampZero = [];
+        end
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+
+    % Relative positions and tentative labels for current ticks
+    tickValues = hAxes.XTick;
+    tickLabels = arrayfun(@num2str, tickValues, 'UniformOutput', 0);
+    % Display as relative time (from the recording start)
+    if isempty(TsInfo.TimestampZero)
+        % Do nothing
+    % Display as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
+    else
+        tickTimeStamps = datetime(TsInfo.TimestampZero) + seconds(tickValues);
+        % Find number of decimals for seconds from tickLabels
+        tmp = regexp(tickLabels, '\.(\d*)$', 'tokens');
+        tmp = [tmp{:}];
+        d = max([cellfun(@(x) length(x{1}), tmp),0]);
+        tickFormat = 'HH:mm:ss';
+        if d > 0
+            tickFormat = [tickFormat, '.' repmat('S', 1, d)];
+        end
+        tickTimeStamps.Format = tickFormat;
+        tickLabels = arrayfun(@char, tickTimeStamps, 'UniformOutput', 0);
+    end
+    hAxes.XTickLabel = tickLabels;
 end
 
 
