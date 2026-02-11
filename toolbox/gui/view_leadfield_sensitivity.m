@@ -373,23 +373,25 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
-            LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-            % normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
-            if directionOfSensitivity == 1 % norm of LF in ALL directions
-                normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
-            elseif  directionOfSensitivity == 2 % norm of LF in X direction
-                normLF = squeeze(sum(abs(LeadField(:,1,:)), 1));
-            elseif  directionOfSensitivity == 3 % norm of LF in Y direction
-                normLF = squeeze(sum(abs(LeadField(:,2,:)), 1));
-            elseif  directionOfSensitivity == 4 % norm of LF in Z direction
-                normLF = squeeze(sum(abs(LeadField(:,3,:)), 1));
-            elseif  (directionOfSensitivity == 5) % norm of LF in the normal direction
+            if  (directionOfSensitivity == 5) % norm of LF in the normal direction
                 if (~isempty(VertNormals))
-                    LeadField = reshape(LeadField, size(LeadField,1), []);
                     LeadField = bst_gain_orient(LeadField, VertNormals);
                     normLF = squeeze(sum(abs(LeadField), 1));
                 else
                     return;
+                end
+
+            else
+                LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
+                % normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+                if directionOfSensitivity == 1 % norm of LF in ALL directions
+                    normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+                elseif  directionOfSensitivity == 2 % norm of LF in X direction
+                    normLF = squeeze(sum(abs(LeadField(:,1,:)), 1));
+                elseif  directionOfSensitivity == 3 % norm of LF in Y direction
+                    normLF = squeeze(sum(abs(LeadField(:,2,:)), 1));
+                elseif  directionOfSensitivity == 4 % norm of LF in Z direction
+                    normLF = squeeze(sum(abs(LeadField(:,3,:)), 1));
                 end
             end
         % Compute the sensitivity for one sensor
@@ -401,24 +403,26 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
-            LeadField = reshape(LeadField,3,[])'; % each column is a vector
-            if directionOfSensitivity == 1 % norm of LF in ALL directions
-                normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
-            elseif  directionOfSensitivity == 2 % norm of LF in X direction
-                normLF = abs(LeadField(:,1));
-            elseif  directionOfSensitivity == 3 % norm of LF in Y direction
-                normLF = abs(LeadField(:,2));
-            elseif  directionOfSensitivity == 4 % norm of LF in Z direction
-                normLF = abs(LeadField(:,3));
-            elseif  (directionOfSensitivity == 5) % norm of LF in the normal direction
+
+            if (directionOfSensitivity == 5) % norm of LF in the normal direction
                 if (~isempty(VertNormals))
-                    LeadField = reshape(LeadField, 1, []);
                     LeadField = bst_gain_orient(LeadField, VertNormals);
                     % normLF = (LeadField);
                     normLF = abs(LeadField);
                 else
                     normLF = nan(size(LeadField,1),1);
                 end
+            else
+                LeadField = reshape(LeadField,3,[])'; % each column is a vector
+                if directionOfSensitivity == 1 % norm of LF in ALL directions
+                    normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
+                elseif  directionOfSensitivity == 2 % norm of LF in X direction
+                    normLF = abs(LeadField(:,1));
+                elseif  directionOfSensitivity == 3 % norm of LF in Y direction
+                    normLF = abs(LeadField(:,2));
+                elseif  directionOfSensitivity == 4 % norm of LF in Z direction
+                    normLF = abs(LeadField(:,3));
+                end  
             end
         end
         % Surface or volume
