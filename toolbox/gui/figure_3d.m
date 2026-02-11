@@ -3385,9 +3385,10 @@ function SetStructLayout(hFig, iTess)
     dx = max(Vertices(:,1)) - min(Vertices(:,1));
     dy = max(Vertices(:,2)) - min(Vertices(:,2));
     dz = max(Vertices(:,3)) - min(Vertices(:,3));
+    iDel = [];
     % Region by region
     for i = 1:length(sScouts)
-        % Define the structure offset
+        % Define the position offset for anatomical structures
         switch (sScouts(i).Label)
             % Cortex + cerebellum
             case {'lh', '01_Lhemi L', 'Cortex L'},   offSet = [0,  0.6*dy, 0];
@@ -3401,7 +3402,7 @@ function SetStructLayout(hFig, iTess)
             case {'Amygdala L','LAmy','LAmy L'},     offSet = [ .2*dx,  0.3*dy, -0.2*dz];
             case {'Amygdala R','RAmy','RAmy R'},     offSet = [ .2*dx, -0.3*dy, -0.2*dz];
             case {'Pallidum L','LEgp', 'LIgp'},      offSet = [0,  0.2*dy, 0.2*dz];
-            case{ 'Pallidum R','REgp', 'RIgp'},      offSet = [0, -0.2*dy, 0.2*dz];
+            case {'Pallidum R','REgp', 'RIgp'},      offSet = [0, -0.2*dy, 0.2*dz];
             case {'Putamen L','LPut'},               offSet = [0,  0.3*dy, 0];
             case {'Putamen R','RPut'},               offSet = [0, -0.3*dy, 0];
             case {'Caudate L','LCau'},               offSet = [0,  0.3*dy, 0.4*dz];
@@ -3410,13 +3411,27 @@ function SetStructLayout(hFig, iTess)
             case {'Hippocampus R','RHip','RHip R'},  offSet = [ .1*dx, -0.3*dy, -0.4*dz];
             case {'Thalamus L','LTha'},              offSet = [-.3*dx,  0.2*dy, -0.3*dz];
             case {'Thalamus R','RTha'},              offSet = [-.3*dx, -0.2*dy, -0.3*dz];
+            % Outer layers
+            case {'scalp','head'},                   offSet = [0     0     0];
+            case {'outerskull'},                     offSet = [0,  1.5*dy, 0];
+            case {'innerskull'},                     offSet = [0, -1.5*dy, 0];
             otherwise,                               offSet = [];
         end
         % Apply offset to this region
         if ~isempty(offSet)
             iVert = sScouts(i).Vertices;
             Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
+            iDel = [iDel, i];
         end
+    end
+    % Define and apply the y-axis offset for non-anatomical structures
+    sScouts(iDel) = [];
+    for i = 1:length(sScouts)
+        iVert = sScouts(i).Vertices;
+        % Alternate -y and +y of the current displayed surfaces
+        dy = max(((-1)^i)* Vertices(:,2)) + (max(Vertices(iVert,2)) - min(Vertices(iVert,2)))/2;
+        offSet = [0, ((-1)^i) * 1.1 * dy, 0];
+        Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
     end
     % Apply modified locations
     set(TessInfo(iTess).hPatch, 'Vertices',  Vertices);
