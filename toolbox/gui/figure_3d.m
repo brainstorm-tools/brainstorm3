@@ -3410,13 +3410,25 @@ function SetStructLayout(hFig, iTess)
             case {'Hippocampus R','RHip','RHip R'},  offSet = [ .1*dx, -0.3*dy, -0.4*dz];
             case {'Thalamus L','LTha'},              offSet = [-.3*dx,  0.2*dy, -0.3*dz];
             case {'Thalamus R','RTha'},              offSet = [-.3*dx, -0.2*dy, -0.3*dz];
+            % % outer layers
+            case {'scalp','head'},                   offSet = [0 0 0];
+            case {'outerskull'},                     offSet = [0,  1.5*dy, 0];
+            case {'innerskull'},                     offSet = [0,  -1.5*dy, 0];
             otherwise,                               offSet = [];
         end
         % Apply offset to this region
         if ~isempty(offSet)
             iVert = sScouts(i).Vertices;
             Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
+        else % for any other surface align along y axis
+            k = 1.25;
+            % offSet = [0, ((-1)^i)*k*new_dy, 0];
+            offSet = [0, k*new_dy, 0];
+            iVert = sScouts(i).Vertices;
+            Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
         end
+        new_dy = max(Vertices(:,2)) - min(Vertices(:,2))/4;
+
     end
     % Apply modified locations
     set(TessInfo(iTess).hPatch, 'Vertices',  Vertices);
