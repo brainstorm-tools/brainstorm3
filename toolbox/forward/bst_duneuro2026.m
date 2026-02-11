@@ -1,4 +1,4 @@
-function [Gain, errMsg] = bst_duneuro_2026(cfg)
+function [Gain, errMsg] = bst_duneuro2026(cfg)
 % BST_DUNEURO: Call Duneuro to compute a FEM solution for Brainstorm.
 %
 % USAGE:  [Gain, errMsg] = bst_duneuro(cfg)
@@ -42,10 +42,10 @@ bst_plugin('SetProgressLogo', 'duneuro');
 
 %% ===== SENSORS =====
 % Select modality for DUNEuro
-isEeg  = strcmpi(cfg.EEGMethod, 'duneuro_2026')  && ~isempty(cfg.iEeg);
-isMeg  = strcmpi(cfg.MEGMethod, 'duneuro_2026')  && ~isempty(cfg.iMeg);
-isEcog = strcmpi(cfg.ECOGMethod, 'duneuro_2026') && ~isempty(cfg.iEcog);
-isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro_2026') && ~isempty(cfg.iSeeg);
+isEeg  = strcmpi(cfg.EEGMethod, 'duneuro2026')  && ~isempty(cfg.iEeg);
+isMeg  = strcmpi(cfg.MEGMethod, 'duneuro2026')  && ~isempty(cfg.iMeg);
+isEcog = strcmpi(cfg.ECOGMethod, 'duneuro2026') && ~isempty(cfg.iEcog);
+isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro2026') && ~isempty(cfg.iSeeg);
 
 % Get the modality
 if ((isEeg || isEcog || isSeeg) && isMeg)
@@ -72,7 +72,7 @@ if isMeg
     for iChan = 1:length(cfg.iMeg)
         sChan = cfg.Channel(cfg.iMeg(iChan));
         for iInteg = 1:size(sChan.Loc, 2)
-            MegChannels = [MegChannels; iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg)];
+            MegChannels = [MegChannels; iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight];
         end
     end
     % In the case where the MEG integration points are used
@@ -261,10 +261,10 @@ if isEeg || isEcog || isSeeg
     bstdn_write_pem_electrodes(TmpDir, EegLoc', 'measurement');
 end
 % Write the MEG sensors data 
-if isMeg
+if isMeg || isMeeg
     % Write coil data
-    coil_to_channel_transform = eye(length(MegChannels));
-    coil_to_channel_transform = coil_to_channel_transform.* MegChannels(:,end);
+    % coil_to_channel_transform = eye(length(MegChannels));
+    coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
 end
 
@@ -288,7 +288,7 @@ if strcmp(dnModality, 'meeg')
     transfer_matrix_config.do_eeg = 'True';
 end
 transfer_matrix_config.residual_reduction = '1e-16';
-transfer_matrix_config.nr_threads = '-1'; % can be used as user parameters
+transfer_matrix_config.nr_threads = '-1'; % can be used as user parameters ==> highlighted as super parameters
 % Check with Malte is there is an optimised number without overwhelming the
 % user computer.
 
@@ -307,8 +307,10 @@ if strcmp(dnModality, 'meeg')
     leadfield_config.do_meg = 'True';
     leadfield_config.do_eeg = 'True';
 end
+% set final hard code value 
 leadfield_config.eeg_scaling = '1e0'; % check with Malte if those value are optimised
-leadfield_config.meg_scaling = '1e5';
+leadfield_config.meg_scaling = '1e5'; % Malte to check and get final value for MKSA system. 
+% permeability: 
 
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
 leadfield_config.nr_threads = '-1'; % same as above
@@ -439,9 +441,9 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
         error('Position and orientation arrays must have matching number of rows');  return;
     end
     
-    if size(coil_to_channel_transform, 2) ~= nr_magnetometers
-        errMsg = 'Number of columns of transformation matrix must match number of coils';  return;
-    end
+    % if size(coil_to_channel_transform, 2) ~= nr_magnetometers
+    %     errMsg = 'Number of columns of transformation matrix must match number of coils';  return;
+    % end
     
     h5create(io_file_path, "/measurement/sensors/magnetometers/positions", [dim nr_magnetometers], Datatype="double");
     h5create(io_file_path, "/measurement/sensors/magnetometers/orientations", [dim nr_magnetometers], Datatype="double");
@@ -449,7 +451,7 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
     
     h5write(io_file_path, "/measurement/sensors/magnetometers/positions", coil_positions');
     h5write(io_file_path, "/measurement/sensors/magnetometers/orientations", coil_orientations');
-    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform');
+    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform);
 
     % if all goes well, return 1
     iOk = 1;

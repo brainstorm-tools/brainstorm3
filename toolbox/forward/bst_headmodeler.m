@@ -505,15 +505,15 @@ end
 
 %% ===== COMPUTE: DUNEURO =====
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) ...
-        || ismember('duneuro_2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+        || ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
     bst_progress('setimage', 'plugins/duneuro_logo.png');
     % Run duneuro FEM computation
     if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
         [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
-    elseif ismember('duneuro_2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
-        [Gain_dn, errMessage] = bst_duneuro_2026(OPTIONS);
+    elseif ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+        [Gain_dn, errMessage] = bst_duneuro2026(OPTIONS);
     end
     % Comment in history field
     dn_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
