@@ -222,7 +222,6 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         switch (keyEvent.Key)
             % === LEFT, RIGHT, UP, DOWN: CHANGE CHANNEL ===
             case 'leftarrow'
-                directionOfSensitivity = 1;
                 iChannel = iChannel - 1;
                 if ~isempty(iRef) && (iChannel == iRef)
                     iChannel = iChannel - 1;
@@ -236,7 +235,6 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
                 isUpdate = 1;
             case 'rightarrow'
-                directionOfSensitivity = 1;
                 iChannel = iChannel + 1;
                 if ~isempty(iRef) && (iChannel == iRef)
                     iChannel = iChannel + 1;
@@ -246,7 +244,6 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
                 isUpdate = 1;
             case 'downarrow'
-                directionOfSensitivity = 1;
                 if isEeg
                     if isempty(iRef)
                         iRef = length(Channels) + 1;
@@ -264,7 +261,6 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     isUpdate = 1;
                 end
             case 'uparrow'
-                directionOfSensitivity = 1;
                 if isEeg
                     if isempty(iRef)
                         iRef = 0;
