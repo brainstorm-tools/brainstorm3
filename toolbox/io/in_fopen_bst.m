@@ -35,26 +35,31 @@ if (fid == -1)
 end
 
 
-% ===== FORMAT HEADER =====
+% ===== MAGIC AND VERSION =====
 magic = fread(fid, [1 6], '*char');                           % CHAR(6)    : Format
 if ~isequal(magic, 'BSTBIN')
     error('File is not a valid Brainstorm binary file.');
 end
 hdr.version   = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Version of the format, starting at uint8('1') = 49 for legacy reasons
+
+% ===== CHECK WHETHER VERSION IS SUPPORTED =====
+if (hdr.version > 54)
+    error(['The selected version of the BST format is currently not supported.' ...
+           10 'Please update Brainstorm.']);
+end
+
+% ===== FORMAT HEADER =====
 hdr.device    = str_read(fid, 40);                            % CHAR(40)   : Device used for recording
 hdr.sfreq     = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Sampling frequency
 hdr.starttime = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Start time
+if (hdr.version >= 54)
+    hdr.t0    = str_read(fid, 30);                            % CHAR(30)   : Timestamp 'yyyy-MM-ddTHH:mm:ss.SSS' for 0s
+end
 hdr.navg      = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of files averaged
 hdr.ctfcomp   = double(fread(fid, [1 1], 'uint8'));           % UINT8(1)   : CTF compensation status (0,1,2,3)
 hdr.nsamples  = fread(fid, [1 1], 'uint32');                  % UINT32(1)  : Total number of samples
 hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of samples per epoch
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
-
-% ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if (hdr.version > 53)
-    error(['The selected version of the BST format is currently not supported.' ...
-           10 'Please update Brainstorm.']);
-end
 
 % ===== CHANNEL LOCATIONS =====
 ChannelMat.Comment = str_read(fid, 40);                                     % CHAR(40)   : Channel file comment
@@ -208,6 +213,7 @@ sFile.format       = 'BST-BIN';
 sFile.byteorder    = 'l';
 sFile.comment      = fBase;
 sFile.events       = events;
+sFile.t0           = hdr.t0;
 sFile.header       = hdr;
 sFile.channelflag  = ChannelFlag;
 sFile.prop.sfreq   = hdr.sfreq;

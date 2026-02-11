@@ -3,7 +3,7 @@ function events = in_events_anywave(sFile, EventFile)
 %
 % USAGE:  events = in_events_anywave(sFile, EventFile)
 %
-% REFERENCE: https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
+% REFERENCE: https://web.archive.org/web/20221122022800/https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,6 +25,7 @@ function events = in_events_anywave(sFile, EventFile)
 %
 % Authors: Konstantinos Nasiotis, 2020
 %          Francois Tadel, 2022
+%          Raymundo Cassani, 2026
 
 %% Matlab generated script - LOAD THE EVENT FILE
 % Initialize variables.
@@ -164,9 +165,13 @@ for i = 1:length(uniqueLabels)
     % Add event structure
     events(iEvt).label = uniqueLabels{i};
     events(iEvt).epochs = ones(1,length(iOcc));
-    % Extended events
+    % Convert latencies from the first sample in the file to the real timing
+    % https://web.archive.org/web/20221122022800/https://meg.univ-amu.fr/wiki/AnyWave:ADES#The_marker_file_.28.mrk.29
+    times(iOcc) = times(iOcc) + sFile.prop.times(1);
+    % Simple events
     if all(duration(iOcc) == 0)
         events(iEvt).times = times(iOcc)';
+    % Extended events
     else
         events(iEvt).times = [times(iOcc)'; times(iOcc)' + duration(iOcc)'];
     end

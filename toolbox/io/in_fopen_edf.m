@@ -205,20 +205,31 @@ sFile.header = hdr;
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % No info on bad channels
 sFile.channelflag = ones(hdr.nsignal,1);
-% Acquisition date
-acq_date = datetime([ hdr.startdate, ' ', hdr.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');
-
-% In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem. 
-% So, the years 1985-1999 must be represented by yy=85-99 and the years 2000-2084 by yy=00-84. 
-% After 2084, yy must be 'yy' and only item 4 of this paragraph defines the date.
+% Acquisition date from 'local recording identification'
+tmp = regexp(hdr.rec_id, 'Startdate ([\w|-]*)', 'tokens');
+if ~isempty(tmp) && length(tmp) == 1
+    rec_id_date = datetime(tmp{1}, 'InputFormat','dd-MMM-yyyy');
+end
+% Acquisition date from 'startdate'
+acq_date = datetime(hdr.startdate, 'InputFormat','dd.MM.uu');
+% In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem.
+% Years between 1985-1999 must be represented by yy=85-99
 if year(acq_date) >= 85
     acq_date.Year = 1900 + year(acq_date);
+% Years between 2000-2084 by yy=00-84
 else
     acq_date.Year = 2000 + year(acq_date);
 end
-
-acq_date.Format = 'yyyy-MM-dd''T''HH:mm:ss';
+% After 2084, yy must be 'yy' and only 'local recording identification' defines the date
+if rec_id_date.Year >= 2085
+    acq_date.Year = rec_id_date.Year;
+end
+acq_date.Format = 'dd-MMM-yyyy';
 sFile.acq_date = char(acq_date);
+% Timestamp for 0s
+t0 = datetime([sFile.acq_date, ' ', hdr.starttime], 'InputFormat', 'dd-MMM-yyyy HH.mm.ss');
+t0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
+sFile.t0 = char(t0);
 
 
 %% ===== PROCESS CHANNEL NAMES/TYPES =====

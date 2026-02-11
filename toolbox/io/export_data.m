@@ -327,6 +327,7 @@ else
                 if isRawIn
                     DataMat.Events = DataMat.F.events;
                     DataMat.acq_date = DataMat.F.acq_date;
+                    DataMat.T0 = DataMat.F.t0;
                 end
                 DataMat.F = F;
                 out_data_snirf(ExportFile, DataMat, ChannelMatOut);

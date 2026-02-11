@@ -854,6 +854,11 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
         bst_error('This montage name already exists.', 'New montage', 0);
         newName = [];
         return
+    elseif ~isempty(strfind(newName, '[tmp]'))
+        bst_error(['<HTML>New montage name should not include the tag <B>[tmp]</B>.' 10 ...
+                   'This tag is reserved for Brainstorm dynamic montages.'], 'New montage', 0);
+        newName = [];
+        return
     end
     % Make sure Channels is a cell list of strings
     if isempty(ChanNames) || ~iscell(ChanNames)

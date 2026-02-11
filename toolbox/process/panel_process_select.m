@@ -3045,7 +3045,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             if length(reqFncsMissing) == 1
                 errMsg = [errMsg, ': ', reqFncs{reqFncsMissing}];
             else
-                errMsg = [errMsg, 's: ', strjoin(reqFncs{reqFncsMissing}, ',')];
+                errMsg = [errMsg, 's: ', strjoin(reqFncs(reqFncsMissing), ', ')];
             end
         end
         % Get function handle

@@ -1,3 +1,15 @@
+January 2026
+- Anatomy: Add generation of primitive geometric surfaces (sphere, cube, ...)
+- Anatomy: Boolean operations between two surfaces (intersection, union, diff)
+- BIDS: Import coregistration information if available in the BIDS dataset
+- Coreg: Manual coregistration, ask for folders to apply same coregistration
+- Events: Bugfix importing AnyWave events, times are relative to file start
+- FEM: Update extraction of surfaces from not fully nested FEM layers
+- FEM: Extract FEM layers to new FEM file
+- GUI: Bugfix for JPopupMenu behaviour in Matlab New Desktop (>=2023b)
+- Montage: Bugfix on editing montages with channel separators (':')
+- Montage: Do not allow user montage names to contain '[tmp]' tag
+--------------------------------------------------------------
 December 2025
 - DB: Allow adding time to the Acquisition date of a Study
 - IO: Add support for HED tags in Events
