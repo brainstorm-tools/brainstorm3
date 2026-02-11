@@ -3385,6 +3385,7 @@ function SetStructLayout(hFig, iTess)
     dx = max(Vertices(:,1)) - min(Vertices(:,1));
     dy = max(Vertices(:,2)) - min(Vertices(:,2));
     dz = max(Vertices(:,3)) - min(Vertices(:,3));
+    new_dy = dy;
     % Region by region
     for i = 1:length(sScouts)
         % Define the structure offset
@@ -3428,7 +3429,6 @@ function SetStructLayout(hFig, iTess)
             Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
         end
         new_dy = max(Vertices(:,2)) - min(Vertices(:,2))/4;
-
     end
     % Apply modified locations
     set(TessInfo(iTess).hPatch, 'Vertices',  Vertices);
