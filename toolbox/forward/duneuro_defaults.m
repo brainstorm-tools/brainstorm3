@@ -58,8 +58,10 @@ cfgDef.SolPostProcess   = true;
 cfgDef.SolSubstractMean = false;
 % [solution.solver]
 cfgDef.SolSolverReduction = 1e-10;
+[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
 % [solution.source_model]
 cfgDef.SrcModel          = 'venant';  % partial_integration, venant, subtraction
+cfgDef.SrcModel2026      =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
 cfgDef.SrcIntorderadd    = 0;
 cfgDef.SrcIntorderadd_lb = 2;
 cfgDef.SrcNbMoments      = 3;
@@ -75,7 +77,6 @@ cfgDef.BstEegTransferFile = 'eeg_transfer.dat';
 cfgDef.BstMegTransferFile = 'meg_transfer.dat';
 cfgDef.BstEegLfFile       = 'eeg_lf.dat';
 cfgDef.BstMegLfFile       = 'meg_lf.dat';
-
 % [MEG computation Options]
 cfgDef.UseIntegrationPoint = 1; 
 cfgDef.EnableCacheMemory = 0;
@@ -87,9 +88,6 @@ if (nargin == 0) || isempty(cfg)
 end
 % Add missing values
 cfg = struct_copy_fields(cfg, cfgDef, 0);
-
-
-
 % % The reste is not needed... we keep it just in case
 % % subpart [analytic_solution]
 % cfg.minifile.solution.analytic_solution.radii = [1 2 3 4 ];
@@ -134,7 +132,14 @@ cfg = struct_copy_fields(cfg, cfgDef, 0);
 % fprintf(fid, 'reference  = %s\n',cfg.minifile.wrapper.outputtreecompare.reference);
 % fprintf(fid, 'type  = %s\n',cfg.minifile.wrapper.outputtreecompare.type);
 % fprintf(fid, 'absolute  = %s\n',cfg.minifile.wrapper.outputtreecompare.absolute);
+end
 
-
-
-
+%% ===== THREAD DETECTION FUNCTION =====
+function [nThreadOptimal,  nPhysical] = GetThreads()
+    try
+        nPhysical = feature('numcores');
+        nThreadOptimal  = max(1, round(nPhysical/2));
+    catch
+        nThreadOptimal = 1; % Safe fallback
+    end
+end
