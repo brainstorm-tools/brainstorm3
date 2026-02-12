@@ -130,7 +130,7 @@ isAvgRef = 1;
 iRef = [];
 % By default: the target is the first channel available
 iChannel = 1;
-% By default: the sensitivity is the sum over all direction
+% By default: the sensitivity is the L2 norm over all directions
 directionOfSensitivity = 1;
 directionLabels = {'All directions', 'X direction', 'Y direction', 'Z direction'};
 if strcmpi(HeadmodelMat.HeadModelType, 'surface')
@@ -362,17 +362,15 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
-            if  (directionOfSensitivity == 5) % norm of LF in the normal direction
-                if (~isempty(VertNormals))
+            if directionOfSensitivity == 5 % norm of LF in the normal direction
+                if ~isempty(VertNormals)
                     LeadField = bst_gain_orient(LeadField, VertNormals);
                     normLF = squeeze(sum(abs(LeadField), 1));
                 else
                     return;
                 end
-
             else
                 LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-                % normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
                 if directionOfSensitivity == 1 % norm of LF in ALL directions
                     normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
                 elseif  directionOfSensitivity == 2 % norm of LF in X direction
@@ -392,11 +390,9 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
-
-            if (directionOfSensitivity == 5) % norm of LF in the normal direction
-                if (~isempty(VertNormals))
+            if directionOfSensitivity == 5 % norm of LF in the normal direction
+                if ~isempty(VertNormals)
                     LeadField = bst_gain_orient(LeadField, VertNormals);
-                    % normLF = (LeadField);
                     normLF = abs(LeadField);
                 else
                     normLF = nan(size(LeadField,1),1);
@@ -472,19 +468,20 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 %% ===== UPDATE LEGEND =====
     function UpdateLegend()
         if (iChannel == 0)
-            strTarget = ['Sum of all channels '];
+            strTarget = 'Sum of all channels ';
         elseif isNirs
             tokens = regexp(Channels(iChannel).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             strTarget = sprintf('Target channel #%d/%d : S%s (red) D%s (green)', iChannel, length(Channels), tokens{1}{1}, tokens{1}{2});
         else
             strTarget = sprintf('Target channel #%d/%d : %s (red) ', iChannel, length(Channels), Channels(iChannel).Name);
         end
+        strTitle = [strTarget '[' directionLabels{directionOfSensitivity} ']' ];
         if ~isEeg
-            strTitle = [strTarget '[' directionLabels{directionOfSensitivity} ']' ];
+            strTitle = strTitle;
         elseif isAvgRef
-            strTitle = [strTarget '[' directionLabels{directionOfSensitivity} ']'  '  |  Average reference'];
+            strTitle = [strTarget '  |  Average reference'];
         else
-            strTitle = [strTarget '[' directionLabels{directionOfSensitivity} ']' , sprintf('  |  Reference #%d/%d : %s (green)', iRef, length(Channels), Channels(iRef).Name)];
+            strTitle = [strTarget , sprintf('  |  Reference #%d/%d : %s (green)', iRef, length(Channels), Channels(iRef).Name)];
         end
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, 10 '[Press arrows for next/previous channel (or H for help)]'];
