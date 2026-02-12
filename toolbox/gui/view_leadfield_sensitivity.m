@@ -468,16 +468,16 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 %% ===== UPDATE LEGEND =====
     function UpdateLegend()
         if (iChannel == 0)
-            strTarget = 'Sum of all channels ';
+            strTarget = 'Sum of all channels';
         elseif isNirs
             tokens = regexp(Channels(iChannel).Name, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             strTarget = sprintf('Target channel #%d/%d : S%s (red) D%s (green)', iChannel, length(Channels), tokens{1}{1}, tokens{1}{2});
         else
-            strTarget = sprintf('Target channel #%d/%d : %s (red) ', iChannel, length(Channels), Channels(iChannel).Name);
+            strTarget = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
         end
-        strTitle = [strTarget '[' directionLabels{directionOfSensitivity} ']' ];
+        strTarget = [strTarget ' [' directionLabels{directionOfSensitivity} ']'];
         if ~isEeg
-            strTitle = strTitle;
+            strTitle = strTarget;
         elseif isAvgRef
             strTitle = [strTarget '  |  Average reference'];
         else
