@@ -118,7 +118,8 @@ end
 % Full dialog error message
 fullErrMsg = sprintf('%s%s\n%s', strLine, errMsg, strStack);
 % Full console error message
-consoleMsg = strrep(fullErrMsg(1:end-1), '_______________________________________________', '');
+consoleMsg = sprintf('%s%s\n%s', strLine, str_striptag(errMsg), strStack);
+consoleMsg = strrep(consoleMsg(1:end-1), '_______________________________________________', '');
 consoleMsg = strrep(consoleMsg, char([10 10]), char(10));
 consoleMsg = strrep(consoleMsg, char(10), [10 '** ']);
 consoleMsg = [10 '***************************************************************************' 10 ...
