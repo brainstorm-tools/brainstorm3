@@ -115,6 +115,9 @@ switch (HeadmodelMat.HeadModelType)
     % === SURFACE ===
     case 'surface'
         [hFig, iDS, iFig] = view_surface_data(HeadmodelMat.SurfaceFile, HeadmodelFile, Modality, 'NewFigure', 0);
+        % Get the cortex grid orient: VertNormals
+        sSurf = bst_memory('LoadSurface', HeadmodelMat.SurfaceFile);
+        VertNormals = sSurf.VertNormals;
         is3D = 1;
 end
 if isempty(hFig)
@@ -127,6 +130,12 @@ isAvgRef = 1;
 iRef = [];
 % By default: the target is the first channel available
 iChannel = 1;
+% By default: the sensitivity is the L2 norm over all directions
+directionOfSensitivity = 1;
+directionLabels = {'All directions', 'X direction', 'Y direction', 'Z direction'};
+if strcmpi(HeadmodelMat.HeadModelType, 'surface')
+    directionLabels = [directionLabels, {'Normal direction'}];
+end
 % Isosurface threshold
 Thresh = [];
 % Update figure name
@@ -151,7 +160,7 @@ end
 hLabel = uicontrol('Style', 'text', ...
     'String',              '...', ...
     'Units',               'Pixels', ...
-    'Position',            [6 0 400 38], ...
+    'Position',            [6 0 600 38], ...
     'HorizontalAlignment', 'left', ...
     'FontUnits',           'points', ...
     'FontSize',            bst_get('FigFont'), ...
@@ -259,6 +268,12 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     end
                     isUpdate = 1;
                 end
+            case 'd'
+                directionOfSensitivity = directionOfSensitivity + 1;
+                if directionOfSensitivity > length(directionLabels)
+                    directionOfSensitivity = 1;
+                end               
+                isUpdate = 1;                     
             case 'i'
                 if strcmpi(DisplayMode, 'isosurface') && SelectThreshold()
                     isUpdate = 1;
@@ -303,6 +318,10 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                                '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>' ...
                                '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'];
                 end
+                dirsStr = strjoin(regexprep(directionLabels, '\s*direction[s]*$', ''), ', ');
+                strHelpHtml = [strHelpHtml, ...
+                    '<TR><TD><B>D</B></TD><TD>Show sensitivity in different <B>D</B>irections: (' dirsStr ')</TD></TR>'];
+
                 java_dialog('msgbox', ['<HTML><TABLE>', strHelpHtml, '</TABLE></HTML>'], 'Keyboard shortcuts', [], 0);
             otherwise
                 KeyPressFcn_bak(hFig, keyEvent); 
@@ -343,8 +362,25 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
             end
-            LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
-            normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+            if directionOfSensitivity == 5 % norm of LF in the normal direction
+                if ~isempty(VertNormals)
+                    LeadField = bst_gain_orient(LeadField, VertNormals);
+                    normLF = squeeze(sum(abs(LeadField), 1));
+                else
+                    return;
+                end
+            else
+                LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
+                if directionOfSensitivity == 1 % norm of LF in ALL directions
+                    normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+                elseif  directionOfSensitivity == 2 % norm of LF in X direction
+                    normLF = squeeze(sum(abs(LeadField(:,1,:)), 1));
+                elseif  directionOfSensitivity == 3 % norm of LF in Y direction
+                    normLF = squeeze(sum(abs(LeadField(:,2,:)), 1));
+                elseif  directionOfSensitivity == 4 % norm of LF in Z direction
+                    normLF = squeeze(sum(abs(LeadField(:,3,:)), 1));
+                end
+            end
         % Compute the sensitivity for one sensor
         else
             if isNirs
@@ -354,8 +390,25 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             elseif ~isempty(iRef)
                 LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
             end
-            LeadField = reshape(LeadField,3,[])'; % each column is a vector
-            normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
+            if directionOfSensitivity == 5 % norm of LF in the normal direction
+                if ~isempty(VertNormals)
+                    LeadField = bst_gain_orient(LeadField, VertNormals);
+                    normLF = abs(LeadField);
+                else
+                    normLF = nan(size(LeadField,1),1);
+                end
+            else
+                LeadField = reshape(LeadField,3,[])'; % each column is a vector
+                if directionOfSensitivity == 1 % norm of LF in ALL directions
+                    normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
+                elseif  directionOfSensitivity == 2 % norm of LF in X direction
+                    normLF = abs(LeadField(:,1));
+                elseif  directionOfSensitivity == 3 % norm of LF in Y direction
+                    normLF = abs(LeadField(:,2));
+                elseif  directionOfSensitivity == 4 % norm of LF in Z direction
+                    normLF = abs(LeadField(:,3));
+                end  
+            end
         end
         % Surface or volume
         switch lower(DisplayMode)
@@ -422,6 +475,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         else
             strTarget = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
         end
+        strTarget = [strTarget ' [' directionLabels{directionOfSensitivity} ']'];
         if ~isEeg
             strTitle = strTarget;
         elseif isAvgRef
