@@ -288,7 +288,8 @@ if strcmp(dnModality, 'meeg')
     transfer_matrix_config.do_eeg = 'True';
 end
 transfer_matrix_config.residual_reduction = '1e-16';
-transfer_matrix_config.nr_threads = '-1'; % can be used as user parameters ==> highlighted as super parameters
+transfer_matrix_config.nr_threads = cfg.NbOfThread; 
+% can be used as user parameters ==> highlighted as super parameters
 % Check with Malte is there is an optimised number without overwhelming the
 % user computer.
 
@@ -313,7 +314,7 @@ leadfield_config.meg_scaling = '1e5'; % Malte to check and get final value for M
 % permeability: 
 
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
-leadfield_config.nr_threads = '-1'; % same as above
+leadfield_config.nr_threads = cfg.NbOfThread; % same as above
 %% ===== RUN DUNEURO ======
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 % disp(['DUNEURO> System call: ' callStr]);

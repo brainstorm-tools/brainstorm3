@@ -141,23 +141,33 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     c.gridy = 3;
     jPanelLeft.add(jPanelSrcModel, c);
     
-    % ==== PANEL RIGHT: INPUT OPTIONS ====
-    jPanelInput = gui_river([1,1], [0,6,6,6], 'Source space');
-        % Shrink source space
-        gui_component('label', jPanelInput, '', 'Shrink source space: ', [], '', [], []);
-        jTextSrcShrink = gui_component('texttime', jPanelInput, '', '', [], '', [], []);
-        gui_validate_text(jTextSrcShrink, [], [], {0,100,100}, '', 0, OPTIONS.SrcShrink, []);
-        gui_component('label', jPanelInput, '', '  mm');
-        % Force source space inside grey matter
-        iGM = find(CheckType(OPTIONS.FemNames, 'gray'), 1);
-        if ~isempty(iGM)
-            jCheckSrcForceInGM = gui_component('checkbox', jPanelInput, 'br', ['Force source space inside layer "' OPTIONS.FemNames{iGM} '"'], [], '', [], []);
-        else
-            jCheckSrcForceInGM = [];
-        end
-        c.gridy = 3;
-        jPanelRight.add(jPanelInput, c);    
-    
+% ==== PANEL RIGHT: INPUT OPTIONS ====
+jPanelInput = gui_river([1,1], [0,6,6,6], 'Source space');
+    % Shrink source space
+    gui_component('label', jPanelInput, '', 'Shrink source space: ', [], '', [], []);
+    jTextSrcShrink = gui_component('texttime', jPanelInput, '', '', [], '', [], []);
+    gui_validate_text(jTextSrcShrink, [], [], {0,100,100}, '', 0, OPTIONS.SrcShrink, []);
+    gui_component('label', jPanelInput, '', '  mm');
+    % Force source space inside grey matter
+    iGM = find(CheckType(OPTIONS.FemNames, 'gray'), 1);
+    if ~isempty(iGM)
+        jCheckSrcForceInGM = gui_component('checkbox', jPanelInput, 'br', ['Force source space inside layer "' OPTIONS.FemNames{iGM} '"'], [], '', [], []);
+    else
+        jCheckSrcForceInGM = [];
+    end
+c.gridy = 3;
+jPanelRight.add(jPanelInput, c);
+
+% ==== PANEL RIGHT: SOLVER OPTIONS ====
+jPanelOptSolver = gui_river([3,3], [0,6,6,6], 'Solver options');
+    % Number of thread
+    gui_component('label', jPanelOptSolver, [], 'Number of Thread : ', [], '', [], []);
+    jTextNbOfThread = gui_component('texttime', jPanelOptSolver, 'tab', '', [], '', [], []);
+    gui_validate_text(jTextNbOfThread, [], [], 0:OPTIONS.NbOfThreadMax, '', 0, OPTIONS.NbOfThread, []);
+    gui_component('label', jPanelOptSolver, '[]', ['[1, ' num2str(OPTIONS.NbOfThreadMax) ']']);
+c.gridy = 2;
+jPanelRight.add(jPanelOptSolver, c);
+
         % ==== PANEL RIGHT: MEG COMPUTATIONS OPTIONS ====    
         jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
         if isMeg
@@ -230,6 +240,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jRadioSrcModelSub',     jRadioSrcModelSub, ...
                   'jRadioSrcModelPar',     jRadioSrcModelPar, ...
                   'jTextSrcShrink',        jTextSrcShrink, ...
+                  'jTextNbOfThread',        jTextNbOfThread, ...
                   'jCheckSrcForceInGM',   jCheckSrcForceInGM, ...
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
                   'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
@@ -281,6 +292,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             jPanelSrcModel.setVisible(ExpertMode);
             jPanelInput.setVisible(ExpertMode);
             jPanelOutput.setVisible(ExpertMode);
+            jPanelOptSolver.setVisible(ExpertMode);
             jPanelMegComputationOption.setVisible(ExpertMode);
             % Update expert button 
             if ExpertMode
@@ -339,6 +351,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     end
     % Input options
     s.SrcShrink = str2double(ctrl.jTextSrcShrink.getText());
+    s.NbOfThread = str2double(ctrl.jTextNbOfThread.getText());
     if ~isempty(ctrl.jCheckSrcForceInGM)
         s.SrcForceInGM = ctrl.jCheckSrcForceInGM.isSelected();
     else
@@ -393,8 +406,7 @@ function FemCond = GetDefaultCondutivity(FemNames, Reference)
 end
 
 
-%% ===== DETECTION FUNCTION =====
-% Check the type of a layer based on its name
+    % Check the type of a layer based on its name
 function isType = CheckType(strName, strType)
     if iscell(strName)
         isType = cellfun(@(c)CheckType(c, strType), strName);
