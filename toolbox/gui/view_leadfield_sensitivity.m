@@ -481,7 +481,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         elseif isAvgRef
             strTitle = [strTarget '  |  Average reference'];
         else
-            strTitle = [strTarget , sprintf('  |  Reference #%d/%d : %s (green)', iRef, length(Channels), Channels(iRef).Name)];
+            strTitle = [strTarget, sprintf('  |  Reference #%d/%d : %s (green)', iRef, length(Channels), Channels(iRef).Name)];
         end
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, 10 '[Press arrows for next/previous channel (or H for help)]'];
