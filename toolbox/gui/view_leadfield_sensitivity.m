@@ -137,14 +137,10 @@ iRef = [];
 iChannel = 1;
 % By default: the sensitivity is the sum over all direction
 directionOfSensitivity = 1;
-directionLabels = {...
-    'All directions';
-    'X direction';
-    'Y direction';
-    'Z direction';
-    'Normal direction';
-    ...
-    };
+directionLabels = {'All directions', 'X direction', 'Y direction', 'Z direction'};
+if strcmpi(HeadmodelMat.HeadModelType, 'surface')
+    directionLabels = [directionLabels, {'Normal direction'}];
+end
 % Isosurface threshold
 Thresh = [];
 % Update figure name
@@ -279,7 +275,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 end
             case 'd'
                 directionOfSensitivity = directionOfSensitivity + 1;
-                if directionOfSensitivity > 5
+                if directionOfSensitivity > length(directionLabels)
                     directionOfSensitivity = 1;
                 end               
                 isUpdate = 1;                     
@@ -327,8 +323,10 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                                '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>' ...
                                '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'];
                 end
+                dirsStr = strjoin(regexprep(directionLabels, '\s*direction[s]*$', ''), ', ');
                 strHelpHtml = [strHelpHtml, ...
-                    '<TR><TD><B>D</B></TD><TD>Toggel the <B>D</B>irection of the Sensitivity (All, X, Y, Z, N)</TD></TR>'];
+                    '<TR><TD><B>D</B></TD><TD>Show sensitivity in different <B>D</B>irections: (' dirsStr ')</TD></TR>'];
+
                 java_dialog('msgbox', ['<HTML><TABLE>', strHelpHtml, '</TABLE></HTML>'], 'Keyboard shortcuts', [], 0);
             otherwise
                 KeyPressFcn_bak(hFig, keyEvent); 
