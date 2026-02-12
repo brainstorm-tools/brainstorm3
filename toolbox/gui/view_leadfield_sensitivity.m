@@ -81,15 +81,7 @@ isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 sMri = in_mri_bst(MriFile);
-% Get the cortex grid orient : VertNormals
-VertNormals = [];
-if strcmpi(HeadmodelMat.HeadModelType, 'surface');
-    % Get the surface data used for the grid of the LF
-    TessMat = in_tess(HeadmodelMat.SurfaceFile);
-    if isfield(TessMat, 'VertNormals')
-        VertNormals = TessMat.VertNormals;
-    end
-end
+
 % ===== CREATE FIGURE =====
 is3D = 0;
 grid2mri_interp = [];
@@ -123,6 +115,9 @@ switch (HeadmodelMat.HeadModelType)
     % === SURFACE ===
     case 'surface'
         [hFig, iDS, iFig] = view_surface_data(HeadmodelMat.SurfaceFile, HeadmodelFile, Modality, 'NewFigure', 0);
+        % Get the cortex grid orient: VertNormals
+        sSurf = bst_memory('LoadSurface', HeadmodelMat.SurfaceFile);
+        VertNormals = sSurf.VertNormals;
         is3D = 1;
 end
 if isempty(hFig)
