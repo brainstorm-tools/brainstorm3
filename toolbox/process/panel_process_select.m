@@ -2967,7 +2967,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        iFunc    = cellfun(@(x) (exist(x,'file') > 0 && isfile(x)), plugFunc);
         plugList = cellfun(@dir, plugFunc(iFunc));
         bstFunc  = union(plugFunc, bstFunc);
     end
@@ -3007,6 +3007,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
         end
+
+        if ~exist(bstFunc{iFile},'file') || ~isfile(bstFunc{iFile})
+            disp(['BST> Invalid  function: "' bstFunc{iFile} '"']);
+            disp(['     Unable to open file']);
+            continue;
+        end
+
         % Split function names: regular process=only function name; plugin process=full path
         [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
         % Switch folder if needed
@@ -3027,7 +3034,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         % Check presence of required functions in process file
         reqFncs = {'GetDescription', 'FormatComment', 'Run'};
         reqFncsMissing = [];
-        txt = fileread([fName fExt]);
+        try
+            txt = fileread([fName fExt]);
+        catch
+            disp(['BST> Invalid  function: "' bstFunc{iFile} '"']);
+            disp(['     Unable to open file']);
+            continue;
+        end
         for iReqFnc = 1 : length(reqFncs)
             expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
             res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
