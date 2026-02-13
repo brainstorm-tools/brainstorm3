@@ -2,17 +2,24 @@ function [vert, faces] = tess_generate_primitive(iSubject, primitive)
 % TESS_GENERATE_PRIMITIVE: Generate a triangular mesh of a primitive geometric shape
 %                          This function uses the Iso2Mesh plugin
 %
-% USAGE:  [vert, faces] = tess_generate_primitive(iSubject, primitive = [ask])
+% USAGE: [vert,        faces   ] = tess_generate_primitive([],       primitive = [])
+%        [NewTessFile, iSurface] = tess_generate_primitive(iSubject, primitive = [])
 %
 % INPUTS:
 %   - iSubject  : Import surface to Subject if provided
 %                 Valid options: [] = Do not import mesh, Subject name, index, or filename
 %   - primitive : Name of the primitive geometric shape to generate:
-%                 Valid options: [] = Ask user, 'sphere', 'cube', 'cylinder', 'cone'
+%                 Valid options: [] = Ask user
+%                              : Name of primitive: 'sphere', 'cube', 'cylinder', 'cone'
+%                              : Struct with 'Name' field and primitive paramters
+%                                sphere, ellipsoid and cube require: 'c0' and 'r' fields
+%                                cylinder and cone require: 'c0', 'c1' and 'r' fields
 %
 % OUTPUT:
-%   - vert      : Primitive vertices
-%   - faces     : Primitive faces
+%   - vert         : Primitive vertices
+%   - faces        : Primitive faces
+%   - NewTessFile  : Relative filename for new tess file
+%   - iSurface     : Index of new tess file for iSubject
 %
 % See also:
 %   meshasphere, meshabox, meshacylinder, meshanellip, removeisolatedvert
@@ -41,30 +48,43 @@ function [vert, faces] = tess_generate_primitive(iSubject, primitive)
 %% ===== PARSE INPUTS =====
 vert  = [];
 faces = [];
+primitiveList = {'Sphere', 'Ellipsoid', 'Cube', 'Cylinder', 'Cone'};
 
 % Call: tess_generate_primitive(iSubject)
-if(nargin == 1) && ~isempty(iSubject)
+if (nargin >= 1) && ~isempty(iSubject)
     sSubject = bst_get('Subject', iSubject);
     if isempty(sSubject)
         iSubject = [];
     end
-    primitive = 'sphere';
 end
 
 % Call: tess_generate_primitive(iSubject, [])
-if (nargin >=2) && isempty(primitive)
-    % Ask user the new number of vertices
-    primitiveList = {'Sphere', 'Ellipsoid', 'Cube', 'Cylinder', 'Cone'};
-    [primitive , isCancel] = java_dialog('combo', 'Select the surface shape:', ...
+if (nargin < 2) || isempty(primitive)
+    % Ask user the new primitive
+    [primitiveName , isCancel] = java_dialog('combo', 'Select the surface shape:', ...
         'Generate primitive surface', [], primitiveList, 'Sphere');
-    if isempty(primitive) || isCancel
+    if isempty(primitiveName) || isCancel
         return
     end
+    primitive = primitiveName;
+
+% Call: tess_generate_primitive(iSubject, primitive)
+elseif ischar(primitive)
+    if ~ismember(primitive, primitiveList)
+        primitiveName = primitive;
+    end
+
+% Call: tess_generate_primitive(iSubject, sPrimitive)
+elseif isstruct(primitive)
+    primitiveName  = primitive.Name;
+
+else
+    return
 end
 
 %% ===== COMPUTE PRIMITIVE MESH =====
 % Progress bar
-bst_progress('start','Generate primitive surface',['Generate a ' primitive]);
+bst_progress('start','Generate primitive surface',['Generate a ' lower(primitiveName)]);
 
 % Install/load iso2mesh plugin
 [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 0);
@@ -74,7 +94,10 @@ if ~isInstalled
 end
 
 % Generate primitive surface
-[vert, faces, errMsg] = generatePrimitiveSurface(primitive);
+[vert, faces, errMsg, isCancel] = generatePrimitiveSurface(primitive);
+
+% Unload plugin: 'iso2mesh'
+bst_plugin('Unload', 'iso2mesh', 1);
 
 if ~isempty(errMsg)
     bst_error(errMsg);
@@ -82,7 +105,8 @@ if ~isempty(errMsg)
 end
 
 % Do not import new primitive mesh
-if isempty(iSubject)
+if isempty(iSubject) || isCancel
+    bst_progress('stop');
     return
 end
 
@@ -93,49 +117,81 @@ bst_progress('text', 'Saving new primitive surface...');
 PrimitiveTess = db_template('surfacemat');
 PrimitiveTess.Vertices = vert;
 PrimitiveTess.Faces    = faces;
-PrimitiveTess.Comment  = ['Primitive: ' primitive];
-PrimitiveTess = bst_history('add', PrimitiveTess, 'tess_generate_primitive', primitive);
+PrimitiveTess.Comment  = ['Primitive: ' primitiveName];
+PrimitiveTess = bst_history('add', PrimitiveTess, 'tess_generate_primitive', primitiveName);
 % Create output filename
 ProtocolInfo = bst_get('ProtocolInfo');
 sSubject = bst_get('Subject', iSubject);
 subjectSubDir = bst_fileparts(sSubject.FileName);
-PrimitiveTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' lower(primitive) ' .mat']);
+PrimitiveTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' lower(primitiveName) ' .mat']);
 % Make this filename unique
 PrimitiveTessFile = file_unique(PrimitiveTessFile);
+NewTessFile = file_short(PrimitiveTessFile);
 % Save new surface in Brainstorm format
 bst_save(PrimitiveTessFile, PrimitiveTess, 'v7');
 % Add to database
-db_add_surface(iSubject, PrimitiveTessFile, PrimitiveTess.Comment);
+iSurface = db_add_surface(iSubject, PrimitiveTessFile, PrimitiveTess.Comment);
+% Retun
+vert = NewTessFile;
+faces = iSurface;
 % Close, success
 bst_progress('stop');
 
 end
 
 %% =========== GENERATE PRIMITIVE SURFACE ===========
-function [vert, face, errMsg] = generatePrimitiveSurface(primitiveShape)
+function [vert, face, errMsg, isCancel] = generatePrimitiveSurface(primitiveShape)
 vert = [];
 face = [];
 errMsg = '';
+isCancel = 0;
+
+isInteractive = 1;
+if isstruct(primitiveShape)
+    sPrimitive = primitiveShape;
+    primitiveShape = sPrimitive.Name;
+    % Check primitive parameters in structure
+    isParamOk = 0;
+    switch lower(primitiveShape)
+        case {'sphere', 'ellipsoid', 'cube'}
+             isParamOk = isfield(sPrimitive, 'c0') && length(sPrimitive.c0) == 3 && ...
+                         isfield(sPrimitive, 'r')  && any(length(sPrimitive.c0) == [1,3]);
+
+        case {'cylinder', 'cone'}
+             isParamOk = isfield(sPrimitive, 'c0') && length(sPrimitive.c0) == 3 && ...
+                         isfield(sPrimitive, 'c1') && length(sPrimitive.c1) == 3 && ...
+                         isfield(sPrimitive, 'r')  && any(length(sPrimitive.r) == [1,2]);
+        otherwise
+            return
+    end
+    isInteractive = ~isParamOk;
+end
+
 switch lower(primitiveShape)
     % Sphere and ellipsoid
     case {'sphere', 'ellipsoid'}
-        % Default inputs:
-        c0 = [0, 0, 0]; % sphere center [mm] SCS XYZ
-        if strcmpi(primitiveShape, 'sphere')
-            r = 10;     % sphere radius [mm]
-        elseif strcmpi(primitiveShape, 'ellipsoid')
-            r = [5, 10, 20];  % Radii for X,Y,Z axes
+        if isInteractive
+            % Default inputs:
+            c0 = [0, 0, 0]; % sphere center [mm] SCS XYZ
+            if strcmpi(primitiveShape, 'sphere')
+                r = 10;     % sphere radius [mm]
+            elseif strcmpi(primitiveShape, 'ellipsoid')
+                r = [5, 10, 20];  % Radii for X,Y,Z axes
+            end
+            % Ask user
+            [res, isCancel] = java_dialog('input', ...
+                                  {'<HTML>Sphere center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
+                                   '<HTML>Radius (in mm)<BR><FONT color="#404040">One value for sphere, or three values for ellipsoid'}, ...
+                                  [primitiveShape ' parameters'], [], {num2str(c0), num2str(r)});
+            if isempty(res) || (length(res) < 2) || isCancel
+                return
+            end
+            c0 = str2num(res{1});
+            r = str2num(res{2});
+        else
+            c0 = sPrimitive.c0;
+            r  = sPrimitive.r;
         end
-        % Ask user
-        [res, isCancel] = java_dialog('input', ...
-                              {'<HTML>Sphere center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
-                               '<HTML>Radius (in mm)<BR><FONT color="#404040">One value for sphere, or three values for ellipsoid'}, ...
-                              [primitiveShape ' parameters'], [], {num2str(c0), num2str(r)});
-        if isempty(res) || (length(res) < 2) || isCancel
-            return
-        end
-        c0 = str2num(res{1});
-        r = str2num(res{2});
         % Sphere
         if length(r) == 1
             tsize = r/10; %maximum size of the surface triangles
@@ -152,19 +208,24 @@ switch lower(primitiveShape)
 
     % Cube and rectangular cuboid
     case 'cube'
-        % Default inputs
-        c0 = [0 0 0];  % cube center [mm] SCS XYZ
-        r  = 10;       % cube size [mm]
-        % Ask user
-        [res, isCancel] = java_dialog('input', ...
-                              {'<HTML>Cube center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
-                               '<HTML>Length (in mm)<BR><FONT color="#404040">One value for cube, or three values for rect cuboid'}, ...
-                              [primitiveShape ' parameters'], [], {num2str(c0), num2str(r)});
-        if isempty(res) || (length(res) < 2) || isCancel
-            return
+        if isInteractive
+            % Default inputs
+            c0 = [0 0 0];  % cube center [mm] SCS XYZ
+            r  = 10;       % cube size [mm]
+            % Ask user
+            [res, isCancel] = java_dialog('input', ...
+                                  {'<HTML>Cube center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
+                                   '<HTML>Length (in mm)<BR><FONT color="#404040">One value for cube, or three values for rect cuboid'}, ...
+                                  [primitiveShape ' parameters'], [], {num2str(c0), num2str(r)});
+            if isempty(res) || (length(res) < 2) || isCancel
+                return
+            end
+            c0 = str2num(res{1});
+            r = str2num(res{2});
+        else
+            c0 = sPrimitive.c0;
+            r  = sPrimitive.r;
         end
-        c0 = str2num(res{1});
-        r = str2num(res{2});
         % Cube
         if length(r) == 1
             r = [r, r, r];
@@ -185,27 +246,33 @@ switch lower(primitiveShape)
 
     % Cylinder and cone
     case {'cylinder', 'cone'}
-        % Default inputs:
-        % Cylinder axis end points
-        c0 = [0 0 0];  % Cylinder base 1 center coordinates
-        c1 = [0 0 20]; % Cylinder base 2 center coordinates
-        if strcmpi(primitiveShape, 'cylinder')
-            r = 5;    % Radius for both bases
-        elseif strcmpi(primitiveShape, 'cone')
-            r = [5, 0.1];    % Radii for base and top
+        if isInteractive
+            % Default inputs:
+            % Cylinder axis end points
+            c0 = [0 0 0];  % Cylinder base 1 center coordinates
+            c1 = [0 0 20]; % Cylinder base 2 center coordinates
+            if strcmpi(primitiveShape, 'cylinder')
+                r = 5;    % Radius for both bases
+            elseif strcmpi(primitiveShape, 'cone')
+                r = [5, 0.1];    % Radii for base and top
+            end
+            % Ask user
+            [res, isCancel] = java_dialog('input', ...
+                                  {'<HTML>Base 1 center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
+                                   '<HTML>Base 2 center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
+                                   '<HTML>Radius (in mm)<BR><FONT color="#404040">One value for cylinder, or two values for cone trunk'}, ...
+                                  [primitiveShape ' parameters'], [], {num2str(c0), num2str(c1), num2str(r)});
+            if isempty(res) || (length(res) < 3) || isCancel
+                return
+            end
+            c0 = str2num(res{1});
+            c1 = str2num(res{2});
+            r  = str2num(res{3});
+        else
+            c0 = sPrimitive.c0;
+            c1 = sPrimitive.c1;
+            r  = sPrimitive.r;
         end
-        % Ask user
-        [res, isCancel] = java_dialog('input', ...
-                              {'<HTML>Base 1 center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
-                               '<HTML>Base 2 center (in mm)<BR><FONT color="#404040">[x y z] SCS coordinates', ...
-                               '<HTML>Radius (in mm)<BR><FONT color="#404040">One value for cylinder, or two values for cone trunk'}, ...
-                              [primitiveShape ' parameters'], [], {num2str(c0), num2str(c1), num2str(r)});
-        if isempty(res) || (length(res) < 3) || isCancel
-            return
-        end
-        c0 = str2num(res{1});
-        c1 = str2num(res{2});
-        r  = str2num(res{3});
         % Cylinder
         if length(r) == 1
             r = [r, r];
