@@ -1334,7 +1334,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Refine FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_refine, 'Compute', filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Add FEM ROI', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_add_roi, filenameRelative));                    
+                    gui_component('MenuItem', jPopup, [], 'Rename FEM elements', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_rename_elem, filenameRelative));
                      % If there are tensors to display
                     varInfo = whos('-file', filenameFull, 'Tensors');
                     if ~isempty(varInfo) && all(varInfo.size >= 12)
