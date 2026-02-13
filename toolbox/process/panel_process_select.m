@@ -2962,8 +2962,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             end
             % Concatenate plugin path and process function (relative to plugin path)
             procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes(iOk), 'UniformOutput', 0);
-            iFunc    = cellfun(@(x) (exist(x,'file') > 0 && isfile(x)), procFullPath);
-            plugFunc = cat(2, plugFunc, procFullPath(iFunc));
+            plugFunc = cat(2, plugFunc, procFullPath);
         end
     end
     % Add plugin processes to list of processes
