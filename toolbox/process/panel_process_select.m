@@ -3034,7 +3034,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         % Check presence of required functions in process file
         reqFncs = {'GetDescription', 'FormatComment', 'Run'};
         reqFncsMissing = [];
-        txt = fileread([fName fExt]);
+        try
+            txt = fileread([fName fExt]);
+        catch
+            disp(['BST> Invalid  function: "' bstFunc{iFile} '"']);
+            disp(['     Unable to open file']);
+            continue;
+        end
         for iReqFnc = 1 : length(reqFncs)
             expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
             res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
