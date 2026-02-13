@@ -71,23 +71,20 @@ if (size(FemMat.Elements,2) > 4)
 end
 % Get file in database
 [sSubject, iSubject] = bst_get('SurfaceFile', FemFileName);
-% === Identify points to insert into the mesh {the elements centroides} for each method
-
-% Ask for surface and allow user to manual position the ROI
-% List of all the available surfaces in the subject database
-surfFileNames = {sSubject.Surface.FileName};
-surfComments  = {sSubject.Surface.Comment};
-% Ignore target FEM meshes
-iSurfFem = strcmpi({sSubject.Surface.SurfaceType}, 'fem');
-surfFileNames(iSurfFem) = [];
-surfComments(iSurfFem)  = [];
-% Add geometric surfaces
+% List of valid surfaces (not fibers, not FEM) for subject, sorted as in GUI
+SortedSurfaces = db_surface_sort(sSubject.Surface);
+iSorted = [SortedSurfaces.IndexScalp, SortedSurfaces.IndexOuterSkull, SortedSurfaces.IndexInnerSkull, ...
+           SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther];
+surfFileNames = {sSubject.Surface(iSorted).FileName};
+surfComments  = {sSubject.Surface(iSorted).Comment};
+% Add geometric surfaces to list
 surfGeoComments = { 'Sphere (radius 10 mm)', ...
                     'Sphere (radius 25 mm)',...
-                    'Cylinder (radius 1 mm, length 10mm)'}; % add disc [vert, faces] = tess_disc()
+                    'Cylinder (radius 1 mm, length 10mm)'};
 surfFileNames = [repmat({''}, 1, length(surfGeoComments)), surfFileNames];
 surfComments  = [surfGeoComments, surfComments];
 % Ask user to select the ROI area
+% TODO improve text
 [surfSelectComment, isCancel] = java_dialog('combo', [...
     'The ROI can be a geometric surface or a surface in the Subject.' 10 ...
     '1) Edit the ROI (if needed), then' 10 ...
@@ -99,6 +96,7 @@ if isempty(surfSelectComment) || isCancel
     return
 end
 % Generate geometric surface if needed
+% TODO replace with tess_generate_primitive
 if ismember(surfSelectComment, surfGeoComments)
     switch surfSelectComment
         case {'Sphere (radius 10 mm)', 'Sphere (radius 25 mm)'}
@@ -145,27 +143,28 @@ if ismember(surfSelectComment, surfGeoComments)
     surfFileNames{iSurf} = file_short(OutputFile);
 end
 
-% Open the GUI for ROI alignement on the FEM Mesh
+% Open the GUI for ROI alignement on the FEM Mesh, and wait until closed to continue
 SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};
-% Get the handle of the figure and wait until closed to continue
 global gTessAlign;
 tess_align_manual(FemFullFile, file_fullpath(SurfaceFile), 0);
 waitfor(gTessAlign.hFig)
-
 % Find all FEM mesh vertices within the ROI surface
 centroid = meshcentroid(FemMat.Vertices, FemMat.Elements);
-% Load ROI surface
+% Unload plugin: 'iso2mesh'
+bst_plugin('Unload', 'iso2mesh', 1);
+% Find elements outside of the ROI surface
 sSurf = in_tess_bst(SurfaceFile, 0);
-% Find points outside of the boundary
 iOutside = find(~inpolyhd(centroid, sSurf.Vertices, sSurf.Faces));
 iInside = 1:length(centroid);
-
 % Remove the outside points
 if ~isempty(iOutside)
-    centroid(iOutside,:) = [];
     iInside(iOutside) = [];
 end
- 
+% Nothing to do
+if isempty(iInside)
+    % TODO Display message that no elements inside surface
+    return
+end
 % Rename elements inside surface
 if isConcatLayer
     iLayerRename = find(strcmp(FemMat.TissueLabels, NewElemLabel));
