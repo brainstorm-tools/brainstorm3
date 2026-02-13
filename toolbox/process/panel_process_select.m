@@ -3009,7 +3009,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             continue;
         end
 
-        if ~exist(bstFunc{iFile},'file') > 0 || ~isfile(bstFunc{iFile})
+        if ~exist(bstFunc{iFile},'file') || ~isfile(bstFunc{iFile})
             disp(['BST> Invalid  function: "' bstFunc{iFile} '"']);
             disp(['     Unable to open file']);
             continue;
