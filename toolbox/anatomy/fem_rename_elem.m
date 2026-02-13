@@ -78,11 +78,10 @@ iSorted = [SortedSurfaces.IndexScalp, SortedSurfaces.IndexOuterSkull, SortedSurf
 surfFileNames = {sSubject.Surface(iSorted).FileName};
 surfComments  = {sSubject.Surface(iSorted).Comment};
 % Add geometric surfaces to list
-surfGeoComments = { 'Sphere (radius 10 mm)', ...
-                    'Sphere (radius 25 mm)',...
-                    'Cylinder (radius 1 mm, length 10mm)'};
-surfFileNames = [repmat({''}, 1, length(surfGeoComments)), surfFileNames];
+surfGeoPrimitive = {'Sphere', 'Ellipsoid', 'Cube', 'Cylinder', 'Cone'};
+surfGeoComments = cellfun(@(x) [x, ' (define parameters)'], surfGeoPrimitive, 'UniformOutput', 0);
 surfComments  = [surfGeoComments, surfComments];
+surfFileNames = [repmat({''}, 1, length(surfGeoComments)), surfFileNames];
 % Ask user to select the ROI area
 % TODO improve text
 [surfSelectComment, isCancel] = java_dialog('combo', [...
@@ -95,59 +94,19 @@ if isempty(surfSelectComment) || isCancel
     bst_progress('stop');
     return
 end
-% Generate geometric surface if needed
-% TODO replace with tess_generate_primitive
-if ismember(surfSelectComment, surfGeoComments)
-    switch surfSelectComment
-        case {'Sphere (radius 10 mm)', 'Sphere (radius 25 mm)'}
-            % Sphere with 250 vertices
-            [geo_vert, geo_faces] = tess_sphere(250);
-            % Get radius
-            r = sscanf(surfSelectComment, 'Sphere (radius %f mm');
-            geo_vert = r * geo_vert / 1000;
-        case {'Cylinder (radius 1 mm, length 10mm)'}
-            % default inputs:
-            %   c0, c1:  cylinder axis end points
-            c0 = [0 0 0];
-            c1 = [0 0 10];
-            %   r:   radius of the cylinder; if r contains two elements, it outputs
-            %        a cone trunk, with each r value specifying the radius on each end
-            r0 = 1; r1 = 1; r = ([r0 r1]);
-            %   tsize: maximum surface triangle size on the sphere
-            tsize = mean(r)/5;
-            %   maxvol: maximu volume of the tetrahedral elements
-            maxvol = tsize*tsize*tsize;
-            %   ndiv: approximate the cylinder surface into ndiv flat pieces,
-            % ndiv = norm(c0-c1);
-            ndiv = 20;
-            % Generate the mesh
-            [geo_vert,geo_faces]= meshacylinder(c0,c1,r,tsize,maxvol,ndiv);
-            geo_vert = geo_vert/1000;
-        otherwise
-            % Geometric surface not supported
-    end
-
-    % Save geometric surface ROI
-    tag = sprintf('_%dV', size(geo_vert, 1));
-    OutputMat.Comment  = [surfSelectComment, tag];
-    OutputMat.Vertices = geo_vert;
-    OutputMat.Faces    = geo_faces;
-    % Output filename
-    OutputFile = bst_fullfile(bst_fileparts(FemFullFile), 'tess_roi_define.mat');
-    OutputFile = file_unique(OutputFile);
-    % Save file
-    bst_save(OutputFile, OutputMat, 'v7');
-    db_add_surface(iSubject, OutputFile, OutputMat.Comment);
-    % Add filename to surfFileNames
-    iSurf = strcmp(surfSelectComment, surfComments);
-    surfFileNames{iSurf} = file_short(OutputFile);
+% Get surface file
+iComment = find(strcmp(surfSelectComment, surfComments), 1);
+if iComment <= length(surfGeoComments)
+    SurfaceFile = tess_generate_primitive(iSubject, surfGeoPrimitive{iComment});
+else
+    SurfaceFile = surfFileNames{iComment};
 end
 
 % Open the GUI for ROI alignement on the FEM Mesh, and wait until closed to continue
-SurfaceFile = surfFileNames{strcmp(surfSelectComment, surfComments)};
 global gTessAlign;
 tess_align_manual(FemFullFile, file_fullpath(SurfaceFile), 0);
 waitfor(gTessAlign.hFig)
+
 % Find all FEM mesh vertices within the ROI surface
 centroid = meshcentroid(FemMat.Vertices, FemMat.Elements);
 % Unload plugin: 'iso2mesh'
