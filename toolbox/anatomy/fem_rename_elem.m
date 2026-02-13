@@ -25,14 +25,27 @@ function [isOk, errMsg] = fem_rename_elem(FemFileName)
 
 isOk = 0;
 errMsg = '';
+isInteractive = 1;
 
-% Ask the user if he wants to relabel the defined area
-% Why this: it is possible that the ROI can be relabled and defined as
-% different tissue such a tumor, stroke (core or penumbra)  or ablation area ...
- [NewTissueLabel, isCancel] = java_dialog('input', 'Please enter the label for the new tissue', 'Name for the new tissue');
-if isCancel
-    return;
+% Load FEM layer names
+FemFullFile = file_fullpath(FemFileName);
+if ~file_exist(FemFullFile)
+    return
+else
+    FemMat = load(FemFullFile, 'TissueLabels');
 end
+
+% Ask the user for layer name
+[NewElemLabel, isCancel] = java_dialog('input', 'Please enter the new label for the elements', 'Name element label');
+if isCancel
+    return
+end
+isConcatLayer = 0;
+if ismember(NewElemLabel, FemMat.TissueLabels)
+    java_dialog('question', 'TODO Already exist, do you want to continue, elementswill join that layer', 'Name element label');
+    isConcatLayer = 1;
+end
+
 % === Install/load required plugin: 'iso2mesh'
 [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
 if ~isInstalled
@@ -42,9 +55,9 @@ if ~isInstalled
     end
     return
 end
+
 % === Load target FEM meshes
-bst_progress('start', 'Define FEM mesh ','Loading the FEM mesh ');
-FemFullFile = file_fullpath(FemFileName);
+bst_progress('start', 'Rename FEM elements ','Loading the FEM mesh ');
 FemMat = load(FemFullFile);
 bst_progress('stop');
 % Hexahedral meshes not supported
@@ -153,23 +166,23 @@ if ~isempty(iOutside)
     iInside(iOutside) = [];
 end
  
+% Rename elements inside surface
+if isConcatLayer
+    iLayerRename = find(strcmp(FemMat.TissueLabels, NewElemLabel));
+else
+    iLayerRename = max(unique(FemMat.Tissue)) + 1;
+    FemMat.TissueLabels  = [FemMat.TissueLabels NewElemLabel];
+end
+FemMat.Tissue(iInside) =  iLayerRename;
 
-% Unload plugin: 'iso2mesh'
-bst_plugin('Unload', 'iso2mesh', 1);
 
 % === Save defined FEM mesh
 bst_progress('text', 'Saving defined mesh ...');
-
-% Tissue labels
-newID = max(unique(FemMat.Tissue)) + 1;
-% FemMat.Tissue(iOutside) =  FemMat.Tissue;
-FemMat.Tissue(iInside) =  newID;
-FemMat.TissueLabels  = [FemMat.TissueLabels NewTissueLabel];
- 
-% File comment    
-FemMat.Comment = [FemMat.Comment ' | ' NewTissueLabel ];
+% File comment
+FemMat.Comment = [FemMat.Comment ' | ' NewElemLabel ];
 % Add history
-FemMat = bst_history('add', FemMat, 'set new roi');
+FemMat = bst_history('add', FemMat, ...
+    sprintf('Assign FEM elements inside "%s" to "%s" layer', SurfaceFile, NewElemLabel));
 % Save to database
 FemFile = file_unique(bst_fullfile(bst_fileparts(FemFullFile), sprintf('tess_fem_%dV.mat', length(FemMat.Vertices))));
 bst_save(FemFile, FemMat, 'v7');
