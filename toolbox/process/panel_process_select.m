@@ -2962,12 +2962,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             end
             % Concatenate plugin path and process function (relative to plugin path)
             procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes(iOk), 'UniformOutput', 0);
-            plugFunc = cat(2, plugFunc, procFullPath);
+            iFunc    = cellfun(@(x) (exist(x,'file') > 0 && isfile(x)), procFullPath);
+            plugFunc = cat(2, plugFunc, procFullPath(iFunc));
         end
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        iFunc    = cellfun(@(x) (exist(x,'file') > 0 && isfile(x)), plugFunc);
         plugList = cellfun(@dir, plugFunc(iFunc));
         bstFunc  = union(plugFunc, bstFunc);
     end
@@ -3007,6 +3008,13 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
         end
+
+        if ~exist(bstFunc{iFile},'file') > 0 || ~isfile(bstFunc{iFile})
+            disp(['BST> Invalid  function: "' bstFunc{iFile} '"']);
+            disp(['     Unable to open file']);
+            continue;
+        end
+
         % Split function names: regular process=only function name; plugin process=full path
         [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
         % Switch folder if needed
