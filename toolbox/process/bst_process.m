@@ -246,6 +246,10 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     OutputFiles  = {};
                     OutputFiles2 = {};
                 end
+            otherwise
+                bst_report('Error', sProcesses(iProc), sInputAll, sprintf('Unknown process type %s', lower(sProcesses(iProc).Category)));
+                OutputFiles  = {};
+                OutputFiles2 = {};
         end
         % Remove empty filenames
         if iscell(OutputFiles)
