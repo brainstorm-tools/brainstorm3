@@ -40,9 +40,15 @@ end
 if isCancel
     return
 end
+% Check if elements will be concatenated
 isConcatLayer = 0;
 if ismember(NewElemLabel, FemMat.TissueLabels)
-    java_dialog('question', 'TODO Already exist, do you want to continue, elementswill join that layer', 'Name element label');
+    [res, isCancel] = java_dialog('question', ['The new label "' NewElemLabel '" already exist.'  10 ...
+                                  'Renamed FEM elements will concatenated to current layer.' 10 10 ...
+                                  'Continue?'], 'Rename FEM elements');
+    if isCancel || strcmpi(res, 'no')
+        return
+    end
     isConcatLayer = 1;
 end
 
@@ -134,10 +140,9 @@ if isConcatLayer
     iLayerRename = find(strcmp(FemMat.TissueLabels, NewElemLabel));
 else
     iLayerRename = max(unique(FemMat.Tissue)) + 1;
-    FemMat.TissueLabels  = [FemMat.TissueLabels NewElemLabel];
+    FemMat.TissueLabels = [FemMat.TissueLabels NewElemLabel];
 end
-FemMat.Tissue(iInside) =  iLayerRename;
-
+FemMat.Tissue(iInside) = iLayerRename;
 
 % === Save defined FEM mesh
 bst_progress('text', 'Saving defined mesh ...');
