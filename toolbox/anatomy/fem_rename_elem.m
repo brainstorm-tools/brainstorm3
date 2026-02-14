@@ -46,14 +46,17 @@ if ismember(NewElemLabel, FemMat.TissueLabels)
     isConcatLayer = 1;
 end
 
-% === Install/load required plugin: 'iso2mesh'
-[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
-if ~isInstalled
-    errMsg = ['Could not install or load plugin: iso2mesh' 10 errMsg];
-    if isInteractive
+% Load iso2mesh plugin
+PlugUnload = 0;
+PlugDesc = bst_plugin('GetDescription', 'iso2mesh');
+if ~PlugDesc.isLoaded
+    % Install/load iso2mesh plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 0);
+    if ~isInstalled
         bst_error(errMsg);
+        return
     end
-    return
+    PlugUnload = 1;
 end
 
 % === Load target FEM meshes
@@ -110,7 +113,9 @@ waitfor(gTessAlign.hFig)
 % Find all FEM mesh vertices within the ROI surface
 centroid = meshcentroid(FemMat.Vertices, FemMat.Elements);
 % Unload plugin: 'iso2mesh'
-bst_plugin('Unload', 'iso2mesh', 1);
+if PlugUnload
+    bst_plugin('Unload', 'iso2mesh', 1);
+end
 % Find elements outside of the ROI surface
 sSurf = in_tess_bst(SurfaceFile, 0);
 iOutside = find(~inpolyhd(centroid, sSurf.Vertices, sSurf.Faces));
