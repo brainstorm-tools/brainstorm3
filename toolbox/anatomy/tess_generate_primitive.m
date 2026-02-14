@@ -70,8 +70,9 @@ if (nargin < 2) || isempty(primitive)
 
 % Call: tess_generate_primitive(iSubject, primitive)
 elseif ischar(primitive)
+    primitiveName = primitive;
     if ~ismember(primitive, primitiveList)
-        primitiveName = primitive;
+        return
     end
 
 % Call: tess_generate_primitive(iSubject, sPrimitive)
@@ -86,18 +87,26 @@ end
 % Progress bar
 bst_progress('start','Generate primitive surface',['Generate a ' lower(primitiveName)]);
 
-% Install/load iso2mesh plugin
-[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 0);
-if ~isInstalled
-    bst_error(errMsg);
-    return
+% Load iso2mesh plugin
+PlugUnload = 0;
+PlugDesc = bst_plugin('GetDescription', 'iso2mesh');
+if ~PlugDesc.isLoaded
+    % Install/load iso2mesh plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 0);
+    if ~isInstalled
+        bst_error(errMsg);
+        return
+    end
+    PlugUnload = 1;
 end
 
 % Generate primitive surface
 [vert, faces, errMsg, isCancel] = generatePrimitiveSurface(primitive);
 
 % Unload plugin: 'iso2mesh'
-bst_plugin('Unload', 'iso2mesh', 1);
+if PlugUnload
+    bst_plugin('Unload', 'iso2mesh', 1);
+end
 
 if ~isempty(errMsg)
     bst_error(errMsg);
