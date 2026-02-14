@@ -105,10 +105,26 @@ end
 % Get surface file
 iComment = find(strcmp(surfSelectComment, surfComments), 1);
 if iComment <= length(surfGeoComments)
+    % New surface file
     SurfaceFile = tess_generate_primitive(iSubject, surfGeoPrimitive{iComment});
+    SurfaceFullFile = file_fullpath(SurfaceFile);
 else
-    SurfaceFile = surfFileNames{iComment};
+    % Make a copy of present surface
+    SurfaceFullFile = file_unique(file_fullpath(surfFileNames{iComment}));
+    if ~file_copy(file_fullpath(surfFileNames{iComment}), SurfaceFullFile)
+        errMsg = sprintf(['Could not copy file: ' 10 SurfaceFullFile]);
+        if isInteractive
+            bst_error(errMsg);
+        end
+        return
+    end
+    SurfaceFile = file_short(SurfaceFullFile);
 end
+% Update comment for surface reference to rename FEM elements
+sTmp = load(SurfaceFullFile, 'Comment');
+sTmp.Comment = [sTmp.Comment ' | Rename FEM elem: ' NewElemLabel];
+bst_save(SurfaceFullFile, sTmp, [], 1);
+db_reload_subjects(iSubject);
 
 % Open the GUI for ROI alignement on the FEM Mesh, and wait until closed to continue
 global gTessAlign;
