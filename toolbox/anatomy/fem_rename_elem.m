@@ -66,7 +66,7 @@ if ~PlugDesc.isLoaded
 end
 
 % === Load target FEM meshes
-bst_progress('start', 'Rename FEM elements ','Loading the FEM mesh ');
+bst_progress('start', 'Rename FEM elements', 'Loading the FEM mesh ');
 FemMat = load(FemFullFile);
 bst_progress('stop');
 % Hexahedral meshes not supported
@@ -88,17 +88,16 @@ surfFileNames = {sSubject.Surface(iSorted).FileName};
 surfComments  = {sSubject.Surface(iSorted).Comment};
 % Add geometric surfaces to list
 surfGeoPrimitive = {'Sphere', 'Ellipsoid', 'Cube', 'Cylinder', 'Cone'};
-surfGeoComments = cellfun(@(x) [x, ' (define parameters)'], surfGeoPrimitive, 'UniformOutput', 0);
+surfGeoComments = cellfun(@(x) [x, ' (primitive surface)'], surfGeoPrimitive, 'UniformOutput', 0);
 surfComments  = [surfGeoComments, surfComments];
 surfFileNames = [repmat({''}, 1, length(surfGeoComments)), surfFileNames];
 % Ask user to select the ROI area
-% TODO improve text
 [surfSelectComment, isCancel] = java_dialog('combo', [...
-    'The ROI can be a geometric surface or a surface in the Subject.' 10 ...
-    '1) Edit the ROI (if needed), then' 10 ...
+    'Select either a primitive or anatomy surface from the Subject.' 10 ...
+    '1) Edit the surface position and size (if needed), then' 10 ...
     '2) Click on the [OK] button on figure toolbar.' 10 10 ...
-    'Select the ROI to apply the definement.' 10], ...
-    'define FEM mesh(es) within a specific ROI', [], surfComments, surfComments{1});
+    'Select the surface to rename FEM elements inside it.' 10], ...
+    'Rename FEM elements within a surface', [], surfComments, surfComments{1});
 if isempty(surfSelectComment) || isCancel
     bst_progress('stop');
     return
@@ -132,7 +131,10 @@ if ~isempty(iOutside)
 end
 % Nothing to do
 if isempty(iInside)
-    % TODO Display message that no elements inside surface
+    errMsg = sprintf(['No FEM elements were found inside surface: ' 10 SurfaceFullFile]);
+    if isInteractive
+        bst_error(errMsg);
+    end
     return
 end
 % Rename elements inside surface
@@ -144,8 +146,8 @@ else
 end
 FemMat.Tissue(iInside) = iLayerRename;
 
-% === Save defined FEM mesh
-bst_progress('text', 'Saving defined mesh ...');
+% === Save FEM mesh with renamed elements
+bst_progress('text', 'Saving FEM mesh ...');
 % File comment
 FemMat.Comment = [FemMat.Comment ' | ' NewElemLabel ];
 % Add history
