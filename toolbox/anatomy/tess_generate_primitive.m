@@ -70,8 +70,9 @@ if (nargin < 2) || isempty(primitive)
 
 % Call: tess_generate_primitive(iSubject, primitive)
 elseif ischar(primitive)
+    primitiveName = primitive;
     if ~ismember(primitive, primitiveList)
-        primitiveName = primitive;
+        return
     end
 
 % Call: tess_generate_primitive(iSubject, sPrimitive)
