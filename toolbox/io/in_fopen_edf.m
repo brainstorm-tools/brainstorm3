@@ -211,7 +211,11 @@ if ~isempty(tmp) && length(tmp) == 1
     rec_id_date = datetime(tmp{1}, 'InputFormat','dd-MMM-yyyy');
 end
 % Acquisition date from 'startdate'
-acq_date = datetime(hdr.startdate, 'InputFormat','dd.MM.uu');
+try
+    acq_date = datetime(hdr.startdate, 'InputFormat','dd.MM.uu');
+catch
+    acq_date = datetime('today', 'InputFormat','dd.MM.uu');
+end
 % In the 'startdate', use 1985 as a clipping date in order to avoid the Y2K problem.
 % Years between 1985-1999 must be represented by yy=85-99
 if year(acq_date) >= 85
