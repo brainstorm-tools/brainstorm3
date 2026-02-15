@@ -19,6 +19,10 @@ function Labels = mri_getlabels_svreg()
 %
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
+%
+% Authors: Francois Tadel, 2020-201
+%          Anand A. Joshi, 2026
+%          Chinmay Chinara, 2026
 
 Labels = {...
        0, 'Background',                                         [    0    0    0]; ...
