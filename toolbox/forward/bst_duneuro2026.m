@@ -2,6 +2,7 @@ function [Gain, errMsg] = bst_duneuro2026(cfg)
 % BST_DUNEURO: Call Duneuro to compute a FEM solution for Brainstorm.
 %
 % USAGE:  [Gain, errMsg] = bst_duneuro(cfg)
+% NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -293,6 +294,9 @@ else % With tensor (isotropic or anisotropic)
     end
     % write the tensors 
     % TODO: Need to double check if it is correct with Malte. 
+    % I use all the size of the elem == size of the tensors
+    % it seems that we can squeeze it down to set only one value for the
+    % iso tissues ==> smaller I/O file
 end
 dnbst_write_volume_conductor(TmpDir, FemMat,  tensors);
 
