@@ -20,7 +20,7 @@ function Labels = mri_getlabels_svreg()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2020-201
+% Authors: Francois Tadel, 2020-2021
 %          Anand A. Joshi, 2026
 %          Chinmay Chinara, 2026
 
