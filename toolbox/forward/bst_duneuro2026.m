@@ -267,11 +267,27 @@ if isMeg || isMeeg
     coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
 end
-coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels)
+coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels);
 
 %% ===== CONDUCTIVITY MODEL =====
+% Isotropic without tensor
+if ~cfg.UseTensor
 dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond);
 % NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
+else % With tensor (isotropic or anisotropic)
+    % Transformation matrix  and tensor mapping on each direction
+    CondTensor = zeros(length(FemMat.Elements),6) ;
+    for ind =1 : length(FemMat.Elements)
+        temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
+        T1 = temp0(:,1:3); % get the 3 eigen vectors
+        l =  diag(temp0(:,4)); % get the eigen value as 3x3
+        temp = T1 * l * T1'; % reconstruct the tensors
+        CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
+    end
+    % write the tensors 
+    % TODO: Need to double check if it is correct with Malte. 
+    dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond); 
+end
 
 %%  ===== TRANSFER MATRIX CONFIGURATION =====
  transfer_matrix_config = [];
@@ -558,6 +574,7 @@ function [status, errMsg ] = bst_run_duneuro_task(duneuro_io_dir, config, runner
     
     % now execute system call to start the container
     if strcmp(runner, 'docker')
+        
       runner_system_call = ['docker run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
     elseif strcmp(runner, 'podman')
       % if we run podman in rootless mode, we need to make the IO directory writable 
