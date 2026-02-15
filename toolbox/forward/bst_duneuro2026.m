@@ -261,33 +261,40 @@ if isEeg || isEcog || isSeeg
     bstdn_write_pem_electrodes(TmpDir, EegLoc', 'measurement');
 end
 % Write the MEG sensors data 
-if isMeg || isMeeg
+if isMeg 
     % Write coil data
     % coil_to_channel_transform = eye(length(MegChannels));
     coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
+    coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels);
+
 end
-coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels);
 
 %% ===== CONDUCTIVITY MODEL =====
 % Isotropic without tensor
 if ~cfg.UseTensor
-dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond);
+    % Create tensor per tissue format from the isoconductivity
+    tensors = zeros(length(isoCond), 3, 3);
+    for iTissue = 1 : length(FemMat.TissueLabels)
+        tensors(iTissue,1,1) = Cond(iTissue);
+        tensors(iTissue,2,2) = Cond(iTissue);
+        tensors(iTissue,3,3) = Cond(iTissue);
+    end
 % NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 else % With tensor (isotropic or anisotropic)
     % Transformation matrix  and tensor mapping on each direction
-    CondTensor = zeros(length(FemMat.Elements),6) ;
-    for ind =1 : length(FemMat.Elements)
-        temp0 = reshape(FemMat.Tensors(ind,:),3,[]);
+    tensors = zeros(length(FemMat.Elements), 3,3);
+    for iElem = 1 : length(FemMat.Elements)
+        temp0 = reshape(FemMat.Tensors(iElem,:),3,[]);
         T1 = temp0(:,1:3); % get the 3 eigen vectors
         l =  diag(temp0(:,4)); % get the eigen value as 3x3
         temp = T1 * l * T1'; % reconstruct the tensors
-        CondTensor(ind,:) = [temp(1) temp(5) temp(9) temp(4) temp(8) temp(7)]; % this is the right order       
+        tensors(iElem,:,:) = temp;
     end
     % write the tensors 
     % TODO: Need to double check if it is correct with Malte. 
-    dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond); 
 end
+dnbst_write_volume_conductor(TmpDir, FemMat,  tensors);
 
 %%  ===== TRANSFER MATRIX CONFIGURATION =====
  transfer_matrix_config = [];
@@ -377,7 +384,7 @@ end
 %% =================================================================================
 %  === SUPPORT FUNCTIONS  =========================================================
 %  =================================================================================
-function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, isoCond)
+function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, Tensors)
     iOk = 0; errMsg = '';
     nodes = FemMat.Vertices; 
     elements = FemMat.Elements - 1; 
@@ -388,7 +395,7 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, is
     nr_nodes = size(nodes, 1);
     nr_elements = size(elements, 1);
     nr_labels = size(labels, 1);
-    nr_unique_tensors = length(isoCond);
+    nr_unique_tensors = length(Cond);
     
     dim = 3;
     nr_nodes_per_tetrahedron = 4;
@@ -401,13 +408,7 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, is
     if size(elements, 2) ~= nr_nodes_per_tetrahedron
         errMsg = 'The DUNEuro container interface currently only supports tetrahedral meshes (or the number of column of the elements array is wrong)';  return;
     end    
-    % Create tensor format from the isoconductivity
-    tensors = zeros(length(isoCond), 3, 3);
-    for iTissue = 1 : length(FemMat.TissueLabels)
-        tensors(iTissue,1,1) = isoCond(iTissue);
-        tensors(iTissue,2,2) = isoCond(iTissue);
-        tensors(iTissue,3,3) = isoCond(iTissue);
-    end
+  
     if (size(tensors, 2) ~= dim) || (size(tensors, 3) ~= dim)
        errMsg = 'The shape of the tensors array must be (K, 3, 3)';  return;
     end
@@ -423,7 +424,7 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, is
     h5write(io_file_path, "/volume_conductor/nodes", nodes');
     h5write(io_file_path, "/volume_conductor/elements", elements');
     h5write(io_file_path, "/volume_conductor/labels", labels');
-    h5write(io_file_path, "/volume_conductor/tensors", permute(tensors, [3 2 1]));
+    h5write(io_file_path, "/volume_conductor/tensors", permute(Tensors, [3 2 1]));
     
     h5writeatt(io_file_path, "/volume_conductor", 'type', 'fitted');
     h5writeatt(io_file_path, "/volume_conductor", 'element_type', 'tetrahedron');
