@@ -36,7 +36,7 @@ Gain = [];
 % - via docker
 % - via podman
 % - via apptainer
-runner =  'docker';
+runner =  cfg.containerRunner;
 % Get DUNEuro container executable
 bst_plugin('SetProgressLogo', 'duneuro');
 
@@ -267,6 +267,7 @@ if isMeg || isMeeg
     coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
 end
+coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels)
 
 %% ===== CONDUCTIVITY MODEL =====
 dnbst_write_volume_conductor(TmpDir, FemMat,  cfg.FemCond);
@@ -287,11 +288,8 @@ if strcmp(dnModality, 'meeg')
     transfer_matrix_config.do_meg = 'True';
     transfer_matrix_config.do_eeg = 'True';
 end
-transfer_matrix_config.residual_reduction = '1e-16';
-transfer_matrix_config.nr_threads = cfg.NbOfThread; 
-% can be used as user parameters ==> highlighted as super parameters
-% Check with Malte is there is an optimised number without overwhelming the
-% user computer.
+transfer_matrix_config.residual_reduction = cfg.residual_reduction;
+transfer_matrix_config.nr_threads = num2str(cfg.NbOfThread); 
 
 %%  ===== LEADFIELD MATRIX CONFIGURATION =====
 leadfield_config = [];
@@ -309,12 +307,10 @@ if strcmp(dnModality, 'meeg')
     leadfield_config.do_eeg = 'True';
 end
 % set final hard code value 
-leadfield_config.eeg_scaling = '1e0'; % check with Malte if those value are optimised
-leadfield_config.meg_scaling = '1e5'; % Malte to check and get final value for MKSA system. 
-% permeability: 
-
+leadfield_config.eeg_scaling = cfg.eeg_scaling; % check with Malte if those value are optimised
+leadfield_config.meg_scaling = cfg.meg_scaling; % Malte to check and get final value for MKSA system. 
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
-leadfield_config.nr_threads = cfg.NbOfThread; % same as above
+leadfield_config.nr_threads = num2str(cfg.NbOfThread); % same as above
 %% ===== RUN DUNEURO ======
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 % disp(['DUNEURO> System call: ' callStr]);
@@ -448,14 +444,45 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
     
     h5create(io_file_path, "/measurement/sensors/magnetometers/positions", [dim nr_magnetometers], Datatype="double");
     h5create(io_file_path, "/measurement/sensors/magnetometers/orientations", [dim nr_magnetometers], Datatype="double");
-    h5create(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", [nr_magnetometers, nr_channels], Datatype="double");
+    % h5create(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", [nr_magnetometers, nr_channels], Datatype="double");
     
     h5write(io_file_path, "/measurement/sensors/magnetometers/positions", coil_positions');
     h5write(io_file_path, "/measurement/sensors/magnetometers/orientations", coil_orientations');
-    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform);
+    % h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform);
 
     % if all goes well, return 1
     iOk = 1;
+end
+
+function coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels)
+    % Extract channel indices and weights
+    chan_idx = MegChannels(:,1);
+    w        = MegChannels(:,end);
+    % Find unique channels
+    channels = unique(chan_idx);
+    nb_chan  = length(channels);
+    % Count coils per channel (should be 4)
+    nCoil = sum(chan_idx == channels(1));
+    % Total size
+    N = nb_chan * nCoil;
+    % Preallocate sparse matrix
+    Wbig = sparse(N, N);
+    % Build matrix
+    for k = 1:nb_chan        
+        % Get rows corresponding to this channel
+        rows_k = find(chan_idx == channels(k));        
+        % Extract weights for this channel
+        weights_k = w(rows_k);        
+        % Define block columns
+        cols = (k-1)*nCoil + (1:nCoil);        
+        % Place weights in row k
+        Wbig(k, cols) = weights_k(:)';   
+    end
+
+    coil_to_channel_transform = Wbig;
+    % not sure about this
+    h5create(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", [nb_chan, nb_chan], Datatype="double");
+    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform);
 end
 
 function [iOk, errMsg] = bstdn_write_pem_electrodes(duneuro_io_dir, electrode_positions, electrode_type_flag)
@@ -541,7 +568,16 @@ function [status, errMsg ] = bst_run_duneuro_task(duneuro_io_dir, config, runner
       change_ownership_back_command = ['podman unshare chown 0:0 -R ' duneuro_io_dir];
       runner_system_call = [change_ownership_in_container_command ' && ' container_command ' && ' change_ownership_back_command];
     elseif strcmp(runner, 'apptainer')
-      runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount docker://ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
+      % runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount docker://ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
+      %runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount duneuro_testing.sif'];
+       
+      %system('bash -lc "module load apptainer && which apptainer"')
+        runner_system_call = ...
+    ['bash -lc "module load apptainer && apptainer run --bind ' ...
+     duneuro_io_dir ':/duneuro/external_mount duneuro_testing.sif"'];
+
+% status = system(runner_system_call);
+
     else
       errMsg = 'unknown runner';
        return;

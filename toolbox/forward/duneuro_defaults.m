@@ -58,10 +58,8 @@ cfgDef.SolPostProcess   = true;
 cfgDef.SolSubstractMean = false;
 % [solution.solver]
 cfgDef.SolSolverReduction = 1e-10;
-[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
 % [solution.source_model]
 cfgDef.SrcModel          = 'venant';  % partial_integration, venant, subtraction
-cfgDef.SrcModel2026      =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
 cfgDef.SrcIntorderadd    = 0;
 cfgDef.SrcIntorderadd_lb = 2;
 cfgDef.SrcNbMoments      = 3;
@@ -81,6 +79,18 @@ cfgDef.BstMegLfFile       = 'meg_lf.dat';
 cfgDef.UseIntegrationPoint = 1; 
 cfgDef.EnableCacheMemory = 0;
 cfgDef.MegPerBlockOfSensor = 0; % ToDo
+% DN2026
+cfgDef.containerRunner = 'docker'; % ToDo
+[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
+cfgDef.SrcModel2026      =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
+cfgDef.residual_reduction = '1e-16'; % for the transfer matrix
+%From Malte: 
+% 1) a derivation of the EEG and MEG scaling factors to get the output in volt and tesla. The short version is the following:
+% If you measure distances in meter, conductivites in Siemens/meter, and dipole moments in Amperemeter, then the following setting
+% results in the duneuro EEG leadfied being given in volt and the duneuro MEG leadfield being given in tesla.
+cfgDef.eeg_scaling = '1e0'; % 
+cfgDef.meg_scaling = '1e-7'; %  
+ 
 % Use default values if not set
 if (nargin == 0) || isempty(cfg)
     cfg = cfgDef;
