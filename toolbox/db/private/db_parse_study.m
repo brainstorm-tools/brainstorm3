@@ -105,11 +105,11 @@ if ~isempty(studyMat)
         % Ensure DD-MMM-YYYY format
         dateOfStudy = str_date(studyMat.DateOfStudy);
         % Update dateOfStuy format in .mat to DD-MMM-YYYY if it was YYYY-MM-DDThh:mm:ss
-        % DateOfStudy as YYYY-MM-DDThh:mm:ss was introduced in 08-Dec-2025, for raw studies, but reverted on XX-Feb-2026
+        % DateOfStudy as YYYY-MM-DDThh:mm:ss was introduced in 08-Dec-2025, for raw studies, but reverted on 10-Feb-2026
         % As such the DateOfStudy in YYYY-MM-DDThh:mm:ss (rawStudyT0) is saved in the raw data .mat file if possible
         if strncmp(studyMat.Name, '@raw', 4) && ~isempty(studyMat.DateOfStudy) && ~strcmp(studyMat.DateOfStudy, dateOfStudy) && ...
                 strcmp(studyMat.DateOfStudy(11), 'T') && (length(studyMat.DateOfStudy) >= 19)
-            rawStudyTsT0 = datetime(studyMat.DateOfStudy);
+            rawStudyTsT0 = str_datetime(studyMat.DateOfStudy);
             % Update studyMat file
             studyMat.DateOfStudy = dateOfStudy;
             bst_save(bst_fullfile(studiesDir, sStudy(1).FileName), studyMat, 'v7');
@@ -260,8 +260,7 @@ for iFile = 1:length(dirFiles)
                         DataMat = load(filenameFull, 'F');
                         if ~isfield(DataMat.F, 't0') || isempty(DataMat.F.t0)
                             % Update raw data .mat file
-                            rawStudyTsT0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
-                            DataMat.F.t0 = char(rawStudyTsT0);
+                            DataMat.F.t0 = rawStudyTsT0;
                             DataMat.F.acq_date = sStudy(1).DateOfStudy;
                             save(filenameFull, '-struct', 'DataMat', '-append');
                         end

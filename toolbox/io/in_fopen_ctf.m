@@ -84,12 +84,7 @@ sFile.prop.times   = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigP
 % Acquisition date
 sFile.acq_date = str_date(header.res4.data_date);
 % Timestamp for 0s
-sFile.t0 = '';
-if isfield(header.res4, 'data_time') && ~isempty(header.res4.data_time)
-    t0 = datetime([sFile.acq_date, ' ', deblank(header.res4.data_time)], 'InputFormat', 'dd-MMM-yyyy HH:mm');
-    t0.Format = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
-    sFile.t0 = char(t0);
-end
+sFile.t0 = str_datetime([sFile.acq_date, ' ', deblank(header.res4.data_time)]);
 
 % Get number of epochs
 nEpochs = header.gSetUp.no_trials;
