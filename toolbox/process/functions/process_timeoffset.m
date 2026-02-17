@@ -64,16 +64,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.offset.Comment = 'Time offset:';
     sProcess.options.offset.Type    = 'value';
     sProcess.options.offset.Value   = {0, 'ms', []};
-    % === Adjust acquisition date
-    sProcess.options.infodate.Comment   = '<B>Adjust Acquisition date</B>';
-    sProcess.options.infodate.Type       = 'label';
-    sProcess.options.infodate.Value      = [];
-    sProcess.options.infodate.InputTypes = {'data', 'raw'};
-
-    sProcess.options.adjustdate.Comment    = 'Adjust the acquisition date to maintain the event time';
-    sProcess.options.adjustdate.Type       = 'checkbox';
-    sProcess.options.adjustdate.Value      = 0;
-    sProcess.options.adjustdate.InputTypes = {'data', 'raw'};
     % === Overwrite
     sProcess.options.overwrite.Comment = 'Overwrite input files';
     sProcess.options.overwrite.Type    = 'checkbox';
