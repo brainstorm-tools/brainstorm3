@@ -246,9 +246,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === ARTIFACTS: GEDAI ===
     PlugDesc(end+1)              = GetStruct('gedai');
-    PlugDesc(end).Version        = 'main';
+    PlugDesc(end).Version        = '3b613b8c';
     PlugDesc(end).Category       = 'Artifacts';
-    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/refs/heads/main.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/3b613b8cf3e6736b6a3b7e1fe35b6066afc312cf.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
     PlugDesc(end).TestFile       = 'process_gedai.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
