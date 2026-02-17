@@ -101,9 +101,6 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 sEvents = DataMat.Events;
                 sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
             end
-            % Read date of study
-            sStudy = bst_get('Study',  sInput.iStudy);
-            DateOfStudy = sStudy.DateOfStudy;
 
             % ===== PROCESS =====
             % Apply offset to time
