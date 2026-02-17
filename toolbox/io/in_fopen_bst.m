@@ -53,7 +53,7 @@ hdr.device    = str_read(fid, 40);                            % CHAR(40)   : Dev
 hdr.sfreq     = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Sampling frequency
 hdr.starttime = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Start time
 if (hdr.version >= 54)
-    hdr.t0    = str_read(fid, 30);                            % CHAR(30)   : Timestamp 'yyyy-MM-ddTHH:mm:ss.SSS' for 0s
+    hdr.t0    = str_datetime(str_read(fid, 30));              % CHAR(30)   : Timestamp 'yyyy-MM-ddTHH:mm:ss.SSS' for 0s
 end
 hdr.navg      = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of files averaged
 hdr.ctfcomp   = double(fread(fid, [1 1], 'uint8'));           % UINT8(1)   : CTF compensation status (0,1,2,3)

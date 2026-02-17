@@ -217,8 +217,7 @@ function DateOfStudy = readDateOfStudy(metaDataTags)
         DateOfStudy = DateOfStudy + TimeOfStudy;
     end
 
-    DateOfStudy.Format  = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
-    DateOfStudy         = char(DateOfStudy);
+    DateOfStudy = str_datetime(DateOfStudy);
 end 
 function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_measurementList(jnirs,src_pos,det_pos)
     

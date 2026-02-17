@@ -2651,16 +2651,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             catch
                 procComment = sExportProc(iProc).Comment;
             end
-            procFunc    = func2str(sExportProc(iProc).Function);
-            % Timefreq and Connectivity: make sure the advanced options were selected
-            if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
-                                    (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))) || ... % check 'edit' field
-               (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
-                                   'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
-                                   'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
-                                    (~isfield(sExportProc(iProc).options.tfedit, 'Value') || isempty(sExportProc(iProc).options.tfedit.Value)))    % check 'tfedit' field
-                bst_error('Please check the advanced options of the process before generating the script.', 'Generate script', 0);
-                return;
+            % Make sure the advanced options were reviewed
+            errMsg = panel_process_select('CheckProcessAdvancedOpts', sExportProc(iProc));
+            if ~isempty(errMsg)
+                bst_error(errMsg, 'Generate script', 0);
+                return
             end
             % Process comment
             str = [str '% Process: ' procComment 10];
@@ -2972,7 +2967,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        iFunc    = cellfun(@(x)file_exist(x), plugFunc);
         plugList = cellfun(@dir, plugFunc(iFunc));
         bstFunc  = union(plugFunc, bstFunc);
     end
@@ -3029,38 +3024,45 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 isChangeDir = 1;
             end
         end
+        % Check that process file can be read
+        try
+            txt = fileread([fName fExt]);
+        catch
+            errMsg = 'Unable to open file';
+        end
         % Check presence of required functions in process file
-        reqFncs = {'GetDescription', 'FormatComment', 'Run'};
-        reqFncsMissing = [];
-        txt = fileread([fName fExt]);
-        for iReqFnc = 1 : length(reqFncs)
-            expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
-            res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
-            if isempty(res)
-                reqFncsMissing(end+1) = iReqFnc;
-            end
-        end
-        if ~isempty(reqFncsMissing)
-            errMsg = 'Missing function';
-            if length(reqFncsMissing) == 1
-                errMsg = [errMsg, ': ', reqFncs{reqFncsMissing}];
-            else
-                errMsg = [errMsg, 's: ', strjoin(reqFncs(reqFncsMissing), ', ')];
-            end
-        end
-        % Get function handle
-        Function = str2func(fName);
-        % Restore previous dir
-        if isChangeDir
-            cd(curDir);
-        end
-        % Call description function
         if isempty(errMsg)
+            reqFncs = {'GetDescription', 'FormatComment', 'Run'};
+            reqFncsMissing = [];
+            for iReqFnc = 1 : length(reqFncs)
+                expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
+                res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
+                if isempty(res)
+                    reqFncsMissing(end+1) = iReqFnc;
+                end
+            end
+            if ~isempty(reqFncsMissing)
+                errMsg = 'Missing function';
+                if length(reqFncsMissing) == 1
+                    errMsg = [errMsg, ': ', reqFncs{reqFncsMissing}];
+                else
+                    errMsg = [errMsg, 's: ', strjoin(reqFncs(reqFncsMissing), ', ')];
+                end
+            end
+        end
+        % Check call to GetDescription function
+        if isempty(errMsg)
+            % Get function handle
+            Function = str2func(fName);
             try
                 desc = Function('GetDescription');
             catch
                 errMsg = 'Could not run GetDescription()';
             end
+        end
+        % Restore previous dir
+        if isChangeDir
+            cd(curDir);
         end
         % Report error and skip process
         if ~isempty(errMsg)
@@ -3428,18 +3430,11 @@ function [sOutputs, sProcesses] = ShowPanel(FileNames, ProcessNames, FileTimeVec
     if isempty(sProcesses)
         return;
     end
-    % Timefreq and Connectivity: make sure the advanced options were reviewed
-    for iProc = 1 : length(sProcesses)
-        procFunc = func2str(sProcesses(iProc).Function);
-        if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
-                                (~isfield(sProcesses(iProc).options.edit, 'Value') || isempty(sProcesses(iProc).options.edit.Value))) || ... % check 'edit' field
-           (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
-                               'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
-                               'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
-                                (~isfield(sProcesses(iProc).options.tfedit, 'Value') || isempty(sProcesses(iProc).options.tfedit.Value)))    % check 'tfedit' field
-            bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before running the pipeline.'], 'Pipeline editor', 0);
-            return
-        end
+    % Make sure the advanced options were reviewed
+    errMsg = panel_process_select('CheckProcessAdvancedOpts', sProcesses);
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Pipeline editor', 0);
+        return
     end
 
     % Call process function
@@ -3522,6 +3517,60 @@ function [procTimeVector, nFiles] = GetProcessFileVector(sProcesses, FileTimeVec
                     iTime = panel_time('GetTimeIndices', procTimeVector, optVal{1});
                     procTimeVector = procTimeVector(iTime);
                 end
+        end
+    end
+end
+
+
+%% ===== CHECK PROCESS ADVANCED OPTIONS ======
+function errMsg = CheckProcessAdvancedOpts(sProcesses)
+    errMsg = '';
+    for iProc = 1 : length(sProcesses)
+        procFunc = func2str(sProcesses(iProc).Function);
+        switch procFunc
+            case {'process_timefreq', 'process_hilbert', 'process_psd', 'process_psd_features'}
+                advField    = 'edit';
+                advSubField = '';
+
+            case {'process_henv1',   'process_henv1n',   'process_henv2', ...
+                  'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                  'process_plv1',    'process_plv1n',    'process_plv2'}
+                advField    = 'tfedit';
+                advSubField = '';
+
+            case {'process_inverse_2016', 'process_inverse_2018'}
+                advField    = 'inverse';
+                advSubField = 'Comment';
+
+            case 'process_fem_tensors'
+                advField    = 'femcond';
+                advSubField = 'FemCond';
+
+            case {'process_ft_dipolefitting', 'process_ft_prepare_leadfield'}
+                advField    = 'volumegrid';
+                advSubField = '';
+
+            otherwise
+                advField    = '';
+                advSubField = '';
+        end
+        % Check that the advance option field and subfield exist and are not empty
+        if ~isempty(advField)
+            advOption = sProcesses(iProc).options.(advField);
+            isOkAdvField    = isfield(advOption, 'Value') && ~isempty(advOption.Value);
+            isOkAdvSubField = isempty(advSubField) || (isfield(advOption.Value, advSubField) && ~isempty(advOption.Value.(advSubField)));
+            if ~isOkAdvField || ~isOkAdvSubField
+                advOptStr = 'the advanced options';
+                % If possible, use Comment of the advance options field
+                if isfield(advOption, 'Comment') && iscell(advOption.Comment) && length(advOption.Comment)==2 && ~isempty(advOption.Comment{2})                    
+                    % Remove trailing ': '
+                    advOptStr = regexprep(advOption.Comment{2}, ':\s*$', '');
+                    advOptStr = ['<B>"' advOptStr '"</B> option'];
+                end
+                errMsg = sprintf('<HTML>Please check %s<BR> in the process: <B>"%s"</B><BR> before running the pipeline.', ...
+                                 advOptStr, sProcesses(iProc).Comment);
+                return
+            end
         end
     end
 end
