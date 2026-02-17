@@ -4357,17 +4357,17 @@ function UpdateXAxisTimeLabels(hFig, action)
     hAxes = findobj(hFig, 'Tag', 'AxesGraph');
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = getappdata(hFig, 'FigureId');
-    t0 = GlobalData.DataSet(iDS).Measures.sFile.t0;
-
-    % Just for DataTimeseries with T0
-    if strcmpi(FigureId, 'Spectrum') || isempty(t0)
+    % Just for DataTimeseries with t0
+    if strcmpi(FigureId.Type, 'DataTimeseries') || ...
+       ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ...
+       isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
         return
     end
 
     % Update TimestampZero in Figure TsInfo data
     if strcmpi(action, 'toggle')
         if isempty(TsInfo.TimestampZero)
-            TsInfo.TimestampZero = t0;
+            TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
         else
             TsInfo.TimestampZero = [];
         end
