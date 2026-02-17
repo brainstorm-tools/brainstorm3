@@ -507,6 +507,8 @@ HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 if isVolumeAtlas && ~isempty(VolAtlasFiles)
     % Get subject tag
     [fPath, SubjectTag] = bst_fileparts(T1File{1});
+    % For .nii.gz files, remove also the .nii
+    SubjectTag = strrep(SubjectTag, '.nii', '');
     % Import all the volumes
     for iFile = 1:length(VolAtlasFiles)
         % Strip the subject tag from the atlas name

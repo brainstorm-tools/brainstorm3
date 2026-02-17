@@ -255,6 +255,8 @@ end
 
 %% ===== FIGURE CLICK CALLBACK =====
 function FigureClickCallback(hFig, varargin)
+    % Hide jPopupMenu
+    bst_figures('HideJPopupMenu', hFig);
     % Get selected object in this figure
     hObj = get(hFig,'CurrentObject');
     % Find axes
@@ -1523,11 +1525,25 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
         % === COPY SURFACES PROPERTIES ===
         if isSurfProp
             DestTessInfo = getappdata(hDestFig, 'Surface');
+            % Process Source and Destination tess names
+            AllTessInfo = [SrcTessInfo, DestTessInfo];
+            AllTessNames = {AllTessInfo.Name};
+            for iTess = 1 : length(AllTessInfo)
+                % Use 'FEM_layerName' as name for FEM layers
+                if strcmpi(AllTessInfo(iTess).Name, 'FEM')
+                    layerName = regexp(AllTessInfo(iTess).SurfaceFile, '^#.*\((\w*)\)_*\d*$', 'tokens');
+                    if ~isempty(layerName) && ~isempty(layerName{1}) && ~isempty(layerName{1}{1})
+                    AllTessNames{iTess} = ['FEM_' layerName{1}{1}];
+                    end
+                end
+            end
+            SrcTessNames  = AllTessNames(1 : length(SrcTessInfo));
+            DestTessNames = AllTessNames(length(SrcTessInfo)+1 : end);
             % Process each surface of the figure
             for iTess = 1:length(DestTessInfo)
                 % Find surface name in source figure
                 if (length(DestTessInfo) > 1)
-                    iTessInSrc = find(strcmpi(DestTessInfo(iTess).Name, {SrcTessInfo.Name}));
+                    iTessInSrc = find(strcmpi(DestTessNames{iTess}, SrcTessNames));
                 else
                     iTessInSrc = 1;
                 end
@@ -1539,7 +1555,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     DestTessInfo(iTess).DataAlpha        = SrcTessInfo(iTessInSrc).DataAlpha;
                     DestTessInfo(iTess).SizeThreshold    = SrcTessInfo(iTessInSrc).SizeThreshold;
                     % Copy only if surfaces have the same type                    
-                    if strcmpi(DestTessInfo(iTess).Name, SrcTessInfo(iTessInSrc).Name)
+                    if strcmpi(DestTessNames{iTess}, SrcTessNames{iTessInSrc})
                         DestTessInfo(iTess).SurfShowSulci    = SrcTessInfo(iTessInSrc).SurfShowSulci;
                         DestTessInfo(iTess).SurfShowEdges    = SrcTessInfo(iTessInSrc).SurfShowEdges;
                         DestTessInfo(iTess).AnatomyColor     = SrcTessInfo(iTessInSrc).AnatomyColor;
@@ -1554,7 +1570,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                     % Update surfaces structure
                     setappdata(hDestFig, 'Surface', DestTessInfo);
                     % Update display
-                    if strcmpi(DestTessInfo(iTess).Name, 'Anatomy')
+                    if strcmpi(DestTessNames{iTess}, 'Anatomy')
                         if strcmpi(FigureId.Type, 'MriViewer')
                             figure_mri('UpdateMriDisplay', hDestFig, [], DestTessInfo, iTess);
                         else
@@ -3369,9 +3385,10 @@ function SetStructLayout(hFig, iTess)
     dx = max(Vertices(:,1)) - min(Vertices(:,1));
     dy = max(Vertices(:,2)) - min(Vertices(:,2));
     dz = max(Vertices(:,3)) - min(Vertices(:,3));
+    iDel = [];
     % Region by region
     for i = 1:length(sScouts)
-        % Define the structure offset
+        % Define the position offset for anatomical structures
         switch (sScouts(i).Label)
             % Cortex + cerebellum
             case {'lh', '01_Lhemi L', 'Cortex L'},   offSet = [0,  0.6*dy, 0];
@@ -3385,7 +3402,7 @@ function SetStructLayout(hFig, iTess)
             case {'Amygdala L','LAmy','LAmy L'},     offSet = [ .2*dx,  0.3*dy, -0.2*dz];
             case {'Amygdala R','RAmy','RAmy R'},     offSet = [ .2*dx, -0.3*dy, -0.2*dz];
             case {'Pallidum L','LEgp', 'LIgp'},      offSet = [0,  0.2*dy, 0.2*dz];
-            case{ 'Pallidum R','REgp', 'RIgp'},      offSet = [0, -0.2*dy, 0.2*dz];
+            case {'Pallidum R','REgp', 'RIgp'},      offSet = [0, -0.2*dy, 0.2*dz];
             case {'Putamen L','LPut'},               offSet = [0,  0.3*dy, 0];
             case {'Putamen R','RPut'},               offSet = [0, -0.3*dy, 0];
             case {'Caudate L','LCau'},               offSet = [0,  0.3*dy, 0.4*dz];
@@ -3394,13 +3411,27 @@ function SetStructLayout(hFig, iTess)
             case {'Hippocampus R','RHip','RHip R'},  offSet = [ .1*dx, -0.3*dy, -0.4*dz];
             case {'Thalamus L','LTha'},              offSet = [-.3*dx,  0.2*dy, -0.3*dz];
             case {'Thalamus R','RTha'},              offSet = [-.3*dx, -0.2*dy, -0.3*dz];
+            % Outer layers
+            case {'scalp','head'},                   offSet = [0     0     0];
+            case {'outerskull'},                     offSet = [0,  1.5*dy, 0];
+            case {'innerskull'},                     offSet = [0, -1.5*dy, 0];
             otherwise,                               offSet = [];
         end
         % Apply offset to this region
         if ~isempty(offSet)
             iVert = sScouts(i).Vertices;
             Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
+            iDel = [iDel, i];
         end
+    end
+    % Define and apply the y-axis offset for non-anatomical structures
+    sScouts(iDel) = [];
+    for i = 1:length(sScouts)
+        iVert = sScouts(i).Vertices;
+        % Alternate -y and +y of the current displayed surfaces
+        dy = max(((-1)^i)* Vertices(:,2)) + (max(Vertices(iVert,2)) - min(Vertices(iVert,2)))/2;
+        offSet = [0, ((-1)^i) * 1.1 * dy, 0];
+        Vertices(iVert,:) = bst_bsxfun(@plus, Vertices(iVert,:), offSet);
     end
     % Apply modified locations
     set(TessInfo(iTess).hPatch, 'Vertices',  Vertices);

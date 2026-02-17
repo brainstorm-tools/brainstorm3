@@ -953,6 +953,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
     [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
     % List of channel files to update
     ChannelFiles = {};
+    StudyNames   = {};
     strMsg = '';
     % Loop on the other folders
     for i = 1:length(sStudies)
@@ -980,19 +981,32 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
         end
         % Ask confirmation to the user
         if isempty(isConfirm)
-            isConfirm = java_dialog('confirm', 'Apply the same transformation to all the other datasets in the same subject?', 'Align sensors');
+            isConfirm = java_dialog('confirm', ['<HTML>Apply the same transformation to <B>similar</B> channel files' 10 ...
+                                                'in other folders in the same subject?' 10 10 ...
+                                                'Similar channel file if:' 10 ...
+                                                ' - Same number of channels, and' 10 ...
+                                                ' - Maximum channel location difference < 5 mm'], 'Align sensors');
             if ~isConfirm
                 return;
             end
         end
         % Add channel file to list of files to process
         ChannelFiles{end+1} = sStudies(i).Channel(1).FileName;
+        StudyNames{end+1} = sStudies(i).Name;
         strMsg = [strMsg, sStudies(i).Channel(1).FileName, 10];
     end
     % Apply transformation
     if ~isempty(ChannelFiles)
+        StudyNames = regexprep(StudyNames, '^@raw', '[RAW] ');
+        isFileSelected = java_dialog('checkbox', 'Select the folders for the channel files to apply the same transformation:', ...
+                                     'Align sensors', [], StudyNames, ones(length(StudyNames), 1));
+        if ~any(isFileSelected)
+            bst_progress('stop');
+            return
+        end
+        ChannelFiles = ChannelFiles(isFileSelected == 1);
         % Progress bar
-        bst_progress('start', 'Align sensors', 'Updating other datasets...');
+        bst_progress('start', 'Align sensors', 'Updating other folders...');
         % Update files
         channel_apply_transf(ChannelFiles, Transf, iChannels, 1);
         % Give report to the user
@@ -1248,6 +1262,7 @@ function RemoveElectrodes(varargin)
         gChanAlign.iGlobal2Local(indInc) = gChanAlign.iGlobal2Local(indInc) - 1;
     end
     gChanAlign.iGlobal2Local(iSelChan) = [];
+    gChanAlign.isChanged = 1;
 
     % Remove from sensors patch
     if ~isempty(gChanAlign.hSensorsPatch)
@@ -1257,7 +1272,6 @@ function RemoveElectrodes(varargin)
         [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iLocalChan);
         FaceVertexCData(iLocalChan, :) = [];
         set(gChanAlign.hSensorsPatch, 'Vertices', Vertices, 'Faces', Faces, 'FaceVertexCData', FaceVertexCData);
-        gChanAlign.isChanged = 1;
     elseif ~isempty(gChanAlign.hSensorsMarkers)
         UserData = get(gChanAlign.hSensorsMarkers, 'UserData');
         if iscell(UserData)

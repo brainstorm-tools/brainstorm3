@@ -210,6 +210,10 @@ for iTissue = 1:Ntissue
     iTess = iTess + 1;
     panel_surface('SetSurfaceEdges', hFig, iTess, 1);
 end
+% Update resection values, all FEM layers are updated as iTess is FEM
+for iDim = 1 : 3
+    panel_surface('ResectSurface', hFig, iTess, iDim, Resect(iDim));
+end
 if isProgress
     bst_progress('text', 'Creating figure...');
     bst_progress('inc', 1);

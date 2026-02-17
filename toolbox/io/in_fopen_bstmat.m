@@ -58,6 +58,12 @@ sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)
     sFile.events = DataMat(1).Events;
 end
+if isfield(DataMat(1), 'acq_date') && ~isempty(DataMat(1).acq_date)
+    sFile.acq_date = DataMat(1).acq_date;
+end
+if isfield(DataMat(1), 'T0') && ~isempty(DataMat(1).T0)
+    sFile.t0 = DataMat(1).T0;
+end
 sFile.header.F    = DataMat(1).F;
 sFile.channelflag = DataMat(1).ChannelFlag;
 

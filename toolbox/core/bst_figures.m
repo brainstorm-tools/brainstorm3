@@ -34,6 +34,7 @@ function varargout = bst_figures( varargin )
 %                             bst_figures('ToggleSelectedRow',     RowName)
 %                             bst_figures('FireSelectedRowChanged')
 %       [SelChan, iSelChan] = bst_figures('GetSelectedChannels', iDS)
+%                             bst_figures('HideJPopupMenu, hFig')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -898,6 +899,9 @@ function DeleteFigure(hFigure, varargin)
         end
     end
 
+    % Hide JPopupMenu
+    HideJPopupMenu(hFigure);
+
     % Delete graphic object
     if ishandle(hFigure)
         delete(hFigure);
@@ -1701,6 +1705,13 @@ function TogglePlotEditToolbar(hFig)
 end
 
 
+%% ===== HIDE JPOPUPMENU =====
+function HideJPopupMenu(hFig)
+    jPopup = getappdata(hFig, 'jPopupMenu');
+    if ~isempty(jPopup) && isa(jPopup, 'javax.swing.JPopupMenu')
+        jPopup.setVisible(0);
+    end
+end
 
 
 %% ======================================================================

@@ -10,7 +10,7 @@ Since the project started by the end of the 1990's, our server has registered mo
 
 The best way to learn how to use Brainstorm, like any other academic software, is to benefit from local experts. However, you may be the first one in your institution to consider using Brainstorm for your research. We are happy to provide comprehensive [online tutorials](http://neuroimage.usc.edu/brainstorm/Tutorials) and support through our forum but there is nothing better than a course to make your learning curve steeper. Consult our [training pages](http://neuroimage.usc.edu/brainstorm/Training) for upcoming opportunities to learn better and faster.
 
-Finally, have a look regularly at our [What's new](http://neuroimage.usc.edu/brainstorm/News) page for staying on top of Brainstorm news and updates, [Like us on Facebook](https://www.facebook.com/brainstormsoftware) and [Follow us on Twitter](https://twitter.com/brainstorm2day) to stay in touch. We hope you enjoy using Brainstorm as much as we enjoy developing and sharing these tools with the community!
+Finally, have a look regularly at our [What's new](http://neuroimage.usc.edu/brainstorm/News) page for staying on top of Brainstorm news and updates, [Like us on Facebook](https://www.facebook.com/brainstormsoftware), [Follow us on Twitter](https://twitter.com/brainstorm2day), and [Linkedin](https://www.linkedin.com/company/brainstorm-neuroimage) to stay in touch. We hope you enjoy using Brainstorm as much as we enjoy developing and sharing these tools with the community!
 
 <p align="center">
 http://neuroimage.usc.edu/brainstorm

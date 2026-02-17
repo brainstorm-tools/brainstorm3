@@ -581,7 +581,8 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
-                    
+                    gui_component('MenuItem', jPopup, [], 'Generate primitive surface', IconLoader.ICON_SURFACE, [],@(h,ev)bst_call(@tess_generate_primitive, iSubject));
+                    AddSeparator(jPopup);
                     % === ANATOMY TEMPLATE ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
@@ -771,7 +772,7 @@ switch (lower(action))
                     % === SIMULATIONS ===
                     if (length(bstNodes) == 1) && ~isRaw
                         AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@bst_simmeeg, 'GUI', iStudy));
+                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)SimulateSimmeeg(iStudy));
                     end
                     % === EXPORT RAW FILE ===
                     if isRaw
@@ -1247,6 +1248,9 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Less vertices...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)tess_downsize(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Merge surfaces',   IconLoader.ICON_FUSION, [], @(h,ev)SurfaceConcatenate(GetAllFilenames(bstNodes)));
                         gui_component('MenuItem', jPopup, [], 'Average surfaces', IconLoader.ICON_SURFACE_ADD, [], @(h,ev)SurfaceAverage(GetAllFilenames(bstNodes)));
+                        if (length(bstNodes) == 2) % Only for two surfaces
+                            gui_component('MenuItem', jPopup, [], 'Surface Boolean operation', IconLoader.ICON_FUSION, [], @(h,ev)SurfaceBoolean(GetAllFilenames(bstNodes)));
+                        end
                     end
                 else
                     % === MENU: "ALIGN WITH MRI" ===
@@ -1320,7 +1324,8 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
+                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM'));
+                    gui_component('MenuItem', jPopup, [], 'Extract layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ExtractFemlayers', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)panel_femname('Edit', filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
                     gui_component('MenuItem', jPopup, [], 'Compute mesh statistics', IconLoader.ICON_HISTOGRAM, [], @(h,ev)bst_call(@tess_meshstats, filenameRelative));
@@ -1328,7 +1333,9 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
-                    % If there are tensors to display
+                    gui_component('MenuItem', jPopup, [], 'Refine FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_refine, 'Compute', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Rename FEM elements', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_rename_elem, filenameRelative));
+                     % If there are tensors to display
                     varInfo = whos('-file', filenameFull, 'Tensors');
                     if ~isempty(varInfo) && all(varInfo.size >= 12)
                         jMenuFemDisp = gui_component('Menu', jPopup, [], 'Display FEM tensors', IconLoader.ICON_DISPLAY, [], []);
@@ -1442,8 +1449,6 @@ switch (lower(action))
                             end
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Mri3D'));
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'MriViewer'));
-                            AddSeparator(jPopup);
-                            gui_component('MenuItem', jPopup, [], ['Apply ' mod{1} ' leadfield exclusion zone'], IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, mod{1}, iStudy));
                         elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
                             gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
                         end
@@ -1457,6 +1462,10 @@ switch (lower(action))
                             gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
                         end
                     end
+                end
+                if strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'volume')
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Apply leadfield exclusion zone', IconLoader.ICON_HEADMODEL, [], @(h,ev)process_headmodel_exclusionzone('ComputeInteractive', filenameRelative, iStudy));
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')
@@ -3548,6 +3557,19 @@ function SurfaceAverage(TessFiles)
     end
 end
 
+%% ===== SURFACE BOOLEAN OPERATIONS =====
+function SurfaceBoolean(TessFiles)
+    % Surface Boolean files
+    [NewFile, errMsg] = tess_boolean(TessFiles);
+    % Select new file in the tree
+    if ~isempty(NewFile)
+        panel_protocols('SelectNode', [], NewFile);
+    end
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Surface Boolean operation', 0);
+    end
+end
+
 %% ===== LOAD FREESURFER SPHERE =====
 function TessAddSphere(TessFile)
     [TessMat, errMsg] = tess_addsphere(TessFile);
@@ -3937,4 +3959,34 @@ end
 function ViewTexturedSurface(filenameRelative)
     sSurf = bst_memory('LoadSurface', filenameRelative);
     view_surface_matrix(sSurf.Vertices, sSurf.Faces, [], sSurf.Color, [], [], filenameRelative);
+end
+
+%% ===== SIMULATE SIMMEEG =====
+function SimulateSimmeeg(iStudy)
+    PlugName = 'simmeeg';
+    % Check that SimMEEG is installed
+    PlugDesc = bst_plugin('GetInstalled', PlugName);
+    if isempty(PlugDesc)
+        [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, 1);
+    else
+        [isOk, errMsg, PlugDesc] = bst_plugin('Load', PlugName);
+    end
+    % Check the plugin has the function 'bst_simmeeg.m'
+    if isOk && ~exist(fullfile(PlugDesc.Path, 'SimMEEG-master', 'bst_simmeeg.m'), 'file')
+        % Ask user to confirm plugin update
+        isConfirm = java_dialog('confirm', [...
+            'Function "bst_simmeeg.m" was not found within the SimMEEG plugin folder.' 10 10 ...
+            'Updating the SimMEEG plugin is needed.' 10 ...
+            'Update now?' 10 10], ...
+           'Simulate SimMEEG');
+        if isConfirm
+            [isOk, errMsg] = bst_plugin('Install', PlugName, 0);
+        end
+    end
+    % Print error
+    if ~isOk
+        bst_error(errMsg, 'Simulate SimMEEG', 0);
+    end
+    % Call SimMEEG
+    bst_simmeeg('GUI', iStudy);
 end

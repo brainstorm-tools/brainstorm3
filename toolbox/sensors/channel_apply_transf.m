@@ -47,8 +47,9 @@ ChannelMats = {};
 if isnumeric(Transf)
     R = Transf(1:3,1:3);
     T = Transf(1:3,4);
-    Transf = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
+    TransfFcn = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
 else
+    TransfFcn = Transf;
     R = [];
 end
 
@@ -82,7 +83,7 @@ for iFile = 1:length(ChannelFiles)
         Orient = ChannelMat.Channel(iChan(i)).Orient;
         % Update location
         if ~isempty(Loc) && ~isequal(Loc, [0;0;0])
-            ChannelMat.Channel(iChan(i)).Loc = Transf(Loc);
+            ChannelMat.Channel(iChan(i)).Loc = TransfFcn(Loc);
         end
         % Update orientation
         if ~isempty(Orient) && ~isequal(Orient, [0;0;0])
@@ -95,7 +96,7 @@ for iFile = 1:length(ChannelFiles)
     end
     % If needed: transform the digitized head points
     if isHeadPoints && ~isempty(ChannelMat.HeadPoints.Loc)
-        ChannelMat.HeadPoints.Loc = Transf(ChannelMat.HeadPoints.Loc);
+        ChannelMat.HeadPoints.Loc = TransfFcn(ChannelMat.HeadPoints.Loc);
     end
 
     % If a TransfMeg field with translations/rotations available

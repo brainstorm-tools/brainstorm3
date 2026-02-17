@@ -1,3 +1,37 @@
+January 2026
+- Anatomy: Add generation of primitive geometric surfaces (sphere, cube, ...)
+- Anatomy: Boolean operations between two surfaces (intersection, union, diff)
+- BIDS: Import coregistration information if available in the BIDS dataset
+- Coreg: Manual coregistration, ask for folders to apply same coregistration
+- Events: Bugfix importing AnyWave events, times are relative to file start
+- FEM: Update extraction of surfaces from not fully nested FEM layers
+- FEM: Extract FEM layers to new FEM file
+- GUI: Bugfix for JPopupMenu behaviour in Matlab New Desktop (>=2023b)
+- Montage: Bugfix on editing montages with channel separators (':')
+- Montage: Do not allow user montage names to contain '[tmp]' tag
+--------------------------------------------------------------
+December 2025
+- DB: Allow adding time to the Acquisition date of a Study
+- IO: Add support for HED tags in Events
+- IO: Improve exporting recordings as EDF files
+- Plugin: Add, edit and remove HED tags within Brainstorm GUI with CTagger
+- Plugin: Automatic EEG artifact removal with GEDAI
+- Compile: Update 'spmtrip' functions
+- Compile: Linux/macOS and Windows wrappers for BST compiled with >= R2020a
+- Distrib: Compilation with Matlab 2026a
+--------------------------------------------------------------
+November 2025
+- BIDS: NIRS export optode locations as channel.tsv
+- Events: Keep events that were used on importing data by events
+- FEM: Allow refinement of tetrahedral meshes, by layer or ROI
+- iEEG: implantation, sync coordinates only for same-subject anat volumes
+- IO: NIRS, fix SNIRF badly formatted optode labels
+- Plugin: Set iso2mesh to follow GitHub master
+- Plugin: Bugfix, interaction between SPM and FieldTrip, setting SPM defaults
+- Process: Add process to select/ignore files using event name(s)
+- Distrib: Distrib: Bugfix, generating `spmtrip` folder on different OS
+- Viz: Update FEM visualization: resection and "Apply this view for all figures"
+--------------------------------------------------------------
 October 2025
 - EEG: Add montage to "Add reference channel back"
 - iEEG: Menu to select auxiliar figures to perform implantation

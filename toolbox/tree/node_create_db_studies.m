@@ -167,7 +167,7 @@ isNonRaw = find(~listRaw);
 % Get list of noraw "Implantation" conditions
 isImplantation = [];
 if ~isempty(isNonRaw)
-    isImplantation  = strncmpi([ProtocolStudies.Study(isNonRaw).Condition], 'implantation', 12);
+    isImplantation  = strncmpi(cellfun(@(c)c{1}, {ProtocolStudies.Study(isNonRaw).Condition}, 'UniformOutput', 0), 'implantation', 12);
 end
 isNonRawImplant = isNonRaw(isImplantation);
 isNonRaw        = isNonRaw(~isImplantation);
@@ -279,8 +279,8 @@ for i = 1:length(ProtocolStudies.Study)
                             intDate = 0;
                             if ~isempty(sStudy.DateOfStudy)
                                 try
-                                    c = datevec(sStudy.DateOfStudy);
-                                    intDate = max(c(1)-1800,0)*13*32 + c(2)*32 + c(3);
+                                    c = datetime(sStudy.DateOfStudy);
+                                    intDate = max(year(c)-1800,0)*13*32 + month(c)*32 + day(c);
                                     if (intDate < 13*32)
                                         intDate = 0;
                                     end

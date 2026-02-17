@@ -1214,10 +1214,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     
                 case {'cluster', 'cluster_confirm'}
                     % Get available and selected clusters
-                    jList = GetClusterList(sProcess, optNames{iOpt});
+                    [jList, nClusters] = GetClusterList(sProcess, optNames{iOpt});
                     % If no clusters
-                    if isempty(jList)
-                        gui_component('label', jPanelOpt, [], '<HTML>Error: No clusters available in channel file.');
+                    if nClusters == 0 && strcmpi(option.Type, 'cluster')
+                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No clusters available in channel file.');
                     else
                         % Confirm selection
                         if strcmpi(option.Type, 'cluster_confirm')
@@ -1228,8 +1228,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             end
                             jCheckCluster = gui_component('checkbox', jPanelOpt, [], strCheck);
                             java_setcb(jCheckCluster, 'ActionPerformedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, jList, jCheckCluster, []));
-                            jCheckCluster.setSelected(1)
-                            jList.setEnabled(1);
+                            if nClusters == 0
+                                jCheckCluster.setSelected(0);
+                                jCheckCluster.setEnabled(0);
+                            else
+                                jCheckCluster.setSelected(1);
+                            end
                         else
                             jCheckCluster = [];
                             gui_component('label', jPanelOpt, [], ' Select cluster:');
@@ -1249,7 +1253,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     [AtlasList, iAtlasList] = GetAtlasList(sProcess, optNames{iOpt});
                     % If no scouts are available
                     if isempty(AtlasList)
-                        gui_component('label', jPanelOpt, [], '<HTML>No scouts available.');
+                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No scouts available.');
                     else
                         % Create list
                         jList = java_create('javax.swing.JList');
@@ -2053,10 +2057,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
     %% ===== OPTIONS: GET CLUSTER LIST =====
-    function jList = GetClusterList(sProcess, optName)
+    function [jList, nClusters] = GetClusterList(sProcess, optName)
         import org.brainstorm.list.*;
         % Initialize returned values
         jList = [];
+        nClusters = 0;
 
         % Get the current channel file
         if isfield(sProcess.options.(optName), 'InputTypesB') && ~isempty(sFiles2)
@@ -2070,15 +2075,18 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Load clusters from channel file
         ChannelMat = in_bst_channel(ChannelFile, 'Clusters');
         if isempty(ChannelMat.Clusters)
-            return;
+            % No clusters
+            nClusters = 0;
+            allLabels = {'No clusters available in channel file.'};
+        else
+            % Get all clusters labels
+            allLabels = {ChannelMat.Clusters.Label};
+            nClusters = length(allLabels);
         end
-
-        % Get all clusters labels
-        allLabels = {ChannelMat.Clusters.Label};
         % Create a list mode of the existing clusters/scouts
         listModel = javax.swing.DefaultListModel();
-        for iClust = 1:length(ChannelMat.Clusters)
-            listModel.addElement(BstListItem(ChannelMat.Clusters(iClust).Label, '', [' ' allLabels{iClust} ' '], iClust));
+        for iClust = 1:length(allLabels)
+            listModel.addElement(BstListItem(allLabels{iClust}, '', [' ' allLabels{iClust} ' '], iClust));
         end
 
         % Create list
@@ -2638,17 +2646,16 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Loop on each process to apply
         for iProc = 1:length(sExportProc)
             % Get process info
-            procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
-            procFunc    = func2str(sExportProc(iProc).Function);
-            % Timefreq and Connectivity: make sure the advanced options were selected
-            if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
-                                    (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))) || ... % check 'edit' field
-               (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
-                                   'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
-                                   'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
-                                    (~isfield(sExportProc(iProc).options.tfedit, 'Value') || isempty(sExportProc(iProc).options.tfedit.Value)))    % check 'tfedit' field
-                bst_error('Please check the advanced options of the process before generating the script.', 'Generate script', 0);
-                return;
+            try
+                procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
+            catch
+                procComment = sExportProc(iProc).Comment;
+            end
+            % Make sure the advanced options were reviewed
+            errMsg = panel_process_select('CheckProcessAdvancedOpts', sExportProc(iProc));
+            if ~isempty(errMsg)
+                bst_error(errMsg, 'Generate script', 0);
+                return
             end
             % Process comment
             str = [str '% Process: ' procComment 10];
@@ -2960,7 +2967,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     % Add plugin processes to list of processes
     if ~isempty(plugFunc)
-        iFunc    = cellfun(@(x)exist(x,'file') > 0 , plugFunc);
+        iFunc    = cellfun(@(x)file_exist(x), plugFunc);
         plugList = cellfun(@dir, plugFunc(iFunc));
         bstFunc  = union(plugFunc, bstFunc);
     end
@@ -2995,6 +3002,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     matlabPath = [];
     % Get description for each file
     for iFile = 1:length(bstFunc)
+        errMsg = '';
         % Skip python support functions
         if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
@@ -3016,16 +3024,48 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 isChangeDir = 1;
             end
         end
-        % Get function handle
-        Function = str2func(fName);
+        % Check that process file can be read
+        try
+            txt = fileread([fName fExt]);
+        catch
+            errMsg = 'Unable to open file';
+        end
+        % Check presence of required functions in process file
+        if isempty(errMsg)
+            reqFncs = {'GetDescription', 'FormatComment', 'Run'};
+            reqFncsMissing = [];
+            for iReqFnc = 1 : length(reqFncs)
+                expression = ['^ *function.*[ |=]' reqFncs{iReqFnc} '\('];
+                res = regexp(txt, expression, 'match', 'lineanchors', 'dotexceptnewline');
+                if isempty(res)
+                    reqFncsMissing(end+1) = iReqFnc;
+                end
+            end
+            if ~isempty(reqFncsMissing)
+                errMsg = 'Missing function';
+                if length(reqFncsMissing) == 1
+                    errMsg = [errMsg, ': ', reqFncs{reqFncsMissing}];
+                else
+                    errMsg = [errMsg, 's: ', strjoin(reqFncs(reqFncsMissing), ', ')];
+                end
+            end
+        end
+        % Check call to GetDescription function
+        if isempty(errMsg)
+            % Get function handle
+            Function = str2func(fName);
+            try
+                desc = Function('GetDescription');
+            catch
+                errMsg = 'Could not run GetDescription()';
+            end
+        end
         % Restore previous dir
         if isChangeDir
             cd(curDir);
         end
-        % Call description function
-        try
-            desc = Function('GetDescription');
-        catch
+        % Report error and skip process
+        if ~isempty(errMsg)
             if ismember(bstFunc{iFile}, usrFunc)
                 processType = 'User';
             elseif ismember(bstFunc{iFile}, {bstList.name})
@@ -3036,6 +3076,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 processType = char(8); % backspace
             end
             disp(['BST> Invalid ' processType ' function: "' bstFunc{iFile} '"']);
+            disp(['     ' errMsg]);
             continue;
         end
         % Copy fields to returned structure
@@ -3389,18 +3430,11 @@ function [sOutputs, sProcesses] = ShowPanel(FileNames, ProcessNames, FileTimeVec
     if isempty(sProcesses)
         return;
     end
-    % Timefreq and Connectivity: make sure the advanced options were reviewed
-    for iProc = 1 : length(sProcesses)
-        procFunc = func2str(sProcesses(iProc).Function);
-        if (ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && ...
-                                (~isfield(sProcesses(iProc).options.edit, 'Value') || isempty(sProcesses(iProc).options.edit.Value))) || ... % check 'edit' field
-           (ismember(procFunc, {'process_henv1', 'process_henv1n', 'process_henv2', ...
-                               'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
-                               'process_plv1', 'process_plv1n', 'process_plv2'}) && ...
-                                (~isfield(sProcesses(iProc).options.tfedit, 'Value') || isempty(sProcesses(iProc).options.tfedit.Value)))    % check 'tfedit' field
-            bst_error(['Please check the advanced options of the process "', sProcesses(iProc).Comment, '" before running the pipeline.'], 'Pipeline editor', 0);
-            return
-        end
+    % Make sure the advanced options were reviewed
+    errMsg = panel_process_select('CheckProcessAdvancedOpts', sProcesses);
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'Pipeline editor', 0);
+        return
     end
 
     % Call process function
@@ -3483,6 +3517,60 @@ function [procTimeVector, nFiles] = GetProcessFileVector(sProcesses, FileTimeVec
                     iTime = panel_time('GetTimeIndices', procTimeVector, optVal{1});
                     procTimeVector = procTimeVector(iTime);
                 end
+        end
+    end
+end
+
+
+%% ===== CHECK PROCESS ADVANCED OPTIONS ======
+function errMsg = CheckProcessAdvancedOpts(sProcesses)
+    errMsg = '';
+    for iProc = 1 : length(sProcesses)
+        procFunc = func2str(sProcesses(iProc).Function);
+        switch procFunc
+            case {'process_timefreq', 'process_hilbert', 'process_psd', 'process_psd_features'}
+                advField    = 'edit';
+                advSubField = '';
+
+            case {'process_henv1',   'process_henv1n',   'process_henv2', ...
+                  'process_cohere1', 'process_cohere1n', 'process_cohere2', ...
+                  'process_plv1',    'process_plv1n',    'process_plv2'}
+                advField    = 'tfedit';
+                advSubField = '';
+
+            case {'process_inverse_2016', 'process_inverse_2018'}
+                advField    = 'inverse';
+                advSubField = 'Comment';
+
+            case 'process_fem_tensors'
+                advField    = 'femcond';
+                advSubField = 'FemCond';
+
+            case {'process_ft_dipolefitting', 'process_ft_prepare_leadfield'}
+                advField    = 'volumegrid';
+                advSubField = '';
+
+            otherwise
+                advField    = '';
+                advSubField = '';
+        end
+        % Check that the advance option field and subfield exist and are not empty
+        if ~isempty(advField)
+            advOption = sProcesses(iProc).options.(advField);
+            isOkAdvField    = isfield(advOption, 'Value') && ~isempty(advOption.Value);
+            isOkAdvSubField = isempty(advSubField) || (isfield(advOption.Value, advSubField) && ~isempty(advOption.Value.(advSubField)));
+            if ~isOkAdvField || ~isOkAdvSubField
+                advOptStr = 'the advanced options';
+                % If possible, use Comment of the advance options field
+                if isfield(advOption, 'Comment') && iscell(advOption.Comment) && length(advOption.Comment)==2 && ~isempty(advOption.Comment{2})                    
+                    % Remove trailing ': '
+                    advOptStr = regexprep(advOption.Comment{2}, ':\s*$', '');
+                    advOptStr = ['<B>"' advOptStr '"</B> option'];
+                end
+                errMsg = sprintf('<HTML>Please check %s<BR> in the process: <B>"%s"</B><BR> before running the pipeline.', ...
+                                 advOptStr, sProcesses(iProc).Comment);
+                return
+            end
         end
     end
 end

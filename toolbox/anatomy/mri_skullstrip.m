@@ -150,13 +150,11 @@ switch lower(Method)
         filesDel = TmpDir;
 
     case 'spm'
-        if ~bst_iscompiled
-            % Check for SPM12 installation
-            [isInstalledSpm, errMsg] = bst_plugin('Install', 'spm12');
-            if ~isInstalledSpm
-                bst_progress('text', 'Skipping skull stripping. SPM not installed.');
-                return;
-            end
+        % Check for SPM12 installation
+        [isInstalledSpm, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalledSpm
+            bst_progress('text', 'Skipping skull stripping. SPM not installed.');
+            return;
         end
         % Set the SPM logo
         bst_plugin('SetProgressLogo', 'spm12');

@@ -293,17 +293,19 @@ NewTess = bst_history('add', NewTess, 'merge', 'Merge completed');
 
 % ===== SAVE IN DATABASE =====
 if isSave
+    % Get subject
+    [sSubject, iSubject] = bst_get('SurfaceFile', TessFiles{1});
     % Create new filename
     NewTessFile = bst_fullfile(bst_fileparts(TessFiles{1}), ['tess_' fileTag '.mat']);
     NewTessFile = file_unique(NewTessFile);
+    % Make comment unique
+    NewTess.Comment = file_unique(NewTess.Comment, {sSubject.Surface.Comment});
     % Save file
     bst_save(NewTessFile, NewTess, 'v7');
     % Make output filename relative
     NewTessFile = file_short(NewTessFile);
-    % Get subject
-    [sSubject, iSubject] = bst_get('SurfaceFile', TessFiles{1});
     % Register this file in Brainstorm database
-    iSurface = db_add_surface(iSubject, NewTessFile, NewComment, fileType);
+    iSurface = db_add_surface(iSubject, NewTessFile, NewTess.Comment, fileType);
 else
     NewTessFile = NewTess;
     iSurface = [];
