@@ -134,17 +134,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             else
                 DataMat.Events = sEvents;
             end
-            
-            % Add the offset to the acquisition date
-            if sProcess.options.adjustdate.Value && ~isempty(DateOfStudy)
-                DateOfStudy = datetime(DateOfStudy) - duration(0, 0, OffsetTime);
-                DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
-                DateOfStudy = char(DateOfStudy);
-                
-                if isRaw
-                    DataMat.F.acq_date = DateOfStudy;
-                end
-            end 
+ 
 
             % ===== SAVE FILE =====
             % Add history entry
