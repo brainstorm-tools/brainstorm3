@@ -1,0 +1,447 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<labelset>
+<label id="0" tag="bkg" color="0x0" fullname="background"/>
+<label id="1" tag="CSF" color="0xff0000" fullname="cerebrospinal fluid"/>
+<label id="2" tag="GM" color="0xff00" fullname="grey matter"/>
+<label id="3" tag="WM" color="0xffffff" fullname="white matter"/>
+<label id="4" tag="CG" color="0xff" fullname="grey matter/CSF"/>
+<label id="5" tag="GW" color="0xff00ff" fullname="grey matter/white matter"/>
+<label id="6" tag="CO" color="0xffffff" fullname="CSF/other"/>
+<label id="16" tag="SCALP" color="0x7a9ddd" fullname="scalp"/>
+<label id="17" tag="SKULL" color="0xb0b0b0" fullname="skull"/>
+<label id="18" tag="SPACE" color="0xff" fullname="space"/>
+<label id="19" tag="BRAIN" color="0x800040" fullname="whole brain"/>
+<label id="20" tag="RH" color="0xff8a22" fullname="R. hemisphere"/>
+<label id="21" tag="LH" color="0x168aff" fullname="L. hemisphere"/>
+<label id="30" tag="RS" color="0xff24" fullname="R. Subcortex"/>
+<label id="31" tag="LS" color="0xff000f" fullname="L. Subcortex"/>
+<label id="100" tag="FL" color="0x952e91" fullname="R. Frontal Lobe"/>
+<label id="101" tag="FL" color="0xf238f0" fullname="L. Frontal Lobe"/>
+<label id="110" tag="LFL" color="0xafec0d" fullname="R. lateral frontal lobe"/>
+<label id="111" tag="LFL" color="0x5013f2" fullname="L. lateral frontal lobe"/>
+<label id="120" tag="SFG" color="0xff7f" fullname="R. superior frontal gyrus"/>
+<label id="121" tag="SFG" color="0xff0080" fullname="L. superior frontal gyrus"/>
+<label id="130" tag="MFG" color="0x80ffff" fullname="R. middle frontal gyrus"/>
+<label id="131" tag="MFG" color="0x7f0000" fullname="L. middle frontal gyrus"/>
+<label id="140" tag="IFG" color="0xafec0d" fullname="R. inferior frontal gyrus"/>
+<label id="141" tag="IFG" color="0x5013f2" fullname="L. inferior frontal gyrus"/>
+<label id="142" tag="OplFG" color="0xffff00" fullname="R. pars opercularis"/>
+<label id="143" tag="OplFG" color="0xff" fullname="L. pars opercularis"/>
+<label id="144" tag="TrIFG" color="0x7f0080" fullname="R. pars triangularis"/>
+<label id="145" tag="TrIFG" color="0x80ff7f" fullname="L. pars triangularis"/>
+<label id="146" tag="OrlFG" color="0xffff00" fullname="R. pars orbitalis"/>
+<label id="147" tag="OrlFG" color="0xff" fullname="L. pars orbitalis"/>
+<label id="150" tag="PrG" color="0x80ff00" fullname="R. pre-central gyrus"/>
+<label id="151" tag="PrG" color="0x7f00ff" fullname="L. pre-central gyrus"/>
+<label id="160" tag="frp" color="0xafec0d" fullname="R. pole/orbital frontal lobe"/>
+<label id="161" tag="frp" color="0x5013f2" fullname="L. pole/orbital frontal lobe"/>
+<label id="162" tag="TFg" color="0xffff00" fullname="R. transvers frontal gyrus"/>
+<label id="163" tag="TFg" color="0xff" fullname="L. transvers frontal gyrus"/>
+<label id="164" tag="GRe" color="0xff00ff" fullname="R. gyrus rectus"/>
+<label id="165" tag="GRe" color="0xff00" fullname="L. gyrus rectus"/>
+<label id="166" tag="MOrG" color="0x80ff00" fullname="R. middle orbito-frontal gyrus"/>
+<label id="167" tag="MOrG" color="0x7f00ff" fullname="L. middle orbito-frontal gyrus"/>
+<label id="168" tag="AOrG" color="0xff0080" fullname="R. anterior orbito-frontal gyrus"/>
+<label id="169" tag="AOrG" color="0xff7f" fullname="L. anterior orbito-frontal gyrus"/>
+<label id="170" tag="POrG" color="0x80ffff" fullname="R. posterior orbito-frontal gyrus"/>
+<label id="171" tag="POrG" color="0x7f0000" fullname="L. posterior orbito-frontal gyrus"/>
+<label id="172" tag="LOrG" color="0x8000ff" fullname="R. lateral orbitofrontal gyrus"/>
+<label id="173" tag="LOrG" color="0x7fff00" fullname="L. lateral orbitofrontal gyrus"/>
+<label id="180" tag="MFL" color="0xafec0d" fullname="R. mesial frontal lobe"/>
+<label id="181" tag="MFL" color="0x5013f2" fullname="L. mesial frontal lobe"/>
+<label id="182" tag="PcL" color="0xff0000" fullname="R. paracentral lobule"/>
+<label id="183" tag="PcL" color="0xffff" fullname="L. paracentral lobule"/>
+<label id="184" tag="CgG" color="0xffa852" fullname="R. cingulate gyrus"/>
+<label id="185" tag="CgG" color="0xeb9a85" fullname="L. cingulate gyrus"/>
+<label id="186" tag="SCG" color="0xff0000" fullname="R. subcallosal gyrus"/>
+<label id="187" tag="SCG" color="0xffff" fullname="L. subcallosal gyrus"/>
+<label id="200" tag="PL" color="0x75ec3d" fullname="R. Parietal Lobe"/>
+<label id="201" tag="PL" color="0xabf231" fullname="L. Parietal Lobe"/>
+<label id="220" tag="LPL" color="0xafec0d" fullname="R. lateral parietal lobe"/>
+<label id="221" tag="LPL" color="0x5013f2" fullname="L. lateral parietal lobe"/>
+<label id="222" tag="PoG" color="0x807f00" fullname="R. post-central gyrus"/>
+<label id="223" tag="PoG" color="0x7f80ff" fullname="L. post-central gyrus"/>
+<label id="224" tag="SMG" color="0x807f" fullname="R. supramarginal gyrus"/>
+<label id="225" tag="SMG" color="0xff7f80" fullname="L. supramarginal gyrus"/>
+<label id="226" tag="AnG" color="0xffff7f" fullname="R. angular gyrus"/>
+<label id="227" tag="AnG" color="0x80" fullname="L. angular gyrus"/>
+<label id="228" tag="SPL" color="0x80ff" fullname="R. superior parietal gyrus"/>
+<label id="229" tag="SPL" color="0xff7f00" fullname="L. superior parietal gyrus"/>
+<label id="240" tag="MPL" color="0xafec0d" fullname="R. mesial parietal lobe"/>
+<label id="241" tag="MPL" color="0x5013f2" fullname="L. mesial parietal lobe"/>
+<label id="242" tag="Pcu" color="0xff00" fullname="R. pre-cuneus"/>
+<label id="243" tag="Pcu" color="0xff00ff" fullname="L. pre-cuneus"/>
+<label id="255" tag="UNLAB" color="0x80ff" fullname="unlabeled"/>
+<label id="300" tag="TL" color="0x3284ec" fullname="R. Temporal Lobe"/>
+<label id="301" tag="TL" color="0x5deff2" fullname="L. Temporal Lobe"/>
+<label id="310" tag="tmp" color="0xff0000" fullname="R. temporal pole"/>
+<label id="311" tag="tmp" color="0xffff" fullname="L. temporal pole"/>
+<label id="320" tag="LTL" color="0x80ff7f" fullname="R. lateral/superior temporal lobe"/>
+<label id="321" tag="LTL" color="0x7f0080" fullname="L. lateral/superior temporal lobe"/>
+<label id="322" tag="STG" color="0x80ff7f" fullname="R. superior temporal gyrus"/>
+<label id="323" tag="STG" color="0x7f0080" fullname="L. superior temporal gyrus"/>
+<label id="324" tag="Hg" color="0xff0080" fullname="R. transverse temporal gyrus"/>
+<label id="325" tag="Hg" color="0xff7f" fullname="L. transverse temporal gyrus"/>
+<label id="326" tag="MTG" color="0xff00ff" fullname="R. middle temporal gyrus"/>
+<label id="327" tag="MTG" color="0xff00" fullname="L. middle temporal gyrus"/>
+<label id="328" tag="ITG" color="0x80ffff" fullname="R. inferior temporal gyrus"/>
+<label id="329" tag="ITG" color="0x7f0000" fullname="L. inferior temporal gyrus"/>
+<label id="330" tag="FuG" color="0xffff00" fullname="R. fusiforme gyrus"/>
+<label id="331" tag="FuG" color="0xff" fullname="L. fusiforme gyrus"/>
+<label id="340" tag="MTL" color="0xff" fullname="R. infero/mesial temporal lobe"/>
+<label id="341" tag="MTL" color="0xffff00" fullname="L. infero/mesial temporal lobe"/>
+<label id="342" tag="PHG" color="0xff" fullname="R. parahippocampal gyrus"/>
+<label id="343" tag="PHG" color="0xffff00" fullname="L. parahippocampal gyrus"/>
+<label id="344" tag="HiF" color="0xff807f" fullname="R. hippocampus"/>
+<label id="345" tag="HiF" color="0x7f80" fullname="L. hippocampus"/>
+<label id="346" tag="Amg" color="0xff8000" fullname="R. amygdala"/>
+<label id="347" tag="Amg" color="0x7fff" fullname="L. amygdala"/>
+<label id="400" tag="OL" color="0xfffc7a" fullname="R. Occipital Lobe"/>
+<label id="401" tag="OL" color="0xf2e12a" fullname="L. Occipital Lobe"/>
+<label id="420" tag="SOG" color="0xafec0d" fullname="R. lateral occipital lobe"/>
+<label id="421" tag="SOG" color="0x5013f2" fullname="L. lateral occipital lobe"/>
+<label id="422" tag="SOG" color="0x807f00" fullname="R. superior occipital gyrus"/>
+<label id="423" tag="SOG" color="0x7f80ff" fullname="L. superior occipital gyrus"/>
+<label id="424" tag="MOcG" color="0x80ff00" fullname="R. middle occipital gyrus"/>
+<label id="425" tag="MOcG" color="0x7f00ff" fullname="L. middle occipital gyrus"/>
+<label id="440" tag="IOG" color="0xafec0d" fullname="R. infero/mesial occipital lobe"/>
+<label id="441" tag="IOG" color="0x5013f2" fullname="L. infero/mesial occipital lobe"/>
+<label id="442" tag="IOG" color="0x7f00ff" fullname="R. inferior occipital gyrus"/>
+<label id="443" tag="IOG" color="0x80ff00" fullname="L. inferior occipital gyrus"/>
+<label id="444" tag="LiG" color="0x7f007f" fullname="R. lingual gyrus"/>
+<label id="445" tag="LiG" color="0x80ff80" fullname="L. lingual gyrus"/>
+<label id="446" tag="Cun" color="0xff80ff" fullname="R. cuneus"/>
+<label id="447" tag="Cun" color="0x7f00" fullname="L. cuneus"/>
+<label id="500" tag="Ins" color="0xff3ebe" fullname="R. Insula"/>
+<label id="501" tag="Ins" color="0xa800a7" fullname="L. Insula"/>
+<label id="600" tag="CGS" color="0xafec0d" fullname="R. Central gray structures"/>
+<label id="601" tag="CGS" color="0x5013f2" fullname="L. Central gray structures"/>
+<label id="610" tag="BG" color="0xafec0d" fullname="R. basal ganglia"/>
+<label id="611" tag="BG" color="0x5013f2" fullname="L. basal ganglia"/>
+<label id="612" tag="Cd" color="0x7f80ff" fullname="R. caudate nucleus"/>
+<label id="613" tag="Cd" color="0x807f00" fullname="L. caudate nucleus"/>
+<label id="614" tag="Pu" color="0xffff00" fullname="R. putamen"/>
+<label id="615" tag="Pu" color="0xff" fullname="L. putamen"/>
+<label id="616" tag="GP" color="0x80007f" fullname="R. globus pallidus"/>
+<label id="617" tag="GP" color="0x7fff80" fullname="L. globus pallidus"/>
+<label id="620" tag="Acb" color="0xffff" fullname="R. nucleus accumbens"/>
+<label id="621" tag="Acb" color="0xff0000" fullname="L. nucleus accumbens"/>
+<label id="630" tag="Cl" color="0xff0000" fullname="R. claustrum"/>
+<label id="631" tag="Cl" color="0xffff" fullname="L. claustrum"/>
+<label id="640" tag="Th" color="0xffff" fullname="R. thalamus"/>
+<label id="641" tag="Th" color="0xff0000" fullname="L. thalamus"/>
+<label id="650" tag="BF" color="0x8000" fullname="R. basal forebrain"/>
+<label id="651" tag="BF" color="0xff7fff" fullname="L. basal forebrain"/>
+<label id="660" tag="LG" color="0x800000" fullname="R. lateral geniculate nucleus"/>
+<label id="661" tag="LG" color="0x7fffff" fullname="L. lateral geniculate nucleus"/>
+<label id="662" tag="MG" color="0x7f7fff" fullname="R. medial geniculate nucleus"/>
+<label id="663" tag="MG" color="0x808000" fullname="L. medial geniculate nucleus"/>
+<label id="670" tag="SC" color="0xff8000" fullname="R. superior colliculus"/>
+<label id="671" tag="SC" color="0x7fff" fullname="L. superior colliculus"/>
+<label id="680" tag="IC" color="0xff0080" fullname="R. inferior colliculus"/>
+<label id="681" tag="IC" color="0xff7f" fullname="L. inferior colliculus"/>
+<label id="682" tag="L682" color="0xff" fullname="R. superior colliculus"/>
+<label id="683" tag="L683" color="0x807fff" fullname="L. superior colliculus"/>
+<label id="690" tag="mmb" color="0x7fff7f" fullname="R. mamillary body"/>
+<label id="691" tag="mmb" color="0x800080" fullname="L. mamillary body"/>
+<label id="700" tag="V" color="0xafec0d" fullname="R. Ventricular System"/>
+<label id="701" tag="V" color="0x5013f2" fullname="L. Ventricular System"/>
+<label id="710" tag="Pg" color="0xffff00" fullname="pineal gland"/>
+<label id="720" tag="LV" color="0xffff00" fullname="R. lateral ventricle"/>
+<label id="721" tag="LV" color="0xff" fullname="L. lateral ventricle"/>
+<label id="740" tag="3V" color="0x7f" fullname="third ventricle"/>
+<label id="760" tag="4V" color="0xff" fullname="fourth ventricle"/>
+<label id="780" tag="Aq" color="0xafec0d" fullname="cerebral aqueduct"/>
+<label id="800" tag="BSt" color="0x7f007f" fullname="Brainstem"/>
+<label id="802" tag="" color="0x807f00" fullname="R. Brainstem"/>
+<label id="803" tag="" color="0x807f7f" fullname="L. Brainstem"/>
+<label id="810" tag="L810" color="0x80ff" fullname="PAG"/>
+<label id="841" tag="ICC" color="0xce9f00" fullname="I. Anterior Third Corpus Callosum"/>
+<label id="842" tag="IICC" color="0xff1200" fullname="II. Anterior midbody Corpus Callosum"/>
+<label id="843" tag="IIICC" color="0x7d2680" fullname="III. Posterior midbody Corpus Callosum"/>
+<label id="844" tag="IVCC" color="0x97ff01" fullname="Isthmus Corpus Callosum"/>
+<label id="845" tag="VCC" color="0x17ff" fullname="Splenium Corpus Callosum"/>
+<label id="850" tag="cc" color="0xff0000" fullname="Corpus Callosum"/>
+<label id="851" tag="ICC" color="0xce9f00" fullname="I. Anterior Third Corpus Callosum"/>
+<label id="852" tag="IICC" color="0xff1200" fullname="II. Anterior midbody Corpus Callosum"/>
+<label id="853" tag="IIICC" color="0x7d2680" fullname="III. Posterior midbody Corpus Callosum"/>
+<label id="854" tag="IVCC" color="0x97ff01" fullname="Isthmus Corpus Callosum"/>
+<label id="855" tag="VCC" color="0x17ff" fullname="Splenium Corpus Callosum"/>
+<label id="860" tag="" color="0x80000a" fullname="R. Anterior limb of internal capsule"/>
+<label id="861" tag="" color="0x7f80ff" fullname="L. Anterior limb of internal capsule "/>
+<label id="862" tag="" color="0x7fff80" fullname="R. Posterior limb of internal capsule "/>
+<label id="863" tag="" color="0x7fffff" fullname="L. Posterior limb of internal capsule "/>
+<label id="900" tag="Cb" color="0x804040" fullname="Cerebellum"/>
+<label id="902" tag="" color="0x7f7f00" fullname="R. Cerebellum"/>
+<label id="903" tag="" color="0x7f7f7f" fullname="L. Cerebellum"/>
+<label id="1000" tag="n/a" color="0xdead" fullname="needs relabeling"/>
+<label id="1100" tag="FL" color="0xac00ac" fullname="R. Frontal Lobe (gm)"/>
+<label id="1101" tag="FL" color="0xd55454" fullname="L. Frontal Lobe (gm)"/>
+<label id="1110" tag="LFL" color="0x759d08" fullname="R. lateral frontal lobe (gm)"/>
+<label id="1111" tag="LFL" color="0x350ca1" fullname="L. lateral frontal lobe (gm)"/>
+<label id="1120" tag="SFG" color="0xaa54" fullname="R. superior frontal gyrus (gm)"/>
+<label id="1121" tag="SFG" color="0xaa0055" fullname="L. superior frontal gyrus (gm)"/>
+<label id="1130" tag="MFG" color="0x55aaaa" fullname="R. middle frontal gyrus (gm)"/>
+<label id="1131" tag="MFG" color="0x540000" fullname="L. middle frontal gyrus (gm)"/>
+<label id="1140" tag="IFG" color="0x759d08" fullname="R. inferior frontal gyrus (gm)"/>
+<label id="1141" tag="IFG" color="0x350ca1" fullname="L. inferior frontal gyrus (gm)"/>
+<label id="1142" tag="OplFG" color="0xaaaa00" fullname="R. pars opercularis (gm)"/>
+<label id="1143" tag="OplFG" color="0xaa" fullname="L. pars opercularis (gm)"/>
+<label id="1144" tag="TrIFG" color="0x540055" fullname="R. pars triangularis (gm)"/>
+<label id="1145" tag="TrIFG" color="0x55aa54" fullname="L. pars triangularis (gm)"/>
+<label id="1146" tag="OrlFG" color="0xaaaa00" fullname="R. pars orbitalis (gm)"/>
+<label id="1147" tag="OrlFG" color="0xaa" fullname="L. pars orbitalis (gm)"/>
+<label id="1150" tag="PrG" color="0x55aa00" fullname="R. pre-central gyrus (gm)"/>
+<label id="1151" tag="PrG" color="0x5400aa" fullname="L. pre-central gyrus (gm)"/>
+<label id="1160" tag="frp" color="0x759d08" fullname="R. pole/orbital frontal lobe (gm)"/>
+<label id="1161" tag="frp" color="0x350ca1" fullname="L. pole/orbital frontal lobe (gm)"/>
+<label id="1162" tag="TFg" color="0xaaaa00" fullname="R. transvers frontal gyrus (gm)"/>
+<label id="1163" tag="TFg" color="0xaa" fullname="L. transvers frontal gyrus (gm)"/>
+<label id="1164" tag="GRe" color="0xaa00aa" fullname="R. gyrus rectus (gm)"/>
+<label id="1165" tag="GRe" color="0xaa00" fullname="L. gyrus rectus (gm)"/>
+<label id="1166" tag="MOrG" color="0x55aa00" fullname="R. middle orbito-frontal gyrus (gm)"/>
+<label id="1167" tag="MOrG" color="0x5400aa" fullname="L. middle orbito-frontal gyrus (gm)"/>
+<label id="1168" tag="AOrG" color="0xaa0055" fullname="R. anterior orbito-frontal gyrus (gm)"/>
+<label id="1169" tag="AOrG" color="0xaa54" fullname="L. anterior orbito-frontal gyrus (gm)"/>
+<label id="1170" tag="POrG" color="0x55aaaa" fullname="R. posterior orbito-frontal gyrus (gm)"/>
+<label id="1171" tag="POrG" color="0x540000" fullname="L. posterior orbito-frontal gyrus (gm)"/>
+<label id="1172" tag="LOrG" color="0x5500aa" fullname="R. lateral orbitofrontal gyrus (gm)"/>
+<label id="1173" tag="LOrG" color="0x54aa00" fullname="L. lateral orbitofrontal gyrus (gm)"/>
+<label id="1180" tag="MFL" color="0x759d08" fullname="R. mesial frontal lobe (gm)"/>
+<label id="1181" tag="MFL" color="0x350ca1" fullname="L. mesial frontal lobe (gm)"/>
+<label id="1182" tag="PcL" color="0xaa0000" fullname="R. paracentral lobule (gm)"/>
+<label id="1183" tag="PcL" color="0xaaaa" fullname="L. paracentral lobule (gm)"/>
+<label id="1184" tag="CgG" color="0xcd7b00" fullname="R. cingulate gyrus (gm)"/>
+<label id="1185" tag="CgG" color="0xd95db1" fullname="L. cingulate gyrus (gm)"/>
+<label id="1186" tag="SCG" color="0xaa0000" fullname="R. subcallosal gyrus (gm)"/>
+<label id="1187" tag="SCG" color="0xaaaa" fullname="L. subcallosal gyrus (gm)"/>
+<label id="1200" tag="PL" color="0x759d08" fullname="R. Parietal Lobe (gm)"/>
+<label id="1201" tag="PL" color="0xbfd886" fullname="L. Parietal Lobe (gm)"/>
+<label id="1220" tag="LPL" color="0x759d08" fullname="R. lateral parietal lobe (gm)"/>
+<label id="1221" tag="LPL" color="0x350ca1" fullname="L. lateral parietal lobe (gm)"/>
+<label id="1222" tag="PoG" color="0x555400" fullname="R. post-central gyrus (gm)"/>
+<label id="1223" tag="PoG" color="0x5455aa" fullname="L. post-central gyrus (gm)"/>
+<label id="1224" tag="SMG" color="0x5554" fullname="R. supramarginal gyrus (gm)"/>
+<label id="1225" tag="SMG" color="0xaa5455" fullname="L. supramarginal gyrus (gm)"/>
+<label id="1226" tag="AnG" color="0xaaaa54" fullname="R. angular gyrus (gm)"/>
+<label id="1227" tag="AnG" color="0x55" fullname="L. angular gyrus (gm)"/>
+<label id="1228" tag="SPL" color="0x55aa" fullname="R. superior parietal gyrus (gm)"/>
+<label id="1229" tag="SPL" color="0xaa5400" fullname="L. superior parietal gyrus (gm)"/>
+<label id="1240" tag="MPL" color="0x759d08" fullname="R. mesial parietal lobe (gm)"/>
+<label id="1241" tag="MPL" color="0x350ca1" fullname="L. mesial parietal lobe (gm)"/>
+<label id="1242" tag="Pcu" color="0xaa00" fullname="R. pre-cuneus (gm)"/>
+<label id="1243" tag="Pcu" color="0xaa00aa" fullname="L. pre-cuneus (gm)"/>
+<label id="1300" tag="TL" color="0x56ad" fullname="R. Temporal Lobe (gm)"/>
+<label id="1301" tag="TL" color="0x52d0a5" fullname="L. Temporal Lobe (gm)"/>
+<label id="1310" tag="tmp" color="0xaa0000" fullname="R. temporal pole (gm)"/>
+<label id="1311" tag="tmp" color="0xaaaa" fullname="L. temporal pole (gm)"/>
+<label id="1320" tag="LTL" color="0x55aa54" fullname="R. lateral/superior temporal lobe (gm)"/>
+<label id="1321" tag="LTL" color="0x540055" fullname="L. lateral/superior temporal lobe (gm)"/>
+<label id="1322" tag="STG" color="0x55aa54" fullname="R. superior temporal gyrus (gm)"/>
+<label id="1323" tag="STG" color="0x540055" fullname="L. superior temporal gyrus (gm)"/>
+<label id="1324" tag="Hg" color="0xaa0055" fullname="R. transverse temporal gyrus (gm)"/>
+<label id="1325" tag="Hg" color="0xaa54" fullname="L. transverse temporal gyrus (gm)"/>
+<label id="1326" tag="MTG" color="0xaa00aa" fullname="R. middle temporal gyrus (gm)"/>
+<label id="1327" tag="MTG" color="0xaa00" fullname="L. middle temporal gyrus (gm)"/>
+<label id="1328" tag="ITG" color="0x55aaaa" fullname="R. inferior temporal gyrus (gm)"/>
+<label id="1329" tag="ITG" color="0x540000" fullname="L. inferior temporal gyrus (gm)"/>
+<label id="1330" tag="FuG" color="0xaaaa00" fullname="R. fusiforme gyrus (gm)"/>
+<label id="1331" tag="FuG" color="0xaa" fullname="L. fusiforme gyrus (gm)"/>
+<label id="1340" tag="MTL" color="0xaa" fullname="R. infero/mesial temporal lobe (gm)"/>
+<label id="1341" tag="MTL" color="0xaaaa00" fullname="L. infero/mesial temporal lobe (gm)"/>
+<label id="1342" tag="PHG" color="0xaa" fullname="R. parahippocampal gyrus (gm)"/>
+<label id="1343" tag="PHG" color="0xaaaa00" fullname="L. parahippocampal gyrus (gm)"/>
+<label id="1344" tag="HiF" color="0xaa5554" fullname="R. hippocampus (gm)"/>
+<label id="1345" tag="HiF" color="0x5455" fullname="L. hippocampus (gm)"/>
+<label id="1346" tag="Amg" color="0xaa5500" fullname="R. amygdala (gm)"/>
+<label id="1347" tag="Amg" color="0x54aa" fullname="L. amygdala (gm)"/>
+<label id="1400" tag="OL" color="0xefe266" fullname="R. Occipital Lobe (gm)"/>
+<label id="1401" tag="OL" color="0xd1cc4b" fullname="L. Occipital Lobe (gm)"/>
+<label id="1420" tag="SOG" color="0x759d08" fullname="R. lateral occipital lobe (gm)"/>
+<label id="1421" tag="SOG" color="0x350ca1" fullname="L. lateral occipital lobe (gm)"/>
+<label id="1422" tag="SOG" color="0x555400" fullname="R. superior occipital gyrus (gm)"/>
+<label id="1423" tag="SOG" color="0x5455aa" fullname="L. superior occipital gyrus (gm)"/>
+<label id="1424" tag="MOcG" color="0x55aa00" fullname="R. middle occipital gyrus (gm)"/>
+<label id="1425" tag="MOcG" color="0x5400aa" fullname="L. middle occipital gyrus (gm)"/>
+<label id="1440" tag="IOG" color="0x759d08" fullname="R. infero/mesial occipital lobe (gm)"/>
+<label id="1441" tag="IOG" color="0x350ca1" fullname="L. infero/mesial occipital lobe (gm)"/>
+<label id="1442" tag="IOG" color="0x5400aa" fullname="R. inferior occipital gyrus (gm)"/>
+<label id="1443" tag="IOG" color="0x55aa00" fullname="L. inferior occipital gyrus (gm)"/>
+<label id="1444" tag="LiG" color="0x540054" fullname="R. lingual gyrus (gm)"/>
+<label id="1445" tag="LiG" color="0x55aa55" fullname="L. lingual gyrus (gm)"/>
+<label id="1446" tag="Cun" color="0xaa55aa" fullname="R. cuneus (gm)"/>
+<label id="1447" tag="Cun" color="0x5400" fullname="L. cuneus (gm)"/>
+<label id="1500" tag="Ins" color="0xff0080" fullname="R. Insula (gm)"/>
+<label id="1501" tag="Ins" color="0x550054" fullname="L. Insula (gm)"/>
+<label id="2000" tag="WM" color="0xffffff" fullname="White matter (cerebrum)"/>
+<label id="2100" tag="FL" color="0x800080" fullname="R. Frontal Lobe (wm)"/>
+<label id="2101" tag="FL" color="0xff6666" fullname="L. Frontal Lobe (wm)"/>
+<label id="2110" tag="LFL" color="0xafec0d" fullname="R. lateral frontal lobe (wm)"/>
+<label id="2111" tag="LFL" color="0x5013f2" fullname="L. lateral frontal lobe (wm)"/>
+<label id="2120" tag="SFG" color="0xff7f" fullname="R. superior frontal gyrus (wm)"/>
+<label id="2121" tag="SFG" color="0xff0080" fullname="L. superior frontal gyrus (wm)"/>
+<label id="2130" tag="MFG" color="0x80ffff" fullname="R. middle frontal gyrus (wm)"/>
+<label id="2131" tag="MFG" color="0x7f0000" fullname="L. middle frontal gyrus (wm)"/>
+<label id="2140" tag="IFG" color="0xafec0d" fullname="R. inferior frontal gyrus (wm)"/>
+<label id="2141" tag="IFG" color="0x5013f2" fullname="L. inferior frontal gyrus (wm)"/>
+<label id="2142" tag="OplFG" color="0xffff00" fullname="R. pars opercularis (wm)"/>
+<label id="2143" tag="OplFG" color="0xff" fullname="L. pars opercularis (wm)"/>
+<label id="2144" tag="TrIFG" color="0x7f0080" fullname="R. pars triangularis (wm)"/>
+<label id="2145" tag="TrIFG" color="0x80ff7f" fullname="L. pars triangularis (wm)"/>
+<label id="2146" tag="OrlFG" color="0xffff00" fullname="R. pars orbitalis (wm)"/>
+<label id="2147" tag="OrlFG" color="0xff" fullname="L. pars orbitalis (wm)"/>
+<label id="2150" tag="PrG" color="0x80ff00" fullname="R. pre-central gyrus (wm)"/>
+<label id="2151" tag="PrG" color="0x7f00ff" fullname="L. pre-central gyrus (wm)"/>
+<label id="2160" tag="frp" color="0xafec0d" fullname="R. pole/orbital frontal lobe (wm)"/>
+<label id="2161" tag="frp" color="0x5013f2" fullname="L. pole/orbital frontal lobe (wm)"/>
+<label id="2162" tag="TFg" color="0xffff00" fullname="R. transvers frontal gyrus (wm)"/>
+<label id="2163" tag="TFg" color="0xff" fullname="L. transvers frontal gyrus (wm)"/>
+<label id="2164" tag="GRe" color="0xff00ff" fullname="R. gyrus rectus (wm)"/>
+<label id="2165" tag="GRe" color="0xff00" fullname="L. gyrus rectus (wm)"/>
+<label id="2166" tag="MOrG" color="0x80ff00" fullname="R. middle orbito-frontal gyrus (wm)"/>
+<label id="2167" tag="MOrG" color="0x7f00ff" fullname="L. middle orbito-frontal gyrus (wm)"/>
+<label id="2168" tag="AOrG" color="0xff0080" fullname="R. anterior orbito-frontal gyrus (wm)"/>
+<label id="2169" tag="AOrG" color="0xff7f" fullname="L. anterior orbito-frontal gyrus (wm)"/>
+<label id="2170" tag="POrG" color="0x80ffff" fullname="R. posterior orbito-frontal gyrus (wm)"/>
+<label id="2171" tag="POrG" color="0x7f0000" fullname="L. posterior orbito-frontal gyrus (wm)"/>
+<label id="2172" tag="LOrG" color="0x8000ff" fullname="R. lateral orbitofrontal gyrus (wm)"/>
+<label id="2173" tag="LOrG" color="0x7fff00" fullname="L. lateral orbitofrontal gyrus (wm)"/>
+<label id="2180" tag="MFL" color="0xafec0d" fullname="R. mesial frontal lobe (wm)"/>
+<label id="2181" tag="MFL" color="0x5013f2" fullname="L. mesial frontal lobe (wm)"/>
+<label id="2182" tag="PcL" color="0xff0000" fullname="R. paracentral lobule (wm)"/>
+<label id="2183" tag="PcL" color="0xffff" fullname="L. paracentral lobule (wm)"/>
+<label id="2184" tag="CgG" color="0xcc9900" fullname="R. cingulate gyrus (wm)"/>
+<label id="2185" tag="CgG" color="0xff6fcf" fullname="L. cingulate gyrus (wm)"/>
+<label id="2186" tag="SCG" color="0xff0000" fullname="R. subcallosal gyrus (wm)"/>
+<label id="2187" tag="SCG" color="0xffff" fullname="L. subcallosal gyrus (wm)"/>
+<label id="2200" tag="PL" color="0xafec0d" fullname="R. Parietal Lobe (wm)"/>
+<label id="2201" tag="PL" color="0x6af257" fullname="L. Parietal Lobe (wm)"/>
+<label id="2220" tag="LPL" color="0xafec0d" fullname="R. lateral parietal lobe (wm)"/>
+<label id="2221" tag="LPL" color="0x5013f2" fullname="L. lateral parietal lobe (wm)"/>
+<label id="2222" tag="PoG" color="0x807f00" fullname="R. post-central gyrus (wm)"/>
+<label id="2223" tag="PoG" color="0x7f80ff" fullname="L. post-central gyrus (wm)"/>
+<label id="2224" tag="SMG" color="0x807f" fullname="R. supramarginal gyrus (wm)"/>
+<label id="2225" tag="SMG" color="0xff7f80" fullname="L. supramarginal gyrus (wm)"/>
+<label id="2226" tag="AnG" color="0xffff7f" fullname="R. angular gyrus (wm)"/>
+<label id="2227" tag="AnG" color="0x80" fullname="L. angular gyrus (wm)"/>
+<label id="2228" tag="SPL" color="0x80ff" fullname="R. superior parietal gyrus (wm)"/>
+<label id="2229" tag="SPL" color="0xff7f00" fullname="L. superior parietal gyrus (wm)"/>
+<label id="2240" tag="MPL" color="0xafec0d" fullname="R. mesial parietal lobe (wm)"/>
+<label id="2241" tag="MPL" color="0x5013f2" fullname="L. mesial parietal lobe (wm)"/>
+<label id="2242" tag="Pcu" color="0xff00" fullname="R. pre-cuneus (wm)"/>
+<label id="2243" tag="Pcu" color="0xff00ff" fullname="L. pre-cuneus (wm)"/>
+<label id="2300" tag="TL" color="0x80ff" fullname="R. Temporal Lobe (wm)"/>
+<label id="2301" tag="TL" color="0x66ffcc" fullname="L. Temporal Lobe (wm)"/>
+<label id="2310" tag="tmp" color="0xff0000" fullname="R. temporal pole (wm)"/>
+<label id="2311" tag="tmp" color="0xffff" fullname="L. temporal pole (wm)"/>
+<label id="2320" tag="LTL" color="0x80ff7f" fullname="R. lateral/superior temporal lobe (wm)"/>
+<label id="2321" tag="LTL" color="0x7f0080" fullname="L. lateral/superior temporal lobe (wm)"/>
+<label id="2322" tag="STG" color="0x80ff7f" fullname="R. superior temporal gyrus (wm)"/>
+<label id="2323" tag="STG" color="0x7f0080" fullname="L. superior temporal gyrus (wm)"/>
+<label id="2324" tag="Hg" color="0xff0080" fullname="R. transverse temporal gyrus (wm)"/>
+<label id="2325" tag="Hg" color="0xff7f" fullname="L. transverse temporal gyrus (wm)"/>
+<label id="2326" tag="MTG" color="0xff00ff" fullname="R. middle temporal gyrus (wm)"/>
+<label id="2327" tag="MTG" color="0xff00" fullname="L. middle temporal gyrus (wm)"/>
+<label id="2328" tag="ITG" color="0x80ffff" fullname="R. inferior temporal gyrus (wm)"/>
+<label id="2329" tag="ITG" color="0x7f0000" fullname="L. inferior temporal gyrus (wm)"/>
+<label id="2330" tag="FuG" color="0xffff00" fullname="R. fusiforme gyrus (wm)"/>
+<label id="2331" tag="FuG" color="0xff" fullname="L. fusiforme gyrus (wm)"/>
+<label id="2340" tag="MTL" color="0xff" fullname="R. infero/mesial temporal lobe (wm)"/>
+<label id="2341" tag="MTL" color="0xffff00" fullname="L. infero/mesial temporal lobe (wm)"/>
+<label id="2342" tag="PHG" color="0xff" fullname="R. parahippocampal gyrus (wm)"/>
+<label id="2343" tag="PHG" color="0xffff00" fullname="L. parahippocampal gyrus (wm)"/>
+<label id="2344" tag="HiF" color="0xff807f" fullname="R. hippocampus (wm)"/>
+<label id="2345" tag="HiF" color="0x7f80" fullname="L. hippocampus (wm)"/>
+<label id="2346" tag="Amg" color="0xff8000" fullname="R. amygdala (wm)"/>
+<label id="2347" tag="Amg" color="0x7fff" fullname="L. amygdala (wm)"/>
+<label id="2400" tag="OL" color="0xe9ec7f" fullname="R. Occipital Lobe (wm)"/>
+<label id="2401" tag="OL" color="0xfff331" fullname="L. Occipital Lobe (wm)"/>
+<label id="2420" tag="SOG" color="0xafec0d" fullname="R. lateral occipital lobe (wm)"/>
+<label id="2421" tag="SOG" color="0x5013f2" fullname="L. lateral occipital lobe (wm)"/>
+<label id="2422" tag="SOG" color="0x807f00" fullname="R. superior occipital gyrus (wm)"/>
+<label id="2423" tag="SOG" color="0x7f80ff" fullname="L. superior occipital gyrus (wm)"/>
+<label id="2424" tag="MOcG" color="0x80ff00" fullname="R. middle occipital gyrus (wm)"/>
+<label id="2425" tag="MOcG" color="0x7f00ff" fullname="L. middle occipital gyrus (wm)"/>
+<label id="2440" tag="IOG" color="0xafec0d" fullname="R. infero/mesial occipital lobe (wm)"/>
+<label id="2441" tag="IOG" color="0x5013f2" fullname="L. infero/mesial occipital lobe (wm)"/>
+<label id="2442" tag="IOG" color="0x7f00ff" fullname="R. inferior occipital gyrus (wm)"/>
+<label id="2443" tag="IOG" color="0x80ff00" fullname="L. inferior occipital gyrus (wm)"/>
+<label id="2444" tag="LiG" color="0x7f007f" fullname="R. lingual gyrus (wm)"/>
+<label id="2445" tag="LiG" color="0x80ff80" fullname="L. lingual gyrus (wm)"/>
+<label id="2446" tag="Cun" color="0xff80ff" fullname="R. cuneus (wm)"/>
+<label id="2447" tag="Cun" color="0x7f00" fullname="L. cuneus (wm)"/>
+<label id="2500" tag="Ins" color="0xba005e" fullname="R. Insula (wm)"/>
+<label id="2501" tag="Ins" color="0x80007f" fullname="L. Insula (wm)"/>
+<label id="4000" tag="1" color="1200F2" fullname="R. central sulcus"/>
+<label id="4001" tag="1" color="1200F2" fullname="L. central sulcus"/>
+<label id="4002" tag="2" color="23EB3D" fullname="R. precentral sulcus"/>
+<label id="4003" tag="2" color="23EB3D" fullname="L. precentral sulcus"/>
+<label id="4004" tag="3" color="F57DF9" fullname="R. superior frontal sulcus"/>
+<label id="4005" tag="3" color="F57DF9" fullname="L. superior frontal sulcus"/>
+<label id="4006" tag="4" color="00FFFF" fullname="R. inferio frontal sulcus"/>
+<label id="4007" tag="4" color="00FFFF" fullname="L. inferio frontal sulcus"/>
+<label id="4008" tag="5a" color="EC37AD" fullname="R. ascending branch of the Sylvian fissure"/>
+<label id="4009" tag="5a" color="EC37AD" fullname="L. ascending branch of the Sylvian fissure"/>
+<label id="4010" tag="5b" color="007AF4" fullname="R. horizontal branch of the Sylvian fissure"/>
+<label id="4011" tag="5b" color="007AF4" fullname="L. horizontal branch of the Sylvian fissure"/>
+<label id="4012" tag="5c" color="C080FF" fullname="R. diagonal sulcus"/>
+<label id="4013" tag="5c" color="C080FF" fullname="L. diagonal sulcus"/>
+<label id="4014" tag="6" color="11EEC1" fullname="R. lateral orbital sulcus"/>
+<label id="4015" tag="6" color="11EEC1" fullname="L. lateral orbital sulcus"/>
+<label id="4016" tag="7" color="7DBEFF" fullname="R. frontomarginal sulcus"/>
+<label id="4017" tag="7" color="7DBEFF" fullname="L. frontomarginal sulcus"/>
+<label id="4018" tag="8" color="AAFDFB" fullname="R. cingulate sulcus"/>
+<label id="4019" tag="8" color="AAFDFB" fullname="L. cingulate sulcus"/>
+<label id="4020" tag="9" color="34B44E" fullname="R. paracentral sulcus"/>
+<label id="4021" tag="9" color="34B44E" fullname="L. paracentral sulcus"/>
+<label id="4022" tag="10" color="FFFF00" fullname="R. superior supra orbital sulcus"/>
+<label id="4023" tag="10" color="FFFF00" fullname="L. superior supra orbital sulcus"/>
+<label id="4024" tag="10a" color="FFFF00" fullname="R. inferior supra orbital sulcus"/>
+<label id="4025" tag="10a" color="FFFF00" fullname="L. inferior supra orbital sulcus"/>
+<label id="4026" tag="11" color="7DBEFF" fullname="R. olfactory or medial orbital sulcus"/>
+<label id="4027" tag="11" color="7DBEFF" fullname="L. olfactory or medial orbital sulcus"/>
+<label id="4028" tag="11a" color="FF0000" fullname="R. H shaped sulci, mesial"/>
+<label id="4029" tag="11a" color="FF0000" fullname="L. H shaped sulci, mesial"/>
+<label id="4030" tag="11b" color="FF0000" fullname="R. H shaped sulci, lateral"/>
+<label id="4031" tag="11b" color="FF0000" fullname="L. H shaped sulci, lateral"/>
+<label id="4032" tag="11c" color="FF0000" fullname="R. H shaped sulci, transverse"/>
+<label id="4033" tag="11c" color="FF0000" fullname="L. H shaped sulci, transverse"/>
+<label id="4034" tag="12a" color="FFFF00" fullname="R. Sylvian fissure terminal split"/>
+<label id="4035" tag="12a" color="FFFF00" fullname="L. Sylvian fissure terminal split"/>
+<label id="4036" tag="13a" color="11EEC1" fullname="R. superior temporal sulcus"/>
+<label id="4037" tag="13a" color="11EEC1" fullname="L. superior temporal sulcus"/>
+<label id="4038" tag="14" color="F5985A" fullname="R. inferior temporal sulcus"/>
+<label id="4039" tag="14" color="F5985A" fullname="L. inferior temporal sulcus"/>
+<label id="4040" tag="15" color="5C00B9" fullname="R. occipito temporal sulcus"/>
+<label id="4041" tag="15" color="5C00B9" fullname="L. occipito temporal sulcus"/>
+<label id="4042" tag="16" color="D900FF" fullname="R. collateral or medial occipito temporal sulcus"/>
+<label id="4043" tag="16" color="D900FF" fullname="L. collateral or medial occipito temporal sulcus"/>
+<label id="4044" tag="17" color="23EB3D" fullname="R. transverse temporal sulcus"/>
+<label id="4045" tag="17" color="23EB3D" fullname="L. transverse temporal sulcus"/>
+<label id="4046" tag="18" color="D900FF" fullname="R. circular sulcus"/>
+<label id="4047" tag="18" color="D900FF" fullname="L. circular sulcus"/>
+<label id="4048" tag="19" color="23EB3D" fullname="R. postcentral sulcus"/>
+<label id="4049" tag="19" color="23EB3D" fullname="L. postcentral sulcus"/>
+<label id="4050" tag="20" color="F57DF9" fullname="R. intraparietal sulcus"/>
+<label id="4051" tag="20" color="F57DF9" fullname="L. intraparietal sulcus"/>
+<label id="4052" tag="20a" color="00FFFF" fullname="R. primary sulcus of Jensen"/>
+<label id="4053" tag="20a" color="00FFFF" fullname="L. primary sulcus of Jensen"/>
+<label id="4054" tag="20b" color="00FFFF" fullname="R. secondary sulcus of Jensen"/>
+<label id="4055" tag="20b" color="00FFFF" fullname="L. secondary sulcus of Jensen"/>
+<label id="4056" tag="21a" color="808000" fullname="R. parieto occipital sulcus"/>
+<label id="4057" tag="21a" color="808000" fullname="L. parieto occipital sulcus"/>
+<label id="4058" tag="22" color="00FFFF" fullname="R. subparietal sulcus"/>
+<label id="4059" tag="22" color="00FFFF" fullname="L. subparietal sulcus"/>
+<label id="4060" tag="23" color="1200F2" fullname="R. calcarine sulcus"/>
+<label id="4061" tag="23" color="1200F2" fullname="L. calcarine sulcus"/>
+<label id="4062" tag="23a" color="FF00FF" fullname="R. calcarine sulcus terminal T"/>
+<label id="4063" tag="23a" color="FF00FF" fullname="L. calcarine sulcus terminal T"/>
+<label id="4064" tag="24a" color="11EEC1" fullname="R. transverse occipital sulcus superior"/>
+<label id="4065" tag="24a" color="11EEC1" fullname="L. transverse occipital sulcus superior"/>
+<label id="4066" tag="24b" color="5C00B9" fullname="R. superior lateral occipital sulcus"/>
+<label id="4067" tag="24b" color="5C00B9" fullname="L. superior lateral occipital sulcus"/>
+<label id="4068" tag="25" color="5C00B9" fullname="R. inferior lateral occipital sulcus"/>
+<label id="4069" tag="25" color="5C00B9" fullname="L. inferior lateral occipital sulcus"/>
+<label id="4070" tag="25b" color="007AF4" fullname="R. anterior occipital sulcus"/>
+<label id="4071" tag="25b" color="007AF4" fullname="L. anterior occipital sulcus"/>
+</labelset>
