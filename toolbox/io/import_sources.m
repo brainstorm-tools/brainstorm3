@@ -281,11 +281,15 @@ for iFile = 1:length(SourceFiles)
         end
         break;
     elseif isempty(grid) && (size(maps{iFile},1) ~= nVertices)
-        errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(maps{iFile},1));
-        if isInteractive
-            bst_error(errorMsg, 'Import source maps', 0);
+        if (size(maps{iFile},2) == nVertices)
+            maps{iFile} = maps{iFile}';
+        else
+            errorMsg = sprintf('The number of vertices in the surface (%d) and the source map (%d) do not match.', nVertices, size(maps{iFile},1));
+            if isInteractive
+                bst_error(errorMsg, 'Import source maps', 0);
+            end
+            break;
         end
-        break;
     end
     % Load SPM results
     if isStat
