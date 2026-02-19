@@ -417,14 +417,9 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue, nVer
                 % First map
                 if (i == 1)
                     map = Values{i};
-                    dimVertices = find(size(map) == nVertices, 1, 'first');
-                % Try to stack in the time dimensions
-                elseif ~isempty(dimVertices) && (size(map, dimVertices) == size(Values{i}, dimVertices))
-                    if dimVertices == 1
-                        map = [map, Values{i}];
-                    else
-                        map = [map; Values{i}];
-                    end
+                % Following maps: stack if same dimensions
+                elseif (size(map,2) == size(Values{i},2))
+                    map = [map, Values{i}];
                 end
             end
         case 'ALLMRI'
