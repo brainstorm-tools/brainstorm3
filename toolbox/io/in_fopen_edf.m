@@ -234,7 +234,7 @@ if ~isempty(acq_date)
         end
     end
     acq_date.Format = 'dd-MMM-yyyy';
-    sFile.acq_date = char(acq_date);
+    sFile.acq_date = char(acq_date, '', 'en_US');
     % Timestamp for 0s
     sFile.t0 = str_datetime([sFile.acq_date, ' ', hdr.starttime]);
 end

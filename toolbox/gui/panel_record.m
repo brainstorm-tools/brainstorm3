@@ -3110,17 +3110,17 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
         return;
     end
     % Parse existing string dd-MMM-yyyy or YYYY-MM-DDThh:mm:ss
-    oldDatetime = '01-Jan-1900';
+    oldDate = '01-Jan-1900';
     if ~isempty(sStudy.DateOfStudy)
-        oldDatetime = datetime(sStudy.DateOfStudy);
-        try
-            oldDatetime = datetime(oldDatetime);
-        catch
+        studyDate = str_date(sStudy.DateOfStudy);
+        if isempty(studyDate)
             error('Invalid date format. Input must be ''DD-MMM-YYYY'' or ''YYYY-MM-DDThh:mm:ss''');
         end
+        oldDate = studyDate;
     end
     % If new date is not given in argument: ask user
     if isempty(newDate)
+        oldDatetime = datetime(oldDate, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
         % Prepare default Date strings
         oldDateStr = sprintf('%04d-%02d-%02d', oldDatetime.Year,  oldDatetime.Month, oldDatetime.Day);
         % Ask for new date
@@ -3128,28 +3128,20 @@ function SetAcquisitionDate(iStudy, newDate) %#ok<DEFNU>
         if isempty(res)
             return;
         end
-        inputFormat = 'yyyy-MM-dd';
-        newDate = res;
+        newDate = str_date(res);
     else
-        % Change date input to dd-MMM-yyyy
         newDate = str_date(newDate);
-        inputFormat = 'dd-MMM-yyyy';
     end
-    % Try to generate datetime object from GUI or argin
-    try
-        newDate = datetime(newDate, 'InputFormat', inputFormat);
-    catch
-        error('Invalid date format. Input must be ''dd-MMM-yyyy'' or ''yyyy-MM-dd''');
+    % Check if newDate was converted to dd-MMM-yyyy in English
+    if isempty(newDate)
+        error('Invalid date format. Input must be ''dd-MMM-yyyy'' (English) or ''yyyy-MM-dd''');
     end
-    % New datetime string to convert to char
-    newDate.Format = 'dd-MMM-yyyy';
 
     % If the date didn't change: exit
-    if strcmpi(char(newDate), sStudy.DateOfStudy)
+    if strcmpi(newDate, sStudy.DateOfStudy)
         return;
     end
 
-    newDate = char(newDate);
     % Save acquisition data in study file
     StudyFile = file_fullpath(sStudy.FileName);
     StudyMat = load(StudyFile);
