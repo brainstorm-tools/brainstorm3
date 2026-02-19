@@ -287,6 +287,7 @@ if ~isempty(LogFile)
                 fseek(fid, sublogblock_address + 20, 'bof');
                 for j = 1:n_logs
                     hdr.logs(i).sublog{j} = fread(fid, [1 45], '*char');
+                    hdr.logs(i).label{j} = [hdr.logs(i).label{j}, str_clean(hdr.logs(i).sublog{j}(1:20))];
                     hdr.logs(i).time(j) = hdr.logs(i).time(j) + str2double(['0.' hdr.logs(i).sublog{j}(25:30)]);
                 end
             end
