@@ -271,7 +271,10 @@ for iFile = 1:length(SourceFiles)
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
-        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat, bgValue, nVerticesRight)];
+        map2 = in_sources(SourceFiles2{iFile}, FileFormat, bgValue, nVerticesRight);
+        if size(maps{iFile},2) == size(map2, 2)
+            maps{iFile} = [maps{iFile}; map2];
+        end
     end
     % Check the number of sources
     if isempty(maps{iFile})
