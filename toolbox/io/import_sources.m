@@ -414,7 +414,7 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue, nVer
                 if (i == 1)
                     map = Values{i};
                 % Following maps: stack if same dimensions
-                elseif (size(map,2) == size(Values{i},2))
+                elseif (size(map,1) == size(Values{i},1))
                     map = [map, Values{i}];
                 end
             end
