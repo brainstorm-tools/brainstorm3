@@ -86,6 +86,8 @@ function Compute(ChannelFile, Modality)
     % Load channel file
     ChannelFile = file_fullpath(ChannelFile);
     ChannelMat = in_bst_channel(ChannelFile);        
+    % Get channels classified as Modality
+    iMOD = channel_find(ChannelMat.Channel, Modality);
     % Get channels classified as EEG
     iEEG = channel_find(ChannelMat.Channel, 'EEG,SEEG,ECOG');
     % Get channels classified as ECG
@@ -97,9 +99,9 @@ function Compute(ChannelFile, Modality)
     else
         iEEG = union(iEEG, iECG);
     end
-    % Detect channels of interest
+    % Detect channels of interest (iSelEeg includes iEcg)
     [iSelEeg, iEcg] = ImaGIN_select_channels({ChannelMat.Channel(iEEG).Name}, 1);
-    % Set channels as SEEG
+    % Set channels as Modality
     if ~isempty(iSelEeg)
         [ChannelMat.Channel(iEEG(iSelEeg)).Type] = deal(Modality);
     end
@@ -108,6 +110,11 @@ function Compute(ChannelFile, Modality)
     end
     % Save modified file
     bst_save(ChannelFile, ChannelMat, 'v7');
+    % If additional Modality channels were detected, reload channel file to regenerate intracranial electrodes
+    if ~isempty(setdiff(iEEG(setdiff(iSelEeg, iEcg)), iMOD))
+        ChannelMat = in_bst_channel(ChannelFile);
+        bst_save(ChannelFile, ChannelMat, 'v7');
+    end
     % Update database reference
     [sStudy.Channel.Modalities, sStudy.Channel.DisplayableSensorTypes] = channel_get_modalities(ChannelMat.Channel);
     bst_set('Study', iStudy, sStudy);
