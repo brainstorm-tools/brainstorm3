@@ -2573,7 +2573,7 @@ function DisplayConfigMenu(hFig, jParent)
                     strTime = 'Display time as relative time';
                 end
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_MASK));
             end
         end
         % Log scale
@@ -4358,7 +4358,7 @@ function UpdateXAxisTimeLabels(hFig, action)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = getappdata(hFig, 'FigureId');
     % Just for DataTimeseries with t0
-    if strcmpi(FigureId.Type, 'DataTimeseries') || ...
+    if ~strcmpi(FigureId.Type, 'DataTimeSeries') || ...
        ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ...
        isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
         return
