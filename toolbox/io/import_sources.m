@@ -253,7 +253,11 @@ for iFile = 1:length(SourceFiles)
 
     % === LOAD FILE ===
     % Read source file
-    [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVerticesLeft);
+    if ~isempty(SourceFiles2)
+        [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVerticesLeft);
+    else
+        [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVertices);
+    end
     % In the case of a volume grid: convert from MRI coordinates to SCS
     if ~isempty(grid)
         % Load subject MRI
@@ -271,7 +275,10 @@ for iFile = 1:length(SourceFiles)
     end
     % Read additional source file: simply concatenate to the previous one
     if ~isempty(SourceFiles2)
-        maps{iFile} = [maps{iFile}; in_sources(SourceFiles2{iFile}, FileFormat, bgValue, nVerticesRight)];
+        map2 = in_sources(SourceFiles2{iFile}, FileFormat, bgValue, nVerticesRight);
+        if size(maps{iFile},2) == size(map2, 2)
+            maps{iFile} = [maps{iFile}; map2];
+        end
     end
     % Check the number of sources
     if isempty(maps{iFile})
@@ -407,14 +414,14 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue, nVer
             % Stack all the maps
             for i = 1:length(Values)
                 % Transpose row vectors
-                if (size(Values{i},1) == 1)
+                if (size(Values{i},1) == 1) || (~isempty(find(size(Values{i}) == nVertices, 1, 'first')) && find(size(Values{i}) == nVertices, 1, 'first') == 2)
                     Values{i} = Values{i}';
                 end
                 % First map
                 if (i == 1)
                     map = Values{i};
                 % Following maps: stack if same dimensions
-                elseif (size(map,2) == size(Values{i},2))
+                elseif (size(map,1) == size(Values{i},1))
                     map = [map, Values{i}];
                 end
             end
