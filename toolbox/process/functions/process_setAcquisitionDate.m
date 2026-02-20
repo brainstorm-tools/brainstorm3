@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Description = '';
 
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = { 'raw'};
-    sProcess.OutputTypes = { 'raw'};
+    sProcess.InputTypes  = { 'raw', 'data'};
+    sProcess.OutputTypes = { 'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
@@ -87,6 +87,10 @@ function Output = Run(sProcess, sInput)
 
         % Set acquisition time in the study file
         panel_record('SetAcquisitionDate', sInput.iStudy,  sProcess.options.acq_date.Value);
+    elseif strcmp(sInput.FileType, 'data')
+        sData = in_bst_data(sInput.FileName);
+        sData.T0 = str_datetime(acq_datetime);
+        bst_save(file_fullpath(sInput.FileName),  sData);
     end
 
     Output = {sInput.FileName};
