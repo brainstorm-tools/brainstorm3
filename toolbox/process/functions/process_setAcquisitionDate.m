@@ -61,9 +61,33 @@ end
 
 %% ===== RUN =====
 function Output = Run(sProcess, sInput)
+    
+    try
+        file_date = strrep(sProcess.options.acq_date.Value, ' ', '');
+        file_time = strrep(sProcess.options.acq_time.Value, ' ', '');
+        
+        if ~isempty(file_time)
+            acq_datetime = datetime(sprintf('%s %s', file_date, file_time));
+        else
+            acq_datetime = datetime(sProcess.options.acq_date.Value);
+        end
+    catch
+        Output = {};
+        bst_error('Unable to parse date and time information.')
+        return;
+    end
 
-    panel_record('SetAcquisitionDate', sInput.iStudy, sprintf('%s %s', sProcess.options.acq_date.Value, ...
-                                                                       sProcess.options.acq_time.Value));
+
+    if strcmp(sInput.FileType, 'raw')
+
+        % Set t0 information in the raw file
+        sData = load( file_fullpath(sInput.FileName));
+        sData.F.t0 = str_datetime(acq_datetime);
+        bst_save(file_fullpath(sInput.FileName),  sData);
+
+        % Set acquisition time in the study file
+        panel_record('SetAcquisitionDate', sInput.iStudy,  sProcess.options.acq_date.Value);
+    end
 
     Output = {sInput.FileName};
 end
