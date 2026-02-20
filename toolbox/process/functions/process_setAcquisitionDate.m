@@ -1,5 +1,10 @@
 function varargout = process_setAcquisitionDate( varargin )
-% process_setAcquisitionDate: Set the acquisition date of the recording
+% process_setAcquisitionDate: Set the acquisition date and time of the recording
+% 
+% USAGE:  
+%         Output = Run(sProcess, sInput)
+%         SetDateTimeRaw(FileName, acq_datetime)
+%         SetDateTimeData(FileName, acq_datetime)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,7 +24,7 @@ function varargout = process_setAcquisitionDate( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire, 2025
+% Authors: Edouard Delaire, 2026
 
 eval(macro_method);
 end
@@ -79,21 +84,25 @@ function Output = Run(sProcess, sInput)
 
 
     if strcmp(sInput.FileType, 'raw')
-
         % Set t0 information in the raw file
-        sData = load( file_fullpath(sInput.FileName));
-        sData.F.t0 = str_datetime(acq_datetime);
-        bst_save(file_fullpath(sInput.FileName),  sData);
-
+        SetDateTimeRaw(sInput.FileName, acq_datetime)
         % Set acquisition time in the study file
         panel_record('SetAcquisitionDate', sInput.iStudy,  sProcess.options.acq_date.Value);
     elseif strcmp(sInput.FileType, 'data')
-        sData = in_bst_data(sInput.FileName);
-        sData.T0 = str_datetime(acq_datetime);
-        bst_save(file_fullpath(sInput.FileName),  sData);
+        SetDateTimeData(sInput.FileName, acq_datetime)
     end
 
     Output = {sInput.FileName};
 end
 
+function SetDateTimeRaw(FileName, acq_datetime)
+    sData = load(file_fullpath(FileName));
+    sData.F.t0 = str_datetime(acq_datetime);
+    bst_save(file_fullpath(FileName),  sData);
+end
 
+function SetDateTimeData(FileName, acq_datetime)
+    sData = in_bst_data(FileName);
+    sData.T0 = str_datetime(acq_datetime);
+    bst_save(file_fullpath(FileName),  sData);
+end
