@@ -13,7 +13,7 @@ function ctf_rename_ds(originalDs, newDsName, newSessionFolder, isAnonymize, sub
 %           newDsName = ['sub-' SubjectID '_ses-' SessionID '_task-' TaskName '_run-' RunNumb '_meg.ds'];
 %           isAnonymize = 0 or 1 (0 = keep all orig fields, 1 = remove identifying fields)
 %           subjectID = new ID or [] = use subject ID from newDsName (chars before the first underscore)
-%           sessionDate = new date (dd-MMM-yyyy) or [] = use orig dates
+%           sessionDate = new date (dd-MMM-yyyy in English) or [] = use orig dates
 %
 % Note: anonymization will remove all subject identifying information from
 % the header files (names, dates, collection description, operator, run titles)
@@ -79,10 +79,13 @@ res4date = [];
 acqdate = [];
 infodsdate = [];
 if ~isempty(sessionDate)
-    t=datetime(sessionDate,'InputFormat','dd-MMM-yyyy');
-    res4date = sessionDate;
-    acqdate = char(datetime(t,'Format','dd/MM/yyyy'));
-    infodsdate = char(datetime(t,'Format','yyyyMMdd'));
+    try
+        t=datetime(sessionDate,'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
+        res4date = sessionDate;
+        acqdate = char(datetime(t,'Format','dd/MM/yyyy'));
+        infodsdate = char(datetime(t,'Format','yyyyMMdd'));
+    catch
+    end
 end
 
 %% rename the parent ds folders

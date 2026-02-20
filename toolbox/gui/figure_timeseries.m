@@ -2176,52 +2176,11 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     jPopup = java_create('javax.swing.JPopupMenu');
     % Add wall clock time for continuous EDF files in the title of the popup
     dateTitle = '';
-    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && isequal(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
-        sFile = GlobalData.DataSet(iDS).Measures.sFile;
-        % EDF: Wall-clock time
-        if strcmpi(sFile.format, 'EEG-EDF') && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
-            % Read time and date from the fields in the header
-            recdate = sFile.header.startdate;
-            rectime = sFile.header.starttime;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            rectime(~ismember(sFile.header.starttime, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            rectime = str2num(rectime);
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(2000 + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Nihon Kohden: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-NK') && isfield(sFile.header, 'startdate') && ~isempty(sFile.header.startdate)
-            % Read date from the fields in the header
-            recdate = sFile.header.startdate;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            % Get timestamp of the current data block
-            iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
-            ts = sFile.header.ctl(1).data(iEpoch).timestamp;
-            rectime(3) = rem(ts, 60);
-            rectime(2) = rem(ts - rectime(3), 3600) / 60;
-            rectime(1) = (ts - rectime(2)*60 - rectime(3)) / 3600;
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Spike2 SMR: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
-            t = sFile.header.timedate;
-            dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        % Micromed TRC: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-MICROMED') && isfield(sFile.header, 'acquisition') && isfield(sFile.header.acquisition, 'sec')
-            acq = sFile.header.acquisition;
-            dstart = datenum(acq.year, acq.month, acq.day, acq.hour, acq.min, acq.sec);
-            dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-            dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        end
+    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) && ...
+            isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+        currentTs = datetime(GlobalData.DataSet(iDS).Measures.sFile.t0) + seconds(GlobalData.UserTimeWindow.CurrentTime);
+        currentTs.Format = 'dd-MMM-yyyy HH:mm:ss.SSS';
+        dateTitle = char(currentTs, '', 'en_US');
     end
     % Menu title
     if ~isempty(menuTitle) || ~isempty(dateTitle)
@@ -2573,7 +2532,7 @@ function DisplayConfigMenu(hFig, jParent)
                     strTime = 'Display time as relative time';
                 end
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, KeyEvent.CTRL_MASK));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_MASK));
             end
         end
         % Log scale
@@ -4357,17 +4316,17 @@ function UpdateXAxisTimeLabels(hFig, action)
     hAxes = findobj(hFig, 'Tag', 'AxesGraph');
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = getappdata(hFig, 'FigureId');
-    t0 = GlobalData.DataSet(iDS).Measures.sFile.t0;
-
-    % Just for DataTimeseries with T0
-    if strcmpi(FigureId, 'Spectrum') || isempty(t0)
+    % Just for DataTimeseries with t0
+    if ~strcmpi(FigureId.Type, 'DataTimeSeries') || ...
+       ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ...
+       isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
         return
     end
 
     % Update TimestampZero in Figure TsInfo data
     if strcmpi(action, 'toggle')
         if isempty(TsInfo.TimestampZero)
-            TsInfo.TimestampZero = t0;
+            TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
         else
             TsInfo.TimestampZero = [];
         end

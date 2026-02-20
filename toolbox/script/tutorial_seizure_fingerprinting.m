@@ -50,10 +50,16 @@ IctalFile      = bst_fullfile(tutorial_dir, 'recordings', 'ictal_repetitive_spik
 InterictalFile = bst_fullfile(tutorial_dir, 'recordings', 'interictal_spike.edf');
 LvfaFile       = bst_fullfile(tutorial_dir, 'recordings', 'LVFA_and_wave.edf');
 ElecPosFile    = bst_fullfile(tutorial_dir, 'recordings', 'Subject01_electrodes_mm.tsv');
+MriCat12Path   = bst_fullfile(tutorial_dir, 'anatomy',    'cat12');
+CtProcessFile  = bst_fullfile(tutorial_dir, 'anatomy',    'subjectimage_post_CT_spm_reslice_masked_spm.mat');
 % Check if the folder contains the required files
 if ~file_exist(BaselineFile)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_seizure_fingerprinting.zip.']);
 end
+% Check for already CAT12 segmented MRI
+isMriSegmented = file_exist(bst_fullfile(MriCat12Path, 'Subject01.nii'));
+% Check for coregistered resliced skull-stripped CT volume
+isCtProcessed = file_exist(CtProcessFile);
 % Subject name
 SubjectName = 'Subject01';
 
@@ -80,41 +86,73 @@ bst_set('TSDisplayMode', 'column');
 % Hide scouts
 panel_scout('SetScoutShowSelection', 'none');
 
-%% ===== IMPORT MRI AND CT VOLUMES =====
-% Process: Import MRI
-bst_process('CallProcess', 'process_import_mri', [], [], ...
-    'subjectname', SubjectName, ...
-    'voltype',     'mri', ...  % MRI
-    'comment',     'pre_T1', ...
-    'mrifile',     {MriFilePre, 'ALL'}, ...
-    'nas',         [104, 207, 85], ...
-    'lpa',         [ 26, 113, 78], ...
-    'rpa',         [176, 113, 78]);
-% Process: Segment MRI with CAT12
-bst_process('CallProcess', 'process_segment_cat12', [], [], ...
-    'subjectname', SubjectName, ...
-    'nvertices',   15000, ...
-    'tpmnii',      {'', 'Nifti1'}, ...
-    'sphreg',      1, ... % Use spherical registration
-    'vol',         0, ... % No volume parcellations
-    'extramaps',   0, ... % No additional cortical maps
-    'cerebellum',  0);
-% Process: Import CT
-bst_process('CallProcess', 'process_import_mri', [], [], ...
-    'subjectname', SubjectName, ...
-    'voltype',     'ct', ...  % CT
-    'comment',     'post_CT', ...
-    'mrifile',     {CtFilePost, 'ALL'});
-% Get filename for imported volumes
-sSubject = bst_get('Subject', SubjectName);
-% Reference MRI
-DbMriFilePre = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-% Imported CT (last volume)
-DbCtFilePost = sSubject.Anatomy(end).FileName;
-% Register and reslice CT to reference MRI using 'SPM'
-DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
-% Skull strip the CT volume using 'SPM'
-DbCtFilePostSkullStrip = mri_skullstrip(DbCtFilePostRegReslice, DbMriFilePre, 'spm');
+%% ===== IMPORT MRI VOLUME =====
+% Import and segment MRI with CAT12
+if ~isMriSegmented
+    % Process: Import MRI
+    bst_process('CallProcess', 'process_import_mri', [], [], ...
+        'subjectname', SubjectName, ...
+        'voltype',     'mri', ...  % MRI
+        'comment',     'pre_T1', ...
+        'mrifile',     {MriFilePre, 'ALL'}, ...
+        'nas',         [104, 207, 85], ...
+        'lpa',         [ 26, 113, 78], ...
+        'rpa',         [176, 113, 78]);
+    % Process: Segment MRI with CAT12
+    bst_process('CallProcess', 'process_segment_cat12', [], [], ...
+        'subjectname', SubjectName, ...
+        'nvertices',   15000, ...
+        'tpmnii',      {'', 'Nifti1'}, ...
+        'sphreg',      1, ... % Use spherical registration
+        'vol',         0, ... % No volume parcellations
+        'extramaps',   0, ... % No additional cortical maps
+        'cerebellum',  0);
+
+% Or, import already CAT12 segmented MRI
+else
+    % Process: Import anatomy folder
+    bst_process('CallProcess', 'process_import_anatomy', [], [], ...
+        'subjectname', SubjectName, ...
+        'mrifile',     {MriCat12Path, 'CAT12'}, ...
+        'nvertices',   15000, ...
+        'nas',         [104, 207, 85], ...
+        'lpa',         [ 26, 113, 78], ...
+        'rpa',         [176, 113, 78]);
+end
+
+%% ===== IMPORT MRI VOLUME =====
+% Import, coregister, reslice and skull-strip the raw CT volume
+if ~isCtProcessed
+    % Process: Import CT
+    bst_process('CallProcess', 'process_import_mri', [], [], ...
+        'subjectname', SubjectName, ...
+        'voltype',     'ct', ...  % CT
+        'comment',     'post_CT', ...
+        'mrifile',     {CtFilePost, 'ALL'});
+    % Get updated Subject
+    sSubject = bst_get('Subject', SubjectName);
+    % Reference MRI
+    DbMriFilePre = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    % Imported CT (last volume)
+    DbCtFilePost = sSubject.Anatomy(end).FileName;
+    % Register and reslice CT to reference MRI using 'SPM'
+    DbCtFilePostRegReslice = mri_coregister(DbCtFilePost, DbMriFilePre, 'spm', 1);
+    % Skull strip the CT volume using 'SPM'
+    DbCtFilePostSkullStrip = mri_skullstrip(DbCtFilePostRegReslice, DbMriFilePre, 'spm');
+
+% Or import coregistered resliced skull-stripped CT volume
+else
+    % Process: Import CT processed
+    bst_process('CallProcess', 'process_import_mri', [], [], ...
+        'subjectname', SubjectName, ...
+        'voltype',     'ct', ...  % CT
+        'comment',     'post_CT_spm_reslice_masked_spm', ...
+        'mrifile',     {CtProcessFile, 'BST'});
+    % Get updated Subject
+    sSubject = bst_get('Subject', SubjectName);
+    % Imported CT processed (last volume)
+    DbCtFilePostSkullStrip = sSubject.Anatomy(end).FileName;
+end
 
 %% ===== CREATE SEEG CONTACT IMPLANTATION =====
 iStudyImplantation = db_add_condition(SubjectName, 'Implantation');

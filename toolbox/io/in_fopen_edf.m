@@ -227,13 +227,14 @@ if ~isempty(acq_date)
     end
     % After 2084, yy must be 'yy' and only 'local recording identification' defines the date
     if ~isempty(rec_id_date)
-        rec_id_date = datetime(rec_id_date, 'InputFormat','dd-MMM-yyyy');
+        % EDF specs: English 3-character abbreviations of the month
+        rec_id_date = datetime(rec_id_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
         if rec_id_date.Year >= 2085
             acq_date.Year = rec_id_date.Year;
         end
     end
     acq_date.Format = 'dd-MMM-yyyy';
-    sFile.acq_date = char(acq_date);
+    sFile.acq_date = char(acq_date, '', 'en_US');
     % Timestamp for 0s
     sFile.t0 = str_datetime([sFile.acq_date, ' ', hdr.starttime]);
 end
