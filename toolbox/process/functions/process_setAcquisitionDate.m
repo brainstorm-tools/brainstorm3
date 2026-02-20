@@ -87,7 +87,7 @@ function Output = Run(sProcess, sInput)
         % Set t0 information in the raw file
         SetDateTimeRaw(sInput.FileName, acq_datetime)
         % Set acquisition time in the study file
-        panel_record('SetAcquisitionDate', sInput.iStudy,  sProcess.options.acq_date.Value);
+        panel_record('SetAcquisitionDate', sInput.iStudy,  file_date);
     elseif strcmp(sInput.FileType, 'data')
         SetDateTimeData(sInput.FileName, acq_datetime)
     end
