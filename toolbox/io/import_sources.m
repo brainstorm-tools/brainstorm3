@@ -253,7 +253,11 @@ for iFile = 1:length(SourceFiles)
 
     % === LOAD FILE ===
     % Read source file
-    [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVerticesLeft);
+    if ~isempty(SourceFiles2)
+        [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVerticesLeft);
+    else
+        [maps{iFile}, grid, sMriSrc] = in_sources(SourceFiles{iFile}, FileFormat, bgValue, nVertices);
+    end
     % In the case of a volume grid: convert from MRI coordinates to SCS
     if ~isempty(grid)
         % Load subject MRI
