@@ -39,6 +39,8 @@ Gain = [];
 % - via apptainer
 runner =  cfg.containerRunner;
 % Get DUNEuro container executable
+% NOTE: temporary place for the containers
+% https://github.com/users/MalteHoel/packages/container/package/duneuro_in_docker_testing
 bst_plugin('SetProgressLogo', 'duneuro');
 
 %% ===== SENSORS =====
@@ -275,11 +277,11 @@ end
 % Isotropic without tensor
 if ~cfg.UseTensor
     % Create tensor per tissue format from the isoconductivity
-    tensors = zeros(length(isoCond), 3, 3);
+    tensors = zeros(length(cfg.FemCond), 3, 3);
     for iTissue = 1 : length(FemMat.TissueLabels)
-        tensors(iTissue,1,1) = Cond(iTissue);
-        tensors(iTissue,2,2) = Cond(iTissue);
-        tensors(iTissue,3,3) = Cond(iTissue);
+        tensors(iTissue,1,1) = cfg.FemCond(iTissue);
+        tensors(iTissue,2,2) = cfg.FemCond(iTissue);
+        tensors(iTissue,3,3) = cfg.FemCond(iTissue);
     end
 % NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 else % With tensor (isotropic or anisotropic)
@@ -335,9 +337,17 @@ if strcmp(dnModality, 'meeg')
 end
 % set final hard code value 
 leadfield_config.eeg_scaling = cfg.eeg_scaling; % check with Malte if those value are optimised
-leadfield_config.meg_scaling = cfg.meg_scaling; % Malte to check and get final value for MKSA system. 
+leadfield_config.meg_scaling = cfg.meg_scaling; % Malte to check and get final value for MKSA system.
 leadfield_config.sourcemodel = cfg.SrcModel2026; % [select from the interface: 'multipolar_venant', 'local_subtraction', 'partial_integration']
 leadfield_config.nr_threads = num2str(cfg.NbOfThread); % same as above
+% ToDo from the interface and add it to the duneuro def options
+if  length(cfg.GridLoc) >= 100000
+    % use the chunk dipoles / make it as inputs from the def optons + UI
+    leadfield_config.do_sanity_check = 'True';
+    leadfield_config.chunked_computation = 'True';
+    leadfield_config.chunk_size = '100000';
+end
+
 %% ===== RUN DUNEURO ======
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 % disp(['DUNEURO> System call: ' callStr]);
@@ -388,7 +398,7 @@ end
 %% =================================================================================
 %  === SUPPORT FUNCTIONS  =========================================================
 %  =================================================================================
-function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, Tensors)
+function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, tensors)
     iOk = 0; errMsg = '';
     nodes = FemMat.Vertices; 
     elements = FemMat.Elements - 1; 
@@ -399,7 +409,7 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, Te
     nr_nodes = size(nodes, 1);
     nr_elements = size(elements, 1);
     nr_labels = size(labels, 1);
-    nr_unique_tensors = length(Cond);
+    nr_unique_tensors = size(tensors,1);
     
     dim = 3;
     nr_nodes_per_tetrahedron = 4;
@@ -428,7 +438,7 @@ function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, Te
     h5write(io_file_path, "/volume_conductor/nodes", nodes');
     h5write(io_file_path, "/volume_conductor/elements", elements');
     h5write(io_file_path, "/volume_conductor/labels", labels');
-    h5write(io_file_path, "/volume_conductor/tensors", permute(Tensors, [3 2 1]));
+    h5write(io_file_path, "/volume_conductor/tensors", permute(tensors, [3 2 1]));
     
     h5writeatt(io_file_path, "/volume_conductor", 'type', 'fitted');
     h5writeatt(io_file_path, "/volume_conductor", 'element_type', 'tetrahedron');
