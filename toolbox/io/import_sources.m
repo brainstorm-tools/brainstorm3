@@ -410,7 +410,8 @@ function [map, grid, sMriSrc] = in_sources(SourceFile, FileFormat, bgValue, nVer
             % Stack all the maps
             for i = 1:length(Values)
                 % Transpose row vectors
-                if (size(Values{i},1) == 1) || find(size(Values{i}) == nVertices, 1, 'first') == 2
+                if (size(Values{i},1) == 1) || (~isempty(find(size(Values{i}) == nVertices, 1, 'first'))  && find(size(Values{i}) == nVertices, 1, 'first') == 2)
+
                     Values{i} = Values{i}';
                 end
                 % First map
