@@ -3,8 +3,8 @@ function varargout = process_setAcquisitionDate( varargin )
 % 
 % USAGE:  
 %         Output = Run(sProcess, sInput)
-%         SetDateTimeRaw(FileName, acq_datetime)
-%         SetDateTimeData(FileName, acq_datetime)
+%         SetDateTimeRaw(iStudy, acq_date, acq_time)
+%         SetDateTimeData(iStudy, iItem, acq_date, acq_time)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -71,9 +71,9 @@ function Output = Run(sProcess, sInput)
     file_time = strrep(sProcess.options.acq_time.Value, ' ', '');
         
     if strcmp(sInput.FileType, 'raw')
-        SetDateTimeRaw(sInput.iStudy, file_date, file_time);
+        SetDateTime(sInput.iStudy, file_date, file_time);
     elseif strcmp(sInput.FileType, 'data')
-        SetDateTimeData(sInput.FileName, acq_datetime)
+        SetDateTimeData(sInput.iStudy, sInput.iItem, file_date, file_time);
     end
 
     Output = {sInput.FileName};
@@ -103,8 +103,25 @@ function SetDateTimeRaw(iStudy, acq_date, acq_time)
     end
 end
 
-function SetDateTimeData(FileName, acq_date, acq_time)
-    sData = in_bst_data(FileName);
-    sData.T0 = str_datetime(acq_datetime);
-    bst_save(file_fullpath(FileName),  sData);
+function SetDateTimeData(iStudy, iItem, acq_date, acq_time)
+    if nargin < 4 || isempty(acq_time)
+        acq_datetime = datetime(sprintf('%s', acq_date));
+        has_time = 0;
+    else
+        acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
+        has_time = 1;
+    end
+
+    % Set acquisition time in the study file
+    panel_record('SetAcquisitionDate', iStudy,  acq_date);
+        
+    % Set t0 for each files
+    if has_time
+        sStudy = bst_get('Study', iStudy);
+
+        sData = in_bst_data(sStudy.Data(iItem).FileName);
+        sData.T0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
+        bst_save(file_fullpath(sStudy.Data(iItem).FileName),  sData);
+    end
+
 end
