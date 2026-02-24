@@ -108,8 +108,7 @@ function OutputFiles = Run(sProcess, sInputs)
         end
     end
     
-    dist = ComputeDistance(sCortex, sChannel, sScout);
-    [~, idx_roi] = min(dist, [], 2);
+    idx_roi  = ClusterChannelUsingDistance(sCortex, sChannel, sScout);
     for iChannel = 1:nChannel
         group_name = sChannel(iChannel).Group;
         roi_name   = sScout(idx_roi(iChannel)).Label;
@@ -157,12 +156,12 @@ end
 
 
 
-function dist = ComputeDistance(sCortex, sChannels, sSCouts)
-    % Build a matrix that compute the minimum distance between each channel
-    % and each scouts. The results is a matrix that is nChannel x nScout 
-
+function [idx_roi, dist] = ClusterChannelUsingDistance(sCortex, sChannels, sScouts)
+    % For each channel, return the index of the closest ROI: sScout(idx_roi)
+    % and the distance of the channel to that scout. 
+    
     % Initialize output
-    dist = zeros(length(sChannels), length(sSCouts));
+    dist = zeros(length(sChannels), length(sScouts));
 
     % Compute distances
     for iChannel = 1:length(sChannels)
@@ -173,15 +172,16 @@ function dist = ComputeDistance(sCortex, sChannels, sSCouts)
             channel_loc =  sChannels(iChannel).Loc;
         end
 
-        for iScout = 1:length(sSCouts)
+        for iScout = 1:length(sScouts)
 
-            y =  sCortex.Vertices(sSCouts(iScout).Vertices, :);
+            y =  sCortex.Vertices(sScouts(iScout).Vertices, :);
             x =  repmat(channel_loc', size(y, 1), 1);
 
             distance_channel_ROI = sqrt(sum( (x  - y).^2, 2));
             dist(iChannel, iScout) = min(distance_channel_ROI);
         end
     end
-    
+
+    [dist, idx_roi] = min(dist, [], 2);
 end
 
