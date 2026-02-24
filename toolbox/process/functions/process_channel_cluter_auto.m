@@ -160,17 +160,9 @@ end
 function dist = ComputeDistance(sCortex, sChannels, sSCouts)
     % Build a matrix that compute the minimum distance between each channel
     % and each scouts. The results is a matrix that is nChannel x nScout 
-    dist = zeros(length(sChannels), length(sSCouts));
 
-    % prepare channel locations
-    channel_loc = zeros(length(sChannels), 3);
-    for iChannel = 1:length(sChannels)
-        if size(sChannels(iChannel).Loc, 2) == 2
-            channel_loc(iChannel, :) =  mean(sChannels(iChannel).Loc, 2);
-        else
-            channel_loc(iChannel, :) =  sChannels(iChannel).Loc;
-        end
-    end
+
+    dist = zeros(length(sChannels), length(sSCouts));
 
     % inflate surface 100% to calculate distances to optodes (see BST folder figure_3d.m line 2595)
     iVertices = 1:length(sCortex.Vertices);
@@ -180,10 +172,24 @@ function dist = ComputeDistance(sCortex, sChannels, sSCouts)
     Vertices_sm = sCortex.Vertices;
     Vertices_sm(iVertices,:) = tess_smooth(sCortex.Vertices(iVertices,:), 1, SurfSmoothIterations, sCortex.VertConn(iVertices,iVertices), 1);
    
-    % Compute minimum distance from each Channel to each scout
-    for iScout = 1:length(sSCouts)
-        tmp = pdist2(channel_loc, Vertices_sm(sSCouts(iScout).Vertices, :));
-        dist(:, iScout) = min(tmp, [], 2);
+    % Compute distances
+    for iChannel = 1:length(sChannels)
+
+        if size(sChannels(iChannel).Loc, 2) == 2
+            channel_loc =  mean(sChannels(iChannel).Loc, 2);
+        else
+            channel_loc =  sChannels(iChannel).Loc;
+        end
+
+        for iScout = 1:length(sSCouts)
+
+            y =  Vertices_sm(sSCouts(iScout).Vertices, :);
+            x =  repmat(channel_loc', size(y, 1), 1);
+
+            distance_channel_ROI = sqrt(sum( (x  - y).^2, 2));
+            dist(iChannel, iScout) = min(distance_channel_ROI);
+        end
     end
+    
 end
 
