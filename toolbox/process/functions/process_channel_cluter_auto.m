@@ -40,6 +40,17 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
+    % === TEST: title
+    sProcess.options.test_title.Comment    = '<BR><B><U>Clustering method</U></B>:';
+    sProcess.options.test_title.Type       = 'label';
+    % === Clustering method
+    sProcess.options.clustering_type.Comment = {'<B>Distance</B> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT COLOR="#777777"><I> For each channel, assign the clostest ROI to each channel </I></FONT>', ...
+                                          '<B>Sensitivity</B> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <FONT COLOR="#777777"><I>For each channel, assign the ROI with the most sensitivity</I></FONT>'; ...
+                                          'distance', 'sensitivity'};
+    sProcess.options.clustering_type.Type    = 'radio_label';
+    sProcess.options.clustering_type.Value   = 'distance';
+
+
     % === SCOUTS SELECTION
     sProcess.options.scouts.Comment    = 'Use scouts';
     sProcess.options.scouts.Type       = 'scout';
@@ -62,7 +73,7 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs)
     
-    % Load channel informations
+    % Load channel information
     ChannelMat = in_bst_channel(sInputs.ChannelFile);
     iChannels = channel_find(ChannelMat.Channel, sProcess.options.sensortypes.Value);
     if isempty(iChannels)
@@ -74,7 +85,7 @@ function OutputFiles = Run(sProcess, sInputs)
     nChannel        = length(sChannel);
     nGroup          = max(length(channels_groups), 1);
     
-    % Load Cortex and Scout informations
+    % Load Cortex and Scout information
     sSubject = bst_get('Subject', sInputs.SubjectName);
     sCortex  = in_tess_bst(sSubject.Surface(sSubject.iCortex).FileName);
     
@@ -108,7 +119,17 @@ function OutputFiles = Run(sProcess, sInputs)
         end
     end
     
-    idx_roi  = ClusterChannelUsingDistance(sCortex, sChannel, sScout);
+    switch(sProcess.options.clustering_type.Value)
+        case 'distance'
+            idx_roi  = ClusterChannelUsingDistance(sCortex, sChannel, sScout);
+        case 'sensitivity'
+            sStudy = bst_get('Study', sInputs.iStudy);
+            sHead = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName, 1);
+            idx_roi  = ClusterChannelUsingSensitivity(sHead, sChannel, sScout);
+        otherwise
+            error('Unknown method %s', sProcess.options.clustering_type.Value)
+    end
+
     for iChannel = 1:nChannel
         group_name = sChannel(iChannel).Group;
         roi_name   = sScout(idx_roi(iChannel)).Label;
@@ -163,8 +184,8 @@ end
 
 
 function [idx_roi, dist] = ClusterChannelUsingDistance(sCortex, sChannels, sScouts)
-    % For each channel, return the index of the closest ROI: sScout(idx_roi)
-    % and the distance of the channel to that scout. 
+    % For each channel, return the index of the closest ROI (using euclidean distance)
+    % sScout(idx_roi) and the distance of the channel to that scout. 
     
     % Initialize output
     dist = zeros(length(sChannels), length(sScouts));
@@ -189,5 +210,25 @@ function [idx_roi, dist] = ClusterChannelUsingDistance(sCortex, sChannels, sScou
     end
 
     [dist, idx_roi] = min(dist, [], 2);
+end
+
+
+function [idx_roi, dist] = ClusterChannelUsingSensitivity(sHead, sChannels, sScouts)
+    % For each channel, return the index of the closest ROI (using sensitivity)
+    % sScout(idx_roi) and the distance of the channel to that scout. 
+    
+    % Initialize output
+    dist = zeros(length(sChannels), length(sScouts));
+
+    % Compute distances
+    for iChannel = 1:length(sChannels)
+
+        for iScout = 1:length(sScouts)
+            distance_channel_ROI    = abs(sHead.Gain(iChannel, sScouts(iScout).Vertices));
+            dist(iChannel, iScout)  = sum(distance_channel_ROI);
+        end
+    end
+
+    [dist, idx_roi] = max(dist, [], 2);
 end
 
