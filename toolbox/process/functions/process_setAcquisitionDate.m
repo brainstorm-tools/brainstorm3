@@ -52,7 +52,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.acq_date.Value   = '';
     sProcess.options.acq_date.InputTypes = {'data', 'raw'};
 
-    sProcess.options.acq_time.Comment = '24-hour time (HH:MM:SS) [ignore if empty]: ';
+    sProcess.options.acq_time.Comment = '24-hour time (HH:MM:SS): ';
     sProcess.options.acq_time.Type    = 'text';
     sProcess.options.acq_time.Value   = '';
     sProcess.options.acq_time.InputTypes = {'data', 'raw'};
@@ -81,47 +81,26 @@ end
 
 function SetDateTimeRaw(iStudy, acq_date, acq_time)
     
-    if nargin < 3 || isempty(acq_time)
-        acq_datetime = datetime(sprintf('%s', acq_date));
-        has_time = 0;
-    else
-        acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
-        has_time = 1;
-    end
-    
-    % Set acquisition time in the study file
-    panel_record('SetAcquisitionDate', iStudy,  acq_date);
+    acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
         
     % Set t0 for each files
-    if has_time
-        sStudy = bst_get('Study', iStudy);
-        for iData = 1:length(sStudy.Data)
-            sData = load(file_fullpath(sStudy.Data(iData).FileName));
-            sData.F.t0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
-            bst_save(file_fullpath(sStudy.Data(iData).FileName),  sData);
-        end
+    sStudy = bst_get('Study', iStudy);
+    for iData = 1:length(sStudy.Data)
+        sData = load(file_fullpath(sStudy.Data(iData).FileName));
+        sData.F.t0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
+        bst_save(file_fullpath(sStudy.Data(iData).FileName),  sData);
     end
 end
 
 function SetDateTimeData(iStudy, iItem, acq_date, acq_time)
-    if nargin < 4 || isempty(acq_time)
-        acq_datetime = datetime(sprintf('%s', acq_date));
-        has_time = 0;
-    else
-        acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
-        has_time = 1;
-    end
 
-    % Set acquisition time in the study file
-    panel_record('SetAcquisitionDate', iStudy,  acq_date);
-        
+    acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
+    
     % Set t0 for each files
-    if has_time
-        sStudy = bst_get('Study', iStudy);
+    sStudy = bst_get('Study', iStudy);
 
-        sData = in_bst_data(sStudy.Data(iItem).FileName);
-        sData.T0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
-        bst_save(file_fullpath(sStudy.Data(iItem).FileName),  sData);
-    end
+    sData = in_bst_data(sStudy.Data(iItem).FileName);
+    sData.T0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
+    bst_save(file_fullpath(sStudy.Data(iItem).FileName),  sData);
 
 end
