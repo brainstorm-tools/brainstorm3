@@ -124,6 +124,12 @@ function OutputFiles = Run(sProcess, sInputs)
     
     % Add or replace clusters
     for i = 1:length(sClusters)
+        
+        if isempty(sClusters(i).Sensors)
+            % do not create empty cluster
+            continue
+        end
+
         % If cluster already exists, update it, otherwise create a new entry
         if ~isfield(ChannelMat, 'Clusters') || isempty(ChannelMat.Clusters)
             ChannelMat.Clusters = repmat(db_template('cluster'), 0, 1);
