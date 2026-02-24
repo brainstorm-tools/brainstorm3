@@ -67,27 +67,11 @@ end
 %% ===== RUN =====
 function Output = Run(sProcess, sInput)
     
-    try
-        file_date = strrep(sProcess.options.acq_date.Value, ' ', '');
-        file_time = strrep(sProcess.options.acq_time.Value, ' ', '');
+    file_date = strrep(sProcess.options.acq_date.Value, ' ', '');
+    file_time = strrep(sProcess.options.acq_time.Value, ' ', '');
         
-        if ~isempty(file_time)
-            acq_datetime = datetime(sprintf('%s %s', file_date, file_time));
-        else
-            acq_datetime = datetime(sProcess.options.acq_date.Value);
-        end
-    catch
-        Output = {};
-        bst_error('Unable to parse date and time information.')
-        return;
-    end
-
-
     if strcmp(sInput.FileType, 'raw')
-        % Set t0 information in the raw file
-        SetDateTimeRaw(sInput.FileName, acq_datetime)
-        % Set acquisition time in the study file
-        panel_record('SetAcquisitionDate', sInput.iStudy,  file_date);
+        SetDateTimeRaw(sInput.iStudy, file_date, file_time);
     elseif strcmp(sInput.FileType, 'data')
         SetDateTimeData(sInput.FileName, acq_datetime)
     end
@@ -95,13 +79,31 @@ function Output = Run(sProcess, sInput)
     Output = {sInput.FileName};
 end
 
-function SetDateTimeRaw(FileName, acq_datetime)
-    sData = load(file_fullpath(FileName));
-    sData.F.t0 = str_datetime(acq_datetime);
-    bst_save(file_fullpath(FileName),  sData);
+function SetDateTimeRaw(iStudy, acq_date, acq_time)
+    
+    if nargin < 3 || isempty(acq_time)
+        acq_datetime = datetime(sprintf('%s', acq_date));
+        has_time = 0;
+    else
+        acq_datetime = datetime(sprintf('%s %s', acq_date, acq_time));
+        has_time = 1;
+    end
+    
+    % Set acquisition time in the study file
+    panel_record('SetAcquisitionDate', iStudy,  acq_date);
+        
+    % Set t0 for each files
+    if has_time
+        sStudy = bst_get('Study', iStudy);
+        for iData = 1:length(sStudy.Data)
+            sData = load(file_fullpath(sStudy.Data(iData).FileName));
+            sData.F.t0 = str_datetime(acq_datetime - duration(0, 0, sData.Time(1)));
+            bst_save(file_fullpath(sStudy.Data(iData).FileName),  sData);
+        end
+    end
 end
 
-function SetDateTimeData(FileName, acq_datetime)
+function SetDateTimeData(FileName, acq_date, acq_time)
     sData = in_bst_data(FileName);
     sData.T0 = str_datetime(acq_datetime);
     bst_save(file_fullpath(FileName),  sData);
