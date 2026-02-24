@@ -82,14 +82,12 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     sChannel        = ChannelMat.Channel(iChannels);
     channels_groups = unique({sChannel.Group});
-    nChannel        = length(sChannel);
     nGroup          = max(length(channels_groups), 1);
     
     % Load Cortex and Scout information
     sSubject = bst_get('Subject', sInputs.SubjectName);
     sCortex  = in_tess_bst(sSubject.Surface(sSubject.iCortex).FileName);
     
-
     iAtlas = find(strcmp({sCortex.Atlas.Name}, sProcess.options.scouts.Value{1}));
     if isempty(iAtlas)
         bst_error(sprintf('Unable to find atlas %s',  sProcess.options.scouts.Value{1}))
@@ -99,6 +97,17 @@ function OutputFiles = Run(sProcess, sInputs)
     sScout = sCortex.Atlas(iAtlas).Scouts(iScouts);
     nScouts = length(sScout);
 
+    % Cluster channels
+    switch(sProcess.options.clustering_type.Value)
+        case 'distance'
+            idx_roi  = ClusterChannelUsingDistance(sCortex, sChannel, sScout);
+        case 'sensitivity'
+            sStudy = bst_get('Study', sInputs.iStudy);
+            sHead = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName, 1);
+            idx_roi  = ClusterChannelUsingSensitivity(sHead, sChannel, sScout);
+        otherwise
+            error('Unknown method %s', sProcess.options.clustering_type.Value)
+    end
 
     % Create clusters
     sClusters = repmat(db_template('cluster'), 1, nGroup * nScouts);
@@ -113,39 +122,14 @@ function OutputFiles = Run(sProcess, sInputs)
 
             sClusters(k).Color = sScout(iScout).Color;
             sClusters(k).Function = sScout(iScout).Function;
-            sClusters(k).Sensors = {};
+            sClusters(k).Sensors = {sChannel(idx_roi == iScout).Name};
             k = k +1;
-
         end
     end
-    
-    switch(sProcess.options.clustering_type.Value)
-        case 'distance'
-            idx_roi  = ClusterChannelUsingDistance(sCortex, sChannel, sScout);
-        case 'sensitivity'
-            sStudy = bst_get('Study', sInputs.iStudy);
-            sHead = in_bst_headmodel(sStudy.HeadModel(sStudy.iHeadModel).FileName, 1);
-            idx_roi  = ClusterChannelUsingSensitivity(sHead, sChannel, sScout);
-        otherwise
-            error('Unknown method %s', sProcess.options.clustering_type.Value)
-    end
 
-    for iChannel = 1:nChannel
-        group_name = sChannel(iChannel).Group;
-        roi_name   = sScout(idx_roi(iChannel)).Label;
-            
-        if isempty(group_name)
-            cluster_name = sprintf('%s', roi_name);
-        else
-            cluster_name = sprintf('%s - %s', roi_name, group_name);
-        end
-
-        sClusters(strcmp({sClusters.Label}, cluster_name ) ).Sensors{end+1} = sChannel(iChannel).Name;
-    end
-    
-    % Add or replace clusters
+    % Add or replace clusters in the channel file
     for i = 1:length(sClusters)
-        
+
         if isempty(sClusters(i).Sensors)
             % do not create empty cluster
             continue
