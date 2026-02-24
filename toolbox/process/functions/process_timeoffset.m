@@ -101,6 +101,10 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 sEvents = DataMat.Events;
                 sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
             end
+            
+            % Read date of study
+            sStudy = bst_get('Study',  sInput.iStudy);
+            DateOfStudy = sStudy.DateOfStudy;
 
             % ===== PROCESS =====
             % Apply offset to time
@@ -121,6 +125,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             else
                 DataMat.Events = sEvents;
             end
+ 
 
             % ===== SAVE FILE =====
             % Add history entry
@@ -161,7 +166,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                     % Unique new condition name
                     sSubjStudies = bst_get('StudyWithSubject', sInput.SubjectFile);
                     newCondition = file_unique(newCondition, [sSubjStudies.Condition]);
-                    iStudy = db_add_condition(sInput.SubjectName, newCondition);
+                    iStudy = db_add_condition(sInput.SubjectName, newCondition, 1, DateOfStudy);
                     sNewStudy = bst_get('Study', iStudy);
                     db_set_channel(iStudy, ChannelFile, 0, 0);
                     newStudyPath = bst_fileparts(file_fullpath(sNewStudy.FileName));
