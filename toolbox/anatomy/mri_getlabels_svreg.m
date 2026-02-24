@@ -4,19 +4,18 @@ function Labels = mri_getlabels_svreg(AtlasName)
 % USAGE:  Labels = mri_getlabels_svreg(AtlasName)
 %
 % INPUT:
-%    - AtlasName : Name of the atlas: {'uscbrain', ''}
-%    NOTE: If AtlasName is '' then the atlas is either BrainSuiteAtlas1 or BCI-DNI_brain_atlas
+%    - AtlasName : Name of the atlas: {'uscbrain', 'brainsuiteatlas1', 'bci-dni_brain_atlas'}
 % 
 % OUTPUT:
 %    - Labels : Cell-array {nLabels x 3}
-%               Labels{i,1} = integer, label in the atlas volume (eg. 18)
-%               Labels{i,2} = string, human-readable label (eg. 'Amygdala L')
+%               Labels{i,1} = integer, label in the atlas volume (eg. 19)
+%               Labels{i,2} = string, human-readable label (eg. 'Brain')
 %               Labels{i,3} = color, as a [1x3] double
 %
 % REFERECES:
-%    - USCBrain atlas            : http://brainsuite.org/uscbrain-description/
-%    - BrainSuiteAtlas1 atlas    : https://brainsuite.org/svreg_atlas_description 
-%    - BCI-DNI_brain_atlas atlas : https://brainsuite.org/bcidnibrainatlas/ 
+%    - USCBrain atlas         : http://brainsuite.org/uscbrain-description/
+%    - BrainSuiteAtlas1 atlas : https://brainsuite.org/svreg_atlas_description 
+%    - BCI-DNI_brain_atlas    : https://brainsuite.org/bcidnibrainatlas/ 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -385,7 +384,7 @@ switch(lower(AtlasName))
              699, 'Mamillary body L',                                   [  128    0  128]; ...              
         };
         Labels = [Labels; Labels1];    
-    otherwise % BrainsuiteAtlas1, BCI-DNI_brain_atlas
+    case {'brainsuiteatlas1', 'bci-dni_brain_atlas'}
         Labels2 = {...
              110, 'Lateral frontal lobe R',                             [  175  236   13]; ...
              111, 'Lateral frontal lobe L',                             [   80   19  242]; ...

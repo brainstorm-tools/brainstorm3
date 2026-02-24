@@ -112,18 +112,20 @@ if isempty(Labels) && ~isempty(AtlasName)
             Labels = mri_getlabels_freesurfer();
         case 'marsatlas'     % BrainVISA MarsAtlas (Auzias 2006)
             Labels = mri_getlabels_marsatlas();
-        case 'svreg'         % BrainSuite SVREG (USCBrain, BrainsuiteAtlas1, BCI-DNI_brain_atlas)
-            % Get the brainsuite_labeldescription.xml file which has the atlas label details
-            LabelDescFile = bst_fullfile(fPath, 'brainsuite_labeldescription.xml');
-            [~, LabelMap] = in_label_bs(LabelDescFile);
-            % Get the label ids
-            LabelIds  = arrayfun(@(k) char(k), LabelMap.keySet().toArray(), 'UniformOutput', 0);     
-            % ID 456 corresponds to label 'R. cuneus' which is unique to USCBrain atlas
-            if any(strcmp(LabelIds, '456'))
-                Labels = mri_getlabels_svreg('uscbrain');
-            else % BrainsuiteAtlas1, BCI-DNI_brain_atlas
-                Labels = mri_getlabels_svreg(); 
+        case 'svreg'         % BrainSuite SVREG (USCBrain, BrainsuiteAtlas1, BCI-DNI_brain_atlas)           
+            % Get log file that contains details of the process done in BrainSuite
+            LogFile = file_find(fPath, '*svreg.log');
+            if ~isempty(LogFile)
+                % Read contents of the log file
+                fid = fopen(LogFile,'r');
+                lines = textscan(fid, '%s', 'Delimiter', '\n');
+                fclose(fid);                
+                % First line of the log file has the BrainSuite atlas name               
+                AtlasNameBs = regexp(lines{1}{1}, 'svreg\\([^\\]+)\\', 'tokens', 'once');
+                % Get the labels based on the BrainSuite atlas name
+                Labels = mri_getlabels_svreg(AtlasNameBs{1});
             end
+            
         case 'tissues5'    % Basic head tissues
             Labels = {...
                     0, 'Background',    [  0,   0,   0]; ...
