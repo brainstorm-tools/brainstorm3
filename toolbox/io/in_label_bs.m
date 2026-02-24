@@ -1,15 +1,21 @@
 function [VertexLabelIds, LabelMap, AtlasName] = in_label_bs(FileName)
-% IN_LABEL_SVREG: Import an atlas from an SVReg-labelled surface
+% IN_LABEL_BS: Import an atlas from an SVReg-labelled surface
+%              or directly from 'brainsuite_labeldescription.xml' file
 %
-% USAGE: in_label_bs(FileName, Verbosity=1) : Load labeled vertices from given file
+% USAGE-1: [VertexLabelIds, LabelMap, AtlasName] = in_label_bs(SvregDfsFileName)
+% INPUT: 
+%    - SvregDfsFileName : Full path of SVReg surface file to read
+% OUTPUT: 
+%    - VertexLabelIds   : Vector of vertex label index
+%    - LabelMap         : java.util.HashMap mapping vertex label index -> {name, color}
+%    - AtlasName        : Atlas name parsed from filename ('' if unavailable)
 %
-% INPUT
-%       - FileName : full path of SVReg surface file to read
-%
-% OUTPUT
-%       - LabelIds :  vector of vertex label ids
-%       - LabelMap : java.util.HashMap of label names and colors for corresponding vertex index.
-%           - LabelMap.get(id): cell containing label name and color of id i
+% USAGE-2: [~, LabelMap] = in_label_bs(BsXmlFileName)
+% INPUT: 
+%    - BsXmlFileName : Full path of 'brainsuite_labeldescription.xml'
+% OUTPUT: 
+%    - LabelMap    : java.util.HashMap mapping label ID -> {name, color}
+%      (NOTE : In this mode, VertexLabelIds = [] and AtlasName = '')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -31,8 +37,18 @@ function [VertexLabelIds, LabelMap, AtlasName] = in_label_bs(FileName)
 %
 % Authors: Andrew Krause, 2013
 
+% Initialize outputs
+VertexLabelIds = [];
+LabelMap       = [];
+AtlasName      = '';
 
-% ===== Read XML Label Description File =====
+% ===== Case 1: 'brainsuite_labeldescription.xml' file passed directly =====
+if ~isempty(strfind(FileName, 'brainsuite_labeldescription.xml'))
+    LabelMap = generate_label_map(FileName);
+    return;
+end
+
+% ===== Case 2: SVReg-labelled surface =====
 fPath = bst_fileparts(FileName);
 
 st=strfind(FileName,'.svreg.');
@@ -43,7 +59,6 @@ XmlFile = file_find(fPath, ['brainsuite_labeldescription*',AtlasName,'.xml']);
 if isempty(XmlFile)
     fprintf(1, 'BST> For Atlas %s could not find XML label description file brainsuite_labeldescription.xml\n', AtlasName);
     fprintf(1, 'BST> Only label Ids will be used for this atlas without label names\n');
-    LabelMap = [];
 else
     LabelMap = generate_label_map(XmlFile);
 end
