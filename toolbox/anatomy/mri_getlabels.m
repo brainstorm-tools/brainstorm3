@@ -114,10 +114,10 @@ if isempty(Labels) && ~isempty(AtlasName)
             Labels = mri_getlabels_marsatlas();
         case 'svreg'         % BrainSuite SVREG (USCBrain, BrainsuiteAtlas1, BCI-DNI_brain_atlas)           
             % Get log file that contains details of the process done in BrainSuite
-            LogFile = file_find(fPath, '*svreg.log');
-            if ~isempty(LogFile)
+            SvregLogFile = file_find(fPath, '*svreg.log');
+            if ~isempty(SvregLogFile)
                 % Read contents of the log file
-                fid = fopen(LogFile,'r');
+                fid = fopen(SvregLogFile,'r');
                 lines = textscan(fid, '%s', 'Delimiter', '\n');
                 fclose(fid);                
                 % First line of the log file has the BrainSuite atlas name               
