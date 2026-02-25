@@ -58,7 +58,6 @@ function [bstPanelNew, panelName] = CreatePanel(TimeVector) %#ok<DEFNU>
 
     % Calculate HHD as well as optical flow
     jCheckHHD = JCheckBox('Calculate HHD', 0);
-    jCheckHHD.setEnabled(false); % ======>>>>> RIGHT NOW, HHD IS NOT ENABLED
     java_setcb(jCheckHHD, 'ActionPerformedCallback', @(h,ev)UpdatePanel());
     jPanelSetup.add('br', jCheckHHD);
 
@@ -331,9 +330,15 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
         [flowField, int_dF, errorData, errorReg, poincare, timeInterval] = ...
             bst_call(@bst_opticalflow, F, FV, Time, ...
             inputs.tStart, inputs.tEnd, inputs.hornSchunck);
-        if isfield(inputs, 'depthHHD') %  ... and, optionally, HHD
-            % [U A H Vcurl Vdiv index] = ...
-            %   HHD(dataFile, FV, Time, inputs.tStart, inputs.tEnd, inputs.depthHHD);
+        if inputs.HHDAvailable %  ... and, optionally, HHD 
+            [U, A, H, Vcurl, Vdiv, index] = bst_opticalflow_hhd(flowField, FV, inputs.depthHHD);
+            flowFieldHHD.DivergingPotential = U;
+            flowFieldHHD.RotatingPotential = A;
+            flowFieldHHD.HarmonicComponent = H;
+            flowFieldHHD.RotatingComponent = Vcurl;
+            flowFieldHHD.DivergingComponent = Vdiv;
+        else
+            flowFieldHHD = [];
         end
 
         if inputs.rotate % Rotate flow so that tangent bundle is for circumsphere
@@ -343,20 +348,19 @@ function Compute(ResultsFile, inputs) %#ok<DEFNU>
         end
 
         % Save results into Results file as latest optical flow calculation
-        save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
+        save_flow(ResultsFile, inputs, flowField, flowFieldHHD, flowFieldRotated, ...
             Time, int_dF, errorData, errorReg, poincare);
     else
         flowField = ResultsMat.OpticalFlow.flowField;
-        timeInterval = ResultsMat.OpticalFlow.timeInterval;
+        timeInterval = linspace(ResultsMat.OpticalFlow.timeInterval(1), ResultsMat.OpticalFlow.timeInterval(2),size(flowField,3));
     end
 
     % Calculate states
     if inputs.segment
         bst_progress('start', 'Optical Flow', 'Segmenting into stable and transition states ...');
 
-        interval = timeInterval(1) : SamplingInterval : timeInterval(2)+2*eps;
         [stableStates, transientStates, stablePoints, transientPoints, dEnergy] = ...
-            bst_opticalflow_states(flowField, FV.Faces, FV.Vertices, 3, interval, SamplingInterval, true);
+               bst_opticalflow_states(flowField, FV.Faces, FV.Vertices, 3, timeInterval, SamplingInterval, true);
 
         % Save states
         Results = in_bst_results(ResultsFile);
@@ -400,18 +404,18 @@ function flowFieldRotated = rotate_optical_flow(flowField, Vertices, VertNormals
     %   flowFieldRotated    - Rotate normals-to-vertex to point to sphere,
     %                         and then rotate optical flow using same
     %                         transformation to get this result
-    nVertices = size(Vertices,1);
-    centeredVertices = Vertices - repmat(mean(Vertices), nVertices, 1);
+    nVertices = size(Vertices,2);
+    centeredVertices = Vertices - repmat(mean(Vertices,2)', nVertices, 1)';
     flowFieldRotated = zeros(size(flowField));
 
     bst_progress('start', 'Optical Flow', ...
         'Rotating flows for visualization ... ', 0, nVertices);
     for m = 1:nVertices
-        c = VertNormals(m,:); d = -centeredVertices(m,:);
+        c = VertNormals(:,m); d = -centeredVertices(:,m);
         current = c/norm(c); desired = d/norm(d);
         perpCurrent = cross(desired,current)/norm(cross(desired,current));
         perpDesired = cross(perpCurrent,desired);
-        frameChange = [desired' perpDesired' perpCurrent'];
+        frameChange = [desired perpDesired perpCurrent];
         rotation = [dot(current,desired) -dot(current,perpDesired) 0; ...
             dot(current,perpDesired) dot(current,desired) 0; ...
             0 0 1];
@@ -426,7 +430,7 @@ function flowFieldRotated = rotate_optical_flow(flowField, Vertices, VertNormals
 end
 
 %% ===== SAVE OPTICAL FLOW INTO BRAINSTORM =====
-function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
+function save_flow(ResultsFile, inputs, flowField, flowFieldHHD, flowFieldRotated, ...
         Time, int_dF, errorData, errorReg, poincare)
     % SAVE_FLOW     Save flow results (and possibly publish microstates)
     % INPUTS:
@@ -434,6 +438,12 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
     %   inputs            - inputs to error-check whether results are written
     %   flowField         - Optical flow field
     %                       dimension (# of vertices) X length(tStart:tEnd)
+    %   flowFieldHHD      - flow field Helmholtz Hodge decomposition data
+    %       U             - potential field associated to the curl-free component
+    %       A             - potential field associated to the div-free component
+    %       H             - Harmonic component, suposedly ~0
+    %       Vcurl         - div-free component
+    %       Vdiv          - curl-free component
     %   flowFieldRotated  - flow field rotated for faux spherical brain
     %   Time              - time when activity was reconstructed (including
     %                       times for which optical flow is not calculated)
@@ -444,31 +454,37 @@ function save_flow(ResultsFile, inputs, flowField, flowFieldRotated, ...
 
     opticalFlow.flowField = flowField; % Optical flow results
     opticalFlow.flowFieldRotatedAvailable = inputs.rotate;
+    opticalFlow.flowFieldHHDAvailable = inputs.HHDAvailable;
+    if inputs.HHDAvailable
+        opticalFlow.depthHHD = inputs.depthHHD;
+        opticalFlow.flowFieldHHD = flowFieldHHD;
+    end
     if inputs.rotate % Results with surface normal rotated towards center of boundary's volume
         opticalFlow.flowFieldRotated = flowFieldRotated;
     end
-    opticalFlow.timeInterval = [inputs.tStart inputs.tEnd]; % Time interval
+    if isempty(find(Time < inputs.tStart-100*eps, 1, 'last')) % The flow can't be calculated on the first time
+        opticalFlow.timeInterval = [(inputs.tStart + Time(2)-Time(1)) inputs.tEnd];
+    else
+        opticalFlow.timeInterval = [inputs.tStart inputs.tEnd]; % Time interval
+    end
+%    opticalFlow.timeInterval = [inputs.tStart inputs.tEnd]; % Time interval
     opticalFlow.samplingInterval = Time(2)-Time(1); % Time interval
     opticalFlow.hornSchunck = inputs.hornSchunck; % Regularization
     opticalFlow.int_dF = int_dF;
     opticalFlow.errorData = errorData; % Error in fit to data
     opticalFlow.errorReg = errorReg; % Error from smooth regularization
     opticalFlow.poincare = poincare;
-    opticalFlow.HHDAvailable = inputs.HHDAvailable;
-    if inputs.HHDAvailable
-        opticalFlow.depthHHD = inputs.depthHHD;
-    end
 
     % Save optical flow results in original results file
     Results = in_bst_results(ResultsFile);
-    if opticalFlow(end).HHDAvailable
-        Results = bst_history('add', Results, 'compute', ...
-            ['Optical flow estimated: [' int2str(inputs.tStart*1000) ...
-            ', ' int2str(inputs.tEnd*1000) ']ms']);
-    else
+    if opticalFlow(end).flowFieldHHDAvailable
         Results = bst_history('add', Results, 'compute', ...
             ['Optical flow & HHD estimated: [' ...
             int2str(inputs.tStart*1000) ...
+            ', ' int2str(inputs.tEnd*1000) ']ms']);
+    else
+        Results = bst_history('add', Results, 'compute', ...
+            ['Optical flow estimated: [' int2str(inputs.tStart*1000) ...
             ', ' int2str(inputs.tEnd*1000) ']ms']);
     end
     Results.OpticalFlow = opticalFlow;
@@ -495,8 +511,8 @@ function publish_states(ResultsFile, Results, Time, FV)
     tEndIndex = find(Time < opticalFlow.timeInterval(2)-eps, 1, 'last')+1; % Index of last time point for flow calculation
     activity = Results.ImageGridAmp(:,tStartIndex:tEndIndex); % Activity in flow-calculated interval
     extrema = sortrows([ ...
-        opticalFlow.microstates.stableStates zeros(length(opticalFlow.microstates.stableStates), 1); ...
-        opticalFlow.microstates.transientStates ones(length(opticalFlow.microstates.transientStates),1) ...
+        opticalFlow.microstates.stableStates zeros(size(opticalFlow.microstates.stableStates,1), 1); ...
+        opticalFlow.microstates.transientStates ones(size(opticalFlow.microstates.transientStates, 1),1) ...
         ]); % Sort extrema for timeline visual
 
     % Setup data for visualization
@@ -717,7 +733,7 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     % Process figure (removing old flows if necessary + getting surface axes)
     nVertices = size(sSurf.Vertices, 1);
     [ax, currentName] = process_surface(hFig);
-
+    
     % First check if we need to do anything
     flagPlotFlow = 0;
     for n = 1:length(opticalFlow)
@@ -768,16 +784,30 @@ function PlotOpticalFlow(hFig, opticalFlow, currentTime, sSurf)
     % Hold axes to plot on top of surface
     hold(ax,'on');
     if plotRotatedResults
-        flowField = opticalFlow.flowFieldRotated(:,:,timeIdx);
+        flowField = opticalFlow.flowFieldRotated;
     else
-        flowField = opticalFlow.flowField(:,:,timeIdx);
+        flowField = opticalFlow.flowField;
     end
-    useful = sum(flowField.^2, 2) > max(sum(flowField.^2, 2))*0.1;
+    
+    % Leo rescaling parameters
+        
+    scalingParameter = mean(sum(flowField.^2, [1 2]));
+    timeMaxAvg = mean(max(sum(flowField.^2,2),[],1));
+    filterParameter = 0.1*timeMaxAvg(1,1);
+    
+    flowField = flowField(:,:,timeIdx);
+    
+    % scale = sum(flowField.^2,'all')/scalingParameter;
+    useful = sum(flowField.^2, 2) > filterParameter;   % Le filtre s'applique sur chaque image au lieu de s'appliquer sur le tout
     flowField(~useful,:) = 0;
     quiver3(ax, ...
-        Vertices(:,1), Vertices(:,2), Vertices(:,3), ...
-        flowField(:,1), flowField(:,2), flowField(:,3), ...
-        6, 'c', 'LineWidth', 2); % Color is cyan, works well with hot colormap
+       Vertices(:,1), Vertices(:,2), Vertices(:,3), ...
+       flowField(:,1), flowField(:,2), flowField(:,3), ...
+       6, 'c', 'LineWidth', 2, 'Tag', 'Optical Flow'); % Color is cyan, works well with hot colormap
+    % quiver3(ax, ...
+    %    Vertices(:,1), Vertices(:,2), Vertices(:,3), ...
+    %    flowField(:,1), flowField(:,2), flowField(:,3), ...
+    %    6*scale, 'c', 'LineWidth', 2, 'Tag', 'Optical Flow'); % Color is cyan, works well with hot colormap
     hold(ax,'off');
 
     % Modify figure name if we are in stable/transient state
