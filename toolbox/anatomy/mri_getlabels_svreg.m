@@ -4,7 +4,8 @@ function Labels = mri_getlabels_svreg(AtlasName)
 % USAGE:  Labels = mri_getlabels_svreg(AtlasName)
 %
 % INPUT:
-%    - AtlasName : Name of the atlas: {'uscbrain', 'brainsuiteatlas1', 'bci-dni_brain_atlas'}
+%    - AtlasName : Name of the atlas: {'BrainSuiteAtlas1', 'USCBrain', 'BCI-DNI_brain_atlas'}
+%                  If empty, AtlasName = 'BrainSuiteAtlas1'
 % 
 % OUTPUT:
 %    - Labels : Cell-array {nLabels x 3}
@@ -13,9 +14,9 @@ function Labels = mri_getlabels_svreg(AtlasName)
 %               Labels{i,3} = color, as a [1x3] double
 %
 % REFERECES:
-%    - USCBrain atlas         : http://brainsuite.org/uscbrain-description/
-%    - BrainSuiteAtlas1 atlas : https://brainsuite.org/svreg_atlas_description 
-%    - BCI-DNI_brain_atlas    : https://brainsuite.org/bcidnibrainatlas/ 
+%    - BrainSuiteAtlas1 atlas : https://brainsuite.org/svreg_atlas_description
+%    - USCBrain atlas         : https://brainsuite.org/uscbrain-description
+%    - BCI-DNI_brain_atlas    : https://brainsuite.org/bcidnibrainatlas
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -181,8 +182,8 @@ Labels = {...
         };
 
 % Atlas specific labels
-switch(lower(AtlasName))
-    case 'uscbrain'
+switch AtlasName
+    case 'USCBrain'
         Labels1 = {
              102, 'Lateral frontal lobe R',                             [  175  236   13]; ...
              103, 'Lateral frontal lobe L',                             [   80   19  242]; ...
@@ -383,9 +384,9 @@ switch(lower(AtlasName))
              698, 'Mamillary body R',                                   [  127  255  127]; ...
              699, 'Mamillary body L',                                   [  128    0  128]; ...              
         };
-        Labels = [Labels; Labels1];    
-    case {'brainsuiteatlas1', 'bci-dni_brain_atlas'}
-        Labels2 = {...
+
+    case {'BrainSuiteAtlas1', 'BCI-DNI_brain_atlas'}
+        Labels1 = {...
              110, 'Lateral frontal lobe R',                             [  175  236   13]; ...
              111, 'Lateral frontal lobe L',                             [   80   19  242]; ...
              120, 'Superior frontal gyrus R',                           [    0  255  127]; ...
@@ -477,8 +478,12 @@ switch(lower(AtlasName))
              690, 'Mamillary body R',                                   [  127  255  127]; ...
              691, 'Mamillary body L',                                   [  128    0  128]; ...           
         };
-        Labels = [Labels; Labels2];
+
+    otherwise
+        Labels = [];
+        return
 end
+Labels = [Labels; Labels1];
 
 % Duplicate labels in range [100 900):  GM=1000+label, WM=2000+label
 iDup = find([Labels{:,1}] >= 100 & [Labels{:,1}] < 900);

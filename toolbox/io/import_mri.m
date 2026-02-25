@@ -199,9 +199,9 @@ end
 % Try to get associated labels
 if isempty(Labels) && ~iscell(MriFile) && ~isCt && ~isPet
     [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isAtlas);
-    % Append -SVREG to BrainsSuite atlases
+    % Prefix 'svreg-' for BrainsSuite atlases
     if ~isempty(AtlasName) && ismember(AtlasName, {'BrainSuiteAtlas1', 'USCBrain', 'BCI-DNI_brain_atlas'})
-        Comment = [AtlasName, '-SVREG'];
+        Comment = ['svreg-' AtlasName];
     end
 end
 % Save labels in the file structure
