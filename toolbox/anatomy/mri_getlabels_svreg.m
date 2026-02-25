@@ -40,7 +40,7 @@ function Labels = mri_getlabels_svreg(AtlasName)
 %          Chinmay Chinara, 2026
 
 if (nargin < 1) || isempty(AtlasName)
-    AtlasName = '';
+    AtlasName = 'BrainSuiteAtlas1';
 end
 
 % Common labels for all the BrainSuite atlases

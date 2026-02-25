@@ -82,7 +82,19 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     elseif ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc')) % *aseg*.mgz
         AtlasName = 'freesurfer';
     elseif ~isempty(strfind(fBase, '.svreg.label'))   % *.svreg.label.nii.gz
-        AtlasName = 'svreg';
+        % Get SVREG atlas: BrainSuiteAtlas1, USCBrain, or BCI-DNI_brain_atlas
+        [fPath, fBase] = bst_fileparts(MriFile);
+        SvregLogFile = bst_fullfile(fPath, regexprep(strrep(fBase, '.nii', ''), 'label$', 'log'));
+        % Get BrainSuite atlas name from first line of the log file
+        if file_exist(SvregLogFile) && file_attrib(SvregLogFile, 'r')
+            fid = fopen(SvregLogFile,'r');
+            lines = textscan(fid, '%s', 'Delimiter', '\n');
+            fclose(fid);
+            AtlasName = regexp(lines{1}{1}, 'svreg\\([^\\]+)\\', 'tokens', 'once');
+            AtlasName = AtlasName{1};
+        else
+            AtlasName = 'svreg';
+        end
     elseif ~isempty(strfind(fBase, '_final_contr')) || ~isempty(strfind(fBase, 'final_tissues'))  % SimNIBS3/headreco  &  SimnNIBS4/charm
         AtlasName = 'simnibs';
     end
@@ -112,22 +124,10 @@ if isempty(Labels) && ~isempty(AtlasName)
             Labels = mri_getlabels_freesurfer();
         case 'marsatlas'     % BrainVISA MarsAtlas (Auzias 2006)
             Labels = mri_getlabels_marsatlas();
-        case 'svreg'         % BrainSuite SVREG (USCBrain, BrainsuiteAtlas1, BCI-DNI_brain_atlas)           
-            % Get log file that contains details of the process done in BrainSuite
-            SvregLogFile = file_find(fPath, '*svreg.log');
-            if ~isempty(SvregLogFile)
-                % Read contents of the log file
-                fid = fopen(SvregLogFile,'r');
-                lines = textscan(fid, '%s', 'Delimiter', '\n');
-                fclose(fid);                
-                % First line of the log file has the BrainSuite atlas name               
-                AtlasNameBs = regexp(lines{1}{1}, 'svreg\\([^\\]+)\\', 'tokens', 'once');
-                % Get the labels based on the BrainSuite atlas name
-                Labels = mri_getlabels_svreg(AtlasNameBs{1});
-                % For svreg the atlas name is <BRAINSUITE ATLASNAME>-svreg
-                AtlasName = [upper(AtlasNameBs{1}) '-svreg'];
-            end
-            
+        case 'svreg'  % BrainSuite SVREG (BrainsuiteAtlas1)
+            Labels = mri_getlabels_svreg();
+        case {'brainsuiteatlas1', 'uscbrain', 'bci-dni_brain_atlas'}
+            Labels = mri_getlabels_svreg(AtlasName);
         case 'tissues5'    % Basic head tissues
             Labels = {...
                     0, 'Background',    [  0,   0,   0]; ...
