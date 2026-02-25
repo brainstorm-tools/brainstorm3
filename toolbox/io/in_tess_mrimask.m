@@ -37,7 +37,7 @@ Labels = [];
 if ischar(MriFile)
     % Try to get volume labels for this atlas automatically
     [Labels, AtlasName] = mri_getlabels(MriFile);
-    if ~isempty(strfind(AtlasName, 'svreg'))
+    if ~isempty(AtlasName) && ismember(AtlasName, {'BrainSuiteAtlas1', 'USCBrain', 'BCI-DNI_brain_atlas'})
         AtlasName = 'svreg';
     end
     % Read volume
