@@ -124,6 +124,8 @@ if isempty(Labels) && ~isempty(AtlasName)
                 AtlasNameBs = regexp(lines{1}{1}, 'svreg\\([^\\]+)\\', 'tokens', 'once');
                 % Get the labels based on the BrainSuite atlas name
                 Labels = mri_getlabels_svreg(AtlasNameBs{1});
+                % For svreg the atlas name is <BRAINSUITE ATLASNAME>-svreg
+                AtlasName = [upper(AtlasNameBs{1}) '-svreg'];
             end
             
         case 'tissues5'    % Basic head tissues

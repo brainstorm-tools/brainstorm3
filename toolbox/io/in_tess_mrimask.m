@@ -37,6 +37,9 @@ Labels = [];
 if ischar(MriFile)
     % Try to get volume labels for this atlas automatically
     [Labels, AtlasName] = mri_getlabels(MriFile);
+    if ~isempty(strfind(AtlasName, 'svreg'))
+        AtlasName = 'svreg';
+    end
     % Read volume
     isInteractive = ~isempty(AtlasName) && ~ismember(AtlasName, {'aseg', 'svreg', 'freesurfer', 'marsatlas'});
     if isMni
