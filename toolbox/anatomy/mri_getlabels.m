@@ -90,7 +90,7 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
             fid = fopen(SvregLogFile,'r');
             lines = textscan(fid, '%s', 'Delimiter', '\n');
             fclose(fid);
-            AtlasName = regexp(lines{1}{1}, 'svreg\\([^\\]+)\\', 'tokens', 'once');
+            AtlasName = regexp(lines{1}{1}, '[/\\]+svreg[/\\]+([^/\\]+)[/\\]+', 'tokens', 'once');
             AtlasName = AtlasName{1};
         else
             AtlasName = 'svreg';
