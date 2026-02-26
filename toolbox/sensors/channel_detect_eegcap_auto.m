@@ -4,6 +4,7 @@ function varargout = channel_detect_eegcap_auto(varargin)
 % USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
 %        channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
 %        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', eegCapName)
+%        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', channelRef)
 %
 % PARAMETERS:
 %    - surface3dscanner     : The 3D mesh surface obtained from the 3d Scanner loaded into brainstorm 
@@ -228,14 +229,35 @@ end
 % For every new variety of cap we need to edit this function
 function eegCapLandmarkLabels = GetEegCapLandmarkLabels(eegCapName)
     eegCapLandmarkLabels = {};
-    switch(eegCapName)
-        case 'ANT Waveguard (65)'
-            eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
-        case 'BrainProducts ActiCap (68)'
-            eegCapLandmarkLabels = {'T7', 'T8', 'Oz', 'GND'};
-        case 'WearableSensing DSI-24 with REF (22)'
-            eegCapLandmarkLabels = {'T4', 'T3', 'Fpz'};
-        otherwise
-            return;
+    % check the input
+    if isfile(eegCapName) || isfolder(eegCapName)
+        ChanData = in_bst_channel(eegCapName);
+        ChanLoc = [ChanData.Channel.Loc]';
+        % Find bounding positions
+        MaxLoc = max(ChanLoc);
+        MinLoc = min(ChanLoc);
+        % Find Top Electrode ~Cz
+        topElec =  ChanData.Channel(find(ChanLoc(:,3) == MaxLoc(3))).Name;
+        % Find Most left Electrode ~ T7
+        leftElec =  ChanData.Channel(find(ChanLoc(:,2) == MaxLoc(2))).Name;
+        % Find Most right Electrode ~ T8
+        rightElec =  ChanData.Channel(find(ChanLoc(:,2) == MinLoc(2))).Name;
+        % Find Most frontal Electrode ~ FPz
+        frontElec =  ChanData.Channel(find(ChanLoc(:,1) == MaxLoc(1))).Name;
+        % Find Most Posterior Electrode ~ Oz
+        postElec =  ChanData.Channel(find(ChanLoc(:,1) == MinLoc(1))).Name;
+        % final list of landmarks
+        eegCapLandmarkLabels = {topElec, leftElec, rightElec, frontElec, postElec};
+    else
+        switch(eegCapName)
+            case 'ANT Waveguard (65)'
+                eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
+            case 'BrainProducts ActiCap (68)'
+                eegCapLandmarkLabels = {'T7', 'T8', 'Oz', 'GND'};
+            case 'WearableSensing DSI-24 with REF (22)'
+                eegCapLandmarkLabels = {'T4', 'T3', 'Fpz'};
+            otherwise
+                return;
+        end
     end
 end
