@@ -349,7 +349,7 @@ bst_progress('start', 'Import BrainSuite folder', 'Importing scalp and skull sur
 if ~isempty(HeadFile)
     % Import file
     bst_progress('start', 'Import BrainSuite folder', 'Imported scalp surface...');
-    [iHead, BstHeadHiFile] = import_surfaces(iSubject, HeadFile, 'DFS', 0);
+    [iHead, BstHeadHiFile] = import_surfaces(iSubject, HeadFile, 'DFS', 0, [], [], 'head');
     BstHeadHiFile = BstHeadHiFile{1};
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: scalp...');
@@ -378,7 +378,7 @@ end
 % Inner Skull
 if ~isempty(InnerSkullFile)
     % Import file
-    [iIs, BstInnerSkullHiFile] = import_surfaces(iSubject, InnerSkullFile, 'DFS', 0);
+    [iIs, BstInnerSkullHiFile] = import_surfaces(iSubject, InnerSkullFile, 'DFS', 0, [], [], 'innerskull');
     BstInnerSkullHiFile = BstInnerSkullHiFile{1};
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: inner skull...');
@@ -389,7 +389,7 @@ if ~isempty(InnerSkullFile)
 end
 if ~isempty(OuterSkullFile)
     % Import file
-    [iOs, BstOuterSkullHiFile] = import_surfaces(iSubject, OuterSkullFile, 'DFS', 0);
+    [iOs, BstOuterSkullHiFile] = import_surfaces(iSubject, OuterSkullFile, 'DFS', 0, [], [], 'outerskull');
     BstOuterSkullHiFile = BstOuterSkullHiFile{1};
     % Downsample
     bst_progress('start', 'Import BrainSuite folder', 'Downsampling: outer skull...');
@@ -424,11 +424,20 @@ if isVolumeAtlas && ~isempty(SvregFile)
         AtlasName = OtherSvregFiles{iFile}(st+7:ed-1);
         import_mri(iSubject, OtherSvregFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
     end
-    % Import atlas
-    SelLabels = {...
-        'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...
-        'Accumbens R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus R', ...
-        'Brainstem', 'Cerebellum'};
+    % Determine SVReg atlas
+    [~, AtlasName] = mri_getlabels(SvregFile);
+    switch AtlasName
+        case {'BrainSuiteAtlas1', 'BCI-DNI_brain_atlas'}
+            SelLabels = {...
+                'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...
+                'Accumbens R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus R', ...
+                'Brainstem', 'Cerebellum'};
+        case 'USCBrain'
+            SelLabels = {...
+                'Nucleus accumbens L', 'Hippocampus L', 'Globus pallidus L', 'Putamen L', 'Thalamus L', ...
+                'Nucleus accumbens R', 'Hippocampus R', 'Globus pallidus R', 'Putamen R', 'Thalamus R', ...
+                'Brainstem', 'Cerebellum'};
+    end
     [iSvreg, BstSvregFile] = import_surfaces(iSubject, SvregFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');
     % Extract cerebellum only
     try
