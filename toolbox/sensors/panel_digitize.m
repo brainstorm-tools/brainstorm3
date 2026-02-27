@@ -1665,7 +1665,7 @@ function autoButtonTooltip = GenerateTooltipTextAuto()
     % Get current montage
     curMontage = GetCurrentMontage();
     % Get cap landmark labels for selected montage
-    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', curMontage.ChannelFile);
+    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', curMontage.ChannelFile);
     autoButtonTooltip = 'Auto localization of EEG sensor is not suported for this cap.';
     if ~isempty(eegCapLandmarkLabels)
         strSensors = sprintf('%s, ',eegCapLandmarkLabels{:});
@@ -1740,7 +1740,7 @@ function AddMontage(ChannelFile)
         newMontage.ChannelFile = ChannelFile;
         
         % Get cap landmark labels
-        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', newMontage.ChannelFile);
+        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', newMontage.ChannelFile);
         
         % Sort as per the initialization landmark labels of EEG Cap  
         nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},eegCapLandmarkLabels));
@@ -2210,7 +2210,7 @@ function BytesAvailable_Callback(h, ev)
     % Enable 'Auto' button IFF all landmark fiducials have been acquired
     if strcmpi(Digitize.Type, '3DScanner') && (Digitize.Mode ~= 8)
         curMontage = GetCurrentMontage();
-        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', curMontage.ChannelFile);
+        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', curMontage.ChannelFile);
         if ~isempty(eegCapLandmarkLabels) && ~isempty(Digitize.Points.EEG)
             acqPointLabels = Digitize.Points.Label(1 : size(Digitize.Points.EEG, 1));
             if all(ismember([eegCapLandmarkLabels], acqPointLabels))

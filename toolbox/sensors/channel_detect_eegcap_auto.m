@@ -105,8 +105,7 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     end
     curMontage = panel_fun('GetCurrentMontage');
     % Get EEG cap landmark labels used for initialization
-    capLandmarkLabels = GetEegCapLandmarkLabels(curMontage.ChannelFile);
-
+    [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(capChannelFile);
     % Check that all landmarks are acquired
     if ~all(ismember([capLandmarkLabels], eegPointsLabel))
         bst_error('Not all EEG landmarks are provided', 'Auto electrode location', 1);
@@ -224,9 +223,10 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     end
 end
 
-%% ===== GET LANDMARK LABELS OF EEG CAP =====
-function eegCapLandmarkLabels = GetEegCapLandmarkLabels(ChannelFile)
-    eegCapLandmarkLabels = {};
+%% ===== GET REFERENCE EEG CAP INFO =====
+function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
+    capLandmarkLabels = {};
+    capValidEegChan   = [];
     if ~file_exist(ChannelFile)
         return
     end
@@ -239,6 +239,7 @@ function eegCapLandmarkLabels = GetEegCapLandmarkLabels(ChannelFile)
     % Not valid if Loc has NaN or is [0 0 0]
     iNotValid = find(any(isnan([ChannelMat.Channel(iValid).Loc])) | all([ChannelMat.Channel(iValid).Loc] == 0));
     iValid(iNotValid) = [];
+    capValidEegChan = ChannelMat.Channel(iValid);
     % Find bounding positions
     ChanLoc = [ChannelMat.Channel(iValid).Loc]';
     [~, iMaxLoc] = max(ChanLoc);
@@ -254,5 +255,5 @@ function eegCapLandmarkLabels = GetEegCapLandmarkLabels(ChannelFile)
     % Find most superior electrode  ~ Cz
     topElec   = ChannelMat.Channel(iValid(iMaxLoc(3))).Name;
     % Final list of landmarks
-    eegCapLandmarkLabels = unique({frontElec, leftElec, rightElec, postElec, topElec}, 'stable');
+    capLandmarkLabels = unique({frontElec, leftElec, rightElec, postElec, topElec}, 'stable');
 end
