@@ -1,4 +1,4 @@
-function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
+function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc, dirName, isDirMenu)
 % MENU_DEFAULT_EEGCAPS: Generate Brainstorm available EEG caps menu
 % 
 % USAGE: menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
@@ -43,15 +43,34 @@ end
 if (nargin < 3) || isempty(isAddLoc)
     isAddLoc = [];
 end
+if (nargin < 4) || isempty(dirName)
+    dirName = [];
+end
+if (nargin < 5) || isempty(isDirMenu)
+    isDirMenu = 1;
+end
+% Force to have menu for each Dir if none or more than one Dir is indicated
+if isempty(dirName) || ~ischar(dirName) || (iscell(dirName) && length(dirName)~=1)
+    isDirMenu = 1;
+end
 
 % Get the digitize options
 DigitizeOptions = bst_get('DigitizeOptions');
 % Get registered Brainstorm EEG defaults
 bstDefaults = bst_get('EegDefaults');
 if ~isempty(bstDefaults)
+    % Keep only requested dirs
+    if ~isempty(dirName) && all(ismember(dirName, {bstDefaults.name}))
+        [~, ~, iKeep] = intersect(dirName, {bstDefaults.name}, 'stable');
+        bstDefaults = bstDefaults(iKeep);
+    end
     % Add a directory per template block available
     for iDir = 1:length(bstDefaults)
-        jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
+        if isDirMenu
+            jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
+        else
+            jMenuDir = jMenu;
+        end
         isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
         % Create subfolder for cap manufacturer
         jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
