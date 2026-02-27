@@ -74,8 +74,8 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     capRangeinIm = 1.5;
     % Hyperparameters for circle detection [px]
     % NOTE: these values can vary for new caps
-    minRadius = 1;
-    maxRadius = 25;
+    minRadius = 2;
+    maxRadius = 44;
     
     % Flatten the 3D mesh to 2D space
     [sSurfCap.u, sSurfCap.v] = bst_project_2d(sSurfCap.Vertices(:,1), sSurfCap.Vertices(:,2), sSurfCap.Vertices(:,3), '2dcap');
