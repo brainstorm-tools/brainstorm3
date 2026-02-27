@@ -148,10 +148,13 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
     % === 1. Intial rigid transformation using landmarks. EEG cap layout --> EEG digitized cap
     capPoints3d = [capValidEegChan.Loc]';
     % Find best possible rigid transformation (rotation+translation)
+    bst_progress('set', 10);
     [R,T] = rot3dfit(capPoints3d(iwarp, :), eegPointsLoc);
+    bst_progress('set', 30);
     % Use transformation on the entire cap
     capPoints3d = capPoints3d*R + ones(size(capPoints3d,1),1)*T;
     % Project them to the 3Dscan mesh
+    bst_progress('set', 50);
     warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     capPoints3d = channel_project_scalp(sSurf.Vertices, capPoints3d);
     warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
@@ -183,11 +186,12 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         set(ax, 'XDir', 'reverse')
 
         % Ask if continue with refinement
-        isRefinement = java_dialog('confirm', ['This is the image' 10 10 ...
-                                    'Do you want to continue?'], 'Auto detect EEG electrodes');
+        isRefinement = java_dialog('confirm', ['Do you want to refine the electrode positions (blue cross)' 10 ...
+                                               'using the detected positionsb (red circles) in the EEG cap?'], ...
+                                               'Auto detect EEG electrodes');
+        % Close regardless the answer
+        close(hImFig);
         if isRefinement
-            close(hImFig);
-
             % Hyperparameters for warping and interpolation
             % NOTE: these values can vary for new caps
             % Number of iterations to run warp-interpolation on
@@ -198,9 +202,9 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
             % Warp and interpolate to get the best point fitting
             for numIter=1:numIters
                 % Show progress
-                progressPrc = round(100 .* numIter ./ numIters);
+                progressPrc = round(50 .* numIter ./ numIters);
                 if progressPrc > 0 && ~mod(progressPrc, 5)
-                    bst_progress('set', progressPrc);
+                    bst_progress('set', 50 + progressPrc);
                 end
                 % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
                 % 'k' is an index into points from the available layout
@@ -269,6 +273,7 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
             capPoints.EEG(iPoint, :) = capPoints3d(iPoint, :);
         end
     end
+    bst_progress('set', 100);
 end
 
 
