@@ -225,38 +225,34 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
 end
 
 %% ===== GET LANDMARK LABELS OF EEG CAP =====
-% For every new variety of cap we need to edit this function
-function eegCapLandmarkLabels = GetEegCapLandmarkLabels(eegCapName)
+function eegCapLandmarkLabels = GetEegCapLandmarkLabels(ChannelFile)
     eegCapLandmarkLabels = {};
-    % check the input
-    if isfile(eegCapName) || isfolder(eegCapName)
-        ChanData = in_bst_channel(eegCapName);
-        ChanLoc = [ChanData.Channel.Loc]';
-        % Find bounding positions
-        MaxLoc = max(ChanLoc);
-        MinLoc = min(ChanLoc);
-        % Find Top Electrode ~Cz
-        topElec =  ChanData.Channel(find(ChanLoc(:,3) == MaxLoc(3))).Name;
-        % Find Most left Electrode ~ T7
-        leftElec =  ChanData.Channel(find(ChanLoc(:,2) == MaxLoc(2))).Name;
-        % Find Most right Electrode ~ T8
-        rightElec =  ChanData.Channel(find(ChanLoc(:,2) == MinLoc(2))).Name;
-        % Find Most frontal Electrode ~ FPz
-        frontElec =  ChanData.Channel(find(ChanLoc(:,1) == MaxLoc(1))).Name;
-        % Find Most Posterior Electrode ~ Oz
-        postElec =  ChanData.Channel(find(ChanLoc(:,1) == MinLoc(1))).Name;
-        % final list of landmarks
-        eegCapLandmarkLabels = {topElec, leftElec, rightElec, frontElec, postElec};
-    else
-        switch(eegCapName)
-            case 'ANT Waveguard (65)'
-                eegCapLandmarkLabels = {'Fpz', 'T7', 'T8', 'Oz'};
-            case 'BrainProducts ActiCap (68)'
-                eegCapLandmarkLabels = {'T7', 'T8', 'Oz', 'GND'};
-            case 'WearableSensing DSI-24 with REF (22)'
-                eegCapLandmarkLabels = {'T4', 'T3', 'Fpz'};
-            otherwise
-                return;
-        end
+    if ~file_exist(ChannelFile)
+        return
     end
+    % Load channel file (EEG cap)
+    ChannelMat = in_bst_channel(ChannelFile);
+    % Get valid sensors: EEG or EEG REF and with Loc info
+    iValidType = channel_find(ChannelMat.Channel, {'EEG', 'EEG REF'});
+    iHasLoc = find(~cellfun(@isempty, {ChannelMat.Channel(:).Loc}));
+    iValid  = intersect(iValidType, iHasLoc);
+    % Not valid if Loc has NaN or is [0 0 0]
+    iNotValid = find(any(isnan([ChannelMat.Channel(iValid).Loc])) | all([ChannelMat.Channel(iValid).Loc] == 0));
+    iValid(iNotValid) = [];
+    % Find bounding positions
+    ChanLoc = [ChannelMat.Channel(iValid).Loc]';
+    [~, iMaxLoc] = max(ChanLoc);
+    [~, iMinLoc] = min(ChanLoc);
+    % Find most anterior electrode  ~ FPz
+    frontElec = ChannelMat.Channel(iValid(iMaxLoc(1))).Name;
+    % Find most left electrode      ~ T7
+    leftElec  = ChannelMat.Channel(iValid(iMaxLoc(2))).Name;
+    % Find most right Electrode     ~ T8
+    rightElec = ChannelMat.Channel(iValid(iMinLoc(2))).Name;
+    % Find most posterior electrode ~ Oz
+    postElec  = ChannelMat.Channel(iValid(iMinLoc(1))).Name;
+    % Find most superior electrode  ~ Cz
+    topElec   = ChannelMat.Channel(iValid(iMaxLoc(3))).Name;
+    % Final list of landmarks
+    eegCapLandmarkLabels = unique({frontElec, leftElec, rightElec, postElec, topElec}, 'stable');
 end
