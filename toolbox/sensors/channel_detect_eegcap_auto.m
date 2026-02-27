@@ -138,21 +138,23 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
     isUVspace = all(~cellfun(@isempty, {capImg2d, capCenters2d, capRadii2d, sSurf.u, sSurf.v}));
 
     bst_progress('start', '3Dscanner', 'Automatic labelling of EEG sensors...', 0, 100);
-    
-    if ~isUVspace
-        % Delete the manual electrodes selected in figure to update it with the automatic detected ones
-        for i=1 : length(eegPoints)
-            panel_fun('DeletePoint_Callback');
-        end
-        capPoints3d = [capValidEegChan.Loc]';
-        % Find best possible rigid transformation (rotation+translation)
-        [R,T] = rot3dfit(capPoints3d(iwarp, :), eegPointsLoc);
-        % Use transformation on the entire cap
-        capPoints3d = capPoints3d*R + ones(size(capPoints3d,1),1)*T;
-        % Project them to the 3Dscan mesh
-        capPoints3d = channel_project_scalp(sSurf.Vertices, capPoints3d);
 
-    else
+    % Delete the manual electrodes selected in figure to update it with the automatic detected ones
+    for i=1 : length(eegPoints)
+        panel_fun('DeletePoint_Callback');
+    end
+
+    % === 1. Intial rigid transformation using landmarks. EEG cap layout --> EEG digitized cap
+    capPoints3d = [capValidEegChan.Loc]';
+    % Find best possible rigid transformation (rotation+translation)
+    [R,T] = rot3dfit(capPoints3d(iwarp, :), eegPointsLoc);
+    % Use transformation on the entire cap
+    capPoints3d = capPoints3d*R + ones(size(capPoints3d,1),1)*T;
+    % Project them to the 3Dscan mesh
+    capPoints3d = channel_project_scalp(sSurf.Vertices, capPoints3d);
+
+    % === 2. Refine positions for EEG digitized cap using UV mapping from 3Dscan
+    if isUVspace
         % Hyperparameters for warping and interpolation
         % NOTE: these values can vary for new caps
         % Number of iterations to run warp-interpolation on
@@ -164,29 +166,10 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         % Threshold for ignoring some border pixels that might be bad detections
         ignorePix = 15;
 
-        % Convert EEG cap manufacturer layout from 3D to 2D
-        capLayoutPts3d = [capValidEegChan.Loc]';
-        [X1, Y1] = bst_project_2d(capLayoutPts3d(:,1), capLayoutPts3d(:,2), capLayoutPts3d(:,3), '2dcap');
-        capLayoutPts2d = [X1 Y1];
+        % Convert cap 3D locations to 2D (UV space)
+        [X1, Y1] = bst_project_2d(capPoints3d(:,1), capPoints3d(:,2), capPoints3d(:,3), '2dcap');
+        capLayoutPts2d = ([X1 Y1]+1) * capImgDim/2;
 
-        % Warping ref EEG cap layout electrodes to 3Dscanner mesh, using the acquired landmark points
-        % Get 2D projected landmark points to be used for initialization
-        capLayoutPts2dInit = capLayoutPts2d(iwarp, :);
-        % Get 2D projected points of the 3D points selected by the user on the mesh
-        [x2, y2] = bst_project_2d(eegPointsLoc(:,1), eegPointsLoc(:,2), eegPointsLoc(:,3), '2dcap');
-        % Reprojection into the space of the flattened mesh dimensions
-        capUserSelectPts2d = ([x2 y2]+1) * capImgDim/2;
-
-        % Delete the manual electrodes selected in figure to update it with the automatic detected ones
-        for i=1 : length(eegPoints)
-            panel_fun('DeletePoint_Callback');
-        end
-
-        % Do the warping and interpolation
-        warp = tpsGetWarp(10, capLayoutPts2dInit(:,1)', capLayoutPts2dInit(:,2)', capUserSelectPts2d(:,1)', capUserSelectPts2d(:,2)' );
-        [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
-        capLayoutPts2d(:,1) = xsR;
-        capLayoutPts2d(:,2) = ysR;
         % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is
         % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
         capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
