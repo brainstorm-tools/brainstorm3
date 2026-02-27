@@ -41,30 +41,54 @@ function varargout = channel_detect_eegcap_auto(varargin)
 eval(macro_method);
 end
 
-%% ===== FIND ELECTRODES ON THE EEG CAP =====
-function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(surface3dscanner, isWhiteCap)
-    % Hyperparameters for circle detection
+%% ===== FIND ELECTRODES ON THE EEG CAP UV =====
+function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(sSurfCap)
+    capCenters2d = [];
+    capImg2d     = [];
+    sSurfCap.u   = [];
+    sSurfCap.v   = [];
+    if isempty(sSurfCap.Color)
+        return
+    end
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % TODO: Find cap color from texture not form montage name
+    % Get current montage
+    DigitizeOptions = bst_get('DigitizeOptions');
+    panel_fun = @panel_digitize;
+    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+        panel_fun = @panel_digitize_2024;
+    end
+    curMontage = panel_fun('GetCurrentMontage');
+    isWhiteCap = 0;
+    % For white caps change the color space by inverting the colors
+    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
+    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
+        isWhiteCap = 1;
+    end
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    % Image size [px]
+    capImg2dSize = 512;
+    % Hyperparameters for circle detection [px]
     % NOTE: these values can vary for new caps
     minRadius = 1;
     maxRadius = 25;
     
-    % create a copy of the input mesh to add UV texture information to it as well
-    surface3dscannerUv = surface3dscanner;
-
     % Flatten the 3D mesh to 2D space
-    [surface3dscannerUv.u, surface3dscannerUv.v] = bst_project_2d(surface3dscanner.Vertices(:,1), surface3dscanner.Vertices(:,2), surface3dscanner.Vertices(:,3), '2dcap');
+    [sSurfCap.u, sSurfCap.v] = bst_project_2d(sSurfCap.Vertices(:,1), sSurfCap.Vertices(:,2), sSurfCap.Vertices(:,3), '2dcap');
     
     % Perform image processing to detect the electrode locations
     % Convert to grayscale
-    grayness = surface3dscanner.Color*[1;1;1]/sqrt(3);
+    grayness = sSurfCap.Color*[1;1;1]/sqrt(3);
     
     % Interpolate and fit flattended mesh image to a 512x512 grid 
     % NOTE: Should work with any flattened cap mesh but needs more testing
-    ll=linspace(-1,1,512);
+    ll=linspace(-1,1,capImg2dSize);
     [X,Y]=meshgrid(ll,ll);
     capImg2d = 0*X;
     warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
-    capImg2d(:) = griddata(surface3dscannerUv.u(1:end),surface3dscannerUv.v(1:end),grayness,X(:),Y(:),'linear');
+    capImg2d(:) = griddata(sSurfCap.u(1:end),sSurfCap.v(1:end),grayness,X(:),Y(:),'linear');
     warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
 
     % For white caps
@@ -75,11 +99,11 @@ function [capCenters2d, capImg2d, surface3dscannerUv] = FindElectrodesEegCap(sur
     % Detect the centers of the electrodes which appear as circles in the flattened image whose radii are in the range below
     warning('off','images:imfindcircles:warnForSmallRadius');
     warning('off','images:imfindcircles:warnForLargeRadiusRange');
-    capCenters2d = imfindcircles(capImg2d, [minRadius maxRadius]);
+    [capCenters2d, capRadii2d] = imfindcircles(capImg2d, [minRadius maxRadius]);
     warning('on','images:imfindcircles:warnForSmallRadius');
     warning('on','images:imfindcircles:warnForLargeRadiusRange');
-
 end
+
 
 %% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
 function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)

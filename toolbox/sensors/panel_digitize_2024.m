@@ -795,28 +795,19 @@ function EEGAutoDetectElectrodes()
     % Progress bar
     bst_progress('start', Digitize.Type, 'Automatic labelling of EEG sensors...');
 
-    % Get current montage
-    curMontage = GetCurrentMontage();
-    isWhiteCap = 0;
-    % For white caps change the color space by inverting the colors
-    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        isWhiteCap = 1;
-    end
-
     % Get the cap surface from 3D scanner
     hFig = bst_figures('GetCurrentFigure','3D');
     TessInfo = getappdata(hFig, 'Surface');
     sSurf = bst_memory('LoadSurface', TessInfo.SurfaceFile);
-    
-    % Automatically find electrodes locations on EEG cap
-    [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf, isWhiteCap);
-    if isempty(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile)
+    % Add UV info to surface and automatically find electrodes locations on EEG cap
+    [sSurf, capImg2d, capCenters2d, capRadii2d] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf);
+
+    % Get current montage
+    curMontage = GetCurrentMontage();
+    if isempty(curMontage.ChannelFile)
         bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
         bst_progress('stop');
         return;
-    else
-        ChannelMat = in_bst_channel(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
     end
 
     % Get acquired EEG points
