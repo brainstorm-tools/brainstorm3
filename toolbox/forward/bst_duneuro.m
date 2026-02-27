@@ -578,18 +578,11 @@ if (isEeg || isEcog || isSeeg)
     if ~isempty(refLoc)
         switch length(iRef)
             case 1
-                % Apply the re-referencing to the iRef electrode
-                GainEeg = GainEeg - GainEeg(iRef(1),:);
-                % Remove the iRef row from the Gain matrix
-                GainEeg(iRef(1),:) = [];
-            case 2 % Not supported by this version of Duneuro, will be supported in DN2026 version
-                % Apply the re-referencing using linked masteoids
-                GainEeg = GainEeg - (1/2*GainEeg(iRef(1),:) + 1/2*GainEeg(iRef(2),:));
-                % Remove the iRef row from the Gain matrix
-                GainEeg(iRef(1),:) = [];
-                GainEeg(iRef(2),:) = [];
+                % Remove the added channel, DN assume this is the ref
+                GainEeg(1,:) = [];
             otherwise
-                % Apply the average reference
+                % Apply the average reference (this is not correct as chann1 is assumed to be the ref)
+                % THis will be improved in DN2026 version
                 GainEeg = GainEeg - mean(GainEeg);
         end
     else
