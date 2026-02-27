@@ -45,6 +45,7 @@ end
 function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(sSurfCap)
     capCenters2d = [];
     capImg2d     = [];
+    capRadii2d   = [];
     sSurfCap.u   = [];
     sSurfCap.v   = [];
     if isempty(sSurfCap.Color)
