@@ -105,8 +105,8 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
 end
 
 
-%% ===== WARP ELECTRODE LOCATIONS FROM EEG CAP MANUFACTURER LAYOUT AVAILABLE IN BRAINSTORM TO THE MESH =====
-function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
+%% ===== WARP REFERENCE CAP ELECTRODE LOCATIONS USING DIGITIZED POINTS =====
+function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, surface3dscannerUv, capImg2d, capCenters2d, capRadii2d)
     capPoints = struct();
     % Hyperparameters for warping and interpolation
     % NOTE: these values can vary for new caps
@@ -122,30 +122,29 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     % Get current montage
     DigitizeOptions = bst_get('DigitizeOptions');
     panel_fun = @panel_digitize;
-    eegPointsLabel = eegPoints.Label;
+    eegPointsLabels = eegPoints.Label;
     if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
         panel_fun = @panel_digitize_2024;
-        eegPointsLabel = {eegPoints.Label};
+        eegPointsLabels = {eegPoints.Label};
     end
-    curMontage = panel_fun('GetCurrentMontage');
     % Get EEG cap landmark labels used for initialization
     [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(capChannelFile);
     % Check that all landmarks are acquired
-    if ~all(ismember([capLandmarkLabels], eegPointsLabel))
+    if ~all(ismember(capLandmarkLabels, eegPointsLabels))
         bst_error('Not all EEG landmarks are provided', 'Auto electrode location', 1);
         return
     end
 
     % Convert EEG cap manufacturer layout from 3D to 2D
-    capLayoutPts3d = [channelRef.Loc]';
+    capLayoutPts3d = [capValidEegChan.Loc]';
     [X1, Y1] = bst_project_2d(capLayoutPts3d(:,1), capLayoutPts3d(:,2), capLayoutPts3d(:,3), '2dcap');
     capLayoutPts2d = [X1 Y1];
-    capLayoutNames = {channelRef.Name};
+    capLayoutNames = {capValidEegChan.Name};
 
-    % Indices for capLayoutPts2dSorted for points to compute warp
-    [~, iwarp] = ismember(eegPointsLabel, capLayoutNames);
+    % Indices for points to compute warp
+    [~, iwarp] = ismember(eegPointsLabels, capLayoutNames);
     
-    % Warping EEG cap layout electrodes to mesh 
+    % Warping ref EEG cap layout electrodes to 3Dscanner mesh, using the acquired landmark points
     % Get 2D projected landmark points to be used for initialization
     capLayoutPts2dInit = capLayoutPts2d(iwarp, :);
     % Get 2D projected points of the 3D points selected by the user on the mesh 
@@ -174,6 +173,25 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
     
     bst_progress('start', '3Dscanner', 'Automatic labelling of EEG sensors...', 0, 100);
+
+    if ~isempty(capImg2d) && ~isempty(capCenters2d) && ~isempty(capRadii2d)
+        % Add disclaimer to users that 'Auto' feature is experimental
+        hImFig = figure();
+        ax = gca();
+        imshow(capImg2d');
+        viscircles(ax, fliplr(capCenters2d), capRadii2d, 'Color','r');
+        axis(ax, 'xy')
+        set(ax, 'XDir', 'reverse')
+        if ~java_dialog('confirm', ['This is the image' 10 10 ...
+                                    'Do you want to continue?'], 'Auto detect EEG electrodes')
+            return
+        end
+        close(hImFig);
+    else
+        % Compute just with the initial warping
+        return
+    end
+
     % Warp and interpolate to get the best point fitting 
     for numIter=1:numIters
         % Show progress

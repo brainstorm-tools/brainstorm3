@@ -815,7 +815,7 @@ function EEGAutoDetectElectrodes()
     pointsEEG = Digitize.Points(iEeg);
     
     % Warp points from layout to mesh
-    capPoints3d = channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
+    capPoints3d = channel_detect_eegcap_auto('WarpLayout2Digitized', curMontage.ChannelFile, pointsEEG, sSurf, capImg2d, capCenters2d, capRadii2d);
 
     % Plot the electrodes and their labels
     for iPoint= 1:length(capPoints3d)        
