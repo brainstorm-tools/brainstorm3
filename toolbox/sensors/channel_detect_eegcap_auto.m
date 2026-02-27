@@ -152,16 +152,12 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
     % Use transformation on the entire cap
     capPoints3d = capPoints3d*R + ones(size(capPoints3d,1),1)*T;
     % Project them to the 3Dscan mesh
+    warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     capPoints3d = channel_project_scalp(sSurf.Vertices, capPoints3d);
+    warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
 
     % === 2. Refine positions for EEG digitized cap using UV mapping from 3Dscan
     if isUVspace
-        % Hyperparameters for warping and interpolation
-        % NOTE: these values can vary for new caps
-        % Number of iterations to run warp-interpolation on
-        numIters  = 1000;
-        % Defines the rigidity of the warping (check the 'tpsGetWarp' function for more details)
-        lambda    = 100000;
         % Dimension of the flattened cap from mesh
         capImgDim = length(capImg2d);
         capRangeinIm = 1.5;
@@ -185,72 +181,81 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b')
         axis(ax, 'xy')
         set(ax, 'XDir', 'reverse')
-        if ~java_dialog('confirm', ['This is the image' 10 10 ...
-                                    'Do you want to continue?'], 'Auto detect EEG electrodes')
-            return
+
+        % Ask if continue with refinement
+        isRefinement = java_dialog('confirm', ['This is the image' 10 10 ...
+                                    'Do you want to continue?'], 'Auto detect EEG electrodes');
+        if isRefinement
+            close(hImFig);
+
+            % Hyperparameters for warping and interpolation
+            % NOTE: these values can vary for new caps
+            % Number of iterations to run warp-interpolation on
+            numIters  = 1000;
+            % Defines the rigidity of the warping (check the 'tpsGetWarp' function for more details)
+            lambda    = 100000;
+
+            % Warp and interpolate to get the best point fitting
+            for numIter=1:numIters
+                % Show progress
+                progressPrc = round(100 .* numIter ./ numIters);
+                if progressPrc > 0 && ~mod(progressPrc, 5)
+                    bst_progress('set', progressPrc);
+                end
+                % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
+                % 'k' is an index into points from the available layout
+                k = dsearchn(capLayoutPts2d, capCenters2d);
+                [vecLayoutPts,ind] = unique(k);
+
+                % distance between the layout and detected circle centers from the 2D flattened mesh
+                vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2d(vecLayoutPts,:);
+                dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
+
+                % Identify outliers with 3*scaled_MAD from median and remove them
+                % Use 'rmoutliers' for Matlab >= R2018b
+                if bst_get('MatlabVersion') >= 905
+                    [~, isoutlier] = rmoutliers(dist);
+                % Implementation
+                else
+                    mad = median(abs(dist-median(dist)));
+                    c = -1/(sqrt(2) * erfcinv(3/2)) * 2;
+                    scaled_mad = c * mad;
+                    isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
+                end
+                ind(isoutlier) = [];
+                vecLayoutPts(isoutlier) = [];
+
+                % Perform warping and interpolation to fit the points
+                warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
+                [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
+
+                % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
+                if numIter<numIters/2
+                    capLayoutPts2d(:,1) = 0.9*capLayoutPts2d(:,1) + 0.1*xsR;
+                    capLayoutPts2d(:,2) = 0.9*capLayoutPts2d(:,2) + 0.1*ysR;
+                else
+                    capLayoutPts2d(:,1) = xsR;
+                    capLayoutPts2d(:,2) = ysR;
+                end
+
+                % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is
+                % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
+                capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
+            end
+
+            % Interpolation of the fitted points to the image space of the layout
+            ll=linspace(-1,1,capImgDim);
+            [X1,Y1]=meshgrid(ll,ll);
+            capLayoutPts2dU = interp2(X1,xsR,ysR);
+            capLayoutPts2dV = interp2(Y1,xsR,ysR);
+
+            % Get the desired electrode locations on the 3D EEG cap
+            warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
+            capPoints3d(:,1) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,1), capLayoutPts2dU, capLayoutPts2dV);
+            capPoints3d(:,2) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
+            capPoints3d(:,3) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
+            warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
         end
-        close(hImFig);
-
-        % Warp and interpolate to get the best point fitting
-        for numIter=1:numIters
-            % Show progress
-            progressPrc = round(100 .* numIter ./ numIters);
-            if progressPrc > 0 && ~mod(progressPrc, 5)
-                bst_progress('set', progressPrc);
-            end
-            % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
-            % 'k' is an index into points from the available layout
-            k = dsearchn(capLayoutPts2d, capCenters2d);
-            [vecLayoutPts,ind] = unique(k);
-
-            % distance between the layout and detected circle centers from the 2D flattened mesh
-            vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2d(vecLayoutPts,:);
-            dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
-            
-            % Identify outliers with 3*scaled_MAD from median and remove them
-            % Use 'rmoutliers' for Matlab >= R2018b
-            if bst_get('MatlabVersion') >= 905
-                [~, isoutlier] = rmoutliers(dist);
-            % Implementation
-            else
-                mad = median(abs(dist-median(dist)));
-                c = -1/(sqrt(2) * erfcinv(3/2)) * 2;
-                scaled_mad = c * mad;
-                isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
-            end
-            ind(isoutlier) = [];
-            vecLayoutPts(isoutlier) = [];
-
-            % Perform warping and interpolation to fit the points
-            warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
-            [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
-
-            % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
-            if numIter<numIters/2
-                capLayoutPts2d(:,1) = 0.9*capLayoutPts2d(:,1) + 0.1*xsR;
-                capLayoutPts2d(:,2) = 0.9*capLayoutPts2d(:,2) + 0.1*ysR;
-            else
-                capLayoutPts2d(:,1) = xsR;
-                capLayoutPts2d(:,2) = ysR;
-            end
-
-            % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is
-            % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
-            capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
-        end
-        
-        % Interpolation of the fitted points to the image space of the layout
-        ll=linspace(-1,1,capImgDim);
-        [X1,Y1]=meshgrid(ll,ll);
-        capLayoutPts2dU = interp2(X1,xsR,ysR);
-        capLayoutPts2dV = interp2(Y1,xsR,ysR);
-        
-        % Get the desired electrode locations on the 3D EEG cap
-        warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
-        capPoints3d(:,1) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,1), capLayoutPts2dU, capLayoutPts2dV);
-        capPoints3d(:,2) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,2), capLayoutPts2dU, capLayoutPts2dV);
-        capPoints3d(:,3) = griddata(sSurf.u, sSurf.v, sSurf.Vertices(:,3), capLayoutPts2dU, capLayoutPts2dV);
-        warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
     end
 
     % Build output
