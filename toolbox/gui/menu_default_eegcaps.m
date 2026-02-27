@@ -1,4 +1,4 @@
-function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc, dirName, isDirMenu)
+function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc, dirNames, isDirMenu)
 % MENU_DEFAULT_EEGCAPS: Generate Brainstorm available EEG caps menu
 % 
 % USAGE: menu_default_eegcaps(jMenu, iAllStudies, isAddLoc)
@@ -8,6 +8,9 @@ function menu_default_eegcaps(jMenu, iAllStudies, isAddLoc, dirName, isDirMenu)
 %    - iAllStudies : All studies in the protocol
 %    - isAddLoc    : if 1 (SEEG/ECOG) or 2 (EEG), call 'channel_add_loc' 
 %                    if 0 call 'db_set_channel'
+%    - dirNames    : Shown only the EEG caps for this dirNames
+%    - isDirMenu   : if 0, skip the [DIR] level menu:  Caps > [DIR] > Models
+%                    if more than one DIR, isDirMenu is always 1
                         
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -43,14 +46,12 @@ end
 if (nargin < 3) || isempty(isAddLoc)
     isAddLoc = [];
 end
-if (nargin < 4) || isempty(dirName)
-    dirName = [];
+if (nargin < 4) || isempty(dirNames)
+    dirNames = [];
+elseif ischar(dirNames)
+    dirNames = {dirNames};
 end
 if (nargin < 5) || isempty(isDirMenu)
-    isDirMenu = 1;
-end
-% Force to have menu for each Dir if none or more than one Dir is indicated
-if isempty(dirName) || ~ischar(dirName) || (iscell(dirName) && length(dirName)~=1)
     isDirMenu = 1;
 end
 
@@ -60,9 +61,14 @@ DigitizeOptions = bst_get('DigitizeOptions');
 bstDefaults = bst_get('EegDefaults');
 if ~isempty(bstDefaults)
     % Keep only requested dirs
-    if ~isempty(dirName) && all(ismember(dirName, {bstDefaults.name}))
-        [~, ~, iKeep] = intersect(dirName, {bstDefaults.name}, 'stable');
+    if ~isempty(dirNames) && all(ismember(dirNames, {bstDefaults.name}))
+        [~, ~, iKeep] = intersect(dirNames, {bstDefaults.name}, 'stable');
         bstDefaults = bstDefaults(iKeep);
+        if length(iKeep) > 1
+            isDirMenu = 1;
+        end
+    else
+        isDirMenu = 1;
     end
     % Add a directory per template block available
     for iDir = 1:length(bstDefaults)
