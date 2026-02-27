@@ -244,7 +244,7 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
             end
 
             % Interpolation of the fitted points to the image space of the layout
-            ll=linspace(-1,1,capImgDim);
+            ll=linspace(-capRangeinIm, capRangeinIm, capImgDim);
             [X1,Y1]=meshgrid(ll,ll);
             capLayoutPts2dU = interp2(X1,xsR,ysR);
             capLayoutPts2dV = interp2(Y1,xsR,ysR);
