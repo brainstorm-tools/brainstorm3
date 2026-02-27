@@ -70,7 +70,8 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     % Image size [px]
-    capImg2dSize = 512;
+    capImg2dSize = 900;
+    capRangeinIm = 1.5;
     % Hyperparameters for circle detection [px]
     % NOTE: these values can vary for new caps
     minRadius = 1;
@@ -83,9 +84,9 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     % Convert to grayscale
     grayness = sSurfCap.Color*[1;1;1]/sqrt(3);
     
-    % Interpolate and fit flattended mesh image to a 512x512 grid 
+    % Interpolate and fit flattended mesh image from [-capRangeinIm to capRangeinIm] in a 512x512 grid
     % NOTE: Should work with any flattened cap mesh but needs more testing
-    ll=linspace(-1,1,capImg2dSize);
+    ll=linspace(-capRangeinIm, capRangeinIm, capImg2dSize);
     [X,Y]=meshgrid(ll,ll);
     capImg2d = 0*X;
     warning('off','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
@@ -163,12 +164,13 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         lambda    = 100000;
         % Dimension of the flattened cap from mesh
         capImgDim = length(capImg2d);
+        capRangeinIm = 1.5;
         % Threshold for ignoring some border pixels that might be bad detections
         ignorePix = 15;
 
         % Convert cap 3D locations to 2D (UV space)
         [X1, Y1] = bst_project_2d(capPoints3d(:,1), capPoints3d(:,2), capPoints3d(:,3), '2dcap');
-        capLayoutPts2d = ([X1 Y1]+1) * capImgDim/2;
+        capLayoutPts2d = ([X1 Y1] * capImgDim/2/capRangeinIm) + capImgDim/2;
 
         % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is
         % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
@@ -178,7 +180,9 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         hImFig = figure();
         ax = gca();
         imshow(capImg2d');
+        hold on
         viscircles(ax, fliplr(capCenters2d), capRadii2d, 'Color','r');
+        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b')
         axis(ax, 'xy')
         set(ax, 'XDir', 'reverse')
         if ~java_dialog('confirm', ['This is the image' 10 10 ...
