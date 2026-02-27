@@ -3,7 +3,6 @@ function varargout = channel_detect_eegcap_auto(varargin)
 % 
 % USAGE: [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', surface3dscanner, isWhiteCap)
 %        channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, channelRef, eegPoints)
-%        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', eegCapName)
 %        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', channelRef)
 %
 % PARAMETERS:
@@ -106,7 +105,7 @@ function capPoints = WarpLayout2Mesh(capCenters2d, capImg2d, surface3dscannerUv,
     end
     curMontage = panel_fun('GetCurrentMontage');
     % Get EEG cap landmark labels used for initialization
-    capLandmarkLabels = GetEegCapLandmarkLabels(curMontage.Name);
+    capLandmarkLabels = GetEegCapLandmarkLabels(curMontage.ChannelFile);
 
     % Check that all landmarks are acquired
     if ~all(ismember([capLandmarkLabels], eegPointsLabel))
