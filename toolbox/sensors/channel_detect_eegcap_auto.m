@@ -77,8 +77,8 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     minRadius = 2;
     maxRadius = 44;
     
-    % Flatten the 3D mesh to 2D space
-    [sSurfCap.u, sSurfCap.v] = bst_project_2d(sSurfCap.Vertices(:,1), sSurfCap.Vertices(:,2), sSurfCap.Vertices(:,3), '2dcap');
+    % Flatten the 3D mesh to 2D space using Stereographic projection
+    [sSurfCap.u, sSurfCap.v] = bst_project_2d(sSurfCap.Vertices(:,1), sSurfCap.Vertices(:,2), sSurfCap.Vertices(:,3), 'stereo');
     
     % Perform image processing to detect the electrode locations
     % Convert to grayscale
@@ -167,8 +167,8 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         % Threshold for ignoring some border pixels that might be bad detections
         ignorePix = 15;
 
-        % Convert cap 3D locations to 2D (UV space)
-        [X1, Y1] = bst_project_2d(capPoints3d(:,1), capPoints3d(:,2), capPoints3d(:,3), '2dcap');
+        % Convert cap 3D locations to 2D (UV space) using Stereographic projection
+        [X1, Y1] = bst_project_2d(capPoints3d(:,1), capPoints3d(:,2), capPoints3d(:,3), 'stereo');
         capLayoutPts2d = ([X1 Y1] * capImgDim/2/capRangeinIm) + capImgDim/2;
 
         % 'ignorePix' is just a hyperparameter. It is because if some point is detected near the border then it is
