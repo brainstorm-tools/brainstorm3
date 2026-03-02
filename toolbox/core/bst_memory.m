@@ -630,8 +630,10 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         % Is loaded dataset
         iDS = GetDataSetData(DataFile, 0);
         % Load file
-        if isempty(iDS)
-            bst_progress('start', 'Loading raw file', 'Reading file header...');
+        if isempty(iDS) || isReloadForced
+            if ~isReloadForced
+                bst_progress('start', 'Loading raw file', 'Reading file header...');
+            end
             MeasuresMat = in_bst_data(DataFile, 'F', 'ChannelFlag', 'ColormapType', 'DisplayUnits');
             sFile = MeasuresMat.F;
         else
