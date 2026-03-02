@@ -68,7 +68,7 @@ function Output = Run(sProcess, sInput)
     file_time = strrep(sProcess.options.acq_time.Value, ' ', '');
         
     if strcmp(sInput.FileType, 'raw')
-        SetDateTime(sInput.iStudy, file_date, file_time);
+        SetDateTimeRaw(sInput.iStudy, file_date, file_time);
     elseif strcmp(sInput.FileType, 'data')
         SetDateTimeData(sInput.iStudy, sInput.iItem, file_date, file_time);
     end
