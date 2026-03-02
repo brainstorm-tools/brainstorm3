@@ -2651,6 +2651,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             catch
                 procComment = sExportProc(iProc).Comment;
             end
+            procFunc = func2str(sExportProc(iProc).Function);
             % Make sure the advanced options were reviewed
             errMsg = panel_process_select('CheckProcessAdvancedOpts', sExportProc(iProc));
             if ~isempty(errMsg)
