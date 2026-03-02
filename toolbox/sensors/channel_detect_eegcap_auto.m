@@ -52,23 +52,6 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
         return
     end
 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % TODO: Find cap color from texture not form montage name
-    % Get current montage
-    DigitizeOptions = bst_get('DigitizeOptions');
-    panel_fun = @panel_digitize;
-    if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
-        panel_fun = @panel_digitize_2024;
-    end
-    curMontage = panel_fun('GetCurrentMontage');
-    isWhiteCap = 0;
-    % For white caps change the color space by inverting the colors
-    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        isWhiteCap = 1;
-    end
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
     % Image size [px]
     capImg2dSize = 900;
     capRangeinIm = 1.5;
@@ -93,8 +76,8 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     capImg2d(:) = griddata(sSurfCap.u(1:end),sSurfCap.v(1:end),grayness,X(:),Y(:),'linear');
     warning('on','MATLAB:scatteredInterpolant:DupPtsAvValuesWarnId');
 
-    % For white caps
-    if isWhiteCap
+    % Check if white color cap
+    if IsWhiteCap(sSurfCap.Color)
         capImg2d = imcomplement(capImg2d);
     end
     
@@ -310,4 +293,21 @@ function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
     topElec   = ChannelMat.Channel(iValid(iMaxLoc(3))).Name;
     % Final list of landmarks
     capLandmarkLabels = unique({frontElec, leftElec, rightElec, postElec, topElec}, 'stable');
+end
+
+%% ===== CHECK IF CAP COLOR IS OF WHITE SHADE =====
+function isWhiteCap = IsWhiteCap(CapColors, BrightnessThresh)
+    % CapColors : N×3 array of per-vertex RGB colors (double expected in [0,1])
+    % BrightnessThresh : (optional) brightness threshold in [0,1]. Default = 0.5
+    if nargin < 2 || isempty(BrightnessThresh)
+        BrightnessThresh = 0.5;
+    end
+    % Clamp [0,1] to ensure valid intensity values
+    CapColors = min(max(double(CapColors), 0), 1);
+    % Convert RGB to a single perceived brightness (luma) value per vertex
+    Rgb2Luma = 0.2126 * CapColors(:,1) + 0.7152 * CapColors(:,2) + 0.0722 * CapColors(:,3);    
+    % Robust overall brightness estimate (median reduces outlier influence)
+    Brightness = median(Rgb2Luma);
+    % Classify if white cap
+    isWhiteCap = (Brightness >= BrightnessThresh);
 end
