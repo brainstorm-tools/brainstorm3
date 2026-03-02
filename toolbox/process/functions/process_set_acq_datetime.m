@@ -1,5 +1,5 @@
-function varargout = process_setAcquisitionDate( varargin )
-% process_setAcquisitionDate: Set the acquisition date and time of the recording
+function varargout = process_set_acq_datetime( varargin )
+% PROCESS_SET_ACQ_DATETIME: Set the acquisition timestamp (T0) of a data file
 % 
 % USAGE:  
 %         Output = Run(sProcess, sInput)
@@ -25,6 +25,7 @@ function varargout = process_setAcquisitionDate( varargin )
 % =============================================================================@
 %
 % Authors: Edouard Delaire, 2026
+%          Raymundo Cassani, 2026
 
 eval(macro_method);
 end
@@ -32,31 +33,27 @@ end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
-
     % Description the process
-    sProcess.Comment     = 'Set Acquisition date';
+    sProcess.Comment     = 'Set acquisition datetime';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'File';
-    sProcess.Index       = 1020;
+    sProcess.Index       = 1021.5;
     sProcess.Description = '';
-
     % Definition of the input accepted by this process
     sProcess.InputTypes  = { 'raw', 'data'};
     sProcess.OutputTypes = { 'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-
     % === Acquisition date
     sProcess.options.acq_date.Comment = 'Date (YYYY-MM-DD): ';
     sProcess.options.acq_date.Type    = 'text';
     sProcess.options.acq_date.Value   = '';
-    sProcess.options.acq_date.InputTypes = {'data', 'raw'};
-
+    % === Acquisition time
     sProcess.options.acq_time.Comment = '24-hour time (HH:MM:SS): ';
     sProcess.options.acq_time.Type    = 'text';
     sProcess.options.acq_time.Value   = '';
-    sProcess.options.acq_time.InputTypes = {'data', 'raw'};
 end
+
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
