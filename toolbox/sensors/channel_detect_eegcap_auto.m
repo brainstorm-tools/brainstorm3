@@ -67,7 +67,7 @@ function [sSurfCap, capImg2d, capCenters2d, capRadii2d] = FindElectrodesEegCap(s
     % Convert to grayscale
     grayness = sSurfCap.Color*[1;1;1]/sqrt(3);
     
-    % Interpolate and fit flattended mesh image from [-capRangeinIm to capRangeinIm] in a 512x512 grid
+    % Interpolate and fit flattended mesh image from [-capRangeinIm to capRangeinIm] in a capImg2dSize square grid
     % NOTE: Should work with any flattened cap mesh but needs more testing
     ll=linspace(-capRangeinIm, capRangeinIm, capImg2dSize);
     [X,Y]=meshgrid(ll,ll);
@@ -163,7 +163,10 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         ax = gca();
         imshow(capImg2d');
         hold on
-        viscircles(ax, fliplr(capCenters2d), capRadii2d, 'Color','r');
+        % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
+        [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
+        % Show red circles on the potential electrodes locations only
+        viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r');
         scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b')
         axis(ax, 'xy')
         set(ax, 'XDir', 'reverse')
@@ -190,30 +193,10 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
                     bst_progress('set', 50 + progressPrc);
                 end
                 % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
-                % 'k' is an index into points from the available layout
-                k = dsearchn(capLayoutPts2d, capCenters2d);
-                [vecLayoutPts,ind] = unique(k);
-
-                % distance between the layout and detected circle centers from the 2D flattened mesh
-                vecLayout2Mesh = capCenters2d(ind,:)-capLayoutPts2d(vecLayoutPts,:);
-                dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
-
-                % Identify outliers with 3*scaled_MAD from median and remove them
-                % Use 'rmoutliers' for Matlab >= R2018b
-                if bst_get('MatlabVersion') >= 905
-                    [~, isoutlier] = rmoutliers(dist);
-                % Implementation
-                else
-                    mad = median(abs(dist-median(dist)));
-                    c = -1/(sqrt(2) * erfcinv(3/2)) * 2;
-                    scaled_mad = c * mad;
-                    isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
-                end
-                ind(isoutlier) = [];
-                vecLayoutPts(isoutlier) = [];
+                [vecLayoutPts, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
 
                 % Perform warping and interpolation to fit the points
-                warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(ind,1)', capCenters2d(ind,2)' );
+                warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(iLayoutPts,1)', capCenters2d(iLayoutPts,2)' );
                 [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
 
                 % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
@@ -310,4 +293,28 @@ function isWhiteCap = IsWhiteCap(CapColors, BrightnessThresh)
     Brightness = median(Rgb2Luma);
     % Classify if white cap
     isWhiteCap = (Brightness >= BrightnessThresh);
+end
+
+%% ===== NEAREST POINT SEARCH BETWEEN THE LAYOUT AND DETECTED CIRCLE CENTERS FROM THE 2D FLATTENED MESH =====
+function [vecLayoutPts, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d)
+    k = dsearchn(capLayoutPts2d, capCenters2d);
+    [vecLayoutPts, iLayoutPts] = unique(k);
+    
+    % distance between the layout and detected circle centers from the 2D flattened mesh
+    vecLayout2Mesh = capCenters2d(iLayoutPts,:)-capLayoutPts2d(vecLayoutPts,:);
+    dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
+    
+    % Identify outliers with 3*scaled_MAD from median and remove them
+    % Use 'rmoutliers' for Matlab >= R2018b
+    if bst_get('MatlabVersion') >= 905
+        [~, isoutlier] = rmoutliers(dist);
+    % Implementation
+    else
+        mad = median(abs(dist-median(dist)));
+        c = -1/(sqrt(2) * erfcinv(3/2)) * 2;
+        scaled_mad = c * mad;
+        isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
+    end
+    iLayoutPts(isoutlier) = [];
+    vecLayoutPts(isoutlier) = [];
 end
