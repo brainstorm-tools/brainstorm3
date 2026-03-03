@@ -167,12 +167,12 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
         % Show red circles on the potential electrodes locations only
         viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r');
-        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+g')
+        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b')
         axis(ax, 'xy')
         set(ax, 'XDir', 'reverse')
 
         % Ask if continue with refinement
-        isRefinement = java_dialog('confirm', ['Do you want to refine the electrode positions (green cross)' 10 ...
+        isRefinement = java_dialog('confirm', ['Do you want to refine the electrode positions (blue cross)' 10 ...
                                                'using the detected positions (red circles) in the EEG cap?'], ...
                                                'Auto detect EEG electrodes');
         % Close regardless the answer
