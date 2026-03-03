@@ -123,16 +123,16 @@ function Compute(DataFile, NewStartTs, isUpdateStudyDate)
     end
     % Update only necessary fields
     if isRaw
-        DataMat.F.t0 = newDateTimeStr;
+        DataMat.F.t0 = str_datetime(NewStartTs);
     else
-        DataMat.T0 = newDateTimeStr;
+        DataMat.T0 = str_datetime(NewStartTs);
     end
     % Save
     bst_save(file_fullpath(DataFile), DataMat, [], 1);
     % Update Study acquisition time
     if isUpdateStudyDate
         [~, iStudy] = bst_get('DataFile', DataFile);
-        panel_record('SetAcquisitionDate', iStudy, str_date(newDateTimeStr));
+        panel_record('SetAcquisitionDate', iStudy, str_datetime(NewStartTs));
     end
 end
 
