@@ -1059,6 +1059,9 @@ function [AlignType, isMriUpdated, isMriMatch, isSessionMatch, ChannelMat] = Che
             case 'non-l' % 'Non-linear transformation'
                 AlignType = 'non-linear';
                 break;
+            case 'coreg' % 'Coregistration imported from BIDS files [...]'
+                AlignType = 'imported';
+                break
             otherwise
                 AlignType = 'unrecognized';
                 break;
