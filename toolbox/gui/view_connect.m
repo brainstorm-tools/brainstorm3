@@ -106,15 +106,16 @@ if ~isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.
     return;
 end
 
+% TF function
+if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'none')
+    TfFunction = 'magnitude';
+else
+    TfFunction = 'other';
+end
 
 %% ===== DISPLAY AS IMAGE =====
 % Display as image
 if strcmpi(DisplayMode, 'Image')
-    if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'none')
-        TfFunction = 'magnitude';
-    else
-        TfFunction = 'other';
-    end
     % Get values
     TF = bst_memory('GetTimefreqValues', iDS, iTimefreq, [], [], [], TfFunction);
     % Get connectivity matrix
@@ -232,30 +233,17 @@ TfInfo.Comment     = sTimefreq.Comment;
 TfInfo.DisplayMode = DisplayMode;
 TfInfo.InputTarget = [];
 TfInfo.RowName     = [];
-IsDirectionalData = 0;
-IsBinaryData = 0;
+TfInfo.Function    = TfFunction;
+IsDirectionalData  = 0;
+IsBinaryData       = 0;
 ThresholdAbsoluteValue = 0;
 
+% Specific configurations according connectivity method
 switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
-    case 'corr',     TfInfo.Function = 'other';
-                     ThresholdAbsoluteValue = 1;
-    case 'cohere',   TfInfo.Function = 'other';
-    case 'granger',  TfInfo.Function = 'other';
-                     IsDirectionalData = 1;
-                     IsBinaryData = 1;
-    case 'spgranger',TfInfo.Function = 'other';
-                     IsDirectionalData = 1;
-                     IsBinaryData = 1;
-    case 'henv',     TfInfo.Function = 'other';
-    case 'pte',  TfInfo.Function = 'other';
-                 IsDirectionalData = 1;
-    case {'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit'}
-        if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
-            TfInfo.Function = 'other';
-        else
-            TfInfo.Function = 'magnitude';
-        end
-    otherwise,       TfInfo.Function = 'other';
+    case 'corr'
+        ThresholdAbsoluteValue = 1;
+    case {'granger', 'spgranger', 'pte'}
+         IsDirectionalData = 1;
 end
 
 % Update figure variable

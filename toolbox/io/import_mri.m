@@ -198,7 +198,11 @@ end
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
 if isempty(Labels) && ~iscell(MriFile) && ~isCt && ~isPet
-    Labels = mri_getlabels(MriFile, sMri, isAtlas);
+    [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isAtlas);
+    % Update Comment for 'svreg' atlas with the specific AtlasName
+    if isAtlas && strcmpi(Comment, 'svreg') && ~isempty(AtlasName) && ismember(AtlasName, {'BrainSuiteAtlas1', 'USCBrain', 'BCI-DNI_brain_atlas'})
+        Comment = AtlasName;
+    end
 end
 % Save labels in the file structure
 if ~isempty(Labels)   % Labels were found in the input folder

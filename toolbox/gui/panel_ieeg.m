@@ -1866,11 +1866,14 @@ function MergeElectrodes()
 end
 
 %% ===== GET ELECTRODE MODELS =====
-function sModels = GetElectrodeModels()
+function sModels = GetElectrodeModels(list)
     global GlobalData;
-    % Get existing preferences
-    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels) ...
-            && (length(GlobalData.Preferences.IntraElectrodeModels) > 18)
+    if nargin < 1 || isempty(list)
+        list = '';
+    end
+    sModels = [];
+    % Get all models in preferences
+    if ~strcmp(list, 'defatul') && isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
         sModels = GlobalData.Preferences.IntraElectrodeModels;
     % Get default list of known electrodes
     else
@@ -2153,6 +2156,14 @@ function RemoveElectrodeModel()
     [iModel, sModels] = GetSelectedModel();
     if isempty(iModel)            
         return;
+    end
+    % Do not remove if it is a default electrode model
+    sModelsDefault = GetElectrodeModels('default');
+    if ismember(sModels(iModel).Name, {sModelsDefault.Name})
+        java_dialog('warning', [...
+            'This a Brainstorm default electrode model and cannot deleted.' 10], ...
+            'Read-only: Default electrode model ');
+        return
     end
     % Ask for confirmation
     if ~java_dialog('confirm', ['Delete model "' sModels(iModel).Model '"?'])

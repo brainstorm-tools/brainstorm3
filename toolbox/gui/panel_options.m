@@ -564,11 +564,47 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
             if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
                 isOpenGL = 1;
                 s.Software = 0;
+                if (DisableOpenGL == 2)
+                    if isunix
+                        isUnixWarning = 1;
+                        DisableOpenGL = 0;
+                        bst_set('DisableOpenGL', DisableOpenGL);
+                    elseif ispc
+                        try
+                            opengl('software');
+                            s = rendererinfo();
+                            s.Software = 1;
+                        catch
+                            isOpenGL = 0;
+                        end
+                    end
+                end
             elseif strcmp(s.GraphicsRenderer,  'OpenGL Software')
                 isOpenGL = 1;
                 s.Software = 1;
+                if (DisableOpenGL == 0)
+                    if isunix
+                        isUnixWarning = 1;
+                        DisableOpenGL = 2;
+                        bst_set('DisableOpenGL', DisableOpenGL);
+                    elseif ispc
+                        try
+                            opengl('hardware');
+                            s = rendererinfo();
+                            s.Software = 0;
+                        catch
+                            isOpenGL = 0;
+                        end
+                    end
+                end
             else
                 isOpenGL = 0;
+            end
+            % Configure OpenGL
+            switch DisableOpenGL
+                case 0,  FigureRenderer = 'opengl';
+                case 1,  FigureRenderer = 'painters';
+                case 2,  FigureRenderer = 'opengl';
             end
             % Figure types for which the OpenGL renderer is used
             figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};

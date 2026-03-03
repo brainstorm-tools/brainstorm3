@@ -2468,7 +2468,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    isT0 = ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
+    isT0 = ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
@@ -4324,7 +4324,10 @@ function UpdateXAxisTimeLabels(hFig, action)
     end
 
     % Update TimestampZero in Figure TsInfo data
-    if strcmpi(action, 'toggle')
+    if strcmpi(action, 'update') && ~isempty(TsInfo.TimestampZero) && ~strcmpi(TsInfo.TimestampZero, GlobalData.DataSet(iDS).Measures.sFile.t0)
+        TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        setappdata(hFig, 'TsInfo', TsInfo);
+    elseif strcmpi(action, 'toggle')
         if isempty(TsInfo.TimestampZero)
             TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
         else
