@@ -167,7 +167,7 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
         % Show red circles on the potential electrodes locations only
         viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r');
-        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b')
+        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b', 'LineWidth', 2)
         axis(ax, 'xy')
         set(ax, 'XDir', 'reverse')
 
