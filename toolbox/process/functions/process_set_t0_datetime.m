@@ -136,12 +136,34 @@ function Compute(DataFile, NewStartTs, isUpdateStudyDate)
     end
 end
 
+function t0 = getTo(DataFile)
+% Return t0 from a data file
+    
+    % Check for raw data
+    isRaw = (length(DataFile) > 9) && ~isempty(strfind(DataFile, 'data_0raw'));
+
+    if isRaw
+        DataMat = in_bst_data(DataFile, {'F', 'Time'});
+        t0 = DataMat.F.t0;
+    else
+        DataMat = in_bst_data(DataFile, {'T0', 'Time'});
+        t0 = DataMat.T0;
+    end
+end
+
 
 %% ===== INTERACTIVE CALL =====
 function ComputeInteractive(DataFile)
+
+    % Update loaded data and figures time axis
+    t0 = getTo(DataFile);
+    if isempty(t0)
+        t0 = datetime('today');
+    end
+
     % Ask for new acquisition date and time for data file
     res = java_dialog('input', {'Date (YYYY-MM-DD):', 'Time, 24-hour format (HH:MM:SS):'}, ...
-           'Set datetime for time = 0s', [], {'YYYY-MM-DD', 'HH:MM:SS'});
+           'Set datetime for time = 0s', [], {str_datetime(t0, [], 'yyyy-MM-dd'), str_datetime(t0, [], 'HH:mm:ss')});
     if isempty(res)
         return        
     end

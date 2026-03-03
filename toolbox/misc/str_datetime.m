@@ -1,4 +1,4 @@
-function strDatetime = str_datetime(s, datetimeFormat)
+function strDatetime = str_datetime(s, datetimeFormat, outFormat)
 % STR_DATETIME: Reformat a datetime object or string to 'yyyy-MM-ddTHH:mm:ss.SSS'
 %               using datetime()
 
@@ -26,8 +26,11 @@ function strDatetime = str_datetime(s, datetimeFormat)
 if (nargin < 2) || isempty(datetimeFormat)
     datetimeFormat = [];
 end
-% Output format, used with datetime()
-outFormat = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
+if (nargin < 3) || isempty(outFormat)
+    % Output format, used with datetime()
+    outFormat = 'yyyy-MM-dd''T''HH:mm:ss.SSS';
+end
+
 % Clean string
 if ischar(s)
     s = strtrim(strrep(s, char(0), ''));
