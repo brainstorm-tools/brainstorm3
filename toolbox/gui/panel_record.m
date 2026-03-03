@@ -169,6 +169,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Detect multiple responses', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_multiresp'));
         gui_component('MenuItem', jMenu, [], 'Group by name', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_groupname'));
         gui_component('MenuItem', jMenu, [], 'Group by time', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_grouptime'));
+        gui_component('MenuItem', jMenu, [], 'Merge overlapping extended events', IconLoader.ICON_FUSION, [], @(h,ev)CallProcessOnRaw('process_evt_mergeext'));
         gui_component('MenuItem', jMenu, [], 'Add time offset', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallProcessOnRaw('process_evt_timeoffset'));
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Show HED tags', IconLoader.ICON_MATRIX, [], @(h,ev)ShowHedTags);
