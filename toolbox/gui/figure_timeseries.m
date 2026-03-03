@@ -2468,7 +2468,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
-    isT0 = ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
+    isT0 = ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
