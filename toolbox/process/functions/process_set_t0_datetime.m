@@ -122,9 +122,9 @@ function Compute(DataFile, NewStartTs, isUpdateStudyDate)
     isRaw = (length(DataFile) > 9) && ~isempty(strfind(DataFile, 'data_0raw'));
     % Get only necessary fields
     if isRaw
-        DataMat = in_bst_data(DataFile, {'F', 'Time'});
+        DataMat = in_bst_data(DataFile, 'F');
     else
-        DataMat = in_bst_data(DataFile, {'T0', 'Time'});        
+        DataMat = in_bst_data(DataFile, 'T0');
     end
     % Update only necessary fields
     if isRaw
@@ -134,24 +134,23 @@ function Compute(DataFile, NewStartTs, isUpdateStudyDate)
     end
     % Save
     bst_save(file_fullpath(DataFile), DataMat, [], 1);
-    % Update Study acquisition time
+    % Update Study acquisition date
     if isUpdateStudyDate
         [~, iStudy] = bst_get('DataFile', DataFile);
         panel_record('SetAcquisitionDate', iStudy, str_datetime(NewStartTs));
     end
 end
 
-function t0 = getTo(DataFile)
-% Return t0 from a data file
-    
+
+%% ===== GET SET t0 FROM DATA FILE =====
+function t0 = getT0(DataFile)
     % Check for raw data
     isRaw = (length(DataFile) > 9) && ~isempty(strfind(DataFile, 'data_0raw'));
-
     if isRaw
-        DataMat = in_bst_data(DataFile, {'F', 'Time'});
+        DataMat = in_bst_data(DataFile, 'F');
         t0 = DataMat.F.t0;
     else
-        DataMat = in_bst_data(DataFile, {'T0', 'Time'});
+        DataMat = in_bst_data(DataFile, 'T0');
         t0 = DataMat.T0;
     end
 end
@@ -160,15 +159,17 @@ end
 %% ===== INTERACTIVE CALL =====
 function ComputeInteractive(DataFile)
 
-    % Update loaded data and figures time axis
-    t0 = getTo(DataFile);
-    if isempty(t0)
+    % Get t0 from data file
+    t0str = getT0(DataFile);
+    if isempty(t0str)
         t0 = datetime('today');
+    else
+        t0 = datetime(t0str, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
     end
 
     % Ask for new acquisition date and time for data file
     res = java_dialog('input', {'Date (YYYY-MM-DD):', 'Time, 24-hour format (HH:MM:SS):'}, ...
-           'Set datetime for time = 0s', [], {str_datetime(t0, [], 'yyyy-MM-dd'), str_datetime(t0, [], 'HH:mm:ss')});
+           'Set datetime for time = 0s', [], {char(t0, 'yyyy-MM-dd'), char(t0, 'HH:mm:ss')});
     if isempty(res)
         return        
     end
