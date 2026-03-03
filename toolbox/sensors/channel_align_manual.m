@@ -200,36 +200,15 @@ if ~isHp
     end
 end
 
-% ===== DISPLAY MEG FIDUCIAS =====
 
-% NOTE TO SELF: Verify transformation on coils, then still need to update when any change.
-%
-% How to implement?  Seems for this figure everything is expected to be in the channel file, but the
-% MEG coils are not.  Could add them as "fake" head points with new labels, e.g. MEG-N/L/R similarly
-% to HPI-N/L/R.  But misleading since all other such points are digitized and these are not.
-%
-% [sStudy, iData, ChannelFile] = bst_memory('GetFileInfo', DataFile); % basically just bst_get,
-% nothing happens in memory
-% iDS = bst_memory('LoadDataFile', DataFile); % This would load as a new iDS because it looks for it
-% based on DataFile, and it's empty when only the channel file was loaded before here.
-% bst_memory('LoadChannelFile', iDS, ChannelFile); % done somewhere before here.
-% iDS = GetDataSetChannel(ChannelFile)
-% GlobalData.DataSet(iDS).Datafile empty? but when it's loaded, we get:
-% GlobalData.DataSet.Measures.sFile.header.hc.SCS
-% GlobalData.DataSet(iDS).ChannelFile
-%
-% Otherwise, need to get data file from channel file, as the initial coils are only in the header.
-% For CTF: DataMat.F.header.hc.SCS, but not aligned, "measured relative to dewar" (not to head), so
-% we need to apply all channel file MEG transformations, including "Dewar=>Native".
+% ===== DISPLAY MEG FIDUCIALS =====
 
-
-% To validate the digitized MEG fiducials (head coils), compare them to their relative positions as
-% measured by the MEG.  Or if they were not digitized or the digitization is inaccurate, the MEG
-% fiducials positions can be used to align instead. 
+% This is useful to validate the digitized MEG fiducials (head coils) by comparing them to their
+% relative positions as measured by the MEG.  Or if they were not digitized or the digitization is
+% inaccurate, the MEG fiducials positions can be used to align instead.
 
 % Load data if CTF MEG raw, to get initial head coil positions. Only channel file is loaded in
-% memory above with view_helmet or view_channels. We'd like to only load the data if it's CTF MEG,
-% but we need to load it to check.
+% memory above with view_helmet or view_channels. We need to load the data to check if it's CTF MEG.
 isCtfMegRaw = false;
 if isMeg
     % Look for the first raw data file for this channel file.
@@ -273,72 +252,11 @@ if isCtfMegRaw
         end
         HeadCoils.Loc = T * [HeadCoils.Loc; 1, 1, 1];
 
-        % figure_3d('ViewHeadCoils', HeadCoils)
-        isVisible = true;
-
-        hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
-
-        % Look for previous head coils.
-        mrkTag = 'HeadCoilsMarkers';
-        lblTag = 'HeadCoilsLabels';
-        hHeadCoilsMarkers = findobj(hAxes, 'Tag', mrkTag);
-        hHeadCoilsLabels  = findobj(hAxes, 'Tag', lblTag);
-        % If head coils graphic objects already exist: set the "Visible" property
-        if ~isempty(hHeadCoilsMarkers)
-            if isVisible
-                set([hHeadCoilsMarkers(:)' hHeadCoilsLabels(:)'], 'Visible', 'on');
-            else
-                set([hHeadCoilsMarkers(:)' hHeadCoilsLabels(:)'], 'Visible', 'off');
-            end
-            if strcmpi(get(hHeadCoilsMarkers, 'MarkerFaceColor'), 'flat')
-                % Conventional fixed color
-                set(hHeadCoilsMarkers, 'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
-                if strcmpi(ColormapInfo.Type, ColormapType)
-                    bst_colormaps('SetColorbarVisible', hFig, 0);
-                end
-            end
-        % If head coils objects were not created yet: create them
-        elseif isVisible
-            % Get MEG coil locations
-            digLoc = double(HeadCoils.Loc)';
-            % Prepare display names
-            % Plot fiducials
-            markerFaceColor = [.6 .1 .6]; % Darker purple? (or maybe make it orange same as digitized HPI?)
-            markerEdgeColor = [.9 .2 .9]; % Light purple? (vs orange for dig. HPI)
-            % Display markers
-            line(digLoc(:,1), digLoc(:,2), digLoc(:,3), ...
-                'Parent',          hAxes, ...
-                'LineWidth',       2, ...
-                'LineStyle',       'none', ...
-                'MarkerFaceColor', markerFaceColor, ...
-                'MarkerEdgeColor', markerEdgeColor, ...
-                'MarkerSize',      7, ...
-                'Marker',          'o', ...
-                'UserData',        [], ...
-                'Tag',             mrkTag);
-            % Group by similar names
-            [uniqueNames, iUnique] = unique(HeadCoils.Label);
-            % Display labels
-            txtLoc = digLoc(iUnique,:);
-            txtLocSph = [];
-            % Bring the labels further away from the head to make them readable
-            [txtLocSph(:,1), txtLocSph(:,2), txtLocSph(:,3)] = cart2sph(txtLoc(:,1), txtLoc(:,2), txtLoc(:,3));
-            [txtLoc(:,1), txtLoc(:,2), txtLoc(:,3)] = sph2cart(txtLocSph(:,1), txtLocSph(:,2), txtLocSph(:,3) + 0.03);
-            % Display text
-            text(txtLoc(:,1), txtLoc(:,2), txtLoc(:,3), ...
-                uniqueNames', ...
-                'Parent',              hAxes, ...
-                'HorizontalAlignment', 'center', ...
-                'Fontsize',            bst_get('FigFont') + 2, ...
-                'FontUnits',           'points', ...
-                'FontWeight',          'normal', ...
-                'Color',               markerEdgeColor + 0.1, ...
-                'Interpreter',         'none', ...
-                'Tag',                 lblTag);
-        end
-        % end figure_3d('ViewHeadCoils', HeadCoils)
+        figure_3d('ViewHeadCoils', hFig, true, HeadCoils) % isVisible
 
         % Find figure handles for MEG-measured head coils.
+        mrkTag = 'HeadCoilsMarkers';
+        lblTag = 'HeadCoilsLabels';
         hHeadCoilsMarkers = findobj(hFig, 'Tag', mrkTag);
         hHeadCoilsLabels  = findobj(hFig, 'Tag', lblTag);
         isHeadCoils = ~isempty(hHeadCoilsMarkers);
@@ -346,19 +264,17 @@ if isCtfMegRaw
         HeadCoilsLabelsLoc  = [];
         if isHeadCoils
             % Get markers positions
-            % HeadCoilsMarkersLoc = get(hHeadCoilsMarkers, 'Vertices');
             HeadCoilsMarkersLoc = [get(hHeadCoilsMarkers, 'XData')', ...
                 get(hHeadCoilsMarkers, 'YData')', ...
                 get(hHeadCoilsMarkers, 'ZData')'];
-
             HeadCoilsLabelsLoc = get(hHeadCoilsLabels,'Position');
-            if ~isempty(HeadCoilsLabelsLoc) && iscell(HeadCoilsLabelsLoc)
+            if ~isempty(HeadCoilsLabelsLoc) && iscell(HeadCoilsLabelsLoc) % expected
+                % Save as matrix instead of cells.
                 HeadCoilsLabelsLoc = cat(1, HeadCoilsLabelsLoc{:});
             end
         end
     end
 end
-
 
 
 % ===== DISPLAY HEAD POINTS =====
@@ -897,7 +813,6 @@ function UpdatePoints(iSelChan)
             'XData', gChanAlign.HeadCoilsMarkersLoc(:,1), ...
             'YData', gChanAlign.HeadCoilsMarkersLoc(:,2), ...
             'ZData', gChanAlign.HeadCoilsMarkersLoc(:,3));
-        % set(gChanAlign.hHeadCoilsMarkers, 'Vertices', gChanAlign.HeadCoilsMarkersLoc);
         % Labels
         for i = 1:size(gChanAlign.hHeadCoilsLabels, 1)
             set(gChanAlign.hHeadCoilsLabels(i), 'Position', ...

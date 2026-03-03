@@ -3893,6 +3893,73 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
 end
 
 
+%% ===== VIEW HEAD COILS - CTF MEG =====
+% CTF head coils initial positions are not saved in Bst memory, must be loaded from datafile 
+% (stored in F.header) and passed as input to this function.
+function ViewHeadCoils(hFig, isVisible, HeadCoils)
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+
+    % Look for previous head coils.
+    mrkTag = 'HeadCoilsMarkers';
+    lblTag = 'HeadCoilsLabels';
+    hHeadCoilsMarkers = findobj(hAxes, 'Tag', mrkTag);
+    hHeadCoilsLabels  = findobj(hAxes, 'Tag', lblTag);
+    % If head coils graphic objects already exist: set the "Visible" property
+    if ~isempty(hHeadCoilsMarkers)
+        if isVisible
+            set([hHeadCoilsMarkers(:)' hHeadCoilsLabels(:)'], 'Visible', 'on');
+        else
+            set([hHeadCoilsMarkers(:)' hHeadCoilsLabels(:)'], 'Visible', 'off');
+        end
+        if strcmpi(get(hHeadCoilsMarkers, 'MarkerFaceColor'), 'flat')
+            % Conventional fixed color
+            set(hHeadCoilsMarkers, 'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
+            if strcmpi(ColormapInfo.Type, ColormapType)
+                bst_colormaps('SetColorbarVisible', hFig, 0);
+            end
+        end
+        % If head coils objects were not created yet: create them
+    elseif isVisible
+        % Get MEG coil locations
+        digLoc = double(HeadCoils.Loc)';
+        % Prepare display names
+        % Plot fiducials
+        markerFaceColor = [.6 .1 .6]; % Darker purple
+        markerEdgeColor = [.9 .2 .9]; % Light purple (vs orange for dig. HPI)
+        % Display markers
+        line(digLoc(:,1), digLoc(:,2), digLoc(:,3), ...
+            'Parent',          hAxes, ...
+            'LineWidth',       2, ...
+            'LineStyle',       'none', ...
+            'MarkerFaceColor', markerFaceColor, ...
+            'MarkerEdgeColor', markerEdgeColor, ...
+            'MarkerSize',      7, ...
+            'Marker',          'o', ...
+            'UserData',        [], ...
+            'Tag',             mrkTag);
+        % Group by similar names
+        [uniqueNames, iUnique] = unique(HeadCoils.Label);
+        % Display labels
+        txtLoc = digLoc(iUnique,:);
+        txtLocSph = [];
+        % Bring the labels further away from the head to make them readable
+        [txtLocSph(:,1), txtLocSph(:,2), txtLocSph(:,3)] = cart2sph(txtLoc(:,1), txtLoc(:,2), txtLoc(:,3));
+        [txtLoc(:,1), txtLoc(:,2), txtLoc(:,3)] = sph2cart(txtLocSph(:,1), txtLocSph(:,2), txtLocSph(:,3) + 0.03);
+        % Display text
+        text(txtLoc(:,1), txtLoc(:,2), txtLoc(:,3), ...
+            uniqueNames', ...
+            'Parent',              hAxes, ...
+            'HorizontalAlignment', 'center', ...
+            'Fontsize',            bst_get('FigFont') + 2, ...
+            'FontUnits',           'points', ...
+            'FontWeight',          'normal', ...
+            'Color',               markerEdgeColor + 0.1, ...
+            'Interpreter',         'none', ...
+            'Tag',                 lblTag);
+    end
+end 
+
+
 %% ===== VIEW HEAD POINTS =====
 function ViewHeadPoints(hFig, isVisible, isColorDist)
     global GlobalData;
