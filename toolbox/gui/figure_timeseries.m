@@ -4324,7 +4324,10 @@ function UpdateXAxisTimeLabels(hFig, action)
     end
 
     % Update TimestampZero in Figure TsInfo data
-    if strcmpi(action, 'toggle')
+    if strcmpi(action, 'update') && ~isempty(TsInfo.TimestampZero) && ~strcmpi(TsInfo.TimestampZero, GlobalData.DataSet(iDS).Measures.sFile.t0)
+        TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        setappdata(hFig, 'TsInfo', TsInfo);
+    elseif strcmpi(action, 'toggle')
         if isempty(TsInfo.TimestampZero)
             TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
         else
