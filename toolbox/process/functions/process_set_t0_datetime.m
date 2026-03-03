@@ -162,7 +162,7 @@ function ComputeInteractive(DataFile)
     % Get t0 from data file
     t0str = getT0(DataFile);
     if isempty(t0str)
-        t0 = datetime('today');
+        t0 = datetime('now');
     else
         t0 = datetime(t0str, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
     end
