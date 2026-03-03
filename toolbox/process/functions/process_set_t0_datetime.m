@@ -89,7 +89,12 @@ function Output = Run(sProcess, sInput)
         errMsg = [errMsg ': ' strjoin(emptyfields, ' and ') ' cannot be empty.'];
     else
         try
-            ts = datetime([file_date ' ' file_time], 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+            nValues = length(sscanf(file_time, '%d:%d:%d'));
+            if nValues == 2
+                ts = datetime([file_date ' ' file_time], 'InputFormat', 'yyyy-MM-dd HH:mm');
+            elseif nValues == 3
+                ts = datetime([file_date ' ' file_time], 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+            end
         catch ME
             errMsg = ME.message;                
         end
@@ -168,7 +173,12 @@ function ComputeInteractive(DataFile)
         return        
     end
     try
-        ts = datetime([res{1} ' ' res{2}], 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+        nValues = length(sscanf(res{2}, '%d:%d:%d'));
+        if nValues == 2
+            ts = datetime([res{1} ' ' res{2}], 'InputFormat', 'yyyy-MM-dd HH:mm');
+        elseif nValues == 3
+            ts = datetime([res{1} ' ' res{2}], 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+        end
     catch ME
         bst_error(ME.message, 'Set t0 datetime', 0);
         return
