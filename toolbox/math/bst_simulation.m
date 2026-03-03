@@ -63,7 +63,7 @@ ResultsMat = in_bst_results(ResultsFile, 0,  'HeadModelFile', 'Function', 'DataF
 if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Atlas)
     bst_error('Cannot process sources that have been downsampled based on an atlas.', 'bst_simulation', 0);
     return;
-elseif ~ismember(ResultsMat.Function, {'wmne', 'mn'})
+elseif ~ismember(lower(ResultsMat.Function), {'wmne', 'mn', 'cmem', 'wmem'})
     bst_error('The simulation of recordings is only available for current density maps (minimum norm without normalization).', 'bst_simulation', 0);
     return;
 end
