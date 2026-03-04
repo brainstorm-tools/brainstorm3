@@ -63,7 +63,7 @@ ResultsMat = in_bst_results(ResultsFile, 0,  'HeadModelFile', 'Function', 'DataF
 if ~isempty(GlobalData.DataSet(iDS).Results(iResult).Atlas)
     bst_error('Cannot process sources that have been downsampled based on an atlas.', 'bst_simulation', 0);
     return;
-elseif ~ismember(ResultsMat.Function, {'wmne', 'mn'})
+elseif ~ismember(lower(ResultsMat.Function), {'wmne', 'mn', 'cmem', 'wmem'})
     bst_error('The simulation of recordings is only available for current density maps (minimum norm without normalization).', 'bst_simulation', 0);
     return;
 end
@@ -86,7 +86,11 @@ if (nComponents == 0)
     % Count the number of head model dipoles needed for each
     nLocResults = length([GridAtlas.Scouts.GridRows]);
 else
-    nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,1));
+    if iscell(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp)
+        nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp{1},1));
+    else
+        nSrc = max(size(GlobalData.DataSet(iDS).Results(iResult).ImagingKernel,1), size(GlobalData.DataSet(iDS).Results(iResult).ImageGridAmp,1));
+    end
     nLocResults = round(nSrc ./ nComponents);
 end
 % If some vertices are specified: Convert their indices
