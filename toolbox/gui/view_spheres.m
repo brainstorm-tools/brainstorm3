@@ -191,6 +191,9 @@ DrawSphere();
             newLegend = [newLegend, '       [Press arrows for next/previous sphere...]'];
         end
         set(hLabel, 'String', newLegend);
+        % Resize to show all text
+        ext = get(hLabel, 'Extent');
+        set(hLabel, 'Position', ext);
     end
 
 
