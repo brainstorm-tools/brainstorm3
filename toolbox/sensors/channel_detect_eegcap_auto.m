@@ -247,15 +247,29 @@ end
 function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
     capLandmarkLabels = {};
     capValidEegChan   = [];
-    if ~file_exist(ChannelFile)
-        return
-    end
-    % Load channel file (EEG cap)
-    ChannelMat = in_bst_channel(ChannelFile);
-    % Get valid sensors: EEG or EEG REF and with Loc info
-    iValidType = channel_find(ChannelMat.Channel, {'EEG', 'EEG REF'});
+    global Digitize;    
+    if  (nargin < 1) || isempty(ChannelFile)
+        % Get the 'ASA_10-05_343' Generic ICBM152 template EEG cap 
+        eegDefaults = bst_get('EegDefaults');
+        iCapFamily = find(strcmpi({eegDefaults.name}, 'ICBM152'), 1);
+        iCap = find(~cellfun('isempty', strfind({eegDefaults(iCapFamily).contents.fullpath}, 'channel_ASA_10-05_343')), 1);
+        % Load the cap template
+        ChannelMat = in_bst_channel(eegDefaults(iCapFamily).contents(iCap).fullpath);
+        % Get valid sensors: That match the montage labels
+        montageLabels = Digitize.Options.Montages(Digitize.Options.iMontage).Labels;
+        iValidChan = channel_find(ChannelMat.Channel, montageLabels);
+        % IF NOT ALL montage labels are found in 'ASA_10-05_343' template just return (indicates no Auto localization support)
+        if ~isempty(montageLabels) && ~all(ismember(montageLabels, {ChannelMat.Channel(iValidChan).Name}))
+            return
+        end
+    else
+        % Load channel file (EEG cap)
+        ChannelMat = in_bst_channel(ChannelFile);
+        % Get valid sensors: EEG or EEG REF and with Loc info
+        iValidChan = channel_find(ChannelMat.Channel, {'EEG', 'EEG REF'});
+    end    
     iHasLoc = find(~cellfun(@isempty, {ChannelMat.Channel(:).Loc}));
-    iValid  = intersect(iValidType, iHasLoc);
+    iValid  = intersect(iValidChan, iHasLoc);
     % Not valid if Loc has NaN or is [0 0 0]
     iNotValid = find(any(isnan([ChannelMat.Channel(iValid).Loc])) | all([ChannelMat.Channel(iValid).Loc] == 0));
     iValid(iNotValid) = [];
