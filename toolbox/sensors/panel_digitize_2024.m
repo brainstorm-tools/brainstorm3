@@ -1068,14 +1068,7 @@ function PlotCoordinate(isAdd)
             iP = 1;
         else
             if Digitize.isEditPts
-                % 'iP' points to the 'GlobalData's Channel' which just contains 
-                % EEG data and not the fiducials so an offset is required
-                % from 'Digitize.iPoint' to exclude the fiducials
-                if isAdd
-                    iP = Digitize.iPoint - 3;
-                else
-                    iP = Digitize.iPoint - 2;
-                end
+                iP = find(strcmpi({GlobalData.DataSet(Digitize.iDS).Channel.Name}, Digitize.Points(Digitize.iPoint).Label), 1);
             else
                 iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
             end
@@ -1085,13 +1078,13 @@ function PlotCoordinate(isAdd)
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Name = Digitize.Points(Digitize.iPoint).Label;
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Type = Digitize.Points(Digitize.iPoint).Type; % 'EEG'
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc  = Digitize.Points(Digitize.iPoint).Loc';
-        else % Remove last point or a selected point
-            iP = iP - 1;
+        else % Remove last point or a selected point            
             if iP > 0
                 if Digitize.isEditPts % remove selected point
                     % Keep point in list, but remove location 
                     GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
                 else  % Remove last point
+                    iP = iP - 1;
                     GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
                 end
             end
