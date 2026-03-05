@@ -271,7 +271,7 @@ function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
         montageLabels = Digitize.Options.Montages(Digitize.Options.iMontage).Labels;
         iValidChan = channel_find(ChannelMat.Channel, montageLabels);
         % IF NOT ALL montage labels are found in 'ASA_10-05_343' template just return (indicates no Auto localization support)
-        if ~isempty(montageLabels) && ~all(ismember(montageLabels, {ChannelMat.Channel(iValidChan).Name}))
+        if isempty(montageLabels) || isempty(iValidChan) || length(iValidChan) ~= length(montageLabels)
             return
         end
     else
