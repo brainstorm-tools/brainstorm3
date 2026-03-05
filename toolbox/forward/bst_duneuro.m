@@ -48,6 +48,27 @@ isMeg  = strcmpi(cfg.MEGMethod, 'duneuro')  && ~isempty(cfg.iMeg);
 isEcog = strcmpi(cfg.ECOGMethod, 'duneuro') && ~isempty(cfg.iEcog);
 isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro') && ~isempty(cfg.iSeeg);
 
+% Find if EEG Ref exists and find its  position
+iRef = channel_find(cfg.Channel, {'EEG REF'});
+switch length(iRef)
+    case 0 % no reference = > output will be averaged to Avgref        
+        refLoc = [];
+    case 1 % one reference        
+        refLoc = [cfg.Channel(iRef).Loc]';
+    case 2 % two references => ex: linked mastoids       
+        refLoc = [cfg.Channel(iRef).Loc]';
+        % limitation of Duneuro 2019, can not handel multiple ref elec;
+        % Assign by default the first channel, 
+        % will be improved in the DN2026
+        refLoc = refLoc(1,:);
+    otherwise
+        refLoc = [];
+end
+% remove nan value if exist
+refLoc(any(isnan(refLoc), 2), :) = [];
+% if final ref = []; the average ref will be applied by default
+  
+
 % Get the modality
 if ((isEeg || isEcog || isSeeg) && isMeg)
     dnModality = 'meeg';  
@@ -65,6 +86,13 @@ end
 if (isEeg || isEcog || isSeeg)
     cfg.iEeg = [cfg.iEeg, cfg.iSeeg, cfg.iEcog];
     EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
+    
+    % Add the reference channel
+    % Duneuro 2019 assume the first electrode as the reference, so here we
+    % append it in the first row
+    if ~isempty(refLoc)
+        EegLoc = [refLoc' EegLoc];
+    end
 end
 
 % Get MEG positions/orientations
@@ -544,8 +572,23 @@ disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
 % EEG
-if (isEeg || isEcog || isSeeg) 
+if (isEeg || isEcog || isSeeg)
     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
+    % postprocess the gain according to the ref channel
+    if ~isempty(refLoc)
+        switch length(iRef)
+            case 1
+                % Remove the added channel, DN assume this is the ref
+                GainEeg(1,:) = [];
+            otherwise
+                % Apply the average reference (this is not correct as chann1 is assumed to be the ref)
+                % THis will be improved in DN2026 version
+                GainEeg = GainEeg - mean(GainEeg);
+        end
+    else
+        % Apply the average reference
+        GainEeg = GainEeg - mean(GainEeg);
+    end
 end
 
 %MEG
