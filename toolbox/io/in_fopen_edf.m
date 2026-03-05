@@ -207,6 +207,7 @@ sFile.header = hdr;
 sFile.channelflag = ones(hdr.nsignal,1);
 % Acquisition date from 'local recording identification'
 tmp = regexp(hdr.rec_id, 'Startdate ([\w|-]*)', 'tokens');
+rec_id_date = '';
 if ~isempty(tmp) && length(tmp) == 1
     rec_id_date = str_date(tmp{1}{1});
 end
