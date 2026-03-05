@@ -1074,11 +1074,6 @@ function EEGAutoDetectElectrodes(h, ev)
 
     % Get current montage
     curMontage = GetCurrentMontage();
-    if isempty(curMontage.ChannelFile)
-        bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
-        bst_progress('stop');
-        return;
-    end
 
     % Warp points from layout to mesh
     capPoints3d = channel_detect_eegcap_auto('WarpLayout2Digitized', curMontage.ChannelFile, Digitize.Points, sSurf, capImg2d, capCenters2d, capRadii2d);    
@@ -1726,18 +1721,9 @@ function AddMontage(ChannelFile)
         
         % Intialize new montage
         newMontage.Name = ChannelMat.Comment;
-        newMontage.Labels = {};
+        newMontage.Labels = {ChannelMat.Channel.Name};
         newMontage.ChannelFile = ChannelFile;
-        
-        % Get cap landmark labels
-        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', newMontage.ChannelFile);
-        
-        % Sort as per the initialization landmark labels of EEG Cap  
-        nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},eegCapLandmarkLabels));
-        allLabels = {ChannelMat.Channel.Name};
-        newMontage.Labels = cat(2, eegCapLandmarkLabels, allLabels(nonLandmarkLabelsIdx));
-    end
-    
+    end    
     
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
@@ -1755,6 +1741,16 @@ function AddMontage(ChannelFile)
     DigitizeOptions.iMontage = iMontage;
     % Save options
     bst_set('DigitizeOptions', DigitizeOptions);
+    % Sort labels: Cap landmarks first
+    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', newMontage.ChannelFile);
+    if ~isempty(eegCapLandmarkLabels) && ~isempty(newMontage.Labels)
+        % Sort as per the initialization landmark labels of EEG Cap
+        nonLandmarkLabelsIdx = find(~ismember(newMontage.Labels, eegCapLandmarkLabels));
+        newMontage.Labels = [eegCapLandmarkLabels, newMontage.Labels(nonLandmarkLabelsIdx)];
+        % Save options again (after sorting the labels)
+        DigitizeOptions.Montages(iMontage) = newMontage;
+        bst_set('DigitizeOptions', DigitizeOptions);
+    end    
     % Reload Menu
     CreateMontageMenu();
     if nargin<1
