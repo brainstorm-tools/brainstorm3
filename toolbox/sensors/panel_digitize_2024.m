@@ -1354,7 +1354,7 @@ function AddMontage(ChannelFile)
     Digitize.Options.Montages(iMontage) = newMontage;
     Digitize.Options.iMontage = iMontage;
     % Save options
-    bst_set('DigitizeOptions', Digitize.Options);    
+    bst_set('DigitizeOptions', Digitize.Options);
     % Sort labels: Cap landmarks first
     eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', newMontage.ChannelFile);
     if ~isempty(eegCapLandmarkLabels) && ~isempty(newMontage.Labels)
