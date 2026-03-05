@@ -175,9 +175,9 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         % Plot electrode locations (blue crosses) for initial rigid transformation
         scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b', 'LineWidth', 2);
         % Plot the potential electrodes locations (red circles) from detected circles from the 2D flattened mesh
-        [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
-        viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r', 'LineWidth', 1);
-        scatter(ax, capCenters2d(iLayoutPts,2), capCenters2d(iLayoutPts,1), '.r', 'LineWidth', 1);
+        [~, iCentersPts] = NearestPointSearch(capLayoutPts2d, capCenters2d, capRadii2d);
+        viscircles(ax, fliplr(capCenters2d(iCentersPts,:)), capRadii2d(iCentersPts,:), 'Color','r', 'LineWidth', 1);
+        scatter(ax, capCenters2d(iCentersPts,2), capCenters2d(iCentersPts,1), '.r', 'LineWidth', 1);
         % Legend
         legend('Initial estimation of locations', 'Detected locations from EEG cap');
         % Show figure
@@ -205,10 +205,10 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
                     bst_progress('set', 50 + progressPrc);
                 end
                 % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
-                [vecLayoutPts, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
+                [iLayoutPts, iCentersPts] = NearestPointSearch(capLayoutPts2d, capCenters2d, capRadii2d);
 
                 % Perform warping and interpolation to fit the points
-                warp = tpsGetWarp(lambda, capLayoutPts2d(vecLayoutPts,1)', capLayoutPts2d(vecLayoutPts,2)', capCenters2d(iLayoutPts,1)', capCenters2d(iLayoutPts,2)' );
+                warp = tpsGetWarp(lambda, capLayoutPts2d(iLayoutPts,1)', capLayoutPts2d(iLayoutPts,2)', capCenters2d(iCentersPts,1)', capCenters2d(iCentersPts,2)' );
                 [xsR,ysR] = tpsInterpolate(warp, capLayoutPts2d(:,1)', capLayoutPts2d(:,2)', 0);
 
                 % Perform gradual warping for half the iterations and fast warping for the rest of the iterations
@@ -336,25 +336,22 @@ function isWhiteCap = IsWhiteCap(CapColors, BrightnessThresh)
 end
 
 %% ===== NEAREST POINT SEARCH BETWEEN THE LAYOUT AND DETECTED CIRCLE CENTERS FROM THE 2D FLATTENED MESH =====
-function [vecLayoutPts, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d)
-    k = dsearchn(capLayoutPts2d, capCenters2d);
-    [vecLayoutPts, iLayoutPts] = unique(k);
-    
-    % distance between the layout and detected circle centers from the 2D flattened mesh
-    vecLayout2Mesh = capCenters2d(iLayoutPts,:)-capLayoutPts2d(vecLayoutPts,:);
-    dist = sqrt(vecLayout2Mesh(:,1).^2+vecLayout2Mesh(:,2).^2);
-    
-    % Identify outliers with 3*scaled_MAD from median and remove them
-    % Use 'rmoutliers' for Matlab >= R2018b
-    if bst_get('MatlabVersion') >= 905
-        [~, isoutlier] = rmoutliers(dist);
-    % Implementation
-    else
-        mad = median(abs(dist-median(dist)));
-        c = -1/(sqrt(2) * erfcinv(3/2)) * 2;
-        scaled_mad = c * mad;
-        isoutlier  = find(abs(dist-median(dist)) > 3*scaled_mad);
+function [iLayoutPts, iCentersPts] = NearestPointSearch(capLayoutPts2d, capCenters2d, capRadii2d)
+    % Find closest electrode for each circle
+    [k, dist] = dsearchn(capLayoutPts2d, capCenters2d);
+    % Find closest circle for each electrode with an associated circle
+    iLayoutPts = unique(k);
+    iCentersPts = 0 * iLayoutPts;
+    isoutlier = [];
+    for iVec = 1 : length(iLayoutPts)
+        iCircles = find(k == iLayoutPts(iVec));
+        [minDist, iMin] = min(dist(iCircles));
+        iCentersPts(iVec) = iCircles(iMin);
+        % If electrode-circle distance is larger than 3*radius
+        if minDist > 3*capRadii2d(iCircles(iMin))
+            isoutlier = [isoutlier, iVec];
+        end
     end
     iLayoutPts(isoutlier) = [];
-    vecLayoutPts(isoutlier) = [];
+    iCentersPts(isoutlier) = [];
 end
