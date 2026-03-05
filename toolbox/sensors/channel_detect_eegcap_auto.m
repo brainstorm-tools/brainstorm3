@@ -259,8 +259,14 @@ end
 function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
     capLandmarkLabels = {};
     capValidEegChan   = [];
-    global Digitize;    
     if  (nargin < 1) || isempty(ChannelFile)
+        % Format input data, depending on the caller
+        DigitizeOptions = bst_get('DigitizeOptions');
+        if isfield(DigitizeOptions, 'Version') && strcmpi(DigitizeOptions.Version, '2024')
+            panel_fun = @panel_digitize_2024;
+        else
+            panel_fun = @panel_digitize;
+        end
         % Get the 'ASA_10-05_343' Generic ICBM152 template EEG cap 
         eegDefaults = bst_get('EegDefaults');
         iCapFamily = find(strcmpi({eegDefaults.name}, 'ICBM152'), 1);
@@ -268,7 +274,8 @@ function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
         % Load the cap template
         ChannelMat = in_bst_channel(eegDefaults(iCapFamily).contents(iCap).fullpath);
         % Get valid sensors: That match the montage labels
-        montageLabels = Digitize.Options.Montages(Digitize.Options.iMontage).Labels;
+        curMontage = panel_fun('GetCurrentMontage');
+        montageLabels = curMontage.Labels;
         iValidChan = channel_find(ChannelMat.Channel, montageLabels);
         % IF NOT ALL montage labels are found in 'ASA_10-05_343' template just return (indicates no Auto localization support)
         if isempty(montageLabels) || isempty(iValidChan) || length(iValidChan) ~= length(montageLabels)
