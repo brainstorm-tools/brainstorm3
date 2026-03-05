@@ -1526,6 +1526,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
             CoordinatesSelector = getappdata(Digitize.hFig, 'CoordinatesSelector');
             isSelectingCoordinates = getappdata(Digitize.hFig, 'isSelectingCoordinates');
             if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+                Digitize.iPoint = Digitize.iPoint - 1;
                 return;
             else
                 if isSelectingCoordinates
