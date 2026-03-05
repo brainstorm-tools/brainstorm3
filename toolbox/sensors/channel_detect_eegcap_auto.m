@@ -158,25 +158,37 @@ function capPoints = WarpLayout2Digitized(capChannelFile, eegPoints, sSurf, capI
         % too close to the border; it moves it inside. It leaves a margin of 'ignorePix' pixels around the border
         capLayoutPts2d = max(min(capLayoutPts2d,capImgDim-ignorePix),ignorePix);
 
-        % Show image
-        hImFig = figure();
-        ax = gca();
+        % Image: stereographic projection of EEG cap and results from automatic electrode locations
+        hFig = figure('Visible',       'off', ...
+                      'NumberTitle',   'off', ...
+                      'IntegerHandle', 'off', ...
+                      'MenuBar',       'figure', ...
+                      'Toolbar',       'figure', ...
+                      'DockControls',  'on', ...
+                      'Name',          'EEG cap: stereographic projection');
+        % NAS: Top, LPA: Left, RPA: Right
         imshow(capImg2d');
-        hold on
-        % Nearest point search between the layout and detected circle centers from the 2D flattened mesh
-        [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
-        % Show red circles on the potential electrodes locations only
-        viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r');
-        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b', 'LineWidth', 2)
-        axis(ax, 'xy')
+        ax = gca();
+        axis(ax, 'xy');
         set(ax, 'XDir', 'reverse')
+        hold on
+        % Plot electrode locations (blue crosses) for initial rigid transformation
+        scatter(ax, capLayoutPts2d(:,2), capLayoutPts2d(:,1), '+b', 'LineWidth', 2);
+        % Plot the potential electrodes locations (red circles) from detected circles from the 2D flattened mesh
+        [~, iLayoutPts] = NearestPointSearch(capLayoutPts2d, capCenters2d);
+        viscircles(ax, fliplr(capCenters2d(iLayoutPts,:)), capRadii2d(iLayoutPts,:), 'Color','r', 'LineWidth', 1);
+        scatter(ax, capCenters2d(iLayoutPts,2), capCenters2d(iLayoutPts,1), '.r', 'LineWidth', 1);
+        % Legend
+        legend('Initial estimation of locations', 'Detected locations from EEG cap');
+        % Show figure
+        set(hFig, 'Visible', 'on');
 
         % Ask if continue with refinement
-        isRefinement = java_dialog('confirm', ['Do you want to refine the electrode positions (blue cross)' 10 ...
+        isRefinement = java_dialog('confirm', ['Do you want to refine the initial electrode positions (blue crosses)' 10 ...
                                                'using the detected positions (red circles) in the EEG cap?'], ...
                                                'Auto detect EEG electrodes');
         % Close regardless the answer
-        close(hImFig);
+        close(hFig);
         if isRefinement
             % Hyperparameters for warping and interpolation
             % NOTE: these values can vary for new caps
