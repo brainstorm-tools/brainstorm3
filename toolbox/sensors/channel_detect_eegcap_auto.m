@@ -281,6 +281,13 @@ function [capLandmarkLabels, capValidEegChan] = GetEegCapInfo(ChannelFile)
         if isempty(montageLabels) || isempty(iValidChan) || length(iValidChan) ~= length(montageLabels)
             return
         end
+        % Update labels in cap template to match capitalization in names from montage
+        for ix = 1: length(iValidChan)
+            im = find(strcmpi(ChannelMat.Channel(iValidChan(ix)).Name, montageLabels));
+            if ~strcmp(ChannelMat.Channel(iValidChan(ix)).Name, montageLabels{im})
+                ChannelMat.Channel(iValidChan(ix)).Name = montageLabels{im};
+            end
+        end
     else
         % Load channel file (EEG cap)
         ChannelMat = in_bst_channel(ChannelFile);
