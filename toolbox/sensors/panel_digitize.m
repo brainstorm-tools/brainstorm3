@@ -1723,7 +1723,7 @@ function AddMontage(ChannelFile)
         newMontage.Name = ChannelMat.Comment;
         newMontage.Labels = {ChannelMat.Channel.Name};
         newMontage.ChannelFile = ChannelFile;
-    end    
+    end
     
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
