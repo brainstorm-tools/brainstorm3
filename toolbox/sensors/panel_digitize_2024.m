@@ -795,36 +795,22 @@ function EEGAutoDetectElectrodes()
     % Progress bar
     bst_progress('start', Digitize.Type, 'Automatic labelling of EEG sensors...');
 
-    % Get current montage
-    curMontage = GetCurrentMontage();
-    isWhiteCap = 0;
-    % For white caps change the color space by inverting the colors
-    % NOTE: only 'Acticap' is the tested white cap (needs work on finding a better aprrooach)
-    if ~isempty(regexp(curMontage.Name, 'ActiCap', 'match'))
-        isWhiteCap = 1;
-    end
-
     % Get the cap surface from 3D scanner
     hFig = bst_figures('GetCurrentFigure','3D');
     TessInfo = getappdata(hFig, 'Surface');
     sSurf = bst_memory('LoadSurface', TessInfo.SurfaceFile);
-    
-    % Automatically find electrodes locations on EEG cap
-    [capCenters2d, capImg2d, surface3dscannerUv] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf, isWhiteCap);
-    if isempty(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile)
-        bst_error('EEG cap layout not selected. Go to EEG', Digitize.Type, 1);
-        bst_progress('stop');
-        return;
-    else
-        ChannelMat = in_bst_channel(Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
-    end
+    % Add UV info to surface and automatically find electrodes locations on EEG cap
+    [sSurf, capImg2d, capCenters2d, capRadii2d] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf);
+
+    % Get current montage
+    curMontage = GetCurrentMontage();
 
     % Get acquired EEG points
     iEeg = and(cellfun(@(x) ~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}), ~cellfun(@isempty, {Digitize.Points.Loc}));
     pointsEEG = Digitize.Points(iEeg);
     
     % Warp points from layout to mesh
-    capPoints3d = channel_detect_eegcap_auto('WarpLayout2Mesh', capCenters2d, capImg2d, surface3dscannerUv, ChannelMat.Channel, pointsEEG);
+    capPoints3d = channel_detect_eegcap_auto('WarpLayout2Digitized', curMontage.ChannelFile, pointsEEG, sSurf, capImg2d, capCenters2d, capRadii2d);
 
     % Plot the electrodes and their labels
     for iPoint= 1:length(capPoints3d)        
@@ -1082,14 +1068,7 @@ function PlotCoordinate(isAdd)
             iP = 1;
         else
             if Digitize.isEditPts
-                % 'iP' points to the 'GlobalData's Channel' which just contains 
-                % EEG data and not the fiducials so an offset is required
-                % from 'Digitize.iPoint' to exclude the fiducials
-                if isAdd
-                    iP = Digitize.iPoint - 3;
-                else
-                    iP = Digitize.iPoint - 2;
-                end
+                iP = find(strcmpi({GlobalData.DataSet(Digitize.iDS).Channel.Name}, Digitize.Points(Digitize.iPoint).Label), 1);
             else
                 iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
             end
@@ -1099,13 +1078,13 @@ function PlotCoordinate(isAdd)
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Name = Digitize.Points(Digitize.iPoint).Label;
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Type = Digitize.Points(Digitize.iPoint).Type; % 'EEG'
             GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc  = Digitize.Points(Digitize.iPoint).Loc';
-        else % Remove last point or a selected point
-            iP = iP - 1;
+        else % Remove last point or a selected point            
             if iP > 0
                 if Digitize.isEditPts % remove selected point
                     % Keep point in list, but remove location 
                     GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
                 else  % Remove last point
+                    iP = iP - 1;
                     GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
                 end
             end
@@ -1240,7 +1219,7 @@ function CreateMontageMenu(jMenu)
             % Creating montages from EEG cap layout mat files (only for 3DScanner)
             jMenuEegCaps = gui_component('Menu', jMenuAddMontage, [], 'From default EEG cap', IconLoader.ICON_CHANNEL, [], [], []);
             % Use default channel file
-            menu_default_eegcaps(jMenuEegCaps);
+            menu_default_eegcaps(jMenuEegCaps, [], [], 'ICBM152', 0);
     else % If not 3DScanner
         gui_component('MenuItem', jMenu, [], 'Add EEG montage...', [], [], @(h,ev)bst_call(@AddMontage), []);
     end
@@ -1290,7 +1269,7 @@ end
 function autoButtonTooltip = GenerateTooltipTextAuto()
     global Digitize
     % Get cap landmark labels for selected montage
-    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
     autoButtonTooltip = 'Auto localization of EEG sensor is not suported for this cap.';
     if ~isempty(eegCapLandmarkLabels)
         strSensors = sprintf('%s, ',eegCapLandmarkLabels{:});
@@ -1358,16 +1337,8 @@ function AddMontage(ChannelFile)
         
         % Intialize new montage
         newMontage.Name = ChannelMat.Comment;
-        newMontage.Labels = {};
+        newMontage.Labels = {ChannelMat.Channel.Name};
         newMontage.ChannelFile = ChannelFile;
-        
-        % Get cap landmark labels
-        eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', newMontage.Name);
-
-        % Sort as per the initialization landmark labels of EEG Cap  
-        nonLandmarkLabelsIdx = find(~ismember({ChannelMat.Channel.Name},eegCapLandmarkLabels));
-        allLabels = {ChannelMat.Channel.Name};
-        newMontage.Labels = cat(2, eegCapLandmarkLabels, allLabels(nonLandmarkLabelsIdx));
     end
     
     % Get existing montage with the same name
@@ -1384,6 +1355,16 @@ function AddMontage(ChannelFile)
     Digitize.Options.iMontage = iMontage;
     % Save options
     bst_set('DigitizeOptions', Digitize.Options);
+    % Sort labels: Cap landmarks first
+    eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', newMontage.ChannelFile);
+    if ~isempty(eegCapLandmarkLabels) && ~isempty(newMontage.Labels)
+        % Sort as per the initialization landmark labels of EEG Cap
+        nonLandmarkLabelsIdx = find(~ismember(newMontage.Labels, eegCapLandmarkLabels));
+        newMontage.Labels = [eegCapLandmarkLabels, newMontage.Labels(nonLandmarkLabelsIdx)];
+        % Save options again (after sorting the labels)
+        Digitize.Options.Montages(iMontage) = newMontage;
+        bst_set('DigitizeOptions', Digitize.Options);
+    end    
     % Reload Menu
     CreateMontageMenu();
     % Restart acquisition
@@ -1545,6 +1526,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
             CoordinatesSelector = getappdata(Digitize.hFig, 'CoordinatesSelector');
             isSelectingCoordinates = getappdata(Digitize.hFig, 'isSelectingCoordinates');
             if isempty(CoordinatesSelector) || isempty(CoordinatesSelector.MRI)
+                Digitize.iPoint = Digitize.iPoint - 1;
                 return;
             else
                 if isSelectingCoordinates
@@ -1694,7 +1676,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     if strcmpi(Digitize.Type, '3DScanner')
         % Enable 'Auto' button IFF all landmark fiducials have been acquired
         if ~strcmpi(Digitize.Points(Digitize.iPoint).Type, 'EXTRA')
-            eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapLandmarkLabels', Digitize.Options.Montages(Digitize.Options.iMontage).Name);
+            eegCapLandmarkLabels = channel_detect_eegcap_auto('GetEegCapInfo', Digitize.Options.Montages(Digitize.Options.iMontage).ChannelFile);
             if ~isempty(eegCapLandmarkLabels)
                 acqPoints = Digitize.Points(~cellfun(@isempty, {Digitize.Points.Loc}));
                 if all(ismember([eegCapLandmarkLabels], {acqPoints.Label}))

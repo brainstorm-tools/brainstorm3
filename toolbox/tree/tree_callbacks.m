@@ -1236,7 +1236,8 @@ switch (lower(action))
                 end
 
                 % === DIGITIZE (3D SCANNER) OPTION ===
-                if strcmpi(nodeType, 'other') && ~isempty(regexp(filenameRelative, 'tess_textured', 'match'))
+                isDigitize3dScanner = isempty(regexp(filenameRelative, '(aseg|svreg|isosurface)', 'once'));
+                if strcmpi(nodeType, 'other') && isDigitize3dScanner
                     gui_component('MenuItem', jPopup, [], 'Digitize (3D scanner)', IconLoader.ICON_SNAPSHOT, [], @(h,ev)bst_call(@panel_digitize, 'Start', '3DScanner', sSubject, iSubject, filenameRelative));
                     % Separator
                     AddSeparator(jPopup);
