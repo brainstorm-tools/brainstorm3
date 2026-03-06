@@ -1724,7 +1724,7 @@ function AddMontage(ChannelFile)
         newMontage.Labels = {ChannelMat.Channel.Name};
         newMontage.ChannelFile = ChannelFile;
     end
-    
+
     % Get Digitize options
     DigitizeOptions = bst_get('DigitizeOptions');
     % Get existing montage with the same name
