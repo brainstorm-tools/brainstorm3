@@ -119,15 +119,14 @@ if isempty(ix)
         ix = 0;
     end
 
+    % Close all progress bar that are not a parent of the caller
     for iBar = (ix+1):length(progress_list)
         java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
     end
     GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
 
-    % Default window size
+    % Create a new progress bar for the caller
     DefaultSize = java_scaled('dimension', 350, 130);
-
-    % Create progress bar
     pBar = createProgressBar(DefaultSize, caller_name, ix);
 
     % Save progress bar
