@@ -94,6 +94,7 @@ for i=1:size(Filters, 1)
 end
 
 % If a progress bar is displayed : hide it while displaying the file selector
+% To check
 pBar = GlobalData.Program.ProgressBar;
 if ~isempty(pBar) && isfield(pBar, 'jWindow') && java_call(pBar.jWindow, 'isVisible')
     pBarHidden = 1;
