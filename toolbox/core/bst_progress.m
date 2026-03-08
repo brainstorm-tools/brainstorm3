@@ -218,9 +218,11 @@ switch (lower(commandName))
         
     % ==== STOP ====
     case 'stop'
-        % Remove the "always on top" status
+        % Close the window
         java_call(pBar.jWindow, 'dispose');
-        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);        
+        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
+        % Restore cursor
+        jBstFrame.setCursor([]);
     % ==== INCREMENT ====
     case 'inc'
         % Parse arguments
