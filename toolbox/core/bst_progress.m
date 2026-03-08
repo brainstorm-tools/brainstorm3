@@ -111,6 +111,19 @@ end
 ix = find(strcmp(progress_list, caller_name), 1);
 
 if isempty(ix)
+
+    % We find the first progress bar, that is a parent of the caller
+    ix = find(cellfun(@(x) any(strcmp({stacks.name},x)), progress_list));
+
+    if isempty(ix)
+        ix = 0;
+    end
+
+    for iBar = (ix+1):length(progress_list)
+        java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
+    end
+    GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
+
     % Default window size
     DefaultSize = java_scaled('dimension', 350, 130);
 
