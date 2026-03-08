@@ -102,7 +102,7 @@ end
 
 % % Get the name of the function that is calling bst_progress
 stacks        = dbstack(1);
-caller_name   = stacks(1).name;
+caller_name   = sprintf('%s/%s', stacks(1).file, stacks(1).name);
 if ~isempty(GlobalData.Program.ProgressBar)
     progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
 else
@@ -113,7 +113,11 @@ ix = find(strcmp(progress_list, caller_name), 1);
 if isempty(ix)
 
     % We find the first progress bar, that is a parent of the caller
-    ix = find(cellfun(@(x) any(strcmp({stacks.name},x)), progress_list));
+    for i = 1:length(stacks)
+        stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
+    end
+
+    ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list));
 
     if isempty(ix)
         ix = 0;
