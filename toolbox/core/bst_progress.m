@@ -437,68 +437,6 @@ end
 %         SimKey.keyRelease(java.awt.event.KeyEvent.VK_C);
 %         jBstFrame.setVisible(1);
 %     end
-
-end
-
-
-function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
-    % JAVA imports
-    import org.brainstorm.icon.*;
-    import java.awt.Dimension;
-
-    % Get Brainstorm GUI context
-    jBstFrame = bst_get('BstFrame');
-
-    % Create a JDialog, if possible dependent of the main Brainstorm JFrame
-    pBar.jWindow = java_create('javax.swing.JDialog');
-    % Set icon
-    try
-        pBar.jWindow.setIconImage(IconLoader.ICON_APP.getImage());
-    catch
-        % Old matlab... just ignore...
-    end
-    % Set as always-on-top / non-focusable
-    pBar.jWindow.setAlwaysOnTop(1);
-    pBar.jWindow.setFocusable(0);
-    pBar.jWindow.setFocusableWindowState(0);
-    % Non-modal
-    pBar.jWindow.setModal(0);
-    
-    % Closing callback
-%     if bst_iscompiled()
-        pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.HIDE_ON_CLOSE);
-%     else
-%         pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.DO_NOTHING_ON_CLOSE);
-%         java_setcb(pBar.jWindow, 'WindowClosingCallback', @(h,ev)CloseCallback);
-%     end
-
-    % Configure window
-    pBar.jWindow.setPreferredSize(DefaultSize);
-    % Main panel
-    pBar.jPanel = java_create('javax.swing.JPanel');
-    pBar.jPanel.setLayout(java_create('java.awt.GridBagLayout'));
-
-    % Create objects
-    pBar.isImage = 0;
-    pBar.jImage = java_create('javax.swing.JLabel');
-    pBar.jLabel = java_create('javax.swing.JLabel', 'Ljava.lang.String;', '...');
-    pBar.jLabel.setFont(bst_get('Font'));
-    pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
-    % Update constraints
-    UpdateConstraints(0);
-    
-    % Add the main Panel
-    pBar.jWindow.getContentPane.add(pBar.jPanel);
-    pBar.jWindow.pack();
-    % Set window size and location
-    %pBar.jWindow.setLocationRelativeTo(pBar.jWindow.getParent());
-    jLoc = jBstFrame.getLocation();
-    jSize = jBstFrame.getSize();
-    pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2) + n_progress * jSize.getWidth() , ...
-           jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
-    pBar.jWindow.setLocation(pos(1), pos(2));
-    pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);
-
     %% ===== ADD COMPONENTS =====
     function UpdateConstraints(isImage)
         import java.awt.GridBagConstraints;
@@ -533,6 +471,70 @@ function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
 %         pBar.jPanel.add(pBar.jButtonCancel, c);
     end
 
+    function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
+        % JAVA imports
+        import org.brainstorm.icon.*;
+        import java.awt.Dimension;
+    
+        % Get Brainstorm GUI context
+        jBstFrame = bst_get('BstFrame');
+    
+        % Create a JDialog, if possible dependent of the main Brainstorm JFrame
+        pBar.jWindow = java_create('javax.swing.JDialog');
+        % Set icon
+        try
+            pBar.jWindow.setIconImage(IconLoader.ICON_APP.getImage());
+        catch
+            % Old matlab... just ignore...
+        end
+        % Set as always-on-top / non-focusable
+        pBar.jWindow.setAlwaysOnTop(1);
+        pBar.jWindow.setFocusable(0);
+        pBar.jWindow.setFocusableWindowState(0);
+        % Non-modal
+        pBar.jWindow.setModal(0);
+        
+        % Closing callback
+    %     if bst_iscompiled()
+            pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.HIDE_ON_CLOSE);
+    %     else
+    %         pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.DO_NOTHING_ON_CLOSE);
+    %         java_setcb(pBar.jWindow, 'WindowClosingCallback', @(h,ev)CloseCallback);
+    %     end
+    
+        % Configure window
+        pBar.jWindow.setPreferredSize(DefaultSize);
+        % Main panel
+        pBar.jPanel = java_create('javax.swing.JPanel');
+        pBar.jPanel.setLayout(java_create('java.awt.GridBagLayout'));
+    
+        % Create objects
+        pBar.isImage = 0;
+        pBar.jImage = java_create('javax.swing.JLabel');
+        pBar.jLabel = java_create('javax.swing.JLabel', 'Ljava.lang.String;', '...');
+        pBar.jLabel.setFont(bst_get('Font'));
+        pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
+        % Update constraints
+        %UpdateConstraints(0);
+        
+        % Add the main Panel
+        pBar.jWindow.getContentPane.add(pBar.jPanel);
+        pBar.jWindow.pack();
+        % Set window size and location
+        %pBar.jWindow.setLocationRelativeTo(pBar.jWindow.getParent());
+        jLoc = jBstFrame.getLocation();
+        jSize = jBstFrame.getSize();
+        pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2) + n_progress * jSize.getWidth() , ...
+               jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
+        pBar.jWindow.setLocation(pos(1), pos(2));
+        pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);
+    
+    
+    end
+
 end
+
+
+
 
 
