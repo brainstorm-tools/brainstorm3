@@ -128,7 +128,7 @@ if isempty(ix)
     DefaultSize = java_scaled('dimension', 350, 130);
 
     % Create progress bar
-    pBar = createProgressBar(DefaultSize, caller_name, length(progress_list));
+    pBar = createProgressBar(DefaultSize, caller_name, ix);
 
     % Save progress bar
     GlobalData.Program.ProgressBar{end+1} = pBar;
