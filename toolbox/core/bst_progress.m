@@ -319,7 +319,7 @@ switch (lower(commandName))
         pBar.jImage.setIcon(javax.swing.ImageIcon(imagefile));
         GlobalData.Program.ProgressBar{ix}.isImage = 1;
         % Extend size of the frame
-        UpdateConstraints(1);
+        UpdateConstraints(pBar, 1);
         pBar.jWindow.setPreferredSize([]);
         pBar.jWindow.pack();
         
@@ -334,7 +334,7 @@ switch (lower(commandName))
         GlobalData.Program.ProgressBar{ix}.isImage = 0;
         pBar.jImage.setIcon([]);
         java_setcb(pBar.jImage, 'MouseClickedCallback', []);
-        UpdateConstraints(0);
+        UpdateConstraints(pBar,0);
         pBar.jWindow.setPreferredSize(DefaultSize);
         pBar.jWindow.pack();
 
@@ -437,39 +437,7 @@ end
 %         SimKey.keyRelease(java.awt.event.KeyEvent.VK_C);
 %         jBstFrame.setVisible(1);
 %     end
-    %% ===== ADD COMPONENTS =====
-    function UpdateConstraints(isImage)
-        import java.awt.GridBagConstraints;
-        import java.awt.Insets;
-        % Remove all components
-        pBar.jPanel.removeAll();
-        % Generic constraints
-        c = GridBagConstraints();
-        c.fill = GridBagConstraints.BOTH;
-        c.gridx = 1;
-        c.weightx = 1;
-        % IMAGE
-        c.gridy = 1;
-        c.weighty = isImage;
-        c.insets = Insets(0,0,0,0);
-        pBar.jPanel.add(pBar.jImage, c);
-        % TEXT
-        c.gridy = 2;
-        c.weighty = ~isImage;
-        c.insets = Insets(5,12,5,12);
-        pBar.jPanel.add(pBar.jLabel, c);
-        % PROGRESS BAR
-        c.gridy = 3;
-        c.weighty = 0;
-        c.insets = Insets(0,12,9,12);
-        pBar.jPanel.add(pBar.jProgressBar, c);
-%         % CANCEL BUTTON
-%         c.gridy = 4;
-%         c.weighty = 0;
-%         c.insets = Insets(0,12,9,12);
-%         c.weightx = 0;
-%         pBar.jPanel.add(pBar.jButtonCancel, c);
-    end
+
 
     function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
         % JAVA imports
@@ -515,7 +483,7 @@ end
         pBar.jLabel.setFont(bst_get('Font'));
         pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
         % Update constraints
-        %UpdateConstraints(0);
+        UpdateConstraints(pBar,0);
         
         % Add the main Panel
         pBar.jWindow.getContentPane.add(pBar.jPanel);
@@ -530,6 +498,40 @@ end
         pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);
     
     
+    end
+
+    %% ===== ADD COMPONENTS =====
+    function UpdateConstraints(pBar, isImage)
+        import java.awt.GridBagConstraints;
+        import java.awt.Insets;
+        % Remove all components
+        pBar.jPanel.removeAll();
+        % Generic constraints
+        c = GridBagConstraints();
+        c.fill = GridBagConstraints.BOTH;
+        c.gridx = 1;
+        c.weightx = 1;
+        % IMAGE
+        c.gridy = 1;
+        c.weighty = isImage;
+        c.insets = Insets(0,0,0,0);
+        pBar.jPanel.add(pBar.jImage, c);
+        % TEXT
+        c.gridy = 2;
+        c.weighty = ~isImage;
+        c.insets = Insets(5,12,5,12);
+        pBar.jPanel.add(pBar.jLabel, c);
+        % PROGRESS BAR
+        c.gridy = 3;
+        c.weighty = 0;
+        c.insets = Insets(0,12,9,12);
+        pBar.jPanel.add(pBar.jProgressBar, c);
+%         % CANCEL BUTTON
+%         c.gridy = 4;
+%         c.weighty = 0;
+%         c.insets = Insets(0,12,9,12);
+%         c.weightx = 0;
+%         pBar.jPanel.add(pBar.jButtonCancel, c);
     end
 
 end
