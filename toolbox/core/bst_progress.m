@@ -117,7 +117,7 @@ if isempty(ix)
         stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
     end
 
-    ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list));
+    ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list),1,'last');
 
     if isempty(ix)
         ix = 0;
