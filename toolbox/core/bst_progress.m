@@ -104,6 +104,10 @@ end
 [caller_name, stacklist]     = getCallerName();
 [pBar, ix]                   = getProgressBar(caller_name, stacklist);
 
+if isempty(pBar)  && ~strcmpi(commandName, 'start')
+    return
+end
+
 %% ===== SWITCH BETWEEN COMMANDS =====
 switch (lower(commandName))
     % ==== START ====
@@ -184,10 +188,6 @@ switch (lower(commandName))
         % Restore cursor
         jBstFrame.setCursor([]);
 
-        % Close the window
-        if isempty(pBar)
-            return
-        end
         java_call(pBar.jWindow, 'dispose');
         GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
     % ==== INCREMENT ====
@@ -249,11 +249,7 @@ switch (lower(commandName))
         
     % ==== IS VISIBLE ====
     case 'isvisible'
-        if isempty(pBar)
-            pBar =  0 ;
-        else
-            pBar = pBar.jWindow.isVisible();
-        end
+        pBar = pBar.jWindow.isVisible();
     % ==== SHOW ====
     case 'show'
         % Set as "always on top"
