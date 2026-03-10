@@ -100,12 +100,20 @@ if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa6
     pause(0.05);
 end
 
-[pBar, ix] = getProgressBar(commandName);
+% Retrieve the progress bar
+[caller_name, stacklist]     = getCallerName();
+[pBar, ix]                   = getProgressBar(caller_name, stacklist);
 
 %% ===== SWITCH BETWEEN COMMANDS =====
 switch (lower(commandName))
     % ==== START ====
     case 'start'
+        
+        % Create a new progress bar
+        ix = ix + 1;
+        pBar = createProgressBar(DefaultSize, caller_name, ix);
+        GlobalData.Program.ProgressBar{ix} = pBar;
+
         % Set as "always on top"
         java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
         java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
@@ -181,7 +189,7 @@ switch (lower(commandName))
             return
         end
         java_call(pBar.jWindow, 'dispose');
-        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix-1);
+        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
     % ==== INCREMENT ====
     case 'inc'
         % Parse arguments
@@ -401,21 +409,8 @@ end
 %         SimKey.keyRelease(java.awt.event.KeyEvent.VK_C);
 %         jBstFrame.setVisible(1);
 %     end
-    
-    function [pBar, ix] = getProgressBar(action)
-        pBar = [];
-
-        if ~strcmpi(action, 'start')
-            % for action such as hide and stop we dont want the last ix.
-            ix = length(GlobalData.Program.ProgressBar);
-
-            if ~isempty(GlobalData.Program.ProgressBar)
-                pBar = GlobalData.Program.ProgressBar{end};
-            end
-            return
-        end
-
-        % % Get the name of the function that is calling bst_progress
+    function [caller_name, stacklist] = getCallerName()
+    % Get the name of the function that is calling bst_progress
         stacks        = dbstack(2);
         if isempty(stacks)
             stacks   = struct('name_file', 'cmd_windows'); 
@@ -426,46 +421,38 @@ end
             end
         end
         caller_name   = stacks(1).name_file;
-        
-        if ~isempty(GlobalData.Program.ProgressBar)
-            progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
-        else
-            progress_list = {};
+        stacklist     = {stacks.name_file};
+    end
+
+    function [pBar, ix] = getProgressBar(caller_name, stacklist)
+        pBar = [];
+        ix = 0;
+
+        if isempty(GlobalData.Program.ProgressBar)
+            return;
         end
+
+        progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
+
         ix = find(strcmp(progress_list, caller_name), 1);
         
         if isempty(ix)
-            ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list),1,'last');
+            ix = find(cellfun(@(x) any(strcmp(stacklist,x)), progress_list),1,'last');
         
             if isempty(ix)
                 ix = 0;
             end
-        
-            % Close all progress bar that are not a parent of the caller
-            for iBar = (ix+1):length(progress_list)
-                java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
-            end
-            GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
-        
-            % Create a new progress bar for the caller
-            DefaultSize = java_scaled('dimension', 350, 130);
-            pBar = createProgressBar(DefaultSize, caller_name, ix);
-        
-            % Save progress bar
-            GlobalData.Program.ProgressBar{end+1} = pBar;
-            ix = length(GlobalData.Program.ProgressBar);
-        else 
-            if ix < length(progress_list)
-                for iBar = (ix+1):length(progress_list)
-                    java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
-                end
-        
-                GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
-            end
-        
-            pBar = GlobalData.Program.ProgressBar{ix};
         end
 
+        % Close all progress bar that are not a parent of the caller
+        for iBar = (ix+1):length(progress_list)
+            java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
+        end
+        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
+        
+        if ~isempty(GlobalData.Program.ProgressBar)
+            pBar = GlobalData.Program.ProgressBar{end};
+        end
     end
 
     function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
