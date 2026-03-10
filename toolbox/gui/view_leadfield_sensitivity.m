@@ -81,6 +81,7 @@ isVolumeGrid = ismember(HeadmodelMat.HeadModelType, {'volume', 'mixed'});
 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
 MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 sMri = in_mri_bst(MriFile);
+bst_progress('stop');
 
 % ===== CREATE FIGURE =====
 is3D = 0;
