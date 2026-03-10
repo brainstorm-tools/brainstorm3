@@ -528,9 +528,8 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
    
     Channel     = repmat( struct('Name','','Group','', 'Type' ,'','Weight',1, 'Loc',[], 'Orient', [],'Comment',[]), 1, nAux);
     good_aux    = false(1,nAux);
-
+    error_list  = {};
     for iAux = 1:nAux
-        
         if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
                 && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
                 && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
@@ -542,11 +541,11 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
             Channel(iAux).Name  = clean_str(aux.name);
             good_aux(iAux)      = true;            
         else 
-            
-            warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
+            error_list{end+1} = jnirs.nirs.aux(iAux).name;
             continue;
         end
     end
+    warning('Unable to load %d  auxilary measure: %s \n', length(error_list), strjoin(error_list, ', '));
 end
 
 function ChannelMat = fixChannelNames(ChannelMat)
