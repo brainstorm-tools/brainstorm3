@@ -100,58 +100,7 @@ if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa6
     pause(0.05);
 end
 
-% % Get the name of the function that is calling bst_progress
-stacks        = dbstack(1);
-if isempty(stacks)
-    stacks   = struct('name_file', 'cmd_windows'); 
-else
-    % We find the first progress bar, that is a parent of the caller
-    for i = 1:length(stacks)
-        stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
-    end
-end
-caller_name   = stacks(1).name_file;
-
-if ~isempty(GlobalData.Program.ProgressBar)
-    progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
-else
-    progress_list = {};
-end
-ix = find(strcmp(progress_list, caller_name), 1);
-
-if isempty(ix)
-    ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list),1,'last');
-
-    if isempty(ix)
-        ix = 0;
-    end
-
-    % Close all progress bar that are not a parent of the caller
-    for iBar = (ix+1):length(progress_list)
-        java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
-    end
-    GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
-
-    % Create a new progress bar for the caller
-    DefaultSize = java_scaled('dimension', 350, 130);
-    pBar = createProgressBar(DefaultSize, caller_name, ix);
-
-    % Save progress bar
-    GlobalData.Program.ProgressBar{end+1} = pBar;
-    ix = length(GlobalData.Program.ProgressBar);
-else 
-    if ix < length(progress_list)
-        for iBar = (ix+1):length(progress_list)
-            java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
-        end
-
-        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
-    end
-
-    pBar = GlobalData.Program.ProgressBar{ix};
-end
-
-
+[pBar, ix] = getProgressBar(commandName);
 
 %% ===== SWITCH BETWEEN COMMANDS =====
 switch (lower(commandName))
@@ -224,11 +173,16 @@ switch (lower(commandName))
         
     % ==== STOP ====
     case 'stop'
-        % Close the window
-        java_call(pBar.jWindow, 'dispose');
-        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
         % Restore cursor
         jBstFrame.setCursor([]);
+
+        % Close the window
+        if isempty(pBar)
+            return
+        end
+
+        java_call(pBar.jWindow, 'dispose');
+        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
     % ==== INCREMENT ====
     case 'inc'
         % Parse arguments
@@ -288,8 +242,11 @@ switch (lower(commandName))
         
     % ==== IS VISIBLE ====
     case 'isvisible'
-        pBar = pBar.jWindow.isVisible();
-        
+        if isempty(pBar)
+            pBar =  0 ;
+        else
+            pBar = pBar.jWindow.isVisible();
+        end
     % ==== SHOW ====
     case 'show'
         % Set as "always on top"
@@ -445,7 +402,71 @@ end
 %         SimKey.keyRelease(java.awt.event.KeyEvent.VK_C);
 %         jBstFrame.setVisible(1);
 %     end
+    
+    function [pBar, ix] = getProgressBar(action)
+        pBar = [];
 
+        if ~strcmpi(action, 'start')
+            ix = length(GlobalData.Program.ProgressBar);
+
+            if ~isempty(GlobalData.Program.ProgressBar)
+                pBar = GlobalData.Program.ProgressBar{end};
+            end
+            return
+        end
+
+        % % Get the name of the function that is calling bst_progress
+        stacks        = dbstack(2);
+        if isempty(stacks)
+            stacks   = struct('name_file', 'cmd_windows'); 
+        else
+            % We find the first progress bar, that is a parent of the caller
+            for i = 1:length(stacks)
+                stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
+            end
+        end
+        caller_name   = stacks(1).name_file;
+        
+        if ~isempty(GlobalData.Program.ProgressBar)
+            progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
+        else
+            progress_list = {};
+        end
+        ix = find(strcmp(progress_list, caller_name), 1);
+        
+        if isempty(ix)
+            ix = find(cellfun(@(x) any(strcmp({stacks.name_file},x)), progress_list),1,'last');
+        
+            if isempty(ix)
+                ix = 0;
+            end
+        
+            % Close all progress bar that are not a parent of the caller
+            for iBar = (ix+1):length(progress_list)
+                java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
+            end
+            GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
+        
+            % Create a new progress bar for the caller
+            DefaultSize = java_scaled('dimension', 350, 130);
+            pBar = createProgressBar(DefaultSize, caller_name, ix);
+        
+            % Save progress bar
+            GlobalData.Program.ProgressBar{end+1} = pBar;
+            ix = length(GlobalData.Program.ProgressBar);
+        else 
+            if ix < length(progress_list)
+                for iBar = (ix+1):length(progress_list)
+                    java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
+                end
+        
+                GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix);
+            end
+        
+            pBar = GlobalData.Program.ProgressBar{ix};
+        end
+
+    end
 
     function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
         % JAVA imports
