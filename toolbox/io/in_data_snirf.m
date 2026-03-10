@@ -545,7 +545,9 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
             continue;
         end
     end
-    warning('Unable to load %d  auxilary measure: %s \n', length(error_list), strjoin(error_list, ', '));
+    if ~isempty(error_list)
+        warning('Unable to load %d  auxilary measure: %s \n', length(error_list), strjoin(error_list, ', '));
+    end
 end
 
 function ChannelMat = fixChannelNames(ChannelMat)
