@@ -180,9 +180,8 @@ switch (lower(commandName))
         if isempty(pBar)
             return
         end
-
         java_call(pBar.jWindow, 'dispose');
-        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
+        GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:ix-1);
     % ==== INCREMENT ====
     case 'inc'
         % Parse arguments
@@ -407,6 +406,7 @@ end
         pBar = [];
 
         if ~strcmpi(action, 'start')
+            % for action such as hide and stop we dont want the last ix.
             ix = length(GlobalData.Program.ProgressBar);
 
             if ~isempty(GlobalData.Program.ProgressBar)
