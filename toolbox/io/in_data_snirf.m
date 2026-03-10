@@ -140,6 +140,9 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.sourceLabels(end+1, :) = ' ';
         jnirs.nirs.probe.sourceLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.sourceLabels), ' ');
         jnirs.nirs.probe.sourceLabels = jnirs.nirs.probe.sourceLabels(jnirs.nirs.probe.sourceLabels ~= "");
+    elseif isfield(jnirs.nirs.metaDataTags , 'KernelPortalVersion') && isfield(jnirs.nirs.probe, 'sourceLabels') && all(contains(jnirs.nirs.probe.sourceLabels,"M"))
+        % Remove the name because we can't parse it (eg "M037S02")
+        jnirs.nirs.probe.sourceLabels = {};
     end
     if iscell(jnirs.nirs.probe.detectorLabels)
         jnirs.nirs.probe.detectorLabels = convertCharsToStrings(jnirs.nirs.probe.detectorLabels);
@@ -147,8 +150,10 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels(end+1, :) = ' ';
         jnirs.nirs.probe.detectorLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.detectorLabels), ' ');
         jnirs.nirs.probe.detectorLabels = jnirs.nirs.probe.detectorLabels( jnirs.nirs.probe.detectorLabels ~= "");
+    elseif isfield(jnirs.nirs.metaDataTags , 'KernelPortalVersion') && isfield(jnirs.nirs.probe, 'detectorLabels') && all(contains(jnirs.nirs.probe.detectorLabels,"M"))
+        % Remove the name because we can't parse it (eg "M037S02")
+        jnirs.nirs.probe.detectorLabels = {};
     end
-
     % Events. Convert cell array to struct array
     if iscell(jnirs.nirs.stim)
        jnirs.nirs.stim =  cell2mat(jnirs.nirs.stim);
@@ -420,7 +425,7 @@ function factor = findFactorFromUnit(dataUnit,channel_type)
                 factor = 1;
            case {'mmol.l-1', 'mmol/l', 'mmole/l'}
                 factor = 1e-3;
-           case {'\mumol.l-1', '\mumol/l', '\mumole/l'}
+           case {'um', '\mumol.l-1', '\mumol/l', '\mumole/l'}
                 factor = 1e-6;
            otherwise
                 warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
