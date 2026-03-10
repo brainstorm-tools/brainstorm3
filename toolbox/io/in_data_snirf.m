@@ -241,6 +241,7 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
     factor       = ones(1, nChannels);
 
     % NIRS channels
+    warm_moment = false;
     for iChan = 1:nChannels
         % This assume measure are raw; need to change for Hbo,HbR,HbT
         channel = jnirs.nirs.data.measurementList(iChan);
@@ -250,7 +251,17 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
             measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
             measure_label = sprintf('WL%d', measure);
             channel_type{iChan} = 'raw'; 
-
+        elseif channel.dataType == 301  
+            
+            if channel.dataTypeIndex == 2
+                measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                measure_label = sprintf('WL%d', measure);
+                channel_type{iChan} = 'raw'; 
+            else
+                good_channel(iChan) = false;
+                warm_moment = true;
+                continue;
+            end
         elseif channel.dataType > 1 &&  channel.dataType < 99999
             warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
             good_channel(iChan) = false;
@@ -313,6 +324,10 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
             factor(iChan) = findFactorFromUnit(channel.dataUnit,channel_type{iChan});
         end
        
+    end
+
+    if warm_moment
+        warning('NIRSTORM does not support moments for time-domain NIRS yet.')
     end
 
 end
