@@ -105,6 +105,8 @@ end
 [pBar, ix]                   = getProgressBar(caller_name, stacklist);
 
 if isempty(pBar)  && ~strcmpi(commandName, 'start')
+    % Restore cursor
+    jBstFrame.setCursor([]);
     return
 end
 
