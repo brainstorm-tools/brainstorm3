@@ -107,6 +107,11 @@ end
 if isempty(pBar)  && ~strcmpi(commandName, 'start')
     % Restore cursor
     jBstFrame.setCursor([]);
+    
+    if strcmpi(commandName, 'isvisible')
+        pBar = 0;
+    end
+
     return
 end
 
