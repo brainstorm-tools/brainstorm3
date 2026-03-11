@@ -67,6 +67,8 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Pr
         pBar = [];
     end
     return;
+elseif isempty(GlobalData)
+    GlobalData = db_template('globaldata');
 end
 % If running in NOGUI mode: just display the message in the command window
 if ~bst_get('isGUI')
@@ -95,13 +97,14 @@ end
 
 % Get Brainstorm GUI context
 jBstFrame   = bst_get('BstFrame');
+if isempty(jBstFrame)
+    jBstFrame = struct('setCursor', @(x)nan );
+end
 DefaultSize = java_scaled('dimension', 350, 130);
 
-if isempty(jBstFrame) || (isempty(pBar)  && ~strcmpi(commandName, 'start'))
-    if ~isempty(jBstFrame)
-        % Restore cursor
-        jBstFrame.setCursor([]);
-    end
+if isempty(pBar)  && ~strcmpi(commandName, 'start')
+    % Restore cursor
+    jBstFrame.setCursor([]);
 
     if ismember(lower(commandName), {'pos','isvisible'})
         pBar = 0;
@@ -113,7 +116,6 @@ end
 switch (lower(commandName))
     % ==== START ====
     case 'start'
-        
         % Create a new progress bar
         ix = ix + 1;
         pBar = createProgressBar(DefaultSize, caller_name, ix);
@@ -456,9 +458,6 @@ end
         import org.brainstorm.icon.*;
         import java.awt.Dimension;
     
-        % Get Brainstorm GUI context
-        jBstFrame = bst_get('BstFrame');
-    
         % Create a JDialog, if possible dependent of the main Brainstorm JFrame
         pBar.jWindow = java_create('javax.swing.JDialog');
         % Set icon
@@ -502,14 +501,17 @@ end
         pBar.jWindow.pack();
         % Set window size and location
         %pBar.jWindow.setLocationRelativeTo(pBar.jWindow.getParent());
-        jLoc = jBstFrame.getLocation();
-        jSize = jBstFrame.getSize();
-        pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2) + n_progress * jSize.getWidth() , ...
-               jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
+
+        if isstruct(jBstFrame)
+            pos = [0, 0];
+        else
+            jLoc = jBstFrame.getLocation();
+            jSize = jBstFrame.getSize();
+            pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2) + n_progress * jSize.getWidth() , ...
+                   jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
+        end
         pBar.jWindow.setLocation(pos(1), pos(2));
-        pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);
-    
-    
+        pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);   
     end
 
     %% ===== ADD COMPONENTS =====
