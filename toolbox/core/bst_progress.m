@@ -432,7 +432,7 @@ end
         end
 
         progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
-        ix            = find(strcmp(progress_list, caller_name), 1);
+        ix            = find(strcmp(progress_list, caller_name), 1, 'last');
         
         if isempty(ix)
             ix = find(cellfun(@(x) any(strcmp(stacklist,x)), progress_list),1,'last');
@@ -507,9 +507,10 @@ end
         else
             jLoc = jBstFrame.getLocation();
             jSize = jBstFrame.getSize();
-            pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2) + n_progress * jSize.getWidth() , ...
+            pos = [jLoc.getX() + ((jSize.getWidth() - DefaultSize.getWidth()) / 2)  , ...
                    jLoc.getY() + ((jSize.getHeight() - DefaultSize.getHeight()) / 2)];
         end
+        pos(1) = pos(1) + n_progress * (10+DefaultSize.getWidth());
         pBar.jWindow.setLocation(pos(1), pos(2));
         pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);   
     end
