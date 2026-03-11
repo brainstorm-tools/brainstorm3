@@ -43,6 +43,7 @@ function pBar = bst_progress(varargin)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2013
+%          Edouard Delaire, 2026
 
 % JAVA imports
 import org.brainstorm.icon.*;
@@ -58,8 +59,6 @@ else
     error('Usage : bst_progress(commandName, parameters)');
 end
 
-
-%% ===== GET OR CREATE PROGRESS BAR =====
 % Do nothing in case of server mode
 if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'GuiLevel') && (GlobalData.Program.GuiLevel == -1)
     if ismember(lower(commandName), {'pos','isvisible'})
@@ -80,16 +79,6 @@ if ~bst_get('isGUI')
     return;
 end
 
-pBar = [];
-% Get Brainstorm GUI context
-jBstFrame = bst_get('BstFrame');
-if isempty(jBstFrame)
-    return
-end
-
-% Default window size
-DefaultSize = java_scaled('dimension', 350, 130);
-
 % Linux: need to print something on the command window (don't know why...)
 if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa64'})
     drawnow();
@@ -104,14 +93,19 @@ end
 [caller_name, stacklist]     = getCallerName();
 [pBar, ix]                   = getProgressBar(caller_name, stacklist);
 
-if isempty(pBar)  && ~strcmpi(commandName, 'start')
-    % Restore cursor
-    jBstFrame.setCursor([]);
-    
-    if strcmpi(commandName, 'isvisible')
-        pBar = 0;
+% Get Brainstorm GUI context
+jBstFrame   = bst_get('BstFrame');
+DefaultSize = java_scaled('dimension', 350, 130);
+
+if isempty(jBstFrame) || (isempty(pBar)  && ~strcmpi(commandName, 'start'))
+    if ~isempty(jBstFrame)
+        % Restore cursor
+        jBstFrame.setCursor([]);
     end
 
+    if ismember(lower(commandName), {'pos','isvisible'})
+        pBar = 0;
+    end
     return
 end
 
@@ -431,13 +425,12 @@ end
         pBar = [];
         ix = 0;
 
-        if isempty(GlobalData.Program.ProgressBar)
+        if isempty(GlobalData) || isempty(GlobalData.Program.ProgressBar)
             return;
         end
 
         progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
-
-        ix = find(strcmp(progress_list, caller_name), 1);
+        ix            = find(strcmp(progress_list, caller_name), 1);
         
         if isempty(ix)
             ix = find(cellfun(@(x) any(strcmp(stacklist,x)), progress_list),1,'last');
