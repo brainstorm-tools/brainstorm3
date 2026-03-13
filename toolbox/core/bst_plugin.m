@@ -1462,6 +1462,20 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                     PlugDesc(iPlug).(loadFields{iField}) = PlugMat.(loadFields{iField});
                 end
             end
+            % Check again if plugin is loaded using its Path
+            if ~PlugDesc(iPlug).isLoaded && ~isempty(PlugDesc(iPlug).Path)
+                PlugPath = PlugDesc(iPlug).Path;
+                if ~isempty(PlugDesc(iPlug).SubFolder)
+                    PlugPath = bst_fullfile(PlugPath, PlugDesc.SubFolder);
+                end
+                % Handle case symbolic link
+                try
+                    PlugPath = builtin('_canonicalizepath', PlugPath);
+                catch
+                    % Nothing here
+                end
+                PlugDesc(iPlug).isLoaded  = ismember(PlugPath, matlabPath);
+            end
         else
             PlugDesc(iPlug).URLzip = []; 
         end
@@ -2482,7 +2496,8 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     
     % === TEST FUNCTION ===
     % Check if test function is available on path
-    if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
+    TestFilePath = GetTestFilePath(PlugDesc);
+    if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(TestFilePath, 'file') == 0)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully loaded from:' 10 PlugHomeDir 10 10 ...
             'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 10 ...
             'Try the following:' 10 ...
@@ -2588,7 +2603,8 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     
     % === TEST FUNCTION ===
     % Check if test function is still available on path
-    if ~isempty(PlugDesc.TestFile) && ~isempty(which(PlugDesc.TestFile))
+    TestFilePath =  GetTestFilePath(PlugDesc);
+    if ~isempty(PlugDesc.TestFile) && ~isempty(TestFilePath)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully unloaded from: ' 10 PlugPath 10 10 ...
             'However, another version is still accessible on the Matlab path:' 10 which(PlugDesc.TestFile) 10 10 ...
             'Please remove this folder from the Matlab path.'];
