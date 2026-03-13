@@ -140,6 +140,9 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.sourceLabels(end+1, :) = ' ';
         jnirs.nirs.probe.sourceLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.sourceLabels), ' ');
         jnirs.nirs.probe.sourceLabels = jnirs.nirs.probe.sourceLabels(jnirs.nirs.probe.sourceLabels ~= "");
+    elseif isfield(jnirs.nirs.metaDataTags , 'KernelPortalVersion') && isfield(jnirs.nirs.probe, 'sourceLabels') && all(contains(jnirs.nirs.probe.sourceLabels,"M"))
+        % Remove the name because we can't parse it (eg "M037S02")
+        jnirs.nirs.probe.sourceLabels = {};
     end
     if iscell(jnirs.nirs.probe.detectorLabels)
         jnirs.nirs.probe.detectorLabels = convertCharsToStrings(jnirs.nirs.probe.detectorLabels);
@@ -147,8 +150,10 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels(end+1, :) = ' ';
         jnirs.nirs.probe.detectorLabels = strsplit(convertCharsToStrings(jnirs.nirs.probe.detectorLabels), ' ');
         jnirs.nirs.probe.detectorLabels = jnirs.nirs.probe.detectorLabels( jnirs.nirs.probe.detectorLabels ~= "");
+    elseif isfield(jnirs.nirs.metaDataTags , 'KernelPortalVersion') && isfield(jnirs.nirs.probe, 'detectorLabels') && all(contains(jnirs.nirs.probe.detectorLabels,"M"))
+        % Remove the name because we can't parse it (eg "M037S02")
+        jnirs.nirs.probe.detectorLabels = {};
     end
-
     % Events. Convert cell array to struct array
     if iscell(jnirs.nirs.stim)
        jnirs.nirs.stim =  cell2mat(jnirs.nirs.stim);
@@ -236,6 +241,7 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
     factor       = ones(1, nChannels);
 
     % NIRS channels
+    warm_moment = false;
     for iChan = 1:nChannels
         % This assume measure are raw; need to change for Hbo,HbR,HbT
         channel = jnirs.nirs.data.measurementList(iChan);
@@ -245,7 +251,17 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
             measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
             measure_label = sprintf('WL%d', measure);
             channel_type{iChan} = 'raw'; 
-
+        elseif channel.dataType == 301  
+            
+            if channel.dataTypeIndex == 2
+                measure = round(jnirs.nirs.probe.wavelengths(channel.wavelengthIndex));
+                measure_label = sprintf('WL%d', measure);
+                channel_type{iChan} = 'raw'; 
+            else
+                good_channel(iChan) = false;
+                warm_moment = true;
+                continue;
+            end
         elseif channel.dataType > 1 &&  channel.dataType < 99999
             warning('Unsuported channel %d (channel type %d)', iChan,channel.dataType)
             good_channel(iChan) = false;
@@ -308,6 +324,10 @@ function [ChannelMat, good_channel, channel_type, factor] = channelMat_from_meas
             factor(iChan) = findFactorFromUnit(channel.dataUnit,channel_type{iChan});
         end
        
+    end
+
+    if warm_moment
+        warning('NIRSTORM does not support moments for time-domain NIRS yet.')
     end
 
 end
@@ -420,7 +440,7 @@ function factor = findFactorFromUnit(dataUnit,channel_type)
                 factor = 1;
            case {'mmol.l-1', 'mmol/l', 'mmole/l'}
                 factor = 1e-3;
-           case {'\mumol.l-1', '\mumol/l', '\mumole/l'}
+           case {'um', '\mumol.l-1', '\mumol/l', '\mumole/l'}
                 factor = 1e-6;
            otherwise
                 warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
@@ -523,9 +543,8 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
    
     Channel     = repmat( struct('Name','','Group','', 'Type' ,'','Weight',1, 'Loc',[], 'Orient', [],'Comment',[]), 1, nAux);
     good_aux    = false(1,nAux);
-
+    error_list  = {};
     for iAux = 1:nAux
-        
         if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
                 && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
                 && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
@@ -537,10 +556,12 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
             Channel(iAux).Name  = clean_str(aux.name);
             good_aux(iAux)      = true;            
         else 
-            
-            warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
+            error_list{end+1} = jnirs.nirs.aux(iAux).name;
             continue;
         end
+    end
+    if ~isempty(error_list)
+        warning('Unable to load %d  auxilary measure: %s \n', length(error_list), strjoin(error_list, ', '));
     end
 end
 
