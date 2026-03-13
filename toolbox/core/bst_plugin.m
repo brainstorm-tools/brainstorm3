@@ -971,11 +971,14 @@ function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
     end
     % Override category
     PlugDesc.Category = 'User defined';
+    % Keep only valid fields
+    fieldsToDel = setdiff(fieldnames(PlugDesc), fieldnames(db_template('plugdesc')));
+    PlugDesc = rmfield(PlugDesc, fieldsToDel);
 
     % Write validated JSON file
     pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
     fid = fopen(pluginJsonFileOut, 'wt');
-    jsonText = bst_jsonencode(PlugDesc, 0);
+    jsonText = bst_jsonencode(PlugDesc, 1);
     fprintf(fid, jsonText);
     fclose(fid);
 
