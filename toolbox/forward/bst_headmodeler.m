@@ -504,12 +504,17 @@ end
 
 
 %% ===== COMPUTE: DUNEURO =====
-if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) ...
+        || ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
     bst_progress('setimage', 'plugins/duneuro_logo.png');
     % Run duneuro FEM computation
-    [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
+    if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+        [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
+    elseif ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+        [Gain_dn, errMessage] = bst_duneuro2026(OPTIONS);
+    end
     % Comment in history field
     dn_types = {'MEG', 'EEG', 'ECOG', 'SEEG'};
     Lia = ismember({OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}, 'duneuro');
@@ -539,8 +544,8 @@ end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 Param = [];
-if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro'})) || ...
-   (~isempty(OPTIONS.EEGMethod) && ~ismember(OPTIONS.EEGMethod, {'openmeeg', 'duneuro'}))
+if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'duneuro', 'duneuro2026'})) || ...
+   (~isempty(OPTIONS.EEGMethod) && ~ismember(OPTIONS.EEGMethod, {'openmeeg', 'duneuro', 'duneuro2026'}))
 
     % ===== DEFINE SPHERES FOR EACH SENSOR =====
     Param = repmat(struct('Center', [], 'Radii', []), 1, length(OPTIONS.Channel));
