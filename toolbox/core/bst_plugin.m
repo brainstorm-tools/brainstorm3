@@ -1078,7 +1078,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
         return;
     end
     % Check for existing plugin cache
-    strCache = [PlugName, '_online_', strrep(date,'-','')];
+    strCache = matlab.lang.makeValidName([PlugName, '_online_', strrep(date,'-','')]);
     if isCache && isfield(GlobalData.Program.PluginCache, strCache) && isfield(GlobalData.Program.PluginCache.(strCache), 'Version')
         Version = GlobalData.Program.PluginCache.(strCache).Version;
         URLzip = GlobalData.Program.PluginCache.(strCache).URLzip;
