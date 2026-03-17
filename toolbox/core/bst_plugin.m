@@ -1137,8 +1137,8 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 str = strsplit(str,'\n');
                 Version = strtrim(str{1});
             otherwise
-                % If downloading from github: Get last GitHub commit SHA
-                if isGithubMaster(URLzip)
+                % If downloading from GitHub: Get last GitHub commit SHA
+                if isGithubSnapshot(URLzip)
                     Version = GetGithubCommit(URLzip);
                 else
                     return;
@@ -1153,11 +1153,13 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
 end
 
 
-%% ===== IS GITHUB MASTER ======
-% Returns 1 if the URL is a github master/main branch
-function isMaster = isGithubMaster(URLzip)
-    isMaster = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
-               (strMatchEdge(URLzip, 'master.zip', 'end') || strMatchEdge(URLzip, 'main.zip', 'end'));
+%% ===== IS GITHUB SNAPSHOT ======
+% Returns 1 if the URL is a souce-code archive or snapshot (as .zip or .tar.gz) of a GitHub repository
+% https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives
+function isOk = isGithubSnapshot(URLzip)
+    isOk = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+           ~isempty(strfind(URLzip, '/archive/')) && ...
+           (strMatchEdge(URLzip, '.zip', 'end') || strMatchEdge(URLzip, '.tar.gz', 'end'));
 end
 
 
@@ -1165,10 +1167,14 @@ end
 % Get SHA of the GitHub HEAD commit
 function sha = GetGithubCommit(URLzip)
     zipUri = matlab.net.URI(URLzip);
-    % Primary branch name: master or main
-    [~, primaryBranch] = bst_fileparts(char(zipUri.Path(end)));
+    % Get reference: branch, tag or commit
+    [~, gitReference] = bst_fileparts(char(zipUri.Path(end)));
+    if strMatchEdge(URLzip, '.tar.gz', 'end')
+        % Remove second file extension
+        [~, gitReference] = bst_fileparts(gitReference);
+    end
     % Default result
-    sha = ['github-', primaryBranch];
+    sha = ['github-', gitReference];
     % Only available after Matlab 2016b (because of matlab.net.http.RequestMessage)
     if (bst_get('MatlabVersion') < 901)
         return;
@@ -1180,7 +1186,7 @@ function sha = GetGithubCommit(URLzip)
         gitUser = char(zipUri.Path(2));
         gitRepo = char(zipUri.Path(3));
         % Request last commit SHA with GitHub API
-        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/' primaryBranch]);
+        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/' gitReference]);
         request = matlab.net.http.RequestMessage;
         request = request.addFields(matlab.net.http.HeaderField('Accept', 'application/vnd.github.VERSION.sha'));
         r = send(request, apiUri);
@@ -1770,8 +1776,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
         % If an update is available and auto-updates are requested
         elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && ...                                            % If updates are enabled
-                ((isGithubMaster(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
-                 (~isGithubMaster(PlugDesc.URLzip) && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)))  % Regular stable version: update if online version is newer
+                ((isGithubSnapshot(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
+                 (~isGithubSnapshot(PlugDesc.URLzip) && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)))  % Regular stable version: update if online version is newer
             isUpdate = 1;
             strUpdate = 'an update is available online.';
         else
@@ -3012,7 +3018,7 @@ function MenuUpdate(jMenu, fontSize)
             elseif ~isempty(Plug.Version) && ischar(Plug.Version)
                 strVer = Plug.Version;
                 % If downloading from github
-                if isGithubMaster(Plug.URLzip)
+                if isGithubSnapshot(Plug.URLzip)
                     % Show installation date, if available
                     if ~isempty(Plug.InstallDate)
                         strVer = Plug.InstallDate(1:11);
