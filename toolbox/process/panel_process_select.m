@@ -3001,6 +3001,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     defProcess = db_template('ProcessDesc');
     sProcesses = repmat(defProcess, 0);
     matlabPath = [];
+    isCompiled = bst_iscompiled;
     % Get description for each file
     for iFile = 1:length(bstFunc)
         errMsg = '';
@@ -3032,7 +3033,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             errMsg = 'Unable to open file';
         end
         % Check presence of required functions in process file
-        if isempty(errMsg)
+        if isempty(errMsg) && ~isCompiled
             reqFncs = {'GetDescription', 'FormatComment', 'Run'};
             reqFncsMissing = [];
             for iReqFnc = 1 : length(reqFncs)
