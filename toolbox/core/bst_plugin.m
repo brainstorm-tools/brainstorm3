@@ -3404,30 +3404,9 @@ function SetProgressLogo(PlugDesc)
     % Remove image
     if (nargin < 1) || isempty(PlugDesc)
         bst_progress('removeimage');
-        bst_progress('removelink');
     % Set image
     else
-        % Get plugin description
-        if ischar(PlugDesc)
-            PlugDesc = GetSupported(PlugDesc);
-        end
-        % Get logo if not defined in the plugin structure
-        if isempty(PlugDesc.LogoFile)
-            PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-        end
-        % Start progress bar if needed
-        isNewProgressBar = ~bst_progress('isVisible');
-        if isNewProgressBar
-            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
-        end
-        % Set logo file
-        if ~isempty(PlugDesc.LogoFile)
-            bst_progress('setimage', PlugDesc.LogoFile);
-        end
-        % Set link
-        if ~isempty(PlugDesc.URLinfo)
-            bst_progress('setlink', PlugDesc.URLinfo);
-        end
+        bst_progress('setpluginlogo', PlugDesc);
     end
 end
 

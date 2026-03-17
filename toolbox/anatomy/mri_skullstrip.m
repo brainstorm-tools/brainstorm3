@@ -116,7 +116,7 @@ switch lower(Method)
             return
         end
         % Set the BrainSuite logo
-        bst_progress('setimage', bst_fullfile(bst_get('BrainstormDocDir'), 'plugins', 'brainsuite_logo.png'));
+        bst_progress('setimage', 'brainsuite_logo.png');
         % Get temporary folder
         TmpDir = bst_get('BrainstormTmpDir', 0, 'brainsuite');
         % Save reference MRI in .nii format
@@ -157,7 +157,7 @@ switch lower(Method)
             return;
         end
         % Set the SPM logo
-        bst_plugin('SetProgressLogo', 'spm12');
+        bst_progress('setpluginlogo', 'spm12');
         % Perform skull stripping using SPM Tissue Segmentation
         bst_progress('text', 'Skull Stripping: SPM Segment...');
         % Reset matlabbatch to start fresh

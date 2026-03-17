@@ -227,7 +227,7 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     if ~isInstalled
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     % Replace CSF with BRAIN if white/grey not needed
     if ~any(ismember({'white','gray'}, OPTIONS.layers)) && ismember('csf', OPTIONS.layers)
         OPTIONS.layers{ismember(OPTIONS.layers, {'csf'})} = 'brain';
@@ -382,7 +382,7 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
         OPTIONS.nVertices = OPTIONS.nVertices(isSelect);
     end
     % Remove fieldtrip logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     % Open progress bar
     bst_progress('start', 'Generate BEM mesh', 'Initialization...');
     % Generate BEM mesh
