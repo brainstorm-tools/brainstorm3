@@ -23,6 +23,7 @@ function [varargout] = bst_plugin(varargin)
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive',   PlugName)
 %           [isOk, errMsg] = bst_plugin('Uninstall',            PlugName, isInteractive=0, isDependencies=1)
 %           [isOk, errMsg] = bst_plugin('UninstallInteractive', PlugName)
+% [eRes  errMsg, PlugDesc] = bst_plugin('Ensure',               PlugName, isInteractive=0, getLatestVersion=0) % Ensure that the plugin is available, eRes = 0 Already installed and loaded, eRes = 1 Install/Load performed, eRes = 2 Load performed
 %                            bst_plugin('Configure',            PlugDesc)            % Execute some additional tasks after loading or installation
 %                            bst_plugin('SetCustomPath',        PlugName, PlugPath)
 %                            bst_plugin('List',                 Target='installed')  % Target={'supported','installed'}
@@ -2648,6 +2649,51 @@ function [isOk, errMsg, PlugDesc] = UnloadInteractive(PlugDesc)
     % Close progress bar
     if ~isProgress
         bst_progress('stop');
+    end
+end
+
+
+%% ===== ENSURE =====
+% USAGE:  [ensureResult, errMsg, PlugDesc] = bst_plugin('Ensure', PlugName/PlugDesc, isInteractive, getLatestVersion)
+function [ensureResult, errMsg, PlugDesc] = Ensure(PlugDesc, isInteractive, getLatestVersion)
+    % Parse inputs
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
+    if (nargin < 3) || isempty(getLatestVersion)
+        getLatestVersion = 0;
+    end
+    % Initialize returned variables
+    ensureResult = [];
+    % Get plugin structure from name
+    [PlugDesc, errMsg] = GetDescription(PlugDesc);
+    if ~isempty(errMsg)
+        return
+    end
+    % Ensure pluging is available
+    InstalledPlugDesc = GetInstalled(PlugDesc);
+    % Install if not present or Update is required
+    if isempty(InstalledPlugDesc) || InstalledPlugDesc.AutoUpdate || getLatestVersion
+        % Install and load plugin
+        [isOk, errMsg, PlugDesc] = Install(PlugDesc.Name, isInteractive);
+        if ~isOk
+            return
+        end
+        ensureResult = 1;
+        % Plugin was already installed and loaded, keep like that even if it was updated
+        if ~isempty(InstalledPlugDesc) && InstalledPlugDesc.isLoaded
+            ensureResult = 0;
+        end
+    elseif ~InstalledPlugDesc.isLoaded
+        % Load plugin
+        [isOk, errMsg, PlugDesc] = Load(PlugDesc);
+        if ~isOk
+            return
+        end
+        ensureResult = 2;
+    else
+        % Plugin is already installed and loaded, it was not updated
+        ensureResult = 0;
     end
 end
 
