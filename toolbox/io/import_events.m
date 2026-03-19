@@ -58,7 +58,8 @@ end
 %% ===== SELECT FILE =====
 if isempty(EventFile) && isempty(newEvents)
     % Get raw path
-    [fPath, fBase, fExt] = bst_fileparts(sFile.filename);
+    LastDir = bst_get('LastUsedDirs');
+    fPath   = LastDir.ImportData;
     % Get default directories and formats
     %defFileFormat = upper(sFile.format);
     % Get default directories and formats
@@ -76,7 +77,11 @@ if isempty(EventFile) && isempty(newEvents)
     % Save default export format
     DefaultFormats.EventsIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
-    
+    % Save last used dir
+    [fPath, fBase, fExt] = bst_fileparts(EventFiles{1});
+    LastDir.ImportData   = fPath;
+    bst_set('LastUsedDirs', LastDir);
+
     % Call this function recursively for each selected event file, and
     % concatenate the result together
     for iEventFile = 1:length(EventFiles)
