@@ -52,7 +52,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...              % FileFormat
         'save', ...          % Dialog type: {open,save}
         '', ...              % Window title
-        '', ...              % DefaultFile
+        'ExportData', ...    % LastUsedDir
         'single', ...        % Selection mode: {single,multiple}
         'files', ...         % Selection mode: {files,dirs,files_and_dirs}
         '', ...              % Available file formats
