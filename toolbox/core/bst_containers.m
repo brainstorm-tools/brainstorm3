@@ -2,7 +2,7 @@ function [varargout] = bst_containers(varargin)
 % BST_CONTAINERS: Manages containers for container-based plugins in Brainstorm
 %
 % USAGE:  [isOk, eName, eStatus] = bst_containers('GetEngine')
-%               [isOk, imageSha] = bst_containers('PullImage', imageReference)
+%               [isOk, imageSha] = bst_containers('ImportImage', imageSource)
 %          [isOk, containerName] = bst_containers('RunContainer', containerName, imageReference, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
 %                 [isOk, cmdout] = bst_containers('StatusContainer', containerName)
@@ -109,9 +109,10 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
 end
 
 
-%% ===== PULL IMAGE REFERENCE AND ITS SHA =====
-function [isOk, imageSha] = PullImage(imageReference)
-% USAGE:  [isOk, imageSha] = bst_containers('PullImage', imageReference)
+%% ===== IMPORT IMAGE =====
+function [isOk, imageSha] = ImportImage(imageSource)
+% Load container image into container engine
+% USAGE:  [isOk, imageSha] = bst_containers('ImportImage', imageSource)
     isOk = 0;
     imageSha = '';
 
@@ -123,33 +124,41 @@ function [isOk, imageSha] = PullImage(imageReference)
         disp(errMsg)
         return
     end
-    % Pull image
-    switch engineName
-        case 'docker'
-            [status, cmdout] = system(['docker pull ' imageReference]);
 
+    % [TODO] Check imageSource is: reference, local file or download URL
+    imageType = 'reference';
+
+    % [TODO] Get image from download link
+    if strcmpi(imageType, 'url')
+        % Download file in tmp
+        % Update imageSource
+        % Change type to file
     end
-    isOk = status == 0;
-    if ~isOk
-        return
-    end
-    % Get image SHA
+
+    % Import image
     switch engineName
         case 'docker'
-            [status, cmdout] = system(['docker inspect ' imageReference ' --format "{{.Id}}"']);
-            imageSha = strtrim(cmdout);
+            switch imageType
+                case 'reference'
+                    [status, cmdout] = system(['docker pull ' imageSource]);
+                case 'file'
+                    [status, cmdout] = system(['docker load --input ' imageSource]);
+            end
+            if status == 0
+                tokens = regexp(cmdout, 'sha256:[a-f0-9]+', 'match');
+                imageSha = strtrim(tokens{1});
+            end
     end
     isOk = status == 0;
     if ~isOk
-        imageSha = '';
         return
     end
 end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function [isOk, containerName] = RunContainer(containerName, imageReference, volumes, isDaemon)
-% USAGE:  [isOk, imageSha] = bst_containers('RunDaemonContainer', imageReference, volumes)
+function [isOk, containerName] = RunContainer(containerName, imageSha, volumes, isDaemon)
+% USAGE:  [isOk, imageSha] = bst_containers('RunDaemonContainer', imageSha, volumes)
     isOk = 0;
 
     % Validate inputs
@@ -185,12 +194,16 @@ function [isOk, containerName] = RunContainer(containerName, imageReference, vol
         case 'docker'
             cmdStr = ['docker run -d --name ' containerName];
             if ~isDaemon
-                cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageReference);
+                cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageSha);
             else
                 % Replace ENTRYPOINT (if any) with `sleep infinity`
-                cmdStr = sprintf('docker run -d --name %s %s --entrypoint sleep %s infinity', containerName, volumesStr, imageReference);                
+                cmdStr = sprintf('docker run -d --name %s %s --entrypoint sleep %s infinity', containerName, volumesStr, imageSha);
             end
             [status, cmdout] = system(cmdStr);
+    end
+    isOk = status == 0;
+    if ~isOk
+        return
     end
 end
 
