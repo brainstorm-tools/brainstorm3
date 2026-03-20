@@ -1226,8 +1226,7 @@ switch lower(structureName)
             'Path',          [], ...  % Set at runtime: Installation path for this plugin
             'Processes',     [], ...  % List of process functions to be added to the pipeline manager
             'isLoaded',      0, ...   % Set at runtime: 0=Not loaded, 1=Loaded (folder and specific subfolders added to Matlab path)
-            'isManaged',     0, ...   % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
-            'ImageReference','');     % String to that uniquely identifies a container (to be used by plugin) image from a registry
+            'isManaged',     0);      % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
         template.LoadFolders = {};
         template.UnloadPlugs = {};
         template.RequiredPlugs = {};
