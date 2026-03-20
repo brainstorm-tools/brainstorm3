@@ -507,7 +507,7 @@ end
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'plugins/duneuro_logo.png');
+    bst_progress('setpluginlogo', 'duneuro');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field

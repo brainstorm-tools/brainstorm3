@@ -62,14 +62,15 @@ if isempty(OutputFile)
     % === Build a default filename ===
     % Get raw path
     if isfield(sFile, 'filename') && ~isempty(sFile.filename)
-        [fPath, fBase, fExt] = bst_fileparts(sFile.filename);
+        [~, fBase, fExt] = bst_fileparts(sFile.filename);
     else
-        fPath = '';
         fBase = 'export';
     end
     % Generate BIDS event file
     fBaseBids = regexprep(fBase, '_meg$|_eeg$|_ieeg$', '');
     % Get default directories and formats
+    LastUsedDirs = bst_get('LastUsedDirs');
+    fPath = LastUsedDirs.ExportEvents;
     DefaultFormats = bst_get('DefaultFormats');
     if isempty(DefaultFormats.EventsOut)
         DefaultFormats.EventsOut = 'CTF';
@@ -111,6 +112,9 @@ if isempty(OutputFile)
     if isempty(OutputFile)
         return
     end
+    % Save default import directory
+    LastUsedDirs.ExportEvents = bst_fileparts(OutputFile);
+    bst_set('LastUsedDirs', LastUsedDirs);
     % Save default export format
     DefaultFormats.EventsOut = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
