@@ -2586,7 +2586,7 @@ function SeegAutoContactLocalize(Method)
             end
             % Call GARDEL automatic localization pipeline
             bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
-            bst_plugin('SetProgressLogo', 'gardel');
+            bst_progress('setpluginlogo', 'gardel');
             sCt = bst_memory('LoadMri', CtFile);
             sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
             elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);

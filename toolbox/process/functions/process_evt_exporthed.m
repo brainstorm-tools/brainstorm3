@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...                               % FileFormat
         'save', ...                           % Dialog type: {open,save}
         'Export HED JSON sidecar...', ...     % Window title
-        'ExportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'ExportEvents', ...                   % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                         % Selection mode: {single,multiple}
         'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
         {{'_events.json'}, {'HED tags (*_events.json)'}, 'JSON'}, ...

@@ -87,24 +87,18 @@ end
 % Progress bar
 bst_progress('start','Generate primitive surface',['Generate a ' lower(primitiveName)]);
 
-% Load iso2mesh plugin
-PlugUnload = 0;
-PlugDesc = bst_plugin('GetDescription', 'iso2mesh');
-if ~PlugDesc.isLoaded
-    % Install/load iso2mesh plugin
-    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 0);
-    if ~isInstalled
-        bst_error(errMsg);
-        return
-    end
-    PlugUnload = 1;
+% Ensure plugin: iso2mesh
+[ensureRes, errMsg] = bst_plugin('Ensure', 'iso2mesh');
+if ~isempty(errMsg)
+    bst_error(errMsg);
+    return
 end
 
 % Generate primitive surface
 [vert, faces, errMsg, isCancel] = generatePrimitiveSurface(primitive);
 
-% Unload plugin: 'iso2mesh'
-if PlugUnload
+% Unload plugin: iso2mesh
+if ensureRes > 0
     bst_plugin('Unload', 'iso2mesh', 1);
 end
 

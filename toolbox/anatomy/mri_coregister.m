@@ -95,7 +95,7 @@ switch lower(Method)
             end
             return;
         end
-        bst_plugin('SetProgressLogo', 'spm12');
+        bst_progress('setpluginlogo', 'spm12');
         
         % === SAVE FILES IN TMP FOLDER ===
         bst_progress('text', 'Saving temporary files...');
@@ -175,7 +175,7 @@ switch lower(Method)
         % Output file tag
         fileTag = '_spm';
         % Remove logo
-        bst_plugin('SetProgressLogo', []);
+        bst_progress('removeimage');
         
         % === UPDATE FIDUCIALS ===
         if isReslice

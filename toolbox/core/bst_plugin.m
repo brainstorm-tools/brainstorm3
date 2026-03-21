@@ -23,6 +23,7 @@ function [varargout] = bst_plugin(varargin)
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive',   PlugName)
 %           [isOk, errMsg] = bst_plugin('Uninstall',            PlugName, isInteractive=0, isDependencies=1)
 %           [isOk, errMsg] = bst_plugin('UninstallInteractive', PlugName)
+% [eRes  errMsg, PlugDesc] = bst_plugin('Ensure',               PlugName, isInteractive=0, getLatestVersion=0) % Ensure that the plugin is available, eRes = 0 Already installed and loaded, eRes = 1 Install/Load performed, eRes = 2 Load performed
 %                            bst_plugin('Configure',            PlugDesc)            % Execute some additional tasks after loading or installation
 %                            bst_plugin('SetCustomPath',        PlugName, PlugPath)
 %                            bst_plugin('List',                 Target='installed')  % Target={'supported','installed'}
@@ -971,11 +972,14 @@ function [isOk, errMsg] = AddUserDefDesc(RegMethod, jsonLocation)
     end
     % Override category
     PlugDesc.Category = 'User defined';
+    % Keep only valid fields
+    fieldsToDel = setdiff(fieldnames(PlugDesc), fieldnames(db_template('plugdesc')));
+    PlugDesc = rmfield(PlugDesc, fieldsToDel);
 
     % Write validated JSON file
     pluginJsonFileOut = fullfile(bst_get('UserPluginsDir'), sprintf('plugin_%s.json', file_standardize(PlugDesc.Name)));
     fid = fopen(pluginJsonFileOut, 'wt');
-    jsonText = bst_jsonencode(PlugDesc, 0);
+    jsonText = bst_jsonencode(PlugDesc, 1);
     fprintf(fid, jsonText);
     fclose(fid);
 
@@ -1075,7 +1079,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
         return;
     end
     % Check for existing plugin cache
-    strCache = [PlugName, '_online_', strrep(date,'-','')];
+    strCache = matlab.lang.makeValidName([PlugName, '_online_', strrep(date,'-','')]);
     if isCache && isfield(GlobalData.Program.PluginCache, strCache) && isfield(GlobalData.Program.PluginCache.(strCache), 'Version')
         Version = GlobalData.Program.PluginCache.(strCache).Version;
         URLzip = GlobalData.Program.PluginCache.(strCache).URLzip;
@@ -1134,8 +1138,8 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 str = strsplit(str,'\n');
                 Version = strtrim(str{1});
             otherwise
-                % If downloading from github: Get last GitHub commit SHA
-                if isGithubMaster(URLzip)
+                % If downloading from GitHub: Get last GitHub commit SHA
+                if isGithubSnapshot(URLzip)
                     Version = GetGithubCommit(URLzip);
                 else
                     return;
@@ -1150,11 +1154,13 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
 end
 
 
-%% ===== IS GITHUB MASTER ======
-% Returns 1 if the URL is a github master/main branch
-function isMaster = isGithubMaster(URLzip)
-    isMaster = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
-               (strMatchEdge(URLzip, 'master.zip', 'end') || strMatchEdge(URLzip, 'main.zip', 'end'));
+%% ===== IS GITHUB SNAPSHOT ======
+% Returns 1 if the URL is a souce-code archive or snapshot (as .zip or .tar.gz) of a GitHub repository
+% https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives
+function isOk = isGithubSnapshot(URLzip)
+    isOk = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+           ~isempty(strfind(URLzip, '/archive/')) && ...
+           (strMatchEdge(URLzip, '.zip', 'end') || strMatchEdge(URLzip, '.tar.gz', 'end'));
 end
 
 
@@ -1162,10 +1168,14 @@ end
 % Get SHA of the GitHub HEAD commit
 function sha = GetGithubCommit(URLzip)
     zipUri = matlab.net.URI(URLzip);
-    % Primary branch name: master or main
-    [~, primaryBranch] = bst_fileparts(char(zipUri.Path(end)));
+    % Get reference: branch, tag or commit
+    [~, gitReference] = bst_fileparts(char(zipUri.Path(end)));
+    if strMatchEdge(URLzip, '.tar.gz', 'end')
+        % Remove second file extension
+        [~, gitReference] = bst_fileparts(gitReference);
+    end
     % Default result
-    sha = ['github-', primaryBranch];
+    sha = ['github-', gitReference];
     % Only available after Matlab 2016b (because of matlab.net.http.RequestMessage)
     if (bst_get('MatlabVersion') < 901)
         return;
@@ -1177,7 +1187,7 @@ function sha = GetGithubCommit(URLzip)
         gitUser = char(zipUri.Path(2));
         gitRepo = char(zipUri.Path(3));
         % Request last commit SHA with GitHub API
-        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/' primaryBranch]);
+        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/' gitReference]);
         request = matlab.net.http.RequestMessage;
         request = request.addFields(matlab.net.http.HeaderField('Accept', 'application/vnd.github.VERSION.sha'));
         r = send(request, apiUri);
@@ -1458,6 +1468,20 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                 if isfield(PlugMat, loadFields{iField}) && ~isempty(PlugMat.(loadFields{iField}))
                     PlugDesc(iPlug).(loadFields{iField}) = PlugMat.(loadFields{iField});
                 end
+            end
+            % Check again if plugin is loaded using its Path
+            if ~PlugDesc(iPlug).isLoaded && ~isempty(PlugDesc(iPlug).Path)
+                PlugPath = PlugDesc(iPlug).Path;
+                if ~isempty(PlugDesc(iPlug).SubFolder)
+                    PlugPath = bst_fullfile(PlugPath, PlugDesc.SubFolder);
+                end
+                % Handle case symbolic link
+                try
+                    PlugPath = builtin('_canonicalizepath', PlugPath);
+                catch
+                    % Nothing here
+                end
+                PlugDesc(iPlug).isLoaded  = ismember(PlugPath, matlabPath);
             end
         else
             PlugDesc(iPlug).URLzip = []; 
@@ -1753,8 +1777,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
         % If an update is available and auto-updates are requested
         elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && ...                                            % If updates are enabled
-                ((isGithubMaster(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
-                 (~isGithubMaster(PlugDesc.URLzip) && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)))  % Regular stable version: update if online version is newer
+                ((isGithubSnapshot(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
+                 (~isGithubSnapshot(PlugDesc.URLzip) && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)))  % Regular stable version: update if online version is newer
             isUpdate = 1;
             strUpdate = 'an update is available online.';
         else
@@ -2479,7 +2503,8 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     
     % === TEST FUNCTION ===
     % Check if test function is available on path
-    if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
+    TestFilePath = GetTestFilePath(PlugDesc);
+    if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(TestFilePath, 'file') == 0)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully loaded from:' 10 PlugHomeDir 10 10 ...
             'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 10 ...
             'Try the following:' 10 ...
@@ -2585,7 +2610,8 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     
     % === TEST FUNCTION ===
     % Check if test function is still available on path
-    if ~isempty(PlugDesc.TestFile) && ~isempty(which(PlugDesc.TestFile))
+    TestFilePath =  GetTestFilePath(PlugDesc);
+    if ~isempty(PlugDesc.TestFile) && ~isempty(TestFilePath)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully unloaded from: ' 10 PlugPath 10 10 ...
             'However, another version is still accessible on the Matlab path:' 10 which(PlugDesc.TestFile) 10 10 ...
             'Please remove this folder from the Matlab path.'];
@@ -2623,6 +2649,51 @@ function [isOk, errMsg, PlugDesc] = UnloadInteractive(PlugDesc)
     % Close progress bar
     if ~isProgress
         bst_progress('stop');
+    end
+end
+
+
+%% ===== ENSURE =====
+% USAGE:  [ensureResult, errMsg, PlugDesc] = bst_plugin('Ensure', PlugName/PlugDesc, isInteractive, getLatestVersion)
+function [ensureResult, errMsg, PlugDesc] = Ensure(PlugDesc, isInteractive, getLatestVersion)
+    % Parse inputs
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
+    if (nargin < 3) || isempty(getLatestVersion)
+        getLatestVersion = 0;
+    end
+    % Initialize returned variables
+    ensureResult = [];
+    % Get plugin structure from name
+    [PlugDesc, errMsg] = GetDescription(PlugDesc);
+    if ~isempty(errMsg)
+        return
+    end
+    % Ensure pluging is available
+    InstalledPlugDesc = GetInstalled(PlugDesc);
+    % Install if not present or Update is required
+    if isempty(InstalledPlugDesc) || InstalledPlugDesc.AutoUpdate || getLatestVersion
+        % Install and load plugin
+        [isOk, errMsg, PlugDesc] = Install(PlugDesc.Name, isInteractive);
+        if ~isOk
+            return
+        end
+        ensureResult = 1;
+        % Plugin was already installed and loaded, keep like that even if it was updated
+        if ~isempty(InstalledPlugDesc) && InstalledPlugDesc.isLoaded
+            ensureResult = 0;
+        end
+    elseif ~InstalledPlugDesc.isLoaded
+        % Load plugin
+        [isOk, errMsg, PlugDesc] = Load(PlugDesc);
+        if ~isOk
+            return
+        end
+        ensureResult = 2;
+    else
+        % Plugin is already installed and loaded, it was not updated
+        ensureResult = 0;
     end
 end
 
@@ -2993,7 +3064,7 @@ function MenuUpdate(jMenu, fontSize)
             elseif ~isempty(Plug.Version) && ischar(Plug.Version)
                 strVer = Plug.Version;
                 % If downloading from github
-                if isGithubMaster(Plug.URLzip)
+                if isGithubSnapshot(Plug.URLzip)
                     % Show installation date, if available
                     if ~isempty(Plug.InstallDate)
                         strVer = Plug.InstallDate(1:11);
@@ -3385,30 +3456,9 @@ function SetProgressLogo(PlugDesc)
     % Remove image
     if (nargin < 1) || isempty(PlugDesc)
         bst_progress('removeimage');
-        bst_progress('removelink');
     % Set image
     else
-        % Get plugin description
-        if ischar(PlugDesc)
-            PlugDesc = GetSupported(PlugDesc);
-        end
-        % Get logo if not defined in the plugin structure
-        if isempty(PlugDesc.LogoFile)
-            PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-        end
-        % Start progress bar if needed
-        isNewProgressBar = ~bst_progress('isVisible');
-        if isNewProgressBar
-            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
-        end
-        % Set logo file
-        if ~isempty(PlugDesc.LogoFile)
-            bst_progress('setimage', PlugDesc.LogoFile);
-        end
-        % Set link
-        if ~isempty(PlugDesc.URLinfo)
-            bst_progress('setlink', PlugDesc.URLinfo);
-        end
+        bst_progress('setpluginlogo', PlugDesc);
     end
 end
 

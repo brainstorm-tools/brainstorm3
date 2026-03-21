@@ -314,6 +314,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Add the times for the remaining block
                     iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
                 end
+                % Adjust with beginning of file
+                iTimesBlocks = round(sFileIn.prop.times(1) * sFileIn.prop.sfreq) + iTimesBlocks;
 
                 % Process each block
                 ImportOptions = db_template('ImportOptions');

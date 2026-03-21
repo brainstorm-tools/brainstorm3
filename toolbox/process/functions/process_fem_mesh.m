@@ -335,7 +335,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
-            bst_plugin('SetProgressLogo', 'iso2mesh');
+            bst_progress('setpluginlogo', 'iso2mesh');
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -500,7 +500,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
-            bst_plugin('SetProgressLogo', 'iso2mesh');
+            bst_progress('setpluginlogo', 'iso2mesh');
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -632,7 +632,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
-            bst_plugin('SetProgressLogo', 'iso2mesh');
+            bst_progress('setpluginlogo', 'iso2mesh');
             % Get tissue label
             for iBem = 1:length(OPTIONS.BemFiles)
                 [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
@@ -699,7 +699,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Load SPM12
             [isOk, errMsg, PlugDesc] = bst_plugin('Load', 'spm12');
             % Set logo
-            bst_plugin('SetProgressLogo', 'brain2mesh');
+            bst_progress('setpluginlogo', 'brain2mesh');
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
             if isempty(tpmFile)
@@ -940,7 +940,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
-            bst_plugin('SetProgressLogo', 'roast');
+            bst_progress('setpluginlogo', 'roast');
             
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
@@ -956,7 +956,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 end
             end            
             % === SAVE T1 MRI AS NII ===
-            bst_progress('setimage', 'plugins/roast_logo.gif');
+            bst_progress('setpluginlogo', 'roast');
             bst_progress('text', 'Exporting MRI...');
             % Create temporary folder for fieldtrip segmentation files
             TmpDir = bst_get('BrainstormTmpDir', 0, 'roast');
@@ -1067,7 +1067,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             % Get the Zeffiro folder
             PlugDesc = bst_plugin('GetInstalled', 'zeffiro');
-            bst_plugin('SetProgressLogo', 'zeffiro');
+            bst_progress('setpluginlogo', 'zeffiro');
             % Use the BST Zef Interface or the advanced Zef Interface
             if ~OPTIONS.ZefAdvancedInterface
                 % If surfaces are not passed in input: get default surfaces
@@ -1225,7 +1225,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             return;
     end
     % Remove logos
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
 
     % ===== SAVE FEM MESH =====
     bst_progress('text', 'Saving FEM mesh...');

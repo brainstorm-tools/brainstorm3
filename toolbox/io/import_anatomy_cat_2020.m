@@ -129,7 +129,7 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE CAT12 FOLDER =====
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import CAT12 folder', 'Parsing folder...');
-bst_plugin('SetProgressLogo', 'cat12');
+bst_progress('setpluginlogo', 'cat12');
 % Find MRI (.nii or .nii.gz)
 T1File = file_find(CatDir, '*.nii*', 1, 0);
 if isempty(T1File)
@@ -283,7 +283,7 @@ end
 
 %% ===== IMPORT SURFACES =====
 % Restore CAT12 icon
-bst_plugin('SetProgressLogo', 'cat12');
+bst_progress('setpluginlogo', 'cat12');
 % === CENTRAL ===
 % Left central
 if ~isempty(GiiLcFile)
@@ -574,7 +574,7 @@ if isInteractive
     figure_3d('SetStandardView', hFig, 'left');
 end
 % Close progress bar
-bst_plugin('SetProgressLogo', []);
+bst_progress('removeimage');
 if ~isProgress
     bst_progress('stop');
 end
