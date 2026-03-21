@@ -2,8 +2,8 @@ function [varargout] = bst_containers(varargin)
 % BST_CONTAINERS: Manages containers for container-based plugins in Brainstorm
 %
 % USAGE:  [isOk, eName, eStatus] = bst_containers('GetEngine')
-%               [isOk, imageSha] = bst_containers('ImportImage', imageSource)
-%          [isOk, containerName] = bst_containers('RunContainer', containerName, imageReference, [volumes], [isDaemon])
+%       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource)
+%  [isOk, errMsg. containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
 %                 [isOk, cmdout] = bst_containers('StatusContainer', containerName)
 
@@ -110,10 +110,11 @@ end
 
 
 %% ===== IMPORT IMAGE =====
-function [isOk, imageSha] = ImportImage(imageSource)
+function [isOk, errMsg, imageSha] = ImportImage(imageSource)
 % Load container image into container engine
-% USAGE:  [isOk, imageSha] = bst_containers('ImportImage', imageSource)
+% USAGE:  [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource)
     isOk = 0;
+    errMsg = '';
     imageSha = '';
 
     % Default container engine
@@ -121,7 +122,6 @@ function [isOk, imageSha] = ImportImage(imageSource)
     % Check status of container engine
     [isFound, engineName, errMsg] = GetEngine(engineName);
     if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
         return
     end
 
@@ -157,8 +157,8 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function [isOk, containerName] = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE:  [isOk, imageSha] = bst_containers('RunDaemonContainer', imageSha, volumes)
+function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, volumes, isDaemon)
+% USAGE:  [isOk, errMsg, imageSha] = bst_containers('RunDaemonContainer', imageSha, volumes)
     isOk = 0;
 
     % Validate inputs
@@ -174,7 +174,6 @@ function [isOk, containerName] = RunContainer(containerName, imageSha, volumes, 
     % Check status of container engine
     [isFound, engineName, errMsg] = GetEngine(engineName);
     if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
         return
     end
 
