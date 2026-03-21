@@ -1684,8 +1684,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         PlugDesc = [];
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     % Check if there is a URL to download
-    if isempty(PlugDesc.URLzip)
+    if isempty(PlugDesc.URLzip) && ~isContainer
         errMsg = ['No download URL for ', OsType, ': ', PlugName ''];
         return;
     end
@@ -1869,55 +1871,66 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(LogoFile)
         bst_progress('setimage', LogoFile);
     end
-    % Get package file format
-    if strcmpi(PlugDesc.URLzip(end-3:end), '.zip')
-        pkgFormat = 'zip';
-    elseif strcmpi(PlugDesc.URLzip(end-6:end), '.tar.gz') || strcmpi(PlugDesc.URLzip(end-3:end), '.tgz')
-        pkgFormat = 'tgz';
-    else
-        disp('BST> Could not guess file format, trying ZIP...');
-        pkgFormat = 'zip';
-    end
-    % Download file
-    pkgFile = bst_fullfile(PlugPath, ['plugin.' pkgFormat]);
-    disp(['BST> Downloading URL : ' PlugDesc.URLzip]);
-    disp(['BST> Saving to file  : ' pkgFile]);
-    errMsg = gui_brainstorm('DownloadFile', PlugDesc.URLzip, pkgFile, ['Download plugin: ' PlugName], LogoFile);
-    % If file was not downloaded correctly
-    if ~isempty(errMsg)
-        errMsg = ['Impossible to download ' PlugName ' automatically:' 10 errMsg];
-        if ~isCompiled
-            errMsg = [errMsg 10 10 ...
-                'Alternative download solution:' 10 ...
-                '1) Copy the URL below from the Matlab command window: ' 10 ...
-                '     ' PlugDesc.URLzip 10 ...
-                '2) Paste it in a web browser' 10 ...
-                '3) Save the file and unzip it' 10 ...
-                '4) Add to the Matlab path the folder containing ' PlugDesc.TestFile '.'];
+    % Code plugins
+    if ~isContainer
+        % Get package file format
+        if strcmpi(PlugDesc.URLzip(end-3:end), '.zip')
+            pkgFormat = 'zip';
+        elseif strcmpi(PlugDesc.URLzip(end-6:end), '.tar.gz') || strcmpi(PlugDesc.URLzip(end-3:end), '.tgz')
+            pkgFormat = 'tgz';
+        else
+            disp('BST> Could not guess file format, trying ZIP...');
+            pkgFormat = 'zip';
         end
-        bst_progress('removeimage');
-        return;
-    end
-    % Update progress bar
-    bst_progress('text', ['Installing plugin: ' PlugName '...']);
-    if ~isempty(LogoFile)
-        bst_progress('setimage', LogoFile);
-    end
-    % Unzip file
-    switch (pkgFormat)
-        case 'zip'
-            bst_unzip(pkgFile, PlugPath);
-        case 'tgz'
-            if ispc
-                untar(pkgFile, PlugPath);
-            else
-                curdir = pwd;
-                cd(PlugPath);
-                system(['tar -xf ' pkgFile]);
-                cd(curdir);
+        % Download file
+        pkgFile = bst_fullfile(PlugPath, ['plugin.' pkgFormat]);
+        disp(['BST> Downloading URL : ' PlugDesc.URLzip]);
+        disp(['BST> Saving to file  : ' pkgFile]);
+        errMsg = gui_brainstorm('DownloadFile', PlugDesc.URLzip, pkgFile, ['Download plugin: ' PlugName], LogoFile);
+        % If file was not downloaded correctly
+        if ~isempty(errMsg)
+            errMsg = ['Impossible to download ' PlugName ' automatically:' 10 errMsg];
+            if ~isCompiled
+                errMsg = [errMsg 10 10 ...
+                    'Alternative download solution:' 10 ...
+                    '1) Copy the URL below from the Matlab command window: ' 10 ...
+                    '     ' PlugDesc.URLzip 10 ...
+                    '2) Paste it in a web browser' 10 ...
+                    '3) Save the file and unzip it' 10 ...
+                    '4) Add to the Matlab path the folder containing ' PlugDesc.TestFile '.'];
             end
+            bst_progress('removeimage');
+            return;
+        end
+        % Update progress bar
+        bst_progress('text', ['Installing plugin: ' PlugName '...']);
+        if ~isempty(LogoFile)
+            bst_progress('setimage', LogoFile);
+        end
+        % Unzip file
+        switch (pkgFormat)
+            case 'zip'
+                bst_unzip(pkgFile, PlugPath);
+            case 'tgz'
+                if ispc
+                    untar(pkgFile, PlugPath);
+                else
+                    curdir = pwd;
+                    cd(PlugPath);
+                    system(['tar -xf ' pkgFile]);
+                    cd(curdir);
+                end
+        end
+        file_delete(pkgFile, 1, 3);
+    else
+        % Import container image in container engine
+        [isOk, errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource);
+        if ~isOk
+            bst_progress('removeimage');
+            return
+        end
+        PlugDesc.ImageSha = imageSha;
     end
-    file_delete(pkgFile, 1, 3);
 
     % === SAVE PLUGIN.MAT ===
     PlugDesc.Path = PlugPath;
@@ -3044,6 +3057,7 @@ function MenuUpdate(jMenu, fontSize)
         end
         isLoaded = isInstalled && Plug.isLoaded;
         isManaged = isInstalled && Plug.isManaged;
+        isContainer = IsContainer(Plug);
         % Compiled included: no submenus
         if isCompiled && (PlugRef.CompiledStatus == 2)
             j.menu.setEnabled(1);
@@ -3055,7 +3069,7 @@ function MenuUpdate(jMenu, fontSize)
         % Otherwise: all available
         else
             % Main menu: Available/Not available
-            j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip));
+            j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip) || isContainer);
             % Current version
             if ~isInstalled
                 j.version.setText('<HTML><FONT color="#707070"><I>Not installed</I></FONT>');
@@ -3468,6 +3482,20 @@ end
 function pluginNames = PluginsNotSupportAppleSilicon()
     pluginNames = { 'duneuro', 'mcxlab-cuda'};
 end
+
+
+%% ===== IS CONTAINER PLUGIN =====
+% Check if plugin is a container
+function isContainer = IsContainer(PlugDesc)
+    isContainer = 0;
+    if ischar(PlugDesc)
+        PlugDesc = GetDescription(PlugDesc);
+    end
+    if isempty(PlugDesc.URLzip) && ~isempty(PlugDesc.ImageSource)
+        isContainer = 1;
+    end
+end
+
 
 %% ===== MATCH STRING EDGES =====
 % Check if a string 'strA' starts (or ends) with string B
