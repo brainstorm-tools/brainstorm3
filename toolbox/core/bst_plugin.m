@@ -2607,6 +2607,8 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     
     % === PROCESS DEPENDENCIES ===
     % Unload dependent plugins
@@ -2629,6 +2631,13 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
                 if isVerbose
                     disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
                 end
+            end
+        end
+        % Stop container
+        if isContainer
+            [isOk] = bst_containers('StopContainer', PlugDesc.Name, 1);
+            if ~isOk
+                return
             end
         end
     end
