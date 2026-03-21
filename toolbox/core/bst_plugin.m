@@ -2175,6 +2175,8 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         errMsg = ['Plugin ' PlugName ' is not installed.'];
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     
     % === USER CONFIRMATION ===
     if isInteractive
@@ -2222,6 +2224,14 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
+    % Remove image from container engine
+    if isContainer && ~isempty(PlugDesc.ImageSha)
+        [isOk] = bst_containers('StopContainer', PlugDesc.Name, 1);
+        if ~isOk
+            return
+        end
+    end
+
     
     % === CALLBACK: POST-UNINSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UninstalledFcn');
