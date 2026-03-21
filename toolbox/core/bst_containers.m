@@ -297,3 +297,48 @@ function isOk = StopContainer(containerName, isForce)
     end
 
 end
+
+
+%% ===== REMOVE IMAGE =====
+function isOk = RemoveImage(imageSha, isForce)
+    isOk = 0;
+
+    % Validate inputs
+    if nargin < 2 || isempty(isForce)
+        isForce = 0;
+    end
+
+    isOk = 0;
+    errMsg = '';
+    imageSha = '';
+
+    % Default container engine
+    engineName = bst_get('ContainerEngine');
+    % Check status of container engine
+    [isFound, engineName, errMsg] = GetEngine(engineName);
+    if ~isFound || ~isempty(errMsg)
+        return
+    end
+
+    % Default container engine
+    engineName = bst_get('ContainerEngine');
+    % Check status of container engine
+    [isFound, engineName, errMsg] = GetEngine(engineName);
+    if ~isFound || ~isempty(errMsg)
+        disp(errMsg)
+        return
+    end
+
+    % Stop container
+    switch engineName
+        case 'docker'
+            if ~isForce
+                % Remove image
+                [status, cmdout] = system(['docker rmi ' imageSha]);
+            else
+                % Force remove image
+                [status, cmdout] = system(['docker rmi -f ' imageSha]);
+            end
+            isOk = status == 0;
+    end
+end
