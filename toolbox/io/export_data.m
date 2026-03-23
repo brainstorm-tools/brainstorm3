@@ -277,7 +277,7 @@ if isRawIn && isRawOut
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
-        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * BlockSize, min(iBlock*BlockSize-1, nSamples-1)];
+        SamplesBounds = round(sFileOut.prop.times(1) * sFileOut.prop.sfreq) + [(iBlock-1) * BlockSize, min(iBlock*BlockSize-1, nSamples-1)];
         % Read from input file
         F = in_fread(sFileIn, ChannelMatIn, 1, SamplesBounds, iChannelsIn, ImportOptions);
         % Save to output file
