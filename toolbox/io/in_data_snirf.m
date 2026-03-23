@@ -445,6 +445,15 @@ function factor = findFactorFromUnit(dataUnit,channel_type)
            otherwise
                 warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
        end
+    elseif strcmp(channel_type,'raw')
+        switch lower(dataUnit)
+            case ''
+                factor = 1;
+            case {'mv'}
+                factor = 1e-3;
+            otherwise
+                warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
+       end
     else
         warning('Unknown unit %s for data type %s. The scaling of your data might be wrong', dataUnit, channel_type)
     end
