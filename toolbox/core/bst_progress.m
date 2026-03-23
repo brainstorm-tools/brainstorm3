@@ -122,71 +122,9 @@ switch (lower(commandName))
         pBar = createProgressBar(DefaultSize, caller_name, ix);
         GlobalData.Program.ProgressBar{ix} = pBar;
 
-        % Set as "always on top"
-        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
-        java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
-        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
-        % Call: bst_progress(''start'', title, msg)
-        if (nargin == 3) && ischar(varargin{3}) && ischar(varargin{2})
-            % Get window title and comment
-            wndTitle    = varargin{2};
-            msg = varargin{3};
-            % Set Progress bar in inderminate mode
-            pBar.jProgressBar.setIndeterminate(1);
-            pBar.jProgressBar.setStringPainted(0);
-            % Set progress bar bounds
-            pBar.jProgressBar.setMinimum(0);
-            pBar.jProgressBar.setMaximum(100);
-            % Set initial value to start
-            pBar.jProgressBar.setValue(0);
-            % Update values in GlobalData
-            GlobalData.Program.ProgressBar{ix}.Values.Minimum = 0;
-            GlobalData.Program.ProgressBar{ix}.Values.Maximum = 100;
-            GlobalData.Program.ProgressBar{ix}.Values.Value   = 0;
-            GlobalData.Program.ProgressBar{ix}.Values.LastVal = 0;
-            
-        % Call: bst_progress(''start'', title, msg, start, stop)
-        elseif ((nargin == 5) && ischar(varargin{2}) && ischar(varargin{3}) && isnumeric(varargin{4}) && isnumeric(varargin{5}))
-            % Get window title and comment
-            wndTitle = varargin{2};
-            msg = varargin{3};
-            % Set Progress bar in derminate mode
-            pBar.jProgressBar.setIndeterminate(0);
-            pBar.jProgressBar.setStringPainted(1);
-            % Get progress bar bounds
-            valStart = varargin{4};
-            valStop  = varargin{5};
-            % Test bounds
-            if ( (valStart >= valStop) || (valStop <= 0) )
-                % Set indeterminate bounds
-                pBar.jProgressBar.setIndeterminate(1);
-                pBar.jProgressBar.setStringPainted(0);
-                valStart = 0;
-                valStop  = 100;
-            end
-            % Set progress bar bounds
-            pBar.jProgressBar.setMinimum(valStart);
-            pBar.jProgressBar.setMaximum(valStop);
-            pBar.jProgressBar.setValue(valStart);
-            % Update values in GlobalData
-            GlobalData.Program.ProgressBar{ix}.Values.Minimum = valStart;
-            GlobalData.Program.ProgressBar{ix}.Values.Maximum = valStop;
-            GlobalData.Program.ProgressBar{ix}.Values.Value   = valStart;
-            GlobalData.Program.ProgressBar{ix}.Values.LastVal = valStart;
-        else
-            error(['Usage : bst_progress(''start'', title, comment) ' 10 '        bst_progress(''start'', title, comment, valStart, valStop)']);
-        end
-        % Set window title
-        pBar.jWindow.setTitle(wndTitle);
-        % Set window comment (central label)
-        pBar.jLabel.setText(msg);
-        % Show window
-        java_call(pBar.jWindow, 'setVisible', 'Z', 1);
-        % Repaing window
-        pBar.jWindow.getContentPane().repaint();
-        % Set watch cursor
-        jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
         
+        pBar = start(pBar, varargin{2:end});
+
     % ==== STOP ====
     case 'stop'
         % Restore cursor
@@ -218,22 +156,7 @@ switch (lower(commandName))
 
     % ==== SET POSITION ====
     case 'set'
-        % Parse arguments
-        if ((nargin == 2) && isnumeric(varargin{2}))
-            newVal = varargin{2};
-        else
-            error('Usage : bst_progress(''set'', pos)');
-        end
-        % Get current value
-        curValue = GlobalData.Program.ProgressBar{ix}.Values.Value;
-        % Plot the position if it changes
-        if (curValue ~= newVal)
-            newVal = min(newVal, GlobalData.Program.ProgressBar{ix}.Values.Maximum);
-            pBar.jProgressBar.setValue(newVal);
-            % Update value in GlobalData
-            GlobalData.Program.ProgressBar{ix}.Values.Value   = newVal;
-            GlobalData.Program.ProgressBar{ix}.Values.LastVal = newVal;
-        end
+        pBar = set (pBar, varargin{2:end});
         
     % ==== GET POSITION ====
     case 'get'
@@ -341,10 +264,10 @@ switch (lower(commandName))
         end
         % (Re)start bar
         if pBarParams.isIndeterminate
-            bst_progress('start', pBarParams.Title, pBarParams.Msg);
+            pBar = start(pBar, pBarParams.Title, pBarParams.Msg);
         else
-            bst_progress('start', pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
-            bst_progress('set', pBarParams.Value);
+            pBar = start(pBar, pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
+            pBar = set (pBar, pBarParams.Value);
         end
 
     % ==== SET PLUGIN LOGO ====
@@ -368,7 +291,7 @@ switch (lower(commandName))
         end
         % Start progress bar if needed
         if ~pBar.jWindow.isVisible()
-            bst_progress('Start', ['Plugin: ' PlugDesc.Name], '');
+            pBar = start(pBar,  ['Plugin: ' PlugDesc.Name], '');
         end
         % Set logo file
         if ~isempty(PlugDesc.LogoFile)
@@ -389,6 +312,7 @@ switch (lower(commandName))
         error('Unknown command: %s', commandName);
 end
 
+ 
 %     %% ===== CLOSE CALLBACK =====
 %     function CloseCallback()
 %         % Hide progress bar
@@ -452,7 +376,71 @@ end
 %         SimKey.keyRelease(java.awt.event.KeyEvent.VK_C);
 %         jBstFrame.setVisible(1);
 %     end
+
+
+function pBar = start(pBar, wndTitle, msg, valStart, valStop)
+    % JAVA imports
+    import org.brainstorm.icon.*;
+    % Set as "always on top"
+    java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
+    java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
+    java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
+    % Call: bst_progress(''start'', title, msg)
+    if (nargin == 3) && ischar(wndTitle) && ischar(msg)
+        % Set Progress bar in inderminate mode
+        pBar.jProgressBar.setIndeterminate(1);
+        pBar.jProgressBar.setStringPainted(0);
+        % Set progress bar bounds
+        pBar.jProgressBar.setMinimum(0);
+        pBar.jProgressBar.setMaximum(100);
+        % Set initial value to start
+        pBar.jProgressBar.setValue(0);
+        % Update values in GlobalData
+        GlobalData.Program.ProgressBar{end}.Values.Minimum = 0;
+        GlobalData.Program.ProgressBar{end}.Values.Maximum = 100;
+        GlobalData.Program.ProgressBar{end}.Values.Value   = 0;
+        GlobalData.Program.ProgressBar{end}.Values.LastVal = 0;
+        
+    % Call: bst_progress(''start'', title, msg, start, stop)
+    elseif ((nargin == 5) && ischar(wndTitle) && ischar(msg) && isnumeric(valStart) && isnumeric(valStop))
+        % Set Progress bar in derminate mode
+        pBar.jProgressBar.setIndeterminate(0);
+        pBar.jProgressBar.setStringPainted(1);
+
+        % Test bounds
+        if ( (valStart >= valStop) || (valStop <= 0) )
+            % Set indeterminate bounds
+            pBar.jProgressBar.setIndeterminate(1);
+            pBar.jProgressBar.setStringPainted(0);
+            valStart = 0;
+            valStop  = 100;
+        end
+        % Set progress bar bounds
+        pBar.jProgressBar.setMinimum(valStart);
+        pBar.jProgressBar.setMaximum(valStop);
+        pBar.jProgressBar.setValue(valStart);
+        % Update values in GlobalData
+        GlobalData.Program.ProgressBar{end}.Values.Minimum = valStart;
+        GlobalData.Program.ProgressBar{end}.Values.Maximum = valStop;
+        GlobalData.Program.ProgressBar{end}.Values.Value   = valStart;
+        GlobalData.Program.ProgressBar{end}.Values.LastVal = valStart;
+    else
+        error(['Usage : bst_progress(''start'', title, comment) ' 10 '        bst_progress(''start'', title, comment, valStart, valStop)']);
+    end
+    % Set window title
+    pBar.jWindow.setTitle(wndTitle);
+    % Set window comment (central label)
+    pBar.jLabel.setText(msg);
+    % Show window
+    java_call(pBar.jWindow, 'setVisible', 'Z', 1);
+    % Repaing window
+    pBar.jWindow.getContentPane().repaint();
+    % Set watch cursor
+    jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
+
+end
     function [caller_name, stacklist] = getCallerName()
+    
     % Get the name of the function that is calling bst_progress
         stacks        = dbstack(2);
         if isempty(stacks)
@@ -467,14 +455,33 @@ end
         stacklist     = {stacks.name_file};
     end
 
+    function pBar = set (pBar, newVal)
+        % Parse arguments
+        if ~((nargin == 2) && isnumeric(varargin{2}))
+            error('Usage : bst_progress(''set'', pos)');
+        end
+
+        % Get current value
+        curValue = GlobalData.Program.ProgressBar{ix}.Values.Value;
+        % Plot the position if it changes
+        if (curValue ~= newVal)
+            newVal = min(newVal, GlobalData.Program.ProgressBar{ix}.Values.Maximum);
+            pBar.jProgressBar.setValue(newVal);
+            % Update value in GlobalData
+            GlobalData.Program.ProgressBar{ix}.Values.Value   = newVal;
+            GlobalData.Program.ProgressBar{ix}.Values.LastVal = newVal;
+        end
+    end
+
     function [pBar, ix] = getProgressBar(caller_name, stacklist)
+    
         pBar = [];
         ix = 0;
-
+    
         if isempty(GlobalData) || isempty(GlobalData.Program.ProgressBar)
             return;
         end
-
+    
         progress_list = cellfun(@(x) x.Values.Caller, GlobalData.Program.ProgressBar, 'UniformOutput',false);
         ix            = find(strcmp(progress_list, caller_name), 1, 'last');
         
@@ -485,7 +492,7 @@ end
                 ix = 0;
             end
         end
-
+    
         % Close all progress bar that are not a parent of the caller
         for iBar = (ix+1):length(progress_list)
             java_call(GlobalData.Program.ProgressBar{iBar}.jWindow, 'dispose');
@@ -496,8 +503,9 @@ end
             pBar = GlobalData.Program.ProgressBar{end};
         end
     end
-
+    
     function pBar = createProgressBar(DefaultSize, caller_name, n_progress)
+    
         % JAVA imports
         import org.brainstorm.icon.*;
         import java.awt.Dimension;
@@ -545,7 +553,7 @@ end
         pBar.jWindow.pack();
         % Set window size and location
         %pBar.jWindow.setLocationRelativeTo(pBar.jWindow.getParent());
-
+    
         if isstruct(jBstFrame)
             pos = [0, 0];
         else
@@ -558,7 +566,7 @@ end
         pBar.jWindow.setLocation(pos(1), pos(2));
         pBar.Values = struct('Minimum', [], 'Maximum', [], 'Value', [], 'LastVal', [], 'Caller', caller_name);   
     end
-
+    
     %% ===== ADD COMPONENTS =====
     function UpdateConstraints(pBar, isImage)
         import java.awt.GridBagConstraints;
@@ -585,17 +593,11 @@ end
         c.weighty = 0;
         c.insets = Insets(0,12,9,12);
         pBar.jPanel.add(pBar.jProgressBar, c);
-%         % CANCEL BUTTON
-%         c.gridy = 4;
-%         c.weighty = 0;
-%         c.insets = Insets(0,12,9,12);
-%         c.weightx = 0;
-%         pBar.jPanel.add(pBar.jButtonCancel, c);
+    %         % CANCEL BUTTON
+    %         c.gridy = 4;
+    %         c.weighty = 0;
+    %         c.insets = Insets(0,12,9,12);
+    %         c.weightx = 0;
+    %         pBar.jPanel.add(pBar.jButtonCancel, c);
     end
-
 end
-
-
-
-
-
