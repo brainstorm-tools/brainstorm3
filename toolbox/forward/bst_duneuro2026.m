@@ -269,8 +269,7 @@ if isMeg
     % coil_to_channel_transform = eye(length(MegChannels));
     coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
-    coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels);
-
+    build_coil_to_channel_transform_matrix(MegChannels);
 end
 
 %% ===== CONDUCTIVITY MODEL =====
@@ -485,35 +484,34 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
     iOk = 1;
 end
 
-function coil_to_channel_transform = build_coil_to_channel_transform_matrix(MegChannels)
+function MEGChannelTransform = build_coil_to_channel_transform_matrix(MegChannels)
+    nb_magnetic_field_values = size(MegChannels, 1);
+
     % Extract channel indices and weights
     chan_idx = MegChannels(:,1);
     w        = MegChannels(:,end);
+    
     % Find unique channels
     channels = unique(chan_idx);
     nb_chan  = length(channels);
-    % Count coils per channel (should be 4)
-    nCoil = sum(chan_idx == channels(1));
-    % Total size
-    N = nb_chan * nCoil;
-    % Preallocate sparse matrix
-    Wbig = sparse(N, N);
-    % Build matrix
-    for k = 1:nb_chan        
-        % Get rows corresponding to this channel
-        rows_k = find(chan_idx == channels(k));        
-        % Extract weights for this channel
-        weights_k = w(rows_k);        
-        % Define block columns
-        cols = (k-1)*nCoil + (1:nCoil);        
-        % Place weights in row k
-        Wbig(k, cols) = weights_k(:)';   
-    end
 
-    coil_to_channel_transform = Wbig;
+    % Preallocate channel transform
+    MEGChannelTransform = zeros(nb_chan, nb_magnetic_field_values);
+
+    % Build transform channel by channel
+    for k = 1:nb_chan
+        % Get indices of projected magnetic field values that contribute 
+        % to the current channel
+        rows_k = find(chan_idx == channels(k));
+        nr_fields_in_channel = numel(rows_k);
+
+        for l=1:nr_fields_in_channel
+          MEGChannelTransform(k, rows_k(l)) = w(rows_k(l));
+        end
+    end
     % not sure about this
-    h5create(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", [nb_chan, nb_chan], Datatype="double");
-    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", coil_to_channel_transform);
+    h5create(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", [nb_chan, nb_magnetic_field_values], Datatype="double");
+    h5write(io_file_path, "/measurement/sensors/magnetometers/coil_to_channel_transform", MEGChannelTransform);
 end
 
 function [iOk, errMsg] = bstdn_write_pem_electrodes(duneuro_io_dir, electrode_positions, electrode_type_flag)
