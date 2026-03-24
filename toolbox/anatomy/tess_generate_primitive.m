@@ -293,9 +293,8 @@ switch lower(primitiveShape)
         % Generate the mesh
         oldVersion = 0;
         if oldVersion == 1
-        [vert,face]= meshacylinder(c0,c1,r,tsize,maxvol,ndiv);
+            [vert,face]= meshacylinder(c0,c1,r,tsize,maxvol,ndiv);
         else
-
             % === Step 1: Create canonical cylinder along Z ===
             L = norm(c1 - c0);                 % length of cylinder
             z0 = [0 0 0];
@@ -327,7 +326,7 @@ switch lower(primitiveShape)
 
             % === Step 3: Rotate vertices ===
             vert = (R * vert')';
-
+            
             % === Step 4: Translate to c0 ===
             vert = vert + c0;
         end
