@@ -2485,7 +2485,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Run container if image was properly imported
     if isContainer
         PlugDesc = GetInstalled(PlugDesc);
-        if ~isempty(PlugDesc.ImageSha)
+        if ~isempty(PlugDesc.ImageSha) && ~PlugDesc.isLoaded
             % Get tmp dir to bind container
             TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
             volumes = {TmpDir, '/data'};
