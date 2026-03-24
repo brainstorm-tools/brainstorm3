@@ -2483,13 +2483,16 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         PlugHomeDir = PlugPath;
     end
     % Run container if image was properly imported
-    if isContainer && ~isempty(PlugDesc.ImageSha)
-        % Get tmp dir to bind container
-        TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
-        volumes = {TmpDir, '/data'};
-        [isOk, errMsg] = bst_containers('RunContainer', PlugDesc.Name, PlugDesc.ImageSha, volumes, 1);
-        if ~isOk
-            return
+    if isContainer
+        PlugDesc = GetInstalled(PlugDesc);
+        if ~isempty(PlugDesc.ImageSha)
+            % Get tmp dir to bind container
+            TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
+            volumes = {TmpDir, '/data'};
+            [isOk, errMsg] = bst_containers('RunContainer', PlugDesc.Name, PlugDesc.ImageSha, volumes, 1);
+            if ~isOk
+                return
+            end
         end
     end
     % Do not modify path in compiled mode
