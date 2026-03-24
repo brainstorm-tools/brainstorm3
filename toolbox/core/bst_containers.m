@@ -228,8 +228,8 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     end
 
     % Check container status
-    [isExist, isRunning] = StatusContainer(containerName);
-    if ~isExist || ~isRunning
+    [containerName, isRunning] = GetContainerInfo(containerName);
+    if isempty(containerName) || ~isRunning
         return
     end
 
@@ -244,8 +244,8 @@ end
 
 
 %% ===== CHECK CONTAINER STATUS =====
-function [isExist, isRunning] = StatusContainer(containerName)
-    isExist = 0;
+function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo(containerName)
+    containerNameOut = [];
     isRunning = 0;
 
     % Default container engine
@@ -264,8 +264,18 @@ function [isExist, isRunning] = StatusContainer(containerName)
             [status, cmdout] = system(['docker inspect ' containerName ' --format "{{.Name}}"']);
             if status == 0
                 isExist = 1;
-                [status, cmdout] = system(['docker inspect ' containerName ' --format "{{.State.Status}}"']);
-                isRunning = strcmpi('running', strtrim(cmdout));
+                containerNameOut = strrep(strtrim(cmdout), '/', '');
+                [status, cmdout] = system(['docker inspect ' containerName ' --format "'...
+                    '{{.State.Status}} # ' ...
+                    '{{.HostConfig.Binds}} # ' ...
+                    '{{.Image}}"']);
+                cmdout = strsplit(strtrim(cmdout), '#');
+                isRunning = strcmpi('running', strtrim(cmdout{1}));
+                volumes = regexprep(strtrim(cmdout{2}), '^\[|\]$', '');
+                volumePairs = strsplit(volumes, ':');
+                volumePairs = reshape(volumePairs, 2, [])';
+                tokens = regexp(cmdout{3}, 'sha256:[a-f0-9]+', 'match');
+                imageSha = strtrim(tokens{1});
             end
     end
 end
