@@ -236,7 +236,11 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     % Run command
     switch engineName
         case 'docker'
-            [status, cmdout] = system(['docker exec ' containerName ' sh -c ' '"' cmdStr '"']);
+            commandWrapper = ''''; % Single quote
+            if ispc
+                commandWrapper = ''''; % Double quote
+            end
+            [status, cmdout] = system(['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper]);
             isOk = status == 0;
             cmdout = strtrim(cmdout);
     end
