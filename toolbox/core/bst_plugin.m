@@ -2940,6 +2940,8 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
         if isCompiled && (Plug.CompiledStatus == 0)
             continue;
         end
+        % Check if plugin is a container
+        isContainer = IsContainer(Plug);
         % === Add menus for each plugin ===
         % One menu per plugin
         ij = length(j) + 1;
@@ -2972,16 +2974,27 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
             % Main menu
             j(ij).menu = gui_component('Menu', jParent, [], Plug.Name, [], [], [], fontSize);
             % Version
-            j(ij).version = gui_component('MenuItem', j(ij).menu, [], 'Version', [], [], [], fontSize);
+            iconVersion = [];
+            if isContainer
+                iconVersion = IconLoader.ICON_OBJECT;
+            end
+            j(ij).version = gui_component('MenuItem', j(ij).menu, [], 'Version', iconVersion, [], [], fontSize);
             j(ij).versep = java_create('javax.swing.JSeparator');
             j(ij).menu.add(j(ij).versep);
             % Install
             j(ij).install = gui_component('MenuItem', j(ij).menu, [], 'Install', IconLoader.ICON_DOWNLOAD, [], @(h,ev)InstallInteractive(Plug.Name), fontSize);
+            if isContainer
+                j(ij).install.setText('Import image');
+            end
             % Update
             j(ij).update = gui_component('MenuItem', j(ij).menu, [], 'Update', IconLoader.ICON_RELOAD, [], @(h,ev)UpdateInteractive(Plug.Name), fontSize);
+            j(ij).update.setVisible(~isContainer);
             % Uninstall
             j(ij).uninstall = gui_component('MenuItem', j(ij).menu, [], 'Uninstall', IconLoader.ICON_DELETE, [], @(h,ev)UninstallInteractive(Plug.Name), fontSize);
             j(ij).menu.addSeparator();
+            if isContainer
+                j(ij).install.setText('Remove image');
+            end
             % Custom install
             j(ij).custom = gui_component('Menu', j(ij).menu, [], 'Custom install', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
             j(ij).customset = gui_component('MenuItem', j(ij).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
@@ -2989,10 +3002,17 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
             j(ij).custompath.setEnabled(0);
             j(ij).custom.addSeparator();
             j(ij).customdel = gui_component('MenuItem', j(ij).custom, [], 'Ignore local installation', [], [], @(h,ev)SetCustomPath(Plug.Name, 0), fontSize);
-            j(ij).menu.addSeparator();
+            j(ij).custom.setVisible(~isContainer);
+            if ~isContainer
+                j(ij).menu.addSeparator();
+            end
             % Load
             j(ij).load = gui_component('MenuItem', j(ij).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
             j(ij).unload = gui_component('MenuItem', j(ij).menu, [], 'Unload', IconLoader.ICON_BAD, [], @(h,ev)UnloadInteractive(Plug.Name), fontSize);
+            if isContainer
+                j(ij).load.setText('Run container (as daemon)');
+                j(ij).unload.setText('Stop container');
+            end
             j(ij).menu.addSeparator();
             % Website
             j(ij).web = gui_component('MenuItem', j(ij).menu, [], 'Website', IconLoader.ICON_EXPLORER, [], @(h,ev)web(Plug.URLinfo, '-browser'), fontSize);
@@ -3142,10 +3162,14 @@ function MenuUpdate(jMenu, fontSize)
             end
             % Install
             j.install.setEnabled(~isInstalled);
+            InstallText = 'Install';
+            if isContainer
+                InstallText = 'Import image';
+            end
             if ~isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
-                j.install.setText(['<HTML>Install &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
+                j.install.setText(['<HTML>' InstallText ' &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
             else
-                j.install.setText('Install');
+                j.install.setText(InstallText);
             end
             % Update
             j.update.setEnabled(isManaged);
