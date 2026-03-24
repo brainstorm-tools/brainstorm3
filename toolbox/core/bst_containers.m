@@ -56,10 +56,16 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
     % Tests container engines
     for iEngine = 1 : length(engineNames)
         if ispc
-
+            [status, cmdout] = system(['where ' engineNames{iEngine}]);
+            if status == 0
+                cmdout = strsplit(strtrim(cmdout), '\n');
+                if length(cmdout) >= 1
+                    isFound = 1;
+                    enginePath = strtrim(cmdout{1});
+                end
+            end
         else
             [status, cmdout] = system(['which ' engineNames{iEngine}]);
-            % Container engine was found
             if status == 0
                 isFound = 1;
                 enginePath = strtrim(cmdout);
