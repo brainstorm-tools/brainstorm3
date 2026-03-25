@@ -1068,7 +1068,7 @@ function PlotCoordinate(isAdd)
             % Overwrite empty channel created by template.
             iP = 1;
         else
-            if Digitize.isEditPts
+            if Digitize.isEditPts || ~isAdd
                 iP = find(strcmpi({GlobalData.DataSet(Digitize.iDS).Channel.Name}, Digitize.Points(Digitize.iPoint).Label), 1);
             else
                 iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
@@ -1085,7 +1085,6 @@ function PlotCoordinate(isAdd)
                     % Keep point in list, but remove location 
                     GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
                 else  % Remove last point
-                    iP = iP - 1;
                     GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
                 end
             end
