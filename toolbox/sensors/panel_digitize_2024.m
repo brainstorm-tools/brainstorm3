@@ -831,7 +831,6 @@ function EEGAutoDetectElectrodes()
     % Enable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(1);
     bst_progress('stop');
-
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
