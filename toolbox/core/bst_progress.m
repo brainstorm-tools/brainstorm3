@@ -135,11 +135,23 @@ switch (lower(commandName))
 
     % ==== INCREMENT ====
     case 'inc'
-        pBar = pb_inc(pBar, varargin{2:end});
+        
+        % Parse arguments
+        if ~((nargin == 2) && isnumeric(varargin{2}))
+            error('Usage : bst_progress(''inc'', valInc)');
+        end
+
+        pBar = pb_inc(pBar, varargin{2});
 
     % ==== SET POSITION ====
     case 'set'
-        pBar = set (pBar, varargin{2:end});
+        
+        % Parse arguments
+        if ~((nargin == 2) && isnumeric(varargin{2}))
+            error('Usage : bst_progress(''set'', pos)');
+        end
+
+        pBar = pb_set(pBar, varargin{2});
         
     % ==== GET POSITION ====
     case 'get'
@@ -149,27 +161,20 @@ switch (lower(commandName))
     % ==== SET TEXT ====
     case 'text'
         % Parse arguments
-        if ((nargin == 2) && ischar(varargin{2}))
-            % Set new label
-            pBar.jLabel.setText(varargin{2});
-        else
-            % Get label
-            pBar.jLabel.getText();
+        if ~((nargin == 2) && ischar(varargin{2}))
+            error('Usage :  bst_progress(''text'', txt)');
         end
-        
+
+        % Set new label
+        pBar.jLabel.setText(varargin{2});
+
     % ==== IS VISIBLE ====
     case 'isvisible'
         pBar = pBar.jWindow.isVisible();
     % ==== SHOW ====
     case 'show'
-        % Set as "always on top"
-        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
-        java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
-        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
-        % Show window
-        java_call(pBar.jWindow, 'setVisible', 'Z', 1);
-        % Set watch cursor
-        jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
+
+        pBar = pb_show(pBar);
     
     % ==== HIDE ====
     case 'hide'
@@ -184,28 +189,8 @@ switch (lower(commandName))
         
     % ==== SET IMAGE ====
     case 'setimage'
-        % Get image path
-        imagefile = varargin{2};
-        searchDirs = {'', bst_get('BrainstormDocDir'), bst_fullfile(bst_get('BrainstormDocDir'), 'plugins')};
-        for iDir = 1 : length(searchDirs)
-            tmp = bst_fullfile(searchDirs{iDir}, imagefile);
-            if file_exist(tmp)
-                imagefile = tmp;
-                break
-            end
-        end
-        if ~file_exist(imagefile)
-            warning(['Image not found: ' imagefile]);
-            return
-        end
-        % Image in label
-        pBar.jImage.setIcon(javax.swing.ImageIcon(imagefile));
-        GlobalData.Program.ProgressBar{ix}.isImage = 1;
-        % Extend size of the frame
-        UpdateConstraints(pBar, 1);
-        pBar.jWindow.setPreferredSize([]);
-        pBar.jWindow.pack();
-        
+        pBar = pb_setImage(pBar, varargin{2:end});
+
     % ==== SET LINK ====
     case 'setlink'
         url = varargin{2};
@@ -250,46 +235,17 @@ switch (lower(commandName))
             pBar = pb_start(pBar, pBarParams.Title, pBarParams.Msg);
         else
             pBar = pb_start(pBar, pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
-            pBar = set (pBar, pBarParams.Value);
+            pBar = pb_set(pBar, pBarParams.Value);
         end
 
     % ==== SET PLUGIN LOGO ====
     case 'setpluginlogo'
-        % PlugName/PlugDesc is required
-        if (nargin < 2)
-            return
-        else
-            % Get plugin descriptor
-            PlugDesc = varargin{2};
-            if ischar(PlugDesc)
-                PlugDesc = bst_plugin('GetSupported', PlugDesc);
-            end
-            if isempty(PlugDesc)
-                return
-            end
+
+        %  is required
+        if ~((nargin == 2) && ischar(varargin{2}))
+            error('Usage : bst_progress(''setpluginlogo'', PlugName/PlugDesc)');
         end
-        % Get logo if not defined in the plugin structure
-        if isempty(PlugDesc.LogoFile)
-            PlugDesc.LogoFile = bst_plugin('GetLogoFile', PlugDesc);
-        end
-        % Start progress bar if needed
-        if ~pBar.jWindow.isVisible()
-            pBar = pb_start(pBar,  ['Plugin: ' PlugDesc.Name], '');
-        end
-        % Set logo file
-        if ~isempty(PlugDesc.LogoFile)
-        % Image in label
-            pBar.jImage.setIcon(javax.swing.ImageIcon(PlugDesc.LogoFile));
-            GlobalData.Program.ProgressBar{end}.isImage = 1;
-            % Extend size of the frame
-            UpdateConstraints(pBar, 1);
-            pBar.jWindow.setPreferredSize([]);
-            pBar.jWindow.pack();
-        end
-        % Set link
-        if ~isempty(PlugDesc.URLinfo)
-            java_setcb(pBar.jImage, 'MouseClickedCallback', @(h,ev)web(PlugDesc.URLinfo, '-browser'));
-        end
+        pBar = pb_setPluginLogo(pBar, varargin{2});
 
     otherwise
         error('Unknown command: %s', commandName);
@@ -359,11 +315,6 @@ end
 
     function pBar = pb_inc(pBar, valInc)
 
-        % Parse arguments
-        if ~((nargin == 2) && isnumeric(valInc))
-            error('Usage : bst_progress(''inc'', valInc)');
-        end
-
         % Get current value
         minValue = GlobalData.Program.ProgressBar{end}.Values.Minimum;
         maxValue = GlobalData.Program.ProgressBar{end}.Values.Maximum;
@@ -381,12 +332,7 @@ end
 
     end
 
-    function pBar = set (pBar, newVal)
-        % Parse arguments
-        if ~((nargin == 2) && isnumeric(varargin{2}))
-            error('Usage : bst_progress(''set'', pos)');
-        end
-
+    function pBar = pb_set(pBar, newVal)
         % Get current value
         curValue = GlobalData.Program.ProgressBar{ix}.Values.Value;
         % Plot the position if it changes
@@ -398,7 +344,83 @@ end
             GlobalData.Program.ProgressBar{ix}.Values.LastVal = newVal;
         end
     end
+    
+    function pBar = pb_setImage(pBar, imagefile)
 
+        % Get image path
+        searchDirs = {'', bst_get('BrainstormDocDir'), bst_fullfile(bst_get('BrainstormDocDir'), 'plugins')};
+        for iDir = 1 : length(searchDirs)
+            tmp = bst_fullfile(searchDirs{iDir}, imagefile);
+            if file_exist(tmp)
+                imagefile = tmp;
+                break
+            end
+        end
+        if ~file_exist(imagefile)
+            warning(['Image not found: ' imagefile]);
+            return
+        end
+        % Image in label
+        pBar.jImage.setIcon(javax.swing.ImageIcon(imagefile));
+        GlobalData.Program.ProgressBar{ix}.isImage = 1;
+        % Extend size of the frame
+        UpdateConstraints(pBar, 1);
+        pBar.jWindow.setPreferredSize([]);
+        pBar.jWindow.pack();
+    end
+
+    function pBar = pb_show(pBar)
+        
+        import org.brainstorm.icon.*;
+        import java.awt.Dimension;
+
+        % Set as "always on top"
+        java_call(pBar.jWindow, 'setAlwaysOnTop', 'Z', 1);
+        java_call(pBar.jWindow, 'setFocusable',   'Z', 0);
+        java_call(pBar.jWindow, 'setFocusableWindowState', 'Z', 0);
+        % Show window
+        java_call(pBar.jWindow, 'setVisible', 'Z', 1);
+        % Set watch cursor
+        jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
+    end
+
+    function pBar = pb_setPluginLogo(pBar, PlugDesc)
+
+        % Get plugin descriptor
+        if ischar(PlugDesc)
+            PlugDesc = bst_plugin('GetSupported', PlugDesc);
+        end
+        if isempty(PlugDesc)
+            return
+        end
+
+        % Get logo if not defined in the plugin structure
+        if isempty(PlugDesc.LogoFile)
+            PlugDesc.LogoFile = bst_plugin('GetLogoFile', PlugDesc);
+        end
+        
+        % Start progress bar if needed
+        if ~pBar.jWindow.isVisible()
+            pBar = pb_start(pBar,  ['Plugin: ' PlugDesc.Name], '');
+        end
+
+        % Set logo file
+        if ~isempty(PlugDesc.LogoFile)
+            % Image in label
+            pBar.jImage.setIcon(javax.swing.ImageIcon(PlugDesc.LogoFile));
+            GlobalData.Program.ProgressBar{end}.isImage = 1;
+            % Extend size of the frame
+            UpdateConstraints(pBar, 1);
+            pBar.jWindow.setPreferredSize([]);
+            pBar.jWindow.pack();
+        end
+
+
+        % Set link
+        if ~isempty(PlugDesc.URLinfo)
+            java_setcb(pBar.jImage, 'MouseClickedCallback', @(h,ev)web(PlugDesc.URLinfo, '-browser'));
+        end
+    end
 
     function [caller_name, stacklist] = getCallerName()
     
