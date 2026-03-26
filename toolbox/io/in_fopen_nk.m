@@ -523,7 +523,7 @@ function s = str_clean(s)
         s(iNull:end) = [];
     end
     % Remove weird characters
-    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-,:;.*+=?!<>''"`&%$()[]{}/\_@ ���������������������������������������������؜����������')) = [];
+    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-,:;.*+=?!<>''"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØ��ßúÚùÙûÛüÜ')) = [];
     % Remove useless spaces
     s = strtrim(s);
 end
