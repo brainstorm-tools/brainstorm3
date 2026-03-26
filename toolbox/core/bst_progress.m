@@ -297,9 +297,9 @@ switch (lower(commandName))
         if ~isempty(PlugDesc.LogoFile)
         % Image in label
             pBar.jImage.setIcon(javax.swing.ImageIcon(PlugDesc.LogoFile));
-            GlobalData.Program.ProgressBar.isImage = 1;
+            GlobalData.Program.ProgressBar{end}.isImage = 1;
             % Extend size of the frame
-            UpdateConstraints(1);
+            UpdateConstraints(pBar, 1);
             pBar.jWindow.setPreferredSize([]);
             pBar.jWindow.pack();
         end
