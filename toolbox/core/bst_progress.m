@@ -123,7 +123,7 @@ switch (lower(commandName))
         GlobalData.Program.ProgressBar{ix} = pBar;
 
 
-        pBar = start(pBar, varargin{2:end});
+        pBar = pb_start(pBar, varargin{2:end});
 
     % ==== STOP ====
     case 'stop'
@@ -132,27 +132,10 @@ switch (lower(commandName))
 
         java_call(pBar.jWindow, 'dispose');
         GlobalData.Program.ProgressBar = GlobalData.Program.ProgressBar(1:end-1);
+
     % ==== INCREMENT ====
     case 'inc'
-        % Parse arguments
-        if ((nargin == 2) && isnumeric(varargin{2}))
-            valInc = varargin{2};
-        else
-            error('Usage : bst_progress(''inc'', valInc)');
-        end
-        % Get current value
-        minValue = GlobalData.Program.ProgressBar{ix}.Values.Minimum;
-        maxValue = GlobalData.Program.ProgressBar{ix}.Values.Maximum;
-        curValue = GlobalData.Program.ProgressBar{ix}.Values.Value;
-        newVal = min(curValue + valInc + minValue, maxValue);
-        % Plot the incremented progress if it moves at least 1% of the bar range
-        if (abs(newVal - GlobalData.Program.ProgressBar{ix}.Values.LastVal) / (maxValue - minValue)) > 1/100
-            % Get the incremented progress bar position
-            pBar.jProgressBar.setValue(newVal);
-            % Update value in GlobalData
-            GlobalData.Program.ProgressBar{ix}.Values.LastVal = newVal;
-        end
-        GlobalData.Program.ProgressBar{ix}.Values.Value = newVal;
+        pBar = pb_inc(pBar, varargin{2:end});
 
     % ==== SET POSITION ====
     case 'set'
@@ -264,9 +247,9 @@ switch (lower(commandName))
         end
         % (Re)start bar
         if pBarParams.isIndeterminate
-            pBar = start(pBar, pBarParams.Title, pBarParams.Msg);
+            pBar = pb_start(pBar, pBarParams.Title, pBarParams.Msg);
         else
-            pBar = start(pBar, pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
+            pBar = pb_start(pBar, pBarParams.Title, pBarParams.Msg, pBarParams.Min, pBarParams.Max);
             pBar = set (pBar, pBarParams.Value);
         end
 
@@ -291,7 +274,7 @@ switch (lower(commandName))
         end
         % Start progress bar if needed
         if ~pBar.jWindow.isVisible()
-            pBar = start(pBar,  ['Plugin: ' PlugDesc.Name], '');
+            pBar = pb_start(pBar,  ['Plugin: ' PlugDesc.Name], '');
         end
         % Set logo file
         if ~isempty(PlugDesc.LogoFile)
@@ -312,7 +295,7 @@ switch (lower(commandName))
         error('Unknown command: %s', commandName);
 end
 
-    function pBar = start(pBar, wndTitle, msg, valStart, valStop)
+    function pBar = pb_start(pBar, wndTitle, msg, valStart, valStop)
         % JAVA imports
         import org.brainstorm.icon.*;
         % Set as "always on top"
@@ -374,20 +357,28 @@ end
     
     end
 
-    function [caller_name, stacklist] = getCallerName()
-    
-    % Get the name of the function that is calling bst_progress
-        stacks        = dbstack(2);
-        if isempty(stacks)
-            stacks   = struct('name_file', 'cmd_windows'); 
-        else
-            % We find the first progress bar, that is a parent of the caller
-            for i = 1:length(stacks)
-                stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
-            end
+    function pBar = pb_inc(pBar, valInc)
+
+        % Parse arguments
+        if ~((nargin == 2) && isnumeric(valInc))
+            error('Usage : bst_progress(''inc'', valInc)');
         end
-        caller_name   = stacks(1).name_file;
-        stacklist     = {stacks.name_file};
+
+        % Get current value
+        minValue = GlobalData.Program.ProgressBar{end}.Values.Minimum;
+        maxValue = GlobalData.Program.ProgressBar{end}.Values.Maximum;
+        curValue = GlobalData.Program.ProgressBar{end}.Values.Value;
+        newVal = min(curValue + valInc + minValue, maxValue);
+
+        % Plot the incremented progress if it moves at least 1% of the bar range
+        if (abs(newVal - GlobalData.Program.ProgressBar{end}.Values.LastVal) / (maxValue - minValue)) > 1/100
+            % Get the incremented progress bar position
+            pBar.jProgressBar.setValue(newVal);
+            % Update value in GlobalData
+            GlobalData.Program.ProgressBar{end}.Values.LastVal = newVal;
+        end
+        GlobalData.Program.ProgressBar{end}.Values.Value = newVal;
+
     end
 
     function pBar = set (pBar, newVal)
@@ -406,6 +397,23 @@ end
             GlobalData.Program.ProgressBar{ix}.Values.Value   = newVal;
             GlobalData.Program.ProgressBar{ix}.Values.LastVal = newVal;
         end
+    end
+
+
+    function [caller_name, stacklist] = getCallerName()
+    
+    % Get the name of the function that is calling bst_progress
+        stacks        = dbstack(2);
+        if isempty(stacks)
+            stacks   = struct('name_file', 'cmd_windows'); 
+        else
+            % We find the first progress bar, that is a parent of the caller
+            for i = 1:length(stacks)
+                stacks(i).name_file = sprintf('%s/%s', stacks(i).file, stacks(i).name);
+            end
+        end
+        caller_name   = stacks(1).name_file;
+        stacklist     = {stacks.name_file};
     end
 
     function [pBar, ix] = getProgressBar(caller_name, stacklist)
