@@ -442,9 +442,8 @@ sFile.header = hdr;
 % Acquisition date
 sFile.acq_date = str_date(hdr.startdate);
 % Timestamp for 0s
-if isfield(sFile.hdr, 'ctl') && isfield(sFile.hdr.ctl, 'data')
-    acq_date = datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
-    sFile.t0 = str_datetime(acq_date + seconds(sFile.header.ctl(1).data(1).timestamp));
+if ~isempty(hdr.starttime)
+    sFile.t0 = str_datetime(sprintf('%sT%s', acq_date, hdr.starttime));
 end
 
 
