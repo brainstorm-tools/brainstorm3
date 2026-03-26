@@ -442,7 +442,7 @@ sFile.header = hdr;
 % Acquisition date
 sFile.acq_date = str_date(hdr.startdate);
 % Timestamp for 0s
-if isfield(sFile, 'hdr') && isfield(sFile.hdr, 'ctl') && isfield(sFile.hdr.ctl, 'data')
+if isfield(sFile.header, 'ctl') && isfield(sFile.header.ctl, 'data')
     acq_date = datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
     sFile.t0 = str_datetime(acq_date + seconds(sFile.header.ctl(1).data(1).timestamp));
 end
@@ -523,7 +523,7 @@ function s = str_clean(s)
         s(iNull:end) = [];
     end
     % Remove weird characters
-    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-,:;.*+=?!<>''"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØœŒßúÚùÙûÛüÜ')) = [];
+    s(~ismember(s, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-,:;.*+=?!<>''"`&%$()[]{}/\_@ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øœï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½')) = [];
     % Remove useless spaces
     s = strtrim(s);
 end
