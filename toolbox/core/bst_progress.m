@@ -71,6 +71,7 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Pr
 elseif isempty(GlobalData)
     GlobalData = db_template('globaldata');
 end
+
 % If running in NOGUI mode: just display the message in the command window
 if ~bst_get('isGUI')
     switch lower(commandName)
@@ -161,12 +162,19 @@ switch (lower(commandName))
     % ==== SET TEXT ====
     case 'text'
         % Parse arguments
-        if ~((nargin == 2) && ischar(varargin{2}))
+        if ~((nargin >= 2) && ischar(varargin{2}))
             error('Usage :  bst_progress(''text'', txt)');
         end
+        
+        if (nargin == 2)
+            % Set new label
+            pBar.jLabel.setText(varargin{2});
+        elseif (nargin == 3)
+            % Set new label
+            pBar.jWindow.setTitle(varargin{3});
+            pBar.jLabel.setText(varargin{3});
+        end
 
-        % Set new label
-        pBar.jLabel.setText(varargin{2});
 
     % ==== IS VISIBLE ====
     case 'isvisible'
@@ -225,11 +233,11 @@ switch (lower(commandName))
     % ==== SET BAR PARAMETERS ====
     case 'setbarparams'
         % Parse arguments
-        if (nargin == 2)
-            pBarParams = varargin{2};
-        else
+        if ~(nargin == 2)
             error('Usage : bst_progress(''setbarparams'', barParams)');
         end
+
+        pBarParams = varargin{2};
         % (Re)start bar
         if pBarParams.isIndeterminate
             pBar = pb_start(pBar, pBarParams.Title, pBarParams.Msg);
@@ -245,7 +253,7 @@ switch (lower(commandName))
         if ~((nargin == 2) && ischar(varargin{2}))
             error('Usage : bst_progress(''setpluginlogo'', PlugName/PlugDesc)');
         end
-        pBar = pb_setPluginLogo(pBar, varargin{2});
+        pBar = pb_setPluginLogo(pBar, varargin{2:end});
 
     otherwise
         error('Unknown command: %s', commandName);
