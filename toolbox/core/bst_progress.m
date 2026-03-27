@@ -459,7 +459,7 @@ end
         ix            = find(strcmp(progress_list, caller_name), 1, 'last');
         
         if isempty(ix)
-            ix = find(cellfun(@(x) any(strcmp(stacklist,x)), progress_list),1,'last');
+            ix = find(cellfun(@(x) any(strcmp(stacklist,x)), progress_list), 1, 'last');
         
             if isempty(ix)
                 ix = 0;
