@@ -1220,13 +1220,15 @@ switch lower(structureName)
             'UnloadedFcn',   [], ...  % String to eval or function handle to call after unloading the plugin
             'DeleteFiles',   [], ...  % Cell-array of files to delete after unzipping the plugin package (path relative to the plugin folder)
             'DeleteFilesBin',[], ...  % Cell-array of files to delete before compiling Brainstorm, to avoid including them in the binary distribution (path relative to the plugin folder) 
+            'ImageSource',   '', ...  % String with location of container image: registry reference, path or download URL
             ... % Set when installing or loading the plugin
             'InstallDate',   '', ...  % Installation date
             'SubFolder',     '', ...  % If all the code is in a subfolder: detect this at installation time
             'Path',          [], ...  % Set at runtime: Installation path for this plugin
             'Processes',     [], ...  % List of process functions to be added to the pipeline manager
             'isLoaded',      0, ...   % Set at runtime: 0=Not loaded, 1=Loaded (folder and specific subfolders added to Matlab path)
-            'isManaged',     0);      % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
+            'isManaged',     0, ...   % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
+            'ImageSha',      '');     % String with SHA for container ImageSource
         template.LoadFolders = {};
         template.UnloadPlugs = {};
         template.RequiredPlugs = {};
