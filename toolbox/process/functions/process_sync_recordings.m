@@ -97,7 +97,7 @@ function OutputFiles = Run(sProcess, sInputs)
             sDataRaw = in_bst_data(sInputs(iInput).FileName, 'Time', 'F');
             sOldTiming{iInput}.Time   = sDataRaw.Time;
             sOldTiming{iInput}.Events = sDataRaw.F.events;
-            sOldTiming{iInput}.acq_date = sDataRaw.F.acq_date;
+            sOldTiming{iInput}.acq_date = sDataRaw.F.t0;
         end
         fs(iInput) = 1/(sOldTiming{iInput}.Time(2) -  sOldTiming{iInput}.Time(1)); % in Hz
         iSyncEvt = strcmp({sOldTiming{iInput}.Events.label}, syncEventName);
@@ -242,8 +242,7 @@ function OutputFiles = Run(sProcess, sInputs)
         new_date = datetime('now');
     end
 
-    new_date.Format = 'yyyy-MM-dd''T''HH:mm:ss';
-    new_date = char(new_date);
+
 
 
     bst_progress('inc', nInputs);
@@ -275,7 +274,7 @@ function OutputFiles = Run(sProcess, sInputs)
         else
             % New raw condition
             newCondition = [sInputs(iInput).Condition '_synced'];
-            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, new_date);
+            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_date));
             sNewStudy = bst_get('Study', iNewStudy);
             % Sync videos
             sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
@@ -306,7 +305,7 @@ function OutputFiles = Run(sProcess, sInputs)
             sFileIn = sDataRawSync.F;
             % Set new time and events
             sFileIn.events = sNewTiming{iInput}.Events;
-            sFileIn.acq_date = new_date;
+            sFileIn.t0 = str_datetime(new_date);
             sFileIn.header.nsamples = length( sNewTiming{iInput}.Time);
             sFileIn.prop.times      = [ sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
             sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);

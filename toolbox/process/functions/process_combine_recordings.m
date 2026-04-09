@@ -103,8 +103,8 @@ function OutputFiles = Run(sProcess, sInputs)
     % Find new metadate 
     acq_dates = {};
     for iFile = 1:length(sMetaData)
-        if ~isempty(sMetaData(iFile).F.acq_date)
-            acq_dates{end+1} = sMetaData(iFile).F.acq_date;
+        if ~isempty(sMetaData(iFile).F.t0)
+            acq_dates{end+1} = sMetaData(iFile).F.t0;
         end
     end
     [acq_dates, Ia, Ic] = unique(cellfun(@datetime, acq_dates));
@@ -113,8 +113,7 @@ function OutputFiles = Run(sProcess, sInputs)
     elseif length(acq_dates) > 1
         file_str = cell(length(sInputs), 1);
         for iFile = 1:length(sInputs)
-            file_date = datetime(sMetaData(iFile).F.acq_date);
-            file_str{iFile} = sprintf('%s : %s', sInputs(iFile).Condition, file_date );
+            file_str{iFile} = sprintf('%s : %s', sInputs(iFile).Condition, sMetaData(iFile).F.to );
         end
         ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
         DateOfStudy = datetime(sMetaData(ind).F.acq_date);
@@ -122,11 +121,10 @@ function OutputFiles = Run(sProcess, sInputs)
         DateOfStudy = datetime('now');
     end
     
-    DateOfStudy.Format = 'yyyy-MM-dd''T''HH:mm:ss';
-    DateOfStudy = char(DateOfStudy);
+
 
     % Study for combined recordings
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, DateOfStudy);
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(DateOfStudy));
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
@@ -297,6 +295,7 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
     sOutMat.F           = sFileOut;
+    sOutMat.F.t0        = str_datetime(DateOfStudy);
     sOutMat.format      = 'BST-BIN';
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
