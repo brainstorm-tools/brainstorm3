@@ -93,6 +93,10 @@ if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa6
     pause(0.05);
 end
 
+% define the maximum number of active bar
+max_bar = 5;
+
+
 % Retrieve the progress bar
 [caller_name, stacklist]     = getCallerName();
 [pBar, ix]                   = getProgressBar(caller_name, stacklist);
@@ -118,11 +122,13 @@ end
 switch (lower(commandName))
     % ==== START ====
     case 'start'
-        % Create a new progress bar
-        ix = ix + 1;
-        pBar = createProgressBar(DefaultSize, caller_name, ix);
-        GlobalData.Program.ProgressBar{ix} = pBar;
 
+        if ix  < max_bar 
+            % Create a new progress bar
+            ix = ix + 1;
+            pBar = createProgressBar(DefaultSize, caller_name, ix);
+            GlobalData.Program.ProgressBar{ix} = pBar;
+        end
 
         pBar = pb_start(pBar, varargin{2:end});
 
