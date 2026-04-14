@@ -387,7 +387,7 @@ if ~isempty(PntFile)
     fseek(fid, 64, 'bof');
     numDate = sscanf(fread(fid, [1 14], '*char'), '%04u%02u%02u%02u%02u%02u');
     hdr.startdate = sprintf('%02d/%02d/%04d', numDate(3), numDate(2), numDate(1));
-    hdr.starttime = duration(numDate(4), numDate(5), numDate(6));
+    hdr.starttime = sprintf('%02d:%02d:%02d', numDate(4), numDate(5), numDate(6));
     % Close file
     fclose(fid);
 else
@@ -441,14 +441,10 @@ sFile.channelflag = ones(hdr.num_channels,1);
 sFile.header = hdr;
 % Acquisition date
 sFile.acq_date = str_date(hdr.startdate);
-
 % Timestamp for 0s
-if ~isempty(hdr.starttime)
-    try
-        sFile.t0 = str_datetime(datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US') +  hdr.starttime);
-    catch
-        % nothing
-    end
+if ~isempty(sFile.acq_date) && isfield(sFile.header, 'ctl') && isfield(sFile.header.ctl, 'data') && isfield(sFile.header.ctl.data, 'timestamp') && ~isempty(sFile.header.ctl.data.timestamp)
+    acq_date = datetime(sFile.acq_date, 'InputFormat','dd-MMM-yyyy', 'Locale', 'en_US');
+    sFile.t0 = str_datetime(acq_date + seconds(sFile.header.ctl(1).data(1).timestamp));
 end
 
 
