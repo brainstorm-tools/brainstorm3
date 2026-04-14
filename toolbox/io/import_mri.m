@@ -553,7 +553,7 @@ panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 db_save();
 % Unload MRI (if a MRI with the same name was previously loaded)
 bst_memory('UnloadMri', BstMriFile);
-bst_progress('stop')
+bst_progress('stop');
 
 %% ===== MRI VIEWER =====
 if isInteractive
