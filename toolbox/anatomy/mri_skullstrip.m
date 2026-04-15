@@ -163,7 +163,16 @@ switch lower(Method)
         % Reset matlabbatch to start fresh
         clear matlabbatch;
         % Get the TPM atlas
-        TpmFile = bst_get('SpmTpmAtlas', 'SPM');
+        TpmFile = bst_get('SpmTpmAtlas');
+        if isempty(TpmFile)
+            % Only installs default SPM tpm.nii
+            bst_normalize_mni('install');
+            TpmFile = bst_get('SpmTpmAtlas');
+            if isempty(TpmFile)
+                errMsg = 'Missing file TPM.nii';
+                return
+            end
+        end
         % Get the SPM tissue segments
         [~, TpmFiles] = mri_normalize_segment(sMriRef, TpmFile);
         % Compute brain mask: union(GM, WM, CSF)
