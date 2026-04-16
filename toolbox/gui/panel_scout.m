@@ -5536,19 +5536,10 @@ function LoadScouts(ScoutFiles, isNewAtlas, FileFormat)
     end
     
     % ===== VOLUME GRIDS =====
-    GridLoc = [];
     % Get selected figure
     hFig = bst_figures('GetCurrentFigure', '3D');
     if ~isempty(hFig)
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if ~isempty(ResultsFile)
-            % Load results file
-            [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-            if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'volume')
-                GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-            end
-        end
+        GridLoc = GetFigureGrid(hFig);
     end   
     
     % Load all files selected by user
