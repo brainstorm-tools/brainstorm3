@@ -95,11 +95,18 @@ function OutputFile = Run(sProcess, sInput)
         error(['Cannot open JSON file: ' jsonFile]);
     end
     % Read file
-    jsonFile = fread(fid, [1, Inf], '*char');
+    jsonStr = fread(fid, [1, Inf], '*char');
     % Close file
     fclose(fid);
     % Decode JSON string
-    [hedEvtNames, hedEvtHedTags] = json2events(jsonFile);
+    [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonStr);
+    % Return if no HED tags or error
+    if isempty(hedEvtNames) && isempty(hedEvtHedTags)
+        if ~isempty(errMsg)
+            bst_report('Error', sProcess, sInput, [errMsg, 10, jsonFile]);
+        end
+        return
+    end
     % Add HEDs to Events in Data file
     for iHed = 1 : length(hedEvtNames)
         hedEvtName = hedEvtNames{iHed};
@@ -117,15 +124,18 @@ function OutputFile = Run(sProcess, sInput)
         DataMat.Events = sEvents;
     end
     % Add history entry
-    DataMat = bst_history('add', DataMat, 'events', sprintf('HED tags from % were added to events', jsonFile));
+    DataMat = bst_history('add', DataMat, 'events', sprintf('HED tags from %s were added to events', jsonFile));
     % Only save changes if something was change
     bst_save(file_fullpath(sInput.FileName), DataMat, [], 1);
 end
 
-function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
+function [hedEvtNames, hedEvtHedTags, errMsg] = json2events(jsonStr, isOnlyHed)
     if nargin < 2 || isempty(isOnlyHed)
         isOnlyHed = 0;
     end
+    hedEvtNames = [];
+    hedEvtHedTags = [];
+    errMsg = '';
     %  Load JSON sidecar
     evtSidecar = bst_jsondecode(jsonStr);
     % Find field with HED
@@ -135,7 +145,7 @@ function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
     elseif ismember('event_type', evtSidecarFields)
         fieldEvtName = 'event_type';
     else
-        bst_error('JSON file should annotate events in column "trial_type" or "event_type"');
+        errMsg = 'HED: JSON file should annotate events in column "trial_type" or "event_type"';
         return
     end
     sHed = evtSidecar.(fieldEvtName);
@@ -145,12 +155,12 @@ function [hedEvtNames, hedEvtHedTags] = json2events(jsonStr, isOnlyHed)
     end
     % Must contain 'Levels' and 'HED'
     if ~all(ismember({'Levels', 'HED'}, fieldnames(sHed)))
-        bst_error('JSON file should the fields "Levels" and "HED"');
+        errMsg ='HED: JSON file should have the fields "Levels" and "HED"' ;
         return
     end
     % One HED for each Level
     if ~all(ismember(fieldnames(sHed.Levels), fieldnames(sHed.HED)))
-        bst_error('JSON file should the same keynames for "Levels" and "HED"');
+        errMsg = 'HED: JSON file should have the same keynames for "Levels" and "HED"';
         return
     end
     evtKeys = fieldnames(sHed.Levels);
