@@ -31,8 +31,9 @@ function TessMat = in_tess_ply(TessFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: ChatGPT Thinking 5.4, 2026
-%          Chinmay Chinara, 2026
+% Author: Chinmay Chinara, 2026
+%         Assisted-by ChatGPT
+
 
     %% ===== CHECK INPUT =====
     % Validate function call

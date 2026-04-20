@@ -224,7 +224,7 @@ switch (FileFormat)
     case 'WFTOBJ'
         TessMat = in_tess_wftobj(TessFile);
         isConvertScs = 0;
-    
+
     case 'PLY'
         TessMat = in_tess_ply(TessFile);
         isConvertScs = 0;
