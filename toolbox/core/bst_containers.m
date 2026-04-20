@@ -238,7 +238,7 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
         case 'docker'
             commandWrapper = ''''; % Single quote
             if ispc
-                commandWrapper = ''''; % Double quote
+                commandWrapper = '"'; % Double quote
             end
             [status, cmdout] = system(['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper]);
             isOk = status == 0;
