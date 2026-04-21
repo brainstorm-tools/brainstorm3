@@ -138,8 +138,18 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
     % Origin of imageSource
     imageType = 'reference';
     if ~isempty(regexp(imageSource, '^http[s]*://', 'once'))
-        % Download file in tmp
-        % Update imageSource
+        % Get tmp dir to bind container
+        tmpDir = bst_get('BrainstormTmpDir', 0, 'pull_image');
+        imageFile = bst_fullfile(tmpDir, 'image.tgz');
+        disp(['BST> Downloading URL : ' imageSource]);
+        disp(['BST> Saving to file  : ' imageFile]);
+        errMsg = gui_brainstorm('DownloadFile', imageSource, imageFile, 'Download container image: ');
+        % If file was not downloaded correctly
+        if ~isempty(errMsg)
+            errMsg = ['Impossible to download container image automatically:' 10 errMsg];
+            return
+        end
+        imageSource = imageFile;
         imageType = 'file';
     end
 
@@ -166,13 +176,13 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
                     [status, cmdout] = system(['docker load --input ' imageSource]);
                     if status == 0
                         % If new or existent image, Image name (or SHA256 for nameless image) is returned in output,
-                        token = regexp(output, '[a-z0-9._-]+:([a-zA-Z0-9._-]+', 'tokens', 'once');
+                        token = regexp(cmdout, '[a-z0-9._-]+:[a-zA-Z0-9._-]+', 'match', 'once');
                         parts = strsplit(token, ':');
                         if strcmp(parts{1}, 'sha256') && ~isempty(regexp(parts{2}, '^[a-f0-9]+$', 'once'))
                             imageSha = token;
                         else
                             [~, imageListNew] = GetImages();
-                            imageSha = imageListNew{strcmpi(imageListNew(:,1), imageSha), 2};
+                            imageSha = imageListNew{strcmpi(imageListNew(:,1), token), 2};
                         end
                     end
             end
