@@ -369,7 +369,6 @@ function isOk = RemoveImage(imageSha, isForce)
 
     isOk = 0;
     errMsg = '';
-    imageSha = '';
 
     % Default container engine
     engineName = bst_get('ContainerEngine');
