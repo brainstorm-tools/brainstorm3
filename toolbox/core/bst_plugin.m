@@ -1924,7 +1924,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         file_delete(pkgFile, 1, 3);
     else
         % Import container image in container engine
-        [isOk, errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource, ['BST_' PlugDesc.Name]);
+        [isOk, errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource, ['brainstorm_' PlugDesc.Name]);
         if ~isOk
             bst_progress('removeimage');
             return
@@ -2224,9 +2224,13 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
-    % Remove image from container engine
+    % Stop container
     if isContainer && ~isempty(PlugDesc.ImageSha)
-        [isOk] = bst_containers('StopContainer', PlugDesc.Name, 1);
+        isOk = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
+        if isOk
+            % Remove image from container engine
+            isOk = bst_containers('RemoveImage', ['brainstorm_' PlugDesc.Name], 1);
+        end
         if ~isOk
             return
         end
@@ -2649,8 +2653,8 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
         % Stop container
         if isContainer
             % Retrieve info of container
-            [~, ~, volumePairs] = bst_containers('GetContainerInfo', PlugDesc.Name);
-            [isOk] = bst_containers('StopContainer', PlugDesc.Name, 1);
+            [~, ~, volumePairs] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+            isOk = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
             % Delete temporary files
             file_delete(volumePairs{1,1}, 1, 1);
             if ~isOk
