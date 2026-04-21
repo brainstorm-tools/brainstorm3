@@ -2,8 +2,8 @@ function varargout = process_remove_spes_artifacts(varargin)
 % PROCESS_REMOVE_SPES_ARTIFACTS: Remove Single-Pulse Electrical Stimulation (SPES)
 % artifacts and slow drifts
 % This process:
-%   1) Detects stimulation events from a selected trigger channel
-%   2) Replaces the artifact window around each event using spline interpolation
+%   1) Detects selected stimulation event
+%   2) Replaces the artifact window around the event using spline interpolation
 %   3) Applies Empirical Mode Decomposition (EMD) based filtering to remove low-frequency drifts
 %
 % USAGE:
