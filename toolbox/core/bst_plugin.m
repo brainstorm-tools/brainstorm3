@@ -2489,7 +2489,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
             % Get tmp dir to bind container
             TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
             volumes = {TmpDir, '/data'};
-            [isOk, errMsg] = bst_containers('RunContainer', PlugDesc.Name, PlugDesc.ImageSha, volumes, 1);
+            [isOk, errMsg] = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
             if ~isOk
                 return
             end
