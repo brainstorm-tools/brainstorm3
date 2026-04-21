@@ -116,12 +116,16 @@ end
 
 
 %% ===== IMPORT IMAGE =====
-function [isOk, errMsg, imageSha] = ImportImage(imageSource)
+function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
 % Load container image into container engine
-% USAGE:  [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource)
+% USAGE:  [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
     isOk = 0;
     errMsg = '';
     imageSha = '';
+
+    if (nargin < 2) || isempty(imageTag)
+        imageTag = '';
+    end
 
     % Default container engine
     engineName = bst_get('ContainerEngine');
@@ -131,14 +135,20 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource)
         return
     end
 
-    % [TODO] Check imageSource is: reference, local file or download URL
+    % Origin of imageSource
     imageType = 'reference';
-
-    % [TODO] Get image from download link
-    if strcmpi(imageType, 'url')
+    if ~isempty(regexp(imageSource, '^http[s]*://', 'once'))
         % Download file in tmp
         % Update imageSource
-        % Change type to file
+        imageType = 'file';
+    end
+
+    % Get current available images
+    if ~isempty(imageTag)
+        [errMsg, imageListOld] = GetImages();
+        if ~isempty(errMsg)
+            return
+        end
     end
 
     % Import image
@@ -147,12 +157,39 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource)
             switch imageType
                 case 'reference'
                     [status, cmdout] = system(['docker pull ' imageSource]);
+                    if status == 0
+                        % If new or existent image, SHA256 is returned in output
+                        imageSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
+                    end
+
                 case 'file'
                     [status, cmdout] = system(['docker load --input ' imageSource]);
+                    if status == 0
+                        % If new or existent image, Image name (or SHA256 for nameless image) is returned in output,
+                        token = regexp(output, '[a-z0-9._-]+:([a-zA-Z0-9._-]+', 'tokens', 'once');
+                        parts = strsplit(token, ':');
+                        if strcmp(parts{1}, 'sha256') && ~isempty(regexp(parts{2}, '^[a-f0-9]+$', 'once'))
+                            imageSha = token;
+                        else
+                            [~, imageListNew] = GetImages();
+                            imageSha = imageListNew{strcmpi(imageListNew(:,1), imageSha), 2};
+                        end
+                    end
             end
-            if status == 0
-                tokens = regexp(cmdout, 'sha256:[a-f0-9]+', 'match');
-                imageSha = strtrim(tokens{1});
+            % Tag image
+            if status == 0 && ~isempty(imageTag)
+                % Was image added?
+                [~, imageListNew] = GetImages();
+                iNew = setdiff(find(strcmpi(imageListNew(:,2), imageSha)), find(strcmpi(imageListOld(:,2), imageSha)), 'stable');
+                % Tag image
+                [status, cmdout] = system(['docker tag ', imageSha, ' ', imageTag]);
+                if status == 0 && length(iNew) == 1 && ~strcmpi(imageListNew{iNew, 1}, '<none>:<none>')
+                    [status, cmdout] = system(['docker rmi ', imageListNew{iNew, 1}]);
+                end
+            end
+            if status ~= 0
+                errMsg = cmdout;
+                return
             end
     end
     isOk = status == 0;
