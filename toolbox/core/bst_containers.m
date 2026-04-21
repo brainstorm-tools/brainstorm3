@@ -364,3 +364,29 @@ function isOk = RemoveImage(imageSha, isForce)
             isOk = status == 0;
     end
 end
+
+
+%% ===== GET AVAILABLE IMAGES =====
+function [errMsg, imageList] = GetImages()
+% USAGE:  [errMsg, imageList] = bst_containers('GetImages')
+    imageList = [];
+
+    % Default container engine
+    engineName = bst_get('ContainerEngine');
+    % Check status of container engine
+    [isFound, engineName, errMsg] = GetEngine(engineName);
+    if ~isFound || ~isempty(errMsg)
+        return
+    end
+
+    % Import image
+    switch engineName
+        case 'docker'
+            [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
+            if status == 0
+                imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
+            else
+                errMsg = cmdout;
+            end
+    end
+end
