@@ -1,11 +1,14 @@
-function [varargout] = bst_containers(varargin)
-% BST_CONTAINERS: Manages containers for container-based plugins in Brainstorm
+function varargout = bst_containers(varargin)
+% BST_CONTAINERS: Manage containers for container-based plugins in Brainstorm
 %
 % USAGE:  [isOk, eName, eStatus] = bst_containers('GetEngine')
-%       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource)
+%            [errMsg, imageList] = bst_containers('GetImages')
+%       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
 %  [isOk, errMsg. containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
-%                 [isOk, cmdout] = bst_containers('StatusContainer', containerName)
+% [containerName, isRunning, volumePairs, imageSha] = bst_containers('GetContainerInfo', containerName)
+%                 [isOk, cmdout] = bst_containers('StopContainer', containerName, [isForced=0])
+%                 [isOk, cmdout] = bst_containers('RemoveImage',   imageSha/Name, [isForced=0])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -27,7 +30,6 @@ function [varargout] = bst_containers(varargin)
 %
 % Authors: Raymundo Cassani, 2026
 %          Takfarinas Medani, 2026
-
 
 eval(macro_method);
 end
@@ -55,25 +57,28 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
 
     % Tests container engines
     for iEngine = 1 : length(engineNames)
-        if ispc
-            [status, cmdout] = system(['where ' engineNames{iEngine}]);
-            if status == 0
-                cmdout = strsplit(strtrim(cmdout), '\n');
-                if length(cmdout) >= 1
-                    isFound = 1;
-                    enginePath = strtrim(cmdout{1});
+        switch engineNames{iEngine}
+            case {'docker'}
+                if ispc
+                    [status, cmdout] = system(['where ' engineNames{iEngine}]);
+                    if status == 0
+                        cmdout = strsplit(strtrim(cmdout), '\n');
+                        if length(cmdout) >= 1
+                            isFound = 1;
+                            enginePath = strtrim(cmdout{1});
+                        end
+                    end
+                else
+                    [status, cmdout] = system(['which ' engineNames{iEngine}]);
+                    if status == 0
+                        isFound = 1;
+                        enginePath = strtrim(cmdout);
+                    end
                 end
-            end
-        else
-            [status, cmdout] = system(['which ' engineNames{iEngine}]);
-            if status == 0
-                isFound = 1;
-                enginePath = strtrim(cmdout);
-            end
         end
+        % Break loop if found
         if isFound
             engineName = engineNames{iEngine};
-            fprintf('Container engine "%s" found in "%s"\r', engineName, enginePath);
             break
         end
     end
@@ -101,26 +106,43 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
                 errMsg = cmdout;
                 return
             end
+    end
+end
 
-        case 'podman'
-            [status, cmdout] = system([engineName ' info', '-echo']);
-            if status == 1
+
+%% ===== GET AVAILABLE IMAGES =====
+function [errMsg, imageList] = GetImages()
+% USAGE:  [errMsg, imageList] = bst_containers('GetImages')
+    imageList = cell(0,2);
+
+    % Default container engine
+    engineName = bst_get('ContainerEngine');
+    % Check status of container engine
+    [isFound, engineName, errMsg] = GetEngine(engineName);
+    if ~isFound || ~isempty(errMsg)
+        return
+    end
+
+    % Import image
+    switch engineName
+        case 'docker'
+            [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
+            if status == 0
+                if ~isempty(cmdout)
+                    imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
+                end
+            else
                 errMsg = cmdout;
-                return
             end
-
-        otherwise
-
     end
 end
 
 
 %% ===== IMPORT IMAGE =====
 function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
-% Load container image into container engine
+% Import container image into container engine
 % USAGE:  [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
     isOk = 0;
-    errMsg = '';
     imageSha = '';
 
     if (nargin < 2) || isempty(imageTag)
@@ -219,7 +241,7 @@ end
 
 %% ===== RUN CONTAINER AS DAEMON =====
 function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE:  [isOk, errMsg, imageSha] = bst_containers('RunDaemonContainer', imageSha, volumes)
+% USAGE:  [isOk, errMsg, containerName] = bst_containers('RunContainer', imageSha, volumes, isDaemon)
     isOk = 0;
 
     % Validate inputs
@@ -252,7 +274,6 @@ function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, v
     % Run container
     switch engineName
         case 'docker'
-            cmdStr = ['docker run -d --name ' containerName];
             if ~isDaemon
                 cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageSha);
             else
@@ -263,6 +284,7 @@ function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, v
     end
     isOk = status == 0;
     if ~isOk
+        errMsg = cmdout;
         return
     end
 end
@@ -322,7 +344,6 @@ function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo
             % Find containers with same name
             [status, cmdout] = system(['docker inspect ' containerName ' --format "{{.Name}}"']);
             if status == 0
-                isExist = 1;
                 containerNameOut = strrep(strtrim(cmdout), '/', '');
                 [status, cmdout] = system(['docker inspect ' containerName ' --format "'...
                     '{{.State.Status}} # ' ...
@@ -343,7 +364,7 @@ end
 
 
 %% ===== STOP CONTAINER =====
-function isOk = StopContainer(containerName, isForce)
+function [isOk, cmdout] = StopContainer(containerName, isForce)
     isOk = 0;
 
     % Validate inputs
@@ -371,13 +392,14 @@ function isOk = StopContainer(containerName, isForce)
                 [status, cmdout] = system(['docker rm -f ' containerName]);
             end
             isOk = status == 0;
+            cmdout = strtrim(cmdout);
     end
 
 end
 
 
 %% ===== REMOVE IMAGE =====
-function isOk = RemoveImage(imageSha, isForce)
+function [isOk, cmdout] = RemoveImage(imageSha, isForce)
     isOk = 0;
 
     % Validate inputs
@@ -385,23 +407,11 @@ function isOk = RemoveImage(imageSha, isForce)
         isForce = 0;
     end
 
-    isOk = 0;
-    errMsg = '';
-
     % Default container engine
     engineName = bst_get('ContainerEngine');
     % Check status of container engine
     [isFound, engineName, errMsg] = GetEngine(engineName);
     if ~isFound || ~isempty(errMsg)
-        return
-    end
-
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
         return
     end
 
@@ -416,33 +426,7 @@ function isOk = RemoveImage(imageSha, isForce)
                 [status, cmdout] = system(['docker rmi -f ' imageSha]);
             end
             isOk = status == 0;
+            cmdout = strtrim(cmdout);
     end
 end
 
-
-%% ===== GET AVAILABLE IMAGES =====
-function [errMsg, imageList] = GetImages()
-% USAGE:  [errMsg, imageList] = bst_containers('GetImages')
-    imageList = cell(0,2);
-
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
-        return
-    end
-
-    % Import image
-    switch engineName
-        case 'docker'
-            [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
-            if status == 0
-                if ~isempty(cmdout)
-                    imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
-                end
-            else
-                errMsg = cmdout;
-            end
-    end
-end
