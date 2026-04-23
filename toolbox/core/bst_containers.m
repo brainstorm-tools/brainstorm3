@@ -240,9 +240,10 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, volumes, isDaemon)
+function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha, volumes, isDaemon)
 % USAGE:  [isOk, errMsg, containerName] = bst_containers('RunContainer', imageSha, volumes, isDaemon)
     isOk = 0;
+    containerNameOut = '';
 
     % Validate inputs
     if nargin < 4 || isempty(isDaemon)
@@ -287,6 +288,7 @@ function [isOk, errMsg, containerName] = RunContainer(containerName, imageSha, v
         errMsg = cmdout;
         return
     end
+    containerNameOut = containerName;
 end
 
 
@@ -327,7 +329,9 @@ end
 %% ===== CHECK CONTAINER STATUS =====
 function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo(containerName)
     containerNameOut = [];
-    isRunning = 0;
+    isRunning        = 0;
+    volumePairs      = [];
+    imageSha         = '';
 
     % Default container engine
     engineName = bst_get('ContainerEngine');
@@ -366,6 +370,7 @@ end
 %% ===== STOP CONTAINER =====
 function [isOk, cmdout] = StopContainer(containerName, isForce)
     isOk = 0;
+    cmdout = '';
 
     % Validate inputs
     if nargin < 2 || isempty(isForce)
@@ -401,6 +406,7 @@ end
 %% ===== REMOVE IMAGE =====
 function [isOk, cmdout] = RemoveImage(imageSha, isForce)
     isOk = 0;
+    cmdout = '';
 
     % Validate inputs
     if nargin < 2 || isempty(isForce)
