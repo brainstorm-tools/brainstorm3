@@ -291,45 +291,37 @@ switch lower(primitiveShape)
         maxvol = tsize*tsize*tsize; % mmaximu volume of the tetrahedral elements
         ndiv = 20;
         % Generate the mesh
-        oldVersion = 0;
-        if oldVersion == 1
-            [vert,face]= meshacylinder(c0,c1,r,tsize,maxvol,ndiv);
+        % Create cylinder/cone along z-axis
+        L  = norm(c1 - c0);
+        z0 = [0 0 0];
+        z1 = [0 0 L];
+        [vert,face] = meshacylinder(z0, z1, r, tsize, maxvol, ndiv);
+        % Check if rotation from z-axis is needed
+        orgDir = (c1 - c0) / L;
+        z_axis = [0 0 1];
+        if norm(orgDir - z_axis) < 1e-10
+            % Already aligned
+            R = eye(3);
+        elseif norm(orgDir + z_axis) < 1e-10
+            % Aligned, but opposite direction: rotation 180deg around x-axis
+            R = [1  0  0;
+                 0 -1  0;
+                 0  0 -1];
         else
-            % === Step 1: Create canonical cylinder along Z ===
-            L = norm(c1 - c0);                 % length of cylinder
-            z0 = [0 0 0];
-            z1 = [0 0 L];
-
-            [vert,face] = meshacylinder(z0, z1, r, tsize, maxvol, ndiv);
-
-            % === Step 2: Compute rotation from Z-axis to desired direction ===
-            dir = (c1 - c0) / L;              % target direction (unit)
-            z_axis = [0 0 1];
-
-            % Check if already aligned
-            if norm(dir - z_axis) < 1e-10
-                R = eye(3);
-            elseif norm(dir + z_axis) < 1e-10
-                % Opposite direction → 180° rotation around X (or any perpendicular axis)
-                R = [1 0 0; 0 -1 0; 0 0 -1];
-            else
-                v = cross(z_axis, dir);
-                s = norm(v);
-                c = dot(z_axis, dir);
-
-                vx = [   0   -v(3)  v(2);
-                    v(3)   0    -v(1);
-                    -v(2)  v(1)   0   ];
-
-                R = eye(3) + vx + vx*vx * ((1 - c)/(s^2));
-            end
-
-            % === Step 3: Rotate vertices ===
-            vert = (R * vert')';
-            
-            % === Step 4: Translate to c0 ===
-            vert = vert + c0;
+            % Rodrigues formula
+            v = cross(z_axis, orgDir);
+            s = norm(v);
+            c = dot(z_axis, orgDir);
+            vx = [   0   -v(3)  v(2);
+                   v(3)     0  -v(1);
+                  -v(2)   v(1)     0];
+            R = eye(3) + vx + vx*vx * ((1 - c)/(s^2));
         end
+        % Rotate vertices
+        vert = (R * vert')';
+        % Translate to c0
+        vert = vert + c0;
+
     otherwise
         errMsg = sprintf('Unknown "%s" primitive geometric shape.', primitiveShape);
         return
