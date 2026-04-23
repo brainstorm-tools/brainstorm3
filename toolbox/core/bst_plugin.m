@@ -2489,11 +2489,31 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     % Run container if image was properly imported
     if isContainer
         PlugDesc = GetInstalled(PlugDesc);
+        imageName = ['brainstorm_' PlugDesc.Name];
         if ~isempty(PlugDesc.ImageSha) && ~PlugDesc.isLoaded
-            % Get tmp dir to bind container
-            TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
-            volumes = {TmpDir, '/data'};
-            [isOk, errMsg] = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+            % Get available images in container engine
+            [errMsg, imageList] = bst_containers('GetImages');
+            if ~isempty(errMsg)
+                return
+            end
+            % Check that image is imported in container engine
+            isImported = 0;
+            if ~isempty(imageList)
+                iImageSha = strcmpi(imageList(:,2), PlugDesc.ImageSha);
+                isImported = any(strncmpi(imageList(iImageSha,1), imageName, length(imageName)));
+            end
+            if isImported
+                % Get tmp dir to bind container
+                TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
+                volumes = {TmpDir, '/data'};
+                % Run container as daemon
+                [isOk, errMsg] = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+            else
+                % Uninstall container plugin
+                Uninstall(PlugDesc.Name, 0, 0);
+                errMsg = ['Reinstall plugin ' PlugDesc.Name '.' 10 10 'Missing container image: ' imageName 10 'SHA: ' PlugDesc.ImageSha];
+                return
+            end
             if ~isOk
                 return
             end
