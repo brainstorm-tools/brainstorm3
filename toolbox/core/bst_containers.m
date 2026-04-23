@@ -188,13 +188,21 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
             end
             % Tag image
             if status == 0 && ~isempty(imageTag)
-                % Was image added?
+                % Compare images before and after import
                 [~, imageListNew] = GetImages();
-                iNew = setdiff(find(strcmpi(imageListNew(:,2), imageSha)), find(strcmpi(imageListOld(:,2), imageSha)), 'stable');
+                iOld = find(strcmpi(imageListOld(:,2), imageSha));
+                iNew = find(strcmpi(imageListNew(:,2), imageSha));
                 % Tag image
                 [status, cmdout] = system(['docker tag ', imageSha, ' ', imageTag]);
-                if status == 0 && length(iNew) == 1 && ~strcmpi(imageListNew{iNew, 1}, '<none>:<none>')
-                    [status, cmdout] = system(['docker rmi ', imageListNew{iNew, 1}]);
+                if status == 0 && (length(iNew) - length(iOld)) == 1
+                    if ~isempty(imageListOld)
+                        imageDel = setdiff(imageListNew{iNew, 1}, imageListOld{iOld, 1});
+                    else
+                        imageDel = imageListNew{iNew, 1};
+                    end
+                    if ~strcmpi(imageDel, '<none>:<none>')
+                        [status, cmdout] = system(['docker rmi ', imageListNew{iNew, 1}]);
+                    end
                 end
             end
             if status ~= 0
@@ -415,7 +423,7 @@ end
 %% ===== GET AVAILABLE IMAGES =====
 function [errMsg, imageList] = GetImages()
 % USAGE:  [errMsg, imageList] = bst_containers('GetImages')
-    imageList = [];
+    imageList = cell(0,2);
 
     % Default container engine
     engineName = bst_get('ContainerEngine');
@@ -430,7 +438,9 @@ function [errMsg, imageList] = GetImages()
         case 'docker'
             [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
             if status == 0
-                imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
+                if ~isempty(cmdout)
+                    imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
+                end
             else
                 errMsg = cmdout;
             end
