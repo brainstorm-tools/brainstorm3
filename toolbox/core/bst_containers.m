@@ -2,7 +2,7 @@ function varargout = bst_containers(varargin)
 % BST_CONTAINERS: Manage containers for container-based plugins in Brainstorm
 %
 % USAGE: 
-%  [isFound, engineName, errMsg] = bst_containers('GetEngine')
+%  [errMsg, engineName]    = bst_containers('GetEngine')
 %            [errMsg, imageList] = bst_containers('GetImages')
 %       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
 %  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
@@ -37,10 +37,9 @@ end
 
 
 %% ===== GET CONTAINER ENGINE =====
-function [isFound, engineName, errMsg] = GetEngine(engineName)
-% USAGE:  [isFound, engineName, errMsg] = bst_containers('GetEngine')             % Find, test and set a supported container engine
-%         [isFound, engineName, errMsg] = bst_containers('GetEngine', engineName) % Test the requested container engine
-    isFound = 0;
+function [errMsg, engineName] = GetEngine(engineName)
+% USAGE: [errMsg, engineName] = bst_containers('GetEngine')             % Find, test and set a supported container engine
+%        [errMsg, engineName] = bst_containers('GetEngine', engineName) % Test the requested container engine
     errMsg  = '';
 
     % Get and test all the supported container engines
@@ -58,6 +57,7 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
 
     % Tests container engines
     for iEngine = 1 : length(engineNames)
+        isFound = 0;
         switch engineNames{iEngine}
             case {'docker'}
                 if ispc
@@ -91,10 +91,8 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
             errMsg = ['Container engine ' engineName ' was not found'];
         end
         return
-    end
-
     % Set as default the container engine found
-    if isSetDefault
+    elseif isSetDefault
         bst_set('ContainerEngine', engineName);
     end
 
@@ -116,11 +114,9 @@ function [errMsg, imageList] = GetImages()
 % USAGE:  [errMsg, imageList] = bst_containers('GetImages')
     imageList = cell(0,2);
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -150,11 +146,9 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
         imageTag = '';
     end
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -254,11 +248,9 @@ function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha
         volumes = [];
     end
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -298,12 +290,9 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     isOk = 0;
     cmdout = '';
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -334,12 +323,9 @@ function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo
     volumePairs      = [];
     imageSha         = '';
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -378,12 +364,9 @@ function [isOk, cmdout] = StopContainer(containerName, isForce)
         isForce = 0;
     end
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
-        disp(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
@@ -414,11 +397,9 @@ function [isOk, cmdout] = RemoveImage(imageSha, isForce)
         isForce = 0;
     end
 
-    % Default container engine
-    engineName = bst_get('ContainerEngine');
-    % Check status of container engine
-    [isFound, engineName, errMsg] = GetEngine(engineName);
-    if ~isFound || ~isempty(errMsg)
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
         return
     end
 
