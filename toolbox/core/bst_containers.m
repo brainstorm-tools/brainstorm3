@@ -268,7 +268,7 @@ function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha
         nPairs = size(volumes, 1);
         pairs = cell(nPairs, 1);
         for iPair = 1 : nPairs
-            pairs{iPair} = ['-v' volumes{1} ':' volumes{2}];
+            pairs{iPair} = ['-v' volumes{iPair, 1} ':' volumes{iPair, 2}];
         end
         volumesStr = strjoin(pairs, ' ');
     end
