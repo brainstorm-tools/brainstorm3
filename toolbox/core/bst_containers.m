@@ -64,7 +64,7 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
                     [status, cmdout] = system(['where ' engineNames{iEngine}]);
                     if status == 0
                         cmdout = strsplit(strtrim(cmdout), '\n');
-                        if length(cmdout) >= 1
+                        if ~isempty(cmdout)
                             isFound = 1;
                             enginePath = strtrim(cmdout{1});
                         end
@@ -99,7 +99,7 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
     end
 
     % Check the container engine status
-    switch(engineName)
+    switch engineName
         case 'docker'
             [status, cmdout] = system([engineName ' info']);
             cmdout = strtrim(cmdout);
