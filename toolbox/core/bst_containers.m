@@ -1,10 +1,11 @@
 function varargout = bst_containers(varargin)
 % BST_CONTAINERS: Manage containers for container-based plugins in Brainstorm
 %
-% USAGE:  [isOk, eName, eStatus] = bst_containers('GetEngine')
+% USAGE: 
+%  [isFound, engineName, errMsg] = bst_containers('GetEngine')
 %            [errMsg, imageList] = bst_containers('GetImages')
 %       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
-%  [isOk, errMsg. containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
+%  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
 % [containerName, isRunning, volumePairs, imageSha] = bst_containers('GetContainerInfo', containerName)
 %                 [isOk, cmdout] = bst_containers('StopContainer', containerName, [isForced=0])
@@ -241,7 +242,7 @@ end
 
 %% ===== RUN CONTAINER AS DAEMON =====
 function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE:  [isOk, errMsg, containerName] = bst_containers('RunContainer', imageSha, volumes, isDaemon)
+% USAGE:  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon)
     isOk = 0;
     containerNameOut = '';
 
@@ -421,7 +422,7 @@ function [isOk, cmdout] = RemoveImage(imageSha, isForce)
         return
     end
 
-    % Stop container
+    % Remove image
     switch engineName
         case 'docker'
             if ~isForce
