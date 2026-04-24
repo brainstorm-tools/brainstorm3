@@ -7,9 +7,9 @@ function varargout = bst_containers(varargin)
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
 %  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
-% [containerName, isRunning, volumePairs, imageSha] = bst_containers('GetContainerInfo', containerName)
 %                 [isOk, cmdout] = bst_containers('StopContainer', containerName, [isForced=0])
 %                 [isOk, cmdout] = bst_containers('RemoveImage',   imageSha/Name, [isForced=0])
+%  [errMsg, containerInfo] = bst_containers('GetContainerInfo', containerName)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -300,8 +300,8 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     end
 
     % Check container status
-    [containerName, isRunning] = GetContainerInfo(containerName);
-    if isempty(containerName) || ~isRunning
+    [errMsg, containerInfo] = GetContainerInfo(containerName);
+    if ~isempty(errMsg) || ~containerInfo.isRunning
         return
     end
 
@@ -320,11 +320,13 @@ end
 
 
 %% ===== CHECK CONTAINER STATUS =====
-function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo(containerName)
-    containerNameOut = [];
-    isRunning        = 0;
-    volumePairs      = [];
-    imageSha         = '';
+function [errMsg, containerInfo] = GetContainerInfo(containerName)
+% [containerNameOut, isRunning, volumePairs, imageSha]
+    containerInfo = struct();
+    containerInfo.name      = '';
+    containerInfo.isRunning =  0;
+    containerInfo.volumes   = [];
+    containerInfo.imageSha  = '';
 
     % Check status of default container engine
     [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
@@ -337,22 +339,26 @@ function [containerNameOut, isRunning, volumePairs, imageSha] = GetContainerInfo
         case 'docker'
             % Find containers with same name
             [status, cmdout] = system(['docker inspect ' containerName ' --format "{{.Name}}"']);
-            if status == 0
-                containerNameOut = strrep(strtrim(cmdout), '/', '');
-                [status, cmdout] = system(['docker inspect ' containerName ' --format "'...
-                    '{{.State.Status}} # ' ...
-                    '{{.HostConfig.Binds}} # ' ...
-                    '{{.Image}}"']);
-                cmdout = strsplit(strtrim(cmdout), '#');
-                isRunning = strcmpi('running', strtrim(cmdout{1}));
-                volumes = regexprep(strtrim(cmdout{2}), '^\[|\]$', '');
-                volumes = regexprep(volumes, ':\', ';\');
-                volumePairs = strsplit(volumes, ':');
-                volumePairs = cellfun(@(x) regexprep(x, ';\', ':\'), volumePairs, 'UniformOutput', 0);
-                volumePairs = reshape(volumePairs, 2, [])';
-                tokens = regexp(cmdout{3}, 'sha256:[a-f0-9]+', 'match');
-                imageSha = strtrim(tokens{1});
+            if status ~= 0
+                errMsg = strtrim(cmdout);
+                return
             end
+            containerInfo.name = strrep(strtrim(cmdout), '/', '');
+            [status, cmdout] = system(['docker inspect ' containerName ' --format "'...
+                '{{.State.Status}} # {{.HostConfig.Binds}} # {{.Image}}"']);
+            if status ~= 0
+                errMsg = strtrim(cmdout);
+                return
+            end
+            cmdout = strsplit(strtrim(cmdout), '#');
+            containerInfo.isRunning = strcmpi('running', strtrim(cmdout{1}));
+            volumes = regexprep(strtrim(cmdout{2}), '^\[|\]$', '');
+            volumes = regexprep(volumes, ':\', ';\');
+            volumePairs = strsplit(volumes, ':');
+            volumePairs = cellfun(@(x) regexprep(x, ';\', ':\'), volumePairs, 'UniformOutput', 0);
+            containerInfo.volumes = reshape(volumePairs, 2, [])';
+            tokens = regexp(cmdout{3}, 'sha256:[a-f0-9]+', 'match');
+            containerInfo.imageSha = strtrim(tokens{1});
     end
 end
 

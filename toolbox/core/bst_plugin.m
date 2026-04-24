@@ -2673,7 +2673,10 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
         % Stop container
         if isContainer
             % Retrieve info of container
-            [~, ~, volumePairs] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+            [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+            if ~isempty(errMsg)
+                return
+            end
             isOk = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
             % Delete temporary files
             file_delete(volumePairs{1,1}, 1, 1);
