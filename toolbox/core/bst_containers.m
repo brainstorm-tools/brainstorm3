@@ -56,8 +56,8 @@ function [errMsg, engineName] = GetEngine(engineName)
     end
 
     % Tests container engines
+    isFound = 0;
     for iEngine = 1 : length(engineNames)
-        isFound = 0;
         switch engineNames{iEngine}
             case {'docker'}
                 if ispc
@@ -230,10 +230,6 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                 return
             end
     end
-    isOk = status == 0;
-    if ~isOk
-        return
-    end
 end
 
 
@@ -260,7 +256,7 @@ function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
         nPairs = size(volumes, 1);
         pairs = cell(nPairs, 1);
         for iPair = 1 : nPairs
-            pairs{iPair} = ['-v' volumes{iPair, 1} ':' volumes{iPair, 2}];
+            pairs{iPair} = ['-v ' volumes{iPair, 1} ':' volumes{iPair, 2}];
         end
         volumesStr = strjoin(pairs, ' ');
     end
@@ -269,6 +265,7 @@ function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
     switch engineName
         case 'docker'
             if ~isDaemon
+                % Run ENTRYPOINT
                 cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageSha);
             else
                 % Replace ENTRYPOINT (if any) with `sleep infinity`
