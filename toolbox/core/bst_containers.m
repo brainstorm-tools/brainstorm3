@@ -5,7 +5,7 @@ function varargout = bst_containers(varargin)
 %  [errMsg, engineName]    = bst_containers('GetEngine')
 %  [errMsg, imageList]     = bst_containers('GetImages')
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
-%  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
+%   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
 %                 [isOk, cmdout] = bst_containers('StopContainer', containerName, [isForced=0])
 %                 [isOk, cmdout] = bst_containers('RemoveImage',   imageSha/Name, [isForced=0])
@@ -238,11 +238,8 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE:  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon)
-    isOk = 0;
-    containerNameOut = '';
-
+function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
+% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon)
     % Validate inputs
     if nargin < 4 || isempty(isDaemon)
         isDaemon = 0;
@@ -279,12 +276,9 @@ function [isOk, errMsg, containerNameOut] = RunContainer(containerName, imageSha
             end
             [status, cmdout] = system(cmdStr);
     end
-    isOk = status == 0;
-    if ~isOk
+    if status ~= 0
         errMsg = cmdout;
-        return
     end
-    containerNameOut = containerName;
 end
 
 

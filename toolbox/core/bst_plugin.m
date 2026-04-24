@@ -2507,14 +2507,14 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                 TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
                 volumes = {TmpDir, '/data'};
                 % Run container as daemon
-                [isOk, errMsg] = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+                errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+                if ~isempty(errMsg)
+                    return
+                end
             else
                 % Uninstall container plugin
                 Uninstall(PlugDesc.Name, 0, 0);
                 errMsg = ['Reinstall plugin ' PlugDesc.Name '.' 10 10 'Missing container image: ' imageName 10 'SHA: ' PlugDesc.ImageSha];
-                return
-            end
-            if ~isOk
                 return
             end
         end
