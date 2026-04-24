@@ -2224,15 +2224,12 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
-    % Stop container
+    % Remove image from container engine
     if isContainer && ~isempty(PlugDesc.ImageSha)
-        errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
+        errMsg = bst_containers('RemoveImage', ['brainstorm_' PlugDesc.Name], 1);
         if ~isempty(errMsg)
             return
         end
-        % Remove image from container engine
-        isOk = bst_containers('RemoveImage', ['brainstorm_' PlugDesc.Name], 1);
-
     end
 
     
@@ -2673,10 +2670,9 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
         if isContainer
             % Retrieve info of container
             [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
-            if ~isempty(errMsg)
-                return
+            if isempty(errMsg)
+                errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
             end
-            errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
             if ~isempty(errMsg)
                 return
             end

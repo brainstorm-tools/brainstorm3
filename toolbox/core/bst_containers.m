@@ -7,9 +7,9 @@ function varargout = bst_containers(varargin)
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
 %   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %  [errMsg, cmdout]        = bst_containers('ExecInContainer', containerName, cmdStr)
-%                 [isOk, cmdout] = bst_containers('RemoveImage',   imageSha/Name, [isForced=0])
 %  [errMsg, containerInfo] = bst_containers('GetContainerInfo', containerName)
 %   errMsg                 = bst_containers('StopContainer', containerName, [isForced=0])
+%   errMsg                 = bst_containers('RemoveImage', imageSha/Name, [isForced=0])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -388,10 +388,7 @@ end
 
 
 %% ===== REMOVE IMAGE =====
-function [isOk, cmdout] = RemoveImage(imageSha, isForce)
-    isOk = 0;
-    cmdout = '';
-
+function errMsg = RemoveImage(imageSha, isForce)
     % Validate inputs
     if nargin < 2 || isempty(isForce)
         isForce = 0;
@@ -413,8 +410,9 @@ function [isOk, cmdout] = RemoveImage(imageSha, isForce)
                 % Force remove image
                 [status, cmdout] = system(['docker rmi -f ' imageSha]);
             end
-            isOk = status == 0;
-            cmdout = strtrim(cmdout);
+            if status ~=0
+                errMsg = strtrim(cmdout);
+            end
     end
 end
 
