@@ -159,7 +159,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12'');';
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12''); cat_defaults;';
     PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''cat12'');';
     PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''cat12'');';
     PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''cat12'');';
@@ -3407,10 +3407,15 @@ function LinkSpmToolbox(Action, ToolboxName)
             error([upper(ToolboxName) ' seems already set up: ' spmToolboxDirTarget]);
         end
         % All the other cases: delete existing toolbox folder
+        strDirDel = ['"' spmToolboxDirTarget '"'];
+        if strcmpi(ToolboxName, 'cat12')
+            % Also remove spmToolboxDir/CAT (Introduced in CAT26.0.rc1)
+            strDirDel = [strDirDel ' "' bst_fullfile(spmToolboxDir, 'CAT') '"'];
+        end
         if ispc
-            rmCall = ['rmdir /q /s "' spmToolboxDirTarget '"'];
+            rmCall = ['rmdir /q /s ' strDirDel];
         else
-            rmCall = ['rm -rf "' spmToolboxDirTarget '"'];
+            rmCall = ['rm -rf ' strDirDel];
         end
         disp(['BST> Deleting existing SPM12 toolbox: ' rmCall]);
         [status,result] = system(rmCall);
