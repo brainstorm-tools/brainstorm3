@@ -103,7 +103,7 @@ function [isFound, engineName, errMsg] = GetEngine(engineName)
         case 'docker'
             [status, cmdout] = system([engineName ' info']);
             cmdout = strtrim(cmdout);
-            if status == 1 || ~isempty(strfind(lower(cmdout), 'failed')) || ~isempty(strfind(lower(cmdout), 'ERROR'))
+            if status == 1 || ~isempty(strfind(lower(cmdout), 'failed')) || ~isempty(strfind(lower(cmdout), 'error'))
                 errMsg = cmdout;
                 return
             end
