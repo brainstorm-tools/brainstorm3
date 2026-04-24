@@ -4,7 +4,7 @@ function varargout = bst_containers(varargin)
 % USAGE: 
 %  [errMsg, engineName]    = bst_containers('GetEngine')
 %  [errMsg, imageList]     = bst_containers('GetImages')
-%       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
+%  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
 %  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
 % [containerName, isRunning, volumePairs, imageSha] = bst_containers('GetContainerInfo', containerName)
@@ -139,10 +139,9 @@ end
 
 
 %% ===== IMPORT IMAGE =====
-function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
-% Import container image into container engine
-% USAGE:  [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
-    isOk = 0;
+function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
+% Import container image into container engine, and create a tag
+% USAGE:  [errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
     imageSha = '';
 
     if (nargin < 2) || isempty(imageTag)
@@ -155,8 +154,9 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
         return
     end
 
-    % Origin of imageSource
+    % Default: imageSource is an image reference
     imageType = 'reference';
+    % If imageSource is a URL, download image file
     if ~isempty(regexp(imageSource, '^http[s]*://', 'once'))
         % Get tmp dir to bind container
         tmpDir = bst_get('BrainstormTmpDir', 0, 'pull_image');
@@ -164,7 +164,6 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
         disp(['BST> Downloading URL : ' imageSource]);
         disp(['BST> Saving to file  : ' imageFile]);
         errMsg = gui_brainstorm('DownloadFile', imageSource, imageFile, 'Download container image: ');
-        % If file was not downloaded correctly
         if ~isempty(errMsg)
             errMsg = ['Impossible to download container image automatically:' 10 errMsg];
             return
@@ -195,7 +194,7 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
                 case 'file'
                     [status, cmdout] = system(['docker load --input ' imageSource]);
                     if status == 0
-                        % If new or existent image, Image name (or SHA256 for nameless image) is returned in output,
+                        % If new or existent image, Image name (or SHA256 for nameless image) is returned in output
                         token = regexp(cmdout, '[a-z0-9._-]+:[a-zA-Z0-9._-]+', 'match', 'once');
                         parts = strsplit(token, ':');
                         if strcmp(parts{1}, 'sha256') && ~isempty(regexp(parts{2}, '^[a-f0-9]+$', 'once'))
@@ -214,6 +213,7 @@ function [isOk, errMsg, imageSha] = ImportImage(imageSource, imageTag)
                 iNew = find(strcmpi(imageListNew(:,2), imageSha));
                 % Tag image
                 [status, cmdout] = system(['docker tag ', imageSha, ' ', imageTag]);
+                % Keep only the tag image IF the image was added in this call to ImportImage()
                 if status == 0 && (length(iNew) - length(iOld)) == 1
                     if ~isempty(imageListOld)
                         imageDel = setdiff(imageListNew{iNew, 1}, imageListOld{iOld, 1});

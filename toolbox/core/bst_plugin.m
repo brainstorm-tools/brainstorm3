@@ -1924,8 +1924,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         file_delete(pkgFile, 1, 3);
     else
         % Import container image in container engine
-        [isOk, errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource, ['brainstorm_' PlugDesc.Name]);
-        if ~isOk
+        [errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource, ['brainstorm_' PlugDesc.Name]);
+        if ~isempty(errMsg)
             bst_progress('removeimage');
             return
         end
