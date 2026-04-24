@@ -6,7 +6,7 @@ function varargout = bst_containers(varargin)
 %  [errMsg, imageList]     = bst_containers('GetImages')
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
 %   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
-%                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
+%  [errMsg, cmdout]        = bst_containers('ExecInContainer', containerName, cmdStr)
 %                 [isOk, cmdout] = bst_containers('StopContainer', containerName, [isForced=0])
 %                 [isOk, cmdout] = bst_containers('RemoveImage',   imageSha/Name, [isForced=0])
 %  [errMsg, containerInfo] = bst_containers('GetContainerInfo', containerName)
@@ -283,8 +283,7 @@ end
 
 
 %% ===== EXECUTE COMMAND IN CONTAINER =====
-function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
-    isOk = 0;
+function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
     cmdout = '';
 
     % Check status of default container engine
@@ -292,8 +291,7 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     if ~isempty(errMsg)
         return
     end
-
-    % Check container status
+    % Check if container is running
     [errMsg, containerInfo] = GetContainerInfo(containerName);
     if ~isempty(errMsg) || ~containerInfo.isRunning
         return
@@ -302,13 +300,15 @@ function [isOk, cmdout] = ExecInContainer(containerName, cmdStr)
     % Run command
     switch engineName
         case 'docker'
-            commandWrapper = ''''; % Single quote
             if ispc
-                commandWrapper = '"'; % Double quote
+                commandWrapper = '"';  % Double quote
+            else
+                commandWrapper = ''''; % Single quote
             end
             [status, cmdout] = system(['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper]);
-            isOk = status == 0;
-            cmdout = strtrim(cmdout);
+            if status ~= 0
+                errMsg = strtrim(cmdout);
+            end
     end
 end
 
