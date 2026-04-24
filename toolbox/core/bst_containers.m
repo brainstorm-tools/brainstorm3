@@ -3,7 +3,7 @@ function varargout = bst_containers(varargin)
 %
 % USAGE: 
 %  [errMsg, engineName]    = bst_containers('GetEngine')
-%            [errMsg, imageList] = bst_containers('GetImages')
+%  [errMsg, imageList]     = bst_containers('GetImages')
 %       [isOk, errMsg, imageSha] = bst_containers('ImportImage', imageSource, [imageTag])
 %  [isOk, errMsg, containerName] = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
 %                 [isOk, cmdout] = bst_containers('ExecInContainer', containerName, cmdStr)
@@ -112,7 +112,7 @@ end
 %% ===== GET AVAILABLE IMAGES =====
 function [errMsg, imageList] = GetImages()
 % USAGE:  [errMsg, imageList] = bst_containers('GetImages')
-    imageList = cell(0,2);
+    imageList = cell(0,2); % [Name:Tag, SHA]
 
     % Check status of default container engine
     [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
@@ -120,15 +120,18 @@ function [errMsg, imageList] = GetImages()
         return
     end
 
-    % Import image
+    % List of available images
     switch engineName
         case 'docker'
             [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
-            if status == 0
-                if ~isempty(cmdout)
-                    imageList = reshape(strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' '), 2, [])';
+            if status == 0 && ~isempty(cmdout)
+                imageList = strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' ');
+                if mod(length(imageList), 2) ~= 0
+                    errMsg = 'Error parsing Docker image list';
+                    return
                 end
-            else
+                imageList = reshape(imageList, 2, [])';
+            elseif status ~= 0
                 errMsg = cmdout;
             end
     end
