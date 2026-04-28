@@ -73,7 +73,7 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
 end
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Initialize output
     OutputFiles = {};
 
@@ -83,24 +83,20 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     TimeArt       = sProcess.options.timeart.Value{1} * 1000;
     TimeSpline    = sProcess.options.timespline.Value{1} * 1000;
     
-    for iFile = 1:length(sInput)
-        fullFileName = file_fullpath(sInput(iFile).FileName);
-
-        % Load full data only after confirming the trigger exists
-        Data = load(fullFileName);
+    for iFile = 1:length(sInputs)
+        % Load full data
+        DataMat = in_bst_data(sInputs(iFile).FileName);              
         
-        % Load stimulation events
-        eventMat = load(fullFileName, 'Events');        
         % Find the selected stimulation event
-        iStimEvent = find(strncmp({eventMat.Events.label}, StimEvent, length(StimEvent)));
+        iStimEvent = find(strncmp({DataMat.Events.label}, StimEvent, length(StimEvent)));
         if isempty(iStimEvent)
             bst_report('Error', sProcess, [], ['No ' StimEvent ' event found']);
             return;
         end        
 
         % Convert trigger times to sample indices
-        stimSamples = eventMat.Events(iStimEvent).times;
-        [~, stimSamples] = ismembertol(stimSamples, Data.Time, 1e-7);
+        stimSamples = DataMat.Events(iStimEvent).times;
+        [~, stimSamples] = ismembertol(stimSamples, DataMat.Time, 1e-7);
 
         % Build the full interpolation window around each trigger
         win = -TimeSpline:(TimeArt + TimeSpline - 1);
@@ -112,44 +108,41 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         stimWin = repmat(win(:), 1, length(stimSamples)) + repmat(stimSamples(:)', length(win), 1);
         
         % Replace each artifact window with spline interpolation
-        for iChan = 1:size(Data.F, 1) % for each channel of data
+        for iChan = 1:size(DataMat.F, 1) % for each channel of data
             for iStimWin = 1:size(stimWin, 2) % for each artifact window
-                Data.F(iChan, stimWin(:, iStimWin)) = spline(win(iSpline), Data.F(iChan, stimWin(iSpline, iStimWin)), win);
+                DataMat.F(iChan, stimWin(:, iStimWin)) = spline(win(iSpline), DataMat.F(iChan, stimWin(iSpline, iStimWin)), win);
             end
         end
         
         % Apply EMD based filtering to suppress drift
-        bst_progress('start', 'Process', sprintf('[%d/%d] Processing EMD, rejecting below %.1f Hz...', iFile, length(sInput), CutoffFreq), 0, 100);
-        fprintf('REMOVE_SPES_ARTIFACTS> [%d/%d] Processing EMD, rejecting below %.1f Hz...', iFile, length(sInput), CutoffFreq);
+        bst_progress('start', 'Process', sprintf('[%d/%d] Processing EMD, rejecting below %.1f Hz...', iFile, length(sInputs), CutoffFreq), 0, 100);
         % Sampling frequency
-        sampFreq = 1 / mean(diff(Data.Time));
-        for iChan = 1:size(Data.F, 1)
+        sampFreq = 1 / mean(diff(DataMat.Time));
+        for iChan = 1:size(DataMat.F, 1)
             % Show progress
-            progressPrc = round(100 .* iChan ./ size(Data.F, 1));
+            progressPrc = round(100 .* iChan ./ size(DataMat.F, 1));
             bst_progress('set', progressPrc);
             % Decompose signal into intrinsic mode functions
-            imf = emd(Data.F(iChan, :));
+            imf = emd(DataMat.F(iChan, :));
             % Estimate the characteristic frequency of each mode
             modeFreq = ImfStats(imf, sampFreq);
             if CutoffFreq > 0
                 % Keep only modes above cutoff
-                Data.F(iChan, :) = sum(imf(:, modeFreq > CutoffFreq), 2)';
+                DataMat.F(iChan, :) = sum(imf(:, modeFreq > CutoffFreq), 2)';
             else
                 % Keep only modes below abs(cutoff)
-                Data.F(iChan, :) = sum(imf(:, modeFreq < abs(CutoffFreq)), 2)';
+                DataMat.F(iChan, :) = sum(imf(:, modeFreq < abs(CutoffFreq)), 2)';
             end
         end
-        fprintf('Done!\n');
        
         % Duplicate original file before writing cleaned data
-        sFile = bst_process('CallProcess', 'process_duplicate', {sInput(iFile).FileName}, [], ...
+        sFile = bst_process('CallProcess', 'process_duplicate', sInputs(iFile).FileName, [], ...
             'target', 1, ...            % Duplicate data files
             'tag',    sprintf('_emd'));
         % Overwrite duplicated file with cleaned signal
-        newFile   = file_fullpath(sFile.FileName);
-        dataNew   = load(newFile, 'F');
-        dataNew.F = Data.F;
-        bst_save(newFile, dataNew, 'v7', 1);
+        dataMatNew   = in_bst_data(sFile.FileName, 'F');
+        dataMatNew.F = DataMat.F;
+        bst_save(file_fullpath(sFile.FileName), dataMatNew, 'v7', 1);
 
         % Register output
         OutputFiles{end+1} = sFile.FileName;
