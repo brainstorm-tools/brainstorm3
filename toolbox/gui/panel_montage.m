@@ -2527,21 +2527,6 @@ function AddAutoMontagesNirs(ChannelMat)
         % Display name: NAME|COLOR
         sMontage.DispNames{i} = sprintf('S%dD%d|%s', S, D, dispColor);
     end
-    % Add HbT sum, if not present
-    if ~isempty(iHbO) && ~isempty(iHbR) && isempty(iHbT)
-        % Get the HbO/HbR channels
-        iHbO = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbo'));
-        iHbR = find(strcmpi({ChannelMat.Channel(iNirs).Group}, 'hbr'));
-        % Add one HbT channel for each HbO channel
-        for i = 1:length(iHbO)
-            % Parse channel name
-            [S,D,WL] = ParseNirsChannelNames({ChannelMat.Channel(iHbO(i)).Name});
-            % Display in green
-            sMontage.DispNames{length(iNirs) + i} = sprintf('S%dD%d|%s', S, D, '00FF00');
-            % Sum the two values HbO and HbR
-            sMontage.Matrix(length(iNirs) + i, [iHbO(i), iHbR(i)]) = 1;
-        end
-    end
     % Add montage: overlay
     SetMontage(sMontage.Name, sMontage);
     

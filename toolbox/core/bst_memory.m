@@ -1627,6 +1627,12 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
     % If dataset for target file already exists, just return its index
     if ~isForceReload && ~isempty(iDS) && ~isempty(iTimefreq)
+        % Check if this fake parent file is already created
+        ParentFile = strrep(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FileName, '.mat', '$.mat');
+        if ~isempty(GlobalData.DataSet(iDS).Results)
+            iResults = find(file_compare({GlobalData.DataSet(iDS).Results.FileName}, ParentFile) ...
+                & (cellfun(@length, {GlobalData.DataSet(iDS).Results.GridLoc}) == length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc)));
+        end
         return
     end
     

@@ -1460,7 +1460,13 @@ switch (lower(action))
                         iNIRS      = good_channel(ChannelMat.Channel, [], 'NIRS');
                         Groups     = unique({ChannelMat.Channel(iNIRS).Group});
                         for iGroup = 1:length(Groups)
-                            gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
+                            if strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'volume')
+                                gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity (isosurface)', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Isosurface',  Groups{iGroup}));
+                                gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity (MRI 3D)', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Mri3D',  Groups{iGroup}));
+                                gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity (MRI Viewer)', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'MriViewer', Groups{iGroup}));
+                            elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
+                                gui_component('MenuItem', jPopup, [], sprintf('View NIRS (%s) leadfield sensitivity', Groups{iGroup}), IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, 'NIRS', 'Surface', Groups{iGroup}));
+                            end
                         end
                     end
                 end

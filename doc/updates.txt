@@ -1,3 +1,21 @@
+March 2026
+- Digitize: Auto-detect EEG locations for EEG caps and custom montages
+- Events: Process to merge overlapping extended events
+- Simulations: Allow to simulate recordings from sources obtained with MEM
+- IO: Bugfix at exporting EDF files with starting time different from 0s
+- Plugin: Improve Brainstorm internal management of plugins
+--------------------------------------------------------------
+February 2026
+- Anatomy: Improve visualization of multiple structures and surfaces
+- Anatomy: Update parcellation labels for different BrainSuite atlases
+- Anatomy: Add non-interactive generation of primitive surfaces
+- Connectivity: Link TF function and colormap for matrix and graph figures
+- DB: Get acquisition time for recordings, and allow clock time in x-axis
+- Forward: Add various directions for leadfield sensitivity visualization
+- Inverse: Extend definition of exclusion zone in volume grids
+- iEEG: Improved detection of type and group of contacts for SEEG/ECOG channels
+- GUI: More detailed information about checking advanced options in processes
+--------------------------------------------------------------
 January 2026
 - Anatomy: Add generation of primitive geometric surfaces (sphere, cube, ...)
 - Anatomy: Boolean operations between two surfaces (intersection, union, diff)

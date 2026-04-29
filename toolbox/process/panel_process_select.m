@@ -3063,7 +3063,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             end
         end
         % Restore previous dir
-        if isChangeDir
+        if isChangeDir && exist(curDir, 'dir')
             cd(curDir);
         end
         % Report error and skip process

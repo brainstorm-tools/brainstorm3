@@ -703,7 +703,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
             if isempty(tpmFile)
-                error('Missing file TPM.nii');
+                % Only installs default SPM tpm.nii
+                bst_normalize_mni('install');
+                tpmFile = bst_get('SpmTpmAtlas');
+                if isempty(tpmFile)
+                    error('Missing file TPM.nii');
+                end
             end
             
             % === SAVE MRI AS NII ===

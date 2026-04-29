@@ -803,7 +803,7 @@ function EEGAutoDetectElectrodes()
     [sSurf, capImg2d, capCenters2d, capRadii2d] = channel_detect_eegcap_auto('FindElectrodesEegCap', sSurf);
 
     % Get current montage
-    curMontage = GetCurrentMontage();
+    [curMontage, nEEG] = GetCurrentMontage();
 
     % Get acquired EEG points
     iEeg = and(cellfun(@(x) ~isempty(regexp(x, 'EEG', 'match')), {Digitize.Points.Type}), ~cellfun(@isempty, {Digitize.Points.Loc}));
@@ -822,6 +822,8 @@ function EEGAutoDetectElectrodes()
         PlotCoordinate();
     end
 
+    % All EEG points collected, global should point to end of list
+    Digitize.iPoint = nEEG + (numel(Digitize.Options.Fids) * Digitize.Options.nFidSets);
     UpdateList();
     % Change delete button label and callback such that we can delete the last point
     java_setcb(ctrl.jButtonDeletePoint, 'ActionPerformedCallback', @(h,ev)bst_call(@DeletePoint_Callback));
@@ -829,7 +831,6 @@ function EEGAutoDetectElectrodes()
     % Enable Random button
     ctrl.jButtonRandomHeadPts.setEnabled(1);
     bst_progress('stop');
-
 end
 
 %% ===== MANUAL COLLECT CALLBACK ======
@@ -1067,7 +1068,7 @@ function PlotCoordinate(isAdd)
             % Overwrite empty channel created by template.
             iP = 1;
         else
-            if Digitize.isEditPts
+            if Digitize.isEditPts || ~isAdd
                 iP = find(strcmpi({GlobalData.DataSet(Digitize.iDS).Channel.Name}, Digitize.Points(Digitize.iPoint).Label), 1);
             else
                 iP = numel(GlobalData.DataSet(Digitize.iDS).Channel) + 1;
@@ -1084,7 +1085,6 @@ function PlotCoordinate(isAdd)
                     % Keep point in list, but remove location 
                     GlobalData.DataSet(Digitize.iDS).Channel(iP).Loc = [];
                 else  % Remove last point
-                    iP = iP - 1;
                     GlobalData.DataSet(Digitize.iDS).Channel(iP) = [];
                 end
             end

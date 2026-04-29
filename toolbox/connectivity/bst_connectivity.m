@@ -1490,8 +1490,6 @@ function NewFile = Finalize(DataFile)
     % ===== PREPARE OUTPUT STRUCTURE =====
     % Create file structure
     FileMat = db_template('timefreqmat');
-    FileMat.Atlas = db_template('atlas');
-    FileMat.Atlas.Name = '';
     % Reshape: [nA x nB x nTime x nFreq] => [nA*nB x nTime x nFreq]
     FileMat.TF           = reshape(R, [], size(R,3), size(R,4));
     FileMat.DisplayUnits = DisplayUnits;
@@ -1522,13 +1520,17 @@ function NewFile = Finalize(DataFile)
     % Row names: NxM
     FileMat.RefRowNames = sInputA.RowNames;
     FileMat.RowNames    = sInputB.RowNames;
-    % Atlas: save A in first index
-    if ~isempty(sInputA.Atlas)
-        FileMat.Atlas(1) = sInputA.Atlas(1);
-    end
-    % Atlas: save B in second index if it is not NxN
-    if ~isempty(sInputB.Atlas) && ~isConnNN
-        FileMat.Atlas(2) = sInputB.Atlas(1);
+    % Atlases
+    if ~isempty(sInputA.Atlas) || (~isempty(sInputB.Atlas) && ~isConnNN)
+        FileMat.Atlas = repmat(db_template('atlas'), 0);
+        % Atlas: save A in first index
+        if ~isempty(sInputA.Atlas)
+            FileMat.Atlas(1) = sInputA.Atlas(1);
+        end
+        % Atlas: save B in second index if it is not NxN
+        if ~isempty(sInputB.Atlas) && ~isConnNN
+            FileMat.Atlas(2) = sInputB.Atlas(1);
+        end
     end
     % Surface & grid: save from B, otherwise if missing, save from A.
     if ~isempty(sInputB.SurfaceFile)
