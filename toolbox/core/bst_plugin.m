@@ -2588,7 +2588,7 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     AllPlugs = GetSupported();
     for iPlug = 1:length(AllPlugs)
         if ~isempty(AllPlugs(iPlug).RequiredPlugs) && ismember(PlugDesc.Name, AllPlugs(iPlug).RequiredPlugs(:,1))
-            Unload(AllPlugs(iPlug));
+            Unload(AllPlugs(iPlug), isVerbose);
         end
     end
     
