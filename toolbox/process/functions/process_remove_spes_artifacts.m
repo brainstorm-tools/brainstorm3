@@ -175,6 +175,4 @@ function modeFreq = ImfStats(imf, Fs)
     % Convert sign changes to approximate frequency
     durationSec = nTime / Fs;
     modeFreq = nSignChanges ./ (2 * durationSec);
-    % signChanges = sum(abs(diff(sign(detrend(imf))) / 2));
-    % stats = signChanges / (size(imf, 1) / fs * 2);
 end
