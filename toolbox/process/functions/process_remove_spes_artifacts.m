@@ -80,32 +80,46 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get process option values
     StimEvent     = sProcess.options.stimevent.Value;
     CutoffFreq    = sProcess.options.cutoff.Value{1};
-    TimeArt       = sProcess.options.timeart.Value{1} * 1000;
-    TimeSpline    = sProcess.options.timespline.Value{1} * 1000;
+    TimeArt       = sProcess.options.timeart.Value{1};
+    TimeSpline    = sProcess.options.timespline.Value{1};
     
     for iFile = 1:length(sInputs)
         % Load full data
-        DataMat = in_bst_data(sInputs(iFile).FileName);              
-        
-        % Find the selected stimulation event
-        iStimEvent = find(strncmp({DataMat.Events.label}, StimEvent, length(StimEvent)));
+        DataMat = in_bst_data(sInputs(iFile).FileName);
+
+        % Sampling frequency
+        Fs = 1 / mean(diff(DataMat.Time));
+
+        % Convert time windows to samples
+        nArt    = round(TimeArt * Fs);
+        nSpline = round(TimeSpline * Fs);
+
+        % Find selected stimulation event
+        eventLabels = {DataMat.Events.label};
+        iStimEvent = find(strncmp(eventLabels, StimEvent, length(StimEvent)));
         if isempty(iStimEvent)
             bst_report('Error', sProcess, [], ['No ' StimEvent ' event found']);
             return;
         end        
 
         % Convert trigger times to sample indices
-        stimSamples = DataMat.Events(iStimEvent).times;
-        [~, stimSamples] = ismembertol(stimSamples, DataMat.Time, 1e-7);
+        stimTimes = DataMat.Events(iStimEvent).times;
+        [isMatch, stimSamples] = ismembertol(stimTimes, DataMat.Time, 1e-7);
+        % Keep only valid matches
+        stimSamples = stimSamples(isMatch & stimSamples > 0);
 
         % Build the full interpolation window around each trigger
-        win = -TimeSpline:(TimeArt + TimeSpline - 1);
+        win = -nSpline:(nArt + nSpline - 1);
 
-        % Indices of the duration used to anchor the spline
-        iSpline = [1:TimeSpline, (1-TimeSpline:0) + length(win)];
+        % Indices used as spline anchors: samples before and after the artifact window
+        iSpline = [1:nSpline, (numel(win) - nSpline + 1):numel(win)];
         
-        % Sample indices of all interpolation windows
-        stimWin = repmat(win(:), 1, length(stimSamples)) + repmat(stimSamples(:)', length(win), 1);
+        % Build all stimulation windows
+        stimWin = win(:) + stimSamples(:)';
+        % Remove windows that go outside boundaries
+        nTime = size(DataMat.F, 2);
+        isValidWin = all(stimWin >= 1 & stimWin <= nTime, 1);
+        stimWin = stimWin(:, isValidWin);
         
         % Replace each artifact window with spline interpolation
         for iChan = 1:size(DataMat.F, 1) % for each channel of data
@@ -151,7 +165,16 @@ end
 
 %% ===== IMF MODE STATISTICS =====
 % Estimate the characteristic frequency of each IMF from its sign changes
-function stats = ImfStats(imf, fs)
-    signChanges = sum(abs(diff(sign(detrend(imf))) / 2));
-    stats = signChanges / (size(imf, 1) / fs * 2);
+function modeFreq = ImfStats(imf, Fs)
+    % IMF matrix is expected as [time x modes]
+    nTime = size(imf, 1);
+    % Remove linear trend before sign-change counting
+    imfDetrended = detrend(imf);
+    % Count zero crossings / sign changes
+    nSignChanges = sum(abs(diff(sign(imfDetrended))) > 0, 1);
+    % Convert sign changes to approximate frequency
+    durationSec = nTime / Fs;
+    modeFreq = nSignChanges ./ (2 * durationSec);
+    % signChanges = sum(abs(diff(sign(detrend(imf))) / 2));
+    % stats = signChanges / (size(imf, 1) / fs * 2);
 end
