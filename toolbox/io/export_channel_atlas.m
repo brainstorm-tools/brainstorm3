@@ -1,4 +1,4 @@
-function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
+function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
 % EXPORT_CHANNEL_ATLAS: Compute anatomical labels for SEEG/ECOG contacts from volume and surface parcellations
 %
 % USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
@@ -78,7 +78,7 @@ isSelect = [];
 
 
 % ===== SELECT OUTPUT FILE =====
-if isempty(TsvFile)
+if isempty(TsvFile) && isInteractive
     % Get default directories and formats
     LastUsedDirs = bst_get('LastUsedDirs');
     % Default output filename
