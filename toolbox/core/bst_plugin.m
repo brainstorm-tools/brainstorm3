@@ -2486,7 +2486,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     if isContainer
         PlugDesc = GetInstalled(PlugDesc);
         imageName = ['brainstorm_' PlugDesc.Name];
-        if ~isempty(PlugDesc.ImageSha) && ~PlugDesc.isLoaded
+        if ~isempty(PlugDesc.ImageSha)
             % Get available images in container engine
             [errMsg, imageList] = bst_containers('GetImages');
             if ~isempty(errMsg)
@@ -2499,13 +2499,22 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                 isImported = any(strncmpi(imageList(iImageSha,1), imageName, length(imageName)));
             end
             if isImported
-                % Get tmp dir to bind container
-                TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
-                volumes = {TmpDir, '/data'};
-                % Run container as daemon
-                errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
-                if ~isempty(errMsg)
-                    return
+                % Check if container exist
+                [~, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+                % Run container
+                if ~containerInfo.isRunning
+                    % Remove container
+                    if ~isempty(containerInfo.name)
+                        bst_containers('StopContainer', containerInfo.name, 1);
+                    end
+                    % Get tmp dir to bind container
+                    TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
+                    volumes = {TmpDir, '/data'};
+                    % Run container as daemon
+                    errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+                    if ~isempty(errMsg)
+                        return
+                    end
                 end
             else
                 % Uninstall container plugin
