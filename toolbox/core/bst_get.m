@@ -2994,6 +2994,16 @@ switch contextName
             end
         end
         
+    case 'ContainerEngine'
+        containerEngines = {'auto-detect', 'docker'};
+        % Get saved value
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ContainerEngine') && ~isempty(GlobalData.Preferences.ContainerEngine)
+            argout1 = GlobalData.Preferences.ContainerEngine;
+        else
+            argout1 = containerEngines{1};
+        end
+        argout2 = containerEngines;
+
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};
