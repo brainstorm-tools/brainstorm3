@@ -374,11 +374,11 @@ function evt = Compute(F, TimeVector, EventSamps, OPTIONS, Fmask)
     if ~isempty(Fmask)
         Fsig = F(Fmask);
         % ignore the first and last 5% of the signal (incase of artifacts)
-        Fsig = Fsig(round(length(Fsig)*0.05):end-round(length(Fsig)*0.05));
+        Fsig = Fsig(length(Fsig)*0.05:end-(length(Fsig)*0.05));
         stdF = std(Fsig);
     else
         Fsig = F;
-        Fsig = Fsig(round(length(Fsig)*0.05):end-round(length(Fsig)*0.05));
+        Fsig = Fsig(length(Fsig)*0.05:end-(length(Fsig)*0.05));
         stdF = std(Fsig);
     end
     
