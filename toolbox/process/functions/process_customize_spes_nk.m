@@ -5,9 +5,9 @@ function varargout = process_customize_spes_nk( varargin )
 % This process:
 %   1. Finds Nihon Kohden "Stim Start" and "Stim Stop" events.
 %   2. If provided, renames those stimulation block events.
-%   3. Detects individual analog stimulation trigger pulses within each
-%      stimulation block.
-%   4. If provided, splits detected trigger pulses into ODD and EVEN events,
+%   3. Detects individual analog stimulation trigger pulses within each stimulation block.
+%   4. If provided, adds a fixed time offset to stimulation trigger event
+%   5. If provided, splits detected trigger pulses into ODD and EVEN events,
 %      useful for alternating monophasic stimulation study.
 %
 % USAGE:
