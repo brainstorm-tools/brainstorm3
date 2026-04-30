@@ -75,9 +75,20 @@ sProcess.options.label1.Type    = 'label';
 sProcess.options.buffertime.Comment = 'Buffer time around stimulation block: ';
 sProcess.options.buffertime.Type    = 'value';
 sProcess.options.buffertime.Value   = {5,'s', 2};
-% Add 'ODD' and 'EVEN' events to stimulation blocks
-sProcess.options.label2.Comment = '<HTML><I><FONT color="#777777">Add alternating monophasic stimulation trigger events</FONT></I>';
+% Option: Trigger time offset
+sProcess.options.label2.Comment = ['<HTML><I><FONT color="#777777">' ...
+                                   'Add a fixed time offset to stimulation trigger event. It compensates for a known<BR>' ...
+                                   'stimulation delay/advance between the trigger and the actual stimulus presentation<BR>' ... 
+                                   'Example: Event occurs at 1.000s<BR>' ...
+                                   ' - Time offset =&nbsp;&nbsp;1.0ms => New timing of event will be 1.001s<BR>' ...
+                                   ' - Time offset = -1.0ms => New timing of event will be 0.999s</FONT></I>'];
 sProcess.options.label2.Type    = 'label';
+sProcess.options.offset.Comment = 'Trigger time offset:';
+sProcess.options.offset.Type    = 'value';
+sProcess.options.offset.Value   = {0, 'ms', []};
+% Add 'ODD' and 'EVEN' events to stimulation blocks
+sProcess.options.label3.Comment = '<HTML><I><FONT color="#777777">Add alternating monophasic stimulation trigger events</FONT></I>';
+sProcess.options.label3.Type    = 'label';
 sProcess.options.evtaddoddeven.Comment = 'Add ''ODD'' and ''EVEN'' events';
 sProcess.options.evtaddoddeven.Type    = 'checkbox';
 sProcess.options.evtaddoddeven.Value   = 1;
@@ -99,6 +110,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     StimChan       = sProcess.options.stimchan.Value;
     StimLabel      = sProcess.options.stimlabel.Value;    
     BufferTime     = sProcess.options.buffertime.Value{1};
+    OffsetTime     = sProcess.options.offset.Value{1};
     EvtAddOddEven  = sProcess.options.evtaddoddeven.Value;
     
     % Check whether custom start/stop labels were provided
@@ -157,12 +169,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             stimSiteInfo = strtrim(strrep(stimStartLabels{iLabel}, StimStartLabel, ''));
             
             for iTime = 1:length(stimStartTimes{iLabel})
+                % Stimulation trigger event name
+                % Example: "STIM O6-O7 4.0 #1"
+                stimEventName = sprintf('%s %s #%d', StimLabel, stimSiteInfo, iTime);
                 % Define time window (stimulation block plus some context before and after it) 
                 preStim = stimStartTimes{iLabel}(iTime) - BufferTime;
                 postStim = stimStopTimes{iLabel}(iTime) + BufferTime;
                 % Detect individual analog trigger pulses within the current stimulation block
                 bst_process('CallProcess', 'process_evt_detect_analog', sInputs(iFile).FileName, [], ...
-                        'eventname',   sprintf('%s %s #%d', StimLabel, stimSiteInfo, iTime), ...
+                        'eventname',   stimEventName, ...
                         'timewindow',  [preStim postStim], ...
                         'channelname', StimChan, ...
                         'threshold',   1, ...        % Standard deviations from noise 
@@ -173,6 +188,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         'isfalling',   0, ...
                         'ispullup',    0, ...        % No DC offset removal
                         'isclassify',  0);
+                
+                % Process: Add fixed time offset
+                if OffsetTime ~= 0
+                    bst_process('CallProcess', 'process_evt_timeoffset', sInputs(iFile), [], ...
+                        'info',      [], ...
+                        'eventname', stimEventName, ...
+                        'offset',    OffsetTime);   % in ms
+                end
                 
                 % If provided, split detected pulses into 'ODD' and 'EVEN' events
                 if EvtAddOddEven
