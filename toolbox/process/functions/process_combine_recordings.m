@@ -309,7 +309,7 @@ function OutputFiles = Run(sProcess, sInputs)
         sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
-            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';
+            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime, 'linear', 'extrap')';
         end
         % Write these channels
         out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataToCombine.F);
