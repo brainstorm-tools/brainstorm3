@@ -216,7 +216,7 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                 % Keep only the tag image IF the image was added in this call to ImportImage()
                 if status == 0 && (length(iNew) - length(iOld)) == 1
                     if ~isempty(imageListOld)
-                        imageDel = setdiff(imageListNew{iNew, 1}, imageListOld{iOld, 1});
+                        [imageDel, iNew] = setdiff(imageListNew(iNew, 1), imageListOld(iOld, 1));
                     else
                         imageDel = imageListNew{iNew, 1};
                     end
