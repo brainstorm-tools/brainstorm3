@@ -47,7 +47,7 @@ sProcess.OutputTypes = {'data'};
 sProcess.nInputs     = 1;
 sProcess.nMinFiles   = 1;
 % Stimulation event
-sProcess.options.stimevent.Comment = 'Stimulation event: ';
+sProcess.options.stimevent.Comment = 'Stimulation trigger event: ';
 sProcess.options.stimevent.Type    = 'text';
 sProcess.options.stimevent.Value   = 'STIM';
 % EMD cutoff frequency
