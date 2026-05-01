@@ -204,7 +204,7 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                         % imageSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
                             [~, imageListNew] = GetImages();
                             image_name = strsplit(imageSource, '/');
-                            imageSha = imageListNew{strcmpi(imageListNew(:,1), image_name{end}), 2};
+                            imageSha = imageListNew{contains(imageListNew(:,1), image_name{end}), 2};
                     end
 
                 case 'file'
