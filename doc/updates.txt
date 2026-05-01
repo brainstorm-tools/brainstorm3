@@ -1,3 +1,11 @@
+April 2026
+- Anatomy: Auto-install of SPM tissue probability maps ('TPM.nii') when needed
+- Anatomy: Improve primitive cylinder mesh generation
+- IO: Nihon Koden, improve reading start of acquisition timestamp
+- IO: Add support for polygon file format .ply mesh files
+- Container: Add support for Containers as Plugins
+- Viz: Display of NIRS volume head model
+--------------------------------------------------------------
 March 2026
 - Digitize: Auto-detect EEG locations for EEG caps and custom montages
 - Events: Process to merge overlapping extended events
