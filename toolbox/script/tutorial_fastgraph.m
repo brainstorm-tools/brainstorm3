@@ -212,9 +212,9 @@ for i = 1:length(sFilesAvgOdd)
                 'keepevents', 0);
     CommentMat = in_bst_data(sFileAvg.FileName, 'Comment');
     % Get the stim site info
-    stimSiteInfo = strtrim(strrep(sFilesAvgOdd(i).Comment,'Avg: ODD',''));
-    stimSiteInfo = strtrim(stimSiteInfo(1:(end-10))); % remove file count
-    CommentMat.Comment = ['Avg: ' stimSiteInfo]; 
+    % Example: "Avg: ODD A'2-A'3 4.0 #2 (8 files)" > "A'2-A'3 4.0 #2"
+    stimSiteInfo = regexp(sFilesAvgOdd(i).Comment, '^Avg:\s+\w+\s+(.+?)\s*\(.*\)$', 'tokens', 'once');
+    CommentMat.Comment = ['Avg: ' stimSiteInfo{1}]; 
     % Save changes
     bst_save(file_fullpath(sFileAvg.FileName), CommentMat,'v7', 1);
     % Register output
