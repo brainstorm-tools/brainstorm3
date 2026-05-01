@@ -185,6 +185,19 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
         case 'docker'
             switch imageType
                 case 'reference'
+                    [status, cmdout] = system([' docker manifest inspect ' imageSource]);
+                    if status == 0
+                        image_info = jsondecode(cmdout);
+                        image_size_go = sum([image_info.layers.size]) / 1e9;
+                        % Ask for confirmation
+                        if ~java_dialog('confirm', sprintf('Brainstorm will download %s of size %.2f Go. Do you want to continue ?', imageSource, round(image_size_go, 2)),  'Download docker image')
+                            return;
+                        end
+                    else
+                        errMsg = 'Unable to get image information.';
+                        return;
+                    end
+
                     [status, cmdout] = system(['docker pull ' imageSource]);
                     if status == 0
                         % If new or existent image, SHA256 is returned in output
