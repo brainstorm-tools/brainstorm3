@@ -188,7 +188,10 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                     [status, cmdout] = system(['docker pull ' imageSource]);
                     if status == 0
                         % If new or existent image, SHA256 is returned in output
-                        imageSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
+                        % imageSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
+                            [~, imageListNew] = GetImages();
+                            image_name = strsplit(imageSource, '/');
+                            imageSha = imageListNew{strcmpi(imageListNew(:,1), image_name{end}), 2};
                     end
 
                 case 'file'
