@@ -156,7 +156,7 @@ sFilesStimStart = bst_process('CallProcess', 'process_import_data_event', sFileR
 % Process: Remove SPES artifacts
 sFilesStimStartClean = bst_process('CallProcess', 'process_remove_spes_artifacts', sFilesStimStart, [], ...
                        'stimevent',  'STIM', ...
-                       'cutoff',     2, ...
+                       'cutoff',     2, ...     % in Hz
                        'timeart',    0.005, ... % in ms
                        'timespline', 0.003);    % in ms
 
@@ -188,21 +188,21 @@ sFilesEven = bst_process('CallProcess', 'process_import_data_event', sFilesStimS
                 'freq',        [], ...
                 'baseline',    []);
 
-% Process: Get ODD average (by trial group)
+% Process: Average of only ODDs (by trial group)
 sFilesAvgOdd = bst_process('CallProcess', 'process_average', sFilesOdd, [], ...
     'avgtype',    5, ...  % Trial group (folder average)
     'avg_func',   1, ...  % Arithmetic average:  mean(x)
     'weighted',   0, ...
     'keepevents', 0);
 
-% Process: Get ODD average (by trial group)
+% Process: Average of only evens (by trial group)
 sFilesAvgEven = bst_process('CallProcess', 'process_average', sFilesEven, [], ...
     'avgtype',    5, ...  % Trial group (folder average)
     'avg_func',   1, ...  % Arithmetic average:  mean(x)
     'weighted',   0, ...
     'keepevents', 0);
 
-% Process: Average the ODD and EVEN
+% Process: Average the ODD and EVEN per stimulation site per session
 sFilesFastgraph = {};
 for i = 1:length(sFilesAvgOdd)
     sFileAvg = bst_process('CallProcess', 'process_average', [sFilesAvgOdd(i),  sFilesAvgEven(i)], [], ...
@@ -235,8 +235,8 @@ bst_process('CallProcess', 'process_fastgraph', sFilesFastgraph, [], ...
             'regionlimbic',     1, ...
             'atlasscoutlabels', '', ...
             'sortmethod',       1, ...               % "Root Mean Square" to sort data
-            'sortwindow',       [0.060, 0.250], ...  % Range to sort the data (in ms)
-            'plotwindow',       [-0.100, 0.900], ... % Plot window 
+            'sortwindow',       [0.060, 0.250], ...  % Range (middle latency) to sort the data (in ms)
+            'plotwindow',       [-0.100, 0.900], ... % Plot window (in ms)
             'edgealpha',        0.05, ...            % Edge transparency of plot
             'excluderadius',    20);                 % Exclusion zone radius
 
