@@ -45,7 +45,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Detect single-pulse triggers in SPES';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'FAST graphs';
-    sProcess.Index       = 1;
+    sProcess.Index       = 1300;
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data','raw'};
     sProcess.OutputTypes = {'data','raw'};
