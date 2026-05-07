@@ -1,5 +1,5 @@
 function varargout = process_evt_detect_spes( varargin )
-% PROCESS_EVT_DETECT_SPES: Detect, label and sort single-pulse stimulation events from
+% PROCESS_EVT_DETECT_SPES: Detect, label and sort single-pulse stimulation triggers from
 % Single-Pulse Electrical Stimulation (SPES) blocks in raw data recorded using Nihon Kohden system
 %
 % This process:
@@ -42,7 +42,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Detect single-pulse in SPES';
+    sProcess.Comment     = 'Detect single-pulse triggers in SPES';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'FAST graphs';
     sProcess.Index       = 1;
