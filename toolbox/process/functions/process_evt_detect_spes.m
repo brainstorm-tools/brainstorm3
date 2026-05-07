@@ -1,5 +1,5 @@
-function varargout = process_customize_spes_nk( varargin )
-% PROCESS_CUSTOMIZE_SPES_NK: Detect, label and sort single-pulse stimulation events from
+function varargout = process_evt_detect_spes( varargin )
+% PROCESS_EVT_DETECT_SPES: Detect, label and sort single-pulse stimulation events from
 % Single-Pulse Electrical Stimulation (SPES) blocks in raw data recorded using Nihon Kohden system
 %
 % This process:
@@ -11,7 +11,7 @@ function varargout = process_customize_spes_nk( varargin )
 %      useful for alternating monophasic stimulation study
 %
 % USAGE:
-%   OutputFiles = process_customize_spes_nk('Run', sProcess, sInputs)
+%   OutputFiles = process_evt_detect_spes('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -42,7 +42,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Customize SPES (Nihon Kohden)';
+    sProcess.Comment     = 'Detect single-pulse in SPES';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'FAST graphs';
     sProcess.Index       = 1;
