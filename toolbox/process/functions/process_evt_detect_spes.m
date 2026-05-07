@@ -213,6 +213,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Each start/stop pair defines a time window. Within that window, individual
         % trigger pulses are detected from the selected analog stimulation channel
+        nEvents = 0;
         for iStimStartStop = 1:length(stimStartStopLabels)
             for iTime = 1:length(stimStartStopTimes{iStimStartStop, 1})
                 % Stimulation trigger event name. E.g. "STIM O6-O7 4.0 #1"
@@ -259,6 +260,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     iEvt = length(sEvents) + 1;
                 end
                 sEvents(iEvt) = sEventStim;
+                nEvents = length(sEventStim.times) + nEvents;
 
                 % ===== 5. If provided, splits detected stimulation trigger events into ODD and EVEN instances =====
                 if EvtAddOddEven
@@ -296,8 +298,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             DataMat.Events = sEvents;
         end
-        % Add history entry
-        DataMat = bst_history('add', DataMat, 'NK', ['DESCRIPTION']);
+        % Report number of detected events
+        bst_report('Info', sProcess, sInputs(iFile), sprintf('%s: A total of %d single-pulse triggers were detected and labeled as "%s ..."', StimChan, nEvents, StimLabel));        
         % Only save changes if something was change
         bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, [], 1);
         % Return the processed raw file
