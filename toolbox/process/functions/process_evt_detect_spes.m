@@ -44,8 +44,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Detect single-pulse triggers in SPES';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'FAST graphs';
+    sProcess.SubGroup    = 'FAST graph';
     sProcess.Index       = 1300;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data','raw'};
     sProcess.OutputTypes = {'data','raw'};
