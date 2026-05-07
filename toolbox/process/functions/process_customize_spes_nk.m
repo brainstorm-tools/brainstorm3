@@ -1,14 +1,14 @@
 function varargout = process_customize_spes_nk( varargin )
-% PROCESS_CUSTOMIZE_SPES_NK: Customize Single-Pulse Electrical Stimulation (SPES) blocks 
-% in raw data recorded using Nihon Kohden system.
+% PROCESS_CUSTOMIZE_SPES_NK: Detect, label and sort single-pulse stimulation events from
+% Single-Pulse Electrical Stimulation (SPES) blocks in raw data recorded using Nihon Kohden system
 %
 % This process:
-%   1. Finds Nihon Kohden "Stim Start" and "Stim Stop" events.
-%   2. If provided, renames those stimulation block events.
-%   3. Detects individual analog stimulation trigger pulses within each stimulation block.
-%   4. If provided, adds a fixed time offset to stimulation trigger event
-%   5. If provided, splits detected trigger pulses into ODD and EVEN events,
-%      useful for alternating monophasic stimulation study.
+%   1. Find stimulation blocks, defined by paired 'Stim Start' and 'Stim Stop' events
+%   2. If requested, rename those 'Stim Start' and 'Stim Stop' events
+%   3. Detect individual analog stimulation trigger pulses within each stimulation block
+%   4. If provided, add a fixed time offset to stimulation trigger events
+%   5. If provided, splits detected stimulation trigger events into ODD and EVEN instances,
+%      useful for alternating monophasic stimulation study
 %
 % USAGE:
 %   OutputFiles = process_customize_spes_nk('Run', sProcess, sInputs)
@@ -150,7 +150,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInput, 'This file does not contain any event.');
             return
         end
-        % Locate Nihon Kohden stimulation block events
+        % ===== 1. Find stimulation blocks, defined by paired 'Stim Start' and 'Stim Stop' events ===
         iStarts = find(strncmp({sEvents.label}, defStimStartLabel, length(defStimStartLabel)));
         iStops  = find(strncmp({sEvents.label}, defStimStopLabel,  length(defStimStopLabel)));
         if isempty(iStarts) || isempty(iStops)
@@ -194,20 +194,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInput, 'This file does not contain pairs of Start-Stop events.');
             return
         end
-        % If provided, rename stimulation block start events
+        % ===== 2. If requested, rename those 'Stim Start' and 'Stim Stop' events =====
         if isUpdateStimStartLabel
             srcTag = {sEvents(stimStartStopIxs(:,1)).label};
             destTag = strrep(srcTag, 'Stim Start', StimStartLabel);
             sEvents = process_evt_rename('Compute', sInputs(iFile).FileName, sEvents, srcTag, destTag);
         end
-        % If provided, rename stimulation block stop events
         if isUpdateStimStopLabel
             srcTag = {sEvents(stimStartStopIxs(:,2)).label};
             destTag = strrep(srcTag, 'Stim Stop', StimStopLabel);
             sEvents = process_evt_rename('Compute', sInputs(iFile).FileName, sEvents, srcTag, destTag);
         end
     
-        % === Detect analog stimulation trigger pulses inside each stimulation block ===
+        % ===== 3. Detect individual analog stimulation trigger pulses within each stimulation block =====
         % Get index for stimulation trigger channel
         ChannelMat = in_bst_channel(sInputs(iFile).ChannelFile);
         iChannel = find(strcmpi({ChannelMat.Channel.Name}, StimChan));
@@ -250,7 +249,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sEventStim.times = EvtDetectAnalogTimes{1};
                 sEventStim.epochs   = ones(1, size(sEventStim.times,2));
                 sEventStim.color = [0.8, 0.8, 0.8]; % Gray
-                % Add fixed time offset
+                % ===== 4. If provided, add a fixed time offset to stimulation trigger events =====
                 if OffsetTime ~= 0
                     sEventStim.times = round((sEventStim.times + OffsetTime) .* sFreq) ./ sFreq;
                 end
@@ -261,7 +260,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 sEvents(iEvt) = sEventStim;
 
-                % If provided, split detected pulses into 'ODD' and 'EVEN' events
+                % ===== 5. If provided, splits detected stimulation trigger events into ODD and EVEN instances =====
                 if EvtAddOddEven
                     % Create 'ODD' event from odd-numbered stimulation trigger pulses
                     sEventOdd = db_template('event');
