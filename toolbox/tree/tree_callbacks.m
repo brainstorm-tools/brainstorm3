@@ -1897,6 +1897,8 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ~isRaw && ~ismember(iStudy, iDefStudy) && ~isStat    % && ~isempty(strfind(filenameRelative, '_wMNE')) && ~strcmpi(sStudy.Result(iResult).HeadModelType, 'mixed')
                     jMenuModality = gui_component('Menu', jPopup, [], 'Model evaluation', IconLoader.ICON_RESULTS, [], []);
                     gui_component('MenuItem', jMenuModality, [], 'Simulate recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_simulation(filenameRelative));
+                    gui_component('MenuItem', jMenuModality, [], 'Simulate recordings on a different montage', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)fcnPopupSimulateRecording(filenameRelative));
+
                     if ~isempty(DataFile)
                         gui_component('MenuItem', jMenuModality, [], 'Save whitened recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)SaveWhitenedData(filenameRelative));
                     end
@@ -4000,4 +4002,22 @@ function SimulateSimmeeg(iStudy)
     end
     % Call SimMEEG
     bst_simmeeg('GUI', iStudy);
+end
+
+%% 
+
+function fcnPopupSimulateRecording(filenameRelative)
+
+    % Load study list
+    filename_split = strsplit(filenameRelative, '/');
+    sSubject = bst_get('Subject', filename_split{1});
+    [sSubjStudies, ~] = bst_get('StudyWithSubject', sSubject.FileName,'intra_subject', 'default_study');
+
+    % Ask which subject to use
+    StudyName = java_dialog('combo', '<HTML>Select the destination study:<BR><BR>', 'Project sources', [], {sSubjStudies.Name});
+    if isempty(StudyName)
+        return
+    end
+    iStudy = find(strcmpi(StudyName, {sSubjStudies.Name}));
+    bst_simulation(filenameRelative, [], [], [], iStudy);
 end

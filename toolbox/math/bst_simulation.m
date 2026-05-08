@@ -1,7 +1,7 @@
-function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeAtlas)
+function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeAtlas, iStudy)
 % BST_SIMULATION:  Create a pseudo-recordings file by multiplying the forward model with the sources.
 %
-% USAGE:  newDataFile = bst_simulation(ResultsFile, iVertices, Comment='', isVolumeAtlas=0)
+% USAGE:  newDataFile = bst_simulation(ResultsFile, iVertices, Comment='', isVolumeAtlas=0, iStudy = [])
 %         newDataFile = bst_simulation(ResultsFile, iVertices)  : Use only the selected vertices
 %         newDataFile = bst_simulation(ResultsFile)             : Use all the vertices
 %
@@ -9,6 +9,7 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 %     - ResultsFile : Full or relative path to a brainstorm sources file
 %     - iVertices   : Indices of the sources to use to simulate the recordings
 %     - Comment     : Comment inserted in the created file
+%     - iStudy      : Output study
 % OUTPUT:
 %     - newDataFile : Full path to the simulated recordings file created and saved in the database
 
@@ -34,6 +35,12 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+
+% If target study is empty, we use the study of the source map
+if (nargin < 5) || isempty(iStudy)
+    [sStudy, iStudy] = bst_get('ResultsFile', ResultsFile);
+end
+
 % Is iVertices obtained on a volume atlas
 if (nargin < 4) || isempty(isVolumeAtlas)
     isVolumeAtlas = 0;
@@ -118,8 +125,7 @@ end
 
 % ===== LOAD GAIN MATRIX =====
 bst_progress('text', 'Loading head model...');
-% Get study
-[sStudy, iStudy] = bst_get('ResultsFile', ResultsFile);
+
 % Get default headmodel for this study
 sHeadModel = bst_get('HeadModelForStudy', iStudy);
 if isempty(sHeadModel)
