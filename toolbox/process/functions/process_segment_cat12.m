@@ -314,9 +314,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.anatomy3           = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ibsr               = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.julichbrain        = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.julichbrain3       = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.mori               = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.thalamus           = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.thalamic_nuclei    = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_100Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_200Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_400Parcels_17Networks_order = 1;
@@ -381,7 +383,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         return;
     end
     % Delete temporary folder
-    file_delete(TmpDir, 1, 1);
+    % file_delete(TmpDir, 1, 1);
     % Remove logo
     bst_progress('removeimage');
     % Return success
