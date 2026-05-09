@@ -48,7 +48,7 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
         end
 
         % Normalize the vector
-        VectorSEEGtoCortex = VectorSEEGtoCortex(:, 1) ./ repmat(DistanceToCortex, 1, 3); 
+        VectorSEEGtoCortex = VectorSEEGtoCortex ./ repmat(DistanceToCortex, 1, 3); 
         
         % Compute the leadfield
         scaledVector = VectorSEEGtoCortex ./ repmat(DistanceToCortex.^2, 1, 3); 
