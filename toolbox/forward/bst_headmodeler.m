@@ -22,7 +22,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' and 'duneuro'  
+%     .SEEGMethod:    'uniform', 'openmeeg' and 'duneuro'  
 %     .ECOGMethod:    'openmeeg' and 'duneuro' 
 %     .NIRSMethod:    'import'
 %
@@ -534,6 +534,13 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     end
     % Add values to previous Gain matrix
     Gain(~isnan(Gain_dn)) = Gain_dn(~isnan(Gain_dn));
+end
+
+%% ===== COMPUTE: SEEG UNIFORM HEADMODELS =====
+if strcmp('uniform', OPTIONS.SEEGMethod)
+
+    Gain(iSeeg, :) =  bst_seeg_uni(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, []);
+    strHistory =  [strHistory, ' | ', 'Uniform medium (SEEG)',  ' | ', sprintf('Cond: %1.3f', OPTIONS.Conductivity)];
 end
 
 
