@@ -28,6 +28,7 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
     isSEEGInsideSkull   = inpolyhd(SEEG_Loc, sInnerSkull.Vertices, sInnerSkull.Faces);
     
     % Compute the leadfield
+    bst_progress('start', 'Computing head model', sprintf('Computing head model for %d contacts...', NbElectrodes), 0, NbElectrodes);
     G = zeros(NbElectrodes , 3*NbVertices);
     for iContact =  1:NbElectrodes
         
@@ -59,12 +60,16 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 
         % Compute the leadfiels 
         for ind_vert = 1:NbVertices
-            G(iContact, 3*(ind_vert-1) + 1) = dot([1, 0, 0], VectorSEEGtoCortex(ind_vert, :)) / DistanceToCortex(ind_vert)^2 ;  
-            G(iContact, 3*(ind_vert-1) + 2) = dot([0, 1, 0], VectorSEEGtoCortex(ind_vert, :)) / DistanceToCortex(ind_vert)^2 ;  
-            G(iContact, 3*(ind_vert-1) + 3) = dot([0, 0, 1], VectorSEEGtoCortex(ind_vert, :)) / DistanceToCortex(ind_vert)^2 ;  
+            G(iContact, 3*(ind_vert-1) + 1) = VectorSEEGtoCortex(ind_vert, 1) / DistanceToCortex(ind_vert)^2 ;  
+            G(iContact, 3*(ind_vert-1) + 2) = VectorSEEGtoCortex(ind_vert, 2) / DistanceToCortex(ind_vert)^2 ;  
+            G(iContact, 3*(ind_vert-1) + 3) = VectorSEEGtoCortex(ind_vert, 3) / DistanceToCortex(ind_vert)^2 ;  
         end
 
-        % Add normalization constant 
-        G = G / (4 * pi * sigma0);
+        bst_progress('inc', 1);
     end
+
+    % Add normalization constant 
+    G = G / (4 * pi * sigma0);
+
+    bst_progress('stop');
 end
