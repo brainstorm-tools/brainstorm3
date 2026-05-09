@@ -16,15 +16,11 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
     min_distance        = Options.minDistance;
     sigma0              = Options.sigma;
 
-
     NbElectrodes = length(sChannel);
     NbVertices   = size(GridLoc, 1);
 
     % Find electrodes that are inside the inner skull
-    SEEG_Loc = zeros(NbElectrodes, 3);
-    for iEEG = 1:NbElectrodes
-        SEEG_Loc(iEEG, :) = sChannel(iEEG).Loc;
-    end
+    SEEG_Loc = [sChannel.Loc]'; 
     isSEEGInsideSkull   = inpolyhd(SEEG_Loc, sInnerSkull.Vertices, sInnerSkull.Faces);
     
     % Compute the leadfield
@@ -37,33 +33,28 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
         end
 
         VectorSEEGtoCortex =  SEEG_Loc(iContact, :) - GridLoc;
-        DistanceToCortex = vecnorm(VectorSEEGtoCortex, 2, 2)';
+        DistanceToCortex = vecnorm(VectorSEEGtoCortex, 2, 2);
 
         % Filter short distance
         iShort =  find(DistanceToCortex < min_distance);
         if ~isempty(iShort)
             fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);
             
-            
-            VectorSEEGtoCortex(iShort, 1) = ( VectorSEEGtoCortex(iShort, 1) ./ DistanceToCortex(iShort)') * min_distance; 
-            VectorSEEGtoCortex(iShort, 2) = ( VectorSEEGtoCortex(iShort, 2) ./ DistanceToCortex(iShort)') * min_distance; 
-            VectorSEEGtoCortex(iShort, 3) = ( VectorSEEGtoCortex(iShort, 3) ./ DistanceToCortex(iShort)') * min_distance; 
+            VectorSEEGtoCortex(iShort, 1) = ( VectorSEEGtoCortex(iShort, 1) ./ DistanceToCortex(iShort)) * min_distance; 
+            VectorSEEGtoCortex(iShort, 2) = ( VectorSEEGtoCortex(iShort, 2) ./ DistanceToCortex(iShort)) * min_distance; 
+            VectorSEEGtoCortex(iShort, 3) = ( VectorSEEGtoCortex(iShort, 3) ./ DistanceToCortex(iShort)) * min_distance; 
 
             DistanceToCortex(iShort) =  min_distance;
         end
 
         % Normalize the vector
-        VectorSEEGtoCortex(:, 1) = ( VectorSEEGtoCortex(:, 1) ./ DistanceToCortex'); 
-        VectorSEEGtoCortex(:, 2) = ( VectorSEEGtoCortex(:, 2) ./ DistanceToCortex'); 
-        VectorSEEGtoCortex(:, 3) = ( VectorSEEGtoCortex(:, 3) ./ DistanceToCortex'); 
+        VectorSEEGtoCortex = VectorSEEGtoCortex(:, 1) ./ repmat(DistanceToCortex, 1, 3); 
+        
+        % Compute the leadfield
+        scaledVector = VectorSEEGtoCortex ./ repmat(DistanceToCortex.^2, 1, 3); 
 
-
-        % Compute the leadfiels 
-        for ind_vert = 1:NbVertices
-            G(iContact, 3*(ind_vert-1) + 1) = VectorSEEGtoCortex(ind_vert, 1) / DistanceToCortex(ind_vert)^2 ;  
-            G(iContact, 3*(ind_vert-1) + 2) = VectorSEEGtoCortex(ind_vert, 2) / DistanceToCortex(ind_vert)^2 ;  
-            G(iContact, 3*(ind_vert-1) + 3) = VectorSEEGtoCortex(ind_vert, 3) / DistanceToCortex(ind_vert)^2 ;  
-        end
+        % Organize the matrix as x,y,z
+        G(iContact, :) = reshape(scaledVector', 1, []);
 
         bst_progress('inc', 1);
     end
