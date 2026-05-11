@@ -9,7 +9,7 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 %     - ResultsFile : Full or relative path to a brainstorm sources file
 %     - iVertices   : Indices of the sources to use to simulate the recordings
 %     - Comment     : Comment inserted in the created file
-%     - iStudy      : Study that contains the headmodel (fwd model) to be used
+%     - iStudy      : Study with headmodel (fwd model) to be used. Default, use ResultsFile study
 % OUTPUT:
 %     - newDataFile : Full path to the simulated recordings file created and saved in the database
 
@@ -124,7 +124,6 @@ end
 
 % ===== LOAD GAIN MATRIX =====
 bst_progress('text', 'Loading head model...');
-
 % Get default headmodel for this study
 sHeadModel = bst_get('HeadModelForStudy', iStudy);
 if isempty(sHeadModel)
