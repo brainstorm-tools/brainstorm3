@@ -1897,8 +1897,8 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ~isRaw && ~ismember(iStudy, iDefStudy) && ~isStat    % && ~isempty(strfind(filenameRelative, '_wMNE')) && ~strcmpi(sStudy.Result(iResult).HeadModelType, 'mixed')
                     jMenuModality = gui_component('Menu', jPopup, [], 'Model evaluation', IconLoader.ICON_RESULTS, [], []);
                     gui_component('MenuItem', jMenuModality, [], 'Simulate recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_simulation(filenameRelative));
-                    gui_component('MenuItem', jMenuModality, [], 'Simulate recordings on a different montage', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)fcnPopupSimulateRecording(filenameRelative));
-
+                    gui_component('MenuItem', jMenuModality, [], 'Simulate recordings for other folders...', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)SimulateDataOtherStudy(sStudy.BrainStormSubject, iStudy, filenameRelative));
+                    AddSeparator(jMenuModality);
                     if ~isempty(DataFile)
                         gui_component('MenuItem', jMenuModality, [], 'Save whitened recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)SaveWhitenedData(filenameRelative));
                     end
@@ -4004,20 +4004,29 @@ function SimulateSimmeeg(iStudy)
     bst_simmeeg('GUI', iStudy);
 end
 
-%% 
 
-function fcnPopupSimulateRecording(filenameRelative)
-
-    % Load study list
-    filename_split = strsplit(filenameRelative, '/');
-    sSubject = bst_get('Subject', filename_split{1});
-    [sSubjStudies, ~] = bst_get('StudyWithSubject', sSubject.FileName,'intra_subject', 'default_study');
-
+%% ===== SIMULATE RECORDINGS OTHER FOLDERS =====
+function SimulateDataOtherStudy(SubjectFilename, iStudy, FilenameRelative)
+    % Find other Studies with head models for same Subject
+    [sStudies, iStudies] = bst_get('StudyWithSubject', SubjectFilename, 'intra_subject', 'default_study');
+    iValid = logical([]);
+    for ix = 1 : length(iStudies)
+        sHeadModel = bst_get('HeadModelForStudy', iStudies(ix));
+        iValid(end+1) = ~isempty(sHeadModel) && iStudies(ix) ~= iStudy;
+    end
+    sStudies = sStudies(iValid);
+    iStudies = iStudies(iValid);
+    if isempty(sStudies)
+        disp('BST> Error: There are not other folders with a head model file for this Subject.');
+        return
+    end
+    % Names to show
+    StudyNames = arrayfun(@(x) x.Condition{1}, sStudies, 'UniformOutput', 0);
     % Ask which subject to use
-    StudyName = java_dialog('combo', '<HTML>Select the destination study:<BR><BR>', 'Project sources', [], {sSubjStudies.Name});
+    StudyName = java_dialog('combo', '<HTML>Select the destination folder:<BR><BR>', 'Simulate recordings', [], StudyNames);
     if isempty(StudyName)
         return
     end
-    iStudy = find(strcmpi(StudyName, {sSubjStudies.Name}));
-    bst_simulation(filenameRelative, [], [], [], iStudy);
+    ix = strcmpi(StudyName, StudyNames);
+    bst_simulation(FilenameRelative, [], [], [], iStudies(ix));
 end
