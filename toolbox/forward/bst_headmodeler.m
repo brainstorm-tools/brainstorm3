@@ -539,7 +539,29 @@ end
 %% ===== COMPUTE: SEEG UNIFORM HEADMODELS =====
 if strcmp('uniform', OPTIONS.SEEGMethod)
 
-    Gain(iSeeg, :) =  bst_seeg_uni(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, []);
+    if ~isfield(OPTIONS, 'sigma') ||  ~isfield(OPTIONS, 'minDistance')
+        % Get options
+        prompt = {'Brain conductivity (S/m):','Minimum distance between SEEG and dipoles (mm):'};
+        sOptions = inputdlg(prompt, 'SEEG head model options',  [1 45; 1 45], {'0.25','3'});
+
+        if isempty(sOptions)
+            errMessage = 'Canceled by user.';
+            OPTIONS = [];
+            return;
+        end
+
+        try
+            OPTIONS.sigma  = str2double(sOptions{1});
+        catch
+        end
+    
+        try
+            OPTIONS.minDistance  = str2double(sOptions{2}) / 1000;
+        catch
+        end
+    end
+
+    Gain(iSeeg, :) =  bst_seeg_uni(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, OPTIONS);
     strHistory =  [strHistory, ' | ', 'Uniform medium (SEEG)',  ' | ', sprintf('Cond: %1.3f', OPTIONS.Conductivity)];
 end
 
