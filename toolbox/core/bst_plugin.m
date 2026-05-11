@@ -8,6 +8,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
+%                     isOk = bst_plugin('ClearCachedVersion',   PlugName)                    % Clean cached plugin version
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
@@ -1150,6 +1151,30 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
         GlobalData.Program.PluginCache.(strCache).URLzip = URLzip;
     catch
         disp(['BST> Error: Could not get online version for plugin: ' PlugName]);
+    end
+end
+
+
+%% ===== CLEAR CACHED PLUGIN VERSION ======
+function isOk = ClearCachedVersion(PlugName)
+% USAGE: isOk = bst_plugin('ClearCachedVersion', PlugName)  % Only for provided plugin
+%        isOk = bst_plugin('ClearCachedVersion')            % For all plugins
+    global GlobalData;
+    isOk = 0;
+
+    % Already clean
+    if ~isfield(GlobalData.Program, 'PluginCache') || isempty(GlobalData.Program.PluginCache) || isempty(fieldnames(GlobalData.Program.PluginCache))
+        isOk = 1;
+    % Clean all
+    elseif nargin < 1
+        GlobalData.Program.PluginCache = struct;
+        isOk = 1;
+    % Clean cache version for provided plugin
+    elseif ischar(PlugName)
+        strCaches = fieldnames(GlobalData.Program.PluginCache);
+        PlugName = [PlugName, '_'];
+        GlobalData.Program.PluginCache = rmfield(GlobalData.Program.PluginCache, strCaches(strncmpi(strCaches, PlugName, length(PlugName))));
+        isOk = 1;
     end
 end
 
