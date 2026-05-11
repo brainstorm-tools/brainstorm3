@@ -49,7 +49,6 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 %
 % Authors: Edouard Delaire (2026)
 
-
     % Add default options
     Options = struct_copy_fields(struct('sigma', 0.25, 'minDistance', 3/1000), Options, 1);
     min_distance        = Options.minDistance;
@@ -71,21 +70,21 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
             continue
         end
 
-        VectorCortexToSEEG =  SEEG_Loc(iContact, :) - GridLoc;
-        DistanceToCortex = vecnorm(VectorCortexToSEEG, 2, 2);
+        VectorDipolesToSEEG =  SEEG_Loc(iContact, :) - GridLoc;
+        DistanceToDipoles = vecnorm(VectorDipolesToSEEG, 2, 2);
 
         % Normalize the vector
-        VectorCortexToSEEG = VectorCortexToSEEG ./ repmat(DistanceToCortex, 1, 3);
+        VectorDipolesToSEEG = VectorDipolesToSEEG ./ repmat(DistanceToDipoles, 1, 3);
 
         % Filter short distance
-        iShort =  find(DistanceToCortex < min_distance);
+        iShort =  find(DistanceToDipoles < min_distance);
         if ~isempty(iShort)
             fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);           
-            DistanceToCortex(iShort) =  min_distance;
+            DistanceToDipoles(iShort) =  min_distance;
         end
 
         % Compute the leadfield
-        scaledVector = VectorCortexToSEEG ./ repmat(DistanceToCortex.^2, 1, 3); 
+        scaledVector = VectorDipolesToSEEG ./ repmat(DistanceToDipoles.^2, 1, 3); 
 
         % Organize the matrix as x,y,z
         G(iContact, :) = reshape(scaledVector', 1, []);
