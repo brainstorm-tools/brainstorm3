@@ -74,21 +74,16 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
         VectorCortexToSEEG =  SEEG_Loc(iContact, :) - GridLoc;
         DistanceToCortex = vecnorm(VectorCortexToSEEG, 2, 2);
 
+        % Normalize the vector
+        VectorCortexToSEEG = VectorCortexToSEEG ./ repmat(DistanceToCortex, 1, 3);
+
         % Filter short distance
         iShort =  find(DistanceToCortex < min_distance);
         if ~isempty(iShort)
-            fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);
-            
-            VectorCortexToSEEG(iShort, 1) = ( VectorCortexToSEEG(iShort, 1) ./ DistanceToCortex(iShort)) * min_distance; 
-            VectorCortexToSEEG(iShort, 2) = ( VectorCortexToSEEG(iShort, 2) ./ DistanceToCortex(iShort)) * min_distance; 
-            VectorCortexToSEEG(iShort, 3) = ( VectorCortexToSEEG(iShort, 3) ./ DistanceToCortex(iShort)) * min_distance; 
-
+            fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);           
             DistanceToCortex(iShort) =  min_distance;
         end
 
-        % Normalize the vector
-        VectorCortexToSEEG = VectorCortexToSEEG ./ repmat(DistanceToCortex, 1, 3); 
-        
         % Compute the leadfield
         scaledVector = VectorCortexToSEEG ./ repmat(DistanceToCortex.^2, 1, 3); 
 
