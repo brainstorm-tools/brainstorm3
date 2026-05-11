@@ -4022,7 +4022,7 @@ function SimulateDataOtherStudy(SubjectFilename, iStudy, FilenameRelative)
     end
     % Names to show
     StudyNames = arrayfun(@(x) x.Condition{1}, sStudies, 'UniformOutput', 0);
-    % Ask which subject to use
+    % Ask which study to use
     StudyName = java_dialog('combo', '<HTML>Select the destination folder:<BR><BR>', 'Simulate recordings', [], StudyNames);
     if isempty(StudyName)
         return
