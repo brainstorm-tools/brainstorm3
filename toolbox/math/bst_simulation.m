@@ -9,7 +9,7 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 %     - ResultsFile : Full or relative path to a brainstorm sources file
 %     - iVertices   : Indices of the sources to use to simulate the recordings
 %     - Comment     : Comment inserted in the created file
-%     - iStudy      : Output study
+%     - iStudy      : Study that contains the headmodel (fwd model) to be used
 % OUTPUT:
 %     - newDataFile : Full path to the simulated recordings file created and saved in the database
 
@@ -38,9 +38,8 @@ global GlobalData;
 
 % If target study is empty, we use the study of the source map
 if (nargin < 5) || isempty(iStudy)
-    [sStudy, iStudy] = bst_get('ResultsFile', ResultsFile);
+    [~, iStudy] = bst_get('ResultsFile', ResultsFile);
 end
-
 % Is iVertices obtained on a volume atlas
 if (nargin < 4) || isempty(isVolumeAtlas)
     isVolumeAtlas = 0;
@@ -236,10 +235,8 @@ bst_save(newDataFile, DataMat, 'v6');
 % ===== UPDATE DATABASE =====
 % Unloading dataset
 bst_memory('UnloadDataSets', iDS);
-% Get study
-[sStudy, iStudy, iResult] = bst_get('ResultsFile', ResultsFile);
 % Add to database
-[sStudy, iNewData] = db_add_data(iStudy, newDataFile, DataMat);
+[~, iNewData] = db_add_data(iStudy, newDataFile, DataMat);
 % Update links
 db_links('Study', iStudy);
 % Update display
