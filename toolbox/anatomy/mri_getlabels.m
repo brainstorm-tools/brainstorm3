@@ -71,7 +71,12 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % LABELS SimNIBS4: Try to get a side _LUT.txt with the labels
     LabelsFile = bst_fullfile(fPath, [fBase, '_LUT.txt']);
     if file_exist(LabelsFile)
-        Labels = in_label_simnibs(LabelsFile);
+        Labels = in_label_lut(LabelsFile);
+    end
+    % LABELS FreeSurfer: Try to get a side LUT.txt with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, 'LUT.txt']);
+    if file_exist(LabelsFile)
+        Labels = in_label_lut(LabelsFile);
     end
 
     % If labels were read: use the filename as the atlas name
