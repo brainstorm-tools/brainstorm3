@@ -540,9 +540,10 @@ end
 if strcmp('uniform', OPTIONS.SEEGMethod)
 
     if ~isfield(OPTIONS, 'sigma') ||  ~isfield(OPTIONS, 'minDistance')
+        
         % Get options
         prompt = {'Brain conductivity (S/m):','Minimum distance between SEEG and dipoles (mm):'};
-        sOptions = inputdlg(prompt, 'SEEG head model options',  [1 45; 1 45], {'0.25','3'});
+        sOptions = java_dialog('input', prompt, 'SEEG head model options', [],  {'0.25','3'});
 
         if isempty(sOptions)
             errMessage = 'Canceled by user.';
