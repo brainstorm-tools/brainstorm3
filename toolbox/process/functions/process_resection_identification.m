@@ -144,7 +144,6 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' plugName]);
     
     % === SAVE BOTH MRI AS NIfTI ===
-    bst_progress('text', 'Exporting pre- and post-op MRI...');
     % Get temporary folder from container info
     TmpDir = containerInfo.volumes{1,1};
     % Save pre-op MRI
