@@ -421,9 +421,13 @@ function errMsg = KeepContainerAlive(containerName)
 
     switch engineName
         case 'docker'
-            cmd = ['docker exec ' containerName ' sh -c "ps -eo pid= | awk ''$1 != 1 {print $1}'' | xargs -r kill -9"'];
-            [status, cmdout] = system(cmd);
-
+            if ispc
+                awkPid = '$1';  % Windows host: do not escape $
+            else
+                awkPid = '\$1'; % macOS/Linux host: prevent host shell expansion
+            end
+            cmd = ['docker exec ' containerName ' sh -c "ps -eo pid= | awk ''' awkPid ' != 1 {print ' awkPid '}'' | xargs -r kill -9 2>/dev/null || true"'];
+            [status, cmdout] = system(cmd);            
             if status ~= 0
                 errMsg = strtrim(cmdout);
             end
