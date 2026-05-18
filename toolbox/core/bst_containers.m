@@ -234,9 +234,16 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon)
+function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
+% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
+    
     % Validate inputs
+    if nargin < 6 || isempty(containerArgs)
+        containerArgs = '';
+    end
+    if nargin < 5 || isempty(isGpu)
+        isGpu = 0;
+    end
     if nargin < 4 || isempty(isDaemon)
         isDaemon = 0;
     end
@@ -261,15 +268,21 @@ function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
         volumesStr = strjoin(pairs, ' ');
     end
 
+    % GPU option
+    gpuStr = '';
+    if isGpu
+        gpuStr = '--gpus all';
+    end
+
     % Run container
     switch engineName
         case 'docker'
             if ~isDaemon
                 % Run ENTRYPOINT
-                cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageSha);
+                cmdStr = sprintf('docker run --rm --name %s %s %s %s %s', containerName, gpuStr, volumesStr, imageSha, containerArgs);
             else
                 % Replace ENTRYPOINT (if any) with `sleep infinity`
-                cmdStr = sprintf('docker run -d --name %s %s --entrypoint sleep %s infinity', containerName, volumesStr, imageSha);
+                cmdStr = sprintf('docker run -d --name %s %s %s --entrypoint sleep %s infinity', containerName, gpuStr, volumesStr, imageSha);
             end
             [status, cmdout] = system(cmdStr);
     end
