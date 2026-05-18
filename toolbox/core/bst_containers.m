@@ -315,7 +315,13 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
             else
                 commandWrapper = ''''; % Single quote
             end
-            [status, cmdout] = system(['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper]);
+            
+            % If MATLAB function errors, or Ctrl+C is pressed
+            cleanupObj = onCleanup(@() KeepContainerAlive(containerName));
+            
+            % Execute the running container
+            commandExec = ['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper];
+            [status, cmdout] = system(commandExec, '-echo');
             if status ~= 0
                 errMsg = strtrim(cmdout);
             end
@@ -396,6 +402,28 @@ function errMsg = StopContainer(containerName, isForce)
     end
 end
 
+%% ===== KEEP CONTAINER ALIVE =====
+function errMsg = KeepContainerAlive(containerName)
+% Keeps the container alive but kills all processes except PID 1 (`sleep infinity` ENTRYPOINT), 
+% Useful when the MATLAB function errors or there is some user interrupt (e.g. Ctrl+C)
+    
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
+        return
+    end
+
+    switch engineName
+        case 'docker'
+            cmd = ['docker exec ' containerName ' sh -c "ps -eo pid= | awk ''$1 != 1 {print $1}'' | xargs -r kill -9"'];
+            [status, cmdout] = system(cmd);
+
+            if status ~= 0
+                errMsg = strtrim(cmdout);
+            end
+    end
+    bst_progress('stop');
+end
 
 %% ===== REMOVE IMAGE =====
 function errMsg = RemoveImage(imageSha, isForce)
