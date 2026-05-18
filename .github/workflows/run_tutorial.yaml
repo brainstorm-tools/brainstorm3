@@ -35,6 +35,7 @@ on:
         - tutorial_resting
         - tutorial_simulations
         - tutorial_yokogawa
+        - tutorial_seizure_fingerprinting
         required: true
     # In addition to the tutorialname, there are two variables: TEST_TUTORIAL_BSTUSER and TEST_TUTORIAL_BSTPWD
     # These variables are created as "secrets" in this repo, and are used to download data and send report by email
