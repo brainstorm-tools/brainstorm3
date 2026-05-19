@@ -5566,12 +5566,12 @@ function SaveScouts(varargin)
         return;
     end
     % Get selected scouts (no selection: export all the scouts)
-    [sScouts, iScouts, sSurf] = GetSelectedScouts();
+    [~, iScouts, sSurf] = GetSelectedScouts();
     if ~isempty(iScouts)
         sAtlas.Scouts = sAtlas.Scouts(iScouts);
     end
+    sScouts = sAtlas.Scouts;
     % Remove the file "Handles"
-    %sAtlas.Scouts = rmfield(sAtlas.Scouts, 'Handles');
     for is = 1:length(sAtlas.Scouts)
         sAtlas.Scouts(is).Handles = [];
     end
