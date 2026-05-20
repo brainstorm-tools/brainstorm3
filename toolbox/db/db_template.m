@@ -734,7 +734,7 @@ switch lower(structureName)
     case 'intraelectrode'
         template = struct(...
             'Name',  '', ...   % Identification
-            'Type',  '', ...   % 'SEEG' / 'ECOG'
+            'Type',  '', ...   % 'SEEG' / 'Grouped SEEG' / 'ECOG'
             'Model', '', ...   % String identifying the make and model
             'Loc',   [], ...   % [3xN] positions with all the relevant points (eg. tip and entry)
             'Color', [], ...   % [1x3] color vector
@@ -744,6 +744,7 @@ switch lower(structureName)
             'ContactLength',   [], ...
             'ElecDiameter',    [], ...
             'ElecLength',      [], ...
+            'IntergroupSpacing', [], ...
             'Visible',         1);
 
     case 'intracontact'
