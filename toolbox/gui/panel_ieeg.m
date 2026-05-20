@@ -142,11 +142,13 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 gui_component('label', jPanelElecOptions, '', 'Type: ');
                 jButtonGroup = ButtonGroup();
                 jRadioSeeg = gui_component('radio', jPanelElecOptions, '', 'SEEG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
+                jRadioGroupedSeeg = gui_component('radio', jPanelElecOptions, '', 'Grouped SEEG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcog = gui_component('radio', jPanelElecOptions, '', 'ECOG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcogMid = gui_component('radio', jPanelElecOptions, '', 'ECOG-mid', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioSeeg.setMargin(java.awt.Insets(0,0,0,0));
                 jRadioEcog.setMargin(java.awt.Insets(0,0,0,0));
                 jRadioEcogMid.setMargin(java.awt.Insets(0,0,0,0));
+                jRadioGroupedSeeg.setMargin(java.awt.Insets(0,0,0,0));
                 % Electrode model
                 jPanelModel = gui_river([0,0], [0,0,0,0]);
                     % Title
@@ -197,6 +199,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jLabelElecLength = gui_component('label', jPanelElecOptions, 'br', 'Electrode length: ');
                 jTextElecLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
                 jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', ' mm');
+                % Intergroup spacing
+                jLabelIntergroupSpacing = gui_component('label', jPanelElecOptions, 'br', 'Intergroup spacing: ');
+                jTextIntergroupSpacing = gui_component('text', jPanelElecOptions, 'tab', '');
+                jTextIntergroupSpacing.setHorizontalAlignment(jTextNcontacts.RIGHT);
+                jLabelIntergroupSpacingUnits = gui_component('label', jPanelElecOptions, '', ' mm');
                 % Set electrode position
                 jPanelButtons = gui_component('panel');
                     jCardLayout = java.awt.CardLayout;
@@ -244,8 +251,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioSeeg',          jRadioSeeg, ...
                                   'jRadioEcog',          jRadioEcog, ...
                                   'jRadioEcogMid',       jRadioEcogMid, ...
+                                  'jRadioGroupedSeeg',   jRadioGroupedSeeg, ...
                                   'jTextNcontacts',      jTextNcontacts, ...
                                   'jTextSpacing',        jTextSpacing, ...
+                                  'jLabelIntergroupSpacing',      jLabelIntergroupSpacing, ...
+                                  'jTextIntergroupSpacing',       jTextIntergroupSpacing, ...
+                                  'jLabelIntergroupSpacingUnits', jLabelIntergroupSpacingUnits, ...
                                   'jTextContactDiam',    jTextContactDiam, ...
                                   'jLabelContactLength', jLabelContactLength, ...
                                   'jTextContactLength',  jTextContactLength, ...
@@ -291,6 +302,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 end
                 if ~isempty(sModels(iModel).ContactSpacing)
                     sSelElec(i).ContactSpacing = sModels(iModel).ContactSpacing;
+                end
+                if isfield(sModels(iModel), 'IntergroupSpacing') && ~isempty(sModels(iModel).IntergroupSpacing)
+                    sSelElec(i).IntergroupSpacing = sModels(iModel).IntergroupSpacing;
                 end
                 if ~isempty(sModels(iModel).ContactDiameter)
                     sSelElec(i).ContactDiameter = sModels(iModel).ContactDiameter;
@@ -623,6 +637,8 @@ function UpdateModelList(elecType)
         switch (elecType)
             case 'SEEG'
                 iMod = find(strcmpi({sModels.Type}, 'SEEG'));
+            case 'Grouped SEEG'
+                iMod = find(strcmpi({sModels.Type}, 'Grouped SEEG'));
             case {'ECOG', 'ECOG-mid'}
                 iMod = find(strcmpi({sModels.Type}, 'ECOG'));
         end
@@ -673,6 +689,9 @@ function UpdateElecProperties(isUpdateModelList)
         elseif strcmpi(sSelElec(1).Type, 'ECOG-mid')
             ctrl.jRadioEcogMid.setSelected(1);
             elecType = 'ECOG-mid';
+        elseif strcmpi(sSelElec(1).Type, 'Grouped SEEG')
+            ctrl.jRadioGroupedSeeg.setSelected(1);
+            elecType = 'Grouped SEEG';
         else
             elecType = [];
         end
@@ -680,6 +699,7 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jRadioSeeg.setSelected(0);
         ctrl.jRadioEcog.setSelected(0);
         ctrl.jRadioEcogMid.setSelected(0);
+        ctrl.jRadioGroupedSeeg.setSelected(0);
         elecType = [];
     end
     % Update list of models
@@ -695,7 +715,8 @@ function UpdateElecProperties(isUpdateModelList)
     end
     
     % Update control labels
-    if ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'SEEG')
+    isSeegType = ~isempty(sSelElec) && (strcmpi(sSelElec(1).Type, 'SEEG') || strcmpi(sSelElec(1).Type, 'Grouped SEEG'));
+    if isSeegType
         ctrl.jLabelContactLength.setText('Contact length: ');
         ctrl.jLabelElecLength.setVisible(1);
         ctrl.jTextElecLength.setVisible(1);
@@ -710,6 +731,11 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jLabelElecDiameter.setText('Wire width: ');
         ctrl.jLabelElecDiamUnits.setText(' points');
     end
+    % Show Intergroup Spacing only for Grouped SEEG
+    isGroupedSeeg = ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'Grouped SEEG');
+    ctrl.jLabelIntergroupSpacing.setVisible(isGroupedSeeg);
+    ctrl.jTextIntergroupSpacing.setVisible(isGroupedSeeg);
+    ctrl.jLabelIntergroupSpacingUnits.setVisible(isGroupedSeeg);
     % Number of contacts
     if (length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).ContactNumber), {sSelElec.ContactNumber})))
         valContacts = sSelElec(1).ContactNumber;
@@ -721,6 +747,12 @@ function UpdateElecProperties(isUpdateModelList)
         valSpacing = sSelElec(1).ContactSpacing * 1000;
     else
         valSpacing = [];
+    end
+    % Intergroup spacing
+    if isfield(sSelElec, 'IntergroupSpacing') && ((length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).IntergroupSpacing), {sSelElec.IntergroupSpacing}))))
+        valIntergroupSpacing = sSelElec(1).IntergroupSpacing * 1000;
+    else
+        valIntergroupSpacing = [];
     end
     % Contact length
     if (length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).ContactLength), {sSelElec.ContactLength})))
@@ -748,7 +780,8 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {0,1024,1},  'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextSpacing,            [], [], {0,100,100}, 'optional', 2, valSpacing,            @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextIntergroupSpacing,  [], [], {0,100,100}, 'optional', 2, valIntergroupSpacing,  @(h,ev)ValidateOptions('IntergroupSpacing', ctrl.jTextIntergroupSpacing));
     gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
     gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
@@ -758,7 +791,7 @@ function UpdateElecProperties(isUpdateModelList)
         colorOn  = java.awt.Color(0, 0.8, 0);
         colorOff = java.awt.Color(0, 0, 0);
         colorNone= java.awt.Color(.4, .4, .4);
-        if strcmpi(sSelElec(1).Type, 'SEEG')
+        if strcmpi(sSelElec(1).Type, 'SEEG') || strcmpi(sSelElec(1).Type, 'Grouped SEEG')
             ctrl.jCardLayout.show(ctrl.jPanelButtons, 'seeg');
             if (size(sSelElec.Loc,2) >= 1)
                 ctrl.jButtonSeegSet1.setForeground(colorOn);
@@ -1117,7 +1150,7 @@ function EditElectrodeLabel(varargin)
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'Rename selected electrode');
         return;
     % Check that name do not include a digit
-    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØœŒßúÚùÙûÛüÜ'))
+    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øœï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½'))
         java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'Rename selected electrode');
         return;
     end
@@ -1219,10 +1252,22 @@ function ValidateOptions(optName, jControl)
     elseif strcmpi(optName, 'ContactNumber')
         val = round(str2num(jControl.getText()));
         % SEEG electrode can have only one dimension, others two dimensions max
-        if (length(val) >= 2) && strcmpi(sElectrodes(iSelElec).Type, 'SEEG')
+        if (length(val) >= 2) && (strcmpi(sElectrodes(iSelElec).Type, 'SEEG') || strcmpi(sElectrodes(iSelElec).Type, 'Grouped SEEG'))
             val = val(1);
-            jControl.setText(sprintf('%d', val));
         elseif (length(val) >= 3)
+            val = val(1:2);
+        end
+
+        if strcmpi(sElectrodes(iSelElec).Type, 'Grouped SEEG') && mod(val,3)~=0
+            bst_error('Invalid value: For grouped SEEG electrode, number of contacts must be evenly divisible by 3.', ...
+                      'Edit Field', 0);
+            jControl.setText('');
+            return
+        else
+            jControl.setText(sprintf('%d ', val));
+        end
+
+         if (length(val) >= 3)
             val = val(1:2);
             jControl.setText(sprintf('%d ', val));
         end
@@ -1250,7 +1295,7 @@ function ValidateOptions(optName, jControl)
                     end
                     % Update the channels types
                     switch (val)
-                        case 'SEEG'
+                        case {'SEEG', 'Grouped SEEG'}
                             [GlobalData.DataSet(iDS).Channel(iChan).Type] = deal('SEEG');
                         case {'ECOG', 'ECOG-mid'}
                             [GlobalData.DataSet(iDS).Channel(iChan).Type] = deal('ECOG');
@@ -1457,7 +1502,7 @@ function AddElectrode(newLabel)
         java_dialog('warning', ['Electrode "' newLabel '" already exists.'], 'New electrode');
         return;
     % Check if labels include invalid characters
-    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ áÁàÀâÂäÄãÃåÅæÆçÇéÉèÈêÊëËíÍìÌîÎïÏñÑóÓòÒôÔöÖõÕøØœŒßúÚùÙûÛüÜ'))
+    elseif any(ismember(newLabel, '0123456789:;*=?!<>"`&%$()[]{}/\_@ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øœï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½'))
         java_dialog('warning', 'New electrode name should not include digits, spaces or special characters.', 'New electrode');
         return;
     end
@@ -1904,6 +1949,26 @@ function sModels = GetElectrodeModels(list)
         sMod(6).ContactNumber = 18;
         sModels = [sModels, sMod];
         
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'Grouped SEEG';
+        sTemplate.ContactSpacing  = 0.0035;
+        sTemplate.ContactDiameter = 0.0008;
+        sTemplate.ContactLength   = 0.002;
+        sTemplate.ElecDiameter    = 0.0007;
+        sTemplate.ElecLength      = 0.100;
+        % All models
+        sMod = repmat(sTemplate, 1, 3);
+        sMod(1).Model         = 'DIXI D08-15BM Microdeep';
+        sMod(1).ContactNumber = 15;
+        sMod(1).IntergroupSpacing = 0.007;
+        sMod(2).Model         = 'DIXI D08-15CM Microdeep';
+        sMod(2).ContactNumber = 15;
+        sMod(2).IntergroupSpacing = 0.011;
+        sMod(3).Model         = 'DIXI D08-18CM Microdeep';
+        sMod(3).ContactNumber = 18;
+        sMod(3).IntergroupSpacing = 0.011;
+        sModels = [sModels, sMod];
+
         % === AD TECH RD10R ===
         % Common values
         sTemplate = db_template('intraelectrode');
@@ -2096,6 +2161,35 @@ function AddElectrodeModel(sNewModel)
             sNew.ContactDiameter = str2num(res{5}) ./ 1000;
             sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
             sNew.ElecLength      = 0;
+
+        % === Grouped SEEG ===
+        elseif ctrl.jRadioGroupedSeeg.isSelected()
+            % Ask for all the electrode options
+            res = java_dialog('input', {...
+                'Manufacturer and model (SEEG):', ...
+                'Number of contacts:', ...
+                'Contact spacing (mm):', ...
+                'Contact length (mm):', ...
+                'Contact diameter (mm):', ...
+                'Electrode diameter (mm):', ...
+                'Electrode length (mm):', ...
+                'Intergroup spacing (mm):'}, 'Add new model', [], ...
+                {'', '', '3.5', '2', '0.8', '0.7', '70', ''});
+            if isempty(res) || isempty(res{1})
+                return;
+            end
+            % Get all the values
+            sNew = db_template('intraelectrode');
+            sNew.Model           = res{1};
+            sNew.Type            = 'Grouped SEEG';
+            sNew.ContactNumber   = str2num(res{2});
+            sNew.ContactSpacing  = str2num(res{3}) ./ 1000;
+            sNew.ContactLength   = str2num(res{4}) ./ 1000;
+            sNew.ContactDiameter = str2num(res{5}) ./ 1000;
+            sNew.ElecDiameter    = str2num(res{6}) ./ 1000;
+            sNew.ElecLength      = str2num(res{7}) ./ 1000;
+            sNew.IntergroupSpacing = str2num(res{8}) ./ 1000;
+ 
         % === SEEG ===
         else
             % Ask for all the electrode options
@@ -2131,6 +2225,10 @@ function AddElectrodeModel(sNewModel)
     if any(strcmpi({sModels.Model}, sNew.Model))
         bst_error(['Electrode model "' sNew.Model '" is already defined.'], 'Add new model', 0);
         return;
+    elseif strcmp(sNew.Type, 'Grouped SEEG') && mod(sNew.ContactNumber, 3)~=0
+        bst_error('Invalid value: For grouped SEEG electrode, number of contacts must be evenly divisible by 3.', ...
+                  'Add new model', 0);
+        return;
     % Check that all the values are set
     elseif isempty(sNew.ContactNumber) || isempty(sNew.ContactSpacing) || isempty(sNew.ContactDiameter) || isempty(sNew.ContactLength) || isempty(sNew.ElecDiameter) || isempty(sNew.ElecLength)
         bst_error('Invalid values.', 'Add new model', 0);
@@ -2161,7 +2259,7 @@ function RemoveElectrodeModel()
     sModelsDefault = GetElectrodeModels('default');
     if ismember(sModels(iModel).Model, {sModelsDefault.Model})
         java_dialog('warning', [...
-            'This a Brainstorm default electrode model and cannot deleted.' 10], ...
+            'This a Brainstorm default electrode model and cannot be deleted.' 10], ...
             'Read-only: Default electrode model ');
         return
     end
@@ -2747,7 +2845,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
                 FaceLighting = 'gouraud';
                 
             % === SEEG ===
-            elseif strcmpi(sElec.Type, 'SEEG')
+            elseif strcmpi(sElec.Type, 'SEEG') || strcmpi(sElec.Type, 'Grouped SEEG')
                 % If no location available: cannot display
                 if (size(sElec.Loc,2) < 2)
                     continue;
@@ -3123,7 +3221,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             if isImplantation
                 sChannel = db_template('channeldesc');
                 switch (sElectrodes(iElec).Type)
-                    case 'SEEG'
+                    case {'SEEG', 'Grouped SEEG'}
                         sChannel.Type = 'SEEG';
                     case {'ECOG','ECOG-mid'}
                         sChannel.Type = 'ECOG';
@@ -3175,12 +3273,23 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
             linePlot.X = [];
             linePlot.Y = [];
             linePlot.Z = [];
+            groupsize = length(iChan)/3;
             % Process each contact
             for i = 1:length(iChan)
                 switch (Method)
                     case 'default'
-                        % Compute the default position of the contact
-                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+                      if strcmpi(sElectrodes(iElec).Type, 'Grouped SEEG')
+                          % you need to shave off 1 unit of intragroup spacing for every intergroup gap; 
+                          % "ContactSpacing" variable actually includes the contact length so isn't just spacing
+                          intragroup_spacing = sElectrodes(iElec).ContactSpacing - sElectrodes(iElec).ContactLength;
+                          extra_spacing = (sElectrodes(iElec).IntergroupSpacing - intragroup_spacing) ...
+                              * floor((i-1)/groupsize) * orient;
+                      else
+                          extra_spacing = 0;
+                      end
+                      % Compute the default position of the contact
+                      Channels(iChan(i)).Loc = elecTip + extra_spacing + ...
+                          (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
@@ -3481,7 +3590,7 @@ function SetElectrodeLoc(iLoc, jButton)
     isImplantation = isImplantationFolder(iDS);
     % Update contact positions
 %     if (~isempty(iChan) || isImplantation) && ...
-    if ((strcmpi(sSelElec.Type, 'SEEG') && (size(sSelElec.Loc,2) >= 2)) || ...
+    if (((strcmpi(sSelElec.Type, 'SEEG') || strcmpi(sSelElec.Type, 'Grouped SEEG')) && (size(sSelElec.Loc,2) >= 2)) || ...
         (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (length(sSelElec.ContactNumber) == 1) && (size(sSelElec.Loc,2) >= 2)) || ...
         (ismember(sSelElec.Type, {'ECOG','ECOG-mid'}) && (size(sSelElec.Loc,2) >= 4)))
         % Warnings and checks
