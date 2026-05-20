@@ -2557,6 +2557,11 @@ switch contextName
             sTemplates(end).Name = 'Schaefer2018';
             sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
         end
+        if ~ismember('yba696', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_YBA_696';
+            sTemplates(end).Name = 'YBA_696';
+            sTemplates(end).Info = 'https://yalebrainatlas.github.io/YaleBrainAtlas/';
+        end
         % Return defaults list
         argout1 = sTemplates;
         
