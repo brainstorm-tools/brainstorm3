@@ -8,7 +8,7 @@ function [sph_vert, sph_faces] = tess_remesh(vert, nvert, isCenter)
 %    - SurfaceFile : Absolute or relative path to the surface file to remesh
 %    - vert        : [nVertices x 3] matrix of xyz vertices
 %    - nvert       : Number of vertices in the output mesh, possible values
-%                    [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962]
+%                    [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962, 40962]
 %    - isCenter    : If 1, center the surface points on the center of mass first (average of all the points)
 
 % @=============================================================================
@@ -39,7 +39,7 @@ end
 % Number of vertices
 if (nargin < 2) || isempty(nvert)
     % Ask user the new number of vertices
-    VertList = {'162', '273', '362', '482', '642', '812', '1082', '1442', '1922', '2432', '2562', '3242', '4322', '5762', '7682', '7292', '9722', '10242', '12962'};
+    VertList = {'162', '273', '362', '482', '642', '812', '1082', '1442', '1922', '2432', '2562', '3242', '4322', '5762', '7682', '7292', '9722', '10242', '12962', '40962'};
     nvert = java_dialog('combo', ['Deform a sphere to map a simple closed surface.' 10 10 ...
                                   'Warning: The surface has to be parametrizable in spherical coordinates.' 10 ...
                                   'If the surface is not a simple envelope, the output will be wrong.' 10 ...
