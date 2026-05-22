@@ -2562,6 +2562,16 @@ switch contextName
             sTemplates(end).Name = 'YBA_696';
             sTemplates(end).Info = 'https://yalebrainatlas.github.io/YaleBrainAtlas/';
         end
+        if ~ismember('uscbrain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_USCBrain';
+            sTemplates(end).Name = 'USCBrain';
+            sTemplates(end).Info = 'https://brainsuite.org/uscbrainatlas/';
+        end
+        if ~ismember('bci-dni_brain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_BCI-DNI_brain';
+            sTemplates(end).Name = 'BCI-DNI_brain';
+            sTemplates(end).Info = 'https://brainsuite.org/bcidnibrainatlas/';
+        end
         % Return defaults list
         argout1 = sTemplates;
         

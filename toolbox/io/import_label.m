@@ -747,6 +747,10 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Schaefer_1000_7net';
             elseif ~isempty(strfind(fBase, 'yba_696'))
                 AtlasName = 'YBA_696';
+            elseif ~isempty(strfind(fBase, 'uscbrain'))
+                AtlasName = 'USCBrain';
+            elseif ~isempty(strfind(fBase, 'bci-dni_brain'))
+                AtlasName = 'BCI-DNI_brain';
             % FreeSurfer left/right
             elseif (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                 AtlasName = fBase(4:end);
