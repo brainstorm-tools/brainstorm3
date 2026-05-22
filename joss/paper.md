@@ -149,7 +149,7 @@ AI tools were used to assist with editing and restructuring of the manuscript. T
 
 # Acknowledgements
 
-Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award numbers R01EB026299 and RF1NS133972, DOD award HT94252310149.
+Research reported in this publication was supported by the National Institute of Biomedical Imaging and Bioengineering (NIBIB) of the National Institutes of Health (NIH) under award R01EB026299, the National Institute of Neurological Disorders and Stroke (NINDS) of the NIH under award RF1NS133972, and the Congressionally Directed Medical Research Programs (CDMRP) of the U.S. Department of Defense (DoD) under award HT9425-23-1-0149.
 
 # References
 
