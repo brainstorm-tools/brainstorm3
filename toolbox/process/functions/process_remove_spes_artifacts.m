@@ -39,8 +39,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
 % Description the process
 sProcess.Comment     = 'Remove SPES artifacts';
 sProcess.Category    = 'Custom';
-sProcess.SubGroup    = 'Stimulation';
-sProcess.Index       = 902;
+sProcess.SubGroup    = 'FAST graph';
+sProcess.Index       = 1301;
+sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
 % Definition of the input accepted by this process
 sProcess.InputTypes  = {'data'};
 sProcess.OutputTypes = {'data'};
