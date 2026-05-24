@@ -149,13 +149,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             imf = emd(DataMat.F(iChan, :));
             % Estimate the characteristic frequency of each mode
             modeFreq = ImfStats(imf, Fs);
-            if CutoffFreq > 0
-                % Keep only modes above cutoff
-                DataMat.F(iChan, :) = sum(imf(:, modeFreq > CutoffFreq), 2)';
-            else
-                % Keep only modes below abs(cutoff)
-                DataMat.F(iChan, :) = sum(imf(:, modeFreq < abs(CutoffFreq)), 2)';
-            end
+            % Keep only modes above cutoff to remove low-frequency drift
+            DataMat.F(iChan, :) = sum(imf(:, modeFreq > CutoffFreq), 2)';
         end
        
         % Duplicate original file before writing cleaned data
