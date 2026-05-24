@@ -81,8 +81,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get process option values
     StimEvent     = sProcess.options.stimevent.Value;
     CutoffFreq    = sProcess.options.cutoff.Value{1};
+    if CutoffFreq <= 0
+        bst_report('Error', sProcess, [], 'EMD cutoff frequency must be positive.');
+        return;
+    end
     TimeArt       = sProcess.options.timeart.Value{1};
+    if TimeArt <= 0
+        bst_report('Error', sProcess, [], 'Artifact duration must be positive.');
+        return;
+    end
     TimeSpline    = sProcess.options.timespline.Value{1};
+    if TimeSpline <= 0
+        bst_report('Error', sProcess, [], 'Spline duration must be positive.');
+        return;
+    end
     
     for iFile = 1:length(sInputs)
         % Load full data
