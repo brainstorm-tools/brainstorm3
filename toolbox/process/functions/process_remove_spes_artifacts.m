@@ -131,8 +131,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Apply EMD based filtering to suppress drift
         bst_progress('start', 'Process', sprintf('[%d/%d] Processing EMD, rejecting below %.1f Hz...', iFile, length(sInputs), CutoffFreq), 0, 100);
-        % Sampling frequency
-        sampFreq = 1 / mean(diff(DataMat.Time));
         for iChan = 1:size(DataMat.F, 1)
             % Show progress
             progressPrc = round(100 .* iChan ./ size(DataMat.F, 1));
@@ -140,7 +138,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Decompose signal into intrinsic mode functions
             imf = emd(DataMat.F(iChan, :));
             % Estimate the characteristic frequency of each mode
-            modeFreq = ImfStats(imf, sampFreq);
+            modeFreq = ImfStats(imf, Fs);
             if CutoffFreq > 0
                 % Keep only modes above cutoff
                 DataMat.F(iChan, :) = sum(imf(:, modeFreq > CutoffFreq), 2)';
