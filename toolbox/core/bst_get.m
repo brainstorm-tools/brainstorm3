@@ -2557,6 +2557,21 @@ switch contextName
             sTemplates(end).Name = 'Schaefer2018';
             sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
         end
+        if ~ismember('yba696', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_YBA_696';
+            sTemplates(end).Name = 'YBA_696';
+            sTemplates(end).Info = 'https://yalebrainatlas.github.io/YaleBrainAtlas/';
+        end
+        if ~ismember('uscbrain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_USCBrain';
+            sTemplates(end).Name = 'USCBrain';
+            sTemplates(end).Info = 'https://brainsuite.org/uscbrainatlas/';
+        end
+        if ~ismember('bci-dni_brain', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_BCI-DNI_brain';
+            sTemplates(end).Name = 'BCI-DNI_brain';
+            sTemplates(end).Info = 'https://brainsuite.org/bcidnibrainatlas/';
+        end
         % Return defaults list
         argout1 = sTemplates;
         
@@ -2994,6 +3009,16 @@ switch contextName
             end
         end
         
+    case 'ContainerEngine'
+        containerEngines = {'auto-detect', 'docker'};
+        % Get saved value
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ContainerEngine') && ~isempty(GlobalData.Preferences.ContainerEngine)
+            argout1 = GlobalData.Preferences.ContainerEngine;
+        else
+            argout1 = containerEngines{1};
+        end
+        argout2 = containerEngines;
+
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};

@@ -61,6 +61,16 @@ if ~isempty(grad)
     end
     
     % Get the list of montages to undo
+    if isfield(grad, 'balance') && isfield(grad.balance, 'current') && iscell(grad.balance.current)
+        % Revert from 2025 version to the previous representation
+        if ~isempty(grad.balance.current)
+            grad.balance.previous = grad.balance.current(1:end-1);  % Remains a cell-array
+            grad.balance.current  = grad.balance.current{end};      % Becomes a string
+        else
+            grad.balance.current = 'none';
+        end
+    end
+    % Montage list order {last, ... second, first applied}
     montageList = {grad.balance.current};
     if isfield(grad.balance, 'previous') && ~isempty(grad.balance.previous)
         montageList = cat(2, montageList, grad.balance.previous{:});
@@ -80,8 +90,19 @@ if ~isempty(grad)
             end
         end
         % Reverse transformation
-        grad = ft_apply_montage(grad, grad.balance.(mont), 'keepunused', 'yes', 'inverse', 'yes');
+        try
+            grad = ft_apply_montage(grad, grad.balance.(mont), 'keepunused', 'yes', 'inverse', 'yes');
+        catch ME
+            % Error that "inverse" option is not support anymore in ft_apply_montage
+            if ~isempty(strfind(ME.message, '"inverse"')) && ~isempty(strfind(ME.message, 'FT_INVERSE_MONTAGE'))
+                tmp_inv_montage = ft_inverse_montage(grad.balance.(mont));
+                grad.tra = tmp_inv_montage.tra * grad.tra;
+            else
+                rethrow(ME)
+            end
+        end
         % Add to the list of projectors to process
+        % Order: {last, ... second, first applied}
         projList{end+1} = mont;
     end
     % If TRA matrix is not a binary coil-channel adjacency matrix
