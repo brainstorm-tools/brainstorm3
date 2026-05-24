@@ -105,9 +105,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Convert trigger times to sample indices
         stimTimes = DataMat.Events(iStimEvent).times;
-        [isMatch, stimSamples] = ismembertol(stimTimes, DataMat.Time, 1e-7);
-        % Keep only valid matches
-        stimSamples = stimSamples(isMatch & stimSamples > 0);
+        stimSamples = bst_closest(stimTimes, DataMat.Time);
 
         % Build the full interpolation window around each trigger
         win = -nSpline:(nArt + nSpline - 1);
