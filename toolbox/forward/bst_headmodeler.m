@@ -539,9 +539,10 @@ end
 %% ===== COMPUTE: SEEG UNIFORM HEADMODELS =====
 if strcmp('uniform', OPTIONS.SEEGMethod)
     Gain(iSeeg, :) =  bst_seeg_uni(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, OPTIONS);
-    strHistory =  [strHistory, ' | ', 'Uniform medium (SEEG)',  ' | ', sprintf('Cond: %1.3f', OPTIONS.Conductivity)];
+    strHistory =  [strHistory, ' | ', 'Uniform medium (SEEG)', ...
+                               ' | ', sprintf('Conductivity: %1.3f S/m', OPTIONS.Conductivity), ...
+                               ' | ', sprintf('Min dist. betweem SEEG contact and dipoles: %1.3f mm', OPTIONS.MinSeegDipoleDist)];
 end
-
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 Param = [];
