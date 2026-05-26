@@ -438,6 +438,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         sMethod.Comment = strrep(sMethod.Comment, 'os_meg',          'Overlapping spheres');
         sMethod.Comment = strrep(sMethod.Comment, 'meg_sphere',      'Single sphere');
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
+        sMethod.Comment = strrep(sMethod.Comment, 'uniform',         'Uniform medium');
         sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
         % Grid type
@@ -447,6 +448,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             sMethod.Comment = [sMethod.Comment ' (mixed)'];
         end
     end
+    isUniform = any(strcmpi(allMethods, 'uniform'));
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
     isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
@@ -597,6 +599,38 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         else
             bst_error('Please import a cortex surface for this subject.', 'Head model', 0);
             return
+        end
+
+        % ===== UNIFORM =====
+        if isUniform
+            % Interactive interface to set the OpenMEEG options
+            if OPTIONS.Interactive
+                OPTIONS.Conductivity = [];
+                OPTIONS.MinSeegDipoleDist  = [];
+                % Get options
+                optionsStr = {'Brain conductivity (S/m):','Minimum distance between SEEG and dipoles (mm):'};
+                res = java_dialog('input', optionsStr, 'SEEG head model options', [],  {'0.25','3'});
+                if isempty(res)
+                    return
+                end
+                resDouble = str2double(res);
+                % Validate inputs
+                for iRes = 1 : length(resDouble)
+                    if isnan(resDouble(iRes))
+                        errMessage = sprintf('Invalid input "%s" for option:\n%s', res{iRes}, optionsStr{iRes});
+                        return
+                    end
+                end
+                OPTIONS.Conductivity      = resDouble(1);
+                OPTIONS.MinSeegDipoleDist = resDouble(2)/1000;
+            end
+            % Check that inner skull exists
+            if ~isempty(sSubject.iInnerSkull)
+                OPTIONS.InnerSkullFile = file_fullpath(sSubject.Surface(sSubject.iInnerSkull(1)).FileName);
+            else
+                errMessage = 'No inner skull surface for this subject.';
+                return
+            end
         end
                 
         % ===== OPENMEEG =====

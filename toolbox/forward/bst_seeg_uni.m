@@ -8,8 +8,8 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 %    - Channel     : a Brainstorm channel structure  [nSensors]  
 %    - sInnerSkull : Inner skull surface
 %    - Options structure
-%       - Options.sigma : conductivity
-%       - Options.minDistance : in meter
+%       - Options.Conductivity      : Conductivity (S/m)
+%       - Options.MinSeegDipoleDist : Minimum distance between SEEG and dipoles
 % OUTPUTS:
 %    - G : EEG forward model gain matrix    [nSensors x (3*nDipoles)]
 %
@@ -50,9 +50,9 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 % Authors: Edouard Delaire (2026)
 
     % Add default options
-    Options = struct_copy_fields(struct('sigma', 0.25, 'minDistance', 3/1000), Options, 1);
-    min_distance        = Options.minDistance;
-    sigma0              = Options.sigma;
+    Options = struct_copy_fields(struct('Conductivity', 0.25, 'MinSeegDipoleDist', 3/1000), Options, 1);
+    min_distance = Options.MinSeegDipoleDist;
+    sigma0       = Options.Conductivity;
 
     NbElectrodes = length(sChannel);
     NbVertices   = size(GridLoc, 1);
