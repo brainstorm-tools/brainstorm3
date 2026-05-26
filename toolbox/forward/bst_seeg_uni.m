@@ -1,22 +1,22 @@
 function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
-% bst_seeg_uni: Calculate the electric potential, spherical head, arbitrary orientation
+% bst_seeg_uni: Calculate the electric potential for infinite homogeneous medium
 %
-% USAGE:  G = bst_eeg_sph(GridLoc, sChannel, sInnerSkull, Options);
+% USAGE:  G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 %
 % INPUT:
-%    - GridLoc     : dipole location(in meters)    [nDipoles x 3]
-%    - Channel     : a Brainstorm channel structure  [nSensors]  
-%    - sInnerSkull : Inner skull surface
+%    - GridLoc     : Dipole locations (in meters)  [nDipoles x 3]
+%    - sChannel    : Channel structure             [nSensors]
+%    - sInnerSkull : Inner skull surface structure
 %    - Options structure
 %       - Options.Conductivity      : Conductivity (S/m)
 %       - Options.MinSeegDipoleDist : Minimum distance between SEEG and dipoles
 % OUTPUTS:
-%    - G : EEG forward model gain matrix    [nSensors x (3*nDipoles)]
+%    - G : SEEG forward model gain matrix    [nSensors x (3*nDipoles)]
 %
 % DESCRIPTION:  sEEG single layer forward model
 %     This function computes the voltage potential forward gain matrix for an array of 
 %     sEEG electrodes inside the brain. The conductivity is assumed to be uniform and isotropoic
-%     inside the nedium (that is assumed to be infinite).
+%     inside the medium (that is assumed to be infinite).
 %       
 %     For electrodes outside of the brain, the grain is set to 0. 
 % 
@@ -28,6 +28,21 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 %          + Næss, S., Halnes, G., Hagen, E., Hagler Jr, D. J., Dale, A. M., Einevoll, G. T., & Ness, T. V. (2021). 
 %            Biophysically detailed forward modeling of the neural origin of EEG and MEG signals. NeuroImage, 225, 117467.  
 %           
+%                 dot(n_i, u_ij)
+%     V(E_j) = --------------------------
+%              4 * pi * sigma0 * (r_ij)^2
+%
+%     V(E_j) = Electric potential at sensor j
+%     n_i    = Vector, current dipole for source i
+%     u_ij   = Unit vector, oriented from source i to sensor j
+%     sigma0 = Conductivity of infinite homogeneous medium
+%     r_ij   = Euclidean distance between source i and sensor j
+%
+%     Written as matrix multiplication:  V = G * N
+%     V = Electric potential at contacts [nSensors, nTime]
+%     G = Gain matrix                    [nSensors, nDipoles]
+%     N = Dipole activation currents     [nDipoles, nTime]
+%
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -47,7 +62,7 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire (2026)
+% Authors: Edouard Delaire, 2026
 
     % Add default options
     Options = struct_copy_fields(struct('Conductivity', 0.25, 'MinSeegDipoleDist', 3/1000), Options, 1);
@@ -64,26 +79,25 @@ function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
     % Compute the leadfield
     bst_progress('start', 'Computing head model', sprintf('Computing head model for %d contacts...', NbElectrodes), 0, NbElectrodes);
     G = zeros(NbElectrodes , 3*NbVertices);
-    for iContact =  1:NbElectrodes
-        
+    for iContact = 1:NbElectrodes
+        % Ignore contacts outside of the inner skull
         if ~isSEEGInsideSkull(iContact)
             continue
         end
 
-        VectorDipolesToSEEG =  SEEG_Loc(iContact, :) - GridLoc;
-        DistanceToDipoles = vecnorm(VectorDipolesToSEEG, 2, 2);
-
-        % Normalize the vector
+        % Compute unit vectors from SEEG contact to source points (u_j)
+        VectorDipolesToSEEG = SEEG_Loc(iContact, :) - GridLoc;
+        DistanceToDipoles = sqrt(sum(VectorDipolesToSEEG.^2,2));
         VectorDipolesToSEEG = VectorDipolesToSEEG ./ repmat(DistanceToDipoles, 1, 3);
 
         % Filter short distance
-        iShort =  find(DistanceToDipoles < min_distance);
+        iShort = find(DistanceToDipoles < min_distance);
         if ~isempty(iShort)
             fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);           
-            DistanceToDipoles(iShort) =  min_distance;
+            DistanceToDipoles(iShort) = min_distance;
         end
 
-        % Compute the leadfield
+        % Compute the leadfield (u_j / (r_j)^2)
         scaledVector = VectorDipolesToSEEG ./ repmat(DistanceToDipoles.^2, 1, 3); 
 
         % Organize the matrix as x,y,z
