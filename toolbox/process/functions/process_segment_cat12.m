@@ -385,7 +385,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         return;
     end
     % Delete temporary folder
-    % file_delete(TmpDir, 1, 1);
+    file_delete(TmpDir, 1, 1);
     % Remove logo
     bst_progress('removeimage');
     % Return success
