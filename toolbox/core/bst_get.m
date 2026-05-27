@@ -2552,8 +2552,8 @@ switch contextName
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('julich-brain-v25', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
-            sTemplates(end).Name = 'Julich-Brain-v25';
+            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain';
+            sTemplates(end).Name = 'Julich-Brain';
             sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
         end
         if ~ismember('schaefer2018_100_7net', lower({sTemplates.Name}))
