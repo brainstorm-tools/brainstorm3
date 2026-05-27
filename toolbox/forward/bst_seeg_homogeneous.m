@@ -1,7 +1,7 @@
-function G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
-% bst_seeg_uni: Calculate the electric potential for infinite homogeneous medium
+function G = bst_seeg_homogeneous(GridLoc, sChannel, sInnerSkull, Options)
+% bst_seeg_homogeneous: Calculate the electric potential for infinite homogeneous medium
 %
-% USAGE:  G = bst_seeg_uni(GridLoc, sChannel, sInnerSkull, Options)
+% USAGE:  G = bst_seeg_homogeneous(GridLoc, sChannel, sInnerSkull, Options)
 %
 % INPUT:
 %    - GridLoc     : Dipole locations (in meters)  [nDipoles x 3]

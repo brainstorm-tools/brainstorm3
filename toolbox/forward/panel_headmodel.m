@@ -121,7 +121,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jCheckMethodSEEG.setSelected(1);
         % Combobox
         jComboMethodSEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
-        jComboMethodSEEG.addItem(BstListItem('uniform', '', 'Uniform medium', []));
+        jComboMethodSEEG.addItem(BstListItem('homogeneous', '', 'Homogeneous medium', []));
         jComboMethodSEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
         jComboMethodSEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodSEEG.setSelectedIndex(0);
@@ -438,7 +438,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         sMethod.Comment = strrep(sMethod.Comment, 'os_meg',          'Overlapping spheres');
         sMethod.Comment = strrep(sMethod.Comment, 'meg_sphere',      'Single sphere');
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
-        sMethod.Comment = strrep(sMethod.Comment, 'uniform',         'Uniform medium');
+        sMethod.Comment = strrep(sMethod.Comment, 'homogeneous',     'Homogeneous medium');
         sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
         % Grid type
@@ -448,7 +448,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             sMethod.Comment = [sMethod.Comment ' (mixed)'];
         end
     end
-    isUniform = any(strcmpi(allMethods, 'uniform'));
+    isHomogeneous = any(strcmpi(allMethods, 'homogeneous'));
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
     isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
@@ -601,9 +601,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             return
         end
 
-        % ===== UNIFORM =====
-        if isUniform
-            % Interactive interface to set the OpenMEEG options
+        % ===== INFINITE HOMOGENEOUS MEDIUM =====
+        if isHomogeneous
+            % Interactive interface to set the options
             if OPTIONS.Interactive
                 OPTIONS.Conductivity = [];
                 OPTIONS.MinSeegDipoleDist  = [];
