@@ -90,10 +90,10 @@ function G = bst_seeg_homogeneous(GridLoc, sChannel, sInnerSkull, Options)
         DistanceToDipoles = sqrt(sum(VectorDipolesToSEEG.^2,2));
         VectorDipolesToSEEG = VectorDipolesToSEEG ./ repmat(DistanceToDipoles, 1, 3);
 
-        % Filter short distance
+        % Replace short distance (< 'min_distance') with 'min_distance' to prevent instabilities in the model by too close measurements
         iShort = find(DistanceToDipoles < min_distance);
         if ~isempty(iShort)
-            fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);           
+            % fprintf(' %d vertex had distance to the cortex smaller than %.2f mm to electrodes %s \n', length(iShort), min_distance*1000, sChannel(iContact).Name);           
             DistanceToDipoles(iShort) = min_distance;
         end
 
