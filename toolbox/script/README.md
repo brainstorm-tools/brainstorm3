@@ -29,6 +29,7 @@ These scripts can be run on Brainstorm releases (**source** and **binary**).
 | tutorial_resting          | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Resting)                  | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialResting.html)       | 🐧🪟🍎 | 🐧🪟🍎 | 🐧🪟🍎 |  85 min |
 | tutorial_simulations      | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Simulations)              | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialSimulation.html)    | 🐧🪟🍎 | 🐧🪟🍎 | 🐧🪟🍎 |  40 min |
 | tutorial_yokogawa         | [Link](https://neuroimage.usc.edu/brainstorm/Tutorials/Yokogawa)                 | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialYokogawa.html)      | 🐧🪟🍎 | 🐧🪟🍎 | 🐧🪟🍎 |  50 min |
+| tutorial_seizure_fingerprinting  | [Link](https://neuroimage.usc.edu/brainstorm/seeg/SeizureFingerprinting)                 | [Report](https://neuroimage.usc.edu/bst/examples/report_TutorialSeizureFingerprinting.html)      | 🐧🪟🍎 | 🐧🪟🍎 | 🐧🪟🍎 |  15 min |
 
 \* `N\A` indicates that this tutorial is not run on GitHub runners, [see below](#1-on-github-runners)
 

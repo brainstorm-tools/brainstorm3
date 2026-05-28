@@ -36,9 +36,9 @@ function newDataFile = bst_simulation(ResultsFile, iVertices, Comment, isVolumeA
 %% ===== PARSE INPUTS =====
 global GlobalData;
 
-% If target study is empty, we use the study of the source map
-if (nargin < 5) || isempty(iStudy)
-    [~, iStudy] = bst_get('ResultsFile', ResultsFile);
+% No target study
+if (nargin < 5)
+    iStudy = [];
 end
 % Is iVertices obtained on a volume atlas
 if (nargin < 4) || isempty(isVolumeAtlas)
@@ -75,7 +75,7 @@ elseif ~ismember(lower(ResultsMat.Function), {'wmne', 'mn', 'cmem', 'wmem'})
 end
 % Get associated data file
 if ~isempty(ResultsMat.DataFile)
-    DataFile = file_short(ResultsMat.DataFile);
+    [~, DataFile] = bst_fileparts(file_short(ResultsMat.DataFile));
 else
     DataFile = [];
 end
@@ -124,6 +124,18 @@ end
 
 % ===== LOAD GAIN MATRIX =====
 bst_progress('text', 'Loading head model...');
+% Get target study
+[sStudyResults, iStudyResults] = bst_get('ResultsFile', ResultsFile);
+if isempty(iStudy) || (iStudy == iStudyResults)
+    sStudy = sStudyResults;
+    iStudy = iStudyResults;
+else
+    sStudy = bst_get('Study', iStudy);
+    if isempty(sStudy)
+        bst_error(sprintf('Target study (%d) does not exist in the Protocol.', iStudy), 'bst_simulation', 0);
+        return
+    end
+end
 % Get default headmodel for this study
 sHeadModel = bst_get('HeadModelForStudy', iStudy);
 if isempty(sHeadModel)
@@ -137,18 +149,18 @@ HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'Gain', 'GridLoc', 'GridOrient
 nLocHeadmodel = size(HeadModelMat.GridLoc, 1);
 
 % If the head model doesn't match the number of vertices: try loading the head model pointed by the results file
-if (nLocHeadmodel ~= nLocResults)
+if (nLocHeadmodel ~= nLocResults) && (iStudy == iStudyResults)
     % Get headmodel file from ResultsFile
     HeadModelFile = ResultsMat.HeadModelFile;
     % Load HeadModel file
     HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'Gain', 'GridLoc', 'GridOrient', 'GridAtlas');
     % Number of dipoles in headmodel
     nLocHeadmodel = size(HeadModelMat.GridLoc, 1);
-    % Check again the number of vertices
-    if (nLocHeadmodel ~= nLocResults)
-        bst_error(sprintf('Number of dipoles in the head model (%d) and the inverse model (%d) do not match.', nLocHeadmodel, nLocResults), 'bst_simulation', 0);
-        return;
-    end
+end
+% Check the number of vertices
+if (nLocHeadmodel ~= nLocResults)
+    bst_error(sprintf('Number of dipoles in the head model (%d) and the inverse model (%d) do not match.', nLocHeadmodel, nLocResults), 'bst_simulation', 0);
+    return;
 end
 % If no orientations: error
 if (nComponents ~= 3) && isempty(HeadModelMat.GridOrient)
@@ -211,7 +223,7 @@ DataMat = db_template('DataMat');
 DataMat.Comment     = DataComment;
 DataMat.Time        = TimeVector;
 DataMat.F           = F;
-DataMat.ChannelFlag = GlobalData.DataSet(iDS).Results(iResult).ChannelFlag;
+DataMat.ChannelFlag = ones(size(HeadModelMat.Gain, 1), 1);
 DataMat.DataType    = 'recordings';
 % History
 DataMat = bst_history('add', DataMat, 'simulation', 'File simulated: Headmodel * Results');
@@ -222,11 +234,11 @@ DataMat = bst_history('add', DataMat, 'simulation', [' - Results file file: ' Re
 %% ===== SAVE FILE =====
 % Output file
 if isempty(DataFile)
-    outputFolder = bst_fileparts(GlobalData.DataSet(iDS).StudyFile);
-    newDataFile = bst_fullfile(ProtocolInfo.STUDIES, outputFolder, ['data_simulation_', strTime, '.mat']);
+    OutputFileName = ['data_simulation_', strTime, '.mat'];
 else
-    newDataFile = bst_fullfile(ProtocolInfo.STUDIES, strrep(DataFile, '.mat', '_simulation.mat'));
+    OutputFileName = [DataFile, '_simulation.mat'];
 end
+newDataFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudy.FileName), OutputFileName);
 newDataFile = file_unique(newDataFile);
 % Save file
 bst_save(newDataFile, DataMat, 'v6');

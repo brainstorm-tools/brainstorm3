@@ -86,10 +86,13 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % Standard atlases (FreeSurfer/ASEG, BrainSuite/SVREG)
     elseif ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc')) % *aseg*.mgz
         AtlasName = 'freesurfer';
-    elseif ~isempty(strfind(fBase, '.svreg.label'))   % *.svreg.label.nii.gz
+    elseif ~isempty(strfind(fBase, '.svreg.label')) || ...     % *.svreg.label.nii.gz
+           ~isempty(strfind(fBase, 'brainsuiteatlas1')) || ... % *brainsuiteatlas1.nii.gz
+           ~isempty(strfind(fBase, 'uscbrain')) || ...         % *uscbrain.nii.gz
+           ~isempty(strfind(fBase, 'bci-dni_brain'))           % *bci-dni_brain*.nii.gz
         % Get SVREG atlas: BrainSuiteAtlas1, USCBrain, or BCI-DNI_brain_atlas
         [fPath, fBase] = bst_fileparts(MriFile);
-        SvregLogFile = bst_fullfile(fPath, regexprep(strrep(fBase, '.nii', ''), 'label$', 'log'));
+        SvregLogFile = bst_fullfile(fPath, [regexprep(strrep(fBase, '.nii', ''), '\.label$', '') '.log']);
         % Get BrainSuite atlas name from first line of the log file
         if file_exist(SvregLogFile) && file_attrib(SvregLogFile, 'r')
             fid = fopen(SvregLogFile,'r');
