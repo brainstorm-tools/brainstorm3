@@ -70,12 +70,6 @@ function [errMsg, engineName] = GetEngine(engineName)
                         end
                     end
                 else
-                    if ismac
-                        setenv('PATH', ['/usr/local/bin:' ...
-                               bst_fullfile(getenv('HOME'), '.docker/bin') ':' ...
-                               '/Applications/Docker.app/Contents/Resources/bin:' ...
-                               getenv('PATH')]);
-                    end
                     [status, cmdout] = system(['which ' engineNames{iEngine}]);
                     if status == 0
                         isFound = 1;
