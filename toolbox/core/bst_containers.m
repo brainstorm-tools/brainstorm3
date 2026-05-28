@@ -112,7 +112,7 @@ end
 %% ===== GET AVAILABLE IMAGES =====
 function [errMsg, imageList] = GetImages()
 % USAGE:  [errMsg, imageList] = bst_containers('GetImages')
-    imageList = cell(0,2); % [Name:Tag, SHA]
+    imageList = cell(0,3); % [Name:Tag, ImageSHA, ManifestSHA]
 
     % Check status of default container engine
     [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
@@ -123,14 +123,14 @@ function [errMsg, imageList] = GetImages()
     % List of available images
     switch engineName
         case 'docker'
-            [status, cmdout] = system('docker images --all --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}}"');
+            [status, cmdout] = system('docker images --all --digests --no-trunc --format "{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}}"');
             if status == 0 && ~isempty(cmdout)
                 imageList = strsplit(strtrim(strrep(cmdout, char(10), ' ')), ' ');
-                if mod(length(imageList), 2) ~= 0
+                if mod(length(imageList), 3) ~= 0
                     errMsg = 'Error parsing Docker image list';
                     return
                 end
-                imageList = reshape(imageList, 2, [])';
+                imageList = reshape(imageList, 3, [])';
             elseif status ~= 0
                 errMsg = cmdout;
             end
@@ -187,8 +187,9 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                 case 'reference'
                     [status, cmdout] = system(['docker pull ' imageSource]);
                     if status == 0
-                        % If new or existent image, SHA256 is returned in output
-                        imageSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
+                        % If new or existent image, returned SHA256 corresponds to:
+                        % Manifest list or Image manifest
+                        manifestSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
                     end
 
                 case 'file'
@@ -198,17 +199,25 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                         token = regexp(cmdout, '[a-z0-9._-]+:[a-zA-Z0-9._-]+', 'match', 'once');
                         parts = strsplit(token, ':');
                         if strcmp(parts{1}, 'sha256') && ~isempty(regexp(parts{2}, '^[a-f0-9]+$', 'once'))
-                            imageSha = token;
+                            manifestSha = token;
                         else
                             [~, imageListNew] = GetImages();
-                            imageSha = imageListNew{strcmpi(imageListNew(:,1), token), 2};
+                            manifestSha = imageListNew{strcmpi(imageListNew(:,1), token), 3};
                         end
                     end
             end
+            % Get image SHA from its Manifest list or Image manifest
+            [~, imageListNew] = GetImages();
+            iImage = find(strcmpi(imageListNew(:,3), manifestSha));
+            if ~isempty(iImage)
+                imageSha = imageListNew{iImage,2};
+            else
+                imageSha = manifestSha;
+            end
+
             % Tag image
             if status == 0 && ~isempty(imageTag)
-                % Compare images before and after import
-                [~, imageListNew] = GetImages();
+                % Find newly added image by its Image ID
                 iOld = find(strcmpi(imageListOld(:,2), imageSha));
                 iNew = find(strcmpi(imageListNew(:,2), imageSha));
                 % Tag image
