@@ -326,7 +326,7 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
             end
             
             % If MATLAB function errors, or Ctrl+C is pressed
-            cleanupObj = onCleanup(@() KeepContainerAlive(containerName));
+            cleanupObj = onCleanup(@() ProcessInterrupted(containerName));
             
             % Execute the running container
             commandExec = ['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper];
@@ -411,33 +411,6 @@ function errMsg = StopContainer(containerName, isForce)
     end
 end
 
-%% ===== KEEP CONTAINER ALIVE =====
-function errMsg = KeepContainerAlive(containerName)
-% Keeps the container alive but kills all processes except PID 1 (`sleep infinity` ENTRYPOINT), 
-% Useful when the MATLAB function errors or there is some user interrupt (e.g. Ctrl+C)
-    
-    % Check status of default container engine
-    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
-    if ~isempty(errMsg)
-        return
-    end
-
-    switch engineName
-        case 'docker'
-            if ispc
-                awkPid = '$1';  % Windows host: do not escape $
-            else
-                awkPid = '\$1'; % macOS/Linux host: prevent host shell expansion
-            end
-            cmd = ['docker exec ' containerName ' sh -c "ps -eo pid= | awk ''' awkPid ' != 1 {print ' awkPid '}'' | xargs -r kill -9 2>/dev/null || true"'];
-            [status, cmdout] = system(cmd);            
-            if status ~= 0
-                errMsg = strtrim(cmdout);
-            end
-    end
-    bst_progress('stop');
-end
-
 %% ===== REMOVE IMAGE =====
 function errMsg = RemoveImage(imageSha, isForce)
     % Validate inputs
@@ -467,3 +440,8 @@ function errMsg = RemoveImage(imageSha, isForce)
     end
 end
 
+%% ===== PROCESS INTERRUPTED =====
+function ProcessInterrupted(containerName)
+    bst_plugin('Unload', strrep(containerName, 'bst_', ''));
+    bst_error('The process running in the container was interrupted', 'Container', 0);
+end
