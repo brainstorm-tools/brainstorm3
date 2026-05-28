@@ -210,7 +210,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-container';
-    PlugDesc(end).ImageSource    = 'docker.io/chinmaychinara/auto-resection-mask:latest';
+    PlugDesc(end).ImageSource    = ['docker.io/brainstormtools/auto-resection-mask:' PlugDesc(end).Version];
     PlugDesc(end).CompiledStatus = 1;
 
     % === ANATOMY: ROAST ===
