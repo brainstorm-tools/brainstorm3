@@ -1593,6 +1593,12 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
+            % jnifty: Ignore if found embedded in jsonlab
+            elseif strcmpi(PlugDesc.Name, 'jnifty')
+                p = which('savejson.m');
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
             end
         else
             TestFilePath = [];
