@@ -427,3 +427,29 @@ function errMsg = RemoveImage(imageSha, isForce)
     end
 end
 
+
+%% ===== GET ONLINE MANIFEST DIGEST =====
+function [errMsg, manifestSha] = GetOnlineManifest(imageSource)
+    manifestSha = '';
+
+    % Check status of default container engine
+    [errMsg, engineName] = GetEngine(bst_get('ContainerEngine'));
+    if ~isempty(errMsg)
+        return
+    end
+
+    % Get Manifest list or Image manifest
+    switch engineName
+        case 'docker'
+            [status, cmdout] = system(['docker buildx imagetools inspect ' imageSource ' --format "{{.Manifest}}"']);
+            if status == 0
+                % Digest
+                manifestSha = regexp(cmdout, 'sha256:[a-f0-9]+', 'match', 'once');
+            end
+    end
+    if status ~= 0
+        errMsg = strtrim(cmdout);
+        return
+    end
+end
+

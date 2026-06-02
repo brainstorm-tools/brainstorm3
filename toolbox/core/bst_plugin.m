@@ -1127,7 +1127,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
-           case 'nirstorm'
+            case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
@@ -1142,6 +1142,10 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 % If downloading from GitHub: Get last GitHub commit SHA
                 if isGithubSnapshot(URLzip)
                     Version = GetGithubCommit(URLzip);
+                % Try to get Manifest SHA for container plugins
+                elseif IsContainer(PlugName)
+                    PlugDesc = GetDescription(PlugName);
+                    [~, Version] = bst_containers('GetOnlineManifest', PlugDesc.ImageSource);
                 else
                     return;
                 end
@@ -1183,7 +1187,8 @@ end
 % Returns 1 if the URL is a souce-code archive or snapshot (as .zip or .tar.gz) of a GitHub repository
 % https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives
 function isOk = isGithubSnapshot(URLzip)
-    isOk = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+    isOk = ~isempty(URLzip) && ...
+           strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
            ~isempty(strfind(URLzip, '/archive/')) && ...
            (strMatchEdge(URLzip, '.zip', 'end') || strMatchEdge(URLzip, '.tar.gz', 'end'));
 end
