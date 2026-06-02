@@ -57,17 +57,17 @@ authors:
     orcid: 0000-0002-7278-5471
     affiliation: 1
 affiliations:
- - name: University of Southern California, Los Angeles, USA
+ - name: University of Southern California, Los Angeles, United States of America
    index: 1
  - name: McGill University, Montreal, Canada
    index: 2
  - name: Aix-Marseille Université, INSERM, Institut de Neurosciences des Systèmes, Marseille, France
    index: 3
- - name: University of Texas Health Science Center at Houston, USA
+ - name: University of Texas Health Science Center at Houston, United States of America
    index: 4
- - name: Cleveland Clinic, Ohio, USA
+ - name: Cleveland Clinic, Ohio, United States of America
    index: 5
- - name: Rice University, Houston, USA
+ - name: Rice University, Houston, United States of America
    index: 6
  - name: APHM, Timone Hospital, Epileptology and Cerebral Rhythmology Department, Marseille, France
    index: 7
