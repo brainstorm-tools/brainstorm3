@@ -183,6 +183,7 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
     % Import image
     switch engineName
         case 'docker'
+            manifestSha = '';
             switch imageType
                 case 'reference'
                     [status, cmdout] = system(['docker pull ' imageSource]);
@@ -205,6 +206,10 @@ function [errMsg, imageSha] = ImportImage(imageSource, imageTag)
                             manifestSha = imageListNew{strcmpi(imageListNew(:,1), token), 3};
                         end
                     end
+            end
+            if status ~= 0
+                errMsg = cmdout;
+                return
             end
             % Get image SHA from its Manifest list or Image manifest
             [~, imageListNew] = GetImages();
