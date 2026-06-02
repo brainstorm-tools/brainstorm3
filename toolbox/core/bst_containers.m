@@ -5,7 +5,7 @@ function varargout = bst_containers(varargin)
 %  [errMsg, engineName]    = bst_containers('GetEngine')
 %  [errMsg, imageList]     = bst_containers('GetImages')
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
-%   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
+%   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon], [containerArgs])
 %  [errMsg, cmdout]        = bst_containers('ExecInContainer', containerName, cmdStr)
 %  [errMsg, containerInfo] = bst_containers('GetContainerInfo', containerName)
 %   errMsg                 = bst_containers('StopContainer', containerName, [isForced=0])
@@ -248,9 +248,12 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
-% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon)
+function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, containerArgs)
+% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon, containerArgs)
     % Validate inputs
+    if nargin < 5 || isempty(containerArgs)
+        containerArgs = '';
+    end
     if nargin < 4 || isempty(isDaemon)
         isDaemon = 0;
     end
@@ -275,15 +278,21 @@ function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon)
         volumesStr = strjoin(pairs, ' ');
     end
 
+    % Use GPU with container engine
+    gpuStr = '';
+    if bst_get('ContainerUseGpu') && system('which nvidia-smi') == 0
+        gpuStr = '--gpus all';
+    end
+
     % Run container
     switch engineName
         case 'docker'
             if ~isDaemon
                 % Run ENTRYPOINT
-                cmdStr = sprintf('docker run --rm --name %s %s %s', containerName, volumesStr, imageSha);
+                cmdStr = sprintf('docker run --rm --name %s %s %s %s %s', containerName, gpuStr, volumesStr, imageSha, containerArgs);
             else
                 % Replace ENTRYPOINT (if any) with `sleep infinity`
-                cmdStr = sprintf('docker run -d --name %s %s --entrypoint sleep %s infinity', containerName, volumesStr, imageSha);
+                cmdStr = sprintf('docker run -d --name %s %s %s --entrypoint sleep %s infinity', containerName, gpuStr, volumesStr, imageSha);
             end
             [status, cmdout] = system(cmdStr);
     end
@@ -308,6 +317,10 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
         return
     end
 
+    % Flag to track interruption
+    processState = containers.Map({'isInterruptCleanup'}, {1});
+    % Clean up on function end, errors or Ctrl+C is pressed
+    cleanupObj = onCleanup(@() ProcessInterrupted(containerName, processState));
     % Run command
     switch engineName
         case 'docker'
@@ -316,11 +329,15 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
             else
                 commandWrapper = ''''; % Single quote
             end
-            [status, cmdout] = system(['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper]);
+            % Execute the running container
+            commandExec = ['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper];
+            [status, cmdout] = system(commandExec, '-echo');
             if status ~= 0
                 errMsg = strtrim(cmdout);
             end
     end
+    % Code in container ended normally
+    processState('isInterruptCleanup') = 0;
 end
 
 
@@ -424,6 +441,15 @@ function errMsg = RemoveImage(imageSha, isForce)
             if status ~=0
                 errMsg = strtrim(cmdout);
             end
+    end
+end
+
+
+%% ===== PROCESS INTERRUPTED =====
+function ProcessInterrupted(containerName, processState)
+    if processState('isInterruptCleanup')
+        bst_plugin('Unload', regexprep(containerName, '^bst_', ''));
+        bst_error('The process running in the container was interrupted', 'Container', 0);
     end
 end
 
