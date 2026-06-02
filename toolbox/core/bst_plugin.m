@@ -2540,14 +2540,8 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
                     % Get tmp dir to bind container
                     TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
                     volumes = {TmpDir, '/data'};
-                    % Use NVIDIA GPU, if present
-                    isGpu = 0;
-                    [status, cmdout] = system('nvidia-smi');
-                    if status == 0
-                        isGpu = 1;
-                    end
                     % Run container as daemon               
-                    errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1, isGpu);
+                    errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
                     if ~isempty(errMsg)
                         return
                     end

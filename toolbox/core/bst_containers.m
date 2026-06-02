@@ -248,14 +248,11 @@ end
 
 
 %% ===== RUN CONTAINER AS DAEMON =====
-function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
-% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
+function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, containerArgs)
+% USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon, containerArgs)
     % Validate inputs
-    if nargin < 6 || isempty(containerArgs)
+    if nargin < 5 || isempty(containerArgs)
         containerArgs = '';
-    end
-    if nargin < 5 || isempty(isGpu)
-        isGpu = 0;
     end
     if nargin < 4 || isempty(isDaemon)
         isDaemon = 0;
@@ -281,9 +278,9 @@ function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, isGpu
         volumesStr = strjoin(pairs, ' ');
     end
 
-    % GPU option
+    % Use GPU with container engine
     gpuStr = '';
-    if isGpu
+    if bst_get('ContainerUseGpu') && system('which nvidia-smi') == 0
         gpuStr = '--gpus all';
     end
 
