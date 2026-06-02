@@ -129,7 +129,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
        ~isfield(sMriPreOp.SCS, 'R') || isempty(sMriPreOp.SCS.R) || ~isfield(sMriPreOp.SCS, 'T') || isempty(sMriPreOp.SCS.T)
         errMsg = 'The fiducials (NAS, LPA, RPA) are missing in the pre-op (default) MRI. Set them first before proceeding.';
         return;
-    end 
+    end
     
     % === CALL RESECTION-IDENTIFICATION PIPELINE ===
     % Container plugin name
@@ -138,8 +138,8 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     tic;    
     % Ensure container plugin: Installs and/or Loads
     % Install container plugin === Import image into container engine
-    % Load    container plugin === Run container (same name as container plugin)
-    [ensureRes,  errMsg] = bst_plugin('Ensure', plugName);
+    % Load    container plugin === Run container in standby (name ['bst_' plugName])
+    ensureRes = bst_plugin('Ensure', plugName);
     % Retrieve info of container
     [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' plugName]);
     
@@ -154,7 +154,7 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     sMriPostOp = in_mri_bst(MriFilePostOp);
     out_mri_nii(sMriPostOp, postOpNii);
 
-    % Run command in container
+    % === RUN COMMAND IN CONTAINER =====
     if isempty(errMsg) && containerInfo.isRunning
         dataPath = containerInfo.volumes{1,2};
         command = [' python3 auto_resection_mask.py ' dataPath '/preop.nii ' dataPath '/postop.nii'];

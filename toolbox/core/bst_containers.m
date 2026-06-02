@@ -250,7 +250,6 @@ end
 %% ===== RUN CONTAINER AS DAEMON =====
 function errMsg = RunContainer(containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
 % USAGE: errMsg = bst_containers('RunContainer', containerName, imageSha, volumes, isDaemon, isGpu, containerArgs)
-    
     % Validate inputs
     if nargin < 6 || isempty(containerArgs)
         containerArgs = '';
@@ -416,6 +415,7 @@ function errMsg = StopContainer(containerName, isForce)
     end
 end
 
+
 %% ===== REMOVE IMAGE =====
 function errMsg = RemoveImage(imageSha, isForce)
     % Validate inputs
@@ -445,11 +445,13 @@ function errMsg = RemoveImage(imageSha, isForce)
     end
 end
 
+
 %% ===== PROCESS INTERRUPTED =====
 function ProcessInterrupted(containerName)
     bst_plugin('Unload', strrep(containerName, 'bst_', ''));
     bst_error('The process running in the container was interrupted', 'Container', 0);
 end
+
 
 %% ===== GET ONLINE MANIFEST DIGEST =====
 function [errMsg, manifestSha] = GetOnlineManifest(imageSource)
