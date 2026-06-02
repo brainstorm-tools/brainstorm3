@@ -320,6 +320,11 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
         return
     end
 
+    % Flag to track interruption
+    processState = containers.Map({'isInterruptCleanup'}, {1});
+    % Clean up on function end, errors or Ctrl+C is pressed
+    cleanupObj = onCleanup(@() ProcessInterrupted(containerName, processState));
+
     % Run command
     switch engineName
         case 'docker'
@@ -329,24 +334,17 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
                 commandWrapper = ''''; % Single quote
             end
 
-            % Track whether docker exec completed normally
-            processState = containers.Map();
-            processState('isCompleted') = false;
-
-            % If MATLAB errors or Ctrl+C is pressed, this runs at function exit
-            cleanupObj = onCleanup(@() ProcessInterrupted(containerName, processState));
-
             % Execute the running container
             commandExec = ['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper];
             [status, cmdout] = system(commandExec, '-echo');
-            
-            % system() returned normally, even if docker returned non-zero status
-            processState('isCompleted') = true; %#ok<NASGU>
-            
+
             if status ~= 0
                 errMsg = strtrim(cmdout);
             end
     end
+
+    % Code in container ended normally
+    processState('isInterruptCleanup') = 0;
 end
 
 
@@ -456,7 +454,7 @@ end
 
 %% ===== PROCESS INTERRUPTED =====
 function ProcessInterrupted(containerName, processState)
-    if ~processState('isCompleted')
+    if processState('isInterruptCleanup')
         bst_plugin('Unload', regexprep(containerName, '^bst_', ''));
         bst_error('The process running in the container was interrupted', 'Container', 0);
     end
