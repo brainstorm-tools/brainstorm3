@@ -153,6 +153,8 @@ function [isOk, errMsg, ResecMaskFilePreOp, ResecMaskFilePostOp, MriFilePost2Pre
     postOpNii = bst_fullfile(TmpDir, 'postop.nii');
     sMriPostOp = in_mri_bst(MriFilePostOp);
     out_mri_nii(sMriPostOp, postOpNii);
+    % Make dir for processed files
+    mkdir(bst_fullfile(TmpDir, 'temp_dir_resection'));
 
     % === RUN COMMAND IN CONTAINER =====
     if isempty(errMsg) && containerInfo.isRunning
