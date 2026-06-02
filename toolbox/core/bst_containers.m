@@ -5,7 +5,7 @@ function varargout = bst_containers(varargin)
 %  [errMsg, engineName]    = bst_containers('GetEngine')
 %  [errMsg, imageList]     = bst_containers('GetImages')
 %  [errMsg, imageSha]      = bst_containers('ImportImage', imageSource, [imageTag])
-%   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon])
+%   errMsg                 = bst_containers('RunContainer', containerName, imageSha, [volumes], [isDaemon], [containerArgs])
 %  [errMsg, cmdout]        = bst_containers('ExecInContainer', containerName, cmdStr)
 %  [errMsg, containerInfo] = bst_containers('GetContainerInfo', containerName)
 %   errMsg                 = bst_containers('StopContainer', containerName, [isForced=0])
@@ -321,7 +321,6 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
     processState = containers.Map({'isInterruptCleanup'}, {1});
     % Clean up on function end, errors or Ctrl+C is pressed
     cleanupObj = onCleanup(@() ProcessInterrupted(containerName, processState));
-
     % Run command
     switch engineName
         case 'docker'
@@ -330,16 +329,13 @@ function [errMsg, cmdout] = ExecInContainer(containerName, cmdStr)
             else
                 commandWrapper = ''''; % Single quote
             end
-
             % Execute the running container
             commandExec = ['docker exec ' containerName ' sh -c ' commandWrapper cmdStr commandWrapper];
             [status, cmdout] = system(commandExec, '-echo');
-
             if status ~= 0
                 errMsg = strtrim(cmdout);
             end
     end
-
     % Code in container ended normally
     processState('isInterruptCleanup') = 0;
 end
