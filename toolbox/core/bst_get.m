@@ -3023,6 +3023,13 @@ switch contextName
         end
         argout2 = containerEngines;
 
+    case 'ContainerUseGpu'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ContainerUseGpu') && ~isempty(GlobalData.Preferences.ContainerUseGpu)
+            argout1 = GlobalData.Preferences.ContainerUseGpu;
+        else
+            argout1 = 0;
+        end
+
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};

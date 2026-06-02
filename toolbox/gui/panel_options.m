@@ -150,11 +150,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % ===== RIGHT: CONTAINER ENGINE =====
     [~, tmp] = bst_get('ContainerEngine');
     jPanelContainers = gui_river([5 5], [0 15 15 15], 'Container engine');
-        jContainerLabel = gui_component('Label',  jPanelContainers, [], 'Container engine for container-based plugins: ', [], [], []);        
+        jContainerLabel = gui_component('Label',  jPanelContainers, [], 'Container engine command: ', [], [], []);        
         jContainerCombo = gui_component('Combobox', jPanelContainers, 'tab', [], {tmp}, [], [], []);
-        containerTooltip = '<HTML>Default: "auto-detect"';
-        jContainerLabel.setToolTipText(containerTooltip);
-        jContainerCombo.setToolTipText(containerTooltip);
+        jContainerLabel.setToolTipText('<HTML>Command for container engine, it should be in $PATH');
+        jContainerCombo.setToolTipText('<HTML>Default: "auto-detect"');
+        jCheckContainerGpu = gui_component('CheckBox', jPanelContainers, 'br', 'Try to use GPU with container engine', [], [], []);
     jPanelRight.add('br hfill', jPanelContainers);
 
     % ===== RIGHT: RESET =====
@@ -255,6 +255,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         [containerEngine, containerEngines] = bst_get('ContainerEngine');
         iSel = find(strcmpi(containerEngine, containerEngines), 1, 'first') - 1;
         jContainerCombo.setSelectedIndex(iSel);
+        jCheckContainerGpu.setSelected(bst_get('ContainerUseGpu'));
     end
 
 
@@ -404,6 +405,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 
         % ===== CONTAINER ENGINE =====
         bst_set('ContainerEngine', char(jContainerCombo.getSelectedItem()));
+        bst_set('ContainerUseGpu', jCheckContainerGpu.isSelected());
 
         % Stop applying preferences
         bst_progress('stop');
