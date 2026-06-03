@@ -37,7 +37,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
 % Description the process
 sProcess.Comment     = 'Remove SPES artifacts';
-sProcess.FileTag     = 'remartifacts';
+sProcess.FileTag     = 'rm spes';
 sProcess.Category    = 'Filter';
 sProcess.SubGroup    = 'FAST graph';
 sProcess.Index       = 1301;
