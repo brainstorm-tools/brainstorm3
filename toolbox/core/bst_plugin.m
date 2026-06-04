@@ -1579,10 +1579,23 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
+            % jsonlab: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jnifti: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'jnifti')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % easyh5: Ignore if found embedded in iso2mesh or jsonlab
@@ -1590,12 +1603,6 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 p = which('iso2meshver.m');
                 q = which('savejson.m');
                 if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
-                    TestFilePath = [];
-                end
-            % jnifty: Ignore if found embedded in jsonlab
-            elseif strcmpi(PlugDesc.Name, 'jnifty')
-                p = which('savejson.m');
-                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
             end
