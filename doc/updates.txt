@@ -1,3 +1,12 @@
+May 2026
+- Anatomy: New template: ICBM152 2026. FreeSurfer 8.2. New cortical atlases
+- Anatomy: New MNI parcellations: USCBrain, BCI-DNI_brain, YBA and JulichBrainV3
+- Anatomy: Get JulichBrainV3 and ThalamicNuclei vol atlases from CAT results
+- iEEG: Bugfix, allow removing user-created SEEG/ECOG/ECOG-mid electrode models
+- iEEG: Add infinite homogeneous medium headmodel for SEEG
+- Simulations: Allow sensor signal simulation with head model from another study
+- Plugin: Resection identification plugin as container-based plugin
+--------------------------------------------------------------
 April 2026
 - Anatomy: Auto-install of SPM tissue probability maps ('TPM.nii') when needed
 - Anatomy: Improve primitive cylinder mesh generation
