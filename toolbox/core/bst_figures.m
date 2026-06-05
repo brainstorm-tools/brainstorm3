@@ -2004,11 +2004,14 @@ function ToggleSelectedRow(RowNames)
 end
 
 %% ===== SET SELECTED ROWS =====
-function SetSelectedRows(RowNames, isUpdateClusters)
+function SetSelectedRows(RowNames, isUpdateClusters, isUpdateChannelEditor)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isUpdateClusters)
         isUpdateClusters = 1;
+    end
+    if (nargin < 3) || isempty(isUpdateChannelEditor)
+        isUpdateChannelEditor = 1;
     end
     % Convert to cell
     if isempty(RowNames)
@@ -2025,6 +2028,10 @@ function SetSelectedRows(RowNames, isUpdateClusters)
     % Update selected clusters
     if isUpdateClusters
         panel_cluster('SetSelectedClusters', [], 0);
+    end
+    % Update channel editor
+    if isUpdateChannelEditor && gui_brainstorm('isTabVisible', 'ChannelEditor')
+        panel_channel_editor('SetChannelSelection', GlobalData.DataViewer.SelectedRows, 0);
     end
 end
 
