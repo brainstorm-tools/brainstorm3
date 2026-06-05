@@ -2013,6 +2013,46 @@ function sModels = GetElectrodeModels(list)
 end
 
 
+%% ===== UPDATE DEFAULT ELECTRODE MODELS =====
+function infoMsg = UpdateDefaultElectrodeModels()
+    global GlobalData;
+    infoMsg = '';
+
+    % Get Default models in Brainstorm
+    sModelsDef = GetElectrodeModels('default');
+    % Get Preference models: (Old-default models + User models)
+    sModelsPref = GetElectrodeModels();
+
+    % === Generate tentative list of electrode models
+    [~, iUsr] = setdiff({sModelsPref.Model}, {sModelsDef.Model}, 'stable');
+    sModelsTmp = [sModelsDef, sModelsPref(iUsr)];
+    if isequal(sModelsTmp, sModelsPref)
+        return
+    end
+    infoMsg = 'BST> Loading iEEG default electrode models...';
+
+    % Check that tentative list do not overlap with Preference models
+    errModels = {};
+    for iModelTmp = 1 : numel(sModelsTmp)
+        ix = find(ismember({sModelsPref.Model}, sModelsTmp(iModelTmp).Model));
+        if ~isempty(ix) && ~isequal(sModelsPref(ix), sModelsTmp(iModelTmp))
+            errModels{end+1} = sModelsTmp(iModelTmp).Model;
+        end
+    end
+    if ~isempty(errModels)
+        strIndent = repmat(' ', 1, 5);
+        strModels = cellfun(@(x) [strIndent '- ' '"' x '"'], errModels, 'UniformOutput', 0);
+        strModels = strjoin(strModels, char(10));
+        infoMsg = [infoMsg, 10 ...
+                   strIndent, 'Cannot update iEEG default electrode models:' 10 ...
+                   strIndent, 'Rename the following electrode models and restart Brainstorm' 10 strModels];
+        return
+    end
+    % Update global
+    GlobalData.Preferences.IntraElectrodeModels = sModelsTmp;
+end
+
+
 %% ===== GET SELECTED MODEL =====
 function [iModel, sModels] = GetSelectedModel()
     % Get figure controls
