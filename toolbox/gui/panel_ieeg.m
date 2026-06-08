@@ -367,10 +367,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST CHANGED CALLBACK =====
     function ContListChanged_Callback(h, ev)
-        ctrl = bst_get('PanelControls', 'iEEG');
-        sContacts = GetSelectedContacts();
-        bst_figures('SetSelectedRows', {sContacts.Name});
-        SetMriCrosshair(sContacts);
+        if ~ev.getValueIsAdjusting()
+            sContacts = GetSelectedContacts();
+            bst_figures('SetSelectedRows', {sContacts.Name});
+            SetMriCrosshair(sContacts);
+        end
     end
 
     %% ===== CONTACT LIST KEY TYPED CALLBACK =====
@@ -383,6 +384,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 AddContact();
             case ev.VK_ESCAPE
                 SetSelectedContacts(0);
+                bst_figures('SetSelectedRows', []);
         end
     end
 end
@@ -414,8 +416,7 @@ function UpdatePanel()
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
-        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
-        if isIsoSurf
+        if ~isempty(TessInfo) && any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')))
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
@@ -431,7 +432,7 @@ function UpdatePanel()
     % Select appropriate display mode button
     if ~isempty(hFigall)
         ElectrodeDisplay = getappdata(hFigall(1), 'ElectrodeDisplay');
-        if strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
+        if ~isempty(ElectrodeDisplay) && strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
             ctrl.jRadioDispDepth.setSelected(1);
         else
             ctrl.jRadioDispSphere.setSelected(1);
@@ -938,7 +939,7 @@ function SetSelectedElectrodes(iSelElec)
     % Get previous selection
     iPrevItems = ctrl.jListElec.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
     % === UPDATE SELECTION ===
@@ -965,6 +966,7 @@ end
 %         SetSelectedContacts(SelElecNames)  % cell array of name
 % Limitation: perform operation on one contact not multiple
 function SetSelectedContacts(iSelCont)
+    global GlobalData
     % === GET CONTACT INDICES ===
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
@@ -982,6 +984,34 @@ function SetSelectedContacts(iSelCont)
         else
             SelContNames = {iSelCont};
         end
+        % Get Channel selected for current DS
+        [~, ~, iDS] = GetSelectedElectrodes();
+        [~, iSelChan] = bst_figures('GetSelectedChannels', iDS);
+        if isempty(iSelChan)
+            return
+        end
+        % Only iEEG channels
+        iIeegChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], 'ECOG+SEEG');
+        iSelChan = intersect(iSelChan, iIeegChannels);
+        if isempty(iSelChan)
+            return
+        end
+        % Get Electrode for selected channels
+        [elecGroups, ~, contCount] = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+        if isempty(elecGroups)
+            return
+        end
+        ElecName = elecGroups{mode(contCount)};
+        sElecContacts = GetContacts(ElecName);
+        % From the provided Contact names, get the Electrode with more contacts
+        SelContNames = intersect(SelContNames, {sElecContacts.Name});
+        if isempty(SelContNames)
+            return
+        end
+        % Clear Contact selection
+        SetSelectedContacts(0);
+        % Electrode selection
+        SetSelectedElectrodes(ElecName);
         % Find the requested channels in the JList
         listModel = ctrl.jListCont.getModel();
         iSelItem = [];
@@ -1002,11 +1032,14 @@ function SetSelectedContacts(iSelCont)
     % Get previous selection
     iPrevItems = ctrl.jListCont.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
 
     % === UPDATE SELECTION ===
+    % Temporality disables JList selection callback
+    jListCallback_bak = java_getcb(ctrl.jListCont, 'ValueChangedCallback');
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', []);
     % Select items in JList
     ctrl.jListCont.setSelectedIndices(iSelItem);
     % Scroll to see the last selected electrode in the list
@@ -1015,6 +1048,8 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
+    % Restore JList callback
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', jListCallback_bak);
     sContacts = GetSelectedContacts();
     SetMriCrosshair(sContacts);
 end
