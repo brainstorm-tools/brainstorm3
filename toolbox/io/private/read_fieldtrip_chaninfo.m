@@ -49,7 +49,7 @@ gradChanTypes = [];
 coilChan = [];
 if ~isempty(grad)
     % Initialize FieldTrip
-    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
         error(errMsg);
     end
@@ -62,10 +62,18 @@ if ~isempty(grad)
     
     % Get the list of montages to undo
     if isfield(grad, 'balance') && isfield(grad.balance, 'current') && iscell(grad.balance.current)
-        % Revert from 2025 version to the previous representation
+        % Revert from on field (grad.balance.current) to two fields (grad.balance.previous and grad.balance.current)
         if ~isempty(grad.balance.current)
-            grad.balance.previous = grad.balance.current(1:end-1);  % Remains a cell-array
-            grad.balance.current  = grad.balance.current{end};      % Becomes a string
+            % Get grad.balance.previous as [second-last, ..., second, first applied]
+            if bst_plugin('CompareVersions', PlugDesc.Version, '20260511') >=0
+                % grad.balance.current is saved as [first, second, ..., second-last, last applied]
+                grad.balance.previous = grad.balance.current(end-1:-1:1);
+            else
+                % grad.balance.current is saved as [second-last, ..., second, first, last applied]
+                grad.balance.previous = grad.balance.current(1:end-1);
+            end
+            % grad.balance.current(end) = [last applied]
+            grad.balance.current  = grad.balance.current{end};
         else
             grad.balance.current = 'none';
         end

@@ -1024,6 +1024,10 @@ for iFile = 1 : length(FilesA)
                         bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Message);
                     end
 
+                    % Edge effecs for each frequency band
+                    [~, transients] = process_timefreq('GetEdgeEffectMask', sInputA.Time, OPTIONS.Freqs, OPTIONS);
+                    transientsPct = 100 * (2 * transients) * sfreq ./ length(sInputA.Time);
+                    transientsWrn = '';
                     % Process one band at a time to minimize memory requirements.
                     for iBand = 1:nFreqBands
                         switch OPTIONS.tfMeasure
@@ -1035,6 +1039,12 @@ for iFile = 1 : length(FilesA)
                                 if ~isConnNN
                                     DataBand = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                                     HB = transpose(hilbert_fcn(transpose(DataBand)));
+                                end
+                                % Warning if start+end transcients are larger than 10% of data
+                                if iFile == 1 && transientsPct(iBand) > 10
+                                    transientsWrn = [transientsWrn, ...
+                                                     sprintf('Hilbert transform, band "%s" (%.1f - %.1f Hz): ', OPTIONS.Freqs{iBand,1}, BandBounds(iBand,1), BandBounds(iBand,2)), ...
+                                                     sprintf('Start up and end transients (%.2f s) represent %.1f%% of your data.\n', 2*transients(iBand), transientsPct(iBand))];
                                 end
                             case 'morlet'
                                 % Compute wavelet decompositions
@@ -1050,6 +1060,12 @@ for iFile = 1 : length(FilesA)
                                         sInputB.Data = bst_bsxfun(@minus, sInputB.Data, mean(sInputB.Data,2));
                                     end
                                     HB = morlet_transform(sInputB.Data, sInputB.Time, OPTIONS.Freqs(iBand), OPTIONS.MorletFc, OPTIONS.MorletFwhmTc, 'n');
+                                end
+                                % Warning if start+end transcients are larger than 10% of data
+                                if iFile == 1 && transientsPct(iBand) > 10
+                                    transientsWrn = [transientsWrn, ...
+                                                     sprintf('Morlet wavelets, %.1f Hz: ', OPTIONS.Freqs(iBand)), ...
+                                                     sprintf('Start up and end transients (%.2f s) represent %.1f%% of your data.\n', 2*transients(iBand), transientsPct(iBand))];
                                 end
                         end
                         % Apply kernel if needed
@@ -1100,6 +1116,10 @@ for iFile = 1 : length(FilesA)
                     end
                     % If time-averaged, already divided by nTime.
                     nWin = nWin + 1;
+                    % Edge warnings
+                    if ~isempty(transientsWrn)
+                        bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), transientsWrn);
+                    end
 
                 case 'stft'
                     % "Spectral" formulae, using Fourier transform in windows (short-time Fourier transform)

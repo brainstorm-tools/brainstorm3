@@ -8,6 +8,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
+%                     isOk = bst_plugin('ClearCachedVersion',   PlugName)                    % Clean cached plugin version
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
@@ -208,15 +209,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('resection-identification');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_' OsType '.zip'];
-    PlugDesc(end).TestFile       = 'resection_identification';
-    if strcmp(OsType, 'win64')
-        PlugDesc(end).TestFile   = [PlugDesc(end).TestFile, '.bat'];
-    end
-    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-container';
+    PlugDesc(end).ImageSource    = ['docker.io/brainstormtools/auto-resection-mask:' PlugDesc(end).Version];
     PlugDesc(end).CompiledStatus = 1;
-    PlugDesc(end).LoadFolders    = {'bin'};
 
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -1126,7 +1121,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
-           case 'nirstorm'
+            case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
@@ -1141,6 +1136,10 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 % If downloading from GitHub: Get last GitHub commit SHA
                 if isGithubSnapshot(URLzip)
                     Version = GetGithubCommit(URLzip);
+                % Try to get Manifest SHA for container plugins
+                elseif IsContainer(PlugName)
+                    PlugDesc = GetDescription(PlugName);
+                    [~, Version] = bst_containers('GetOnlineManifest', PlugDesc.ImageSource);
                 else
                     return;
                 end
@@ -1154,11 +1153,36 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
 end
 
 
+%% ===== CLEAR CACHED PLUGIN VERSION ======
+function isOk = ClearCachedVersion(PlugName)
+% USAGE: isOk = bst_plugin('ClearCachedVersion', PlugName)  % Only for provided plugin
+%        isOk = bst_plugin('ClearCachedVersion')            % For all plugins
+    global GlobalData;
+    isOk = 0;
+
+    % Already clean
+    if ~isfield(GlobalData.Program, 'PluginCache') || isempty(GlobalData.Program.PluginCache) || isempty(fieldnames(GlobalData.Program.PluginCache))
+        isOk = 1;
+    % Clean all
+    elseif nargin < 1
+        GlobalData.Program.PluginCache = struct;
+        isOk = 1;
+    % Clean cache version for provided plugin
+    elseif ischar(PlugName)
+        strCaches = fieldnames(GlobalData.Program.PluginCache);
+        PlugName = [PlugName, '_'];
+        GlobalData.Program.PluginCache = rmfield(GlobalData.Program.PluginCache, strCaches(strncmpi(strCaches, PlugName, length(PlugName))));
+        isOk = 1;
+    end
+end
+
+
 %% ===== IS GITHUB SNAPSHOT ======
 % Returns 1 if the URL is a souce-code archive or snapshot (as .zip or .tar.gz) of a GitHub repository
 % https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives
 function isOk = isGithubSnapshot(URLzip)
-    isOk = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+    isOk = ~isempty(URLzip) && ...
+           strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
            ~isempty(strfind(URLzip, '/archive/')) && ...
            (strMatchEdge(URLzip, '.zip', 'end') || strMatchEdge(URLzip, '.tar.gz', 'end'));
 end
@@ -1555,10 +1579,23 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
+            % jsonlab: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jnifti: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'jnifti')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % easyh5: Ignore if found embedded in iso2mesh or jsonlab

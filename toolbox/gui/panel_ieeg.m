@@ -367,10 +367,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST CHANGED CALLBACK =====
     function ContListChanged_Callback(h, ev)
-        ctrl = bst_get('PanelControls', 'iEEG');
-        sContacts = GetSelectedContacts();
-        bst_figures('SetSelectedRows', {sContacts.Name});
-        SetMriCrosshair(sContacts);
+        if ~ev.getValueIsAdjusting()
+            sContacts = GetSelectedContacts();
+            bst_figures('SetSelectedRows', {sContacts.Name});
+            SetMriCrosshair(sContacts);
+        end
     end
 
     %% ===== CONTACT LIST KEY TYPED CALLBACK =====
@@ -383,6 +384,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 AddContact();
             case ev.VK_ESCAPE
                 SetSelectedContacts(0);
+                bst_figures('SetSelectedRows', []);
         end
     end
 end
@@ -414,8 +416,7 @@ function UpdatePanel()
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
-        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
-        if isIsoSurf
+        if ~isempty(TessInfo) && any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')))
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
@@ -431,7 +432,7 @@ function UpdatePanel()
     % Select appropriate display mode button
     if ~isempty(hFigall)
         ElectrodeDisplay = getappdata(hFigall(1), 'ElectrodeDisplay');
-        if strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
+        if ~isempty(ElectrodeDisplay) && strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
             ctrl.jRadioDispDepth.setSelected(1);
         else
             ctrl.jRadioDispSphere.setSelected(1);
@@ -938,7 +939,7 @@ function SetSelectedElectrodes(iSelElec)
     % Get previous selection
     iPrevItems = ctrl.jListElec.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
     % === UPDATE SELECTION ===
@@ -965,6 +966,7 @@ end
 %         SetSelectedContacts(SelElecNames)  % cell array of name
 % Limitation: perform operation on one contact not multiple
 function SetSelectedContacts(iSelCont)
+    global GlobalData
     % === GET CONTACT INDICES ===
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
@@ -982,6 +984,34 @@ function SetSelectedContacts(iSelCont)
         else
             SelContNames = {iSelCont};
         end
+        % Get Channel selected for current DS
+        [~, ~, iDS] = GetSelectedElectrodes();
+        [~, iSelChan] = bst_figures('GetSelectedChannels', iDS);
+        if isempty(iSelChan)
+            return
+        end
+        % Only iEEG channels
+        iIeegChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], 'ECOG+SEEG');
+        iSelChan = intersect(iSelChan, iIeegChannels);
+        if isempty(iSelChan)
+            return
+        end
+        % Get Electrode for selected channels
+        [elecGroups, ~, contCount] = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+        if isempty(elecGroups)
+            return
+        end
+        ElecName = elecGroups{mode(contCount)};
+        sElecContacts = GetContacts(ElecName);
+        % From the provided Contact names, get the Electrode with more contacts
+        SelContNames = intersect(SelContNames, {sElecContacts.Name});
+        if isempty(SelContNames)
+            return
+        end
+        % Clear Contact selection
+        SetSelectedContacts(0);
+        % Electrode selection
+        SetSelectedElectrodes(ElecName);
         % Find the requested channels in the JList
         listModel = ctrl.jListCont.getModel();
         iSelItem = [];
@@ -1002,11 +1032,14 @@ function SetSelectedContacts(iSelCont)
     % Get previous selection
     iPrevItems = ctrl.jListCont.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
 
     % === UPDATE SELECTION ===
+    % Temporality disables JList selection callback
+    jListCallback_bak = java_getcb(ctrl.jListCont, 'ValueChangedCallback');
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', []);
     % Select items in JList
     ctrl.jListCont.setSelectedIndices(iSelItem);
     % Scroll to see the last selected electrode in the list
@@ -1015,6 +1048,8 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
+    % Restore JList callback
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', jListCallback_bak);
     sContacts = GetSelectedContacts();
     SetMriCrosshair(sContacts);
 end
@@ -1873,7 +1908,7 @@ function sModels = GetElectrodeModels(list)
     end
     sModels = [];
     % Get all models in preferences
-    if ~strcmp(list, 'defatul') && isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
+    if ~strcmp(list, 'default') && isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
         sModels = GlobalData.Preferences.IntraElectrodeModels;
     % Get default list of known electrodes
     else
@@ -2010,6 +2045,46 @@ function sModels = GetElectrodeModels(list)
         sMod(7).ElecLength      = 0.0685;
         sModels = [sModels, sMod];
     end
+end
+
+
+%% ===== UPDATE DEFAULT ELECTRODE MODELS =====
+function infoMsg = UpdateDefaultElectrodeModels()
+    global GlobalData;
+    infoMsg = '';
+
+    % Get Default models in Brainstorm
+    sModelsDef = GetElectrodeModels('default');
+    % Get Preference models: (Old-default models + User models)
+    sModelsPref = GetElectrodeModels();
+
+    % === Generate tentative list of electrode models
+    [~, iUsr] = setdiff({sModelsPref.Model}, {sModelsDef.Model}, 'stable');
+    sModelsTmp = [sModelsDef, sModelsPref(iUsr)];
+    if isequal(sModelsTmp, sModelsPref)
+        return
+    end
+    infoMsg = 'BST> Loading iEEG default electrode models...';
+
+    % Check that tentative list do not overlap with Preference models
+    errModels = {};
+    for iModelTmp = 1 : numel(sModelsTmp)
+        ix = find(ismember({sModelsPref.Model}, sModelsTmp(iModelTmp).Model));
+        if ~isempty(ix) && ~isequal(sModelsPref(ix), sModelsTmp(iModelTmp))
+            errModels{end+1} = sModelsTmp(iModelTmp).Model;
+        end
+    end
+    if ~isempty(errModels)
+        strIndent = repmat(' ', 1, 5);
+        strModels = cellfun(@(x) [strIndent '- ' '"' x '"'], errModels, 'UniformOutput', 0);
+        strModels = strjoin(strModels, char(10));
+        infoMsg = [infoMsg, 10 ...
+                   strIndent, 'Cannot update iEEG default electrode models:' 10 ...
+                   strIndent, 'Rename the following electrode models and restart Brainstorm' 10 strModels];
+        return
+    end
+    % Update global
+    GlobalData.Preferences.IntraElectrodeModels = sModelsTmp;
 end
 
 
@@ -2159,7 +2234,7 @@ function RemoveElectrodeModel()
     end
     % Do not remove if it is a default electrode model
     sModelsDefault = GetElectrodeModels('default');
-    if ismember(sModels(iModel).Name, {sModelsDefault.Name})
+    if ismember(sModels(iModel).Model, {sModelsDefault.Model})
         java_dialog('warning', [...
             'This a Brainstorm default electrode model and cannot deleted.' 10], ...
             'Read-only: Default electrode model ');
