@@ -37,8 +37,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
 % Describe the process and its UI options
 sProcess.Comment     = 'Plot Fastgraphs';
 sProcess.Category    = 'Custom';
-sProcess.SubGroup    = 'Stimulation';
-sProcess.Index       = 1100;
+sProcess.SubGroup    = 'FAST graph';
+sProcess.Index       = 1303;
+sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
 % Definition of the input accepted by this process
 sProcess.InputTypes  = {'data'};
 sProcess.OutputTypes = {'data'};
