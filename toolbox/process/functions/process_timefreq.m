@@ -328,6 +328,10 @@ end
 
 %% ===== GET EDGE EFFECT MASK =====
 function [TFmask, transient] = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DEFNU>
+    % Get TimeFreq Method from bst_connectivity OPTIONS
+    if isfield(tfOptions, 'tfMeasure')
+        tfOptions.Method = tfOptions.tfMeasure;
+    end
     % Get time vector
     if ~iscell(Time)
         t = Time;
@@ -345,11 +349,6 @@ function [TFmask, transient] = GetEdgeEffectMask(Time, Freqs, tfOptions) %#ok<DE
         end
     end
     
-    % Get correct TimeFreq Method from bst_connectivity OPTIONS
-    if isfield(tfOptions, 'tfMeasure')
-        tfOptions.Method = tfOptions.tfMeasure;
-    end
-
     TFmask = [];
     transient = [];
     % Morlet wavelets
