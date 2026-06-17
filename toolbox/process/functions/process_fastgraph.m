@@ -45,10 +45,10 @@ sProcess.InputTypes  = {'data'};
 sProcess.OutputTypes = {'data'};
 sProcess.nInputs     = 1;
 sProcess.nMinFiles   = 1;
-% Atlas to use for plotting Fastgraph
-sProcess.options.atlas.Comment = 'Atlas to plot: ';
-sProcess.options.atlas.Type    = 'atlas';
-sProcess.options.atlas.Value   = [];
+% Scouts to use for plotting Fastgraph
+sProcess.options.scouts.Comment = '';
+sProcess.options.scouts.Type    = 'scout';
+sProcess.options.scouts.Value   = {};
 % Color Fastgraph by region or by label
 sProcess.options.label2.Comment = '<U><B>Color Fastgraph by region or by label ?</U></B>';
 sProcess.options.label2.Type    = 'label';
@@ -79,12 +79,6 @@ sProcess.options.regionoccipital.Value   = 1;
 sProcess.options.regionlimbic.Comment = '7: Limbic';
 sProcess.options.regionlimbic.Type    = 'checkbox';
 sProcess.options.regionlimbic.Value   = 1;
-% Atlas scout labels to plot
-sProcess.options.label4.Comment  = '<HTML><I><FONT color="#777777">For multiple labels: separate them with commas</FONT></I>';
-sProcess.options.label4.Type     = 'label';
-sProcess.options.atlasscoutlabels.Comment = 'Atlas scout labels to plot: ';
-sProcess.options.atlasscoutlabels.Type    = 'text';
-sProcess.options.atlasscoutlabels.Value   = '';
 % Add separator
 sProcess.options.separator1.Type    = 'separator';
 % Method for sorting the data
@@ -131,8 +125,10 @@ end
 %% ===== GET OPTIONS =====
 function OPTIONS = GetOptions(sProcess)
     OPTIONS = struct();
-    % Atlas to use for plotting Fastgraph
-    OPTIONS.Atlas = sProcess.options.atlas.Value;    
+    % Atlas and scouts to use for plotting Fastgraph
+    ScoutsList = sProcess.options.scouts.Value;
+    OPTIONS.Atlas = ScoutsList{1,1};
+    OPTIONS.AtlasScoutLabels = ScoutsList{1,2};
     % Color figure by region or by label
     OPTIONS.ColorScheme = sProcess.options.colorscheme.Value;
     % Select regions to include
@@ -143,8 +139,6 @@ function OPTIONS = GetOptions(sProcess)
                               sProcess.options.regiontemporal.Value
                               sProcess.options.regionoccipital.Value
                               sProcess.options.regionlimbic.Value]);
-    % Atlas scout labels to plot    
-    OPTIONS.AtlasScoutLabels = strtrim(strsplit(sProcess.options.atlasscoutlabels.Value,','));    
     % Method for sorting the data   
     OPTIONS.SortMethod = sProcess.options.sortmethod.Value;
     % Sort window
