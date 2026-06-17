@@ -375,12 +375,12 @@ function [iBadChannel, criteriaModalities] = Thresholding(F, ChannelFlag, Channe
         elseif ~isempty(strfind(lower(Modalities{iMod}), 'ecg')) || ~isempty(strfind(lower(Modalities{iMod}), 'ekg'))
             criteriaField = 'ecg';
         else
-            return;
+            continue;
         end
         Threshold = Criteria.(criteriaField);
         % If threshold is [0 0]: nothing to do
         if isequal(Threshold, [0 0])
-            return;
+            continue;
         end
 
         % === DETECT BAD CHANNELS ===
