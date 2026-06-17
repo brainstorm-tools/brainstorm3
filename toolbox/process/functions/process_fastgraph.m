@@ -173,26 +173,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
 
-    % Get subject
-    sSubject = bst_get('Subject', sInputs(1).SubjectName);
-    CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
-    sCortex = bst_memory('LoadSurface', CortexFile);
-
-    % Get the last used atlas if atlas not selected
-    if isempty(OPTIONS.Atlas)        
-        OPTIONS.Atlas = sCortex.Atlas(sCortex.iAtlas).Name;
-    end
-    % Find the atlas selected by the user 
-    iAtlas = find(strcmpi({sCortex.Atlas.Name}, OPTIONS.Atlas), 1);
-    
-    % Early exit if any entered atlas scout label does not exist
-    allAtlasScoutLabels = {sCortex.Atlas(iAtlas).Scouts.Label};
-    enteredLabels = OPTIONS.AtlasScoutLabels(~cellfun(@isempty, OPTIONS.AtlasScoutLabels));
-    if ~isempty(enteredLabels) && ~all(ismember(enteredLabels, allAtlasScoutLabels))
-        bst_report('Error', sProcess, [], 'One or more scout labels entered are not present in the selected atlas');
-        return;
-    end
-
     % Load the channel file
     ChannelFile = file_fullpath(sInputs(1).ChannelFile);
     ChannelMat = load(ChannelFile);
@@ -290,7 +270,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % === Use the final subplot to display legend ===
     bst_progress('text', 'Plotting legend...');
     % Generate a cortex snapshot with atlas scout for display
-    imgCortex = GenerateCortexSnapshot(sSubject, OPTIONS);
+    imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
     % Create the legend subplot with the same spacing settings
     subtightplot(nRows, nCols, iSubplot+1, gap, horzMargin, vertMargin);
     % Plot the reference panel with the cortex snapshot and axis labels
@@ -563,11 +543,11 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
         hemiData = hemiData(toPlot, :);
         channelScoutLabels = channelScoutLabels(toPlot);
 
-        % Skip plotting if no channels remain
-        if isempty(plotLocs)
-            fprintf('\n%s contacts and atlas scout labels:\n', sideName);
+        % Skip plotting if no channels remain after atlas/scout filtering
+        fprintf('\n%s contacts and atlas scout labels:\n', sideName);
+        if isempty(plotLocs)            
             if nChannelsBeforeFilter > 0
-                fprintf('Nothing to plot. All contacts were excluded by the atlas/scout selection.\n');
+                fprintf('Nothing to plot. All contacts were filtered out by the selected atlas/scout regions.\n');
             else
                 fprintf('Nothing to plot. No contacts are available for this hemisphere.\n');
             end
@@ -578,7 +558,6 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
         hAreaPlot = area(timeMs, signFactor * hemiData(:, plotWindowIdx)');
 
         % Print labels and assign colors
-        fprintf('\n%s contacts and atlas scout labels:\n', sideName);
         isAllContactsExcluded = 1;
         for i = 1:numel(plotLocs)
             atlasScoutLabelSeeg = channelScoutLabels{i};
@@ -590,7 +569,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
             hAreaPlot(i).FaceColor = region.Color;
         end
         if isAllContactsExcluded
-            fprintf('Nothing plotted. All contacts lie in the excluded region.\n');
+            fprintf('Nothing plotted. All contacts lie within the stimulation-site exclusion zone.\n');
         end
         % Store handles in the correct output variable
         if iSide == 1
@@ -658,7 +637,7 @@ end
 
 %% ===== RESOLVE SELECTED SCOUTS =====
 % Resolve which atlas scouts should be used based on either:
-%   1) explicit scout labels entered by the user, or
+%   1) explicit scout labels selected by the user, or
 %   2) selected anatomical regions from the checkboxes
 function [selectedScoutLabels, iSelectedScouts, iAtlas] = ResolveScoutSelection(sCortex, OPTIONS)
     % Default outputs
@@ -671,11 +650,9 @@ function [selectedScoutLabels, iSelectedScouts, iAtlas] = ResolveScoutSelection(
         return;
     end
     atlas = sCortex.Atlas(iAtlas);
-    % Keep only non-empty scout labels entered in the GUI
-    enteredLabels = OPTIONS.AtlasScoutLabels(~cellfun(@isempty, OPTIONS.AtlasScoutLabels));
-    if ~isempty(enteredLabels)
+    if ~isempty(OPTIONS.AtlasScoutLabels)
         % Explicit scout-label filtering
-        isKeep = ismember({atlas.Scouts.Label}, enteredLabels);
+        isKeep = ismember({atlas.Scouts.Label}, OPTIONS.AtlasScoutLabels);
     else
         % Region-based filtering
         allRegionCodes = {'PF','F','C','P','T','O','L'};
@@ -692,10 +669,11 @@ end
 %% ===== GENERATE IMAGE FOR LEGEND =====
 % Render the cortex surface with only the scouts selected from the GUI and
 % color them either by region or by label
-function imgCortex = GenerateCortexSnapshot(sSubject, OPTIONS)
+function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
     % Default output
     imgCortex = [];
     % Load cortex
+    sSubject = bst_get('Subject', sInputs(1).SubjectName);
     CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
     sCortex = bst_memory('LoadSurface', CortexFile);
     % Resolve selected scouts from GUI options
