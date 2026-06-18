@@ -156,7 +156,7 @@ sFilesStimStartRmSpes = bst_process('CallProcess', 'process_remove_spes_artifact
 
 % Process: Remove drift EMD
 sFilesStimStartEmd = bst_process('CallProcess', 'process_remove_drift_emd', sFilesStimStartRmSpes, [], ...
-                       'cutoff',     2); % in ms
+                       'cutoff',     2); % in Hz
 
 % Process: Load the STIM events
 sFilesStim = bst_process('CallProcess', 'process_import_data_event', sFilesStimStartEmd, [], ...
