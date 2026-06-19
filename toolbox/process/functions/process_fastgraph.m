@@ -1,5 +1,5 @@
 function varargout = process_fastgraph( varargin )
-% PROCESS_FASTGRAPH: Plot fastgraph for one or more SEEG recordings.
+% PROCESS_FASTGRAPH: Plot FastGraph for one or more SEEG recordings.
 % For each stimulation pair, channels are split by hemisphere, sorted 
 % by a user-selected metric, filtered by atlas region or scout label, and 
 % plotted as stacked area plots
@@ -35,7 +35,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
 % Describe the process and its UI options
-sProcess.Comment     = 'Plot Fastgraphs';
+sProcess.Comment     = 'Plot FastGraphs';
 sProcess.Category    = 'Custom';
 sProcess.SubGroup    = 'FAST graph';
 sProcess.Index       = 1303;
@@ -45,11 +45,11 @@ sProcess.InputTypes  = {'data'};
 sProcess.OutputTypes = {'data'};
 sProcess.nInputs     = 1;
 sProcess.nMinFiles   = 1;
-% Scouts to use for plotting Fastgraph
+% Scouts to use for plotting FastGraph
 sProcess.options.scouts.Comment = '';
 sProcess.options.scouts.Type    = 'scout';
 sProcess.options.scouts.Value   = {};
-% Color Fastgraph by region or by label
+% Color FastGraph by region or by label
 sProcess.options.colorscheme.Comment = {'Region', 'Label', '<HTML><U><B>FastGraph color:</U></B></HTML>'; ...
                                         'Region', 'Label', ''};
 sProcess.options.colorscheme.Type    = 'radio_linelabel';
@@ -103,7 +103,7 @@ end
 %% ===== GET OPTIONS =====
 function OPTIONS = GetOptions(sProcess)
     OPTIONS = struct();
-    % Atlas and scouts to use for plotting Fastgraph
+    % Atlas and scouts to use for plotting FastGraph
     ScoutsList = sProcess.options.scouts.Value;
     OPTIONS.Atlas = ScoutsList{1,1};
     OPTIONS.AtlasScoutLabels = ScoutsList{1,2};
@@ -152,10 +152,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
     % Get the midpoint location of each stimulation pair from channel
     stimLocs = GetStimLocs(sInputs, ChannelMat);
-    % Sort fastgraphs by stimulation-site location for LAPRAP style display
+    % Sort FastGraphs by stimulation-site location for LAPRAP style display
     sSortedFastgraphLocIdxs = SortLAPRAP(stimLocs);
   
-    % Load SEEG recordings after applying Fastgraph sorting
+    % Load SEEG recordings after applying FastGraph sorting
     [seegData, excludedContacts] = GetSeegData(sInputs, sSortedFastgraphLocIdxs, stimLocs, ChannelMat, OPTIONS);    
     % Split SEEG contacts into left and right hemisphere groups
     sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat);     
@@ -169,11 +169,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     chanNamesSeeg = chanTableWithAtlas(2:end, 1);
     atlasScoutLabelsSeeg = chanTableWithAtlas(2:end, cols);
 
-    % Create figure for Fastgraph
+    % Create figure for FastGraph
     figure;
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
-    % Shared y-axis limits across Fastgraph subplots
+    % Shared y-axis limits across FastGraph subplots
     commonAxisLimits = [];    
     % Reserve one extra subplot for the legend
     nSubplots = length(sInputs)+1;
@@ -185,8 +185,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     gap = [0.075 0.0175];
     horzMargin = 0.03;
     vertMargin = 0.015;
-    % Generate one fastgraph per selected input
-    bst_progress('start', 'Process', 'Plotting Fastgraphs...', 0, 100);
+    % Generate one FastGraph per selected input
+    bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
     for iSubplot = 1:nSubplots-1
         % Show progress
         progressPrc = round(100 .* iSubplot ./ (nSubplots-1));
@@ -206,13 +206,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sSubplotDataSorted = ApplyDataSorting(subplotData, seegData, OPTIONS);
         % Create the subplot with custom spacing 
         subtightplot(nRows, nCols, iSubplot, gap, horzMargin, vertMargin);
-        % Plot the Fastgraph for the current stimulation pair
+        % Plot the FastGraph for the current stimulation pair
         [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimLocs, iSubplot, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Tighten axes to the plotted data and store the current axis handle
         axis tight
         axisLimits = axis;
         axSubplots(iSubplot) = gca;
-        % Update the shared y-axis limits so all Fastgraph subplots can
+        % Update the shared y-axis limits so all FastGraph subplots can
         % use the same vertical range for visual comparison
         if iSubplot == 1
             commonAxisLimits = axisLimits;
@@ -230,7 +230,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Add the stimulation pair and atlas scout label as the subplot title
         AddFastgraphTitle(sInputs, sSortedFastgraphLocIdxs.All(iSubplot), chanNamesSeeg, atlasScoutLabelsSeeg);
     end    
-    % Apply the shared y-axis limits to all Fastgraph subplots
+    % Apply the shared y-axis limits to all FastGraph subplots
     for iSubplot = 1:nSubplots-1
         axSubplots(iSubplot).YLim = commonAxisLimits(3:4);
     end
@@ -443,7 +443,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
 end
 
 %% ===== PLOT FASTGRAPH =====
-% Create one fastgraph subplot.
+% Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
 function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSubplot, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
@@ -467,7 +467,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
     plotWindowIdx = OPTIONS.PlotWindow(1) + 101 : OPTIONS.PlotWindow(2) + 101;
     timeMs = seegData{iSubplot}.Time(plotWindowIdx) * 1000;
 
-    fprintf('\n===== Fastgraph %d/%d:  Stimulation site "%s" =====\n', iSubplot, numel(sInputs), sInputs(iSubplot).Comment)
+    fprintf('\n===== FastGraph %d/%d:  Stimulation site "%s" =====\n', iSubplot, numel(sInputs), sInputs(iSubplot).Comment)
     % Extract SEEG data once for this subplot
     Fout = seegData{iSubplot}.F(iSeeg, :);
     
@@ -682,7 +682,7 @@ function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
 end
 
 %% ===== PLOT LEGEND =====
-% Shows the legend for the Fastgraph plots as in the paper
+% Shows the legend for the FastGraph plots as in the paper
 function PlotLegend(axSubplotLegend, brainImg, xRange, yRange, xLabel, yLabel)    
     % === Prepare the plot area ===
     % Set the visible x- and y-axis limits
