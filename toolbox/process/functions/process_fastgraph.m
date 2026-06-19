@@ -55,7 +55,7 @@ sProcess.options.colorscheme.Comment = {'Region', 'Label', '<HTML><U><B>FastGrap
 sProcess.options.colorscheme.Type    = 'radio_linelabel';
 sProcess.options.colorscheme.Value   = 'Region';
 % Select regions to include
-sProcess.options.region.Comment = [{'Prefrontal', 'Frontal', 'Central', 'Parietal', 'Temporal', 'Occipital', 'Limbic'}, {'<HTML><U><B>Select region(s) to include:</U></B></HTML>'}];
+sProcess.options.region.Comment = [{'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'}, {'<HTML><U><B>Select region(s) to include:</U></B></HTML>'}];
 sProcess.options.region.Type    = 'list_horizontal';
 sProcess.options.region.Value   = '';
 % Add separator
@@ -140,7 +140,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OPTIONS = GetOptions(sProcess);
     
     % Early exit if no region is selected
-    if ~any(OPTIONS.Region)
+    if isempty(OPTIONS.Region)
         bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
         return;
     end
@@ -627,8 +627,7 @@ function [selectedScoutLabels, iSelectedScouts, iAtlas] = ResolveScoutSelection(
         isKeep = ismember({atlas.Scouts.Label}, OPTIONS.AtlasScoutLabels);
     else
         % Region-based filtering
-        allRegionCodes = {'PF','F','C','P','T','O','L'};
-        selectedRegions = allRegionCodes(OPTIONS.Region);
+        selectedRegions = regexprep(OPTIONS.Region, '^.*\((.*?)\).*$', '$1');
         % Remove the leading character from Brainstorm scout region code
         scoutRegions = cellfun(@(x) x(2:end), {atlas.Scouts.Region}, 'UniformOutput', false);
         isKeep = ismember(scoutRegions, selectedRegions);
