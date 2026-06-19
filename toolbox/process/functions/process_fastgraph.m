@@ -50,10 +50,9 @@ sProcess.options.scouts.Comment = '';
 sProcess.options.scouts.Type    = 'scout';
 sProcess.options.scouts.Value   = {};
 % Color Fastgraph by region or by label
-sProcess.options.label2.Comment = '<U><B>Color Fastgraph by region or by label ?</U></B>';
-sProcess.options.label2.Type    = 'label';
-sProcess.options.colorscheme.Comment = {'Region', 'Label'; 'Region', 'Label'};
-sProcess.options.colorscheme.Type    = 'radio_label';
+sProcess.options.colorscheme.Comment = {'Region', 'Label', '<HTML><U><B>FastGraph color:</U></B></HTML>'; ...
+                                        'Region', 'Label', ''};
+sProcess.options.colorscheme.Type    = 'radio_linelabel';
 sProcess.options.colorscheme.Value   = 'Region';
 % Select regions to include
 sProcess.options.region.Comment = [{'Prefrontal', 'Frontal', 'Central', 'Parietal', 'Temporal', 'Occipital', 'Limbic'}, {'<HTML><U><B>Select region(s) to include:</U></B></HTML>'}];
