@@ -56,29 +56,9 @@ sProcess.options.colorscheme.Comment = {'Region', 'Label'; 'Region', 'Label'};
 sProcess.options.colorscheme.Type    = 'radio_label';
 sProcess.options.colorscheme.Value   = 'Region';
 % Select regions to include
-sProcess.options.label3.Comment = '<U><B>Select region(s) to include:</U></B>';
-sProcess.options.label3.Type    = 'label';
-sProcess.options.regionprefrontal.Comment = '1: Prefrontal';
-sProcess.options.regionprefrontal.Type    = 'checkbox';
-sProcess.options.regionprefrontal.Value   = 1;
-sProcess.options.regionfrontal.Comment = '2: Frontal';
-sProcess.options.regionfrontal.Type    = 'checkbox';
-sProcess.options.regionfrontal.Value   = 1;
-sProcess.options.regioncentral.Comment = '3: Central';
-sProcess.options.regioncentral.Type    = 'checkbox';
-sProcess.options.regioncentral.Value   = 1;
-sProcess.options.regionparietal.Comment = '4: Parietal';
-sProcess.options.regionparietal.Type    = 'checkbox';
-sProcess.options.regionparietal.Value   = 1;
-sProcess.options.regiontemporal.Comment = '5: Temporal';
-sProcess.options.regiontemporal.Type    = 'checkbox';
-sProcess.options.regiontemporal.Value   = 1;
-sProcess.options.regionoccipital.Comment = '6: Occipital';
-sProcess.options.regionoccipital.Type    = 'checkbox';
-sProcess.options.regionoccipital.Value   = 1;
-sProcess.options.regionlimbic.Comment = '7: Limbic';
-sProcess.options.regionlimbic.Type    = 'checkbox';
-sProcess.options.regionlimbic.Value   = 1;
+sProcess.options.region.Comment = [{'Prefrontal', 'Frontal', 'Central', 'Parietal', 'Temporal', 'Occipital', 'Limbic'}, {'<HTML><U><B>Select region(s) to include:</U></B></HTML>'}];
+sProcess.options.region.Type    = 'list_horizontal';
+sProcess.options.region.Value   = '';
 % Add separator
 sProcess.options.separator1.Type    = 'separator';
 % Method for sorting the data
@@ -132,13 +112,7 @@ function OPTIONS = GetOptions(sProcess)
     % Color figure by region or by label
     OPTIONS.ColorScheme = sProcess.options.colorscheme.Value;
     % Select regions to include
-    OPTIONS.Region = logical([sProcess.options.regionprefrontal.Value
-                              sProcess.options.regionfrontal.Value
-                              sProcess.options.regioncentral.Value
-                              sProcess.options.regionparietal.Value
-                              sProcess.options.regiontemporal.Value
-                              sProcess.options.regionoccipital.Value
-                              sProcess.options.regionlimbic.Value]);
+    OPTIONS.Region = sProcess.options.region.Value;
     % Method for sorting the data   
     OPTIONS.SortMethod = sProcess.options.sortmethod.Value;
     % Sort window
