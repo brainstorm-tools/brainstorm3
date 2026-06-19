@@ -84,9 +84,9 @@ sProcess.options.separator1.Type    = 'separator';
 % Method for sorting the data
 sProcess.options.label5.Comment = '<U><B>Select method to sort the data:</U></B>';
 sProcess.options.label5.Type    = 'label';
-sProcess.options.sortmethod.Comment = {'Root Mean Square', 'Max Absolute'};
-sProcess.options.sortmethod.Type    = 'radio';
-sProcess.options.sortmethod.Value   = 1;
+sProcess.options.sortmethod.Comment = {'Root Mean Square', 'Max Absolute'; 'Root Mean Square', 'Max Absolute'};
+sProcess.options.sortmethod.Type    = 'radio_label';
+sProcess.options.sortmethod.Value   = 'Root Mean Square';
 % Sort window
 sProcess.options.label6.Comment = '<U><B>Choose range to sort over:</U></B>';
 sProcess.options.label6.Type    = 'label';
@@ -445,7 +445,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
     end
     % Sort channels within each hemisphere using the selected metric
     switch OPTIONS.SortMethod        
-        case 1 % Root Mean Square
+        case 'Root Mean Square'
             if ~isempty(subplotData.leftData)
                 leftDataRms = sqrt(sum(subplotData.leftData(:,sortWindowIdx).^2, 2));
                 leftDataRms(isnan(leftDataRms)) = -Inf;
@@ -456,7 +456,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
                 rightDataRms(isnan(rightDataRms)) = -Inf;
                 [sSorted.Vals.Right, sSorted.Idxs.Right] = sort(rightDataRms,'ascend');
             end        
-        case 2 % Max Absolute
+        case 'Max Absolute'
             if ~isempty(subplotData.leftData)
                 leftDataMax = max(abs(subplotData.leftData(:,sortWindowIdx)),[],2);
                 leftDataMax(isnan(leftDataMax)) = -Inf;
