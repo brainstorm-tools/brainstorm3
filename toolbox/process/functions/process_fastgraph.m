@@ -67,13 +67,12 @@ sProcess.options.sortmethod.Comment = {'Root Mean Square', 'Max Absolute'; 'Root
 sProcess.options.sortmethod.Type    = 'radio_label';
 sProcess.options.sortmethod.Value   = 'Root Mean Square';
 % Sort window
-sProcess.options.label6.Comment = '<U><B>Choose range to sort over:</U></B>';
-sProcess.options.label6.Type    = 'label';
-sProcess.options.label7.Comment  = ['<HTML><I><FONT color="#777777">' ...
+sProcess.options.label6.Comment  = ['<HTML><U><B>Choose range to sort over:</U></B>' ...
+                                    '<I><FONT color="#777777">' ...
                                     'Early latency:&nbsp;&nbsp;&nbsp; 0-60 ms <BR>' ...
                                     'Middle latency: 60-250 ms <BR>' ...
-                                    'Late latency:&nbsp;&nbsp;&nbsp;&nbsp; 250-600 ms</FONT></I>'];
-sProcess.options.label7.Type     = 'label';
+                                    'Late latency:&nbsp;&nbsp;&nbsp;&nbsp; 250-600 ms</FONT></I></HTML>'];
+sProcess.options.label6.Type     = 'label';
 sProcess.options.sortwindow.Comment = 'Sort range: ';
 sProcess.options.sortwindow.Type    = 'timewindow';
 sProcess.options.sortwindow.Value   = [];
@@ -88,9 +87,9 @@ sProcess.options.edgealpha.Comment = 'Edge transparency of plot: ';
 sProcess.options.edgealpha.Type    = 'value';
 sProcess.options.edgealpha.Value   = {0.05,' ', 2};
 % Exclude contacts within a certain distance from the stimulation sites
-sProcess.options.label8.Comment  = ['<HTML><I><FONT color="#777777">' ...
+sProcess.options.label7.Comment  = ['<HTML><I><FONT color="#777777">' ...
                                     'Exclude analysis of contacts within this distance from the stimulation site</FONT></I>'];
-sProcess.options.label8.Type     = 'label';
+sProcess.options.label7.Type     = 'label';
 sProcess.options.excluderadius.Comment = 'Exclusion zone radius: ';
 sProcess.options.excluderadius.Type    = 'value';
 sProcess.options.excluderadius.Value   = {20,'mm', 0};
