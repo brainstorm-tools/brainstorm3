@@ -1,5 +1,5 @@
-function varargout = process_remove_drift_emd(varargin)
-% PROCESS_REMOVE_DRIFT_EMD: Remove drift using Empirical Mode Decomposition (EMD)
+function varargout = process_detrend_emd( varargin )
+% PROCESS_DETREND_EMD: Remove a non-linear trend in a signal with EMD
 %
 % This process:
 %   1) Decomposes each channel into intrinsic mode functions using EMD
@@ -7,7 +7,7 @@ function varargout = process_remove_drift_emd(varargin)
 %   3) Keeps only modes above the selected cutoff frequency
 %
 % USAGE:
-%   OutputFiles = process_remove_drift_emd('Run', sProcess, sInputs)
+%   OutputFiles = process_detrend_emd('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,45 +28,62 @@ function varargout = process_remove_drift_emd(varargin)
 % =============================================================================@
 %
 % Authors: Kenneth N. Taylor, 2020
-%          John C. Mosher, 2020          
+%          John C. Mosher, 2020
 %          Chinmay Chinara, 2026
 
 eval(macro_method);
 end
 
+
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
-% Description the process
-sProcess.Comment     = 'Remove drift using EMD';
-sProcess.FileTag     = 'emd';
-sProcess.Category    = 'Filter';
-sProcess.SubGroup    = 'FAST graph';
-sProcess.Index       = 1302;
-sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
-% Definition of the input accepted by this process
-sProcess.InputTypes  = {'data'};
-sProcess.OutputTypes = {'data'};
-sProcess.nInputs     = 1;
-sProcess.nMinFiles   = 1;
-% EMD cutoff frequency
-sProcess.options.cutoff.Comment = 'EMD cutoff frequency: ';
-sProcess.options.cutoff.Type    = 'value';
-sProcess.options.cutoff.Value   = {2, 'Hz', 2};
+    % Description the process
+    sProcess.Comment     = 'Remove non-linear trend with EMD';
+    sProcess.FileTag     = 'emd';
+    sProcess.Category    = 'Filter';
+    sProcess.SubGroup    = 'Pre-process';
+    sProcess.Index       = 61.5;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
+    % Definition of the input accepted by this process
+    sProcess.InputTypes  = {'raw', 'data', 'results', 'matrix'};
+    sProcess.OutputTypes = {'raw', 'data', 'results', 'matrix'};
+    sProcess.nInputs     = 1;
+    sProcess.nMinFiles   = 1;
+    % Default values for some options
+    sProcess.processDim  = 1;    % Process channel by channel
+
+    % Definition of the options
+    % === Sensor types
+    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.sensortypes.Type    = 'text';
+    sProcess.options.sensortypes.Value   = 'MEG, EEG';
+    sProcess.options.sensortypes.InputTypes = {'data', 'raw'};
+    % === EMD cutoff frequency
+    sProcess.options.emdcutoff.Comment = 'EMD cutoff frequency: ';
+    sProcess.options.emdcutoff.Type    = 'value';
+    sProcess.options.emdcutoff.Value   = {2, 'Hz', 2};
 end
+
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
 end
 
+
 %% ===== RUN =====
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
-    % Get process option values
-    CutoffFreq = sProcess.options.cutoff.Value{1};
-    if CutoffFreq <= 0
-        bst_report('Error', sProcess, [], 'EMD cutoff frequency must be positive.');
-        return;
-    end  
+    % Get options
+    if isfield(sProcess.options, 'emdcutoff') && isfield(sProcess.options.emdcutoff, 'Value') && iscell(sProcess.options.emdcutoff.Value) && ~isempty(sProcess.options.emdcutoff.Value)
+        CutoffFreq = sProcess.options.emdcutoff.Value{1};
+    else
+        CutoffFreq = [];
+    end
+    if isempty(CutoffFreq) || isequal(CutoffFreq, 0)
+        bst_report('Error', sProcess, [], 'Invalid cutoff frequency value.');
+        sInput = [];
+        return
+    end
 
     % Sampling frequency
     Fs = 1 / mean(diff(sInput.TimeVector));
@@ -82,8 +99,14 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     end
 
     % Add history comment
-    sInput.HistoryComment = sprintf('Removed drift using EMD: cutoff frequency = %.3f Hz', CutoffFreq);
+    sInput.HistoryComment = sprintf('Removed non-linear trend with EMD: cutoff frequency = %.3f Hz', CutoffFreq);
+
+    % Do not keep the Std field in the output
+    if isfield(sInput, 'Std') && ~isempty(sInput.Std)
+        sInput.Std = [];
+    end
 end
+
 
 %% ===== IMF MODE STATISTICS =====
 function modeFreq = ImfStats(imf, Fs)
