@@ -985,7 +985,10 @@ function SetSelectedContacts(iSelCont)
             SelContNames = {iSelCont};
         end
         % Get Channel selected for current DS
-        [~, ~, iDS] = GetSelectedElectrodes();
+        [~, ~, iDSall] = GetSelectedElectrodes();
+        if ~isempty(iDSall)
+            iDS = iDSall(1);
+        end
         [~, iSelChan] = bst_figures('GetSelectedChannels', iDS);
         if isempty(iSelChan)
             return

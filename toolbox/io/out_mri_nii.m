@@ -48,8 +48,11 @@ if (nargin < 3) || isempty(typeMatlab)
 end
 % Little Endian
 byteOrder = 'l'; 
+% Check for .nii.gz
+OutputFileNoGz = regexprep(OutputFile, '\.nii\.gz$', '.nii');
+isNiiGz = ~strcmp(OutputFile, OutputFileNoGz);
 % Output file
-[OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputFile);
+[OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputFileNoGz);
 
 % ===== LOAD BRAINSTORM MRI =====
 % If input is a filename
@@ -335,6 +338,12 @@ if ~isHdrOnly
         end
     end
     fclose(fid);
+end
+
+% Compress with gzip
+if isNiiGz
+    gzip(HeaderFile, OutputPath);
+    file_delete(HeaderFile, 1);
 end
 
 end

@@ -44,14 +44,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
     sProcess.Comment     = 'Detect single-pulse triggers in SPES';
     sProcess.Category    = 'Custom';
-    sProcess.SubGroup    = 'FAST graph';
-    sProcess.Index       = 1300;
+    sProcess.SubGroup    = 'Events';
+    sProcess.Index       = 48.5;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data','raw'};
     sProcess.OutputTypes = {'data','raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Update stimulation start event label
     % If empty, the original Nihon Kohden label "Stim Start" is kept
     sProcess.options.stimstartlabel.Comment = 'Update stimulation start event label (empty=''Stim Start''): ';
