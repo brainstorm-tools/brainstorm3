@@ -99,8 +99,29 @@ function OutputFiles = Run(sProcess, sInputs)
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
+    % Find new metaT0
+    all_t0 = {};
+    for iFile = 1:length(sMetaData)
+        if ~isempty(sMetaData(iFile).F.t0)
+            all_t0{end+1} = sMetaData(iFile).F.t0;
+        end
+    end
+    all_t0 = unique(all_t0);
+    if length(all_t0) == 1
+        NewT0 = all_t0{1};
+    elseif length(all_t0) > 1
+        file_str = cell(length(sInputs), 1);
+        for iFile = 1:length(sInputs)
+            file_str{iFile} = sprintf('%s : %s', sInputs(iFile).Condition, sMetaData(iFile).F.t0);
+        end
+        ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
+        NewT0 = sMetaData(ind).F.t0;
+    else
+        NewT0 = str_datetime(datetime('now'));
+    end
+    
     % Study for combined recordings
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
@@ -271,6 +292,7 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
     sOutMat.F           = sFileOut;
+    sOutMat.F.t0        = NewT0;
     sOutMat.format      = 'BST-BIN';
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
@@ -284,7 +306,7 @@ function OutputFiles = Run(sProcess, sInputs)
         sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
-            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';
+            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime, 'linear', 'extrap')';
         end
         % Write these channels
         out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataToCombine.F);

@@ -92,10 +92,12 @@ function OutputFiles = Run(sProcess, sInputs)
             sData = in_bst_data(sInputs(iInput).FileName, 'Time', 'Events');
             sOldTiming{iInput}.Time   = sData.Time;
             sOldTiming{iInput}.Events = sData.Events;
+            sOldTiming{iInput}.T0     = sData.T0;
         elseif strcmp(sInputs(iInput).FileType, 'raw')  % Continuous data file
             sDataRaw = in_bst_data(sInputs(iInput).FileName, 'Time', 'F');
             sOldTiming{iInput}.Time   = sDataRaw.Time;
             sOldTiming{iInput}.Events = sDataRaw.F.events;
+            sOldTiming{iInput}.T0     = sDataRaw.F.t0;
         end
         fs(iInput) = 1/(sOldTiming{iInput}.Time(2) -  sOldTiming{iInput}.Time(1)); % in Hz
         iSyncEvt = strcmp({sOldTiming{iInput}.Events.label}, syncEventName);
@@ -180,13 +182,15 @@ function OutputFiles = Run(sProcess, sInputs)
     % Compute new time vectors, and new events times
     sNewTiming = sOldTiming;
     pool_events = [];
+    OffsetTime = zeros(1, nInputs);
     for iInput = 1:nInputs
         index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
         sNewTiming{iInput}.Time = new_times{iInput}(index) - new_times{iInput}(index(1));
         tmp_events = sNewTiming{iInput}.Events;
+        OffsetTime(iInput) = - mean_shifting(iInput) - new_times{iInput}(index(1));
         for i_event = 1:length(tmp_events)
             % Update event times
-            tmp_events(i_event).times = tmp_events(i_event).times - mean_shifting(iInput) - new_times{iInput}(index(1));
+            tmp_events(i_event).times = tmp_events(i_event).times + OffsetTime(iInput);
             % Remove events outside new time range
             timeRange = [sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
             iEventTimesDel = all(or(tmp_events(i_event).times < timeRange(1), tmp_events(i_event).times > timeRange(2)), 1);
@@ -217,6 +221,25 @@ function OutputFiles = Run(sProcess, sInputs)
         sNewTiming{iInput}.Events = pool_events;
     end
 
+    % Find the correct acquisition date
+    has_T0 = cellfun(@(x)~isempty(x.T0), sOldTiming);
+    if sum(has_T0) == 1
+        iInput = find(has_T0);
+        ts0 = datetime(sOldTiming{iInput}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
+        new_T0 = str_datetime(ts0 - duration(0,0, OffsetTime(iInput)));
+    elseif sum(has_T0) >= 2
+        iInput = find(has_T0);
+        file_str = cell(length(iInput), 1);
+        for iFile = 1:length(iInput)
+            file_str{iFile} = sprintf('%s : %s', sInputs(iInput(iFile)).Condition, sOldTiming{iInput(iFile)}.T0);
+        end
+        ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
+        iInput = iInput(ind);
+        ts0 = datetime(sOldTiming{iInput}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
+        new_T0 = str_datetime(ts0 -  duration(0,0, OffsetTime(iInput)));
+    else
+        new_T0 = str_datetime(datetime('now'));
+    end
     bst_progress('inc', nInputs);
     bst_progress('text', 'Saving files...');
 
@@ -229,6 +252,7 @@ function OutputFiles = Run(sProcess, sInputs)
             sDataSync.Comment = [sDataSync.Comment ' | Synchronized '];
             sDataSync.Time    = sNewTiming{iInput}.Time;
             sDataSync.Events  = sNewTiming{iInput}.Events;
+            sDataSync.T0      = new_T0;
             % Update data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
             sDataSync.F = sDataSync.F(:,index);
@@ -246,7 +270,7 @@ function OutputFiles = Run(sProcess, sInputs)
         else
             % New raw condition
             newCondition = [sInputs(iInput).Condition '_synced'];
-            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition);
+            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_T0));
             sNewStudy = bst_get('Study', iNewStudy);
             % Sync videos
             sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
@@ -277,6 +301,7 @@ function OutputFiles = Run(sProcess, sInputs)
             sFileIn = sDataRawSync.F;
             % Set new time and events
             sFileIn.events = sNewTiming{iInput}.Events;
+            sFileIn.t0 = new_T0;
             sFileIn.header.nsamples = length( sNewTiming{iInput}.Time);
             sFileIn.prop.times      = [ sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
             sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
@@ -290,7 +315,12 @@ function OutputFiles = Run(sProcess, sInputs)
             % History: List of sync files
             sOutMat = bst_history('add', sOutMat, 'sync', ['List of synchronized files (event = "', syncEventName , '"):']);
             for ix = 1:nInputs
-                sOutMat = bst_history('add', sOutMat, 'sync', [' - ' sInputs(ix).FileName]);
+                if ix == iInput
+                    offset_diff =  duration(0, 0, -OffsetTime(iInput));
+                else
+                    offset_diff =  duration(0, 0, OffsetTime(ix) -OffsetTime(iInput));
+                end
+                sOutMat = bst_history('add', sOutMat, 'sync', sprintf(' - %s (offset: %s)', sInputs(ix).FileName, offset_diff));
             end
             % Update raw data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
