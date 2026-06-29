@@ -174,17 +174,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelElecOptions.add('br hfill', jPanelModel);
 
                 % Number of contacts
-                gui_component('label', jPanelElecOptions, 'br', 'Number of contacts: ');
+                jLabelContactCount = gui_component('label', jPanelElecOptions, 'br', 'Number of contacts: ');
                 jTextNcontacts = gui_component('text', jPanelElecOptions, 'tab', '');
                 jTextNcontacts.setHorizontalAlignment(jTextNcontacts.RIGHT);
                 % Contacts spacing
-                gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
-                jTextSpacing = gui_component('text', jPanelElecOptions, 'tab', '');
+                jLabelContactSpace = gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
+                jTextSpacing = gui_component('text', jPanelElecOptions, 'br hfill', '');
                 jTextSpacing.setHorizontalAlignment(jTextNcontacts.RIGHT);
                 gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts length
                 jLabelContactLength = gui_component('label', jPanelElecOptions, 'br', 'Contact length: ');
-                jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
+                jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'br hfill', '');
                 gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts diameter
                 gui_component('label', jPanelElecOptions, 'br', 'Contact diameter: ');
@@ -248,6 +248,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jTextNcontacts',      jTextNcontacts, ...
                                   'jTextSpacing',        jTextSpacing, ...
                                   'jTextContactDiam',    jTextContactDiam, ...
+                                  'jLabelContactCount',  jLabelContactCount, ...
+                                  'jLabelContactSpace',  jLabelContactSpace, ...
                                   'jLabelContactLength', jLabelContactLength, ...
                                   'jTextContactLength',  jTextContactLength, ...
                                   'jLabelElecLength',    jLabelElecLength, ...
@@ -698,6 +700,9 @@ function UpdateElecProperties(isUpdateModelList)
     
     % Update control labels
     if ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'SEEG')
+        ctrl.jLabelContactCount.setText('Number of contacts (Nc): ');
+        ctrl.jLabelContactSpace.setToolTipText('Single value, or one per contact spacing (Nc - 1)');
+        ctrl.jLabelContactLength.setToolTipText('Single value, or one per contact (Nc)');
         ctrl.jLabelContactLength.setText('Contact length: ');
         ctrl.jLabelElecLength.setVisible(1);
         ctrl.jTextElecLength.setVisible(1);
@@ -705,6 +710,9 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jLabelElecDiameter.setText('Electrode diameter: ');
         ctrl.jLabelElecDiamUnits.setText(' mm');
     else
+        ctrl.jLabelContactCount.setText('Number of contacts: ');
+        ctrl.jLabelContactSpace.setToolTipText('');
+        ctrl.jLabelContactLength.setToolTipText('');
         ctrl.jLabelContactLength.setText('Contact height: ');
         ctrl.jLabelElecLength.setVisible(0);
         ctrl.jTextElecLength.setVisible(0);
@@ -750,8 +758,8 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {0,1024,1},  'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
-    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'list',     2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'list',     2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
     gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
     gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,100}, 'optional', 2, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
@@ -1272,6 +1280,21 @@ function ValidateOptions(optName, jControl)
     if isempty(val) && (length(sSelElec) > 1)
         return;
     end
+    % Check number of inputs for contact spacings and lengths for SEEG electrodes
+    if (strcmpi(optName, 'ContactSpacing') || strcmpi(optName, 'ContactLength')) && length(val) > 1
+        nc = round(str2num(ctrl.jTextNcontacts.getText()));
+        if ctrl.jRadioSeeg.isSelected() && ~isempty(nc)
+            if (strcmpi(optName, 'ContactSpacing') && (length(val) ~= (nc-1)) )
+                jControl.setText(panel_time('FormatValue', sSelElec.ContactSpacing*1000, '', 2));
+                return
+            end
+            if (strcmpi(optName, 'ContactLength') && (length(val) ~= nc) )
+                jControl.setText(panel_time('FormatValue', sSelElec.ContactLength*1000, '', 2));
+                return
+            end
+        end
+    end
+
     % Update field for all the selected electrodes
     for iElec = 1:length(sSelElec)
         if ~isequal(sSelElec(iElec).(optName), val)
@@ -2180,9 +2203,9 @@ function AddElectrodeModel(sNewModel)
             % Ask for all the electrode options
             res = java_dialog('input', {...
                 'Manufacturer and model (SEEG):', ...
-                'Number of contacts:', ...
-                'Contact spacing (mm):', ...
-                'Contact length (mm):', ...
+                'Number of contacts (Nc):', ...
+                '<HTML>Contact spacing (mm): <BR><FONT color="#707070"> Single value, or one per contact spacing (Nc - 1)', ...
+                '<HTML>Contact length (mm): <BR><FONT color="#707070"> Single value, or one per contact (Nc)', ...
                 'Contact diameter (mm):', ...
                 'Electrode diameter (mm):', ...
                 'Electrode length (mm):'}, 'Add new model', [], ...
@@ -2214,6 +2237,17 @@ function AddElectrodeModel(sNewModel)
     elseif isempty(sNew.ContactNumber) || isempty(sNew.ContactSpacing) || isempty(sNew.ContactDiameter) || isempty(sNew.ContactLength) || isempty(sNew.ElecDiameter) || isempty(sNew.ElecLength)
         bst_error('Invalid values.', 'Add new model', 0);
         return;
+    end
+    % Check number of lengths and spacing
+    if ctrl.jRadioSeeg.isSelected()
+        if length(sNew.ContactSpacing) > 1 && (length(sNew.ContactSpacing) ~= (sNew.ContactNumber-1))
+            bst_error('Invalid number of contact spacings.', 'Add new model', 0);
+            return
+        end
+        if length(sNew.ContactLength) > 1 && (length(sNew.ContactLength) ~= sNew.ContactNumber)
+            bst_error('Invalid number of contact lengths.', 'Add new model', 0);
+            return
+        end
     end
     % Add new electrode
     sModels(end+1) = sNew;
@@ -2833,11 +2867,11 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             ctVertex = [];
             
             % === SPHERE ===
-            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
+            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && all(sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
                 % Define radius of the sphere; Using ctSize of half the length, makes the sphere to have the same diameters as the contact length, thus spacing between spheres is the same as the space between contacts
                 if strcmpi(sElec.Type, 'SEEG')
-                    ctSize = [1 1 1] .* sElec.ContactLength ./ 2;
+                    ctSize = (sElec.ContactLength' ./ 2) * [1 1 1];
                 else
                     ctSize = [1 1 1] .* sElec.ContactDiameter ./ 2;
                 end
@@ -2898,9 +2932,10 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
                         'UserData',    sElec.Name};
                 end
                 % Plot contacts
-                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && ~any(all(ChanLoc(iElecChan,:)==0,2),1) && isValidLoc
+                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && all(sElec.ContactLength > 0) && ~any(all(ChanLoc(iElecChan,:)==0,2),1) && isValidLoc
                     % Contact size and orientation
-                    ctSize   = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2, sElec.ContactLength];
+                    ctSize = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2];
+                    ctSize = cat(2, repmat(ctSize, length(sElec.ContactLength), 1), sElec.ContactLength');
                     ctOrient = repmat(elecOrient, length(iElecChan), 1);
                     ctColor  = [.9,.9,0];
                     % Create contacts geometry
@@ -2988,7 +3023,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
         ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
         % SEEG: Sphere
         if strcmpi(Modality, 'SEEG')
-            ctSize    = [1 1 1] .* ElectrodeConfig.ContactLength ./ 2;
+            ctSize    = (ElectrodeConfig.ContactLength' ./ 2) * [1 1 1];
             tmpVertex = sphereVertex;
             tmpFaces  = sphereFaces;
             ctOrient  = [];
@@ -3042,8 +3077,6 @@ end
 
 %% ===== PLOT 3D CONTACTS =====
 function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, ChanOrient)
-    % Apply contact size
-    ctVertex = bst_bsxfun(@times, ctVertex, ctSize);
     % Duplicate this contact
     nChan  = size(ChanLoc,1);
     nVert  = size(ctVertex,1);
@@ -3051,6 +3084,12 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
     Vertex = zeros(nChan*nVert, 3);
     Faces  = zeros(nChan*nFace, 3);
     for iChan = 1:nChan
+        % Apply contact size
+        if size(ctSize, 1) == 1
+            ctVertexTmp = bst_bsxfun(@times, ctVertex, ctSize);
+        else
+            ctVertexTmp = bst_bsxfun(@times, ctVertex, ctSize(iChan, :));
+        end
         % Apply orientation
         if ~isempty(ChanOrient) && ~isequal(ChanOrient(iChan,:), [0 0 1])
             v1 = [0;0;1];
@@ -3061,9 +3100,9 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
             axis_skewed = [ 0 -axis(3) axis(2) ; axis(3) 0 -axis(1) ; -axis(2) axis(1) 0];
             R = eye(3) + sin(angle)*axis_skewed + (1-cos(angle))*axis_skewed*axis_skewed;
             % Apply rotation to the vertices of the electrode
-            ctVertexOrient = ctVertex * R';
+            ctVertexOrient = ctVertexTmp * R';
         else
-            ctVertexOrient = ctVertex;
+            ctVertexOrient = ctVertexTmp;
         end
         % Set electrode position
         ctVertexOrient = bst_bsxfun(@plus, ChanLoc(iChan,:), ctVertexOrient);
@@ -3282,7 +3321,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                 switch (Method)
                     case 'default'
                         % Compute the default position of the contact
-                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+                        if isscalar(sElectrodes(iElec).ContactSpacing)
+                            Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+                        else
+                            CumulativeSpacing = cumsum([0, sElectrodes(iElec).ContactSpacing]);
+                            Channels(iChan(i)).Loc = elecTip + CumulativeSpacing(i) * orient;
+                        end
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;
