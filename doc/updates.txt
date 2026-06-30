@@ -1,3 +1,15 @@
+June 2026
+- iEEG: Check and load default electrode models at startup
+- iEEG: Add support for non-uniform contact length/spacing SEEG electrodes
+- GUI: Bidirectional channel selection in time series figure and channel editor
+- GUI: Improve interaction, iEEG panel and time series figure
+- TimeFreq: Wavelet edge effects set to 99% of impulse response energy
+- IO: Correct read of montages/projectors from FieldTrip files
+- IO: Support exporting anatomy volumes as .nii.gz
+- Process: Process to detrend time series using EMD
+- Bugfix: Detect bad channels peak-to-peak only applied on MEG sensors
+- Bugfix: PCA flattening sources from mixed models
+--------------------------------------------------------------
 May 2026
 - Anatomy: New template: ICBM152 2026. FreeSurfer 8.2. New cortical atlases
 - Anatomy: New MNI parcellations: USCBrain, BCI-DNI_brain, YBA and JulichBrainV3
