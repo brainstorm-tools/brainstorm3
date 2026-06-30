@@ -2084,7 +2084,7 @@ function infoMsg = UpdateDefaultElectrodeModels()
         strModels = strjoin(strModels, char(10));
         infoMsg = [infoMsg, 10 ...
                    strIndent, 'Cannot update iEEG default electrode models:' 10 ...
-                   strIndent, 'Rename the following electrode models and restart Brainstorm' 10 strModels];
+                   strIndent, 'Backup and delete the following electrode models. Then, restart Brainstorm' 10 strModels];
         return
     end
     % Update global
@@ -2238,9 +2238,10 @@ function RemoveElectrodeModel()
     end
     % Do not remove if it is a default electrode model
     sModelsDefault = GetElectrodeModels('default');
-    if ismember(sModels(iModel).Model, {sModelsDefault.Model})
+    [~ , iDefModel] = ismember(sModels(iModel).Model, {sModelsDefault.Model});
+    if iDefModel > 0 && isequal(sModels(iModel), sModelsDefault(iDefModel))
         java_dialog('warning', [...
-            'This a Brainstorm default electrode model and cannot deleted.' 10], ...
+            'This is a Brainstorm default electrode model and cannot be deleted.' 10], ...
             'Read-only: Default electrode model ');
         return
     end
