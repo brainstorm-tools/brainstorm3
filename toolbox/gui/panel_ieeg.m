@@ -164,6 +164,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     % Add/remove models
                     gui_component('button', jPanelModel, [],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode model', @(h,ev)bst_call(@AddElectrodeModel));
                     gui_component('button', jPanelModel,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove electrode model', @(h,ev)bst_call(@RemoveElectrodeModel));
+                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_COPY, TB_DIM},  'Copy current electrode model', @(h,ev)bst_call(@CopyElectrodeModel));
                     % Save/load models
                     gui_component('button', jPanelModel, [],[], {IconLoader.ICON_SAVE, TB_DIM}, 'Save electrode model to file', @(h,ev)bst_call(@SaveElectrodeModel));
                     gui_component('button', jPanelModel,[],[], {IconLoader.ICON_FOLDER_OPEN, TB_DIM}, 'Load electrode model from file', @(h,ev)bst_call(@LoadElectrodeModel));
@@ -2252,6 +2253,28 @@ function RemoveElectrodeModel()
     GlobalData.Preferences.IntraElectrodeModels = sModels;
     % Update list of models
     UpdateElecProperties();
+end
+
+
+%% ===== COPY ELECTRODE MODEL =====
+function CopyElectrodeModel(isAskName)
+    if (nargin < 1) || isempty(isAskName)
+        isAskName = 1;
+    end
+    % Get current electrode model
+    [iModel, sModels] = GetSelectedModel();
+    sModel = sModels(iModel);
+    newModelName = [sModel.Model, '_copy'];
+    % Ask user for a name
+    if isAskName
+        newModelName = java_dialog('input', 'Please enter a name for the electrode model:', 'New model', [], newModelName);
+        if isempty(newModelName)
+            return;
+        end
+    end
+    sModel.Model = newModelName;
+    % Create new model
+    AddElectrodeModel(sModel);
 end
 
 
