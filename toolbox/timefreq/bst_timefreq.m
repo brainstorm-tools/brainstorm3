@@ -380,6 +380,9 @@ for iData = 1:length(Data)
                     OPTIONS.TimeVector = sMat.Time;
                 % Full results: Proces the sources time series
                 else
+                    if iscell(ResultsMat.ImageGridAmp)
+                        ResultsMat.ImageGridAmp = bst_multiply_cellmat(ResultsMat.ImageGridAmp);
+                    end
                     F    = ResultsMat.ImageGridAmp;
                     nAvg = ResultsMat.nAvg;
                     OPTIONS.TimeVector = ResultsMat.Time;
