@@ -336,6 +336,10 @@ for iData = 1:length(Data)
                 Atlas         = ResultsMat.Atlas;
                 HeadModelType = ResultsMat.HeadModelType;
                 HeadModelFile = ResultsMat.HeadModelFile;
+                % Compute full results if they are saved as factor decomposition
+                if isfield(ResultsMat,'ImageGridAmp') && iscell(ResultsMat.ImageGridAmp)
+                    ResultsMat.ImageGridAmp = bst_multiply_cellmat(ResultsMat.ImageGridAmp);
+                end
                 if isempty(GridAtlas)
                     nSources = max(size(ResultsMat.ImageGridAmp,1), size(ResultsMat.ImagingKernel,1)) ./ ResultsMat.nComponents;
                 else
@@ -380,9 +384,6 @@ for iData = 1:length(Data)
                     OPTIONS.TimeVector = sMat.Time;
                 % Full results: Proces the sources time series
                 else
-                    if iscell(ResultsMat.ImageGridAmp)
-                        ResultsMat.ImageGridAmp = bst_multiply_cellmat(ResultsMat.ImageGridAmp);
-                    end
                     F    = ResultsMat.ImageGridAmp;
                     nAvg = ResultsMat.nAvg;
                     OPTIONS.TimeVector = ResultsMat.Time;
