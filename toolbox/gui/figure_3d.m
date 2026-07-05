@@ -2577,6 +2577,57 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
     end
 end
 
+%% ===== SET SLICED DIPOLES VISIBILITY =====
+% Show only the dipoles that belong to the current MRI slice, for the volume contact
+% sheet (view_contactsheet). Without this, every dipole is drawn on every tile because
+% the slice loop only moves the MRI cut plane. Each dipole is assigned to its single
+% nearest slice, so it appears on exactly one tile (never smeared across all slices,
+% and never duplicated onto two adjacent slices).
+%   hFig      : 3D figure showing MRI slices
+%   dim       : slice dimension (1=sagittal, 2=coronal, 3=axial)
+%   allSlices : slice positions sampled by the contact sheet (voxel indices along dim)
+%   iCurSlice : index into allSlices of the slice currently displayed;
+%               pass 0 to restore full visibility of all dipoles (after the contact sheet)
+function SetSlicedDipolesVisibility(hFig, dim, allSlices, iCurSlice) %#ok<DEFNU>
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    if isempty(hAxes)
+        return;
+    end
+    hPoint = [findobj(hAxes, 'Tag', 'DipolesLoc'); findobj(hAxes, 'Tag', 'DipolesOrient')];
+    if isempty(hPoint)
+        return;
+    end
+    % Restore mode: make all dipoles visible again
+    if (iCurSlice <= 0)
+        set(hPoint, 'Visible', 'on');
+        return;
+    end
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    if isempty(sMri)
+        return;
+    end
+    allSlices = allSlices(:)';
+    % Outer tolerance: half the largest gap between sampled slices (in voxels). Dipoles
+    % farther than this from every slice (e.g. in the skipped border region) stay hidden.
+    if (numel(allSlices) > 1)
+        sliceTol = max(abs(diff(allSlices))) / 2;
+    else
+        sliceTol = Inf;
+    end
+    % Nearest-slice assignment: each dipole is shown on its single closest slice
+    for i = 1:numel(hPoint)
+        xd = get(hPoint(i), 'XData');  yd = get(hPoint(i), 'YData');  zd = get(hPoint(i), 'ZData');
+        v = cs_convert(sMri, 'scs', 'voxel', [xd(1), yd(1), zd(1)]);
+        [minDist, iNearest] = min(abs(allSlices - v(dim)));
+        if (iNearest == iCurSlice) && (minDist <= sliceTol)
+            set(hPoint(i), 'Visible', 'on');
+        else
+            set(hPoint(i), 'Visible', 'off');
+        end
+    end
+end
+
+
 %% ===== PLOT FIBERS =====
 function varargout = PlotFibers(hFig, FibPoints, Colors)
     dims = size(Colors);

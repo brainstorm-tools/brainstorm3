@@ -309,6 +309,8 @@ for iSample = 1:nImages
             slicesPos = [NaN NaN NaN];
             slicesPos(dim) = Samples(iSample);
             panel_surface('PlotMri', hFig, slicesPos);
+            % Show only the dipoles that belong to this slice (not on every tile)
+            figure_3d('SetSlicedDipolesVisibility', hFig, dim, Samples, iSample);
     end
     % Get screen capture
     switch lower(inctype)
@@ -329,6 +331,8 @@ switch lower(inctype)
         TessInfo(iTess).CutsPosition = initPos;
         setappdata(hFig, 'Surface', TessInfo);
         figure_3d('UpdateMriDisplay', hFig, dim, TessInfo, iTess);
+        % Restore full dipole visibility after the contact sheet
+        figure_3d('SetSlicedDipolesVisibility', hFig, dim, Samples, 0);
 end
 % Backup current view
 if is3D && dim ~= 0
