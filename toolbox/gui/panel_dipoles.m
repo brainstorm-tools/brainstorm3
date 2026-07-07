@@ -1118,6 +1118,7 @@ function DisplayDipolesInSlices(hFig, slices, refSlices)
 
     % Dimensions to check
     dims = find(~isnan(slices));
+    slices = slices(dims);
     refSlices = refSlices(dims);
     locs = locs(:,dims);
 
