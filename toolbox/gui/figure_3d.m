@@ -2584,7 +2584,6 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
     end
 end
 
-
 %% ===== PLOT FIBERS =====
 function varargout = PlotFibers(hFig, FibPoints, Colors)
     dims = size(Colors);
