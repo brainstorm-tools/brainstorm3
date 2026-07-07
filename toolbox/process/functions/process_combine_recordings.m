@@ -216,6 +216,38 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
 
+        % Concat MEG information
+        if  ~isempty(tmpChannelMat.TransfMeg)
+            if isempty(NewChannelMat.TransfMeg)
+                NewChannelMat.TransfMeg         = tmpChannelMat.TransfMeg;
+                NewChannelMat.TransfMegLabels   = tmpChannelMat.TransfMegLabels;
+                NewChannelMat.MegRefCoef        = tmpChannelMat.MegRefCoef;
+            else
+                warning('Cannot combine multiple MEG transformation')
+            end
+        end
+
+        if  ~isempty(tmpChannelMat.TransfEeg)
+            if isempty(NewChannelMat.TransfEeg)
+                NewChannelMat.TransfEeg = tmpChannelMat.TransfEeg;
+                NewChannelMat.TransfEegLabels = tmpChannelMat.TransfEegLabels;
+            else
+                warning('Cannot combine multiple EEG transformation')
+            end
+        end
+
+        if  ~isempty(tmpChannelMat.HeadPoints)
+            NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+        end
+
+        if  isfield(tmpChannelMat, 'SCS') && ~isempty(tmpChannelMat.SCS)
+            if ~isfield(NewChannelMat, 'SCS' ) || isempty(NewChannelMat.SCS)
+                NewChannelMat.SCS = tmpChannelMat.SCS;
+            else
+                warning('Cannot combine different SCS transformation')
+            end
+        end
+
         % New channel count
         NewChannelsN = length(NewChannelMat.Channel);
         % Progress
