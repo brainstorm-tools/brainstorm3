@@ -137,6 +137,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToggleAllTimes.setSelected(1);
         jButtonSetSel = gui_component('Button', jPanelOptions, '', 'Set', Insets(1,5,1,5), 'Set the current time as the preferred time for the loaded group(s)', @SetSelectedTime_Callback);
         jButtonSetSel.setFocusable(0);
+        jToggleCurSlices = gui_component('Checkbox', jPanelOptions, 'br', 'Show only on current slices', [], 'Show only dipoles on the current slices', @(h,ev)FireUpdateDisplayOptions);
+        jToggleCurSlices.setSelected(0);
     jPanelNew.add(jPanelOptions);
     
     % ===== PANEL: COLOR =====
@@ -197,6 +199,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jSliderConfVol',        jSliderConfVol, ...
                                   'jToggleSelTimes',       jToggleSelTimes, ...
                                   'jButtonSetSel',         jButtonSetSel, ...
+                                  'jToggleCurSlices',      jToggleCurSlices, ...
                                   'jTitleDipSize',         jTitleDipSize, ...
                                   'jSliderDipSize',        jSliderDipSize, ...
                                   'jTitleTailWidth',       jTitleTailWidth, ...
@@ -393,6 +396,7 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     DipolesInfo.DisplayAllTime = 0;
     DipolesInfo.DisplayMaxGoodness = 0;
     DipolesInfo.DisplaySelTimes = 0;
+    DipolesInfo.DisplayCurrentSlice = 0;
     
     % Get Dipoles description in figure
     DipolesApp = getappdata(hFig, 'Dipoles');
@@ -475,6 +479,17 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     % Show maximum goodness of selected dipoles
     if ctrl.jToggleMaxGoodness.isSelected()
         DipolesInfo.DisplayMaxGoodness = 1;
+    end
+    % Shows only dipoles on current slices
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    if ~isempty(sMri)
+        ctrl.jToggleCurSlices.setVisible(1);
+        if ctrl.jToggleCurSlices.isSelected()
+            DipolesInfo.DisplayCurrentSlice = 1;
+        end
+    else
+        ctrl.jToggleCurSlices.setSelected(0);
+        ctrl.jToggleCurSlices.setVisible(0);
     end
 end
 
@@ -879,6 +894,10 @@ function PlotSelectedDipoles(hFig)
                     'Parent',     hAxes);
             end
         end
+    end
+    % Display only dipoles on current slices
+    if DipolesInfo.DisplayCurrentSlice
+        DisplayDipolesInSlices(hFig, 'current');
     end
     % Force updating this figure before upd
     drawnow
