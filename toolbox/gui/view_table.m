@@ -66,6 +66,26 @@ jTable.getTableHeader.setReorderingAllowed(0);
 for iHeader = 1:length(Headers)
     jTable.getColumnModel().getColumn(iHeader-1).setHeaderValue(Headers{iHeader});
 end
+
+% Fix the width of the cell to the largest element of the column
+for iCol = 0:(jTable.getColumnCount() - 1)
+    colModel = jTable.getColumnModel().getColumn(iCol);
+    
+    headerRenderer = jTable.getTableHeader().getDefaultRenderer();
+    headerValue = colModel.getHeaderValue();
+    headerComp = headerRenderer.getTableCellRendererComponent(jTable, headerValue, false, false, -1, iCol);
+    maxSize = headerComp.getPreferredSize().width;
+    
+    for iRow = 0:(jTable.getRowCount() - 1)
+        cellRenderer = jTable.getCellRenderer(iRow, iCol);
+        cellValue = jTable.getValueAt(iRow, iCol);
+        cellComp = cellRenderer.getTableCellRendererComponent(jTable, cellValue, false, false, iRow, iCol);
+        maxSize = max(maxSize, cellComp.getPreferredSize().width);
+    end
+    
+    colModel.setPreferredWidth(maxSize + 15);
+end
+
 % Create scroll panel
 jScroll = JScrollPane(jTable);
 jScroll.setBorder([]);

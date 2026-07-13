@@ -156,10 +156,16 @@ switch lower(DisplayMode)
     case 'table'
         % Progress bar
         bst_progress('start', 'View data as table', 'Loading data...');
-        % Values as cell of char verctors
+        % Reload to have access to all the fields
+        sMatRaw = in_bst_matrix(MatFile);
+        % Values as cell of char vectors
         ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
-        % Define column headers
-        if (size(sMat.Description,2) == size(Value,2))
+        
+        % Define column headers (Priority to ColNames, otherwise Description, otherwise Time)
+        if isfield(sMatRaw, 'ColNames') && ~isempty(sMatRaw.ColNames)
+            headers = sMatRaw.ColNames(:)';
+            firstHeader = ' ';
+        elseif (size(sMat.Description,2) == size(Value,2))
             headers = sMat.Description(1,:);
             firstHeader = ' ';
         elseif (length(sMat.Time) == size(Value,2))
@@ -168,14 +174,23 @@ switch lower(DisplayMode)
         else
             headers = [];
         end
-        % Add row descriptions as first column
-        isRowTitle = (size(sMat.Description,1) == size(Value,1));
-        if isRowTitle
-            ValueCell = cat(2, sMat.Description(:,1), ValueCell);
+        
+        % Dealing with row names
+        rowTitles = [];
+        if isfield(sMatRaw, 'RowNames') && ~isempty(sMatRaw.RowNames) && (length(sMatRaw.RowNames) == size(Value,1))
+            rowTitles = sMatRaw.RowNames(:);
+        elseif (size(sMat.Description,1) == size(Value,1))
+            rowTitles = sMat.Description(:,1);
+        end
+        
+        % Add row titles as first column if they exist
+        if ~isempty(rowTitles)
+            ValueCell = cat(2, rowTitles, ValueCell);
             if ~isempty(headers)
                 headers = cat(2, firstHeader, headers);
             end
         end
+        
         % View table
         view_table(ValueCell, headers, MatFile);
         bst_progress('stop');
