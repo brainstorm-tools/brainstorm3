@@ -160,7 +160,13 @@ switch lower(DisplayMode)
         ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
         % Define column headers
         if (size(sMat.Description,2) == size(Value,2))
-            headers = sMat.Description(1,:);
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstColHeader = tmp11(2);
+            else
+                firstColHeader = tmp11;
+            end
+            headers = [firstColHeader, sMat.Description(1,2:end)];
             firstHeader = ' ';
         elseif (length(sMat.Time) == size(Value,2))
             headers = cellstr(num2str(sMat.Time(:)))';
@@ -171,7 +177,13 @@ switch lower(DisplayMode)
         % Add row descriptions as first column
         isRowTitle = (size(sMat.Description,1) == size(Value,1));
         if isRowTitle
-            ValueCell = cat(2, sMat.Description(:,1), ValueCell);
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstRowHeader = tmp11(1);
+            else
+                firstRowHeader = tmp11;
+            end
+            ValueCell = cat(2, [firstRowHeader; sMat.Description(2:end,1)], ValueCell);
             if ~isempty(headers)
                 headers = cat(2, firstHeader, headers);
             end

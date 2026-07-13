@@ -284,6 +284,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             fields = fieldnames(db_template('matrixmat'))';
             NewMat = in_bst_matrix(sInputs(1).FileName, fields{:});
             sfreq = 1 ./ (NewMat.Time(2) - NewMat.Time(1));
+            isColNames = (size(NewMat.Description,2) == size(NewMat.Value,2));
+            allColNames = [];
+            if isColNames
+                allColNames = NewMat.Description(1,:);
+            end
             % Set history field
             NewMat = bst_history('add', NewMat, 'concat', 'Contatenate time from files:');
             NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(1).FileName]);
@@ -321,8 +326,25 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(MatrixMat, 'Std') && ~isempty(MatrixMat.Std)
                     NewMat.Std = [NewMat.Std, MatrixMat.Std];
                 end
+                % Concatenamte the column names
+                if isColNames && (size(MatrixMat.Description,2) == size(MatrixMat.Value,2))
+                    tmp11 = MatrixMat.Description{1,1};
+                    if iscell(tmp11)
+                        firstColName = tmp11(2);
+                    else
+                        firstColName = tmp11;
+                    end
+                    allColNames = [allColNames, firstColName, MatrixMat.Description(1,2:end)];
+                end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
+            end
+            % Verify column names
+            if length(allColNames) == size(NewMat.Value,2)
+                allRowNames = NewMat.Description(:,1);
+                NewMat.Description = cell(size(NewMat.Value,1), length(allColNames));
+                NewMat.Description(1,:) = allColNames;
+                NewMat.Description(:,1) = allRowNames;
             end
             % Set the final time vector
             NewMat.Time = NewMat.Time(1) + (0:size(NewMat.Value,2)-1) ./ sfreq;
