@@ -54,6 +54,7 @@ jFrame = java_create('javax.swing.JFrame', 'Ljava.lang.String;', WndTitle);
 jFrame.setIconImage(IconLoader.ICON_APP.getImage());
 % Create tabel model
 model = DefaultTableModel(size(Data,1), size(Data,2));
+model.setRowCount(0);
 for i = 1:size(Data,1)
     model.insertRow(i-1, Data(i,:));
 end
