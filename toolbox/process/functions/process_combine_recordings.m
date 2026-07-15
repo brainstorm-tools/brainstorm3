@@ -243,8 +243,8 @@ function OutputFiles = Run(sProcess, sInputs)
         end
 
         % Concat SCS transformations
-        if isfield(tmpChannelMat, 'SCS') && ~isempty(tmpChannelMat.SCS)
-            if ~isfield(NewChannelMat, 'SCS' ) || isempty(NewChannelMat.SCS)
+        if isfield(tmpChannelMat, 'SCS') && isfield(tmpChannelMat.SCS, 'NAS') && ~isempty(tmpChannelMat.SCS.NAS) && ~isempty(tmpChannelMat.SCS.LPA) && ~isempty(tmpChannelMat.SCS.RPA)
+            if ~isfield(NewChannelMat, 'SCS') || ~isfield(NewChannelMat.SCS, 'NAS') || isempty(NewChannelMat.SCS.NAS) || isempty(NewChannelMat.SCS.LPA) || isempty(NewChannelMat.SCS.RPA)
                 NewChannelMat.SCS = tmpChannelMat.SCS;
             else
                 bst_report('Warning', sProcess, sInputs(iInput), 'Multiple SCS transformations found; these cannot be combined.');
