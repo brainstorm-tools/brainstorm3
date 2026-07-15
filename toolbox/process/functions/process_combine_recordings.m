@@ -281,7 +281,7 @@ function OutputFiles = Run(sProcess, sInputs)
     % Save all data to combined file
     for iInput = 1 : nInputs
         % Load raw data
-        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
+        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 0, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
             sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';
