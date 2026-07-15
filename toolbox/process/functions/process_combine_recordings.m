@@ -216,35 +216,38 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
 
-        % Concat MEG information
-        if  ~isempty(tmpChannelMat.TransfMeg)
+        % Concat transformations for MEG sensor positions
+        if ~isempty(tmpChannelMat.TransfMeg)
             if isempty(NewChannelMat.TransfMeg)
-                NewChannelMat.TransfMeg         = tmpChannelMat.TransfMeg;
-                NewChannelMat.TransfMegLabels   = tmpChannelMat.TransfMegLabels;
-                NewChannelMat.MegRefCoef        = tmpChannelMat.MegRefCoef;
+                NewChannelMat.TransfMeg       = tmpChannelMat.TransfMeg;
+                NewChannelMat.TransfMegLabels = tmpChannelMat.TransfMegLabels;
+                NewChannelMat.MegRefCoef      = tmpChannelMat.MegRefCoef;
             else
-                warning('Cannot combine multiple MEG transformation')
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple transformations found for MEG sensor positions; these cannot be combined.');
             end
         end
 
-        if  ~isempty(tmpChannelMat.TransfEeg)
+        % Concat transformations for EEG sensor positions
+        if ~isempty(tmpChannelMat.TransfEeg)
             if isempty(NewChannelMat.TransfEeg)
-                NewChannelMat.TransfEeg = tmpChannelMat.TransfEeg;
+                NewChannelMat.TransfEeg       = tmpChannelMat.TransfEeg;
                 NewChannelMat.TransfEegLabels = tmpChannelMat.TransfEegLabels;
             else
-                warning('Cannot combine multiple EEG transformation')
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple transformations found for EEG sensor positions; these cannot be combined.');
             end
         end
 
-        if  ~isempty(tmpChannelMat.HeadPoints)
+        % Concat head points
+        if ~isempty(tmpChannelMat.HeadPoints)
             NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
         end
 
-        if  isfield(tmpChannelMat, 'SCS') && ~isempty(tmpChannelMat.SCS)
+        % Concat SCS transformations
+        if isfield(tmpChannelMat, 'SCS') && ~isempty(tmpChannelMat.SCS)
             if ~isfield(NewChannelMat, 'SCS' ) || isempty(NewChannelMat.SCS)
                 NewChannelMat.SCS = tmpChannelMat.SCS;
             else
-                warning('Cannot combine different SCS transformation')
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple SCS transformations found; these cannot be combined.');
             end
         end
 
