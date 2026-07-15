@@ -100,7 +100,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
         end
         % Check for CTF.
-        if ~strcmp(DataMat.Device, 'CTF')
+        if ~any(strcmpi(strsplit(DataMat.Device, ','), 'CTF'))
             bst_report('Error', sProcess, sInputs(iFile), ...
                 'Detect head motion events is currently only available for CTF data.');
         end
