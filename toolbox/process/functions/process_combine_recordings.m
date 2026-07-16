@@ -100,23 +100,21 @@ function OutputFiles = Run(sProcess, sInputs)
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
 
-    % Find new metaT0
+    % Find new T0
     all_t0 = {};
     for iFile = 1:length(sMetaData)
         if ~isempty(sMetaData(iFile).F.t0)
             all_t0{end+1} = sMetaData(iFile).F.t0;
         end
     end
+
     all_t0 = unique(all_t0);
-    if length(all_t0) == 1
+    if ~isempty(all_t0)
         NewT0 = all_t0{1};
-    elseif length(all_t0) > 1
-        file_str = cell(length(sInputs), 1);
-        for iFile = 1:length(sInputs)
-            file_str{iFile} = sprintf('%s : %s', sInputs(iFile).Condition, sMetaData(iFile).F.t0);
+        if length(all_t0) > 1
+            % Todo: better way to select T0 ? 
+            bst_report('Warning', sProcess, sInputs, 'Multiple recording start found. Using %s.',  NewT0);
         end
-        ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
-        NewT0 = sMetaData(ind).F.t0;
     else
         NewT0 = {};
     end
