@@ -136,6 +136,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Initialize output
     OutputFiles = {};
     
+    % Check that all input files use the same channel file
+    ChannelFiles = {sInputs.ChannelFile};
+    if length(unique(ChannelFiles)) > 1
+        bst_report('Error', sProcess, sInputs, 'All input files must use the same channel file.');
+        return;
+    end
     % Get options
     OPTIONS = GetOptions(sProcess);
     
