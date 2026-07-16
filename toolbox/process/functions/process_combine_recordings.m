@@ -305,6 +305,11 @@ function OutputFiles = Run(sProcess, sInputs)
     sFileIn.header.nsamples = length(NewTime);
     sFileIn.prop.times      = [NewTime(1), NewTime(end)];
     sFileIn.prop.sfreq      = NewFs;
+    isMEG = find(arrayfun(@(x) isfield(x.F.prop, 'currCtfComp') && ~isempty(x.F.prop.currCtfComp), sMetaData));
+    if ~isempty(isMEG)
+        sFileIn.prop.currCtfComp = sMetaData(isMEG).F.prop.currCtfComp;
+        sFileIn.prop.destCtfComp = sMetaData(isMEG).F.prop.destCtfComp;
+    end
     sFileIn.events          = NewEvents;
     sFileIn.channelflag     = NewChannelFlag;
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
