@@ -238,8 +238,15 @@ function OutputFiles = Run(sProcess, sInputs)
         end
 
         % Concat head points
-        if ~isempty(tmpChannelMat.HeadPoints)
-            NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+        if ~isempty(tmpChannelMat.HeadPoints) && ~isempty(tmpChannelMat.HeadPoints.Loc)
+            if ~isfield(NewChannelMat, 'HeadPoints') || isempty(NewChannelMat.HeadPoints) && ~isempty(NewChannelMat.HeadPoints.Loc)
+                NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+            elseif any(strcmp({NewChannelMat.Channel.Type}, 'MEG'))
+                NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple headpoints found; using headpoints from the MEG acquisition.');
+            else
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple headpoints found; these cannot be combined.');
+            end
         end
 
         % Concat SCS transformations
