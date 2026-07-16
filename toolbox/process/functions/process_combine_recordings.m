@@ -39,7 +39,17 @@ function sProcess = GetDescription()
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
-    
+
+
+    %Description of the process
+    sProcess.options.inputs.Comment = ['Combinemultiple recordings to a single file : ', ...
+                                       '<ul>'...
+                                            '<li> All recordings must have the same start and ends (use synchronize recordings) </li>', ...
+                                            '<li> If recordings have a different sampling rates, they are all resampled to the highest sampling frequnecy </li>',...
+                                       '</ul>', ...
+                                       '<BR>'];
+    sProcess.options.inputs.Type    = 'label';
+
     % Option: Condition
     sProcess.options.condition.Comment = 'Condition name:';
     sProcess.options.condition.Type    = 'text';
