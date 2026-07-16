@@ -142,6 +142,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'All input files must use the same channel file.');
         return;
     end
+
+    % ===== Check that every comment contains a bipolar channel name =====
+    % Extract bipolar channel pairs from all comments
+    bipolarPattern = '([A-Za-z]+''?\d+)\s*-\s*([A-Za-z]+''?\d+)';
+    bipolarChannels = regexp({sInputs.Comment}, bipolarPattern, 'tokens', 'once');
+    % Check that every comment contains a bipolar pair
+    isBipolar = ~cellfun(@isempty, bipolarChannels);
+    if ~all(isBipolar)
+        iInvalid = find(~isBipolar);    
+        bst_report('Error', sProcess, sInputs(iInvalid), ...
+            sprintf('Could not find a bipolar channel name in the file comment: "%s".\n', ...
+                    sInputs(iInvalid).Comment));
+        return;
+    end
+
+    % ===== Check whether all channel names in comment are valid =====
+    % Load the channel file
+    ChannelMat = in_bst_channel(ChannelFiles{1});
+    channelNames = {ChannelMat.Channel.Name};
+    % Flatten all extracted pairs
+    allBipolarChannels = [bipolarChannels{:}];
+    % Check whether all extracted channel names exist
+    isChannelFound = ismember(allBipolarChannels, channelNames);
+    if ~all(isChannelFound)
+        missingChannels = unique(allBipolarChannels(~isChannelFound), 'stable');    
+        bst_report('Error', sProcess, sInputs, ...
+            sprintf('The following channels were not found in the channel file: %s.', ...
+                    strjoin(missingChannels, ', ')));
+        return;
+    end
+
     % Get options
     OPTIONS = GetOptions(sProcess);
     
@@ -151,9 +182,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
 
-    % Load the channel file
-    ChannelFile = file_fullpath(sInputs(1).ChannelFile);
-    ChannelMat = load(ChannelFile);
     % Get indices of SEEG channels
     iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
     % Get the midpoint location of each stimulation pair from channel
@@ -166,7 +194,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Split SEEG contacts into left and right hemisphere groups
     sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat);     
     % Compute anatomical labels for the contacts from volume/surface parcellations
-    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFile, 'SEEG', [], 10, 0, 0);
+    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 10, 0, 0);
     % Locate atlas related columns from channel table above
     hit = cellfun(@(x) ischar(x) && (~isempty(strfind(OPTIONS.Atlas, x)) || ~isempty(strfind(x, OPTIONS.Atlas))), chanTableWithAtlas(1,:));
     % Columns whose header matches the atlas name
