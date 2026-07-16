@@ -1,8 +1,8 @@
 function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
 % EXPORT_CHANNEL_ATLAS: Compute anatomical labels for SEEG/ECOG contacts from volume and surface parcellations
 %
-% USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
-%         TsvFile = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+% USAGE:  [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+%         [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
 %
 % INPUT: 
 %     - ChannelFile   : Path to Brainstorm channel file to be processed
@@ -14,6 +14,13 @@ function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvF
 %                     : If 0, use all available Coodinates, Parcellations (anat) and Atlases (surface),
 %                       and do not display output table 
 %     - iChannels     : Limit export to a subset of channel indices
+% OUTPUT: 
+%     - TsvFile       : Output text file (tab-separated values). Empty when no file was selected or requested.
+%     - ChanTable     : Cell array containing the complete output table. The same information is written to TsvFile 
+%                       when an output file is requested.
+%                       - The first column always contains channel names
+%                       - The remaining columns contain available coordinates, anatomical labels, 
+%                         and optional probabilities corresponding to each channel
 % 
 % REFERENCES:
 %     - MERCIER M, 2021:
