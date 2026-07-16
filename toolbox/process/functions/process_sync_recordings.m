@@ -222,24 +222,19 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Find the correct acquisition date
-    has_T0 = cellfun(@(x)~isempty(x.T0), sOldTiming);
-    if sum(has_T0) == 1
-        iInput = find(has_T0);
-        ts0 = datetime(sOldTiming{iInput}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
+    has_T0 = find(cellfun(@(x)~isempty(x.T0), sOldTiming));
+    if ~isempty(has_T0)
+        ts0 = datetime(sOldTiming{has_T0(1)}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
         new_T0 = str_datetime(ts0 - duration(0,0, OffsetTime(iInput)));
-    elseif sum(has_T0) >= 2
-        iInput = find(has_T0);
-        file_str = cell(length(iInput), 1);
-        for iFile = 1:length(iInput)
-            file_str{iFile} = sprintf('%s : %s', sInputs(iInput(iFile)).Condition, sOldTiming{iInput(iFile)}.T0);
+        
+        if length(all_t0) > 1
+            % Todo: better way to select T0 ? 
+            bst_report('Warning', sProcess, sInputs, 'Multiple recording start found. Using %s.',  new_T0);
         end
-        ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
-        iInput = iInput(ind);
-        ts0 = datetime(sOldTiming{iInput}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
-        new_T0 = str_datetime(ts0 -  duration(0,0, OffsetTime(iInput)));
     else
-        new_T0 = str_datetime(datetime('now'));
+        new_T0 = {};
     end
+
     bst_progress('inc', nInputs);
     bst_progress('text', 'Saving files...');
 
@@ -252,7 +247,9 @@ function OutputFiles = Run(sProcess, sInputs)
             sDataSync.Comment = [sDataSync.Comment ' | Synchronized '];
             sDataSync.Time    = sNewTiming{iInput}.Time;
             sDataSync.Events  = sNewTiming{iInput}.Events;
-            sDataSync.T0      = new_T0;
+            if ~isempty(new_T0)
+                sDataSync.T0      = new_T0;
+            end
             % Update data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
             sDataSync.F = sDataSync.F(:,index);
@@ -270,7 +267,11 @@ function OutputFiles = Run(sProcess, sInputs)
         else
             % New raw condition
             newCondition = [sInputs(iInput).Condition '_synced'];
-            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_T0));
+            if ~isempty(new_T0)
+                iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_T0));
+            else
+                iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1);
+            end
             sNewStudy = bst_get('Study', iNewStudy);
             % Sync videos
             sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
@@ -301,7 +302,9 @@ function OutputFiles = Run(sProcess, sInputs)
             sFileIn = sDataRawSync.F;
             % Set new time and events
             sFileIn.events = sNewTiming{iInput}.Events;
-            sFileIn.t0 = new_T0;
+            if ~isempty(new_T0)
+                sFileIn.t0 = new_T0;
+            end
             sFileIn.header.nsamples = length( sNewTiming{iInput}.Time);
             sFileIn.prop.times      = [ sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
             sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
