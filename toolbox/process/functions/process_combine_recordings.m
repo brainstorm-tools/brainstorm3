@@ -359,6 +359,12 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat.ChannelFlag = NewChannelFlag;
     sOutMat.Time        = sFileIn.prop.times;
     sOutMat.Device      = NewDevice;
+    % History: List of files used to combine
+    sOutMat = bst_history('add', sOutMat, 'combine', 'List of combined files :');
+    for iInput = 1:nInputs
+        sOutMat = bst_history('add', sOutMat, 'combine', sprintf(' - %s ', sInputs(iInput).FileName));
+    end
+
     bst_save(OutputFile, sOutMat, 'v6');
 
     % Save all data to combined file
