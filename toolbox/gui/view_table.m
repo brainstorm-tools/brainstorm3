@@ -54,6 +54,7 @@ jFrame = java_create('javax.swing.JFrame', 'Ljava.lang.String;', WndTitle);
 jFrame.setIconImage(IconLoader.ICON_APP.getImage());
 % Create tabel model
 model = DefaultTableModel(size(Data,1), size(Data,2));
+model.setRowCount(0);
 for i = 1:size(Data,1)
     model.insertRow(i-1, Data(i,:));
 end
@@ -65,6 +66,24 @@ jTable.getTableHeader.setReorderingAllowed(0);
 % Set columns titles
 for iHeader = 1:length(Headers)
     jTable.getColumnModel().getColumn(iHeader-1).setHeaderValue(Headers{iHeader});
+end
+% Set column with to the widest element of the column
+for iCol = 0:(jTable.getColumnCount() - 1)
+    colModel = jTable.getColumnModel().getColumn(iCol);
+    % Header width
+    headerRenderer = jTable.getTableHeader().getDefaultRenderer();
+    headerValue = colModel.getHeaderValue();
+    headerComp = headerRenderer.getTableCellRendererComponent(jTable, headerValue, false, false, -1, iCol);
+    maxSize = headerComp.getPreferredSize().width;
+    % Max width across rows
+    for iRow = 0:(jTable.getRowCount() - 1)
+        cellRenderer = jTable.getCellRenderer(iRow, iCol);
+        cellValue = jTable.getValueAt(iRow, iCol);
+        cellComp = cellRenderer.getTableCellRendererComponent(jTable, cellValue, false, false, iRow, iCol);
+        maxSize = max(maxSize, cellComp.getPreferredSize().width);
+    end
+    % Set column width
+    colModel.setPreferredWidth(maxSize + 15);
 end
 % Create scroll panel
 jScroll = JScrollPane(jTable);

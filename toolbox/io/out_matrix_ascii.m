@@ -134,14 +134,17 @@ switch (FileFormat)
                     fwrite(fid, [Title2, sep], 'char');
                 end
             end
+            strHeader = '';
             for i2 = 1:length(Label2)
                 if isPad
-                    fwrite(fid, sprintf(['%17s' sep], Label2{i2}), 'char');
+                    strHeader = [strHeader, sprintf(['%17s' sep], Label2{i2})];
                 else
-                    fwrite(fid, [Label2{i2}, sep], 'char');
+                    strHeader = [strHeader, Label2{i2}, sep];
                 end
             end
-            fwrite(fid, sprintf('\n'), 'char');
+            % Remove last separator
+            strHeader = strHeader(1:end-1);
+            fwrite(fid, sprintf('%s\n', strHeader), 'char');
         end
         % Write channels one after the other
         for i1 = 1:size(Data,1)

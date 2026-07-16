@@ -112,7 +112,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, [], errMsg);
             return;
         end
-        bst_plugin('SetProgressLogo', 'libsvm');
+        bst_progress('setpluginlogo', 'libsvm');
     end
     % Check for the Signal Processing toolbox
     if LowPass > 0 && ~bst_get('UseSigProcToolbox')
@@ -239,7 +239,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Register in database
     db_add_data(iStudy, OutputFiles{1}, FileMat);
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
 end
 
 

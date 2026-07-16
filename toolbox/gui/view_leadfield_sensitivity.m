@@ -487,6 +487,9 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             strTitle = [strTitle, 10 '[Press arrows for next/previous channel (or H for help)]'];
         end
         set(hLabel, 'String', strTitle);
+        % Resize to show all text
+        ext = get(hLabel, 'Extent');
+        set(hLabel, 'Position', ext);
     end
 
 

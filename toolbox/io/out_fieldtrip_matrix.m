@@ -36,6 +36,17 @@ else
     MatrixMat = MatrixFile;
 end
 
+% Get row names
+if ~isempty(MatrixMat.Description)
+    if iscell(MatrixMat.Description{1,1})
+        MatrixMat.Description{1,1} = MatrixMat.Description{1,1}{1};
+    end
+    if (size(MatrixMat.Description,1) == size(MatrixMat.Value,1))
+        MatrixMat.Description = MatrixMat.Description(:,1);
+    elseif (size(MatrixMat.Description,2) == size(MatrixMat.Value,1))
+        MatrixMat.Description = MatrixMat.Description(1,:);
+    end
+end
 % Remove the @filename at the end of the row names
 for iRow = 1:numel(MatrixMat.Description)
     iAt = find(MatrixMat.Description{iRow} == '@', 1);

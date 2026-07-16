@@ -99,6 +99,7 @@ function OutputFiles = Run(sProcess, sInputs)
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
+
     % Find new metaT0
     all_t0 = {};
     for iFile = 1:length(sMetaData)
@@ -120,6 +121,14 @@ function OutputFiles = Run(sProcess, sInputs)
         NewT0 = str_datetime(datetime('now'));
     end
     
+
+    % New device
+    NewDevice = 'Brainstorm';
+    isDevice = find(arrayfun(@(x) ~isempty(x.F.device), sMetaData));
+    if ~isempty(isDevice)
+        NewDevice = strjoin(arrayfun(@(x) x.F.device, sMetaData(isDevice), 'UniformOutput', false), ',');
+    end
+
     % Study for combined recordings
     iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
     sNewStudy = bst_get('Study', iNewStudy);
@@ -237,6 +246,48 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
 
+        % Concat transformations for MEG sensor positions
+        if ~isempty(tmpChannelMat.TransfMeg)
+            if isempty(NewChannelMat.TransfMeg)
+                NewChannelMat.TransfMeg       = tmpChannelMat.TransfMeg;
+                NewChannelMat.TransfMegLabels = tmpChannelMat.TransfMegLabels;
+                NewChannelMat.MegRefCoef      = tmpChannelMat.MegRefCoef;
+            else
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple transformations found for MEG sensor positions; these cannot be combined.');
+            end
+        end
+
+        % Concat transformations for EEG sensor positions
+        if ~isempty(tmpChannelMat.TransfEeg)
+            if isempty(NewChannelMat.TransfEeg)
+                NewChannelMat.TransfEeg       = tmpChannelMat.TransfEeg;
+                NewChannelMat.TransfEegLabels = tmpChannelMat.TransfEegLabels;
+            else
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple transformations found for EEG sensor positions; these cannot be combined.');
+            end
+        end
+
+        % Concat head points
+        if ~isempty(tmpChannelMat.HeadPoints) && ~isempty(tmpChannelMat.HeadPoints.Loc)
+            if ~isfield(NewChannelMat, 'HeadPoints') || isempty(NewChannelMat.HeadPoints) && ~isempty(NewChannelMat.HeadPoints.Loc)
+                NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+            elseif any(strcmp({NewChannelMat.Channel.Type}, 'MEG'))
+                NewChannelMat.HeadPoints = tmpChannelMat.HeadPoints;
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple headpoints found; using headpoints from the MEG acquisition.');
+            else
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple headpoints found; these cannot be combined.');
+            end
+        end
+
+        % Concat SCS transformations
+        if isfield(tmpChannelMat, 'SCS') && isfield(tmpChannelMat.SCS, 'NAS') && ~isempty(tmpChannelMat.SCS.NAS) && ~isempty(tmpChannelMat.SCS.LPA) && ~isempty(tmpChannelMat.SCS.RPA)
+            if ~isfield(NewChannelMat, 'SCS') || ~isfield(NewChannelMat.SCS, 'NAS') || isempty(NewChannelMat.SCS.NAS) || isempty(NewChannelMat.SCS.LPA) || isempty(NewChannelMat.SCS.RPA)
+                NewChannelMat.SCS = tmpChannelMat.SCS;
+            else
+                bst_report('Warning', sProcess, sInputs(iInput), 'Multiple SCS transformations found; these cannot be combined.');
+            end
+        end
+
         % New channel count
         NewChannelsN = length(NewChannelMat.Channel);
         % Progress
@@ -284,10 +335,15 @@ function OutputFiles = Run(sProcess, sInputs)
     sFileIn.header.nsamples = length(NewTime);
     sFileIn.prop.times      = [NewTime(1), NewTime(end)];
     sFileIn.prop.sfreq      = NewFs;
+    isMEG = find(arrayfun(@(x) isfield(x.F.prop, 'currCtfComp') && ~isempty(x.F.prop.currCtfComp), sMetaData));
+    if ~isempty(isMEG)
+        sFileIn.prop.currCtfComp = sMetaData(isMEG).F.prop.currCtfComp;
+        sFileIn.prop.destCtfComp = sMetaData(isMEG).F.prop.destCtfComp;
+    end
     sFileIn.events          = NewEvents;
     sFileIn.channelflag     = NewChannelFlag;
+    sFileIn.device          = NewDevice;
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
-
     % Build output structure for combined recordings
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
@@ -297,13 +353,13 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
     sOutMat.Time        = sFileIn.prop.times;
-    sOutMat.Device      = 'Brainstorm';
+    sOutMat.Device      = NewDevice;
     bst_save(OutputFile, sOutMat, 'v6');
 
     % Save all data to combined file
     for iInput = 1 : nInputs
         % Load raw data
-        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
+        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 0, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
             sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime, 'linear', 'extrap')';

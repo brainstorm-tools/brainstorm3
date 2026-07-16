@@ -39,7 +39,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Definition of the options
     sProcess.options.warning.Comment = 'Only for CTF MEG recordings with HLC channels recorded.<BR><BR>';
     sProcess.options.warning.Type    = 'label';
@@ -101,7 +100,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
         end
         % Check for CTF.
-        if ~strcmp(DataMat.Device, 'CTF')
+        if ~any(strcmpi(strsplit(DataMat.Device, ','), 'CTF'))
             bst_report('Error', sProcess, sInputs(iFile), ...
                 'Detect head motion events is currently only available for CTF data.');
         end

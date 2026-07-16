@@ -131,7 +131,34 @@ switch (FileFormat)
         [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(MatrixMat);
         export_data(DataMat, ChannelMat, OutputFile, FileFormat);
     case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
-        out_matrix_ascii(OutputFile, MatrixMat.Value, FileFormat, MatrixMat.Description, MatrixMat.Time, []);
+        Label1 = [];
+        Label2 = [];
+        Title2 = [];
+        % Row headers
+        if (size(MatrixMat.Description,1) == size(MatrixMat.Value,1))
+            tmp11 = MatrixMat.Description{1,1};
+            if iscell(tmp11)
+                firstRowHeader = tmp11(1);
+            else
+                firstRowHeader = tmp11;
+            end
+            Label1 = [firstRowHeader; MatrixMat.Description(2:end,1)];
+        end
+        % Column headers
+        if (size(MatrixMat.Description,2) == size(MatrixMat.Value,2))
+            tmp11 = MatrixMat.Description{1,1};
+            if iscell(tmp11)
+                firstColHeader = tmp11(2);
+            else
+                firstColHeader = tmp11;
+            end
+            Label2 = [firstColHeader, MatrixMat.Description(1,2:end)];
+            Title2 = ' ';
+        elseif (length(MatrixMat.Time) == size(MatrixMat.Value,2))
+            Label2 = cellstr(num2str(MatrixMat.Time(:)))';
+            Title2 = 'Time';
+        end
+        out_matrix_ascii(OutputFile, MatrixMat.Value, FileFormat, Label1, Label2, [], Title2);
     otherwise
         error(['Unsupported file extension : "' OutputExt '"']);
 end

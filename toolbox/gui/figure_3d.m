@@ -519,6 +519,13 @@ function FigureMouseMoveCallback(hFig, varargin)
                         panel_surface('PlotMri', hFig, posXYZ, 1);
                         % Update sliders in surface panel
                         panel_surface('UpdateSurfaceProperties');
+                        if gui_brainstorm('isTabVisible', 'Dipoles')
+                            % Update dipoles if constrained to current slice
+                            DipolesInfo = panel_dipoles('GetDipolesForFigure', hFig);
+                            if DipolesInfo.DisplayCurrentSlice
+                                panel_dipoles('DisplayDipolesInSlices', hFig, 'current');
+                            end
+                        end
                     end
                 end
             end
@@ -1389,7 +1396,7 @@ function SetStandardView(hFig, viewNames)
         % Get subject
         sSubject = bst_get('SurfaceFile', TessInfo(1).SurfaceFile);
         % If there is an MRI associated with it
-        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
+        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.iAnatomy) && ~isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
             % Load the SCS+MNI transformation from this file
             sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'NCS', 'SCS', 'Comment');
             % Get linear MNI transformation

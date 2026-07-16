@@ -77,7 +77,7 @@ isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', 'MNI normalization', 'Initialization...');
 end
-bst_plugin('SetProgressLogo', 'spm12');
+bst_progress('setpluginlogo', 'spm12');
 % Get template file
 TpmFile = bst_get('SpmTpmAtlas');
 % If it is not found: download
@@ -249,7 +249,7 @@ if ~isempty(TpmFiles) && ~isempty(T1File)
 end
 
 % Close progress bar
-bst_plugin('SetProgressLogo', []);
+bst_progress('removeimage');
 if ~isProgress
     bst_progress('stop');
 end

@@ -314,6 +314,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Add the times for the remaining block
                     iTimesBlocks = [iTimesBlocks; lastTime+1, lastTime+size(R,2)];
                 end
+                % Adjust with beginning of file
+                iTimesBlocks = round(sFileIn.prop.times(1) * sFileIn.prop.sfreq) + iTimesBlocks;
 
                 % Process each block
                 ImportOptions = db_template('ImportOptions');
@@ -365,7 +367,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sOutMat.ChannelFlag = sFileOut.channelflag;
                 sOutMat.F = sFileOut;
                 % Update History
-                if isUseCtfComp && strcmp(sOutMat.F.device, 'CTF')
+                if isUseCtfComp && ~any(strcmpi(strsplit(sOutMat.F.device, ','), 'CTF'))
                     sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied CTF compensation']);
                 end
                 if isUseSsp && ~isempty(ChannelMatOut.Projector)

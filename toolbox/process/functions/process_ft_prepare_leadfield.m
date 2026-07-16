@@ -89,7 +89,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     % MEG headmodel
@@ -444,7 +444,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Save database
     db_save();
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     % Return the data files in input
     OutputFiles = {sInputs.FileName};
 end

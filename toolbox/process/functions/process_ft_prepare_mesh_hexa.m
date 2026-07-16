@@ -162,7 +162,7 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     if ~isInstalled
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     % Call: ft_prepare_mesh
     cfg = [];
     cfg.method = 'hexahedral';
@@ -191,7 +191,7 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     db_add_surface(iSubject, FemFile, FemMat.Comment);
 
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     % Return success
     isOk = 1;
 end

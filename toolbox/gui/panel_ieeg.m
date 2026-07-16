@@ -164,6 +164,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     % Add/remove models
                     gui_component('button', jPanelModel, [],[], {IconLoader.ICON_PLUS, TB_DIM}, 'Add new electrode model', @(h,ev)bst_call(@AddElectrodeModel));
                     gui_component('button', jPanelModel,[],[], {IconLoader.ICON_MINUS, TB_DIM}, 'Remove electrode model', @(h,ev)bst_call(@RemoveElectrodeModel));
+                    gui_component('button', jPanelModel,[],[], {IconLoader.ICON_COPY, TB_DIM},  'Copy current electrode model', @(h,ev)bst_call(@CopyElectrodeModel));
                     % Save/load models
                     gui_component('button', jPanelModel, [],[], {IconLoader.ICON_SAVE, TB_DIM}, 'Save electrode model to file', @(h,ev)bst_call(@SaveElectrodeModel));
                     gui_component('button', jPanelModel,[],[], {IconLoader.ICON_FOLDER_OPEN, TB_DIM}, 'Load electrode model from file', @(h,ev)bst_call(@LoadElectrodeModel));
@@ -173,17 +174,17 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 jPanelElecOptions.add('br hfill', jPanelModel);
 
                 % Number of contacts
-                gui_component('label', jPanelElecOptions, 'br', 'Number of contacts: ');
+                jLabelContactCount = gui_component('label', jPanelElecOptions, 'br', 'Number of contacts: ');
                 jTextNcontacts = gui_component('text', jPanelElecOptions, 'tab', '');
                 jTextNcontacts.setHorizontalAlignment(jTextNcontacts.RIGHT);
                 % Contacts spacing
-                gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
-                jTextSpacing = gui_component('text', jPanelElecOptions, 'tab', '');
+                jLabelContactSpace = gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
+                jTextSpacing = gui_component('text', jPanelElecOptions, 'br hfill', '');
                 jTextSpacing.setHorizontalAlignment(jTextNcontacts.RIGHT);
                 gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts length
                 jLabelContactLength = gui_component('label', jPanelElecOptions, 'br', 'Contact length: ');
-                jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
+                jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'br hfill', '');
                 gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts diameter
                 gui_component('label', jPanelElecOptions, 'br', 'Contact diameter: ');
@@ -247,6 +248,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jTextNcontacts',      jTextNcontacts, ...
                                   'jTextSpacing',        jTextSpacing, ...
                                   'jTextContactDiam',    jTextContactDiam, ...
+                                  'jLabelContactCount',  jLabelContactCount, ...
+                                  'jLabelContactSpace',  jLabelContactSpace, ...
                                   'jLabelContactLength', jLabelContactLength, ...
                                   'jTextContactLength',  jTextContactLength, ...
                                   'jLabelElecLength',    jLabelElecLength, ...
@@ -367,10 +370,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
     %% ===== CONTACT LIST CHANGED CALLBACK =====
     function ContListChanged_Callback(h, ev)
-        ctrl = bst_get('PanelControls', 'iEEG');
-        sContacts = GetSelectedContacts();
-        bst_figures('SetSelectedRows', {sContacts.Name});
-        SetMriCrosshair(sContacts);
+        if ~ev.getValueIsAdjusting()
+            sContacts = GetSelectedContacts();
+            bst_figures('SetSelectedRows', {sContacts.Name});
+            SetMriCrosshair(sContacts);
+        end
     end
 
     %% ===== CONTACT LIST KEY TYPED CALLBACK =====
@@ -383,6 +387,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 AddContact();
             case ev.VK_ESCAPE
                 SetSelectedContacts(0);
+                bst_figures('SetSelectedRows', []);
         end
     end
 end
@@ -414,8 +419,7 @@ function UpdatePanel()
         ctrl.jListCont.setBackground(java.awt.Color(1,1,1));
         % Enable centroid select button only when IsoSurface present
         TessInfo = getappdata(hFigall, 'Surface');
-        isIsoSurf = any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')));
-        if isIsoSurf
+        if ~isempty(TessInfo) && any(~cellfun(@isempty, regexp({TessInfo.SurfaceFile}, 'tess_isosurface', 'match')))
             isSelectingCoordinates = getappdata(hFigall, 'isSelectingCoordinates');
             ctrl.jButtonCentroid.setEnabled(isSelectingCoordinates);
             isSelectingCentroid    = getappdata(hFigall, 'isSelectingCentroid');
@@ -431,7 +435,7 @@ function UpdatePanel()
     % Select appropriate display mode button
     if ~isempty(hFigall)
         ElectrodeDisplay = getappdata(hFigall(1), 'ElectrodeDisplay');
-        if strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
+        if ~isempty(ElectrodeDisplay) && strcmpi(ElectrodeDisplay.DisplayMode, 'depth')
             ctrl.jRadioDispDepth.setSelected(1);
         else
             ctrl.jRadioDispSphere.setSelected(1);
@@ -696,6 +700,9 @@ function UpdateElecProperties(isUpdateModelList)
     
     % Update control labels
     if ~isempty(sSelElec) && strcmpi(sSelElec(1).Type, 'SEEG')
+        ctrl.jLabelContactCount.setText('Number of contacts (Nc): ');
+        ctrl.jLabelContactSpace.setToolTipText('Single value, or one per contact spacing (Nc - 1)');
+        ctrl.jLabelContactLength.setToolTipText('Single value, or one per contact (Nc)');
         ctrl.jLabelContactLength.setText('Contact length: ');
         ctrl.jLabelElecLength.setVisible(1);
         ctrl.jTextElecLength.setVisible(1);
@@ -703,6 +710,9 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jLabelElecDiameter.setText('Electrode diameter: ');
         ctrl.jLabelElecDiamUnits.setText(' mm');
     else
+        ctrl.jLabelContactCount.setText('Number of contacts: ');
+        ctrl.jLabelContactSpace.setToolTipText('');
+        ctrl.jLabelContactLength.setToolTipText('');
         ctrl.jLabelContactLength.setText('Contact height: ');
         ctrl.jLabelElecLength.setVisible(0);
         ctrl.jTextElecLength.setVisible(0);
@@ -748,8 +758,8 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {0,1024,1},  'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
-    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'list',     2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'list',     2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
     gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
     gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
     gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,100}, 'optional', 2, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
@@ -938,7 +948,7 @@ function SetSelectedElectrodes(iSelElec)
     % Get previous selection
     iPrevItems = ctrl.jListElec.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
     % === UPDATE SELECTION ===
@@ -965,6 +975,7 @@ end
 %         SetSelectedContacts(SelElecNames)  % cell array of name
 % Limitation: perform operation on one contact not multiple
 function SetSelectedContacts(iSelCont)
+    global GlobalData
     % === GET CONTACT INDICES ===
     % Get figure controls
     ctrl = bst_get('PanelControls', 'iEEG');
@@ -982,6 +993,37 @@ function SetSelectedContacts(iSelCont)
         else
             SelContNames = {iSelCont};
         end
+        % Get Channel selected for current DS
+        [~, ~, iDSall] = GetSelectedElectrodes();
+        if ~isempty(iDSall)
+            iDS = iDSall(1);
+        end
+        [~, iSelChan] = bst_figures('GetSelectedChannels', iDS);
+        if isempty(iSelChan)
+            return
+        end
+        % Only iEEG channels
+        iIeegChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], 'ECOG+SEEG');
+        iSelChan = intersect(iSelChan, iIeegChannels);
+        if isempty(iSelChan)
+            return
+        end
+        % Get Electrode for selected channels
+        [elecGroups, ~, contCount] = unique({GlobalData.DataSet(iDS).Channel(iSelChan).Group});
+        if isempty(elecGroups)
+            return
+        end
+        ElecName = elecGroups{mode(contCount)};
+        sElecContacts = GetContacts(ElecName);
+        % From the provided Contact names, get the Electrode with more contacts
+        SelContNames = intersect(SelContNames, {sElecContacts.Name});
+        if isempty(SelContNames)
+            return
+        end
+        % Clear Contact selection
+        SetSelectedContacts(0);
+        % Electrode selection
+        SetSelectedElectrodes(ElecName);
         % Find the requested channels in the JList
         listModel = ctrl.jListCont.getModel();
         iSelItem = [];
@@ -1002,11 +1044,14 @@ function SetSelectedContacts(iSelCont)
     % Get previous selection
     iPrevItems = ctrl.jListCont.getSelectedIndices();
     % If selection did not change: exit
-    if isequal(iPrevItems, iSelItem) || (isempty(iPrevItems) && isequal(iSelItem, -1))
+    if isequal(iPrevItems(:), iSelItem(:)) || (isempty(iPrevItems) && isequal(iSelItem, -1))
         return
     end
 
     % === UPDATE SELECTION ===
+    % Temporality disables JList selection callback
+    jListCallback_bak = java_getcb(ctrl.jListCont, 'ValueChangedCallback');
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', []);
     % Select items in JList
     ctrl.jListCont.setSelectedIndices(iSelItem);
     % Scroll to see the last selected electrode in the list
@@ -1015,6 +1060,8 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
+    % Restore JList callback
+    java_setcb(ctrl.jListCont, 'ValueChangedCallback', jListCallback_bak);
     sContacts = GetSelectedContacts();
     SetMriCrosshair(sContacts);
 end
@@ -1233,6 +1280,21 @@ function ValidateOptions(optName, jControl)
     if isempty(val) && (length(sSelElec) > 1)
         return;
     end
+    % Check number of inputs for contact spacings and lengths for SEEG electrodes
+    if (strcmpi(optName, 'ContactSpacing') || strcmpi(optName, 'ContactLength')) && length(val) > 1
+        nc = round(str2num(ctrl.jTextNcontacts.getText()));
+        if ctrl.jRadioSeeg.isSelected() && ~isempty(nc)
+            if (strcmpi(optName, 'ContactSpacing') && (length(val) ~= (nc-1)) )
+                jControl.setText(panel_time('FormatValue', sSelElec.ContactSpacing*1000, '', 2));
+                return
+            end
+            if (strcmpi(optName, 'ContactLength') && (length(val) ~= nc) )
+                jControl.setText(panel_time('FormatValue', sSelElec.ContactLength*1000, '', 2));
+                return
+            end
+        end
+    end
+
     % Update field for all the selected electrodes
     for iElec = 1:length(sSelElec)
         if ~isequal(sSelElec(iElec).(optName), val)
@@ -1873,7 +1935,7 @@ function sModels = GetElectrodeModels(list)
     end
     sModels = [];
     % Get all models in preferences
-    if ~strcmp(list, 'defatul') && isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
+    if ~strcmp(list, 'default') && isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'IntraElectrodeModels') && ~isempty(GlobalData.Preferences.IntraElectrodeModels)
         sModels = GlobalData.Preferences.IntraElectrodeModels;
     % Get default list of known electrodes
     else
@@ -1889,7 +1951,7 @@ function sModels = GetElectrodeModels(list)
         sTemplate.ElecDiameter    = 0.0007;
         sTemplate.ElecLength      = 0.100;
         % All models
-        sMod = repmat(sTemplate, 1, 6);
+        sMod = repmat(sTemplate, 1, 9);
         sMod(1).Model         = 'DIXI D08-05AM Microdeep';
         sMod(1).ContactNumber = 5;
         sMod(2).Model         = 'DIXI D08-08AM Microdeep';
@@ -1902,6 +1964,27 @@ function sModels = GetElectrodeModels(list)
         sMod(5).ContactNumber = 15;
         sMod(6).Model         = 'DIXI D08-18AM Microdeep';
         sMod(6).ContactNumber = 18;
+        sMod(7).Model         = 'DIXI D08-15BM Microdeep';
+        sMod(7).ContactNumber = 15;
+        sMod(7).ContactSpacing = [repmat(0.0035, 1, 4), ...
+                                         0.009,         ...
+                                  repmat(0.0035, 1, 4), ...
+                                         0.009,         ...
+                                  repmat(0.0035, 1, 4)];
+        sMod(8).Model         = 'DIXI D08-15CM Microdeep';
+        sMod(8).ContactNumber = 15;
+        sMod(8).ContactSpacing = [repmat(0.0035, 1, 4), ...
+                                         0.013,         ...
+                                  repmat(0.0035, 1, 4), ...
+                                         0.013,         ...
+                                  repmat(0.0035, 1, 4)];
+        sMod(9).Model         = 'DIXI D08-18CM Microdeep';
+        sMod(9).ContactNumber = 18;
+        sMod(9).ContactSpacing = [repmat(0.0035, 1, 5), ...
+                                         0.013,         ...
+                                  repmat(0.0035, 1, 5), ...
+                                         0.013,         ...
+                                  repmat(0.0035, 1, 5)];
         sModels = [sModels, sMod];
         
         % === AD TECH RD10R ===
@@ -2013,6 +2096,46 @@ function sModels = GetElectrodeModels(list)
 end
 
 
+%% ===== UPDATE DEFAULT ELECTRODE MODELS =====
+function infoMsg = UpdateDefaultElectrodeModels()
+    global GlobalData;
+    infoMsg = '';
+
+    % Get Default models in Brainstorm
+    sModelsDef = GetElectrodeModels('default');
+    % Get Preference models: (Old-default models + User models)
+    sModelsPref = GetElectrodeModels();
+
+    % === Generate tentative list of electrode models
+    [~, iUsr] = setdiff({sModelsPref.Model}, {sModelsDef.Model}, 'stable');
+    sModelsTmp = [sModelsDef, sModelsPref(iUsr)];
+    if isequal(sModelsTmp, sModelsPref)
+        return
+    end
+    infoMsg = 'BST> Loading iEEG default electrode models...';
+
+    % Check that tentative list do not overlap with Preference models
+    errModels = {};
+    for iModelTmp = 1 : numel(sModelsTmp)
+        ix = find(ismember({sModelsPref.Model}, sModelsTmp(iModelTmp).Model));
+        if ~isempty(ix) && ~isequal(sModelsPref(ix), sModelsTmp(iModelTmp))
+            errModels{end+1} = sModelsTmp(iModelTmp).Model;
+        end
+    end
+    if ~isempty(errModels)
+        strIndent = repmat(' ', 1, 5);
+        strModels = cellfun(@(x) [strIndent '- ' '"' x '"'], errModels, 'UniformOutput', 0);
+        strModels = strjoin(strModels, char(10));
+        infoMsg = [infoMsg, 10 ...
+                   strIndent, 'Cannot update iEEG default electrode models:' 10 ...
+                   strIndent, 'Backup and delete the following electrode models. Then, restart Brainstorm' 10 strModels];
+        return
+    end
+    % Update global
+    GlobalData.Preferences.IntraElectrodeModels = sModelsTmp;
+end
+
+
 %% ===== GET SELECTED MODEL =====
 function [iModel, sModels] = GetSelectedModel()
     % Get figure controls
@@ -2101,9 +2224,9 @@ function AddElectrodeModel(sNewModel)
             % Ask for all the electrode options
             res = java_dialog('input', {...
                 'Manufacturer and model (SEEG):', ...
-                'Number of contacts:', ...
-                'Contact spacing (mm):', ...
-                'Contact length (mm):', ...
+                'Number of contacts (Nc):', ...
+                '<HTML>Contact spacing (mm): <BR><FONT color="#707070"> Single value, or one per contact spacing (Nc - 1)', ...
+                '<HTML>Contact length (mm): <BR><FONT color="#707070"> Single value, or one per contact (Nc)', ...
                 'Contact diameter (mm):', ...
                 'Electrode diameter (mm):', ...
                 'Electrode length (mm):'}, 'Add new model', [], ...
@@ -2136,6 +2259,17 @@ function AddElectrodeModel(sNewModel)
         bst_error('Invalid values.', 'Add new model', 0);
         return;
     end
+    % Check number of lengths and spacing
+    if ctrl.jRadioSeeg.isSelected()
+        if length(sNew.ContactSpacing) > 1 && (length(sNew.ContactSpacing) ~= (sNew.ContactNumber-1))
+            bst_error('Invalid number of contact spacings.', 'Add new model', 0);
+            return
+        end
+        if length(sNew.ContactLength) > 1 && (length(sNew.ContactLength) ~= sNew.ContactNumber)
+            bst_error('Invalid number of contact lengths.', 'Add new model', 0);
+            return
+        end
+    end
     % Add new electrode
     sModels(end+1) = sNew;
     GlobalData.Preferences.IntraElectrodeModels = sModels;
@@ -2159,9 +2293,10 @@ function RemoveElectrodeModel()
     end
     % Do not remove if it is a default electrode model
     sModelsDefault = GetElectrodeModels('default');
-    if ismember(sModels(iModel).Name, {sModelsDefault.Name})
+    [~ , iDefModel] = ismember(sModels(iModel).Model, {sModelsDefault.Model});
+    if iDefModel > 0 && isequal(sModels(iModel), sModelsDefault(iDefModel))
         java_dialog('warning', [...
-            'This a Brainstorm default electrode model and cannot deleted.' 10], ...
+            'This is a Brainstorm default electrode model and cannot be deleted.' 10], ...
             'Read-only: Default electrode model ');
         return
     end
@@ -2174,6 +2309,28 @@ function RemoveElectrodeModel()
     GlobalData.Preferences.IntraElectrodeModels = sModels;
     % Update list of models
     UpdateElecProperties();
+end
+
+
+%% ===== COPY ELECTRODE MODEL =====
+function CopyElectrodeModel(isAskName)
+    if (nargin < 1) || isempty(isAskName)
+        isAskName = 1;
+    end
+    % Get current electrode model
+    [iModel, sModels] = GetSelectedModel();
+    sModel = sModels(iModel);
+    newModelName = [sModel.Model, '_copy'];
+    % Ask user for a name
+    if isAskName
+        newModelName = java_dialog('input', 'Please enter a name for the electrode model:', 'New model', [], newModelName);
+        if isempty(newModelName)
+            return;
+        end
+    end
+    sModel.Model = newModelName;
+    % Create new model
+    AddElectrodeModel(sModel);
 end
 
 
@@ -2586,7 +2743,7 @@ function SeegAutoContactLocalize(Method)
             end
             % Call GARDEL automatic localization pipeline
             bst_progress('start', 'Auto localize SEEG contacts', 'GARDEL: Detecting electrodes and contacts...', 0, 100);
-            bst_plugin('SetProgressLogo', 'gardel');
+            bst_progress('setpluginlogo', 'gardel');
             sCt = bst_memory('LoadMri', CtFile);
             sVoxelSizeCt = struct('pixdim', sCt.Voxsize);
             elecDetected = elec_auto_segmentation(sCt.Cube, sVoxelSizeCt, isoValue);
@@ -2731,11 +2888,11 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
             ctVertex = [];
             
             % === SPHERE ===
-            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && isValidLoc
+            if (strcmpi(ElectrodeDisplay.DisplayMode, 'sphere') || (strcmpi(sElec.Type, 'ECOG') && ~isSurface) || strcmpi(sElec.Type, 'ECOG-mid')) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && all(sElec.ContactLength > 0) && isValidLoc
                 % Contact size and orientation
                 % Define radius of the sphere; Using ctSize of half the length, makes the sphere to have the same diameters as the contact length, thus spacing between spheres is the same as the space between contacts
                 if strcmpi(sElec.Type, 'SEEG')
-                    ctSize = [1 1 1] .* sElec.ContactLength ./ 2;
+                    ctSize = (sElec.ContactLength' ./ 2) * [1 1 1];
                 else
                     ctSize = [1 1 1] .* sElec.ContactDiameter ./ 2;
                 end
@@ -2796,9 +2953,10 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
                         'UserData',    sElec.Name};
                 end
                 % Plot contacts
-                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && (sElec.ContactLength > 0) && ~any(all(ChanLoc(iElecChan,:)==0,2),1) && isValidLoc
+                if ~isempty(iElecChan) && ~isempty(sElec.ContactDiameter) && (sElec.ContactDiameter > 0) && ~isempty(sElec.ContactLength) && all(sElec.ContactLength > 0) && ~any(all(ChanLoc(iElecChan,:)==0,2),1) && isValidLoc
                     % Contact size and orientation
-                    ctSize   = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2, sElec.ContactLength];
+                    ctSize = [sElec.ContactDiameter ./ 2, sElec.ContactDiameter ./ 2];
+                    ctSize = cat(2, repmat(ctSize, length(sElec.ContactLength), 1), sElec.ContactLength');
                     ctOrient = repmat(elecOrient, length(iElecChan), 1);
                     ctColor  = [.9,.9,0];
                     % Create contacts geometry
@@ -2886,7 +3044,7 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
         ElectrodeConfig = bst_get('ElectrodeConfig', Modality);
         % SEEG: Sphere
         if strcmpi(Modality, 'SEEG')
-            ctSize    = [1 1 1] .* ElectrodeConfig.ContactLength ./ 2;
+            ctSize    = (ElectrodeConfig.ContactLength' ./ 2) * [1 1 1];
             tmpVertex = sphereVertex;
             tmpFaces  = sphereFaces;
             ctOrient  = [];
@@ -2940,8 +3098,6 @@ end
 
 %% ===== PLOT 3D CONTACTS =====
 function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, ChanOrient)
-    % Apply contact size
-    ctVertex = bst_bsxfun(@times, ctVertex, ctSize);
     % Duplicate this contact
     nChan  = size(ChanLoc,1);
     nVert  = size(ctVertex,1);
@@ -2949,6 +3105,12 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
     Vertex = zeros(nChan*nVert, 3);
     Faces  = zeros(nChan*nFace, 3);
     for iChan = 1:nChan
+        % Apply contact size
+        if size(ctSize, 1) == 1
+            ctVertexTmp = bst_bsxfun(@times, ctVertex, ctSize);
+        else
+            ctVertexTmp = bst_bsxfun(@times, ctVertex, ctSize(iChan, :));
+        end
         % Apply orientation
         if ~isempty(ChanOrient) && ~isequal(ChanOrient(iChan,:), [0 0 1])
             v1 = [0;0;1];
@@ -2959,9 +3121,9 @@ function [Vertex, Faces] = Plot3DContacts(ctVertex, ctFaces, ctSize, ChanLoc, Ch
             axis_skewed = [ 0 -axis(3) axis(2) ; axis(3) 0 -axis(1) ; -axis(2) axis(1) 0];
             R = eye(3) + sin(angle)*axis_skewed + (1-cos(angle))*axis_skewed*axis_skewed;
             % Apply rotation to the vertices of the electrode
-            ctVertexOrient = ctVertex * R';
+            ctVertexOrient = ctVertexTmp * R';
         else
-            ctVertexOrient = ctVertex;
+            ctVertexOrient = ctVertexTmp;
         end
         % Set electrode position
         ctVertexOrient = bst_bsxfun(@plus, ChanLoc(iChan,:), ctVertexOrient);
@@ -3180,7 +3342,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUp
                 switch (Method)
                     case 'default'
                         % Compute the default position of the contact
-                        Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+                        if isscalar(sElectrodes(iElec).ContactSpacing)
+                            Channels(iChan(i)).Loc = elecTip + (AllInd(i) - 1) * sElectrodes(iElec).ContactSpacing * orient;
+                        else
+                            CumulativeSpacing = cumsum([0, sElectrodes(iElec).ContactSpacing]);
+                            Channels(iChan(i)).Loc = elecTip + CumulativeSpacing(i) * orient;
+                        end
                     case 'project'
                         % Project the existing contact on the depth electrode
                         Channels(iChan(i)).Loc = elecTip + sum(orient .* (Channels(iChan(i)).Loc - elecTip)) .* orient;

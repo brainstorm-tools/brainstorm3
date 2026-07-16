@@ -38,6 +38,14 @@ switch (Method)
         r = r ./ sqrt(2);           % scale so unit cirle is at 0deg
         t = az;
         [X,Y] = pol2cart(t, r);
+        
+    case 'stereo'
+        % Stereographic projection
+        [az,elev] = cart2sph(x,y,z);
+        elev = -elev;              % elevation is negative towards +z
+        theta = pi/2 + elev;       % because elevation was negated
+        rho   = tan(theta/2);        
+        [X,Y] = pol2cart(az, rho);
 
     case 'circle'
         %     figure; 

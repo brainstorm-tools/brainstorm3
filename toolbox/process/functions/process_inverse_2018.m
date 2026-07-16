@@ -273,6 +273,13 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             if ~isInstalled
                 return;
             end
+
+            % For new version of BEst (>= 3.2.0), delegate computation to  process_inverse_mem
+            if bst_plugin('CompareVersions',  be_versions() , '3.2.0')  >= 0
+                [OutputFiles, errMessage] = process_inverse_mem('Compute', iStudies, iDatas, OPTIONS);
+                return
+            end
+
             % Default options
             MethodOptions = be_main();
             % Interface to edit options

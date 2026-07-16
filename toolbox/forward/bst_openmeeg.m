@@ -57,7 +57,7 @@ if ~isOk
 end
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_plugin('SetProgressLogo', 'openmeeg');
+bst_progress('setpluginlogo', 'openmeeg');
 
 % Binary path
 OpenmeegDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
@@ -416,7 +416,7 @@ cd(curdir);
 % Delete the temporary files
 file_delete(TmpDir, 1, 1);
 % Remove OpenMEEG image
-bst_plugin('SetProgressLogo', []);
+bst_progress('removeimage');
 
 
 

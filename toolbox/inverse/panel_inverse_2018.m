@@ -606,7 +606,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             Comment = GetMethodComment(InverseMethod, InverseMeasure);
         else
             if ~isempty(jRadioMethodMem) && jRadioMethodMem.isSelected()
-                Comment = 'MEM: ';
+                Comment = 'MEM';
             end
         end
         % Add modality comment
