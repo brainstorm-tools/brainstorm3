@@ -118,7 +118,7 @@ function OutputFiles = Run(sProcess, sInputs)
         ind = java_dialog('radio', 'Select the acquisition date:', 'Acquisition date', [], file_str, 1);
         NewT0 = sMetaData(ind).F.t0;
     else
-        NewT0 = str_datetime(datetime('now'));
+        NewT0 = {};
     end
     
 
@@ -130,7 +130,12 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Study for combined recordings
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
+    if ~isempty(NewT0)
+        iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
+    else
+        iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1);
+    end
+
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
@@ -348,7 +353,9 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
     sOutMat.F           = sFileOut;
-    sOutMat.F.t0        = NewT0;
+    if ~isempty(NewT0)
+        sOutMat.F.t0        = NewT0;
+    end
     sOutMat.format      = 'BST-BIN';
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
