@@ -61,6 +61,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             fields = fieldnames(db_template('matrixmat'))';
             NewMat = in_bst_matrix(sInputs(1).FileName, fields{:});
             sfreq = 1 ./ (NewMat.Time(2) - NewMat.Time(1));
+            isRowNames = (size(NewMat.Description,1) == size(NewMat.Value,1));
+            allRowNames = [];
+            if isRowNames
+                allRowNames = NewMat.Description(:,1);
+            end
             % Set history field
             NewMat = bst_history('add', NewMat, 'concat', 'Contatenate rows from files:');
             NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(1).FileName]);
@@ -92,8 +97,25 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(MatrixMat, 'Std') && ~isempty(MatrixMat.Std)
                     NewMat.Std = cat(1, NewMat.Std, MatrixMat.Std);
                 end
+                % Concatenamte the column names
+                if isRowNames && (size(MatrixMat.Description,1) == size(MatrixMat.Value,1))
+                    tmp11 = MatrixMat.Description{1,1};
+                    if iscell(tmp11)
+                        firstRowName = tmp11(1);
+                    else
+                        firstRowName = tmp11;
+                    end
+                    allRowNames = [allRowNames; firstRowName; MatrixMat.Description(2:end,1)];
+                end
                 % History field
                 NewMat = bst_history('add', NewMat, 'concat', [' - ' sInputs(iInput).FileName]);
+            end
+            % Verify row names
+            if length(allRowNames) == size(NewMat.Value,1)
+                allColNames = NewMat.Description(1,:);
+                NewMat.Description = cell(length(allColNames), size(NewMat.Value,2));
+                NewMat.Description(:,1) = allRowNames;
+                NewMat.Description(1,:) = allColNames;
             end
             nRows = size(NewMat.Value, 1);
             % Output file tag

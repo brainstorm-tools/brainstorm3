@@ -135,6 +135,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         fExt = Filters{iFilter, 1}{1};
     end
+    % Check if Study and Subject names will be added in output filenames
+    addConditionToFileName = ~isequal(sInputs(:).Condition);
+    addSubjectToFileName   = ~isequal(sInputs(:).SubjectName);
     % Export files
     for iInput = 1 : length(sInputs)
         % Name for one file is already clean of tags
@@ -163,6 +166,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             for iTag = 1 : length(tagsToRemove)
                 fBase = strrep(fBase, tagsToRemove{iTag}, '');
+            end
+            % Add Condition to base filename
+            if addConditionToFileName
+                if iscell(sInputs(iInput).Condition)
+                    condStr = strjoin(sInputs(iInput).Condition, '_');
+                else
+                    condStr = sInputs(iInput).Condition;
+                end
+                fBase = [condStr, '_', fBase];
+            end
+            % Add Subject to base filename
+            if addSubjectToFileName
+                fBase = [sInputs(iInput).SubjectName, '_', fBase];
             end
             outFileOptions{1} = bst_fullfile(fPath, [fBase, fExt]);
             % Verify that extension for BST format ends in '.ext'

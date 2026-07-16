@@ -99,6 +99,12 @@ function OutputFiles = Run(sProcess, sInputs)
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
+    % New device
+    NewDevice = 'Brainstorm';
+    isDevice = find(arrayfun(@(x) ~isempty(x.F.device), sMetaData));
+    if ~isempty(isDevice)
+        NewDevice = strjoin(arrayfun(@(x) x.F.device, sMetaData(isDevice), 'UniformOutput', false), ',');
+    end
     % Study for combined recordings
     iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
     sNewStudy = bst_get('Study', iNewStudy);
@@ -312,8 +318,8 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     sFileIn.events          = NewEvents;
     sFileIn.channelflag     = NewChannelFlag;
+    sFileIn.device          = NewDevice;
     sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, NewChannelMat);
-
     % Build output structure for combined recordings
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
@@ -322,13 +328,13 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
     sOutMat.Time        = sFileIn.prop.times;
-    sOutMat.Device      = 'Brainstorm';
+    sOutMat.Device      = NewDevice;
     bst_save(OutputFile, sOutMat, 'v6');
 
     % Save all data to combined file
     for iInput = 1 : nInputs
         % Load raw data
-        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 1, 'no', 0);
+        sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 0, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
             sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';

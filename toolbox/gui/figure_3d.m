@@ -519,6 +519,13 @@ function FigureMouseMoveCallback(hFig, varargin)
                         panel_surface('PlotMri', hFig, posXYZ, 1);
                         % Update sliders in surface panel
                         panel_surface('UpdateSurfaceProperties');
+                        if gui_brainstorm('isTabVisible', 'Dipoles')
+                            % Update dipoles if constrained to current slice
+                            DipolesInfo = panel_dipoles('GetDipolesForFigure', hFig);
+                            if DipolesInfo.DisplayCurrentSlice
+                                panel_dipoles('DisplayDipolesInSlices', hFig, 'current');
+                            end
+                        end
                     end
                 end
             end
