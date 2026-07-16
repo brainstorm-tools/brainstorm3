@@ -363,6 +363,14 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = bst_history('add', sOutMat, 'combine', 'List of combined files :');
     for iInput = 1:nInputs
         sOutMat = bst_history('add', sOutMat, 'combine', sprintf(' - %s ', sInputs(iInput).FileName));
+        sHistory = in_bst_data(sInputs(iInput).FileName,'History');
+    end
+    sOutMat = bst_history('add', sOutMat, 'combine', 'Files history:');
+
+    for iInput = 1:nInputs
+        sOutMat = bst_history('add', sOutMat, 'combine', sprintf('History of %s :', sInputs(iInput).FileName));
+        sHistory = in_bst_data(sInputs(iInput).FileName,'History');
+        sOutMat = bst_history('add', sOutMat,  sHistory.History, ' -- ');
     end
 
     bst_save(OutputFile, sOutMat, 'v6');
