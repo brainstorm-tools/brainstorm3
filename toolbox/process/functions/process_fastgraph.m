@@ -213,8 +213,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     nSubplots = length(sInputs)+1;
     % Define the plot parameters
     % Subplot grid dimensions
-    nRows = floor(sqrt(nSubplots/1.5));
-    nCols = ceil(nSubplots/floor(sqrt(nSubplots/1.5)));
+    nCols = ceil(sqrt(nSubplots));
+    nRows = ceil(nSubplots / nCols);
     % Subplot spacing and margins
     gap = [0.075 0.0175];
     horzMargin = 0.03;
