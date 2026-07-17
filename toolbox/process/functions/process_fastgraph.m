@@ -194,7 +194,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Split SEEG contacts into left and right hemisphere groups
     sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat);     
     % Compute anatomical labels for the contacts from volume/surface parcellations
-    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 10, 0, 0);
+    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0);
     % Locate atlas related columns from channel table above
     hit = cellfun(@(x) ischar(x) && (~isempty(strfind(OPTIONS.Atlas, x)) || ~isempty(strfind(x, OPTIONS.Atlas))), chanTableWithAtlas(1,:));
     % Columns whose header matches the atlas name
