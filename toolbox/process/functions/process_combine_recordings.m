@@ -177,7 +177,7 @@ function OutputFiles = Run(sProcess, sInputs)
         tmpEvents = poolEvents(poolEventsIx == iInput);
         for iEvent = 1 : length(tmpEvents)
             tmpEvent = tmpEvents(iEvent);
-            if poolEventsFx(iEvent)
+            if ~poolEventsFx(iEvent)
                 % Add channel info
                 addedChannelNames = {NewChannelMat.Channel(sIdxChNew{iInput}).Name};
                 nOccurences = size(tmpEvent.times, 2);
