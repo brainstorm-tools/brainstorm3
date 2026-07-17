@@ -251,13 +251,19 @@ end
 % Events are saved in an Access database: EEGStudyDB.mdb
 if ~isempty(EventFile)
     Access = [];
-    eventsMat = cell(0,5);
-    try 
+    eventsMat = cell(0,3);
+    try
         % Open Access database with ActiveX server
         Access = actxserver('access.application');
         dbEvt = Access.DBEngine.OpenDatabase(EventFile);
-        % Get all the events
-        recordsEvt = dbEvt.OpenRecordset('SELECT EventTypeID, EventCategoryID, StartSecondHi, DurationHi, EventString FROM EEGEvent WHERE IsEndEvent=false;');
+        % Get all the events. StartSecondHi/StartSecondLo form a 64-bit,
+        % nanosecond-resolution tick counter (Hi = number of 32-bit
+        % overflows, Lo = current tick within the overflow), anchored
+        % exactly at the study's creation_time (t=0): elapsed seconds
+        % since creation_time = (Hi*2^32 + uint32(Lo)) / 1e9. Verified
+        % against the Date/Time text independently logged in EEGLog for
+        % 55 events, spanning 16.4 hours, all resolving to ~1.000000 GHz.
+        recordsEvt = dbEvt.OpenRecordset('SELECT EventString, StartSecondHi, StartSecondLo FROM EEGEvent WHERE IsEndEvent=false;');
         % Loop for get all the values
         while ~recordsEvt.EOF
             eventsMat(end+1,:) = recordsEvt.GetRows()';
@@ -271,43 +277,54 @@ if ~isempty(EventFile)
     if ~isempty(Access) && iscom(Access)
         delete(Access);
     end
-    
+
     % Create events list
     if ~isempty(eventsMat)
-        % Retrieve information of interest
-        allTypes     = double([eventsMat{:,1}]);
-        allStart     = double([eventsMat{:,3}]);
-        allDurations = double([eventsMat{:,4}]);
-        % Get list of events
-        [uniqueType, iUnique] = unique(allTypes);
-        uniqueType = allTypes(sort(iUnique));
-        % Initialize list of events
-        events = repmat(db_template('event'), 1, length(uniqueType));
-        % Format list
-        for iEvt = 1:length(uniqueType)
-            % Find list of occurences of this event
-            iOcc = find((allTypes == uniqueType(iEvt)) & (allStart > 0));
-            % Fill events structure
-            events(iEvt).label      = num2str(uniqueType(iEvt));
-            events(iEvt).color      = [];
-            events(iEvt).reactTimes = [];
-            events(iEvt).select     = 1;
-            % If there are non-negative durations: create extended events
-            if any(allDurations(iOcc) ~= 0)
-                evtDurations = max(allDurations(iOcc), 1);
-                samples = [allStart(iOcc); allStart(iOcc) + evtDurations];
-            else
-                samples = allStart(iOcc);
+        allStrings = eventsMat(:,1)';
+        allHi      = double([eventsMat{:,2}]);
+        allLo      = double([eventsMat{:,3}]);
+        allLo(allLo < 0) = allLo(allLo < 0) + 4294967296;  % reinterpret as unsigned 32-bit
+        allTicksSec = (allHi .* 4294967296 + allLo) ./ 1e9;  % seconds since creation_time
+
+        % Absolute start time of this segment: the study's creation time
+        % (t=0 reference for the whole recording) plus the segment's own
+        % first sample, converted to seconds
+        segStartSec = double(hdr.rda.segment(1).first_sample) ./ sfreq;
+        segDurSec   = double(hdr.rda.segment(1).num_samples) ./ sfreq;
+        allStart    = allTicksSec - segStartSec;
+
+        % Keep only occurrences that (1) have actual annotation text, and
+        % (2) fall within the time window of the segment being imported:
+        % EEGStudyDB.mdb stores the events for the entire multi-day
+        % recording, most of which belong to other .rda segments.
+        hasText  = cellfun(@(s) ischar(s) && ~isempty(strtrim(s)), allStrings);
+        inWindow = (allStart >= 0) & (allStart < segDurSec);
+        isValid  = hasText & inWindow;
+        allStart  = allStart(isValid);
+        allLabels = cellfun(@strtrim, allStrings(isValid), 'UniformOutput', false);
+
+        if ~isempty(allLabels)
+            % Get list of unique event labels, in order of first occurrence
+            uniqueLabels = unique(allLabels, 'stable');
+            % Initialize list of events
+            events = repmat(db_template('event'), 1, length(uniqueLabels));
+            % Format list
+            for iEvt = 1:length(uniqueLabels)
+                % Find list of occurences of this event
+                iOcc = find(strcmp(allLabels, uniqueLabels{iEvt}));
+                % Fill events structure
+                events(iEvt).label      = uniqueLabels{iEvt};
+                events(iEvt).color      = [];
+                events(iEvt).reactTimes = [];
+                events(iEvt).select     = 1;
+                % Point events, in seconds relative to the start of this segment
+                events(iEvt).times    = allStart(iOcc);
+                events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+                events(iEvt).channels = [];
+                events(iEvt).notes    = [];
             end
-            % Convert to time
-            events(iEvt).times    = samples ./ sFile.prop.sfreq;
-            events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
-            events(iEvt).channels = [];
-            events(iEvt).notes    = [];
+            % Import this list
+            sFile = import_events(sFile, [], events);
         end
-        % Import this list
-        sFile = import_events(sFile, [], events);
     end
 end
-
-
