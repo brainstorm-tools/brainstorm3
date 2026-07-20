@@ -267,11 +267,10 @@ function OutputFiles = Run(sProcess, sInputs)
         else
             % New raw condition
             newCondition = [sInputs(iInput).Condition '_synced'];
-            if ~isempty(new_T0)
-                iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_T0));
-            else
-                iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1);
-            end
+            % Add unique new raw condition
+            sSubjStudies = bst_get('StudyWithSubject', sInputs(iInput).SubjectFile);
+            newCondition = file_unique(newCondition, [sSubjStudies.Condition]);
+            iNewStudy = db_add_condition(sInputs(iInput).SubjectName, newCondition, 1, str_date(new_T0));
             sNewStudy = bst_get('Study', iNewStudy);
             % Sync videos
             sOldStudy = bst_get('Study', sInputs(iInput).iStudy);
