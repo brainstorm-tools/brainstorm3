@@ -115,13 +115,12 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     all_t0 = unique(all_t0);
+    NewT0 = [];
     if ~isempty(all_t0)
         NewT0 = all_t0{1};
         if length(all_t0) > 1
             bst_report('Warning', sProcess, sInputs, 'Multiple recording start (T0) found. Using first found: %s.',  new_T0);
         end
-    else
-        NewT0 = {};
     end
     
 
@@ -133,12 +132,7 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Study for combined recordings
-    if ~isempty(NewT0)
-        iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
-    else
-        iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1);
-    end
-
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
@@ -369,9 +363,7 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
     sOutMat.F           = sFileOut;
-    if ~isempty(NewT0)
-        sOutMat.F.t0        = NewT0;
-    end
+    sOutMat.F.t0        = NewT0;
     sOutMat.format      = 'BST-BIN';
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
