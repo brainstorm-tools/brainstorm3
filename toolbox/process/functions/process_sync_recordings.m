@@ -222,17 +222,14 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     % Find the correct acquisition date
+    new_T0 = [];
     has_T0 = find(cellfun(@(x)~isempty(x.T0), sOldTiming));
     if ~isempty(has_T0)
         ts0 = datetime(sOldTiming{has_T0(1)}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
-        new_T0 = str_datetime(ts0 - duration(0,0, OffsetTime(iInput)));
-        
-        if length(all_t0) > 1
-            % Todo: better way to select T0 ? 
-            bst_report('Warning', sProcess, sInputs, 'Multiple recording start found. Using %s.',  new_T0);
+        new_T0 = str_datetime(ts0 - seconds(OffsetTime(iInput)));
+        if length(has_T0) > 1
+            bst_report('Warning', sProcess, sInputs, 'Multiple recording start (T0) found. Using first found: %s.',  new_T0);
         end
-    else
-        new_T0 = {};
     end
 
     bst_progress('inc', nInputs);
@@ -247,9 +244,7 @@ function OutputFiles = Run(sProcess, sInputs)
             sDataSync.Comment = [sDataSync.Comment ' | Synchronized '];
             sDataSync.Time    = sNewTiming{iInput}.Time;
             sDataSync.Events  = sNewTiming{iInput}.Events;
-            if ~isempty(new_T0)
-                sDataSync.T0      = new_T0;
-            end
+            sDataSync.T0      = new_T0;
             % Update data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
             sDataSync.F = sDataSync.F(:,index);
@@ -301,9 +296,8 @@ function OutputFiles = Run(sProcess, sInputs)
             sFileIn = sDataRawSync.F;
             % Set new time and events
             sFileIn.events = sNewTiming{iInput}.Events;
-            if ~isempty(new_T0)
-                sFileIn.t0 = new_T0;
-            end
+            % Set new start time
+            sFileIn.t0 = new_T0;
             sFileIn.header.nsamples = length( sNewTiming{iInput}.Time);
             sFileIn.prop.times      = [ sNewTiming{iInput}.Time(1), sNewTiming{iInput}.Time(end)];
             sFileOut = out_fopen(RawFileOut, 'BST-BIN', sFileIn, ChannelMat);
@@ -318,15 +312,15 @@ function OutputFiles = Run(sProcess, sInputs)
             sOutMat = bst_history('add', sOutMat, 'sync', ['List of synchronized files (event = "', syncEventName , '"):']);
             for ix = 1:nInputs
                 if ix == iInput
-                    offset_diff =  duration(0, 0, -OffsetTime(iInput));
+                    offset_diff = seconds(-OffsetTime(iInput));
                 else
-                    offset_diff =  duration(0, 0, OffsetTime(ix) -OffsetTime(iInput));
+                    offset_diff = seconds(OffsetTime(ix) - OffsetTime(iInput));
                 end
                 sOutMat = bst_history('add', sOutMat, 'sync', sprintf(' - %s (offset: %s)', sInputs(ix).FileName, offset_diff));
             end
             % Update raw data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
-            sDataSync.F      = sDataSync.F(:,index);
+            sDataSync.F = sDataSync.F(:,index);
             % Save new link to raw .mat file
             bst_save(OutputFile, sOutMat, 'v6');
             % Write block
