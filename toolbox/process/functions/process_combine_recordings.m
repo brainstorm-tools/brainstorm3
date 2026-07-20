@@ -319,19 +319,18 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     NewChannelMat.Projector = [sProjNew{:}];
 
-    % History: List of files used to combine
-    NewChannelMat = bst_history('add', NewChannelMat, 'combine', 'List of combined channels :');
+    % History: List of channel files used to combine
+    NewChannelMat = bst_history('add', NewChannelMat, 'combine', 'List of combined channel files:');
     for iInput = 1:nInputs
         NewChannelMat = bst_history('add', NewChannelMat, 'combine', sprintf(' - %s ', sInputs(iInput).ChannelFile));
     end
-
+    % History: Concatenate history of combined channel files
     NewChannelMat = bst_history('add', NewChannelMat, 'combine', 'Channels history:');
     for iInput = 1:nInputs
         NewChannelMat = bst_history('add', NewChannelMat, 'combine', sprintf('History of %s :', sInputs(iInput).ChannelFile));
-        sHistory = in_bst_data(sInputs(iInput).ChannelFile,'History');
+        sHistory = in_bst_data(sInputs(iInput).ChannelFile, 'History');
         NewChannelMat = bst_history('add', NewChannelMat,  sHistory.History, ' -- ');
     end
-
     % Save channel file
     db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
@@ -369,19 +368,18 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat.ChannelFlag = NewChannelFlag;
     sOutMat.Time        = sFileIn.prop.times;
     sOutMat.Device      = NewDevice;
-    % History: List of files used to combine
-    sOutMat = bst_history('add', sOutMat, 'combine', 'List of combined files :');
+    % History: List of raw data files used to combine
+    sOutMat = bst_history('add', sOutMat, 'combine', 'List of combined raw data files :');
     for iInput = 1:nInputs
         sOutMat = bst_history('add', sOutMat, 'combine', sprintf(' - %s ', sInputs(iInput).FileName));
     end
     sOutMat = bst_history('add', sOutMat, 'combine', 'Files history:');
-
+    % History: Concatenate history of combined raw data files
     for iInput = 1:nInputs
         sOutMat = bst_history('add', sOutMat, 'combine', sprintf('History of %s :', sInputs(iInput).FileName));
-        sHistory = in_bst_data(sInputs(iInput).FileName,'History');
+        sHistory = in_bst_data(sInputs(iInput).FileName, 'History');
         sOutMat = bst_history('add', sOutMat,  sHistory.History, ' -- ');
     end
-
     bst_save(OutputFile, sOutMat, 'v6');
 
     % Save all data to combined file
