@@ -118,8 +118,7 @@ function OutputFiles = Run(sProcess, sInputs)
     if ~isempty(all_t0)
         NewT0 = all_t0{1};
         if length(all_t0) > 1
-            % Todo: better way to select T0 ? 
-            bst_report('Warning', sProcess, sInputs, 'Multiple recording start found. Using %s.',  NewT0);
+            bst_report('Warning', sProcess, sInputs, 'Multiple recording start (T0) found. Using first found: %s.',  new_T0);
         end
     else
         NewT0 = {};
