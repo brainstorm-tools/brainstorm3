@@ -250,6 +250,19 @@ end
 %% ===== READ EVENTS =====
 % Events are saved in an Access database: EEGStudyDB.mdb
 if ~isempty(EventFile)
+    % Fields in EEGStudyDB.mdb
+    % Num Field           DataType
+    %   1 EventID         INT32
+    %   2 EventTypeID     INT32
+    %   3 StartSecondHi   INT32
+    %   4 StartSecondLo   INT32
+    %   5 DurationHi      INT32
+    %   6 DurationLo      INT32
+    %   7 EventString     CHAR
+    %   8 OtherEventID    INT32
+    %   9 IsEndEvent      BOOL
+    %  10 EventCategoryID INT32
+    %  11 TraceGroupID    INT32
     Access = [];
     eventsMat = cell(0,3);
     try
