@@ -30,6 +30,8 @@ function [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015-2018
+%          Marcel Heers, 2026
+%          Raymundo Cassani, 2026
 
 
 %% ===== GET FILES =====
@@ -165,16 +167,6 @@ while 1
 end
 % Close file
 fclose(fid);
-% If we could read the number samples per rda file and the index of the rda file: calculate the start of the file
-if ~isempty(hdr.rda_nsamples) && ~isempty(str2num(rdaComment))
-    hdr.rda_startsmp = hdr.rda_nsamples * (str2num(rdaComment) - 1);
-    hdr.rda_startstr = datestr(hdr.rda_startsmp * sfreq /86400, 'HH:MM:SS');
-    timeComment = [' [' hdr.rda_startstr ']'];
-else
-    hdr.rda_startsmp = [];
-    hdr.rda_startstr = '';
-    timeComment = '';
-end
 
 
 %% ===== READ BINARY HEADER =====
@@ -200,6 +192,22 @@ hdr.rda.segment(iseg).pos          = ftell(fid);
 fclose(fid);
 
 
+%% ===== COMPUTE START TIME OF RDA FILE =====
+% Using Study creation time
+if isfield(hdr.xmlchan, 'ProFusionEEGStudy') && isfield(hdr.xmlchan.ProFusionEEGStudy, 'Study') && ...
+        isfield(hdr.xmlchan.ProFusionEEGStudy.Study, 'creation_time') && ~isempty(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time)
+    studyCreationTs = datetime(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time, 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+    fileStartTs = studyCreationTs + seconds(double(hdr.rda.segment(iseg).first_sample) ./ str2double(hdr.xmlchan.ProFusionEEGStudy.Study.eeg_sample_rate));
+    fileStartTs.Format = 'HH:mm:ss';
+    hdr.rda_startstr = char(fileStartTs);
+    timeComment = [' [' hdr.rda_startstr ']'];
+else
+    fileStartTs = [];
+    hdr.rda_startstr = '';
+    timeComment = '';
+end
+
+
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
 sFile = db_template('sfile');
@@ -222,6 +230,9 @@ try
     sFile.acq_date = str_date(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time);
 catch
 end
+% Acquisition time
+sFile.t0 = str_datetime(fileStartTs);
+
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
