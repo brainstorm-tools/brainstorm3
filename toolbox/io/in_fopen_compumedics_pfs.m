@@ -264,19 +264,13 @@ if ~isempty(EventFile)
     %  10 EventCategoryID INT32
     %  11 TraceGroupID    INT32
     Access = [];
-    eventsMat = cell(0,3);
+    fieldsToRead = {'EventString', 'StartSecondLo', 'StartSecondHi', 'DurationLo', 'DurationHi'};
+    eventsMat = cell(0,length(fieldsToRead));
     try
         % Open Access database with ActiveX server
         Access = actxserver('access.application');
         dbEvt = Access.DBEngine.OpenDatabase(EventFile);
-        % Get all the events. StartSecondHi/StartSecondLo form a 64-bit,
-        % nanosecond-resolution tick counter (Hi = number of 32-bit
-        % overflows, Lo = current tick within the overflow), anchored
-        % exactly at the study's creation_time (t=0): elapsed seconds
-        % since creation_time = (Hi*2^32 + uint32(Lo)) / 1e9. Verified
-        % against the Date/Time text independently logged in EEGLog for
-        % 55 events, spanning 16.4 hours, all resolving to ~1.000000 GHz.
-        recordsEvt = dbEvt.OpenRecordset('SELECT EventString, StartSecondHi, StartSecondLo FROM EEGEvent WHERE IsEndEvent=false;');
+        recordsEvt = dbEvt.OpenRecordset(['SELECT ' strjoin(fieldsToRead,',') ' FROM EEGEvent WHERE IsEndEvent=false;']);
         % Loop for get all the values
         while ~recordsEvt.EOF
             eventsMat(end+1,:) = recordsEvt.GetRows()';
@@ -294,27 +288,33 @@ if ~isempty(EventFile)
     % Create events list
     if ~isempty(eventsMat)
         allStrings = eventsMat(:,1)';
-        allHi      = double([eventsMat{:,2}]);
-        allLo      = double([eventsMat{:,3}]);
-        allLo(allLo < 0) = allLo(allLo < 0) + 4294967296;  % reinterpret as unsigned 32-bit
-        allTicksSec = (allHi .* 4294967296 + allLo) ./ 1e9;  % seconds since creation_time
+        % Event Start is the number of nanosecond from the study's creation_time (t=0),
+        % and it saved as UINT64 [StartSecondLo StartSecondHi].
+        % Verified against the Date/Time text independently logged in EEGLog for
+        % 55 events, spanning 16.4 hours, all resolving to ~1.000000 GHz
+        allLoHi = [typecast([eventsMat{:,2}], 'uint32'); typecast([eventsMat{:,3}], 'uint32')];
+        allStartSec = double(typecast(allLoHi(:)', 'uint64')) ./ 1e9; % seconds
+        % Event Duration is saved in the same way as Event Start
+        allLoHi = [typecast([eventsMat{:,4}], 'uint32'); typecast([eventsMat{:,5}], 'uint32')];
+        allDurationSec = double(typecast(allLoHi(:)', 'uint64')) ./ 1e9; % seconds
 
         % Absolute start time of this segment: the study's creation time
         % (t=0 reference for the whole recording) plus the segment's own
         % first sample, converted to seconds
         segStartSec = double(hdr.rda.segment(1).first_sample) ./ sfreq;
         segDurSec   = double(hdr.rda.segment(1).num_samples) ./ sfreq;
-        allStart    = allTicksSec - segStartSec;
+        allStartSec = allStartSec - segStartSec;
 
         % Keep only occurrences that (1) have actual annotation text, and
         % (2) fall within the time window of the segment being imported:
         % EEGStudyDB.mdb stores the events for the entire multi-day
         % recording, most of which belong to other .rda segments.
         hasText  = cellfun(@(s) ischar(s) && ~isempty(strtrim(s)), allStrings);
-        inWindow = (allStart >= 0) & (allStart < segDurSec);
+        inWindow = (allStartSec >= 0) & (allStartSec < segDurSec);
         isValid  = hasText & inWindow;
-        allStart  = allStart(isValid);
-        allLabels = cellfun(@strtrim, allStrings(isValid), 'UniformOutput', false);
+        allLabels      = cellfun(@strtrim, allStrings(isValid), 'UniformOutput', false);
+        allStartSec    = allStartSec(isValid);    % seconds relative to the start of this segment
+        allDurationSec = allDurationSec(isValid); % seconds
 
         if ~isempty(allLabels)
             % Get list of unique event labels, in order of first occurrence
@@ -330,8 +330,13 @@ if ~isempty(EventFile)
                 events(iEvt).color      = [];
                 events(iEvt).reactTimes = [];
                 events(iEvt).select     = 1;
-                % Point events, in seconds relative to the start of this segment
-                events(iEvt).times    = allStart(iOcc);
+                if allDurationSec(iOcc) == 0
+                    % Simple (point) events
+                    events(iEvt).times = allStartSec(iOcc);
+                else
+                    % Extended events
+                    events(iEvt).times = [allStartSec(iOcc); allStartSec(iOcc) + allDurationSec(iOcc)];
+                end
                 events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
                 events(iEvt).channels = [];
                 events(iEvt).notes    = [];
