@@ -30,6 +30,8 @@ function [sFile, ChannelMat] = in_fopen_compumedics_pfs(DataFile)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2015-2018
+%          Marcel Heers, 2026
+%          Raymundo Cassani, 2026
 
 
 %% ===== GET FILES =====
@@ -165,16 +167,6 @@ while 1
 end
 % Close file
 fclose(fid);
-% If we could read the number samples per rda file and the index of the rda file: calculate the start of the file
-if ~isempty(hdr.rda_nsamples) && ~isempty(str2num(rdaComment))
-    hdr.rda_startsmp = hdr.rda_nsamples * (str2num(rdaComment) - 1);
-    hdr.rda_startstr = datestr(hdr.rda_startsmp * sfreq /86400, 'HH:MM:SS');
-    timeComment = [' [' hdr.rda_startstr ']'];
-else
-    hdr.rda_startsmp = [];
-    hdr.rda_startstr = '';
-    timeComment = '';
-end
 
 
 %% ===== READ BINARY HEADER =====
@@ -200,6 +192,22 @@ hdr.rda.segment(iseg).pos          = ftell(fid);
 fclose(fid);
 
 
+%% ===== COMPUTE START TIME OF RDA FILE =====
+% Using Study creation time
+if isfield(hdr.xmlchan, 'ProFusionEEGStudy') && isfield(hdr.xmlchan.ProFusionEEGStudy, 'Study') && ...
+        isfield(hdr.xmlchan.ProFusionEEGStudy.Study, 'creation_time') && ~isempty(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time)
+    studyCreationTs = datetime(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time, 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+    fileStartTs = studyCreationTs + seconds(double(hdr.rda.segment(iseg).first_sample) ./ str2double(hdr.xmlchan.ProFusionEEGStudy.Study.eeg_sample_rate));
+    fileStartTs.Format = 'HH:mm:ss';
+    hdr.rda_startstr = char(fileStartTs);
+    timeComment = [' [' hdr.rda_startstr ']'];
+else
+    fileStartTs = [];
+    hdr.rda_startstr = '';
+    timeComment = '';
+end
+
+
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
 sFile = db_template('sfile');
@@ -222,6 +230,9 @@ try
     sFile.acq_date = str_date(hdr.xmlchan.ProFusionEEGStudy.Study.creation_time);
 catch
 end
+% Acquisition time
+sFile.t0 = str_datetime(fileStartTs);
+
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
@@ -250,14 +261,27 @@ end
 %% ===== READ EVENTS =====
 % Events are saved in an Access database: EEGStudyDB.mdb
 if ~isempty(EventFile)
+    % Fields in EEGStudyDB.mdb
+    % Num Field           DataType
+    %   1 EventID         INT32
+    %   2 EventTypeID     INT32
+    %   3 StartSecondHi   INT32
+    %   4 StartSecondLo   INT32
+    %   5 DurationHi      INT32
+    %   6 DurationLo      INT32
+    %   7 EventString     CHAR
+    %   8 OtherEventID    INT32
+    %   9 IsEndEvent      BOOL
+    %  10 EventCategoryID INT32
+    %  11 TraceGroupID    INT32
     Access = [];
-    eventsMat = cell(0,5);
-    try 
+    fieldsToRead = {'EventString', 'StartSecondLo', 'StartSecondHi', 'DurationLo', 'DurationHi'};
+    eventsMat = cell(0,length(fieldsToRead));
+    try
         % Open Access database with ActiveX server
         Access = actxserver('access.application');
         dbEvt = Access.DBEngine.OpenDatabase(EventFile);
-        % Get all the events
-        recordsEvt = dbEvt.OpenRecordset('SELECT EventTypeID, EventCategoryID, StartSecondHi, DurationHi, EventString FROM EEGEvent WHERE IsEndEvent=false;');
+        recordsEvt = dbEvt.OpenRecordset(['SELECT ' strjoin(fieldsToRead,',') ' FROM EEGEvent WHERE IsEndEvent=false;']);
         % Loop for get all the values
         while ~recordsEvt.EOF
             eventsMat(end+1,:) = recordsEvt.GetRows()';
@@ -271,43 +295,65 @@ if ~isempty(EventFile)
     if ~isempty(Access) && iscom(Access)
         delete(Access);
     end
-    
+
     % Create events list
     if ~isempty(eventsMat)
-        % Retrieve information of interest
-        allTypes     = double([eventsMat{:,1}]);
-        allStart     = double([eventsMat{:,3}]);
-        allDurations = double([eventsMat{:,4}]);
-        % Get list of events
-        [uniqueType, iUnique] = unique(allTypes);
-        uniqueType = allTypes(sort(iUnique));
-        % Initialize list of events
-        events = repmat(db_template('event'), 1, length(uniqueType));
-        % Format list
-        for iEvt = 1:length(uniqueType)
-            % Find list of occurences of this event
-            iOcc = find((allTypes == uniqueType(iEvt)) & (allStart > 0));
-            % Fill events structure
-            events(iEvt).label      = num2str(uniqueType(iEvt));
-            events(iEvt).color      = [];
-            events(iEvt).reactTimes = [];
-            events(iEvt).select     = 1;
-            % If there are non-negative durations: create extended events
-            if any(allDurations(iOcc) ~= 0)
-                evtDurations = max(allDurations(iOcc), 1);
-                samples = [allStart(iOcc); allStart(iOcc) + evtDurations];
-            else
-                samples = allStart(iOcc);
+        allStrings = eventsMat(:,1)';
+        % Event Start is the number of nanosecond from the study's creation_time (t=0),
+        % and it saved as UINT64 [StartSecondLo StartSecondHi].
+        % Verified against the Date/Time text independently logged in EEGLog for
+        % 55 events, spanning 16.4 hours, all resolving to ~1.000000 GHz
+        allLoHi = [typecast([eventsMat{:,2}], 'uint32'); typecast([eventsMat{:,3}], 'uint32')];
+        allStartSec = double(typecast(allLoHi(:)', 'uint64')) ./ 1e9; % seconds
+        % Event Duration is saved in the same way as Event Start
+        allLoHi = [typecast([eventsMat{:,4}], 'uint32'); typecast([eventsMat{:,5}], 'uint32')];
+        allDurationSec = double(typecast(allLoHi(:)', 'uint64')) ./ 1e9; % seconds
+
+        % Absolute start time of this segment: the study's creation time
+        % (t=0 reference for the whole recording) plus the segment's own
+        % first sample, converted to seconds
+        segStartSec = double(hdr.rda.segment(1).first_sample) ./ sfreq;
+        segDurSec   = double(hdr.rda.segment(1).num_samples) ./ sfreq;
+        allStartSec = allStartSec - segStartSec;
+
+        % Keep only occurrences that (1) have actual annotation text, and
+        % (2) fall within the time window of the segment being imported:
+        % EEGStudyDB.mdb stores the events for the entire multi-day
+        % recording, most of which belong to other .rda segments.
+        hasText  = cellfun(@(s) ischar(s) && ~isempty(strtrim(s)), allStrings);
+        inWindow = (allStartSec >= 0) & (allStartSec < segDurSec);
+        isValid  = hasText & inWindow;
+        allLabels      = cellfun(@strtrim, allStrings(isValid), 'UniformOutput', false);
+        allStartSec    = allStartSec(isValid);    % seconds relative to the start of this segment
+        allDurationSec = allDurationSec(isValid); % seconds
+
+        if ~isempty(allLabels)
+            % Get list of unique event labels, in order of first occurrence
+            uniqueLabels = unique(allLabels, 'stable');
+            % Initialize list of events
+            events = repmat(db_template('event'), 1, length(uniqueLabels));
+            % Format list
+            for iEvt = 1:length(uniqueLabels)
+                % Find list of occurences of this event
+                iOcc = find(strcmp(allLabels, uniqueLabels{iEvt}));
+                % Fill events structure
+                events(iEvt).label      = uniqueLabels{iEvt};
+                events(iEvt).color      = [];
+                events(iEvt).reactTimes = [];
+                events(iEvt).select     = 1;
+                if allDurationSec(iOcc) == 0
+                    % Simple (point) events
+                    events(iEvt).times = allStartSec(iOcc);
+                else
+                    % Extended events
+                    events(iEvt).times = [allStartSec(iOcc); allStartSec(iOcc) + allDurationSec(iOcc)];
+                end
+                events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+                events(iEvt).channels = [];
+                events(iEvt).notes    = [];
             end
-            % Convert to time
-            events(iEvt).times    = samples ./ sFile.prop.sfreq;
-            events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
-            events(iEvt).channels = [];
-            events(iEvt).notes    = [];
+            % Import this list
+            sFile = import_events(sFile, [], events);
         end
-        % Import this list
-        sFile = import_events(sFile, [], events);
     end
 end
-
-
