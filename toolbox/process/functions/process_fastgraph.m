@@ -152,8 +152,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if ~all(isBipolar)
         iInvalid = find(~isBipolar);    
         bst_report('Error', sProcess, sInputs(iInvalid), ...
-            sprintf('Could not find a bipolar channel name in the file comment: "%s".\n', ...
-                    sInputs(iInvalid).Comment));
+                   sprintf('Could not find a bipolar channel name in the file comment: "%s".\n', sInputs(iInvalid).Comment));
         return;
     end
 
@@ -168,8 +167,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if ~all(isChannelFound)
         missingChannels = unique(allBipolarChannels(~isChannelFound), 'stable');    
         bst_report('Error', sProcess, sInputs, ...
-            sprintf('The following channels were not found in the channel file: %s.', ...
-                    strjoin(missingChannels, ', ')));
+                   sprintf('The following channels were not found in the channel file: %s.', strjoin(missingChannels, ', ')));
         return;
     end
 
