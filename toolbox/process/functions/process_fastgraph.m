@@ -37,7 +37,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
 % Describe the process and its UI options
 sProcess.Comment     = 'Plot FastGraphs';
 sProcess.Category    = 'Custom';
-sProcess.SubGroup    = 'FAST graph';
+sProcess.SubGroup    = 'FastGraph';
 sProcess.Index       = 1303;
 sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph';
 % Definition of the input accepted by this process
@@ -49,50 +49,50 @@ sProcess.nMinFiles   = 1;
 sProcess.options.scouts.Comment = '';
 sProcess.options.scouts.Type    = 'scout';
 sProcess.options.scouts.Value   = {};
-% Color FastGraph by region or by label
-sProcess.options.colorscheme.Comment = {'Region', 'Label', '<HTML><U><B>FastGraph color:</U></B></HTML>'; ...
-                                        'Region', 'Label', ''};
-sProcess.options.colorscheme.Type    = 'radio_linelabel';
-sProcess.options.colorscheme.Value   = 'Region';
+% Color FastGraph by Region or by Scout
+sProcess.options.colorscheme.Comment    = {'Region', 'Scout', 'Color scheme:&nbsp;&nbsp;'; ...
+                                           'region', 'scout', ''};
+sProcess.options.colorscheme.Type       = 'radio_linelabel';
+sProcess.options.colorscheme.Value      = 'region';
+sProcess.options.colorscheme.Controller = struct('region', 'region');
 % Select regions to include
-sProcess.options.region.Comment = [{'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'}, {'<HTML><U><B>Select region(s) to include:</U></B></HTML>'}];
+regionsStr = {'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'};
+sProcess.options.region.Comment = [regionsStr, {'<HTML><B>Select regions to include:</B>'}];
 sProcess.options.region.Type    = 'list_horizontal';
-sProcess.options.region.Value   = '';
-% Add separator
-sProcess.options.separator1.Type    = 'separator';
+sProcess.options.region.Value   = regionsStr;
+sProcess.options.region.Class   = 'region';
 % Method for sorting the data
-sProcess.options.label5.Comment = '<U><B>Select method to sort the data:</U></B>';
-sProcess.options.label5.Type    = 'label';
-sProcess.options.sortmethod.Comment = {'Root Mean Square', 'Max Absolute'; 'Root Mean Square', 'Max Absolute'};
+sProcess.options.label1.Comment     = '<B>Method for sorting data:<B>';
+sProcess.options.label1.Type        = 'label';
+sProcess.options.sortmethod.Comment = {'Root Mean Square', 'Max Absolute'; 'rms', 'maxabs'};
 sProcess.options.sortmethod.Type    = 'radio_label';
-sProcess.options.sortmethod.Value   = 'Root Mean Square';
+sProcess.options.sortmethod.Value   = 'rms';
 % Sort window
-sProcess.options.label6.Comment  = ['<HTML><U><B>Choose range to sort over:</U></B>' ...
-                                    '<I><FONT color="#777777">' ...
-                                    'Early latency:&nbsp;&nbsp;&nbsp; 0-60 ms <BR>' ...
-                                    'Middle latency: 60-250 ms <BR>' ...
-                                    'Late latency:&nbsp;&nbsp;&nbsp;&nbsp; 250-600 ms</FONT></I></HTML>'];
-sProcess.options.label6.Type     = 'label';
-sProcess.options.sortwindow.Comment = 'Sort range: ';
+sProcess.options.sortwindow.Comment = 'Time window to sort data: ';
 sProcess.options.sortwindow.Type    = 'timewindow';
 sProcess.options.sortwindow.Value   = [];
-% Add separator
-sProcess.options.separator2.Type    = 'separator';
+sProcess.options.label2.Comment     = ['<I><FONT color="#777777">' ...
+                                       'E.g., Early latency (0-60 ms), ' ...
+                                       'Middle latency (60-250 ms), or ' ...
+                                       'Late latency (250-600 ms)</FONT></I>'];
+sProcess.options.label2.Type        = 'label';
+% Exclude contacts within a certain distance from the stimulation sites
+sProcess.options.excluderadius.Comment = 'Exclusion zone radius:<BR>';
+sProcess.options.excluderadius.Type    = 'value';
+sProcess.options.excluderadius.Value   = {20,'mm', 0};
+sProcess.options.label3.Comment        = ['<I><FONT color="#777777">' ...
+                                          'Exclude analysis of contacts within ' ...
+                                          'this distance from the stimulation site</FONT></I>'];
+sProcess.options.label3.Type           = 'label';
+sProcess.options.separator1.Type    = 'separator';
 % Plot window
-sProcess.options.plotwindow.Comment = 'Plot range: ';
+sProcess.options.plotwindow.Comment = 'Plot time range: ';
 sProcess.options.plotwindow.Type    = 'timewindow';
 sProcess.options.plotwindow.Value   = [];
 % Edge transparency of plot
 sProcess.options.edgealpha.Comment = 'Edge transparency of plot: ';
 sProcess.options.edgealpha.Type    = 'value';
 sProcess.options.edgealpha.Value   = {0.05,' ', 2};
-% Exclude contacts within a certain distance from the stimulation sites
-sProcess.options.label7.Comment  = ['<HTML><I><FONT color="#777777">' ...
-                                    'Exclude analysis of contacts within this distance from the stimulation site</FONT></I>'];
-sProcess.options.label7.Type     = 'label';
-sProcess.options.excluderadius.Comment = 'Exclusion zone radius: ';
-sProcess.options.excluderadius.Type    = 'value';
-sProcess.options.excluderadius.Value   = {20,'mm', 0};
 end
 
 %% ===== FORMAT COMMENT =====
@@ -453,8 +453,8 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
         sortWindowIdx = OPTIONS.SortWindow(1):OPTIONS.SortWindow(2);
     end
     % Sort channels within each hemisphere using the selected metric
-    switch OPTIONS.SortMethod        
-        case 'Root Mean Square'
+    switch lower(OPTIONS.SortMethod)
+        case 'rms'
             if ~isempty(subplotData.leftData)
                 leftDataRms = sqrt(sum(subplotData.leftData(:,sortWindowIdx).^2, 2));
                 leftDataRms(isnan(leftDataRms)) = -Inf;
@@ -465,7 +465,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
                 rightDataRms(isnan(rightDataRms)) = -Inf;
                 [sSorted.Vals.Right, sSorted.Idxs.Right] = sort(rightDataRms,'ascend');
             end        
-        case 'Max Absolute'
+        case 'maxabs'
             if ~isempty(subplotData.leftData)
                 leftDataMax = max(abs(subplotData.leftData(:,sortWindowIdx)),[],2);
                 leftDataMax(isnan(leftDataMax)) = -Inf;
@@ -613,10 +613,11 @@ function region = GetRegionFromScouts(sCortex, inputAtlasScoutLabel, OPTIONS)
             % Matching scout found: assign region name
             region.Name = atlas.Scouts(iScout).Region(2:end);
             % Assign color based on the selected color scheme
-            if strcmp(OPTIONS.ColorScheme, 'Region')
-                region.Color = panel_scout('GetRegionColor', atlas.Scouts(iScout).Region);
-            else
-                region.Color = atlas.Scouts(iScout).Color;
+            switch lower(OPTIONS.ColorScheme)
+                case 'region'
+                    region.Color = panel_scout('GetRegionColor', atlas.Scouts(iScout).Region);
+                case 'scout'
+                    region.Color = atlas.Scouts(iScout).Color;
             end
             return;
         end
@@ -696,7 +697,7 @@ function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
     % Select atlas
     panel_scout('SetCurrentAtlas', iAtlas);    
     % Color scouts by region or individual label
-    isRegionColor = strcmp(OPTIONS.ColorScheme, 'Region');
+    isRegionColor = strcmpi(OPTIONS.ColorScheme, 'region');
     panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, isRegionColor);
     % Show only selected scouts
     panel_scout('SetSelectedScouts', iSelectedScouts);
