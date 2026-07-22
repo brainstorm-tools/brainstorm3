@@ -697,25 +697,17 @@ function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
     bst_figures('SetBackgroundColor', hFigSurf, [1 1 1]);
     % Select atlas
     panel_scout('SetCurrentAtlas', iAtlas);    
-    % Set options
-    switch(OPTIONS.ColorScheme)
-        case 'Region'
-            panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, 1);
-        case 'Label'
-            panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, 0);
-    end
+    % Color scouts by region or individual label
+    isRegionColor = strcmp(OPTIONS.ColorScheme, 'Region');
+    panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, isRegionColor);
     % Show only selected scouts
     panel_scout('SetSelectedScouts', iSelectedScouts);
-    % Capture image
+    % Set background color
+    bst_figures('SetBackgroundColor', hFigSurf, [1 1 1]);
+    % Capture and crop the cortex image
     img = out_figure_image(hFigSurf);
-    % Crop background
-    bgColor = img(1,1,:);
-    mask = (img(:,:,1) == bgColor(1)) & ...
-           (img(:,:,2) == bgColor(2)) & ...
-           (img(:,:,3) == bgColor(3));
-    goodRows = any(~mask, 2);
-    goodCols = any(~mask, 1);
-    imgCortex = img(goodRows, goodCols, :);
+    isBackground = all(img == 255, 3);
+    imgCortex = img(any(~isBackground, 2), any(~isBackground, 1), :);
     % Close figure
     close(hFigSurf);
 end
