@@ -154,10 +154,8 @@ elseif iscell(MriFile) && ~strcmpi(FileFormat, 'SPM-TPM')
 end
 
 %% ===== LOAD MRI FILE =====
-isProgress = bst_progress('isVisible');
-if ~isProgress
-    bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
-end
+bst_progress('start', ['Import ', volType], ['Loading ', volType, ' file...']);
+
 % MNI / Atlas / CT / PET?
 isMni   = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
@@ -555,7 +553,7 @@ panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 db_save();
 % Unload MRI (if a MRI with the same name was previously loaded)
 bst_memory('UnloadMri', BstMriFile);
-
+bst_progress('stop');
 
 %% ===== MRI VIEWER =====
 if isInteractive
@@ -583,11 +581,8 @@ if isInteractive
             hFig = view_mri(BstMriFile);
         end
     end
-else
-    if ~isProgress
-        bst_progress('stop');
-    end
 end
+
 
 
 
