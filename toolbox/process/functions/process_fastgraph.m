@@ -262,12 +262,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Add the stimulation pair and atlas scout label as the subplot title
         AddFastgraphTitle(sInputs, sSortedFastgraphLocIdxs.All(iSubplot), chanNamesSeeg, atlasScoutLabelsSeeg);
     end    
-    % Apply the shared y-axis limits to all FastGraph subplots
-    for iSubplot = 1:nSubplots-1
-        axSubplots(iSubplot).YLim = commonAxisLimits(3:4);
-    end
+    % Format all FastGraph axes
+    axFastGraphs = axSubplots(1:nSubplots-1);
+    % Set axis labels for all FastGraph subplots
+    set([axFastGraphs.XLabel], 'String', 'Time (ms)');
+    set([axFastGraphs.YLabel], 'String', 'Voltage (mV)');
+    % Apply common axes properties
+    set(axFastGraphs, ...
+        'YLim', commonAxisLimits(3:4), ...
+        'XAxisLocation', 'bottom');
+    % Add zero-reference lines and hemisphere labels
+    DecorateFastgraphAxes(axFastGraphs);
     % Link subplot axes so that zooming stays synchronized
-    linkaxes(axSubplots)
+    linkaxes(axFastGraphs)
     set(gcf,'units','normalized','outerposition',[0 0 1 1])
     zoom on
 
@@ -279,7 +286,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     subtightplot(nRows, nCols, iSubplot+1, gap, horzMargin, vertMargin);
     % Plot the reference panel with the cortex snapshot and axis labels
     axSubplots(iSubplot+1) = gca;
-    PlotLegend(axSubplots(iSubplot+1), imgCortex, round(axSubplots(1).XLim), [0 1], 'Time (ms)', 'Voltage (mV)');
+    PlotLegend(axSubplots(iSubplot+1), imgCortex, round(axSubplots(1).XLim), axSubplots(1).YLim);
     
     % Close progress 
     bst_progress('stop');
@@ -714,109 +721,82 @@ function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
 end
 
 %% ===== PLOT LEGEND =====
-% Shows the legend for the FastGraph plots as in the paper
-function PlotLegend(axSubplotLegend, brainImg, xRange, yRange, xLabel, yLabel)    
-    % === Prepare the plot area ===
-    % Set the visible x- and y-axis limits
-    set(axSubplotLegend, 'XLim', xRange, 'YLim', yRange);
-    % Add x-axis label
-    axSubplotLegend.XLabel.String = xLabel;
-    % Move x-axis label closer to the axis (slightly upward)
-    axSubplotLegend.XLabel.Position = [mean(axSubplotLegend.XLim), axSubplotLegend.YLim(1) - 0.01, 0];
-    % Add y-axis label
-    axSubplotLegend.YLabel.String = yLabel;
-    % Move the y-axis label closer to the axis (slightly right)
-    axSubplotLegend.YLabel.Position = [axSubplotLegend.XLim(1) - 5, mean(axSubplotLegend.YLim), 0];
-    % Show ticks only at the minimum and maximum values of each axis
-    axSubplotLegend.XTick = [xRange(1), xRange(2)];
-    axSubplotLegend.YTick = [yRange(1), yRange(2)];
-
-    % === Create overlay axes for the brain atlas image ===
-    axImg = axes('Parent', ancestor(axSubplotLegend, 'figure'), ...
+% Show the reference cortex image using the same axes layout as the plots
+function PlotLegend(axLegend, brainImg, xLim, yLim)
+    % Configure legend axes
+    set(axLegend, ...
+        'XLim', xLim, ...
+        'YLim', yLim, ...
+        'XAxisLocation', 'bottom');
+    axLegend.XLabel.String = 'Time (ms)';
+    axLegend.YLabel.String = 'Voltage (mV)';
+    % Create overlay axes for the cortex image
+    hFig = ancestor(axLegend, 'figure');
+    axImg = axes( ...
+        'Parent', hFig, ...
         'Units', 'pixels', ...
         'Color', 'none');
-    % Display the brain image inside the overlay axes
-    hImg = imshow(brainImg, 'Parent', axImg);
-    % Hide the overlay axes so only the image is visible
+    imshow(brainImg, 'Parent', axImg);
     axis(axImg, 'off');
-    % Keep the original axes limits fixed so the image does not alter them
-    axis(axSubplotLegend, 'manual');
-    % Initial placement
-    UpdateLegendImage(axSubplotLegend, axImg, brainImg);
-    % Update placement whenever the figure is resized/moved
-    hFig = ancestor(axSubplotLegend, 'figure');
-    hFig.SizeChangedFcn = @(~,~)UpdateLegendImage(axSubplotLegend, axImg, brainImg);
-    
-    % Add left/right hemisphere labels with pixel-based spacing
-    AddLegendHemisphereLabels(axSubplotLegend, xRange, yRange);
+    axis(axLegend, 'manual');
+    % Position the image initially and after resizing
+    UpdateLegendImage(axLegend, axImg, brainImg);
+    hFig.SizeChangedFcn = @(~,~) UpdateLegendImage(axLegend, axImg, brainImg);
 end
 
-%% ===== ADD 'L/R' HEMISPHERE LABELS IN THE LEGEND =====
-% Add 'L/R' hemisphere labels to the legend axes
-function AddLegendHemisphereLabels(axSubplotLegend, xRange, yRange)
-    % Position labels near the right side of the legend axes
-    xSpan = diff(xRange);
-    ySpan = diff(yRange);
-    xLR = xRange(2) - 0.08 * xSpan;
+%% ===== DECORATE FASTGRAPH AXES =====
+% Add the zero-reference line and L/R hemisphere labels
+function DecorateFastgraphAxes(axFastgraphs)
+    for ax = axFastgraphs
+        line(ax, ax.XLim, [0 0], ...
+            'Color', [0 0 0], ...
+            'LineWidth', 0.5, ...
+            'HandleVisibility', 'off');
+        AddHemisphereLabels(ax);
+    end
+end
 
-    % Get axes height in pixels
-    oldUnits = axSubplotLegend.Units;
-    axSubplotLegend.Units = 'pixels';
-    axPos = axSubplotLegend.Position;
-    axSubplotLegend.Units = oldUnits;
-
-    % Convert a fixed pixel gap into data units
-    pixelsPerDataY = axPos(4) / ySpan;
-    gapPx = max(14, axSubplotLegend.FontSize + 4);
-    gapData = gapPx / pixelsPerDataY;
-
-    % Place labels above and below the x-axis
-    yAxisLevel = yRange(1);
-    yL = yAxisLevel + gapData;
-    yR = yAxisLevel - gapData;
-
-    % Draw the labels
-    text(axSubplotLegend, xLR, yL, 'L', ...
+%% ===== ADD HEMISPHERE LABELS =====
+% Add L/R labels immediately above and below the y = 0 reference line
+function AddHemisphereLabels(ax)
+    % Common label properties
+    labelProperties = { ...
+        'Parent', ax, ...
+        'Units', 'normalized', ...
         'FontSize', 8, ...
         'FontWeight', 'bold', ...
         'HorizontalAlignment', 'right', ...
         'VerticalAlignment', 'middle', ...
-        'Clipping', 'off', ...
-        'Margin', 1);
-
-    text(axSubplotLegend, xLR, yR, 'R', ...
-        'FontSize', 8, ...
-        'FontWeight', 'bold', ...
-        'HorizontalAlignment', 'right', ...
-        'VerticalAlignment', 'middle', ...
-        'Clipping', 'off', ...
-        'Margin', 1);
+        'Clipping', 'off'};
+    % Find the normalized vertical position of y = 0
+    yZeroNormalized = -ax.YLim(1) / diff(ax.YLim);
+    % Position labels close to the right edge
+    xPosition = 0.96;
+    % Normalized vertical spacing around the zero line
+    labelGap = 0.035;
+    % Place labels above and below the bottom x-axis
+    text(xPosition, yZeroNormalized + labelGap, 'L', labelProperties{:});
+    text(xPosition, yZeroNormalized - labelGap, 'R', labelProperties{:});
 end
 
 %% ===== UPDATE LEGEND IMAGE =====
 % Update the overlay image position so it stays centered inside the
 % legend subplot when the figure is resized or moved across screens
 function UpdateLegendImage(axSubplotLegend, axImg, brainImg)
-    % Get original image size in pixels
-    imgH = size(brainImg, 1);
-    imgW = size(brainImg, 2);
-    % Read the legend subplot position in pixel units
-    oldUnits = axSubplotLegend.Units;
-    axSubplotLegend.Units = 'pixels';
-    % Get the axes position in pixel units: [left, bottom, width, height]
-    pos = axSubplotLegend.Position;
-    axSubplotLegend.Units = oldUnits;
-    % Available subplot width and height in pixels
-    boxW = pos(3);
-    boxH = pos(4);
-    % Scale the image to fit inside the subplot while preserving aspect ratio
-    scale = min(boxW / imgW, boxH / imgH) * 0.75;
+    % Axes position in pixels
+    axPos = getpixelposition(axSubplotLegend);
+    % Original image dimensions
+    imgSize = size(brainImg);
+    imgH = imgSize(1);
+    imgW = imgSize(2);
+    % Scale while preserving image aspect ratio
+    scale = 0.75 * min(axPos(3) / imgW, axPos(4) / imgH);
     newW = imgW * scale;
     newH = imgH * scale;
-    % Center the image inside the legend subplot
-    xLeft = pos(1) + (boxW - newW) / 2;
-    yBottom = pos(2) + (boxH - newH) / 2;
-    % Update the overlay axes position in pixel coordinates
-    axImg.Units = 'pixels';
-    axImg.Position = [xLeft, yBottom, newW, newH];
+    % Center inside the legend subplot
+    xLeft = axPos(1) + (axPos(3) - newW) / 2;
+    yBottom = axPos(2) + (axPos(4) - newH) / 2;
+    set(axImg, ...
+        'Units', 'pixels', ...
+        'Position', [xLeft, yBottom, newW, newH]);
 end
