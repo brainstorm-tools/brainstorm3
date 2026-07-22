@@ -268,9 +268,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     set([axFastGraphs.XLabel], 'String', 'Time (ms)');
     set([axFastGraphs.YLabel], 'String', 'Voltage (mV)');
     % Apply common axes properties
-    set(axFastGraphs, ...
-        'YLim', commonAxisLimits(3:4), ...
-        'XAxisLocation', 'bottom');
+    set(axFastGraphs, 'YLim', commonAxisLimits(3:4), 'XAxisLocation', 'bottom');
     % Add zero-reference lines and hemisphere labels
     DecorateFastgraphAxes(axFastGraphs);
     % Link subplot axes so that zooming stays synchronized
@@ -724,10 +722,7 @@ function PlotLegend(axLegend, brainImg, xLim, yLim)
     axLegend.YLabel.String = 'Voltage (mV)';
     % Create overlay axes for the cortex image
     hFig = ancestor(axLegend, 'figure');
-    axImg = axes( ...
-        'Parent', hFig, ...
-        'Units', 'pixels', ...
-        'Color', 'none');
+    axImg = axes('Parent', hFig, 'Units', 'pixels', 'Color', 'none');
     imshow(brainImg, 'Parent', axImg);
     axis(axImg, 'off');
     axis(axLegend, 'manual');
@@ -788,7 +783,5 @@ function UpdateLegendImage(axSubplotLegend, axImg, brainImg)
     % Center inside the legend subplot
     xLeft = axPos(1) + (axPos(3) - newW) / 2;
     yBottom = axPos(2) + (axPos(4) - newH) / 2;
-    set(axImg, ...
-        'Units', 'pixels', ...
-        'Position', [xLeft, yBottom, newW, newH]);
+    set(axImg, 'Units', 'pixels', 'Position', [xLeft, yBottom, newW, newH]);
 end
