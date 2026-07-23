@@ -39,7 +39,13 @@ function sProcess = GetDescription()
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
-    
+    % Description of the process
+    sProcess.options.inputs.Comment = ['Combine multiple recordings to a single file: ', ...
+                                       '<ul>'...
+                                            '<li> All recordings must have the same start and end times (use Process Synchronize files). </li>', ...
+                                            '<li> If recordings have a different sampling rates, they are all resampled to the highest sampling frequency.</li>',...
+                                       '</ul><BR>'];
+    sProcess.options.inputs.Type    = 'label';
     % Option: Condition
     sProcess.options.condition.Comment = 'Condition name:';
     sProcess.options.condition.Type    = 'text';
@@ -99,14 +105,34 @@ function OutputFiles = Run(sProcess, sInputs)
     [~, iRefRec] = max(arrayfun(@(x) x.F.prop.sfreq, sMetaData));
     % New sampling frequency
     NewFs = sMetaData(iRefRec).F.prop.sfreq;
+
+    % Find new T0
+    all_t0 = {};
+    for iFile = 1:length(sMetaData)
+        if ~isempty(sMetaData(iFile).F.t0)
+            all_t0{end+1} = sMetaData(iFile).F.t0;
+        end
+    end
+
+    all_t0 = unique(all_t0);
+    NewT0 = [];
+    if ~isempty(all_t0)
+        NewT0 = all_t0{1};
+        if length(all_t0) > 1
+            bst_report('Warning', sProcess, sInputs, sprintf('Multiple recording start (T0) found. Using first found: %s.',  new_T0));
+        end
+    end
+    
+
     % New device
     NewDevice = 'Brainstorm';
     isDevice = find(arrayfun(@(x) ~isempty(x.F.device), sMetaData));
     if ~isempty(isDevice)
         NewDevice = strjoin(arrayfun(@(x) x.F.device, sMetaData(isDevice), 'UniformOutput', false), ',');
     end
+
     % Study for combined recordings
-    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition);
+    iNewStudy = db_add_condition(sInputs(iRefRec).SubjectName,  NewCondition, 1, str_date(NewT0));
     sNewStudy = bst_get('Study', iNewStudy);
     % New time vector
     NewTime = sMetaData(iRefRec).Time;
@@ -293,6 +319,18 @@ function OutputFiles = Run(sProcess, sInputs)
     end
     NewChannelMat.Projector = [sProjNew{:}];
 
+    % History: List of channel files used to combine
+    NewChannelMat = bst_history('add', NewChannelMat, 'combine', 'List of combined channel files:');
+    for iInput = 1:nInputs
+        NewChannelMat = bst_history('add', NewChannelMat, 'combine', sprintf(' - %s ', sInputs(iInput).ChannelFile));
+    end
+    % History: Concatenate history of combined channel files
+    NewChannelMat = bst_history('add', NewChannelMat, 'combine', 'Channels history:');
+    for iInput = 1:nInputs
+        NewChannelMat = bst_history('add', NewChannelMat, 'combine', sprintf('History of %s :', sInputs(iInput).ChannelFile));
+        sHistory = in_bst_data(sInputs(iInput).ChannelFile, 'History');
+        NewChannelMat = bst_history('add', NewChannelMat,  sHistory.History, ' -- ');
+    end
     % Save channel file
     db_set_channel(iNewStudy, NewChannelMat, 0, 0);
 
@@ -324,11 +362,24 @@ function OutputFiles = Run(sProcess, sInputs)
     sOutMat = db_template('DataMat');
     sOutMat.Comment     = 'Link to raw file | Combined';
     sOutMat.F           = sFileOut;
+    sOutMat.F.t0        = NewT0;
     sOutMat.format      = 'BST-BIN';
     sOutMat.DataType    = 'raw';
     sOutMat.ChannelFlag = NewChannelFlag;
     sOutMat.Time        = sFileIn.prop.times;
     sOutMat.Device      = NewDevice;
+    % History: List of raw data files used to combine
+    sOutMat = bst_history('add', sOutMat, 'combine', 'List of combined raw data files :');
+    for iInput = 1:nInputs
+        sOutMat = bst_history('add', sOutMat, 'combine', sprintf(' - %s ', sInputs(iInput).FileName));
+    end
+    sOutMat = bst_history('add', sOutMat, 'combine', 'Files history:');
+    % History: Concatenate history of combined raw data files
+    for iInput = 1:nInputs
+        sOutMat = bst_history('add', sOutMat, 'combine', sprintf('History of %s :', sInputs(iInput).FileName));
+        sHistory = in_bst_data(sInputs(iInput).FileName, 'History');
+        sOutMat = bst_history('add', sOutMat,  sHistory.History, ' -- ');
+    end
     bst_save(OutputFile, sOutMat, 'v6');
 
     % Save all data to combined file
@@ -337,7 +388,7 @@ function OutputFiles = Run(sProcess, sInputs)
         sDataToCombine = in_bst(sInputs(iInput).FileName, [], 1, 0, 'no', 0);
         % Update raw data to new time vector
         if iInput ~= iRefRec
-            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime)';
+            sDataToCombine.F = interp1(sDataToCombine.Time, sDataToCombine.F', NewTime, 'linear', 'extrap')';
         end
         % Write these channels
         out_fwrite(sFileOut, NewChannelMat, 1, [], sIdxChNew{iInput}, sDataToCombine.F);
