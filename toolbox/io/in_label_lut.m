@@ -41,7 +41,7 @@ if (fid < 0)
 end
 % Get location in file
 pos = ftell(fid);
-% Skip header lines
+% Skip N header lines
 line_hdr = strtrim(fgetl(fid));
 while isempty(line_hdr) || (ischar(line_hdr) && strcmp(line_hdr(1), '#'))
     % Update position
@@ -51,8 +51,6 @@ end
 % Return location in file just before first non-header line
 fseek(fid, pos, 'bof');
 
-% Skip header line
-fgetl(fid);
 % Store everything in a cell array of string
 txtCell = textscan(fid,'%d %s %d %d %d %d');
 % Close file

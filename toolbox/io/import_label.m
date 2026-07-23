@@ -389,7 +389,9 @@ for iFile = 1:length(LabelFiles)
                 allValues = [0,1];
             end
             % Skip the first value (background)
-            allValues(1) = [];
+            if allValues(1) == 0
+                allValues(1) = [];
+            end
             % Load the subject SCS coordinates
             sSubject = bst_get('SurfaceFile', SurfaceFile);
             sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
