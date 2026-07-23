@@ -8,7 +8,6 @@ function [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isForced)
 % INPUT:
 %    - MriFile   : Full path to the volume atlas (eg. '/path/to/aseg.mgz')
 %    - sMri      : Braistorm MRI structure
-%    - AtlasName : Name of the atlas: {'aseg', 'marsatlas'}
 %    - isForced  : Create labels based on the numeric labels if text labels are missing
 % 
 % OUTPUT:
@@ -77,6 +76,11 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     LabelsFile = bst_fullfile(fPath, [fBase, 'LUT.txt']);
     if file_exist(LabelsFile)
         Labels = in_label_lut(LabelsFile);
+    end
+    % LABELS ITK-SnAP: Try to get a side .label with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, '.label']);
+    if file_exist(LabelsFile)
+        Labels = in_label_itksnap(LabelsFile);
     end
 
     % If labels were read: use the filename as the atlas name
