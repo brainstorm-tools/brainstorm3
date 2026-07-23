@@ -580,7 +580,11 @@ if isInteractive
                 panel_surface('SetDataThreshold', hFig, 1, 0.3);
             end
         else
-            hFig = view_mri(BstMriFile);
+            if isAtlas
+                hFig = view_mri(BstMriFile, BstMriFile);
+            else
+                hFig = view_mri(BstMriFile);
+            end
         end
     end
 else
