@@ -221,13 +221,18 @@ function OutputFiles = Run(sProcess, sInputs)
         sNewTiming{iInput}.Events = pool_events;
     end
 
-    % Find the correct acquisition date
+    % Find new T0
+    all_T0 = {};
+    for iInput = 1:length(sOldTiming)
+        if ~isempty(sOldTiming{iInput}.T0)
+            all_T0{end+1} = sOldTiming{iInput}.T0;
+        end
+    end
+    all_T0 = unique(all_T0);
     new_T0 = [];
-    has_T0 = find(cellfun(@(x)~isempty(x.T0), sOldTiming));
-    if ~isempty(has_T0)
-        ts0 = datetime(sOldTiming{has_T0(1)}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
-        new_T0 = str_datetime(ts0 - seconds(OffsetTime(iInput)));
-        if length(has_T0) > 1
+    if ~isempty(all_T0)
+        new_T0 = all_T0{1};
+        if length(all_T0) > 1
             bst_report('Warning', sProcess, sInputs, sprintf('Multiple recording start (T0) found. Using first found: %s.',  new_T0));
         end
     end
