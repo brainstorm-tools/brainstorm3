@@ -1,0 +1,213 @@
+function tutorial_fastgraph(tutorial_dir, reports_dir)
+% TUTORIAL_FASTGRAPH: Script that reproduces the results of the online tutorial "Fastgraph".
+%
+% CORRESPONDING ONLINE TUTORIALS:
+%     https://neuroimage.usc.edu/brainstorm/Tutorials/FastGraph
+%
+% INPUTS: 
+%    - tutorial_dir : Directory where the tutorial_fastgraph.zip file has been unzipped
+%    - reports_dir  : Directory where to save the execution report (instead of displaying it)
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c) University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Chinmay Chinara, 2026
+%          John C. Mosher, 2026
+
+
+%% ===== PARSE INPUTS =====
+% Output folder for reports
+if (nargin < 2) || isempty(reports_dir) || ~isfolder(reports_dir)
+    reports_dir = [];
+end
+% You have to specify the folder in which the tutorial dataset is unzipped
+if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
+    error('The first argument must be the full path to the tutorial dataset folder.');
+end
+% Subject name
+SubjectName = 'Subject01';
+
+
+%% ===== FILES TO IMPORT =====
+% Build the path of the files to import
+tutorial_dir = bst_fullfile(tutorial_dir, 'tutorial_fastgraph');
+MriFilePre   = bst_fullfile(tutorial_dir, 'anatomy',    'pre_T1.nii.gz');
+MriCat12Path = bst_fullfile(tutorial_dir, 'anatomy',    'cat12');
+BaselineFile = bst_fullfile(tutorial_dir, 'recordings', 'Baseline.edf');
+ElecPosFile  = bst_fullfile(tutorial_dir, 'recordings', 'Subject01_electrodes_mm.tsv');
+% Check if the folder contains the required files
+if ~file_exist(MriFilePre) || ~file_exist(BaselineFile) || ~file_exist(ElecPosFile)
+    error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_fastgraph.zip.']);
+end
+isMriSegmented = file_exist(bst_fullfile(MriCat12Path, 'Subject01.nii'));
+
+
+%% ===== CREATE PROTOCOL =====
+% The protocol name has to be a valid folder name (no spaces, no weird characters...)
+ProtocolName = 'TutorialFastgraph';
+% Start brainstorm without the GUI
+if ~brainstorm('status')
+    brainstorm nogui
+end
+% Delete existing protocol
+gui_brainstorm('DeleteProtocol', ProtocolName);
+% Create new protocol
+gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
+% Start a new report
+bst_report('Start');
+
+
+%% ===== IMPORT MRI AND CT VOLUMES =====
+if ~isMriSegmented
+    % Process: Import MRI
+    bst_process('CallProcess', 'process_import_mri', [], [], ...
+        'subjectname', SubjectName, ...
+        'voltype',     'mri', ...
+        'comment',     'pre_T1', ...
+        'mrifile',     {MriFilePre, 'ALL'}, ...
+        'nas',         [107, 176, 105], ...
+        'lpa',         [ 34,  89,  74], ...
+        'rpa',         [175,  89,  74]);
+    % Process: Segment MRI with CAT12
+    bst_process('CallProcess', 'process_segment_cat12', [], [], ...
+        'subjectname', SubjectName, ...
+        'nvertices',   15000, ...
+        'tpmnii',      {'', 'Nifti1'}, ...
+        'sphreg',      1, ... % Use spherical registration
+        'vol',         0, ... % No volume parcellations
+        'extramaps',   0, ... % No additional cortical maps
+        'cerebellum',  0);
+else
+    % Process: Import anatomy folder
+    bst_process('CallProcess', 'process_import_anatomy', [], [], ...
+        'subjectname', SubjectName, ...
+        'mrifile',     {MriCat12Path, 'CAT12'}, ...
+        'nvertices',   15000, ...
+        'nas',         [107, 176, 105], ...
+        'lpa',         [ 34,  89,  74], ...
+        'rpa',         [175,  89,  74]);
+end
+% Get filename for imported volumes
+[sSubject, iSubject] = bst_get('Subject', SubjectName);
+% Reference MRI
+DbMriFilePre = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+
+
+%% ===== CREATE SEEG CONTACT IMPLANTATION =====
+iStudyImplantation = db_add_condition(SubjectName, 'Implantation');
+% Import locations and convert to subject coordinate system (SCS)
+ImplantationChannelFile = import_channel(iStudyImplantation, ElecPosFile, 'BIDS-SCANRAS-MM', 1, 0, 1, 0, 2, DbMriFilePre);
+% Snapshot: SEEG electrodes in MRI slices
+hFigMri3d = view_channels_3d(ImplantationChannelFile, 'SEEG', 'anatomy', 1, 0);
+bst_report('Snapshot', hFigMri3d, ImplantationChannelFile, 'SEEG electrodes in 3D MRI slices');
+close(hFigMri3d);
+
+
+%% ===== ACCESS THE RECORDINGS =====
+% Process: Create link to raw file
+sFileRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
+    'subjectname',    SubjectName, ...
+    'datafile',       {BaselineFile, 'EEG-EDF'}, ...
+    'channelreplace', 0, ...
+    'channelalign',   0);
+% Process: Add EEG positions
+bst_process('CallProcess', 'process_channel_addloc', sFileRaw, [], ...
+    'channelfile', {ImplantationChannelFile, 'BST'}, ...
+    'fixunits',    0, ... % No automatic fixing of distance units required
+    'vox2ras',     0);    % Do not use the voxel=>subject transformation, already in SCS
+
+% Process: Customize SPES
+sFileRaw = bst_process('CallProcess', 'process_evt_detect_spes', sFileRaw, [], ...
+                'stimstartlabel', 'SB', ...
+                'stimstoplabel',  'SE', ...
+                'stimchan',       'DC10', ...
+                'stimlabel',      'STIM', ...
+                'buffertime',     2, ...      % in s
+                'offset',         -0.001, ... % in ms
+                'evtaddoddeven',  0);
+
+% Process: Load the Stim Start blocks
+sFilesStimStart = bst_process('CallProcess', 'process_import_data_event', sFileRaw, [], ...
+                'subjectname', SubjectName, ...
+                'condition',   'Epochs SB', ...
+                'eventname',   'SB', ...
+                'epochtime',   [-2 32], ... % in s
+                'createcond',  0, ...
+                'ignoreshort', 1, ...
+                'usectfcomp',  1, ...
+                'usessp',      1, ...
+                'freq',        [], ...
+                'baseline',    []);
+
+% Process: Remove SPES artifacts
+sFilesStimStart = bst_process('CallProcess', 'process_cutstim', sFilesStimStart, [], ...
+                'eventname',    'STIM', ...
+                'timewindow',   [0, 0.005], ... % in ms
+                'sensortypes',  'SEEG', ...
+                'method',       'spline', ...
+                'splinebuffer', 0.003, ...    % in ms
+                'overwrite',    1);
+
+% Process: Remove drift EMD
+sFilesStimStart = bst_process('CallProcess', 'process_detrend_emd', sFilesStimStart, [], ...
+                'sensortypes', 'SEEG', ...
+                'emdcutoff',    2, ... ; % in Hz
+                'overwrite',    1);
+
+% Process: Load the STIM events
+sFilesStim = bst_process('CallProcess', 'process_import_data_event', sFilesStimStart, [], ...
+                'subjectname', SubjectName, ...
+                'condition',   'Epochs STIM', ...
+                'eventname',   'STIM', ...
+                'timewindow',  [-2 32], ...        % in s
+                'epochtime',   [-0.100 0.900], ... % in ms
+                'createcond',  0, ...
+                'ignoreshort', 1, ...
+                'usectfcomp',  1, ...
+                'usessp',      1, ...
+                'freq',        [], ...
+                'baseline',    []);
+
+% Process: Average (by trial group)
+sFilesAvg = bst_process('CallProcess', 'process_average', sFilesStim, [], ...
+    'avgtype',    5, ...  % Trial group (folder average)
+    'avg_func',   1, ...  % Arithmetic average:  mean(x)
+    'weighted',   0, ...
+    'keepevents', 0);
+
+% Process: Plot FastGraphs
+bst_process('CallProcess', 'process_fastgraph', sFilesAvg, [], ...
+    'scouts',        {'Desikan-Killiany', {}}, ...
+    'colorscheme',   'region', ...           % Region
+    'region',        {'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'}, ...
+    'sortmethod',    'rms', ...              % Root Mean Square
+    'sortwindow',    [0.060, 0.250], ...  % Range (middle latency) to sort the data (in ms)
+    'excluderadius', 20, ...              % Exclusion zone radius (in mm)
+    'plotwindow',    [-0.100, 0.900], ... % Plot window (in ms)
+    'edgealpha',     0.05);               % Plot, edge transparency
+
+
+%% ===== SAVE AND DISPLAY REPORT =====
+ReportFile = bst_report('Save', []);
+if ~isempty(reports_dir) && ~isempty(ReportFile)
+    bst_report('Export', ReportFile, reports_dir);
+else
+    bst_report('Open', ReportFile);
+end
+
+disp([10 'BST> FastGraph tutorial completed' 10]);
