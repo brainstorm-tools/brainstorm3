@@ -348,7 +348,7 @@ if ~isempty(EventFile)
                     % Extended events
                     events(iEvt).times = [allStartSec(iOcc); allStartSec(iOcc) + allDurationSec(iOcc)];
                 end
-                events(iEvt).epochs   = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+                events(iEvt).epochs   = ones(1, length(iOcc));  % Epoch: set as 1 for all the occurrences
                 events(iEvt).channels = [];
                 events(iEvt).notes    = [];
             end
