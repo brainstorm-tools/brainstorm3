@@ -228,7 +228,7 @@ function OutputFiles = Run(sProcess, sInputs)
         ts0 = datetime(sOldTiming{has_T0(1)}.T0, 'InputFormat', 'yyyy-MM-dd''T''HH:mm:ss.SSS');
         new_T0 = str_datetime(ts0 - seconds(OffsetTime(iInput)));
         if length(has_T0) > 1
-            bst_report('Warning', sProcess, sInputs, 'Multiple recording start (T0) found. Using first found: %s.',  new_T0);
+            bst_report('Warning', sProcess, sInputs, sprintf('Multiple recording start (T0) found. Using first found: %s.',  new_T0));
         end
     end
 

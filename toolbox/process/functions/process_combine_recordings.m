@@ -119,7 +119,7 @@ function OutputFiles = Run(sProcess, sInputs)
     if ~isempty(all_t0)
         NewT0 = all_t0{1};
         if length(all_t0) > 1
-            bst_report('Warning', sProcess, sInputs, 'Multiple recording start (T0) found. Using first found: %s.',  new_T0);
+            bst_report('Warning', sProcess, sInputs, sprintf('Multiple recording start (T0) found. Using first found: %s.',  new_T0));
         end
     end
     
