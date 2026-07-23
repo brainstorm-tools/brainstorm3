@@ -311,12 +311,7 @@ function OutputFiles = Run(sProcess, sInputs)
             % History: List of sync files
             sOutMat = bst_history('add', sOutMat, 'sync', ['List of synchronized files (event = "', syncEventName , '"):']);
             for ix = 1:nInputs
-                if ix == iInput
-                    offset_diff = seconds(-OffsetTime(iInput));
-                else
-                    offset_diff = seconds(OffsetTime(ix) - OffsetTime(iInput));
-                end
-                sOutMat = bst_history('add', sOutMat, 'sync', sprintf(' - %s (offset: %s)', sInputs(ix).FileName, offset_diff));
+                sOutMat = bst_history('add', sOutMat, 'sync', sprintf(' - %s (offset: %.2f s)', sInputs(ix).FileName, -OffsetTime(ix)));
             end
             % Update raw data
             index = panel_time('GetTimeIndices', new_times{iInput}, [new_start, new_end]);
