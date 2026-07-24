@@ -1,0 +1,13 @@
+{
+    "_schemaVersion": "1.0.0",
+
+    "bst_get":
+    {
+        "inputs":
+            [
+                    {"name":"Study", "kind":"namevalue","type":"choices={'','StudyFileName','iStudies'}"},
+                    {"name":"StudyCount", "kind":"namevalue","type":"numeric"}
+
+	        ]
+    }
+}
