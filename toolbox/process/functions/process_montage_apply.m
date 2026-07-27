@@ -367,7 +367,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sOutMat.ChannelFlag = sFileOut.channelflag;
                 sOutMat.F = sFileOut;
                 % Update History
-                if isUseCtfComp && strcmp(sOutMat.F.device, 'CTF')
+                if isUseCtfComp && ~any(strcmpi(strsplit(sOutMat.F.device, ','), 'CTF'))
                     sOutMat = bst_history('add', sOutMat, 'process', [func2str(sProcess.Function), ': Applied CTF compensation']);
                 end
                 if isUseSsp && ~isempty(ChannelMatOut.Projector)

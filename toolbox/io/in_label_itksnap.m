@@ -1,14 +1,25 @@
-function Labels = in_label_lut(LabelsFile)
-% IN_LABEL_LUT: Import list of anatomical labels from LUT.txt file. Support:
-%                   - SimNIBS _LUT.txt files   (1 header line) and,
-%                   - FreeSurfer LUT.txt files (n header lines)
+function Labels = in_label_itksnap(LabelsFile)
+% IN_LABEL_ITKSNAP: Import list of anatomical labels from a ITK-SnAP Label Description File
 %
 % FILE FORMAT: Text file with 0 or more header lines (empty or start with #),
 %              followed by one line per ROI, with random sequences of separators (tabs and spaces)
 %
-%    #No.	  Label Name:			   R   G   B   A
-%    2	  Left-Cerebral-White-Matter   245 245 245 255
-%    3	  Left-Cerebral-Cortex     	   205 62 78 255
+% Entry format:
+%   IDX   -R-  -G-  -B-  -A-  VIS MSH  LABEL
+%
+% Fields:
+%    IDX:   Zero-based index
+%    -R-:   Red color component   (0..255)
+%    -G-:   Green color component (0..255)
+%    -B-:   Blue color component  (0..255)
+%    -A-:   Label transparency    (0.00 .. 1.00)
+%    VIS:   Label visibility      (0 or 1)
+%    IDX:   Label mesh visibility (0 or 1)
+%  LABEL:   Label description     Double-quouted string "label description"
+%
+%  IDX   -R-  -G-  -B-  -A-  VIS MSH  LABEL
+%   1   255   52   39    1    1   0   "corticofugal tract and corona radiata"
+%   3     0    0  255    1    1   0   "Subthalamic nucleus"
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,8 +39,7 @@ function Labels = in_label_lut(LabelsFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2023
-%          Raymundo Cassani, 2026
+% Authors: Raymundo Cassani, 2026
 
 % Initialize returned variable
 Labels = [];
@@ -41,7 +51,7 @@ if (fid < 0)
 end
 % Get location in file
 pos = ftell(fid);
-% Skip N header lines
+% Skip header lines
 line_hdr = strtrim(fgetl(fid));
 while isempty(line_hdr) || (ischar(line_hdr) && strcmp(line_hdr(1), '#'))
     % Update position
@@ -52,13 +62,13 @@ end
 fseek(fid, pos, 'bof');
 
 % Store everything in a cell array of string
-txtCell = textscan(fid,'%d %s %d %d %d %d');
+txtCell = textscan(fid,'%d %d %d %d %f %d %d %q');
 % Close file
 fclose(fid);
 
 % Copy ID, NAME, COLOR
 Labels = cell(size(txtCell{1},1),3);
 Labels(:,1) = num2cell(double(txtCell{1}));
-Labels(:,2) = txtCell{2};
-Labels(:,3) = num2cell(double([txtCell{3}, txtCell{4}, txtCell{5}]), 2);
+Labels(:,2) = txtCell{8};
+Labels(:,3) = num2cell(double([txtCell{2}, txtCell{3}, txtCell{4}]), 2);
 

@@ -105,6 +105,17 @@ end
 % Switch display mode
 switch lower(DisplayMode)
     case 'timeseries'
+        % Get row names
+        if ~isempty(sMat.Description)
+            if iscell(sMat.Description{1,1})
+                sMat.Description{1,1} = sMat.Description{1,1}{1};
+            end
+            if (size(sMat.Description,1) == size(sMat.Value,1))
+                sMat.Description = sMat.Description(:,1);
+            elseif (size(sMat.Description,2) == size(sMat.Value,1))
+                sMat.Description = sMat.Description(1,:);
+            end
+        end
         if iscell(Value)
             AxesLabels = sMat.Description;
             LinesLabels = [];
@@ -119,14 +130,28 @@ switch lower(DisplayMode)
         bst_memory('LoadMatrixFile', MatFile);
         % Create the labels
         Labels = cell(1,4);
+        % Row labels
         if (size(sMat.Description,1) == size(Value,1))
-            Labels{1} = sMat.Description(:,1)';
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstRow = tmp11(1);
+            else
+                firstRow = tmp11;
+            end
+            Labels{1} = [firstRow; sMat.Description(2:end,1)]';
         else
             Labels{1} = 1:size(Value,1);
         end
         Labels{2} = [];
+        % Column labels
         if (size(sMat.Description,2) == size(Value,2))
-            Labels{3} = sMat.Description(1,:);
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstCol = tmp11(2);
+            else
+                firstCol = tmp11;
+            end
+            Labels{3} = [firstCol, sMat.Description(1,2:end)];
         elseif (length(sMat.Time) == size(Value,2))
             Labels{3} = sMat.Time;
         else
@@ -160,7 +185,13 @@ switch lower(DisplayMode)
         ValueCell = reshape(cellstr(num2str(Value(:))), size(Value,1), size(Value,2));
         % Define column headers
         if (size(sMat.Description,2) == size(Value,2))
-            headers = sMat.Description(1,:);
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstColHeader = tmp11(2);
+            else
+                firstColHeader = tmp11;
+            end
+            headers = [firstColHeader, sMat.Description(1,2:end)];
             firstHeader = ' ';
         elseif (length(sMat.Time) == size(Value,2))
             headers = cellstr(num2str(sMat.Time(:)))';
@@ -171,7 +202,13 @@ switch lower(DisplayMode)
         % Add row descriptions as first column
         isRowTitle = (size(sMat.Description,1) == size(Value,1));
         if isRowTitle
-            ValueCell = cat(2, sMat.Description(:,1), ValueCell);
+            tmp11 = sMat.Description{1,1};
+            if iscell(tmp11)
+                firstRowHeader = tmp11(1);
+            else
+                firstRowHeader = tmp11;
+            end
+            ValueCell = cat(2, [firstRowHeader; sMat.Description(2:end,1)], ValueCell);
             if ~isempty(headers)
                 headers = cat(2, firstHeader, headers);
             end

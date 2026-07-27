@@ -1573,22 +1573,40 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
                 case {'list_vertical', 'list_horizontal'}
                     % List items
+                    nItems = length(option.Comment)-1;
                     listModel = javax.swing.DefaultListModel();
-                    for iItem = 1 : length(option.Comment)-1
-                        listModel.addElement(option.Comment{iItem});
+                    for iItem = 1 : nItems
+                        listModel.addElement([' ' option.Comment{iItem} ' ']);
                     end
                     % Create list
                     jList = java_create('javax.swing.JList');
                     % Orientation
-                    if strcmpi(option.Type, 'list_vertical')
-                        jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
-                    else
-                        jList.setLayoutOrientation(jList.VERTICAL_WRAP);
+                    switch option.Type
+                        case 'list_vertical'
+                            % Display one item per row, then next item in new row (down)
+                            jList.setLayoutOrientation(jList.VERTICAL);
+                        case 'list_horizontal'
+                            % Display items Left to Right until row is full, then wrap to new row (down)
+                            jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
                     end
                     jList.setModel(listModel);
                     jList.setVisibleRowCount(-1);
                     jList.setCellRenderer(BstStringListRenderer(fontSize));
                     jList.setEnabled(1);
+                    % Adjust panel height depending on height required by the list
+                    prefPanelSize = [250, 180]; % Unscaled preferred size [Width, Height]
+                    % Unscalled cell size
+                    cellBounds = jList.getCellBounds(0, 0);
+                    cellSize = [cellBounds.getWidth(), cellBounds.getHeight()] ./ InterfaceScaling;
+                    switch option.Type
+                        case 'list_vertical'
+                            nRows = nItems;
+                        case 'list_horizontal'
+                            nRows = ceil(nItems / floor(prefPanelSize(1) / cellSize(1)) );
+                    end
+                    % Required height (label + list + spaces) ~= list wiht nRows+2 rows
+                    reqPanelHeight = cellSize(2) * (nRows+2);
+                    prefPanelSize(2) = min(reqPanelHeight, prefPanelSize(2));
                     % Last item in list is the list comment
                     gui_component('label', jPanelOpt, [], option.Comment{end});
                     % Restore previous selected items
@@ -1606,7 +1624,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Horizontal glue
                     jPanelOpt.add('br hfill vfill', jScroll);
                     % Set preferred size for the container
-                    prefPanelSize = java_scaled('dimension', 250,180);
+                    prefPanelSize = java_scaled('dimension', prefPanelSize(1), prefPanelSize(2));
 
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
