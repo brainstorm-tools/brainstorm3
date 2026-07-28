@@ -425,8 +425,8 @@ function sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat)
         % Use channel group names to assign hemisphere
         sContactGroupLocIdxs.Left = zeros(1, length(iSeeg));
         for i = 1:length(iSeeg)
-            % Left groups start with an apostrophe
-            sContactGroupLocIdxs.Left(i) = strcmp(ChannelMat.Channel(iSeeg(i)).Group(1), '''');
+            % Left groups end with an apostrophe
+            sContactGroupLocIdxs.Left(i) = strcmp(ChannelMat.Channel(iSeeg(i)).Group(end), '''');
         end
         % Remaining contacts belong to the right hemisphere
         sContactGroupLocIdxs.Right = ~sContactGroupLocIdxs.Left;
