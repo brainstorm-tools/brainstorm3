@@ -70,7 +70,7 @@ sProcess.options.sortmethod.Value   = 'rms';
 % Sort window
 sProcess.options.sortwindow.Comment = 'Time window to sort data: ';
 sProcess.options.sortwindow.Type    = 'timewindow';
-sProcess.options.sortwindow.Value   = [];
+sProcess.options.sortwindow.Value   = {[], 'ms', []};
 sProcess.options.label2.Comment     = ['<I><FONT color="#777777">' ...
                                        'Examples:<BR>'...
                                        'Early latency: 0-60 ms,<BR>' ...
@@ -89,17 +89,19 @@ sProcess.options.separator1.Type    = 'separator';
 % Plot window
 sProcess.options.plotwindow.Comment = 'Plot time range: ';
 sProcess.options.plotwindow.Type    = 'timewindow';
-sProcess.options.plotwindow.Value   = [];
+sProcess.options.plotwindow.Value   = {[], 'ms', []};
 % Edge transparency of plot
 sProcess.options.edgealpha.Comment = 'Edge transparency of plot: ';
 sProcess.options.edgealpha.Type    = 'value';
 sProcess.options.edgealpha.Value   = {0.05,' ', 2};
 end
 
+
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
 end
+
 
 %% ===== GET OPTIONS =====
 function OPTIONS = GetOptions(sProcess)
@@ -131,12 +133,13 @@ function OPTIONS = GetOptions(sProcess)
     OPTIONS.EdgeAlpha = sProcess.options.edgealpha.Value{1};    
 end
 
+
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>    
     % Initialize output
     OutputFiles = {};
     
-    % Check that all input files use the same channel file
+    % ===== Check that all input files use the same channel file =====
     ChannelFiles = {sInputs.ChannelFile};
     if length(unique(ChannelFiles)) > 1
         bst_report('Error', sProcess, sInputs, 'All input files must use the same channel file.');
@@ -156,7 +159,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
 
-    % ===== Check whether all channel names in comment are valid =====
+    % ===== Check channels for bipolar channels are valid channel names =====
     % Load the channel file
     ChannelMat = in_bst_channel(ChannelFiles{1});
     channelNames = {ChannelMat.Channel.Name};
