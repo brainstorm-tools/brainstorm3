@@ -203,7 +203,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     atlasScoutLabelsSeeg = chanTableWithAtlas(2:end, cols);
 
     % Create figure for FastGraph
-    figure;
+    hFig = figure;
+    hFig.Visible = 'off';
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
     % Reserve one extra subplot for the legend
@@ -262,6 +263,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     PlotLegend(axBrain, imgCortex, round(hFastGraphAxes(1).XLim), hFastGraphAxes(1).YLim);
     % Close progress
     bst_progress('stop');
+
+    % Show figure
+    hFig.Visible = 'on';
 end
 
 %% ===== GET STIMULATION SITE CONTACT LOCATION =====
