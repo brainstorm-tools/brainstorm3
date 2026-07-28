@@ -1,8 +1,8 @@
-function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
+function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive, AtlasFilter)
 % EXPORT_CHANNEL_ATLAS: Compute anatomical labels for SEEG/ECOG contacts from volume and surface parcellations
 %
-% USAGE:  [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
-%         [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+% USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1, AtlasFilter='')
+%         TsvFile = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1, AtlasFilter='')
 %
 % INPUT: 
 %     - ChannelFile   : Path to Brainstorm channel file to be processed
@@ -10,10 +10,12 @@ function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvF
 %     - iChannels     : Array of integers, export only the selected channel indices
 %     - TsvFile       : Output text file (tab-separated values)
 %     - Radius        : Size in millimeters of the neighborhood to consider around each contact
+%     - isProba       : If 1, for each volume atlas, add a column indicating the spatial probability (100 * nVoxelWithLabel / nVoxelsInSphere)
 %     - IsInteractive : If 1, display the output table at the end of the process
-%                     : If 0, use all available Coodinates, Parcellations (anat) and Atlases (surface),
-%                       and do not display output table 
-%     - iChannels     : Limit export to a subset of channel indices
+%                     : If 0, use all available Coodinates, and the Parcellations (anat) and Atlases (surface) filtered by 'AtlasFilter'
+%                       and do not display output table
+%     - AtlasFilter   : Used with IsInteractive=0. If absent or empty, use all the Parcellations (anat) and Atlases (surface).
+%                       Otherwise use the string in AtlasFilter to indicate the Parcellations and Atlases to return.
 % OUTPUT: 
 %     - TsvFile       : Output text file (tab-separated values). Empty when no file was selected or requested.
 %     - ChanTable     : Cell array containing the complete output table. The same information is written to TsvFile 
@@ -54,6 +56,9 @@ function [TsvFile, ChanTable] = export_channel_atlas(ChannelFile, Modality, TsvF
 
 
 % ===== PASRSE INPUTS =====
+if (nargin < 7) || isempty(AtlasFilter)
+    AtlasFilter = [];
+end
 if (nargin < 6) || isempty(isInteractive)
     isInteractive = 1;
 end
@@ -244,6 +249,31 @@ if ~isempty(iColSurf)
             SurfAtlases = SurfAtlases(isSelect == 1);
         end
     end
+end
+
+
+% ===== FILTER ATLASES =====
+if ~isInteractive && ~isempty(AtlasFilter)
+    % === Volume ===
+    iColVol = find(~cellfun(@(c)isempty(strfind(c, tagVol)), Columns(:,2)));
+    % Try match, if nothing found, try regular expression
+    iVolValid = find(strcmpi(Columns(iColVol,1), AtlasFilter));
+    if isempty(iVolValid)
+        iVolValid = find(~cellfun(@isempty, regexp(Columns(iColVol,1), AtlasFilter)));
+    end
+    % Remove non-matching volume atlases
+    Columns(setdiff(iColVol, iColVol(iVolValid)), :) = [];
+    % Update iColSurf in case volumes were removed
+    iColSurf = find(~cellfun(@(c)isempty(strfind(c, tagSurf)), Columns(:,2)));
+
+    % === Surface ===
+    % Try match, if nothing found, try regular expression
+    iSurfValid = find(strcmpi(SurfAtlases, AtlasFilter));
+    if isempty(iSurfValid)
+        iSurfValid = find(~cellfun(@isempty, regexp(SurfAtlases, AtlasFilter)));
+    end
+    % Keep only matching surface atlases
+    SurfAtlases = SurfAtlases(iSurfValid);
 end
 
 
