@@ -174,8 +174,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     OPTIONS = GetOptions(sProcess);
     
-    % Early exit if no region is selected
-    if isempty(OPTIONS.Region)
+    % Check regions for 'region' color scheme
+    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Region)
         bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
         return;
     end
