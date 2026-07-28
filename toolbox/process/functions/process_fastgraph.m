@@ -416,7 +416,7 @@ end
 % Split SEEG contacts into left and right hemisphere groups
 function sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat)
     % Initialize output structure
-    sContactGroupLocIdxs = struct();
+    sContactGroupLocIdxs = struct('Left', [], 'Right', [], 'All', []);
     % Get index of SEEG channel type
     iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
     % Check if valid location data is available
@@ -428,14 +428,14 @@ function sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat)
             % Left groups end with an apostrophe
             sContactGroupLocIdxs.Left(i) = strcmp(ChannelMat.Channel(iSeeg(i)).Group(end), '''');
         end
+        sContactGroupLocIdxs.Left = find(sContactGroupLocIdxs.Left);
         % Remaining contacts belong to the right hemisphere
-        sContactGroupLocIdxs.Right = ~sContactGroupLocIdxs.Left;
+        sContactGroupLocIdxs.Right = find(~sContactGroupLocIdxs.Left);
+        % Combined contacts
+        sContactGroupLocIdxs.All = [sContactGroupLocIdxs.Left, sContactGroupLocIdxs.Right];
     else
         % Store SEEG contact coordinates
-        contactLocs = zeros(length(iSeeg), 3);
-        for i = 1:length(iSeeg)
-            contactLocs(i, :) = ChannelMat.Channel(iSeeg(i)).Loc';
-        end
+        contactLocs = cat(2, [ChannelMat.Channel(iSeeg).Loc])';
         % Use coordinates to split contacts by hemisphere
         sContactGroupLocIdxs = SortLAPRAP(contactLocs);
     end
