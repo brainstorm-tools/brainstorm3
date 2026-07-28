@@ -434,6 +434,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
         sortWindowIdx = 1:size(seegData{1}.F,2);
     else
         sortWindowIdx = bst_closest(OPTIONS.SortWindow, seegData{1}.Time);
+        sortWindowIdx = [sortWindowIdx(1):sortWindowIdx(2)];
     end
     % Sort channels within each hemisphere using the selected metric
     switch lower(OPTIONS.SortMethod)
@@ -488,6 +489,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
         plotWindowIdx = 1:size(seegData{1}.F,2);
     else
         plotWindowIdx = bst_closest(OPTIONS.PlotWindow, seegData{1}.Time);
+        plotWindowIdx = [plotWindowIdx(1):plotWindowIdx(2)];
     end
     timeMs = seegData{iSubplot}.Time(plotWindowIdx) * 1000;
 
