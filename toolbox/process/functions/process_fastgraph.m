@@ -105,31 +105,30 @@ end
 function OPTIONS = GetOptions(sProcess)
     OPTIONS = struct();
     % Atlas and scouts to use for plotting FastGraph
-    ScoutsList = sProcess.options.scouts.Value;
-    OPTIONS.Atlas = ScoutsList{1,1};
-    OPTIONS.AtlasScoutLabels = ScoutsList{1,2};
+    OPTIONS.Atlas = sProcess.options.scouts.Value{1,1};
+    OPTIONS.AtlasScoutLabels = sProcess.options.scouts.Value{1,2};
     % Color figure by region or by label
     OPTIONS.ColorScheme = sProcess.options.colorscheme.Value;
     % Select regions to include
     OPTIONS.Region = sProcess.options.region.Value;
     % Method for sorting the data   
     OPTIONS.SortMethod = sProcess.options.sortmethod.Value;
-    % Sort window
+    % Time window for sorting the data [s]
     if isfield(sProcess.options, 'sortwindow') && isfield(sProcess.options.sortwindow, 'Value') && iscell(sProcess.options.sortwindow.Value) && ~isempty(sProcess.options.sortwindow.Value)
         OPTIONS.SortWindow = round((sProcess.options.sortwindow.Value{1} * 1000)) + 101;
     else
         OPTIONS.SortWindow = [];
     end
-    % Plot window
+    % Exclude contacts within a certain distance of stimulation sites
+    OPTIONS.ExcludeRadius = sProcess.options.excluderadius.Value{1};
+    % Time window for plotting [s]
     if isfield(sProcess.options, 'plotwindow') && isfield(sProcess.options.plotwindow, 'Value') && iscell(sProcess.options.plotwindow.Value) && ~isempty(sProcess.options.plotwindow.Value)
         OPTIONS.PlotWindow = round((sProcess.options.plotwindow.Value{1} * 1000));
     else
         OPTIONS.PlotWindow = [];
     end
-    % Edge transparency of plot
+    % Edge transparency for plotting
     OPTIONS.EdgeAlpha = sProcess.options.edgealpha.Value{1};    
-    % Exclude contacts within a certain distance of stimulation sites
-    OPTIONS.ExcludeRadius = sProcess.options.excluderadius.Value{1};
 end
 
 %% ===== RUN =====
