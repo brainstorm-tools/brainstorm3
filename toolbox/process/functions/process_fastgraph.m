@@ -206,88 +206,61 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     figure;
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
-    % Shared y-axis limits across FastGraph subplots
-    commonAxisLimits = [];    
     % Reserve one extra subplot for the legend
-    nSubplots = length(sInputs)+1;
-    % Define the plot parameters
+    nFastGraphs = length(sInputs);
+    hFastGraphAxes = gobjects(nFastGraphs, 0);
     % Subplot grid dimensions
-    nCols = ceil(sqrt(nSubplots));
-    nRows = ceil(nSubplots / nCols);
+    nCols = ceil(sqrt(nFastGraphs+1));
+    nRows = ceil((nFastGraphs+1) / nCols);
     % Subplot spacing and margins
     gap = [0.075 0.0175];
     horzMargin = 0.03;
     vertMargin = 0.015;
     % Generate one FastGraph per selected input
     bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
-    for iSubplot = 1:nSubplots-1
+    for iFastGraph = 1:nFastGraphs
         % Show progress
-        progressPrc = round(100 .* iSubplot ./ (nSubplots-1));
+        progressPrc = round(100 .* iFastGraph ./ nFastGraphs);
         bst_progress('set', progressPrc);
         % Data to be plotted for the current subplot
         subplotData = struct();
-        Fout = seegData{iSubplot}.F(iSeeg, :);
-        % Keep only left-hemisphere channels if present
-        if any(sContactGroupLocIdxs.Left)
-            subplotData.leftData = Fout(sContactGroupLocIdxs.Left,:);
-        end
-        % Keep only left-hemisphere channels if present
-        if any(sContactGroupLocIdxs.Right)
-            subplotData.rightData = Fout(sContactGroupLocIdxs.Right,:);
-        end        
+        Fout = seegData{iFastGraph}.F(iSeeg, :);
+        % Separate L and R hemisphere data
+        subplotData.leftData = Fout(sContactGroupLocIdxs.Left,:);
+        subplotData.rightData = Fout(sContactGroupLocIdxs.Right,:);
         % Sort channels within each hemisphere using the selected metric and time window
         sSubplotDataSorted = ApplyDataSorting(subplotData, seegData, OPTIONS);
         % Create the subplot with custom spacing 
-        subtightplot(nRows, nCols, iSubplot, gap, horzMargin, vertMargin);
+        hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimLocs, iSubplot, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
-        % Tighten axes to the plotted data and store the current axis handle
-        axis tight
-        axisLimits = axis;
-        axSubplots(iSubplot) = gca;
-        % Update the shared y-axis limits so all FastGraph subplots can
-        % use the same vertical range for visual comparison
-        if iSubplot == 1
-            commonAxisLimits = axisLimits;
-        else
-            commonAxisLimits(3) = min(commonAxisLimits(3), axisLimits(3));
-            commonAxisLimits(4) = max(commonAxisLimits(4), axisLimits(4));
-        end
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimLocs, iFastGraph, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Apply edge transparency to the subplot
-        if exist('hLeftAreaPLot','var')
-            set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
-        end
-        if exist('hRightAreaPLot','var')
-            set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
-        end        
+        set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
+        set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         % Add the stimulation pair and atlas scout label as the subplot title
-        AddFastgraphTitle(sInputs, sSortedFastgraphLocIdxs.All(iSubplot), chanNamesSeeg, atlasScoutLabelsSeeg);
-    end    
-    % Format all FastGraph axes
-    axFastGraphs = axSubplots(1:nSubplots-1);
-    % Set axis labels for all FastGraph subplots
-    set([axFastGraphs.XLabel], 'String', 'Time (ms)');
-    set([axFastGraphs.YLabel], 'String', 'Voltage (mV)');
-    % Apply common axes properties
-    set(axFastGraphs, 'YLim', commonAxisLimits(3:4), 'XAxisLocation', 'bottom');
-    % Add zero-reference lines and hemisphere labels
-    DecorateFastgraphAxes(axFastGraphs);
-    % Link subplot axes so that zooming stays synchronized
-    linkaxes(axFastGraphs)
-    set(gcf,'units','normalized','outerposition',[0 0 1 1])
-    zoom on
+        AddFastgraphTitle(sInputs, sSortedFastgraphLocIdxs.All(iFastGraph), chanNamesSeeg, atlasScoutLabelsSeeg);
+    end
 
-    % === Use the final subplot to display legend ===
+    % === Common feature on FastGraph plots ===
+    % Axes style
+    axis(hFastGraphAxes, 'tight');
+    % Share axes, sets the same XY Limits
+    linkaxes(hFastGraphAxes, 'xy');
+    % Set axis labels
+    xlabel(hFastGraphAxes, 'Time (ms)');
+    ylabel(hFastGraphAxes, 'Voltage (mV)');
+    % Line and label to distinguish hemispheres
+    SetHemisphereLabels(hFastGraphAxes);
+
+    % === Plot brain legend ===
     bst_progress('text', 'Plotting legend...');
     % Generate a cortex snapshot with atlas scout for display
     imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
     % Create the legend subplot with the same spacing settings
-    subtightplot(nRows, nCols, iSubplot+1, gap, horzMargin, vertMargin);
+    axBrain = subtightplot(nRows, nCols, nRows*nCols, gap, horzMargin, vertMargin);
     % Plot the reference panel with the cortex snapshot and axis labels
-    axSubplots(iSubplot+1) = gca;
-    PlotLegend(axSubplots(iSubplot+1), imgCortex, round(axSubplots(1).XLim), axSubplots(1).YLim);
-    
-    % Close progress 
+    PlotLegend(axBrain, imgCortex, round(hFastGraphAxes(1).XLim), hFastGraphAxes(1).YLim);
+    % Close progress
     bst_progress('stop');
 end
 
@@ -341,7 +314,7 @@ end
 % Contacts exactly on the midline (y == 0) are assigned to the left hemisphere.
 function sSortedLocIdxs = SortLAPRAP(contactLocs)
     % Initialize output structure
-    sSortedLocIdxs = struct();
+    sSortedLocIdxs = struct('Left', [], 'Right', [], 'All', []);
     % Original row index of each location
     contactIdxs = (1:size(contactLocs, 1))';
     % Append original row indices so duplicate coordinates keep input order
@@ -354,14 +327,17 @@ function sSortedLocIdxs = SortLAPRAP(contactLocs)
     rightContactLocs = contactLocsWithIdx(isRightHemisphere, :);
     % Sort left and right hemisphere contacts by x-coordinate in descending order (-xCoordColumn). 
     % Use original index (idxColumn) as a secondary key so repeated locations remain grouped 
-    % and keep their original input order
+    % and keep their original input order. Store sorted original indices for each hemisphere
     xCoordColumn = 1;
-    idxColumn = 4;
-    leftContactLocs = sortrows(leftContactLocs, [xCoordColumn, idxColumn], {'descend' 'ascend'});
-    rightContactLocs = sortrows(rightContactLocs, [xCoordColumn, idxColumn], {'descend' 'ascend'});
-    % Store sorted original indices for each hemisphere
-    sSortedLocIdxs.Left = leftContactLocs(:, 4)';
-    sSortedLocIdxs.Right = rightContactLocs(:, 4)';
+    idxColumn    = 4;
+    if ~isempty(leftContactLocs)
+        leftContactLocs = sortrows(leftContactLocs, [xCoordColumn, idxColumn], {'descend' 'ascend'});
+        sSortedLocIdxs.Left = leftContactLocs(:, 4)';
+    end
+    if ~isempty(rightContactLocs)
+        rightContactLocs = sortrows(rightContactLocs, [xCoordColumn, idxColumn], {'descend' 'ascend'});
+        sSortedLocIdxs.Right = rightContactLocs(:, 4)';
+    end
     % Combined sorted indices
     sSortedLocIdxs.All = [sSortedLocIdxs.Left, sSortedLocIdxs.Right];
 end
@@ -735,38 +711,27 @@ end
 
 %% ===== DECORATE FASTGRAPH AXES =====
 % Add the zero-reference line and L/R hemisphere labels
-function DecorateFastgraphAxes(axFastgraphs)
-    for ax = axFastgraphs
-        line(ax, ax.XLim, [0 0], ...
-            'Color', [0 0 0], ...
-            'LineWidth', 0.5, ...
-            'HandleVisibility', 'off');
-        AddHemisphereLabels(ax);
+function SetHemisphereLabels(hFastGraphAxes)
+    % Positions for elements, assumes all hFastGraphAxes have the same XY Limits
+    XLim = hFastGraphAxes(1).XLim;
+    YLim = hFastGraphAxes(1).YLim;
+    xPositionText = XLim(1) + (0.95 * diff(XLim));
+    yPositionText = min(abs(YLim)) * 0.15;
+    % Add 0 mV line and labels for L and R hemispheres
+    for hAxes = hFastGraphAxes
+        line(hAxes, XLim, [0 0], ...
+            'Color',      [0 0 0], ...
+            'LineWidth',  0.5);
+        textProperties = { ...
+            'Parent',     hAxes, ...
+            'FontSize',   14, ...
+            'FontWeight', 'bold'};
+            % Place text L/R above and below 0 mV line
+            text(xPositionText,  yPositionText, 'L', textProperties{:});
+            text(xPositionText, -yPositionText, 'R', textProperties{:});
     end
 end
 
-%% ===== ADD HEMISPHERE LABELS =====
-% Add L/R labels immediately above and below the y = 0 reference line
-function AddHemisphereLabels(ax)
-    % Common label properties
-    labelProperties = { ...
-        'Parent', ax, ...
-        'Units', 'normalized', ...
-        'FontSize', 8, ...
-        'FontWeight', 'bold', ...
-        'HorizontalAlignment', 'right', ...
-        'VerticalAlignment', 'middle', ...
-        'Clipping', 'off'};
-    % Find the normalized vertical position of y = 0
-    yZeroNormalized = -ax.YLim(1) / diff(ax.YLim);
-    % Position labels close to the right edge
-    xPosition = 0.96;
-    % Normalized vertical spacing around the zero line
-    labelGap = 0.035;
-    % Place labels above and below the bottom x-axis
-    text(xPosition, yZeroNormalized + labelGap, 'L', labelProperties{:});
-    text(xPosition, yZeroNormalized - labelGap, 'R', labelProperties{:});
-end
 
 %% ===== UPDATE LEGEND IMAGE =====
 % Update the overlay image position so it stays centered inside the
