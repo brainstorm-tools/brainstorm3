@@ -1572,11 +1572,14 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jPanelOpt.add(optionPanel);
 
                 case {'list_vertical', 'list_horizontal'}
+                    % List comment
+                    Comment = option.Comment{end};
                     % List items
                     nItems = length(option.Comment)-1;
+                    ItemList = option.Comment(1:nItems);
                     listModel = javax.swing.DefaultListModel();
                     for iItem = 1 : nItems
-                        listModel.addElement([' ' option.Comment{iItem} ' ']);
+                        listModel.addElement([' ' ItemList{iItem} ' ']);
                     end
                     % Create list
                     jList = java_create('javax.swing.JList');
@@ -1607,18 +1610,18 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Required height (label + list + spaces) ~= list wiht nRows+2 rows
                     reqPanelHeight = cellSize(2) * (nRows+2);
                     prefPanelSize(2) = min(reqPanelHeight, prefPanelSize(2));
-                    % Last item in list is the list comment
-                    gui_component('label', jPanelOpt, [], option.Comment{end});
+                    % Comment for list
+                    gui_component('label', jPanelOpt, [], Comment);
                     % Restore previous selected items
                     gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
                     if ~isempty(sProcess.options.(optNames{iOpt}).Value)
-                        [~, iSelItems] = ismember(strtrim(sProcess.options.(optNames{iOpt}).Value), option.Comment);
+                        [~, iSelItems] = ismember(sProcess.options.(optNames{iOpt}).Value, ItemList);
                         iSelItems(iSelItems==0) = [];
                         if length(iSelItems) == length(sProcess.options.(optNames{iOpt}).Value)
                             jList.setSelectedIndices(iSelItems-1);
                         end
                     end
-                    java_setcb(jList, 'ValueChangedCallback', @(h,ev)ItemSelection_Callback(iProcess, optNames{iOpt}, jList));
+                    java_setcb(jList, 'ValueChangedCallback', @(h,ev)ItemSelection_Callback(iProcess, optNames{iOpt}, ItemList, jList));
                     % Create scroll panel
                     jScroll = javax.swing.JScrollPane(jList);
                     % Horizontal glue
@@ -2330,14 +2333,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
 
     %% ===== OPTIONS: SELECT ITEM CALLBACK =====
-    function ItemSelection_Callback(iProcess, optName, jList)
-        listModel = jList.getModel();
-        iSels = jList.getSelectedIndices();
+    function ItemSelection_Callback(iProcess, optName, ItemList, jList)
+        iSels = jList.getSelectedIndices()+1;
         elems = {};
-
         % Update saved selected list
         for iSel = 1:length(iSels)
-            elems{end + 1} = listModel.elementAt(iSels(iSel));
+            elems{end + 1} = ItemList{iSels(iSel)};
         end
         SetOptionValue(iProcess, optName, elems);
     end
