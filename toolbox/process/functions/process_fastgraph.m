@@ -115,7 +115,7 @@ function OPTIONS = GetOptions(sProcess)
     OPTIONS.SortMethod = sProcess.options.sortmethod.Value;
     % Time window for sorting the data [s]
     if isfield(sProcess.options, 'sortwindow') && isfield(sProcess.options.sortwindow, 'Value') && iscell(sProcess.options.sortwindow.Value) && ~isempty(sProcess.options.sortwindow.Value)
-        OPTIONS.SortWindow = round((sProcess.options.sortwindow.Value{1} * 1000)) + 101;
+        OPTIONS.SortWindow = sProcess.options.sortwindow.Value{1};
     else
         OPTIONS.SortWindow = [];
     end
@@ -123,7 +123,7 @@ function OPTIONS = GetOptions(sProcess)
     OPTIONS.ExcludeRadius = sProcess.options.excluderadius.Value{1};
     % Time window for plotting [s]
     if isfield(sProcess.options, 'plotwindow') && isfield(sProcess.options.plotwindow, 'Value') && iscell(sProcess.options.plotwindow.Value) && ~isempty(sProcess.options.plotwindow.Value)
-        OPTIONS.PlotWindow = round((sProcess.options.plotwindow.Value{1} * 1000));
+        OPTIONS.PlotWindow = sProcess.options.plotwindow.Value{1};
     else
         OPTIONS.PlotWindow = [];
     end
@@ -430,7 +430,7 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
     if isempty(OPTIONS.SortWindow)
         sortWindowIdx = 1:size(seegData{1}.F,2);
     else
-        sortWindowIdx = OPTIONS.SortWindow(1):OPTIONS.SortWindow(2);
+        sortWindowIdx = bst_closest(OPTIONS.SortWindow, seegData{1}.Time);
     end
     % Sort channels within each hemisphere using the selected metric
     switch lower(OPTIONS.SortMethod)
@@ -481,7 +481,11 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
     % Check whether stimulation locations are available
     hasStimLocs = any(stimLocs(:));    
     % Select the time samples to display
-    plotWindowIdx = OPTIONS.PlotWindow(1) + 101 : OPTIONS.PlotWindow(2) + 101;
+    if isempty(OPTIONS.PlotWindow)
+        plotWindowIdx = 1:size(seegData{1}.F,2);
+    else
+        plotWindowIdx = bst_closest(OPTIONS.PlotWindow, seegData{1}.Time);
+    end
     timeMs = seegData{iSubplot}.Time(plotWindowIdx) * 1000;
 
     fprintf('\n===== FastGraph %d/%d:  Stimulation site "%s" =====\n', iSubplot, numel(sInputs), sInputs(iSubplot).Comment)
