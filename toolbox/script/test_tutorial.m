@@ -262,6 +262,10 @@ for iTutorial = 1 : length(tutorialNames)
                 tutorial_yokogawa(dataDir);
             end
 
+        case 'tutorial_brain_fingerprint'
+            infoStr = 'REQUIRES TO PRECOMPUTE TUTORIAL_OMEGA';
+            % tutorial_brain_fingerprint('TutorialOmega');
+
         case 'tutorial_seizure_fingerprinting'
             dataFile = get_tutorial_data(dataDir, 'tutorial_seizure_fingerprinting.zip', bstUser, bstPwd);
             if exist(dataFile, 'file')

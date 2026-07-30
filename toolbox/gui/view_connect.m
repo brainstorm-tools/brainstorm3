@@ -127,7 +127,7 @@ if strcmpi(DisplayMode, 'Image')
         TimeVector = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Time;
     end
     % Process2 AxB, add the file information
-    if isempty(regexp(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName, '1[n]*$', 'once'))
+    if ~isempty(regexp(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName, '2$', 'once'))
         rowFileStr = ' (A)';
         colFileStr = ' (B)';
     % Process1, either NxN or 1xN
