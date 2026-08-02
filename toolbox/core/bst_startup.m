@@ -331,6 +331,11 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesTo
     % Load default selections
     panel_montage('LoadDefaultMontages');
 end
+% Check that default iEEG electrode models are loaded
+infoMsg = panel_ieeg('UpdateDefaultElectrodeModels');
+if ~isempty(infoMsg)
+    disp(infoMsg);
+end
 
 
 %% ===== INTERNET CONNECTION =====

@@ -225,7 +225,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, HighPass, LowPass, Method, 
         % Shahabi/Leahy, 2016-2019 [DEFAULT IN BRAINSTORM 2019]
         case {'bst-hfilter-2019','bst-hfilter-2016'}
             if ~isempty(FiltSpec)
-                [x, tmp, Messages] = bst_bandpass_hfilter(x, sfreq, FiltSpec);
+                [x, FiltSpec, Messages] = bst_bandpass_hfilter(x, sfreq, FiltSpec);
             else
                 [x, FiltSpec, Messages] = bst_bandpass_hfilter(x, sfreq, HighPass, LowPass, isMirror, isRelax, [], TranBand, Method);
             end

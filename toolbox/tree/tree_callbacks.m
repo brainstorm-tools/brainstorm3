@@ -1897,6 +1897,8 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ~isRaw && ~ismember(iStudy, iDefStudy) && ~isStat    % && ~isempty(strfind(filenameRelative, '_wMNE')) && ~strcmpi(sStudy.Result(iResult).HeadModelType, 'mixed')
                     jMenuModality = gui_component('Menu', jPopup, [], 'Model evaluation', IconLoader.ICON_RESULTS, [], []);
                     gui_component('MenuItem', jMenuModality, [], 'Simulate recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_simulation(filenameRelative));
+                    gui_component('MenuItem', jMenuModality, [], 'Simulate recordings for other folders...', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)SimulateDataOtherStudy(sStudy.BrainStormSubject, iStudy, filenameRelative));
+                    AddSeparator(jMenuModality);
                     if ~isempty(DataFile)
                         gui_component('MenuItem', jMenuModality, [], 'Save whitened recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)SaveWhitenedData(filenameRelative));
                     end
@@ -4000,4 +4002,31 @@ function SimulateSimmeeg(iStudy)
     end
     % Call SimMEEG
     bst_simmeeg('GUI', iStudy);
+end
+
+
+%% ===== SIMULATE RECORDINGS OTHER FOLDERS =====
+function SimulateDataOtherStudy(SubjectFilename, iStudy, FilenameRelative)
+    % Find other Studies with head models for same Subject
+    [sStudies, iStudies] = bst_get('StudyWithSubject', SubjectFilename, 'intra_subject', 'default_study');
+    iValid = logical([]);
+    for ix = 1 : length(iStudies)
+        sHeadModel = bst_get('HeadModelForStudy', iStudies(ix));
+        iValid(end+1) = ~isempty(sHeadModel) && iStudies(ix) ~= iStudy;
+    end
+    sStudies = sStudies(iValid);
+    iStudies = iStudies(iValid);
+    if isempty(sStudies)
+        disp('BST> Error: There are not other folders with a head model file for this Subject.');
+        return
+    end
+    % Names to show
+    StudyNames = arrayfun(@(x) x.Condition{1}, sStudies, 'UniformOutput', 0);
+    % Ask which study to use
+    StudyName = java_dialog('combo', '<HTML>Select the destination folder:<BR><BR>', 'Simulate recordings', [], StudyNames);
+    if isempty(StudyName)
+        return
+    end
+    ix = strcmpi(StudyName, StudyNames);
+    bst_simulation(FilenameRelative, [], [], [], iStudies(ix));
 end

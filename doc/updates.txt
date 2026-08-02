@@ -1,3 +1,50 @@
+June 2026
+- iEEG: Check and load default electrode models at startup
+- iEEG: Add support for non-uniform contact length/spacing SEEG electrodes
+- GUI: Bidirectional channel selection in time series figure and channel editor
+- GUI: Improve interaction, iEEG panel and time series figure
+- TimeFreq: Wavelet edge effects set to 99% of impulse response energy
+- IO: Correct read of montages/projectors from FieldTrip files
+- IO: Support exporting anatomy volumes as .nii.gz
+- Process: Process to detrend time series using EMD
+- Bugfix: Detect bad channels peak-to-peak only applied on MEG sensors
+- Bugfix: PCA flattening sources from mixed models
+--------------------------------------------------------------
+May 2026
+- Anatomy: New template: ICBM152 2026. FreeSurfer 8.2. New cortical atlases
+- Anatomy: New MNI parcellations: USCBrain, BCI-DNI_brain, YBA and JulichBrainV3
+- Anatomy: Get JulichBrainV3 and ThalamicNuclei vol atlases from CAT results
+- iEEG: Bugfix, allow removing user-created SEEG/ECOG/ECOG-mid electrode models
+- iEEG: Add infinite homogeneous medium headmodel for SEEG
+- Simulations: Allow sensor signal simulation with head model from another study
+- Plugin: Resection identification plugin as container-based plugin
+--------------------------------------------------------------
+April 2026
+- Anatomy: Auto-install of SPM tissue probability maps ('TPM.nii') when needed
+- Anatomy: Improve primitive cylinder mesh generation
+- IO: Nihon Koden, improve reading start of acquisition timestamp
+- IO: Add support for polygon file format .ply mesh files
+- Container: Add support for Containers as Plugins
+- Viz: Display of NIRS volume head model
+--------------------------------------------------------------
+March 2026
+- Digitize: Auto-detect EEG locations for EEG caps and custom montages
+- Events: Process to merge overlapping extended events
+- Simulations: Allow to simulate recordings from sources obtained with MEM
+- IO: Bugfix at exporting EDF files with starting time different from 0s
+- Plugin: Improve Brainstorm internal management of plugins
+--------------------------------------------------------------
+February 2026
+- Anatomy: Improve visualization of multiple structures and surfaces
+- Anatomy: Update parcellation labels for different BrainSuite atlases
+- Anatomy: Add non-interactive generation of primitive surfaces
+- Connectivity: Link TF function and colormap for matrix and graph figures
+- DB: Get acquisition time for recordings, and allow clock time in x-axis
+- Forward: Add various directions for leadfield sensitivity visualization
+- Inverse: Extend definition of exclusion zone in volume grids
+- iEEG: Improved detection of type and group of contacts for SEEG/ECOG channels
+- GUI: More detailed information about checking advanced options in processes
+--------------------------------------------------------------
 January 2026
 - Anatomy: Add generation of primitive geometric surfaces (sphere, cube, ...)
 - Anatomy: Boolean operations between two surfaces (intersection, union, diff)

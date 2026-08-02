@@ -320,7 +320,7 @@ function TableSelectionChanged_Callback(isAdjusting)
     iSelChan = ctrl.jTableChannel.getSelectedRows()' + 1;
     SelChan = {GlobalData.ChannelEditor.ChannelMat.Channel(iSelChan).Name};
     % Select sensor 
-    bst_figures('SetSelectedRows', SelChan);
+    bst_figures('SetSelectedRows', SelChan, [], 0);
 end
 
 

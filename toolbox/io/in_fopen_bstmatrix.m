@@ -49,9 +49,26 @@ DataMat.ChannelFlag = ones(nSignals, 1);
 % Generate ChannelMat structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nSignals);
+% Get Channel names
+if ~isempty(MatrixMat.Description)
+    if iscell(MatrixMat.Description{1,1})
+        MatrixMat.Description{1,1} = MatrixMat.Description{1,1}{1};
+    end
+    if (size(MatrixMat.Description,1) == size(MatrixMat.Value,1))
+        MatrixMat.Description = MatrixMat.Description(:,1);
+    elseif (size(MatrixMat.Description,2) == size(MatrixMat.Value,1))
+        MatrixMat.Description = MatrixMat.Description(1,:);
+    else
+        MatrixMat.Description = [];
+    end
+end
 for iSignal = 1 : nSignals
     ChannelMat.Channel(iSignal).Type = 'EEG';
-    ChannelMat.Channel(iSignal).Name = MatrixMat.Description{iSignal};
+    if ~isempty(MatrixMat.Description)
+        ChannelMat.Channel(iSignal).Name = MatrixMat.Description{iSignal};
+    else
+        ChannelMat.Channel(iSignal).Name = sprintf('E%02d', iSignal);
+    end
     ChannelMat.Channel(iSignal).Loc  = [0; 0; 0];
 end
 % Generate a sFile structure that describes this database file

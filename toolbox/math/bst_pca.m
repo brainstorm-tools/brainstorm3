@@ -280,7 +280,9 @@ if ~isempty(OutComment)
     sResultsOut.Comment = OutComment;
 else
     isForceComment = false;
+    % Flattening
     sResultsOut.Comment = [' | ' PcaOptions.Method];
+    % Flattening + Scouts
     if isScout
         % Make single string of all scout names.
         ScoutNames = {sScouts.Label};
@@ -297,9 +299,6 @@ else
         else
             sResultsOut.Comment = [sResultsOut.Comment, ' scouts'];
         end
-    else
-        % Flattening
-        sResultsOut.Comment = [sResultsOut.Comment, ' flat'];
     end
 end
 % Update number of components when flattening
@@ -483,8 +482,15 @@ for iInput = 1:nInputs
             end
         else
             % Flattening is done for whole file at once even for mixed models.
-            [sResults.(OutField{iInput}), sResults.GridAtlas, ~, PcaComp{iInput, :}, HistoryMsg] = bst_source_orient([], ...
-                nComponents, sResults.GridAtlas, matSourceValues, UnconstrFunc, [], [], FileSourceCov); % PcaReference not yet available
+            [sResults.(OutField{iInput}), sResults.GridAtlas, ~, pcaComp, HistoryMsg] = bst_source_orient([], ...
+                nComponents, sResults.GridAtlas, matSourceValues, UnconstrFunc, [], [], FileSourceCov); % PcaReference not yet available            
+            if nComponents == 0
+                % Mixed models
+                PcaComp(iInput, :) = pcaComp;
+            else
+                % Simple unconstrained models
+                PcaComp{iInput, 1} = pcaComp;
+            end
         end
 
         % Save individual files.  We still need to correct the sign later for pcai.
@@ -499,7 +505,7 @@ for iInput = 1:nInputs
             % Save single-file result file, full or kernel. For scouts, this is a deprecated
             % atlas-based result file, meant only to be used temporarily and then deleted by the
             % calling process.
-            OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, PcaOptions.Method);
+            OutputFiles{iInput} = SaveResultFile(sProcess, sInputs(iInput), sResults, PcaOptions.Method);
         end
     end
     if strcmpi(PcaOptions.Method, 'pca')
@@ -660,7 +666,7 @@ switch PcaOptions.Method
                 % Save single-file result file, full or kernel. For scouts, this is a deprecated
                 % atlas-based result file, meant only to be used temporarily and then deleted by the
                 % calling process.
-                OutputFiles{iInput} = SaveResultFile(sInputs(iInput), sResults, PcaOptions.Method);
+                OutputFiles{iInput} = SaveResultFile(sProcess, sInputs(iInput), sResults, PcaOptions.Method);
             end
 
             bst_progress('inc', 1);
@@ -829,10 +835,10 @@ function OutputFile = SaveMatrixFile(sInput, sResults, Method, ScoutRowNames, Fi
     db_add_data(sInput.iStudy, OutputFile, sMatrix);
 end
 
-function OutputFile = SaveResultFile(sInput, sResults, Method)
+function OutputFile = SaveResultFile(sProcess, sInput, sResults, Method)
     % Verify and fix GridAtlas for atlas-based files
     if ~isempty(sResults.GridAtlas) || sResults.nComponents == 0
-        sResults = process_extract_scout('FixAtlasBasedGrid', [], sInput, sResults);
+        sResults = process_extract_scout('FixAtlasBasedGrid', sProcess, sInput, sResults);
     end
     % Get study description
     sStudy = bst_get('Study', sInput.iStudy);

@@ -8,6 +8,7 @@ function [varargout] = bst_plugin(varargin)
 %                 PlugDesc = bst_plugin('GetLoaded')                                         % Get all the loaded plugins
 %       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
 %        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
+%                     isOk = bst_plugin('ClearCachedVersion',   PlugName)                    % Clean cached plugin version
 %                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
@@ -159,7 +160,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'spm12'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12'');';
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''cat12''); cat_defaults;';
     PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''cat12'');';
     PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''cat12'');';
     PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''cat12'');';
@@ -208,15 +209,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end+1)              = GetStruct('resection-identification');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_resection_identification_' OsType '.zip'];
-    PlugDesc(end).TestFile       = 'resection_identification';
-    if strcmp(OsType, 'win64')
-        PlugDesc(end).TestFile   = [PlugDesc(end).TestFile, '.bat'];
-    end
-    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-plugin';
+    PlugDesc(end).URLinfo        = 'https://github.com/ajoshiusc/auto_resection_mask/tree/brainstorm-container';
+    PlugDesc(end).ImageSource    = ['docker.io/brainstormtools/auto-resection-mask:' PlugDesc(end).Version];
     PlugDesc(end).CompiledStatus = 1;
-    PlugDesc(end).LoadFolders    = {'bin'};
 
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -247,9 +242,9 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === ARTIFACTS: GEDAI ===
     PlugDesc(end+1)              = GetStruct('gedai');
-    PlugDesc(end).Version        = '3b613b8c';
+    PlugDesc(end).Version        = 'main';
     PlugDesc(end).Category       = 'Artifacts';
-    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/3b613b8cf3e6736b6a3b7e1fe35b6066afc312cf.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/neurotuning/GEDAI-master/archive/main.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/neurotuning/GEDAI-master';
     PlugDesc(end).TestFile       = 'process_gedai.m';
     PlugDesc(end).ReadmeFile     = 'README.md';
@@ -1126,7 +1121,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
-           case 'nirstorm'
+            case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
@@ -1141,6 +1136,10 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
                 % If downloading from GitHub: Get last GitHub commit SHA
                 if isGithubSnapshot(URLzip)
                     Version = GetGithubCommit(URLzip);
+                % Try to get Manifest SHA for container plugins
+                elseif IsContainer(PlugName)
+                    PlugDesc = GetDescription(PlugName);
+                    [~, Version] = bst_containers('GetOnlineManifest', PlugDesc.ImageSource);
                 else
                     return;
                 end
@@ -1154,11 +1153,36 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
 end
 
 
+%% ===== CLEAR CACHED PLUGIN VERSION ======
+function isOk = ClearCachedVersion(PlugName)
+% USAGE: isOk = bst_plugin('ClearCachedVersion', PlugName)  % Only for provided plugin
+%        isOk = bst_plugin('ClearCachedVersion')            % For all plugins
+    global GlobalData;
+    isOk = 0;
+
+    % Already clean
+    if ~isfield(GlobalData.Program, 'PluginCache') || isempty(GlobalData.Program.PluginCache) || isempty(fieldnames(GlobalData.Program.PluginCache))
+        isOk = 1;
+    % Clean all
+    elseif nargin < 1
+        GlobalData.Program.PluginCache = struct;
+        isOk = 1;
+    % Clean cache version for provided plugin
+    elseif ischar(PlugName)
+        strCaches = fieldnames(GlobalData.Program.PluginCache);
+        PlugName = [PlugName, '_'];
+        GlobalData.Program.PluginCache = rmfield(GlobalData.Program.PluginCache, strCaches(strncmpi(strCaches, PlugName, length(PlugName))));
+        isOk = 1;
+    end
+end
+
+
 %% ===== IS GITHUB SNAPSHOT ======
 % Returns 1 if the URL is a souce-code archive or snapshot (as .zip or .tar.gz) of a GitHub repository
 % https://docs.github.com/en/repositories/working-with-files/using-files/downloading-source-code-archives
 function isOk = isGithubSnapshot(URLzip)
-    isOk = strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
+    isOk = ~isempty(URLzip) && ...
+           strMatchEdge(URLzip, 'https://github.com/', 'start') && ...
            ~isempty(strfind(URLzip, '/archive/')) && ...
            (strMatchEdge(URLzip, '.zip', 'end') || strMatchEdge(URLzip, '.tar.gz', 'end'));
 end
@@ -1555,10 +1579,23 @@ function TestFilePath = GetTestFilePath(PlugDesc)
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
                     TestFilePath = [];
                 end
-            % jsonlab, jsnirfy and jnifti: Ignore if found embedded in iso2mesh
-            elseif strcmpi(PlugDesc.Name, 'jsonlab') || strcmpi(PlugDesc.Name, 'jsnirfy') || strcmpi(PlugDesc.Name, 'jnifti')
+            % jsonlab: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsonlab')
                 p = which('iso2meshver.m');
                 if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jsnirfy: Ignore if found embedded in iso2mesh
+            elseif strcmpi(PlugDesc.Name, 'jsnirfy')
+                p = which('iso2meshver.m');
+                if ~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')
+                    TestFilePath = [];
+                end
+            % jnifti: Ignore if found embedded in iso2mesh or jsonlab
+            elseif strcmpi(PlugDesc.Name, 'jnifti')
+                p = which('iso2meshver.m');
+                q = which('savejson.m');
+                if (~isempty(p) && strMatchEdge(TestFilePath, bst_fileparts(p), 'start')) || (~isempty(q) && strMatchEdge(TestFilePath, bst_fileparts(q), 'start'))
                     TestFilePath = [];
                 end
             % easyh5: Ignore if found embedded in iso2mesh or jsonlab
@@ -1684,8 +1721,10 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         PlugDesc = [];
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     % Check if there is a URL to download
-    if isempty(PlugDesc.URLzip)
+    if isempty(PlugDesc.URLzip) && ~isContainer
         errMsg = ['No download URL for ', OsType, ': ', PlugName ''];
         return;
     end
@@ -1869,55 +1908,66 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     if ~isempty(LogoFile)
         bst_progress('setimage', LogoFile);
     end
-    % Get package file format
-    if strcmpi(PlugDesc.URLzip(end-3:end), '.zip')
-        pkgFormat = 'zip';
-    elseif strcmpi(PlugDesc.URLzip(end-6:end), '.tar.gz') || strcmpi(PlugDesc.URLzip(end-3:end), '.tgz')
-        pkgFormat = 'tgz';
-    else
-        disp('BST> Could not guess file format, trying ZIP...');
-        pkgFormat = 'zip';
-    end
-    % Download file
-    pkgFile = bst_fullfile(PlugPath, ['plugin.' pkgFormat]);
-    disp(['BST> Downloading URL : ' PlugDesc.URLzip]);
-    disp(['BST> Saving to file  : ' pkgFile]);
-    errMsg = gui_brainstorm('DownloadFile', PlugDesc.URLzip, pkgFile, ['Download plugin: ' PlugName], LogoFile);
-    % If file was not downloaded correctly
-    if ~isempty(errMsg)
-        errMsg = ['Impossible to download ' PlugName ' automatically:' 10 errMsg];
-        if ~isCompiled
-            errMsg = [errMsg 10 10 ...
-                'Alternative download solution:' 10 ...
-                '1) Copy the URL below from the Matlab command window: ' 10 ...
-                '     ' PlugDesc.URLzip 10 ...
-                '2) Paste it in a web browser' 10 ...
-                '3) Save the file and unzip it' 10 ...
-                '4) Add to the Matlab path the folder containing ' PlugDesc.TestFile '.'];
+    % Code plugins
+    if ~isContainer
+        % Get package file format
+        if strcmpi(PlugDesc.URLzip(end-3:end), '.zip')
+            pkgFormat = 'zip';
+        elseif strcmpi(PlugDesc.URLzip(end-6:end), '.tar.gz') || strcmpi(PlugDesc.URLzip(end-3:end), '.tgz')
+            pkgFormat = 'tgz';
+        else
+            disp('BST> Could not guess file format, trying ZIP...');
+            pkgFormat = 'zip';
         end
-        bst_progress('removeimage');
-        return;
-    end
-    % Update progress bar
-    bst_progress('text', ['Installing plugin: ' PlugName '...']);
-    if ~isempty(LogoFile)
-        bst_progress('setimage', LogoFile);
-    end
-    % Unzip file
-    switch (pkgFormat)
-        case 'zip'
-            bst_unzip(pkgFile, PlugPath);
-        case 'tgz'
-            if ispc
-                untar(pkgFile, PlugPath);
-            else
-                curdir = pwd;
-                cd(PlugPath);
-                system(['tar -xf ' pkgFile]);
-                cd(curdir);
+        % Download file
+        pkgFile = bst_fullfile(PlugPath, ['plugin.' pkgFormat]);
+        disp(['BST> Downloading URL : ' PlugDesc.URLzip]);
+        disp(['BST> Saving to file  : ' pkgFile]);
+        errMsg = gui_brainstorm('DownloadFile', PlugDesc.URLzip, pkgFile, ['Download plugin: ' PlugName], LogoFile);
+        % If file was not downloaded correctly
+        if ~isempty(errMsg)
+            errMsg = ['Impossible to download ' PlugName ' automatically:' 10 errMsg];
+            if ~isCompiled
+                errMsg = [errMsg 10 10 ...
+                    'Alternative download solution:' 10 ...
+                    '1) Copy the URL below from the Matlab command window: ' 10 ...
+                    '     ' PlugDesc.URLzip 10 ...
+                    '2) Paste it in a web browser' 10 ...
+                    '3) Save the file and unzip it' 10 ...
+                    '4) Add to the Matlab path the folder containing ' PlugDesc.TestFile '.'];
             end
+            bst_progress('removeimage');
+            return;
+        end
+        % Update progress bar
+        bst_progress('text', ['Installing plugin: ' PlugName '...']);
+        if ~isempty(LogoFile)
+            bst_progress('setimage', LogoFile);
+        end
+        % Unzip file
+        switch (pkgFormat)
+            case 'zip'
+                bst_unzip(pkgFile, PlugPath);
+            case 'tgz'
+                if ispc
+                    untar(pkgFile, PlugPath);
+                else
+                    curdir = pwd;
+                    cd(PlugPath);
+                    system(['tar -xf ' pkgFile]);
+                    cd(curdir);
+                end
+        end
+        file_delete(pkgFile, 1, 3);
+    else
+        % Import container image in container engine
+        [errMsg, imageSha] = bst_containers('ImportImage', PlugDesc.ImageSource, ['brainstorm_' PlugDesc.Name]);
+        if ~isempty(errMsg)
+            bst_progress('removeimage');
+            return
+        end
+        PlugDesc.ImageSha = imageSha;
     end
-    file_delete(pkgFile, 1, 3);
 
     % === SAVE PLUGIN.MAT ===
     PlugDesc.Path = PlugPath;
@@ -2162,6 +2212,8 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         errMsg = ['Plugin ' PlugName ' is not installed.'];
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     
     % === USER CONFIRMATION ===
     if isInteractive
@@ -2209,6 +2261,14 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive, isDependencies)
         end
         quit('force');
     end
+    % Remove image from container engine
+    if isContainer && ~isempty(PlugDesc.ImageSha)
+        errMsg = bst_containers('RemoveImage', ['brainstorm_' PlugDesc.Name], 1);
+        if ~isempty(errMsg)
+            return
+        end
+    end
+
     
     % === CALLBACK: POST-UNINSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'UninstalledFcn');
@@ -2334,6 +2394,8 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         errMsg = ['Plugin ', PlugDesc.Name ' is not supported on Apple silicon yet.'];
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
@@ -2456,6 +2518,48 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
         PlugHomeDir = bst_fullfile(PlugPath, PlugDesc.SubFolder);
     else
         PlugHomeDir = PlugPath;
+    end
+    % Run container if image was properly imported
+    if isContainer
+        PlugDesc = GetInstalled(PlugDesc);
+        imageName = ['brainstorm_' PlugDesc.Name];
+        if ~isempty(PlugDesc.ImageSha)
+            % Get available images in container engine
+            [errMsg, imageList] = bst_containers('GetImages');
+            if ~isempty(errMsg)
+                return
+            end
+            % Check that image is imported in container engine
+            isImported = 0;
+            if ~isempty(imageList)
+                iImageSha = strcmpi(imageList(:,2), PlugDesc.ImageSha);
+                isImported = any(strncmpi(imageList(iImageSha,1), imageName, length(imageName)));
+            end
+            if isImported
+                % Check if container exist
+                [~, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+                % Run container
+                if ~containerInfo.isRunning
+                    % Remove container
+                    if ~isempty(containerInfo.name)
+                        bst_containers('StopContainer', containerInfo.name, 1);
+                    end
+                    % Get tmp dir to bind container
+                    TmpDir = bst_get('BrainstormTmpDir', 0, PlugDesc.Name);
+                    volumes = {TmpDir, '/data'};
+                    % Run container as daemon
+                    errMsg = bst_containers('RunContainer', ['bst_' PlugDesc.Name], PlugDesc.ImageSha, volumes, 1);
+                    if ~isempty(errMsg)
+                        return
+                    end
+                end
+            else
+                % Uninstall container plugin
+                Uninstall(PlugDesc.Name, 0, 0);
+                errMsg = ['Reinstall plugin ' PlugDesc.Name '.' 10 10 'Missing container image: ' imageName 10 'SHA: ' PlugDesc.ImageSha];
+                return
+            end
+        end
     end
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
@@ -2582,13 +2686,15 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
     if ~isempty(errMsg)
         return;
     end
+    % Check if plugin is a container
+    isContainer = IsContainer(PlugDesc);
     
     % === PROCESS DEPENDENCIES ===
     % Unload dependent plugins
     AllPlugs = GetSupported();
     for iPlug = 1:length(AllPlugs)
         if ~isempty(AllPlugs(iPlug).RequiredPlugs) && ismember(PlugDesc.Name, AllPlugs(iPlug).RequiredPlugs(:,1))
-            Unload(AllPlugs(iPlug));
+            Unload(AllPlugs(iPlug), isVerbose);
         end
     end
     
@@ -2604,6 +2710,21 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
                 if isVerbose
                     disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
                 end
+            end
+        end
+        % Stop container
+        if isContainer
+            % Retrieve info of container
+            [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+            if isempty(errMsg)
+                errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
+            end
+            if ~isempty(errMsg)
+                return
+            end
+            % Delete temporary files
+            for iVolume = 1 : size(containerInfo.volumes, 1)
+                file_delete(containerInfo.volumes{iVolume,1}, 1, 1);
             end
         end
     end
@@ -2893,6 +3014,8 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
         if isCompiled && (Plug.CompiledStatus == 0)
             continue;
         end
+        % Check if plugin is a container
+        isContainer = IsContainer(Plug);
         % === Add menus for each plugin ===
         % One menu per plugin
         ij = length(j) + 1;
@@ -2925,16 +3048,27 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
             % Main menu
             j(ij).menu = gui_component('Menu', jParent, [], Plug.Name, [], [], [], fontSize);
             % Version
-            j(ij).version = gui_component('MenuItem', j(ij).menu, [], 'Version', [], [], [], fontSize);
+            iconVersion = [];
+            if isContainer
+                iconVersion = IconLoader.ICON_OBJECT;
+            end
+            j(ij).version = gui_component('MenuItem', j(ij).menu, [], 'Version', iconVersion, [], [], fontSize);
             j(ij).versep = java_create('javax.swing.JSeparator');
             j(ij).menu.add(j(ij).versep);
             % Install
             j(ij).install = gui_component('MenuItem', j(ij).menu, [], 'Install', IconLoader.ICON_DOWNLOAD, [], @(h,ev)InstallInteractive(Plug.Name), fontSize);
+            if isContainer
+                j(ij).install.setText('Import image');
+            end
             % Update
             j(ij).update = gui_component('MenuItem', j(ij).menu, [], 'Update', IconLoader.ICON_RELOAD, [], @(h,ev)UpdateInteractive(Plug.Name), fontSize);
+            j(ij).update.setVisible(~isContainer);
             % Uninstall
             j(ij).uninstall = gui_component('MenuItem', j(ij).menu, [], 'Uninstall', IconLoader.ICON_DELETE, [], @(h,ev)UninstallInteractive(Plug.Name), fontSize);
             j(ij).menu.addSeparator();
+            if isContainer
+                j(ij).install.setText('Remove image');
+            end
             % Custom install
             j(ij).custom = gui_component('Menu', j(ij).menu, [], 'Custom install', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
             j(ij).customset = gui_component('MenuItem', j(ij).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
@@ -2942,10 +3076,17 @@ function j = MenuCreate(jMenu, jPlugsPrev, PlugDesc, fontSize)
             j(ij).custompath.setEnabled(0);
             j(ij).custom.addSeparator();
             j(ij).customdel = gui_component('MenuItem', j(ij).custom, [], 'Ignore local installation', [], [], @(h,ev)SetCustomPath(Plug.Name, 0), fontSize);
-            j(ij).menu.addSeparator();
+            j(ij).custom.setVisible(~isContainer);
+            if ~isContainer
+                j(ij).menu.addSeparator();
+            end
             % Load
             j(ij).load = gui_component('MenuItem', j(ij).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
             j(ij).unload = gui_component('MenuItem', j(ij).menu, [], 'Unload', IconLoader.ICON_BAD, [], @(h,ev)UnloadInteractive(Plug.Name), fontSize);
+            if isContainer
+                j(ij).load.setText('Run container (as daemon)');
+                j(ij).unload.setText('Stop container');
+            end
             j(ij).menu.addSeparator();
             % Website
             j(ij).web = gui_component('MenuItem', j(ij).menu, [], 'Website', IconLoader.ICON_EXPLORER, [], @(h,ev)web(Plug.URLinfo, '-browser'), fontSize);
@@ -3044,6 +3185,7 @@ function MenuUpdate(jMenu, fontSize)
         end
         isLoaded = isInstalled && Plug.isLoaded;
         isManaged = isInstalled && Plug.isManaged;
+        isContainer = IsContainer(Plug);
         % Compiled included: no submenus
         if isCompiled && (PlugRef.CompiledStatus == 2)
             j.menu.setEnabled(1);
@@ -3055,7 +3197,7 @@ function MenuUpdate(jMenu, fontSize)
         % Otherwise: all available
         else
             % Main menu: Available/Not available
-            j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip));
+            j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip) || isContainer);
             % Current version
             if ~isInstalled
                 j.version.setText('<HTML><FONT color="#707070"><I>Not installed</I></FONT>');
@@ -3094,10 +3236,14 @@ function MenuUpdate(jMenu, fontSize)
             end
             % Install
             j.install.setEnabled(~isInstalled);
+            InstallText = 'Install';
+            if isContainer
+                InstallText = 'Import image';
+            end
             if ~isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
-                j.install.setText(['<HTML>Install &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
+                j.install.setText(['<HTML>' InstallText ' &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
             else
-                j.install.setText('Install');
+                j.install.setText(InstallText);
             end
             % Update
             j.update.setEnabled(isManaged);
@@ -3407,10 +3553,15 @@ function LinkSpmToolbox(Action, ToolboxName)
             error([upper(ToolboxName) ' seems already set up: ' spmToolboxDirTarget]);
         end
         % All the other cases: delete existing toolbox folder
+        strDirDel = ['"' spmToolboxDirTarget '"'];
+        if strcmpi(ToolboxName, 'cat12')
+            % Also remove spmToolboxDir/CAT (Introduced in CAT26.0.rc1)
+            strDirDel = [strDirDel ' "' bst_fullfile(spmToolboxDir, 'CAT') '"'];
+        end
         if ispc
-            rmCall = ['rmdir /q /s "' spmToolboxDirTarget '"'];
+            rmCall = ['rmdir /q /s ' strDirDel];
         else
-            rmCall = ['rm -rf "' spmToolboxDirTarget '"'];
+            rmCall = ['rm -rf ' strDirDel];
         end
         disp(['BST> Deleting existing SPM12 toolbox: ' rmCall]);
         [status,result] = system(rmCall);
@@ -3468,6 +3619,20 @@ end
 function pluginNames = PluginsNotSupportAppleSilicon()
     pluginNames = { 'duneuro', 'mcxlab-cuda'};
 end
+
+
+%% ===== IS CONTAINER PLUGIN =====
+% Check if plugin is a container
+function isContainer = IsContainer(PlugDesc)
+    isContainer = 0;
+    if ischar(PlugDesc)
+        PlugDesc = GetDescription(PlugDesc);
+    end
+    if isempty(PlugDesc.URLzip) && ~isempty(PlugDesc.ImageSource)
+        isContainer = 1;
+    end
+end
+
 
 %% ===== MATCH STRING EDGES =====
 % Check if a string 'strA' starts (or ends) with string B

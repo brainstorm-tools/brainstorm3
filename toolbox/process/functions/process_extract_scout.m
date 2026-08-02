@@ -620,6 +620,7 @@ function OutputFiles = Run(sProcess, sInputs)
             OutputFiles = newMat;
         end
     end
+    CleanExit;
 
 %% ===== DELETE TEMP PCA FILES before exiting =====
 function CleanExit
