@@ -1,3 +1,11 @@
+July 2026
+- Anatomy: Add support for ITK-SnAP `.label` files for MRI atlases
+- IO: Improve handling of matrix files with row and col names (i.e. tables)
+- IO: Bugfix at reading event labels and times in Compumedics ProFusion files
+- Process: Add multi-subject support for processes to Import Time/Epochs
+- Process: Improve handling of start of recording timestamps in Combine and Sync
+- Viz: Dipoles on 3D MRI, allow showing dipoles only on the nearest slice
+--------------------------------------------------------------
 June 2026
 - iEEG: Check and load default electrode models at startup
 - iEEG: Add support for non-uniform contact length/spacing SEEG electrodes
