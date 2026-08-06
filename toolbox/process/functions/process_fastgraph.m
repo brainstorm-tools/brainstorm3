@@ -271,9 +271,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 %% ===== GET STIMULATION SITE CONTACT LOCATION =====
-% Get the midpoint location of each stimulation pair from channel
+% Get the midpoint location of each stimulation pair in Comment
 function stimLocs = GetStimLocs(sInputs, ChannelMat)
-    % Preallocate one [x y z] midpoint per stimulation pair
+    % Preallocate one [x y z] SCS midpoint per stimulation pair
     stimLocs = zeros(numel(sInputs), 3);
     % Get channel names once for lookup
     chanNames = {ChannelMat.Channel.Name};
@@ -285,12 +285,9 @@ function stimLocs = GetStimLocs(sInputs, ChannelMat)
         if numel(parts) ~= 2
             continue;
         end
-        % Clean extracted comment
-        contact1 = parts{1};
-        contact2 = parts{2};
         % Get the contact names
-        contact1Parts = strsplit(contact1);
-        contact2Parts = strsplit(contact2);
+        contact1Parts = strsplit(parts{1}, ' ');
+        contact2Parts = strsplit(parts{2}, ' ');
         contact1 = contact1Parts{end};
         contact2 = contact2Parts{1};
         % Find the channel indices
