@@ -217,10 +217,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     gap = [0.075 0.0175];
     horzMargin = 0.03;
     vertMargin = 0.015;
-    % Generate one FastGraph per selected input
-    bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
 
     % ===== Get data and Plot each FastGraph and  =====
+    bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
     for iFastGraph = 1:nFastGraphs
         sInput  = sInputs(iFastGraph);
         stimLoc = stimLocs(iFastGraph, :);
@@ -251,9 +250,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % === Common feature on FastGraph plots ===
-    % Axes style
-    axis(hFastGraphAxes, 'tight');
-    % Share axes, sets the same XY Limits
+    % Set limits for axes before linking for improved performance
+    xlim(hFastGraphAxes, [seegData.Time(1), seegData.Time(end)]*1000);
+    ylims = ylim(hFastGraphAxes);
+    ylims = cat(1,ylims{:});
+    ylim(hFastGraphAxes, [min(ylims(:,1)), max(ylims(:,2))]);
     linkaxes(hFastGraphAxes, 'xy');
     % Set axis labels
     xlabel(hFastGraphAxes, 'Time (ms)');
