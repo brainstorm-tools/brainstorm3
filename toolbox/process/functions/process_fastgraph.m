@@ -226,7 +226,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Show progress
         bst_progress('set', round(100 .* (iFastGraph-1) ./ nFastGraphs));
-        fprintf('\n===== FastGraph %d/%d:  Stimulation site "%s" =====\n', iFastGraph, nFastGraphs, sInput.Comment);
+        fprintf('\n===== FastGraph %d/%d:  Stimulation file "%s" =====\n', iFastGraph, nFastGraphs, sInput.Comment);
 
         % Load ONLY SEEG recordings
         [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS);
@@ -378,9 +378,12 @@ function [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat,
         validContacts = ~iExcluded & ~iStimContacts;
         excludedContacts = ~validContacts;
         % Report excluded contacts
-        fprintf('Contacts excluded for being within the %d mm exclusion zone "%s":\n', OPTIONS.ExcludeRadius, sInput.Comment);
-        fprintf('%s  %s  ', ChannelMat.Channel(iSeeg(iStimContacts)).Name, ChannelMat.Channel(iSeeg(iExcluded)).Name);
-        fprintf('\n\n');
+        fprintf('Contacts excluded for being at the stimulation location ( <= 2 mm):\n');
+        fprintf('%s  ', ChannelMat.Channel(iSeeg(iStimContacts)).Name);
+        fprintf('\n');
+        fprintf('Contacts excluded for being within the %d mm exclusion zone:\n', OPTIONS.ExcludeRadius);
+        fprintf('%s  ', ChannelMat.Channel(iSeeg(iExcluded)).Name);
+        fprintf('\n');
         % Set data from excluded channels to NaN
         seegData.F(excludedContacts, :) = NaN;
     else
@@ -537,11 +540,12 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplo
         hAreaPlot = area(timeMs, signFactor * hemiData(:, plotWindowIdx)');
 
         % Print labels and assign colors
+        strMaxLen = max(cellfun(@length, chanNamesSeeg));
         isAllContactsExcluded = 1;
         for i = 1:numel(contactIdxs)
             atlasScoutLabelSeeg = channelScoutLabels{i};
             if ~excludedContacts(contactIdxs(i))
-                fprintf('%s - %s\n', chanNamesSeeg{contactIdxs(i)}, atlasScoutLabelSeeg);
+                fprintf('%-*s - %s\n', strMaxLen, chanNamesSeeg{contactIdxs(i)}, atlasScoutLabelSeeg);
                 isAllContactsExcluded = 0;
             end
             region = GetRegionFromScouts(sCortex, atlasScoutLabelSeeg, OPTIONS);
@@ -561,6 +565,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplo
             hold off;
         end
     end
+    fprintf('\n');
 end
 
 %% ===== ATLAS REGION FROM SCOUTS =====
