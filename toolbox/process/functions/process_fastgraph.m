@@ -241,7 +241,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
@@ -459,7 +459,7 @@ end
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
