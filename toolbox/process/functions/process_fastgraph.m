@@ -184,13 +184,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % === Sort SEEG contacts and Stimulus by location
     % Sort ONLY SEEG Contacts using Location or Group name into Left | Right groups
-    sContactLocIdxs = GroupSeegContacts(ChannelMat); % iSeeg(sCon)
-    % Get stimulus location from each Input, based on the Comment
-    stimScsLocs = GetStimLocs(sInputs, ChannelMat);
-    % Sort stimulus using Location into Left | Right groups, Anterior->Posterior within group
-    sStimLocIdxs = SortLAPRAP(stimScsLocs);
-    % Sort Inputs by their Stimulus location
-    % sInputs = sInputs(sStimLocIdxs);
+    sContactLocIdxs = SortSeegContacts(ChannelMat);
+    % Sort stimulus location from each Input into Left | Right groups, Anterior->Posterior within group
+    stimLocs = GetStimLocs(sInputs, ChannelMat);
+    sStimLocIdxs = SortLAPRAP(stimLocs);
+    % Sort Inputs and StimLocs by their Stimulus location: I.e. SubPlot order
+    sInputs  = sInputs(sStimLocIdxs.All);
+    stimLocs = stimLocs(sStimLocIdxs.All, :);
 
     % === Anatomical labels for SEEG contacts
     [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.Atlas);
@@ -201,12 +201,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Extract SEEG channel names and their atlas scout labels
     chanNamesSeeg = chanTableWithAtlas(2:end, 1);
     atlasScoutLabelsSeeg = chanTableWithAtlas(2:end, cols);
-
-    % Get indices of SEEG channels
-    iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
-    % Load ONLY SEEG recordings after applying FastGraph sorting
-    [seegData, excludedContacts] = GetSeegData(sInputs, sStimLocIdxs, stimScsLocs, ChannelMat, OPTIONS);
-
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
@@ -228,28 +222,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % ===== Get data and Plot each FastGraph and  =====
     for iFastGraph = 1:nFastGraphs
+        sInput  = sInputs(iFastGraph);
+        stimLoc = stimLocs(iFastGraph, :);
+
         % Show progress
-        progressPrc = round(100 .* iFastGraph ./ nFastGraphs);
-        bst_progress('set', progressPrc);
+        bst_progress('set', round(100 .* (iFastGraph-1) ./ nFastGraphs));
+        fprintf('\n===== FastGraph %d/%d:  Stimulation site "%s" =====\n', iFastGraph, nFastGraphs, sInput.Comment);
 
-
+        % Load ONLY SEEG recordings
+        [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS);
         % Data to be plotted for the current subplot
         subplotData = struct();
-        Fout = seegData{iFastGraph}.F(iSeeg, :);
         % Separate L and R hemisphere data
-        subplotData.leftData = Fout(sContactLocIdxs.Left,:);
-        subplotData.rightData = Fout(sContactLocIdxs.Right,:);
+        subplotData.leftData  = seegData.F(sContactLocIdxs.Left,:);
+        subplotData.rightData = seegData.F(sContactLocIdxs.Right,:);
         % Sort channels within each hemisphere using the selected metric and time window
         sSubplotDataSorted = ApplyDataSorting(subplotData, seegData, OPTIONS);
+
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimScsLocs, iFastGraph, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         % Add the stimulation pair and atlas scout label as the subplot title
-        AddFastgraphTitle(sInputs, sStimLocIdxs.All(iFastGraph), chanNamesSeeg, atlasScoutLabelsSeeg);
+        AddFastgraphTitle(sInput, chanNamesSeeg, atlasScoutLabelsSeeg);
     end
 
     % === Common feature on FastGraph plots ===
@@ -264,6 +262,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SetHemisphereLabels(hFastGraphAxes);
 
     % === Plot brain legend ===
+    bst_progress('set', 100);
     bst_progress('text', 'Plotting legend...');
     % Generate a cortex snapshot with atlas scout for display
     imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
@@ -356,52 +355,42 @@ end
 %% ===== LOAD AND FILTER SEEG DATA =====
 % Load each selected SEEG block and optionally exclude contacts based on
 % distance from the stimulation site
-function [seegData, excludedContacts] = GetSeegData(sInputs, sSortedFastgraphLocIdxs, stimLocs, ChannelMat, OPTIONS)
-    % Intialize output 
-    seegData = cell(numel(sInputs), 1);
-    excludedContacts = cell(numel(sInputs), 1);
+function [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS)
     % Get index of SEEG channel types
     iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
-    for k = 1:numel(sInputs)
-        % Load current file
-        data = load(file_fullpath(sInputs(sSortedFastgraphLocIdxs.All(k)).FileName));
-        % Mark bad channels as NaN
-        data.F(data.ChannelFlag<0, :) = NaN;
-        if ~isempty(stimLocs)
-            % Current stimulation center
-            stimCenter = stimLocs(sSortedFastgraphLocIdxs.All(k), :);
-            % Compute distance from stimulation site to each SEEG contact (mm)
-            contactDist = zeros(1, numel(ChannelMat.Channel));
-            for j = iSeeg
-                contactDist(j) = norm(stimCenter - ChannelMat.Channel(j).Loc', 2) * 1000;
-            end
-            % Exclude stimulation contacts themselves
-            iStimContacts = (contactDist > 0) & (contactDist <= 2);
-            % Exclude contacts within user-provided distance from the stimulation sites
-            % iExcluded = contactDist > OPTIONS.ExcludeRadius;
-            iExcluded = (contactDist > 2) & (contactDist <= OPTIONS.ExcludeRadius);            
-            % Keep only valid SEEG contacts
-            isSeeg = strcmp('SEEG',{ChannelMat.Channel.Type});
-            validContacts = isSeeg & ~iExcluded & ~iStimContacts;
-            excludedContacts{k} = ~validContacts;
-            % Report excluded contacts
-            fprintf('Contacts excluded for being within the %d mm exclusion zone "%s":\n', OPTIONS.ExcludeRadius, sInputs(k).Comment);
-            fprintf('%s  %s  ', ChannelMat.Channel(iStimContacts).Name, ChannelMat.Channel(iExcluded).Name);
-            fprintf('\n\n');
-            % Remove excluded channels
-            data.F(excludedContacts{k}, :) = NaN;
-        else
-            % If no stimulation locations are available, keep only SEEG channels
-            excludedContacts{k} = ~iSeeg;
-        end
-        % Store SEEG data for the current block
-        seegData{k} = data;
+    % Load current file
+    allData = load(file_fullpath(sInput.FileName));
+    % Set data from bad channels to NaN
+    allData.F(allData.ChannelFlag<0, :) = NaN;
+    % Keep only data from SEEG
+    seegData.F = allData.F(iSeeg, :);
+    seegData.Time = allData.Time;
+    if all(stimLoc ~= 0)
+        % Compute distance [mm] from stimulation site to each SEEG contact (mm)
+        contactLocs = cat(2, [ChannelMat.Channel(iSeeg).Loc])';
+        contactDist = sqrt(sum((contactLocs - repmat(stimLoc, length(iSeeg), 1)).^2, 2)) * 1000;
+        % Exclude stimulation contacts themselves
+        iStimContacts = (contactDist >= 0) & (contactDist <= 2);
+        % Exclude contacts within user-provided distance from the stimulation sites
+        iExcluded = (contactDist > 2) & (contactDist <= OPTIONS.ExcludeRadius);
+        % Keep only valid SEEG contacts
+        validContacts = ~iExcluded & ~iStimContacts;
+        excludedContacts = ~validContacts;
+        % Report excluded contacts
+        fprintf('Contacts excluded for being within the %d mm exclusion zone "%s":\n', OPTIONS.ExcludeRadius, sInput.Comment);
+        fprintf('%s  %s  ', ChannelMat.Channel(iSeeg(iStimContacts)).Name, ChannelMat.Channel(iSeeg(iExcluded)).Name);
+        fprintf('\n\n');
+        % Set data from excluded channels to NaN
+        seegData.F(excludedContacts, :) = NaN;
+    else
+        % If no stimulation locations are available, keep only SEEG channels
+        excludedContacts = ~iSeeg;
     end
 end
 
-%% ===== SPLIT CONTACTS TO LEFT/RIGHT HEMISPHERE =====
-% Split SEEG contacts into left and right hemisphere groups
-function sContactGroupLocIdxs = GroupSeegContacts(ChannelMat)
+%% ===== SORT CONTACTS INTO LEFT/RIGHT HEMISPHERE =====
+% Sort SEEG contacts into left and right hemisphere groups
+function sContactGroupLocIdxs = SortSeegContacts(ChannelMat)
     % Get index of SEEG channel type
     iSeegs = channel_find(ChannelMat.Channel, 'SEEG');
     % For each SEEG Concact, if no valid location, add temporary Loc based on the Group Name
@@ -430,9 +419,9 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
     sSorted = struct();
     % Get sample indices used for sorting
     if isempty(OPTIONS.SortWindow)
-        sortWindowIdx = 1:size(seegData{1}.F,2);
+        sortWindowIdx = 1:size(seegData.F,2);
     else
-        sortWindowIdx = bst_closest(OPTIONS.SortWindow, seegData{1}.Time);
+        sortWindowIdx = bst_closest(OPTIONS.SortWindow, seegData.Time);
         sortWindowIdx = [sortWindowIdx(1):sortWindowIdx(2)];
     end
     % Sort channels within each hemisphere using the selected metric
@@ -466,36 +455,29 @@ end
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSubplot, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
     
     % Get cortex to be used for region/color lookup
-    sSubject = bst_get('Subject', sInputs(1).SubjectName);
+    sSubject = bst_get('Subject', sInput.SubjectName);
     CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
     sCortex = bst_memory('LoadSurface', CortexFile);
     % Resolve selected scouts
     selectedScoutLabels = ResolveScoutSelection(sCortex, OPTIONS);
-    % Get indices of all SEEG channels
-    iSeeg = channel_find(ChannelMat.Channel, 'SEEG');    
-    % Match channel names against atlas table names 
-    [~, iChanLocs] = ismember({ChannelMat.Channel.Name}, chanNamesSeeg);
-    % Check whether stimulation locations are available
-    hasStimLocs = any(stimLocs(:));    
+    % Check whether stimulation location is available
+    hasStimLocs = any(stimLoc);
+
     % Select the time samples to display
     if isempty(OPTIONS.PlotWindow)
-        plotWindowIdx = 1:size(seegData{1}.F,2);
+        plotWindowIdx = 1:size(seegData.F,2);
     else
-        plotWindowIdx = bst_closest(OPTIONS.PlotWindow, seegData{1}.Time);
+        plotWindowIdx = bst_closest(OPTIONS.PlotWindow, seegData.Time);
         plotWindowIdx = [plotWindowIdx(1):plotWindowIdx(2)];
     end
-    timeMs = seegData{iSubplot}.Time(plotWindowIdx) * 1000;
+    timeMs = seegData.Time(plotWindowIdx) * 1000;
 
-    fprintf('\n===== FastGraph %d/%d:  Stimulation site "%s" =====\n', iSubplot, numel(sInputs), sInputs(iSubplot).Comment)
-    % Extract SEEG data once for this subplot
-    Fout = seegData{iSubplot}.F(iSeeg, :);
-    
     % Loop over left and right hemispheres
     for iSide = 1:2
         if iSide == 1
@@ -520,29 +502,28 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
 
         % Reorder SEEG channels for the current hemisphere
         contactIdxs = groupLocIdxs(sortedIdxs);
-        plotLocs    = iSeeg(contactIdxs);
-        hemiData    = abs(Fout(contactIdxs, :));       
+        hemiData    = abs(seegData.F(contactIdxs, :));
         % Get atlas scout labels for these channels
-        channelScoutLabels = cell(1, numel(plotLocs));
-        for i = 1:numel(plotLocs)
-            channelScoutLabels{i} = atlasScoutLabelsSeeg{iChanLocs(plotLocs(i))};
+        channelScoutLabels = cell(1, numel(contactIdxs));
+        for i = 1:numel(contactIdxs)
+            channelScoutLabels{i} = atlasScoutLabelsSeeg{contactIdxs(i)};
         end
         % Filter channels using resolved scout selection
         if hasStimLocs
             toPlot = ismember(channelScoutLabels, selectedScoutLabels);
         else
-            toPlot = true(1, numel(plotLocs));
+            toPlot = true(1, numel(contactIdxs));
         end
         % Keep track of number of channel before filtering 
-        nChannelsBeforeFilter = numel(plotLocs);
+        nChannelsBeforeFilter = numel(contactIdxs);
         % Keep only channels that pass the filters
-        plotLocs = plotLocs(toPlot);
+        contactIdxs = contactIdxs(toPlot);
         hemiData = hemiData(toPlot, :);
         channelScoutLabels = channelScoutLabels(toPlot);
 
         % Skip plotting if no channels remain after atlas/scout filtering
         fprintf('\n%s contacts and atlas scout labels:\n', sideName);
-        if isempty(plotLocs)            
+        if isempty(contactIdxs)
             if nChannelsBeforeFilter > 0
                 fprintf('Nothing to plot. All contacts were filtered out by the selected atlas/scout regions.\n');
             else
@@ -556,10 +537,10 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInputs, stimLocs, iSub
 
         % Print labels and assign colors
         isAllContactsExcluded = 1;
-        for i = 1:numel(plotLocs)
+        for i = 1:numel(contactIdxs)
             atlasScoutLabelSeeg = channelScoutLabels{i};
-            if ~excludedContacts{iSubplot}(plotLocs(i))
-                fprintf('%s - %s\n', ChannelMat.Channel(plotLocs(i)).Name, atlasScoutLabelSeeg);
+            if ~excludedContacts(contactIdxs(i))
+                fprintf('%s - %s\n', chanNamesSeeg{contactIdxs(i)}, atlasScoutLabelSeeg);
                 isAllContactsExcluded = 0;
             end
             region = GetRegionFromScouts(sCortex, atlasScoutLabelSeeg, OPTIONS);
@@ -615,9 +596,9 @@ end
 %% ===== FASTGRAPH TITLE =====
 % Build the title shown above each subplot using the stimulation pair and
 % the atlas label associated with the first contact
-function AddFastgraphTitle(sInputs, iSortedFastgraph, chanNamesSeeg, atlasScoutLabelsSeeg)
+function AddFastgraphTitle(sInput, chanNamesSeeg, atlasScoutLabelsSeeg)
     % Split the comment into the two parts
-    parts = strsplit(sInputs(iSortedFastgraph).Comment, '-');
+    parts = strsplit(sInput.Comment, '-');
     % Clean extracted comment
     contact1 = strtrim(parts{1});
     % Get the contact names
@@ -630,7 +611,7 @@ function AddFastgraphTitle(sInputs, iSortedFastgraph, chanNamesSeeg, atlasScoutL
     else
         contact1AtlasScoutLabel = '?';
     end
-    title(sprintf('%s\n%s', sInputs(iSortedFastgraph).Comment, contact1AtlasScoutLabel),'fontsize', 8);
+    title(sprintf('%s\n%s', sInput.Comment, contact1AtlasScoutLabel),'fontsize', 8);
 end
 
 %% ===== RESOLVE SELECTED SCOUTS =====
