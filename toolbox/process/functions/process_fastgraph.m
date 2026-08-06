@@ -138,7 +138,15 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>    
     % Initialize output
     OutputFiles = {};
+    % Get options
+    OPTIONS = GetOptions(sProcess);
     
+    % ===== Check regions for 'region' color scheme =====
+    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Region)
+        bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
+        return;
+    end
+
     % ===== Check that all input files use the same channel file =====
     ChannelFiles = {sInputs.ChannelFile};
     if length(unique(ChannelFiles)) > 1
@@ -174,27 +182,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
 
-    % Get options
-    OPTIONS = GetOptions(sProcess);
-    
-    % Check regions for 'region' color scheme
-    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Region)
-        bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
-        return;
-    end
+    % === Sort SEEG contacts and Stimulus by location
+    % Sort ONLY SEEG Contacts using Location or Group name into Left | Right groups
+    sContactLocIdxs = GroupSeegContacts(ChannelMat); % iSeeg(sCon)
+    % Get stimulus location from each Input, based on the Comment
+    stimScsLocs = GetStimLocs(sInputs, ChannelMat);
+    % Sort stimulus using Location into Left | Right groups, Anterior->Posterior within group
+    sStimLocIdxs = SortLAPRAP(stimScsLocs);
+    % Sort Inputs by their Stimulus location
+    % sInputs = sInputs(sStimLocIdxs);
 
-    % Get indices of SEEG channels
-    iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
-    % Get the midpoint location of each stimulation pair from channel
-    stimLocs = GetStimLocs(sInputs, ChannelMat);
-    % Sort FastGraphs by stimulation-site location for LAPRAP style display
-    sSortedFastgraphLocIdxs = SortLAPRAP(stimLocs);
-  
-    % Load SEEG recordings after applying FastGraph sorting
-    [seegData, excludedContacts] = GetSeegData(sInputs, sSortedFastgraphLocIdxs, stimLocs, ChannelMat, OPTIONS);    
-    % Split SEEG contacts into left and right hemisphere groups
-    sContactGroupLocIdxs = GroupSeegContacts(stimLocs, ChannelMat);     
-    % Compute anatomical labels for the contacts from volume/surface parcellations
+    % === Anatomical labels for SEEG contacts
     [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.Atlas);
     % Locate atlas related columns from channel table above
     hit = cellfun(@(x) ischar(x) && (~isempty(strfind(OPTIONS.Atlas, x)) || ~isempty(strfind(x, OPTIONS.Atlas))), chanTableWithAtlas(1,:));
@@ -204,12 +202,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     chanNamesSeeg = chanTableWithAtlas(2:end, 1);
     atlasScoutLabelsSeeg = chanTableWithAtlas(2:end, cols);
 
-    % Create figure for FastGraph
+    % Get indices of SEEG channels
+    iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
+    % Load ONLY SEEG recordings after applying FastGraph sorting
+    [seegData, excludedContacts] = GetSeegData(sInputs, sStimLocIdxs, stimScsLocs, ChannelMat, OPTIONS);
+
+
+    % ===== Create figure for FastGraph =====
     hFig = figure;
     hFig.Visible = 'off';
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
-    % Reserve one extra subplot for the legend
+    % Reserve one extra subplot for the legend (brain surface with Scouts)
     nFastGraphs = length(sInputs);
     hFastGraphAxes = gobjects(nFastGraphs, 0);
     % Subplot grid dimensions
@@ -221,27 +225,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     vertMargin = 0.015;
     % Generate one FastGraph per selected input
     bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
+
+    % ===== Get data and Plot each FastGraph and  =====
     for iFastGraph = 1:nFastGraphs
         % Show progress
         progressPrc = round(100 .* iFastGraph ./ nFastGraphs);
         bst_progress('set', progressPrc);
+
+
         % Data to be plotted for the current subplot
         subplotData = struct();
         Fout = seegData{iFastGraph}.F(iSeeg, :);
         % Separate L and R hemisphere data
-        subplotData.leftData = Fout(sContactGroupLocIdxs.Left,:);
-        subplotData.rightData = Fout(sContactGroupLocIdxs.Right,:);
+        subplotData.leftData = Fout(sContactLocIdxs.Left,:);
+        subplotData.rightData = Fout(sContactLocIdxs.Right,:);
         % Sort channels within each hemisphere using the selected metric and time window
         sSubplotDataSorted = ApplyDataSorting(subplotData, seegData, OPTIONS);
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimLocs, iFastGraph, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInputs, stimScsLocs, iFastGraph, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, ChannelMat, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         % Add the stimulation pair and atlas scout label as the subplot title
-        AddFastgraphTitle(sInputs, sSortedFastgraphLocIdxs.All(iFastGraph), chanNamesSeeg, atlasScoutLabelsSeeg);
+        AddFastgraphTitle(sInputs, sStimLocIdxs.All(iFastGraph), chanNamesSeeg, atlasScoutLabelsSeeg);
     end
 
     % === Common feature on FastGraph plots ===
