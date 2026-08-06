@@ -229,19 +229,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         fprintf('\n===== FastGraph %d/%d:  Stimulation file "%s" =====\n', iFastGraph, nFastGraphs, sInput.Comment);
 
         % Load ONLY SEEG recordings
-        [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS);
-        % Data to be plotted for the current subplot
-        subplotData = struct();
-        % Separate L and R hemisphere data
-        subplotData.leftData  = seegData.F(sContactLocIdxs.Left,:);
-        subplotData.rightData = seegData.F(sContactLocIdxs.Right,:);
-        % Sort channels within each hemisphere using the selected metric and time window
-        sSubplotDataSorted = ApplyDataSorting(subplotData, seegData, OPTIONS);
+        seegData = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS);
+        % Add indices for L and R hemisphere data
+        seegData.LeftIx  = sContactLocIdxs.Left;
+        seegData.RightIx = sContactLocIdxs.Right;
+        % Sort L and R indices using the selected metric and time window
+        seegData = SortHemiIndices(seegData, OPTIONS);
 
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactLocIdxs, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
@@ -356,7 +354,7 @@ end
 %% ===== LOAD AND FILTER SEEG DATA =====
 % Load each selected SEEG block and optionally exclude contacts based on
 % distance from the stimulation site
-function [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS)
+function seegData = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS)
     % Get index of SEEG channel types
     iSeeg = channel_find(ChannelMat.Channel, 'SEEG');
     % Load current file
@@ -376,7 +374,7 @@ function [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat,
         iExcluded = (contactDist > 2) & (contactDist <= OPTIONS.ExcludeRadius);
         % Keep only valid SEEG contacts
         validContacts = ~iExcluded & ~iStimContacts;
-        excludedContacts = ~validContacts;
+        seegData.excludedContacts = ~validContacts;
         % Report excluded contacts
         fprintf('Contacts excluded for being at the stimulation location ( <= 2 mm):\n');
         fprintf('%s  ', ChannelMat.Channel(iSeeg(iStimContacts)).Name);
@@ -385,10 +383,10 @@ function [seegData, excludedContacts] = GetSeegData(sInput, stimLoc, ChannelMat,
         fprintf('%s  ', ChannelMat.Channel(iSeeg(iExcluded)).Name);
         fprintf('\n');
         % Set data from excluded channels to NaN
-        seegData.F(excludedContacts, :) = NaN;
+        seegData.F(seegData.excludedContacts, :) = NaN;
     else
         % If no stimulation locations are available, keep only SEEG channels
-        excludedContacts = ~iSeeg;
+        seegData.excludedContacts = ~iSeeg;
     end
 end
 
@@ -415,12 +413,10 @@ function sContactGroupLocIdxs = SortSeegContacts(ChannelMat)
     sContactGroupLocIdxs = SortLAPRAP(contactLocs);
 end
 
-%% ===== WITHIN-HEMISPHERE DATA SORTING =====
-% Sort left and right hemisphere channel data within a selected time
+%% ===== WITHIN-HEMISPHERE SORTING OF INDICES =====
+% Sort left and right indices for SEEG data within a selected time
 % window using either RMS amplitude or maximum absolute amplitude
-function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
-    % Initialize output structure
-    sSorted = struct();
+function seegData = SortHemiIndices(seegData, OPTIONS)
     % Get sample indices used for sorting
     if isempty(OPTIONS.SortWindow)
         sortWindowIdx = 1:size(seegData.F,2);
@@ -431,26 +427,30 @@ function sSorted = ApplyDataSorting(subplotData, seegData, OPTIONS)
     % Sort channels within each hemisphere using the selected metric
     switch lower(OPTIONS.SortMethod)
         case 'rms'
-            if ~isempty(subplotData.leftData)
-                leftDataRms = sqrt(sum(subplotData.leftData(:,sortWindowIdx).^2, 2));
+            if ~isempty(seegData.LeftIx)
+                leftDataRms = sqrt(sum(seegData.F(seegData.LeftIx, sortWindowIdx).^2, 2));
                 leftDataRms(isnan(leftDataRms)) = -Inf;
-                [sSorted.Vals.Left, sSorted.Idxs.Left] = sort(leftDataRms,'ascend');
+                [~, iSort] = sort(leftDataRms(:), 'ascend');
+                seegData.LeftIx = seegData.LeftIx(iSort);
             end
-            if ~isempty(subplotData.rightData) 
-                rightDataRms = sqrt(sum(subplotData.rightData(:,sortWindowIdx).^2, 2));
+            if ~isempty(seegData.RightIx)
+                rightDataRms = sqrt(sum(seegData.F(seegData.RightIx, sortWindowIdx).^2, 2));
                 rightDataRms(isnan(rightDataRms)) = -Inf;
-                [sSorted.Vals.Right, sSorted.Idxs.Right] = sort(rightDataRms,'ascend');
+                [~, iSort] = sort(rightDataRms(:), 'ascend');
+                seegData.RightIx = seegData.RightIx(iSort);
             end        
         case 'maxabs'
-            if ~isempty(subplotData.leftData)
-                leftDataMax = max(abs(subplotData.leftData(:,sortWindowIdx)),[],2);
+            if ~isempty(seegData.LeftIx)
+                leftDataMax = max(abs(seegData.F(seegData.LeftIx, sortWindowIdx)), [], 2);
                 leftDataMax(isnan(leftDataMax)) = -Inf;
-                [sSorted.Vals.Left, sSorted.Idxs.Left] = sort(leftDataMax,1,'ascend');
+                [~, iSort] = sort(leftDataMax(:), 'ascend');
+                seegData.LeftIx = seegData.LeftIx(iSort);
             end
-            if ~isempty(subplotData.rightData)
-                rightDataMax = max(abs(subplotData.rightData(:,sortWindowIdx)),[],2);
+            if ~isempty(seegData.RightIx)
+                rightDataMax = max(abs(seegData.F(seegData.RightIx, sortWindowIdx)), [], 2);
                 rightDataMax(isnan(rightDataMax)) = -Inf;
-                [sSorted.Vals.Right, sSorted.Idxs.Right] = sort(rightDataMax,1,'ascend');
+                [~, iSort] = sort(rightDataMax(:), 'ascend');
+                seegData.RightIx = seegData.RightIx(iSort);
             end
     end
 end
@@ -459,7 +459,7 @@ end
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplotData, sSubplotDataSorted, seegData, excludedContacts, sContactGroupLocIdxs, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
@@ -486,27 +486,24 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplo
     for iSide = 1:2
         if iSide == 1
             % Left hemisphere settings
-            if isempty(subplotData.leftData)
+            if isempty(seegData.LeftIx)
                 continue;
             end
             sideName     = 'Left';
-            groupLocIdxs = sContactGroupLocIdxs.Left;
-            sortedIdxs   = sSubplotDataSorted.Idxs.Left;
+            contactIdxs  = seegData.LeftIx;
             signFactor   = 1;
         else
             % Right hemisphere settings
-            if isempty(subplotData.rightData)
+            if isempty(seegData.RightIx)
                 continue;
             end
             sideName     = 'Right';
-            groupLocIdxs = sContactGroupLocIdxs.Right;
-            sortedIdxs   = sSubplotDataSorted.Idxs.Right;
+            contactIdxs  = seegData.RightIx;
             signFactor   = -1;
         end
 
-        % Reorder SEEG channels for the current hemisphere
-        contactIdxs = groupLocIdxs(sortedIdxs);
-        hemiData    = abs(seegData.F(contactIdxs, :));
+        % Get SEEG channels for the current hemisphere
+        hemiData = abs(seegData.F(contactIdxs, :));
         % Get atlas scout labels for these channels
         channelScoutLabels = cell(1, numel(contactIdxs));
         for i = 1:numel(contactIdxs)
@@ -544,7 +541,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, subplo
         isAllContactsExcluded = 1;
         for i = 1:numel(contactIdxs)
             atlasScoutLabelSeeg = channelScoutLabels{i};
-            if ~excludedContacts(contactIdxs(i))
+            if ~seegData.excludedContacts(contactIdxs(i))
                 fprintf('%-*s - %s\n', strMaxLen, chanNamesSeeg{contactIdxs(i)}, atlasScoutLabelSeeg);
                 isAllContactsExcluded = 0;
             end
