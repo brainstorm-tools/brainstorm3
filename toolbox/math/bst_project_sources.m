@@ -38,7 +38,6 @@ end
 if (nargin < 3) || isempty(isAbsoluteValues)
     isAbsoluteValues = 0;
 end
-
 if (nargin < 4) || isempty(destStudyName) || ~ischar(destStudyName)
     destStudyName = '';
 end
