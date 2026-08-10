@@ -148,7 +148,7 @@ switch (contType)
             end
         end
         % Show window: KEEP IT WITH AWTINVOKE
-        awtinvoke(jWindow, 'setVisible(Z)', 1);
+        javaMethodEDT('setVisible', jWindow, true);
         % Returned variable
         panelContainer.type   = 'JavaWindow';
         panelContainer.handle = {jWindow};
