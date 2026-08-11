@@ -77,6 +77,7 @@ if ischar(tutorialNames)
                          'tutorial_simulations', ...
                          'tutorial_yokogawa', ...
                          'tutorial_seizure_fingerprinting', ...
+                         'tutorial_decoding', ...
                         };
     else
         tutorialNames = {tutorialNames};
@@ -271,6 +272,13 @@ for iTutorial = 1 : length(tutorialNames)
             if exist(dataFile, 'file')
                 bst_unzip(dataFile, dataDir);
                 tutorial_seizure_fingerprinting(dataDir);
+            end
+
+        case 'tutorial_decoding'
+            dataFile = get_tutorial_data(dataDir, 'sample_decoding.zip', bstUser, bstPwd);
+            if exist(dataFile, 'file')
+                bst_unzip(dataFile, dataDir);
+                tutorial_decoding(dataDir);
             end
     end
 
