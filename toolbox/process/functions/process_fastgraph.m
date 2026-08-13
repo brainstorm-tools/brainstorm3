@@ -199,8 +199,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Columns whose header matches the atlas name
     cols = find(any(hit, 1));
     % Extract SEEG channel names and their atlas scout labels
-    chanNamesSeeg = chanTableWithAtlas(2:end, 1);
-    atlasScoutLabelsSeeg = chanTableWithAtlas(2:end, cols);
+    chanSeegNameScout = [chanTableWithAtlas(2:end, 1), chanTableWithAtlas(2:end, cols)];
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
@@ -239,12 +238,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, chanSeegNameScout, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         % Add the stimulation pair and atlas scout label as the subplot title
-        AddFastgraphTitle(sInput, chanNamesSeeg, atlasScoutLabelsSeeg);
+        AddFastgraphTitle(sInput, chanSeegNameScout);
     end
 
     % === Common feature on FastGraph plots ===
@@ -459,7 +458,7 @@ end
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, chanNamesSeeg, atlasScoutLabelsSeeg, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, chanSeegNameScout, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
@@ -502,16 +501,9 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
             signFactor   = -1;
         end
 
-        % Get SEEG channels for the current hemisphere
-        hemiData = abs(seegData.F(contactIdxs, :));
-        % Get atlas scout labels for these channels
-        channelScoutLabels = cell(1, numel(contactIdxs));
-        for i = 1:numel(contactIdxs)
-            channelScoutLabels{i} = atlasScoutLabelsSeeg{contactIdxs(i)};
-        end
         % Filter channels using resolved scout selection
         if hasStimLocs
-            toPlot = ismember(channelScoutLabels, selectedScoutLabels);
+            toPlot = ismember(chanSeegNameScout(contactIdxs, 2), selectedScoutLabels);
         else
             toPlot = true(1, numel(contactIdxs));
         end
@@ -519,8 +511,6 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
         nChannelsBeforeFilter = numel(contactIdxs);
         % Keep only channels that pass the filters
         contactIdxs = contactIdxs(toPlot);
-        hemiData = hemiData(toPlot, :);
-        channelScoutLabels = channelScoutLabels(toPlot);
 
         % Skip plotting if no channels remain after atlas/scout filtering
         fprintf('\n%s contacts and atlas scout labels:\n', sideName);
@@ -534,18 +524,17 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
         end
 
         % Plot stacked area traces for the current hemisphere
-        hAreaPlot = area(timeMs, signFactor * hemiData(:, plotWindowIdx)');
+        hAreaPlot = area(timeMs, signFactor * abs(seegData.F(contactIdxs, plotWindowIdx))');
 
         % Print labels and assign colors
-        strMaxLen = max(cellfun(@length, chanNamesSeeg));
+        strMaxLen = max(cellfun(@length, chanSeegNameScout(:,1)));
         isAllContactsExcluded = 1;
         for i = 1:numel(contactIdxs)
-            atlasScoutLabelSeeg = channelScoutLabels{i};
             if ~seegData.excludedContacts(contactIdxs(i))
-                fprintf('%-*s - %s\n', strMaxLen, chanNamesSeeg{contactIdxs(i)}, atlasScoutLabelSeeg);
+                fprintf('%-*s - %s\n', strMaxLen, chanSeegNameScout{contactIdxs(i), 1}, chanSeegNameScout{contactIdxs(i), 2});
                 isAllContactsExcluded = 0;
             end
-            region = GetRegionFromScouts(sCortex, atlasScoutLabelSeeg, OPTIONS);
+            region = GetRegionFromScouts(sCortex, chanSeegNameScout{contactIdxs(i), 2}, OPTIONS);
             hAreaPlot(i).FaceColor = region.Color;
         end
         if isAllContactsExcluded
@@ -599,7 +588,7 @@ end
 %% ===== FASTGRAPH TITLE =====
 % Build the title shown above each subplot using the stimulation pair and
 % the atlas label associated with the first contact
-function AddFastgraphTitle(sInput, chanNamesSeeg, atlasScoutLabelsSeeg)
+function AddFastgraphTitle(sInput, chanSeegNameScout)
     % Split the comment into the two parts
     parts = strsplit(sInput.Comment, '-');
     % Clean extracted comment
@@ -608,9 +597,9 @@ function AddFastgraphTitle(sInput, chanNamesSeeg, atlasScoutLabelsSeeg)
     contact1Parts = strsplit(contact1);
     contact1 = contact1Parts{end};
     % Look up atlas label for the first contact
-    iContact1 = find(strcmp(chanNamesSeeg, contact1), 1);
+    iContact1 = find(strcmp(chanSeegNameScout(:,1), contact1), 1);
     if ~isempty(iContact1)
-        contact1AtlasScoutLabel = atlasScoutLabelsSeeg{iContact1};
+        contact1AtlasScoutLabel = chanSeegNameScout{iContact1, 2};
     else
         contact1AtlasScoutLabel = '?';
     end
