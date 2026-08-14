@@ -1,7 +1,7 @@
 function varargout = process_fastgraph( varargin )
 % PROCESS_FASTGRAPH: Plot FastGraph for one or more SEEG recordings.
 % For each stimulation pair, channels are split by hemisphere, sorted 
-% by a user-selected metric, filtered by atlas region or scout label, and 
+% by a user-selected metric, filtered by anatomical parcels or regions, and
 % plotted as stacked area plots
 %
 % USAGE:
@@ -45,18 +45,20 @@ sProcess.InputTypes  = {'data'};
 sProcess.OutputTypes = {'data'};
 sProcess.nInputs     = 1;
 sProcess.nMinFiles   = 1;
-% Scouts to use for plotting FastGraph
-sProcess.options.scouts.Comment = '';
-sProcess.options.scouts.Type    = 'scout';
-sProcess.options.scouts.Value   = {};
-% Color FastGraph by Region or by Scout
-sProcess.options.colorscheme.Comment    = {'Region', 'Scout', 'Color scheme:&nbsp;&nbsp;'; ...
-                                           'region', 'scout', ''};
+% Anatomical parcels to be use for plotting FastGraph
+sProcess.options.parcels.Comment = '';
+sProcess.options.parcels.Type    = 'anatparcel';
+sProcess.options.parcels.Value   = {};
+% Color FastGraph by Parcel or Region
+sProcess.options.colorscheme.Comment    = {'Parcel', 'Region', 'Color scheme:&nbsp;&nbsp;'; ...
+                                           'parcel', 'region', ''};
 sProcess.options.colorscheme.Type       = 'radio_linelabel';
-sProcess.options.colorscheme.Value      = 'region';
+sProcess.options.colorscheme.Value      = 'parcel';
 sProcess.options.colorscheme.Controller = struct('region', 'region');
 % Select regions to include
-regionsStr = {'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'};
+regionsStr = {'Prefrontal(PF)', 'Frontal (F)',   'Central (C)', 'Parietal (P)', ...
+              'Temporal (T)',   'Occipital (O)', 'Limbic (L)',  'White', ...
+              'CSF',            'Other'};
 sProcess.options.region.Comment = [regionsStr, {'<HTML><B>Select regions to include:</B>'}];
 sProcess.options.region.Type    = 'list_horizontal';
 sProcess.options.region.Value   = regionsStr;
@@ -106,13 +108,14 @@ end
 %% ===== GET OPTIONS =====
 function OPTIONS = GetOptions(sProcess)
     OPTIONS = struct();
-    % Atlas and scouts to use for plotting FastGraph
-    OPTIONS.Atlas = sProcess.options.scouts.Value{1,1};
-    OPTIONS.AtlasScoutLabels = sProcess.options.scouts.Value{1,2};
+    % Anatomy Atlas and Parcels to use for plotting FastGraph
+    OPTIONS.AnatAtlas = sProcess.options.parcels.Value{1,1};
+    OPTIONS.AnatAtlasParcels = sProcess.options.parcels.Value{1,2};
     % Color figure by region or by label
     OPTIONS.ColorScheme = sProcess.options.colorscheme.Value;
     % Select regions to include
-    OPTIONS.Region = sProcess.options.region.Value;
+    OPTIONS.AllRegions = sProcess.options.region.Comment(1:end-1);
+    OPTIONS.Regions = sProcess.options.region.Value;
     % Method for sorting the data   
     OPTIONS.SortMethod = sProcess.options.sortmethod.Value;
     % Time window for sorting the data [s]
@@ -142,7 +145,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OPTIONS = GetOptions(sProcess);
     
     % ===== Check regions for 'region' color scheme =====
-    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Region)
+    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Regions)
         bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
         return;
     end
@@ -192,21 +195,72 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     sInputs  = sInputs(sStimLocIdxs.All);
     stimLocs = stimLocs(sStimLocIdxs.All, :);
 
+    % === Get sAnatAtlas information
+    sSubject = bst_get('Subject', sInputs(1).SubjectName);
+    iAnatAtlas = find(strcmp(OPTIONS.AnatAtlas, {sSubject.Anatomy.Comment}));
+    if isempty(iAnatAtlas)
+        errMsg = 'TODO: Anat Atlas was not found in Subject';
+        return
+    end
+    sAnatAtlas = load(file_fullpath(sSubject.Anatomy(iAnatAtlas).FileName), 'Labels');
+    % Colors in sAnataAtlas.Labels are in the 0-255 range, convert them to 0-1 range
+    sAnatAtlas.Labels(:, 3) = cellfun(@(x) x / 255, sAnatAtlas.Labels(:, 3), 'UniformOutput', false);
+
+    % Handle Region color scheme
+    if strcmpi(OPTIONS.ColorScheme, 'region')
+        % 1. Get Region for each Parcel in sAnatAtlas. Cortical version of atlas used as reference
+        [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, OPTIONS.AnatAtlas, sAnatAtlas);
+        if ~isempty(errMsg)
+            % Error
+        end
+        % 2. Update colors in sAnatAtlas by Parcel region
+        defaultScoutColors = panel_scout('GetScoutsColorTable');
+        allRegionIds = regexprep(OPTIONS.AllRegions, '^.*\((.*?)\).*$', '$1');
+        regionColorTable = allRegionIds';
+        regionColorTable(1:7, 2) = num2cell(defaultScoutColors(1:7, :), 2); % PF, F, C, P, T, O and L
+        regionColorTable{  8, 2} = [220, 220, 220] / 255; % White
+        regionColorTable{  9, 2} = [ 44, 152, 254] / 255; % CSF
+        regionColorTable{ 10, 2} = [130, 130, 130] / 255; % Other
+        for iRegion = 1 : size(regionColorTable, 1)
+            iAnatAtlasLabel = ismember(sAnatAtlas.Labels(:,4), regionColorTable{iRegion, 1});
+            if any(iAnatAtlasLabel)
+                [sAnatAtlas.Labels{iAnatAtlasLabel, 3}] = deal(regionColorTable{iRegion, 2});
+            end
+        end
+        % 3. If no parcel was selected, select parcels from selected regions
+        if isempty(OPTIONS.AnatAtlasParcels)
+            regionSelIds = regexprep(OPTIONS.Regions, '^.*\((.*?)\).*$', '$1');
+            isKeep = ismember(sAnatAtlas.Labels{:, 4}, regionSelIds);
+            OPTIONS.AnatAtlasParcels = sAnatAtlas.Labels{isKeep, 1}';
+        end
+    end
+    % Add Parcel 'N/A': Name and Color
+    iNA = size(sAnatAtlas.Labels, 1) + 1;
+    sAnatAtlas.Labels{iNA,2} = 'N/A';
+    sAnatAtlas.Labels{iNA,3} = [0,0,0];
+
     % === Anatomical labels for SEEG contacts
-    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.Atlas);
-    % Locate atlas related columns from channel table above
-    hit = cellfun(@(x) ischar(x) && (~isempty(strfind(OPTIONS.Atlas, x)) || ~isempty(strfind(x, OPTIONS.Atlas))), chanTableWithAtlas(1,:));
-    % Columns whose header matches the atlas name
-    cols = find(any(hit, 1));
-    % Extract SEEG channel names and their atlas scout labels
-    chanSeegNameScout = [chanTableWithAtlas(2:end, 1), chanTableWithAtlas(2:end, cols)];
+    [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.AnatAtlas);
+    % Locate anatomy atlas in columns from channel table. Full match to get Anatomical parcellations (volatlas) only
+    iCol = find(strcmp(OPTIONS.AnatAtlas, chanTableWithAtlas(1,:)));
+    if length(iCol) > 1
+        bst_report('Error', sProcess, sInputs, 'Two or more anatomical atlases have the same name, you should rename them to be unique');
+    end
+    % Number of SEEG channels
+    nSeegChan = size(chanTableWithAtlas,1) - 1;
+    % SEEG channels: Names, Anatomical Parcel, and Color
+    seegLocInfo = repmat(struct('Name', '', 'Parcel', '', 'Color', []), nSeegChan, 1);
+    [seegLocInfo.Name]   = deal(chanTableWithAtlas{2:end, 1});
+    [seegLocInfo.Parcel] = deal(chanTableWithAtlas{2:end, iCol});
+    [~, iAnatAtlasLabel] = ismember({seegLocInfo.Parcel}, sAnatAtlas.Labels(:,2));
+    [seegLocInfo.Color] = deal(sAnatAtlas.Labels{iAnatAtlasLabel,3});
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
     hFig.Visible = 'off';
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
-    % Reserve one extra subplot for the legend (brain surface with Scouts)
+    % Reserve one extra subplot for the legend (brain figure)
     nFastGraphs = length(sInputs);
     hFastGraphAxes = gobjects(nFastGraphs, 0);
     % Subplot grid dimensions
@@ -238,12 +292,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, chanSeegNameScout, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, seegLocInfo, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
-        % Add the stimulation pair and atlas scout label as the subplot title
-        AddFastgraphTitle(sInput, chanSeegNameScout);
+        % Add the stimulation pair and atlas parcels label as the subplot title
+        AddFastgraphTitle(sInput, seegLocInfo);
     end
 
     % === Common feature on FastGraph plots ===
@@ -262,12 +316,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % === Plot brain legend ===
     bst_progress('set', 100);
     bst_progress('text', 'Plotting legend...');
-    % Generate a cortex snapshot with atlas scout for display
-    imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
+    % Generate a brain snapshot for display
+    % imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
     % Create the legend subplot with the same spacing settings
     axBrain = subtightplot(nRows, nCols, nRows*nCols, gap, horzMargin, vertMargin);
     % Plot the reference panel with the cortex snapshot and axis labels
-    PlotLegend(axBrain, imgCortex, round(hFastGraphAxes(1).XLim), hFastGraphAxes(1).YLim);
+    % PlotLegend(axBrain, imgCortex, round(hFastGraphAxes(1).XLim), hFastGraphAxes(1).YLim);
     % Close progress
     bst_progress('stop');
 
@@ -458,17 +512,12 @@ end
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, chanSeegNameScout, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, seegLocInfo, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
-    
-    % Get cortex to be used for region/color lookup
-    sSubject = bst_get('Subject', sInput.SubjectName);
-    CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
-    sCortex = bst_memory('LoadSurface', CortexFile);
-    % Resolve selected scouts
-    selectedScoutLabels = ResolveScoutSelection(sCortex, OPTIONS);
+    % Selected parcels
+    selectedParcels = OPTIONS.AnatAtlasParcels;
     % Check whether stimulation location is available
     hasStimLocs = any(stimLoc);
 
@@ -501,9 +550,9 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
             signFactor   = -1;
         end
 
-        % Filter channels using resolved scout selection
+        % Filter channels using resolved parcel selection
         if hasStimLocs
-            toPlot = ismember(chanSeegNameScout(contactIdxs, 2), selectedScoutLabels);
+            toPlot = ismember({seegLocInfo(contactIdxs).Parcel}, selectedParcels);
         else
             toPlot = true(1, numel(contactIdxs));
         end
@@ -512,11 +561,11 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
         % Keep only channels that pass the filters
         contactIdxs = contactIdxs(toPlot);
 
-        % Skip plotting if no channels remain after atlas/scout filtering
-        fprintf('\n%s contacts and atlas scout labels:\n', sideName);
+        % Skip plotting if no channels remain after atlas/parcel filtering
+        fprintf('\n%s contacts and anatomical atlas parcels labels:\n', sideName);
         if isempty(contactIdxs)
             if nChannelsBeforeFilter > 0
-                fprintf('Nothing to plot. All contacts were filtered out by the selected atlas/scout regions.\n');
+                fprintf('Nothing to plot. All contacts were filtered out by the selected atlas/parcels regions.\n');
             else
                 fprintf('Nothing to plot. No contacts are available for this hemisphere.\n');
             end
@@ -527,15 +576,14 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
         hAreaPlot = area(timeMs, signFactor * abs(seegData.F(contactIdxs, plotWindowIdx))');
 
         % Print labels and assign colors
-        strMaxLen = max(cellfun(@length, chanSeegNameScout(:,1)));
+        strMaxLen = max(cellfun(@length, {seegLocInfo.Name}));
         isAllContactsExcluded = 1;
         for i = 1:numel(contactIdxs)
             if ~seegData.excludedContacts(contactIdxs(i))
-                fprintf('%-*s - %s\n', strMaxLen, chanSeegNameScout{contactIdxs(i), 1}, chanSeegNameScout{contactIdxs(i), 2});
+                fprintf('%-*s - %s\n', strMaxLen, seegLocInfo(contactIdxs(i)).Name, seegLocInfo(contactIdxs(i)).Parcel);
                 isAllContactsExcluded = 0;
             end
-            region = GetRegionFromScouts(sCortex, chanSeegNameScout{contactIdxs(i), 2}, OPTIONS);
-            hAreaPlot(i).FaceColor = region.Color;
+            hAreaPlot(i).FaceColor = seegLocInfo(contactIdxs(i)).Color;
         end
         if isAllContactsExcluded
             fprintf('Nothing plotted. All contacts lie within the stimulation-site exclusion zone.\n');
@@ -554,41 +602,10 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
     fprintf('\n');
 end
 
-%% ===== ATLAS REGION FROM SCOUTS =====
-% Map an atlas scout label to a Brainstorm region code and plot color
-function region = GetRegionFromScouts(sCortex, inputAtlasScoutLabel, OPTIONS)
-    % Default output if no matching scout is found
-    region.Name  = '?';
-    region.Color = [0.5 0.5 0.5];
-    % Find the atlas selected by the user
-    iAtlas = find(strcmpi({sCortex.Atlas.Name}, OPTIONS.Atlas), 1);
-    if isempty(iAtlas)
-        return;
-    end
-    % Get the selected atlas
-    atlas = sCortex.Atlas(iAtlas);
-    % Match the input atlas scout label against atlas scouts
-    for iScout = 1:numel(atlas.Scouts)
-        atlasScoutLabel = atlas.Scouts(iScout).Label(1:end-2);
-        if ~isempty(strfind(lower(inputAtlasScoutLabel), lower(atlasScoutLabel)))
-            % Matching scout found: assign region name
-            region.Name = atlas.Scouts(iScout).Region(2:end);
-            % Assign color based on the selected color scheme
-            switch lower(OPTIONS.ColorScheme)
-                case 'region'
-                    region.Color = panel_scout('GetRegionColor', atlas.Scouts(iScout).Region);
-                case 'scout'
-                    region.Color = atlas.Scouts(iScout).Color;
-            end
-            return;
-        end
-    end
-end
-
 %% ===== FASTGRAPH TITLE =====
 % Build the title shown above each subplot using the stimulation pair and
 % the atlas label associated with the first contact
-function AddFastgraphTitle(sInput, chanSeegNameScout)
+function AddFastgraphTitle(sInput, seegLocInfo)
     % Split the comment into the two parts
     parts = strsplit(sInput.Comment, '-');
     % Clean extracted comment
@@ -597,43 +614,67 @@ function AddFastgraphTitle(sInput, chanSeegNameScout)
     contact1Parts = strsplit(contact1);
     contact1 = contact1Parts{end};
     % Look up atlas label for the first contact
-    iContact1 = find(strcmp(chanSeegNameScout(:,1), contact1), 1);
+    iContact1 = find(strcmp({seegLocInfo.Name}, contact1), 1);
     if ~isempty(iContact1)
-        contact1AtlasScoutLabel = chanSeegNameScout{iContact1, 2};
+        contact1AtlasParcelLabel = seegLocInfo(iContact1).Parcel;
     else
-        contact1AtlasScoutLabel = '?';
+        contact1AtlasParcelLabel = '?';
     end
-    title(sprintf('%s\n%s', sInput.Comment, contact1AtlasScoutLabel),'fontsize', 8);
+    title(sprintf('%s\n%s', sInput.Comment, contact1AtlasParcelLabel),'fontsize', 8);
 end
 
-%% ===== RESOLVE SELECTED SCOUTS =====
-% Resolve which atlas scouts should be used based on either:
-%   1) explicit scout labels selected by the user, or
-%   2) selected anatomical regions from the checkboxes
-function [selectedScoutLabels, iSelectedScouts, iAtlas] = ResolveScoutSelection(sCortex, OPTIONS)
-    % Default outputs
-    selectedScoutLabels = {};
-    iSelectedScouts     = [];
-    iAtlas              = [];
-    % Find selected atlas
-    iAtlas = find(strcmpi({sCortex.Atlas.Name}, OPTIONS.Atlas), 1);
-    if isempty(iAtlas)
-        return;
+
+%% ===== GET REGION FOR PARCEL =====
+function [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sAnatAtlas)
+    errMsg = [];
+    % 1. Search for cortical version of anatomical atlas to retrieve region labels
+    sSurf = load(file_fullpath(sSubject.Surface(sSubject.iCortex).FileName), 'Atlas');
+    iAnatAtlas = find(strcmp(AnatAtlasName, {sSurf.Atlas.Name}));
+    if isempty(iAnatAtlas)
+        errMsg = 'Anatomical atlas does not have cortical version. Needed for regions. Try Parcel colors.';
+        return
+    elseif length(iAnatAtlas) > 1
+        errMsg = 'Two or more surface atlases have the same name, you should rename them to be unique';
+        return
     end
-    atlas = sCortex.Atlas(iAtlas);
-    if ~isempty(OPTIONS.AtlasScoutLabels)
-        % Explicit scout-label filtering
-        isKeep = ismember({atlas.Scouts.Label}, OPTIONS.AtlasScoutLabels);
-    else
-        % Region-based filtering
-        selectedRegions = regexprep(OPTIONS.Region, '^.*\((.*?)\).*$', '$1');
-        % Remove the leading character from Brainstorm scout region code
-        scoutRegions = cellfun(@(x) x(2:end), {atlas.Scouts.Region}, 'UniformOutput', false);
-        isKeep = ismember(scoutRegions, selectedRegions);
+    sSurfAtlas = sSurf.Atlas(iAnatAtlas);
+    % Normalize labels from anatomical atlas and surface atlas
+    anatAtlasLabels = lower(strrep(sAnatAtlas.Labels(:, 2),  ' ', ''));
+    surfAtlasLabels = lower(strrep({sSurfAtlas.Scouts.Label}, ' ', ''));
+
+    % 2. Obtain region for each parcel in sAnatAtlas
+    for iAnatAtlasLabel = 1 : length(anatAtlasLabels)
+        anatAtlasLabel = anatAtlasLabels{iAnatAtlasLabel};
+        iScoutFound = find(strcmpi(anatAtlasLabel, surfAtlasLabels));
+        % Match
+        if ~isempty(iScoutFound)
+            % Region without hemisphere indicator
+            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
+            continue
+        end
+        % Try some common fixes for the label
+        anatAtlasLabel2 = anatAtlasLabel;
+        anatAtlasLabel2 = strrep(anatAtlasLabel2, 'antcing',  'anteriorcingulate');
+        anatAtlasLabel2 = strrep(anatAtlasLabel2, 'midfront', 'middlefrontal');
+        iScoutFound = find(strcmpi(anatAtlasLabel2, surfAtlasLabels));
+        if ~isempty(iScoutFound)
+            % Region without hemisphere indicator
+            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
+            continue
+        end
+        % White matter
+        if ~isempty(regexp(anatAtlasLabel, '^white[l|r]?$', 'once'))
+            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'White';
+            continue
+        end
+        % CSF
+        if strcmpi(anatAtlasLabel, 'csf')
+            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'CSF';
+            continue
+        end
+        % Other
+        sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'Other';
     end
-    % Return selected scout indices and labels
-    iSelectedScouts = find(isKeep);
-    selectedScoutLabels = {atlas.Scouts(iSelectedScouts).Label};
 end
 
 %% ===== GENERATE IMAGE FOR LEGEND =====
