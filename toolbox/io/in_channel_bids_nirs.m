@@ -82,7 +82,7 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
                 ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'ACCEL', 'GYRO', 'MAGN'}
-                if isempty(channelValue{iChannel,7})
+                if isempty(channelValue{iChannel, channelIndex.component})
                     error('Componnent for channel %s is not defnied', channel_name)
                 end
 
