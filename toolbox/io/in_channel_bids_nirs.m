@@ -1,11 +1,14 @@
-function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile)
+function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeFile)
 % IN_CHANNEL_BIDS_NIRS:  Read NIRS channels file from a BIDS _channels.tsv file.
 %
 % USAGE:  ChannelMat = in_channel_bids_nirs(ChannelFile)
 %
 % INPUTS: 
-%     - ChannelFile : Full path to the .tsv file
-%     - ChannelStatus : Vector (1xnChannel): 
+%     - ChannelFile : Full path to the _channels.tsv file
+%     - OptodeFile : Full path to the _optodes.tsv file
+% OUTPUTS:
+%    - ChannelMat: Brainstorm matrix file structure
+%    - ChannelStatus : Vector (1xnChannel): 
 %       ChannelStatus(i) == 1 if the channel i is good, -1 otherwise.
 
 % @=============================================================================
@@ -28,6 +31,10 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile)
 %
 % Authors: Edouard Delaire, 2025-2026
 
+    if nargin < 2 || isempty(OptodeFile)
+        OptodeFile = find_optodes_file(ChannelFile);
+    end
+
     % Read the TSV file
     [channelValue, ~, channelIndex] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
     if isempty(channelValue) || isempty(channelValue{1, channelIndex.name})
@@ -36,7 +43,6 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile)
         return;
     end
     
-    OptodeFile = find_optodes_file(ChannelFile);
     if ~isempty(OptodeFile) && exist(OptodeFile, 'file')
         [tsvOptodes, ~, OptodesIndex] = in_tsv(OptodeFile, {'name', 'type', 'x', 'y', 'z', 'template_x', 'template_y', 'template_z'});
     else
