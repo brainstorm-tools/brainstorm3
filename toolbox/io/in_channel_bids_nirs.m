@@ -24,11 +24,11 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Edouard Delaire, 2025
+% Authors: Edouard Delaire, 2025-2026
 
     % Read the TSV file
-    tsvValues = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
-    if isempty(tsvValues) || isempty(tsvValues{1,1})
+    [channelValue, ~, channelIndex] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
+    if isempty(channelValue) || isempty(channelValue{1, channelIndex.name})
         disp('BIDS> Error: Invalid _channels.tsv file.');
         ChannelMat = [];
         return;
@@ -41,7 +41,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
         tsvOptodes = {};
     end
 
-    nChan = size(tsvValues,1);
+    nChan = size(channelValue,1);
     
     % Initialize returned structure
     ChannelMat          = db_template('channelmat');
@@ -53,19 +53,20 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 
     for iChannel = 1:nChan
         
-        channel_type = upper(tsvValues{iChannel,2});
+        channel_type = upper(channelValue{iChannel, channelIndex.type});
         if any(strcmp(channel_type, {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY', 'NIRSCWHBO', 'NIRSCWHBR'}))
-            channel_name = parse_name(tsvValues{iChannel,1});
+            channel_name = parse_name(channelValue{iChannel, channelIndex.name});
         else
-            channel_name = tsvValues{iChannel,1};
+            channel_name = channelValue{iChannel, channelIndex.name};
         end
 
 
         switch(channel_type)
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
-                ChannelMat.Channel(iChannel).Name   = sprintf('%sWL%d', channel_name, str2double(tsvValues{iChannel,5}));
+                wl = round(str2double(channelValue{iChannel, channelIndex.wavelength_nominal}));
+                ChannelMat.Channel(iChannel).Name   = sprintf('%sWL%d', channel_name, wl);
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
-                ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', str2double(tsvValues{iChannel,5}));
+                ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', wl);
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'NIRSCWHBO', 'NIRSCWHBR'}
                 ChannelMat.Channel(iChannel).Name   = sprintf('%sHb%s', channel_name, channel_type(end));
@@ -73,11 +74,11 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'ACCEL', 'GYRO', 'MAGN'}
-                if isempty(tsvValues{iChannel,7})
+                if isempty(channelValue{iChannel,7})
                     error('Componnent for channel %s is not defnied', channel_name)
                 end
 
-                ChannelMat.Channel(iChannel).Name   = sprintf('%s_%s', channel_name, tsvValues{iChannel,7});
+                ChannelMat.Channel(iChannel).Name   = sprintf('%s_%s', channel_name, channelValue{iChannel, channelIndex.component});
                 ChannelMat.Channel(iChannel).Type   = 'Misc'; % Is there a better type ?
                 ChannelMat.Channel(iChannel).Group  =  [];
                 ChannelMat.Channel(iChannel).Weight = 1;
@@ -88,12 +89,12 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
                 isValidChannel(iChannel) = false;
-                warning('Unsoprted channel %s with type %s', tsvValues{iChannel,1}, tsvValues{iChannel,2} )
+                warning('Unsoprted channel %s with type %s', channelValue{iChannel, channelIndex.name}, channelValue{iChannel, channelIndex.type} )
                 continue;
         end
 
         if ~isempty(tsvOptodes)
-            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(OptodesIndex, tsvOptodes, tsvValues{iChannel,3}, tsvValues{iChannel,4});
+            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(OptodesIndex, tsvOptodes, channelValue{iChannel, channelIndex.source}, channelValue{iChannel, channelIndex.detector});
         end 
     end
 
