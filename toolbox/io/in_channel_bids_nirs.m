@@ -1,11 +1,13 @@
-function ChannelMat = in_channel_bids_nirs(ChannelFile)
+function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile)
 % IN_CHANNEL_BIDS_NIRS:  Read NIRS channels file from a BIDS _channels.tsv file.
 %
 % USAGE:  ChannelMat = in_channel_bids_nirs(ChannelFile)
 %
 % INPUTS: 
 %     - ChannelFile : Full path to the .tsv file
-            
+%     - ChannelStatus : Vector (1xnChannel): 
+%       ChannelStatus(i) == 1 if the channel i is good, -1 otherwise.
+
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -30,7 +32,7 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     [channelValue, ~, channelIndex] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
     if isempty(channelValue) || isempty(channelValue{1, channelIndex.name})
         disp('BIDS> Error: Invalid _channels.tsv file.');
-        ChannelMat = [];
+        ChannelMat = []; ChannelStatus = [];
         return;
     end
     
@@ -42,7 +44,8 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
     end
 
     nChan = size(channelValue,1);
-    
+    ChannelStatus = ones(1, nChan);
+
     % Initialize returned structure
     ChannelMat          = db_template('channelmat');
     ChannelMat.Comment  = 'BIDS channels';
@@ -59,7 +62,6 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
         else
             channel_name = channelValue{iChannel, channelIndex.name};
         end
-
 
         switch(channel_type)
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
@@ -93,12 +95,19 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
                 continue;
         end
 
+        if ~isempty(channelValue{iChannel, channelIndex.status}) && strcmpi(channelValue{iChannel, channelIndex.status}, 'bad')
+            ChannelStatus(iChannel) = -1;
+        end
+
+
         if ~isempty(tsvOptodes)
             ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(OptodesIndex, tsvOptodes, channelValue{iChannel, channelIndex.source}, channelValue{iChannel, channelIndex.detector});
         end 
     end
 
-    ChannelMat.Channel = ChannelMat.Channel(isValidChannel);
+    % Only keep supported channels
+    ChannelMat.Channel  = ChannelMat.Channel(isValidChannel);
+    ChannelStatus       = ChannelStatus(isValidChannel);
 
 end
 
