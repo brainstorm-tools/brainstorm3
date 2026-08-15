@@ -111,6 +111,14 @@ end
 
 % ===== SAVE MRI =====
 [OutputPath, OutputBase, OutputExt] = bst_fileparts(OutputMriFile);
+% Show progress bar
+if ~isProgress
+    bst_progress('start', 'Export MRI', ['Export MRI to file "' [OutputBase, OutputExt] '"...']);
+end
+% Get correct extension for gzipped files
+if strcmpi(OutputExt, '.gz')
+    [~, ~, OutputExt] = bst_fileparts(OutputBase);
+end
 % Install/load required plugins
 LoadedPlugins = bst_plugin('GetLoaded');
 RequiredPlugins = {};
@@ -124,10 +132,6 @@ for iPlugin = 1 : length(RequiredPlugins)
     if ~isInstalled
         error(errMsg);
     end
-end
-% Show progress bar
-if ~isProgress
-    bst_progress('start', 'Export MRI', ['Export MRI to file "' [OutputBase, OutputExt] '"...']);
 end
 % Switch between file formats
 switch lower(OutputExt)

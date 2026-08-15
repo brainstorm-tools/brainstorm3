@@ -98,7 +98,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     if ~isInstalled
         return;
     end
-    bst_plugin('SetProgressLogo', 'spm12');
+    bst_progress('setpluginlogo', 'spm12');
 
     % ===== GET SUBJECT =====
     % Get subject 
@@ -181,7 +181,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     % Delete the temporary files
     file_delete(TmpDir, 1, 1);
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     isOk = 1;
 end
 

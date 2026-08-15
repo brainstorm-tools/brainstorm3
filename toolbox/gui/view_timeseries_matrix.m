@@ -214,7 +214,7 @@ else
     TsInfo.AutoScaleY    = 1;
     TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
 end
-if ~isempty(strfind(BaseFile, 'matrix_decoding_'))
+if ~isempty(strfind(BaseFile, 'matrix_decoding_')) && isempty(DisplayUnits)
     TsInfo.YLabel = 'Decoding accuracy (%)';
 else
     TsInfo.YLabel = '';

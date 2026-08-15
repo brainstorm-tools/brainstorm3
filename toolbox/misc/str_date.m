@@ -30,6 +30,7 @@ if ischar(s)
     s = strtrim(strrep(s, char(0), ''));
 end
 % Check various input formats
+% 'datestr' output defaults to the English language ('en_US')
 try
     if ~isempty(dateFormat) && strcmpi(dateFormat, 'posix')
         strDate = datestr(double(s) ./ 86400 + datenum(1970,1,1,0,0,0), 'dd-mmm-yyyy');

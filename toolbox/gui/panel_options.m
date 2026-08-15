@@ -147,6 +147,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jBlockSize.setToolTipText(blockSizeTooltip);
     jPanelRight.add('br hfill', jPanelProc);
     
+    % ===== RIGHT: CONTAINER ENGINE =====
+    [~, tmp] = bst_get('ContainerEngine');
+    jPanelContainers = gui_river([5 5], [0 15 15 15], 'Container engine');
+        jContainerLabel = gui_component('Label',  jPanelContainers, [], 'Container engine command: ', [], [], []);        
+        jContainerCombo = gui_component('Combobox', jPanelContainers, 'tab', [], {tmp}, [], [], []);
+        jContainerLabel.setToolTipText('<HTML>Command for container engine, it should be in $PATH');
+        jContainerCombo.setToolTipText('<HTML>Default: "auto-detect"');
+        jCheckContainerGpu = gui_component('CheckBox', jPanelContainers, 'br', 'Try to use GPU with container engine', [], [], []);
+    jPanelRight.add('br hfill', jPanelContainers);
+
     % ===== RIGHT: RESET =====
     if (GlobalData.Program.GuiLevel == 1)
         jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
@@ -241,6 +251,11 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
         processOptions = bst_get('ProcessOptions');
         jBlockSize.setText(num2str(processOptions.MaxBlockSize * 8 / 1024 / 1024));
+        % Container engine
+        [containerEngine, containerEngines] = bst_get('ContainerEngine');
+        iSel = find(strcmpi(containerEngine, containerEngines), 1, 'first') - 1;
+        jContainerCombo.setSelectedIndex(iSel);
+        jCheckContainerGpu.setSelected(bst_get('ContainerUseGpu'));
     end
 
 
@@ -387,6 +402,12 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             processOptions.MaxBlockSize = blockSize * 1024 * 1024 / 8; % Mb to bytes
             bst_set('ProcessOptions', processOptions);
         end
+
+        % ===== CONTAINER ENGINE =====
+        bst_set('ContainerEngine', char(jContainerCombo.getSelectedItem()));
+        bst_set('ContainerUseGpu', jCheckContainerGpu.isSelected());
+
+        % Stop applying preferences
         bst_progress('stop');
         
         % If the scaling was changed: Restart brainstorm
@@ -564,11 +585,47 @@ function [isOpenGL, DisableOpenGL] = StartOpenGL()
             if strcmp(s.GraphicsRenderer,  'OpenGL Hardware')
                 isOpenGL = 1;
                 s.Software = 0;
+                if (DisableOpenGL == 2)
+                    if isunix
+                        isUnixWarning = 1;
+                        DisableOpenGL = 0;
+                        bst_set('DisableOpenGL', DisableOpenGL);
+                    elseif ispc
+                        try
+                            opengl('software');
+                            s = rendererinfo();
+                            s.Software = 1;
+                        catch
+                            isOpenGL = 0;
+                        end
+                    end
+                end
             elseif strcmp(s.GraphicsRenderer,  'OpenGL Software')
                 isOpenGL = 1;
                 s.Software = 1;
+                if (DisableOpenGL == 0)
+                    if isunix
+                        isUnixWarning = 1;
+                        DisableOpenGL = 2;
+                        bst_set('DisableOpenGL', DisableOpenGL);
+                    elseif ispc
+                        try
+                            opengl('hardware');
+                            s = rendererinfo();
+                            s.Software = 0;
+                        catch
+                            isOpenGL = 0;
+                        end
+                    end
+                end
             else
                 isOpenGL = 0;
+            end
+            % Configure OpenGL
+            switch DisableOpenGL
+                case 0,  FigureRenderer = 'opengl';
+                case 1,  FigureRenderer = 'painters';
+                case 2,  FigureRenderer = 'opengl';
             end
             % Figure types for which the OpenGL renderer is used
             figTypes = {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum', '3DViz', 'Topography', 'MriViewer', 'Timefreq', 'Pac', 'Image'};

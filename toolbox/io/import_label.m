@@ -389,7 +389,9 @@ for iFile = 1:length(LabelFiles)
                 allValues = [0,1];
             end
             % Skip the first value (background)
-            allValues(1) = [];
+            if allValues(1) == 0
+                allValues(1) = [];
+            end
             % Load the subject SCS coordinates
             sSubject = bst_get('SurfaceFile', SurfaceFile);
             sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
@@ -745,6 +747,15 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Schaefer_800_7net';
             elseif ~isempty(strfind(fBase, 'schaefer2018_1000parcels_7'))
                 AtlasName = 'Schaefer_1000_7net';
+            elseif ~isempty(strfind(fBase, 'yba_696'))
+                AtlasName = 'YBA_696';
+            elseif ~isempty(strfind(fBase, 'uscbrain'))
+                AtlasName = 'USCBrain';
+            elseif ~isempty(strfind(fBase, 'bci-dni_brain'))
+                AtlasName = 'BCI-DNI_brain';
+            elseif ~isempty(strfind(fBase, 'untamed'))
+                % 'lh.untamed_l100r100' or 'lh.untamed_fs6_l100r100' --> 'Untamed_L100R100'
+                AtlasName = regexprep(fBase, '^[l|r]h\.untamed\w*l(\d*)r(\d*)', 'Untamed_L$1R$2');
             % FreeSurfer left/right
             elseif (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                 AtlasName = fBase(4:end);

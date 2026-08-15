@@ -62,7 +62,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     
     % ===== CHECK INPUTS =====
     % Make sure that file type is indentical for both sets
@@ -345,7 +345,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     sOutput.Options = OPT;
     % Last message
     bst_progress('text', 'Saving results...');
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
 end
 
 

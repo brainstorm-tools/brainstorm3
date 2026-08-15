@@ -134,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs)
 
         % Check the input is CTF.
         DataMat = in_bst_data(sInputs(iFile).FileName, 'Device');
-        if ~strcmp(DataMat.Device, 'CTF')
+        if ~any(strcmpi(strsplit(DataMat.Device, ','), 'CTF'))
             bst_report('Error', sProcess, sInputs(iFile), ...
                 'Swap head coils is currently only available for CTF data.');
             continue;

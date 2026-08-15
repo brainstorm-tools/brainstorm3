@@ -277,6 +277,9 @@ function UpdateValues()
         'String', sprintf('     Center: [%4.2f, %4.2f, %4.2f]\n     Radius: %4.2f', ...
         1000 * GlobalData.HeadModeler.BFS.HeadCenter, ...
         1000 * GlobalData.HeadModeler.BFS.Radius));
+    % Resize to show all text
+    ext = get(GlobalData.HeadModeler.GUI.hLegend, 'Extent');
+    set(GlobalData.HeadModeler.GUI.hLegend, 'Position', ext);
 end
 
 %% ===== PLOT SPHERES =====

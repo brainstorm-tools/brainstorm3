@@ -20,6 +20,7 @@ function varargout = process_evt_detect_chpi( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2016
+%          Raymundo Cassani, 2026
 
 eval(macro_method);
 end
@@ -122,7 +123,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Warning', sProcess, sInputs(iFile), ['No change of cHPI activity detected on channel "' chanName '" in this file.']);
             continue;
         end
-        % Extend by 1s the detected segments
+        % Extend by 1s (0.5s before and 0.5s after) the detected segments
         sfreq = 1 ./ (TimeVector(2) - TimeVector(1));
         F = (conv(double(F), ones(1,round(sfreq)), 'same') ~= 0); 
         % Perform detection
@@ -130,9 +131,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         startEve = find(diffF == 1);
         endEve = find(diffF == -1) -1;
         iEve = 1;
-        while iEve < length(startEve)-1
+        minNewEvent = round(sfreq);
+        while iEve < length(startEve)
+            % Combine the two events, if their gap is shorter than 1s
             if startEve(iEve + 1) - endEve(iEve) <= minNewEvent
-                % combine the two events
                 endEve(iEve) = endEve(iEve + 1);
                 startEve(iEve+1) = [];
                 endEve(iEve+1) = [];

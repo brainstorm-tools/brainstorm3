@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '', ...                               % FileFormat
         'open', ...                           % Dialog type: {open,save}
         'Import events...', ...               % Window title
-        'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'ImportEvents', ...                   % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                         % Selection mode: {single,multiple}
         'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
         bst_get('FileFilters', 'events'), ... % Get all the available file formats

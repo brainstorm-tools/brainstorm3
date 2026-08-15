@@ -22,8 +22,13 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' and 'duneuro'  
-%     .ECOGMethod:    'openmeeg' and 'duneuro' 
+%     .SEEGMethod: Method used to compute the forward model for SEEG sensors.
+%         - 'homogeneous' : Infinite homogeneous medium
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
+%     .ECOGMethod: Method used to compute the forward model for ECOG sensors.
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
 %     .NIRSMethod:    'import'
 %
 %     ======= METHODS OPTIONS =============================================
@@ -507,7 +512,7 @@ end
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'plugins/duneuro_logo.png');
+    bst_progress('setpluginlogo', 'duneuro');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field
@@ -536,6 +541,13 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     Gain(~isnan(Gain_dn)) = Gain_dn(~isnan(Gain_dn));
 end
 
+%% ===== COMPUTE: SEEG INFINITE HOMOGENEOUS MEDIUM HEADMODEL =====
+if strcmp('homogeneous', OPTIONS.SEEGMethod)
+    Gain(iSeeg, :) = bst_seeg_homogeneous(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, OPTIONS);
+    strHistory =  [strHistory, ' | ', 'Homogeneous medium (SEEG)', ...
+                               ' | ', sprintf('Conductivity: %1.3f S/m', OPTIONS.Conductivity), ...
+                               ' | ', sprintf('Min dist. betweem SEEG contact and dipoles: %1.3f mm', OPTIONS.MinSeegDipoleDist)];
+end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 Param = [];

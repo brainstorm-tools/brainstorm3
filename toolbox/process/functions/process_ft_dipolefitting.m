@@ -96,7 +96,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     SensorTypes = sProcess.options.sensortypes.Value;
@@ -301,7 +301,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % Save database
     db_save();
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
     
     % Return the input file (as we cannot handle the dipole files in the pipeline editor)
     OutputFile = DipoleFile;

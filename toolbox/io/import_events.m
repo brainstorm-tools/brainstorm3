@@ -57,22 +57,23 @@ end
 
 %% ===== SELECT FILE =====
 if isempty(EventFile) && isempty(newEvents)
-    % Get raw path
-    [fPath, fBase, fExt] = bst_fileparts(sFile.filename);
     % Get default directories and formats
-    %defFileFormat = upper(sFile.format);
-    % Get default directories and formats
+    LastUsedDirs = bst_get('LastUsedDirs');
     DefaultFormats = bst_get('DefaultFormats');
     % Get file
-    [EventFiles, FileFormat] = java_getfile( 'open', 'Import events...', ...    % Window title
-        fPath, ...                % Default directory
-        'multiple', 'files', ...  % Selection mode
-        bst_get('FileFilters', 'events'), ...
+    [EventFiles, FileFormat] = java_getfile( 'open', ...
+        'Import events...', ...               % Window title
+        LastUsedDirs.ImportEvents, ...        % Default directory
+        'multiple', 'files', ...              % Selection mode
+        bst_get('FileFilters', 'events'), ... % Get all the available file formats
         DefaultFormats.EventsIn);
     % If no file was selected: exit
     if isempty(EventFiles)
         return
     end
+    % Save default import directory
+    LastUsedDirs.ImportEvents = bst_fileparts(EventFiles{1});
+    bst_set('LastUsedDirs', LastUsedDirs);
     % Save default export format
     DefaultFormats.EventsIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);

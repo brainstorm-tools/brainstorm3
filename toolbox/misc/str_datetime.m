@@ -43,9 +43,9 @@ try
     % Format of input is provided
     elseif ~isempty(datetimeFormat)
         ts = datetime(s, 'InputFormat', datetimeFormat);
-    % dd-MMM-yyyy HH.mm.ss
+    % dd-MMM-yyyy HH.mm.ss, in English
     elseif isequal(find(s == '-'), [3 7]) && isequal(find(s == '.'), [15 18]) && (length(s) == 20)
-        ts = datetime(s, 'InputFormat', 'dd-MMM-yyyy HH.mm.ss');
+        ts = datetime(s, 'InputFormat', 'dd-MMM-yyyy HH.mm.ss', 'Locale', 'en_US');
     % yyyy-MM-dd''T''HH:mm:ss[.S | .SS | .SSS | ...]
     elseif isequal(find(s == 'T'), 11) && (length(s) >= 19)
         datetimeFormat = 'yyyy-MM-dd''T''HH:mm:ss';
@@ -54,9 +54,9 @@ try
             datetimeFormat = strjoin({'yyyy-MM-dd''T''HH:mm:ss', repmat('S', 1, nDecimals)}, '.');
         end
         ts = datetime(s, 'InputFormat', datetimeFormat);
-    % dd-MMM-yyyy HH:mm
+    % dd-MMM-yyyy HH:mm, in English
     elseif isequal(find(s == '-'), [3 7]) && isequal(find(s == ':'), 15) && (length(s) == 17)
-        ts = datetime(s, 'InputFormat', 'dd-MMM-yyyy HH:mm');
+        ts = datetime(s, 'InputFormat', 'dd-MMM-yyyy HH:mm', 'Locale', 'en_US');
     else
         strDatetime = [];
         return

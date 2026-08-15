@@ -46,7 +46,7 @@ R = 1 - PHI ./ pi*2;
 iRemoveVert = find(R > 1.1);
 if ~isempty(iRemoveVert)
     [head_surface.Vertices, head_surface.Faces] = tess_remove_vert(head_surface.Vertices, head_surface.Faces, iRemoveVert);
-    if isfield(head_surface, 'Color')
+    if isfield(head_surface, 'Color') && ~isempty(head_surface.Color)
         head_surface.Color(iRemoveVert, :) = [];
     end
 end
