@@ -34,9 +34,9 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
         return;
     end
     
-    OptodeFile = strrep(ChannelFile, '_channels.tsv', '_optodes.tsv');
-    if exist(OptodeFile, 'file')
-        tsvOptodes = in_tsv(OptodeFile, {'name','type', 'x', 'y',	'z', 'template_x', 'template_y', 'template_z'}, 0);
+    OptodeFile = find_optodes_file(ChannelFile);
+    if ~isempty(OptodeFile) && exist(OptodeFile, 'file')
+        [tsvOptodes, ~, OptodesIndex] = in_tsv(OptodeFile, {'name', 'type', 'x', 'y', 'z', 'template_x', 'template_y', 'template_z'});
     else
         tsvOptodes = {};
     end
@@ -101,7 +101,24 @@ function ChannelMat = in_channel_bids_nirs(ChannelFile)
 
 end
 
+function optodes_path = find_optodes_file(channels_path)
+    % FIND_OPTODES_FILE Given a BIDS channels.tsv path, find the matching
+    % optodes.tsv file.
+    %
+    % See https://bids-specification.readthedocs.io/en/stable/modality-specific-files/near-infrared-spectroscopy.html#nirs-recording-data
 
+    [folder, name, ~] = fileparts(channels_path); 
+    optodes_path = file_find(folder, '*_optodes.tsv', 1, 0);
+    
+    % If there is no ambiguity, we can return the file
+    if length(optodes_path) <= 1
+        optodes_path = optodes_path{1};
+        return
+    end
+
+    error('Todo');
+
+end
 
 function chann_name = parse_name(name)
 
