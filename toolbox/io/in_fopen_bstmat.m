@@ -52,7 +52,11 @@ sFile.format   = 'BST-DATA';
 sFile.device   = 'Brainstorm';
 sFile.comment  = DataMat(1).Comment;
 sFile.prop.times   = [DataMat(1).Time(1), DataMat(1).Time(end)];
-sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
+if length(DataMat(1).Time) >= 2
+    sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
+else
+    sFile.prop.sfreq    = nan;
+end
 sFile.prop.currCtfComp = 3;
 sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)
