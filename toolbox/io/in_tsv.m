@@ -1,7 +1,7 @@
-function [cTsv, ColNames, index] = in_tsv(TsvFile, ColNames, isWarning, Delimiter, isDecimalComma)
+function [cTsv, ColNames] = in_tsv(TsvFile, ColNames, isWarning, Delimiter, isDecimalComma)
 % IN_TSV: Reads specific columns in a .tsv file
 %
-% USAGE:  [cTsv, ColNames, index] = in_tsv(TsvFile, ColNames=[all], isWarning=1, Delimiter=[tab], isDecimalComma=0)
+% USAGE:  [cTsv, ColNames] = in_tsv(TsvFile, ColNames=[all], isWarning=1, Delimiter=[tab], isDecimalComma=0)
 %
 % INPUTS:
 %    - TsvFile   : Full path to input filename
@@ -11,12 +11,7 @@ function [cTsv, ColNames, index] = in_tsv(TsvFile, ColNames, isWarning, Delimite
 %    - isWarning : If 1, display a warning for each missing column name (only if ColNames is set)
 %    - Delimiter : Character (eg. sprintf('\t') or ';)
 %    - isDecimalComma : If 1, read the entire file, replace all the commas with dots, and then scan it
-% OUTPULS: 
-%    - cTsv: table value. 
-%    - ColNames: {1 x Ncol} Cell-array of strings (eg. {'col1', 'col2'})
-%    - Index: Struct, making the link between the ColNames and the columns
-%    of cTsv. Example: [cTsv, ColNames, index] = in_tsv(TsvFile, {'col1',
-%    'col2'}): index.col1 = 1 so, cTsv can be read using: cTsv(:, index.col1)
+
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -59,9 +54,7 @@ elseif (size(ColNames,1) == 2)   % Reading data format
     ColNames = ColNames(1,:);
 end
 % Intialize returned variable
-cTsv    = {};
-index   = create_index(ColNames);
-
+cTsv = {};
 % Open file
 fid = fopen(TsvFile, 'r');
 if (fid < 0)
@@ -136,14 +129,6 @@ else
         else
             cTsv(:,i) = num2cell(tsvValues{iCol});
         end
-    end
-end
-end
-
-function index = create_index(ColNames)
-    index = struct();
-    for jCol = 1:length(ColNames)
-        index.(ColNames{jCol}) = jCol;
     end
 end
 
