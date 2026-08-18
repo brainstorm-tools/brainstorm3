@@ -4746,12 +4746,14 @@ function PlotEventsDots_TimeBar(hFig)
     cla(hRawTimeBar);
     % Get the raw events and time axes
     events = panel_record('GetEvents');
+    if isempty(events)
+        return;
+    end
+    % Select only non-hidden events
+    events = events([events.select] == 1);
+
     % Loop on all the events types
     for iEvt = 1:length(events)
-        % If event is hidden
-        if isequal(events(iEvt).select, 0)
-            continue;
-        end
         % No occurrences: nothing to draw
         nOccur = size(events(iEvt).times, 2);
         if (nOccur == 0)
