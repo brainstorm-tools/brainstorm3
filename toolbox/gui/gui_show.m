@@ -147,8 +147,6 @@ switch (contType)
                 jWindow.setLocation(winPos(1),winPos(2));
             end
         end
-        % Show window: KEEP IT WITH AWTINVOKE
-        awtinvoke(jWindow, 'setVisible(Z)', 1);
         % Returned variable
         panelContainer.type   = 'JavaWindow';
         panelContainer.handle = {jWindow};
@@ -224,6 +222,12 @@ if isempty(GlobalData.Program.GUI.panels)
 else
     % Add the new panel to the panel list
     GlobalData.Program.GUI.panels(end+1) = bstPanel;
+end
+
+
+%% SHOWN MODAL JAVA WINDOWS
+if strcmpi(contType, 'JavaWindow') && isModal
+    java_call(jWindow, 'setVisible', 'Z', 1);
 end
 
 
