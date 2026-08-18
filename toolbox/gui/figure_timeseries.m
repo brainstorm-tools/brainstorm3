@@ -4749,7 +4749,6 @@ function PlotEventsDots_TimeBar(hFig)
     if isempty(events)
         return;
     end
-
     % Select only non-hidden events
     events = events([events.select] == 1);
 
