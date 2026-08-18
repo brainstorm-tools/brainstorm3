@@ -36,15 +36,17 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
     end
 
     % Read the TSV file
-    [channelValue, ~, channelIndex] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
-    if isempty(channelValue) || isempty(channelValue{1, channelIndex.name})
+    [channelValue, tsvCols] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
+    if isempty(channelValue) || isempty(channelValue{1, 'name'})
         disp('BIDS> Error: Invalid _channels.tsv file.');
         ChannelMat = []; ChannelStatus = [];
         return;
     end
-    
+    channelValue = cell2table(channelValue, 'VariableNames', tsvCols);    
+
     if ~isempty(OptodeFile) && exist(OptodeFile, 'file')
-        [tsvOptodes, ~, OptodesIndex] = in_tsv(OptodeFile, {'name', 'type', 'x', 'y', 'z', 'template_x', 'template_y', 'template_z'});
+        [tsvOptodes, tsvCols] = in_tsv(OptodeFile, {'name', 'type', 'x', 'y', 'z', 'template_x', 'template_y', 'template_z'});
+        tsvOptodes = cell2table(tsvOptodes, 'VariableNames', tsvCols);    
     else
         tsvOptodes = {};
     end
@@ -62,16 +64,16 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
 
     for iChannel = 1:nChan
         
-        channel_type = upper(channelValue{iChannel, channelIndex.type});
+        channel_type = upper(channelValue{iChannel, 'type'});
         if any(strcmp(channel_type, {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY', 'NIRSCWHBO', 'NIRSCWHBR'}))
-            channel_name = parse_name(channelValue{iChannel, channelIndex.name});
+            channel_name = parse_name(channelValue{iChannel, 'name'});
         else
-            channel_name = channelValue{iChannel, channelIndex.name};
+            channel_name = channelValue{iChannel, 'name'};
         end
 
         switch(channel_type)
             case {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY'}
-                wl = round(str2double(channelValue{iChannel, channelIndex.wavelength_nominal}));
+                wl = round(str2double(channelValue{iChannel, 'wavelength_nominal'}));
                 ChannelMat.Channel(iChannel).Name   = sprintf('%sWL%d', channel_name, wl);
                 ChannelMat.Channel(iChannel).Type   = 'NIRS';
                 ChannelMat.Channel(iChannel).Group  = sprintf('WL%d', wl);
@@ -82,11 +84,11 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
                 ChannelMat.Channel(iChannel).Group  = sprintf('Hb%s', channel_type(end));
                 ChannelMat.Channel(iChannel).Weight = 1;
             case {'ACCEL', 'GYRO', 'MAGN'}
-                if isempty(channelValue{iChannel, channelIndex.component})
+                if isempty(channelValue{iChannel, 'component'})
                     error('Componnent for channel %s is not defnied', channel_name)
                 end
 
-                ChannelMat.Channel(iChannel).Name   = sprintf('%s_%s', channel_name, channelValue{iChannel, channelIndex.component});
+                ChannelMat.Channel(iChannel).Name   = sprintf('%s_%s', channel_name, channelValue{iChannel, 'component'});
                 ChannelMat.Channel(iChannel).Type   = 'Misc'; % Is there a better type ?
                 ChannelMat.Channel(iChannel).Group  =  [];
                 ChannelMat.Channel(iChannel).Weight = 1;
@@ -97,17 +99,17 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
                 ChannelMat.Channel(iChannel).Weight = 1;
             otherwise
                 isValidChannel(iChannel) = false;
-                warning('Unsoprted channel %s with type %s', channelValue{iChannel, channelIndex.name}, channelValue{iChannel, channelIndex.type} )
+                warning('Unsoprted channel %s with type %s', channelValue{iChannel, 'name'}, channelValue{iChannel, 'type'} )
                 continue;
         end
 
-        if ~isempty(channelValue{iChannel, channelIndex.status}) && strcmpi(channelValue{iChannel, channelIndex.status}, 'bad')
+        if ~isempty(channelValue{iChannel, 'status'}) && strcmpi(channelValue{iChannel, 'status'}, 'bad')
             ChannelStatus(iChannel) = -1;
         end
 
 
         if ~isempty(tsvOptodes)
-            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(OptodesIndex, tsvOptodes, channelValue{iChannel, channelIndex.source}, channelValue{iChannel, channelIndex.detector});
+            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(tsvOptodes, channelValue{iChannel, 'source'}, channelValue{iChannel, 'detector'});
         end 
     end
 
@@ -157,7 +159,7 @@ function channel_name = TxRxtoSD(channel_name)
     channel_name = strrep(channel_name, 'Rx','D');
 end
 
-function coordinates = getOptodesCoordinate(OptodesIndex, tsvOptodes, sourceName, detectorName)
+function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName)
     coordinates = [];
 
     if strcmp(detectorName, 'n/a') || strcmp(sourceName, 'n/a') 
@@ -165,37 +167,37 @@ function coordinates = getOptodesCoordinate(OptodesIndex, tsvOptodes, sourceName
     end
 
     % Read optodes coordinate
-    iSource = find(strcmp(tsvOptodes(:,  OptodesIndex.name),   sourceName));
+    iSource = find(strcmp(tsvOptodes(:, 'name'),   sourceName));
     if isempty(iSource) 
         warning('Unable to find source %s in optodes.tsv', sourceName)
         return;
-    elseif ~strcmp(tsvOptodes{iSource, OptodesIndex.type}, 'source')
+    elseif ~strcmp(tsvOptodes{iSource, 'type'}, 'source')
         warning('%s should be a source but is labelled as a %s in optodes.tsv', sourceName, tsvOptodes{iSource,2});
         return;
     end
 
-    if ~isempty(tsvOptodes{iSource, OptodesIndex.x}) && ~isempty(tsvOptodes{iSource, OptodesIndex.y})  && ~isempty(tsvOptodes{iSource,OptodesIndex.z})
-        source_coord = [str2double(tsvOptodes{iSource, OptodesIndex.x}); str2double(tsvOptodes{iSource, OptodesIndex.y}); str2double(tsvOptodes{iSource, OptodesIndex.z})];
-    elseif ~isempty(tsvOptodes{iSource, OptodesIndex.template_x}) && ~isempty(tsvOptodes{iSource, OptodesIndex.template_y})  && ~isempty(tsvOptodes{iSource, OptodesIndex.template_z})
-        source_coord = [str2double(tsvOptodes{iSource, OptodesIndex.template_x}); str2double(tsvOptodes{iSource, OptodesIndex.template_y}); str2double(tsvOptodes{iSource, OptodesIndex.template_z})];
+    if ~isempty(tsvOptodes{iSource, 'x'}) && ~isempty(tsvOptodes{iSource, 'y'})  && ~isempty(tsvOptodes{iSource, 'z'})
+        source_coord = [str2double(tsvOptodes{iSource, 'x'}); str2double(tsvOptodes{iSource, 'y'}); str2double(tsvOptodes{iSource, 'z'})];
+    elseif ~isempty(tsvOptodes{iSource, 'template_x'}) && ~isempty(tsvOptodes{iSource, 'template_y'})  && ~isempty(tsvOptodes{iSource, 'template_z'})
+        source_coord = [str2double(tsvOptodes{iSource, 'template_x'}); str2double(tsvOptodes{iSource, 'template_y'}); str2double(tsvOptodes{iSource, 'template_z'})];
     else
         warning('No coordinate available for %s in optodes.tsv', sourceName)
         return;
     end
 
-    iDetector = find(strcmp(tsvOptodes(:, OptodesIndex.name), detectorName));
+    iDetector = find(strcmp(tsvOptodes(:, 'name'), detectorName));
     if isempty(iDetector) 
         warning('Unable to find detector %s in optodes.tsv', detectorName)
         return;
-    elseif ~strcmp(tsvOptodes{iDetector, OptodesIndex.type}, 'detector')
-        warning('%s should be a detector but is labelled as a %s in optodes.tsv', detectorName, tsvOptodes{iSource, OptodesIndex.type});
+    elseif ~strcmp(tsvOptodes{iDetector, 'type'}, 'detector')
+        warning('%s should be a detector but is labelled as a %s in optodes.tsv', detectorName, tsvOptodes{iSource, 'type'});
         return;
     end
 
-    if ~isempty(tsvOptodes{iDetector, OptodesIndex.x}) && ~isempty(tsvOptodes{iDetector, OptodesIndex.y})  && ~isempty(tsvOptodes{iDetector, OptodesIndex.z})
-        detector_coord = [str2double(tsvOptodes{iDetector, OptodesIndex.x}) ; str2double(tsvOptodes{iDetector, OptodesIndex.y}); str2double(tsvOptodes{iDetector, OptodesIndex.z})];
-    elseif ~isempty(tsvOptodes{iDetector,OptodesIndex.template_x}) && ~isempty(tsvOptodes{iDetector, OptodesIndex.template_y})  && ~isempty(tsvOptodes{iDetector, OptodesIndex.template_z})
-        detector_coord = [str2double(tsvOptodes{iDetector, OptodesIndex.template_x}) ; str2double(tsvOptodes{iDetector, OptodesIndex.template_y}); str2double(tsvOptodes{iDetector, OptodesIndex.template_z})];
+    if ~isempty(tsvOptodes{iDetector, 'x'}) && ~isempty(tsvOptodes{iDetector, 'y'})  && ~isempty(tsvOptodes{iDetector, 'z'})
+        detector_coord = [str2double(tsvOptodes{iDetector, 'x'}) ; str2double(tsvOptodes{iDetector, 'y'}); str2double(tsvOptodes{iDetector, 'z'})];
+    elseif ~isempty(tsvOptodes{iDetector, 'template_x'}) && ~isempty(tsvOptodes{iDetector,  'template_y'})  && ~isempty(tsvOptodes{iDetector,  'template_z'})
+        detector_coord = [str2double(tsvOptodes{iDetector,  'template_x'}) ; str2double(tsvOptodes{iDetector,  'template_y'}); str2double(tsvOptodes{iDetector, 'template_z'})];
     else
         warning('No coordinate available for %s in optodes.tsv', detectorName)
         return;
