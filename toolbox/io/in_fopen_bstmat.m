@@ -55,7 +55,7 @@ sFile.prop.times   = [DataMat(1).Time(1), DataMat(1).Time(end)];
 if length(DataMat(1).Time) >= 2
     sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
 else
-    sFile.prop.sfreq    = nan;
+    sFile.prop.sfreq    = NaN;
 end
 sFile.prop.currCtfComp = 3;
 sFile.prop.destCtfComp = 3;
