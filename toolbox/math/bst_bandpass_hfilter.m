@@ -245,9 +245,9 @@ end
 % Mirror signals
 if (FiltSpec.mirror)
     x = [fliplr(x(:,1:M)), x, fliplr(x(:,end-M+1:end))];
-    % Zero-padding
+% Constant-padding
 else
-    x = [zeros(nChan,M), x, zeros(nChan,M)] ;
+    x = [x(:,1) .* ones(nChan,M), x, x(:,end) .* ones(nChan,M)] ;
 end
 
 % Filter signals
