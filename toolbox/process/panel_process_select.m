@@ -1299,10 +1299,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jCombo.setEnabled(isListEnable);
 
                         % Set current atlas
-                        AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, []);
+                        AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, 0, jCombo, jList, []);
                         drawnow;
                         % Set callbacks
-                        java_setcb(jCombo, 'ItemStateChangedCallback', @(h,ev)AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, ev));
+                        java_setcb(jCombo, 'ItemStateChangedCallback', @(h,ev)AtlasSelection_Callback(iProcess, optNames{iOpt}, AtlasList, 0, jCombo, jList, ev));
                         java_setcb(jList,  'ValueChangedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, jCheck, ev));
                         if ~isempty(jCheck)
                             java_setcb(jCheck, 'ActionPerformedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AtlasList, jCombo, jList, jCheck, []));
@@ -1628,6 +1628,48 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jPanelOpt.add('br hfill vfill', jScroll);
                     % Set preferred size for the container
                     prefPanelSize = java_scaled('dimension', prefPanelSize(1), prefPanelSize(2));
+
+                case 'anatparcel'
+                    % Get available and selected anatomical parcellations
+                    [AnatAtlasList, iAnatAtlasList] = GetAnatAtlasList(sProcess, optNames{iOpt});
+                    if isempty(AnatAtlasList)
+                        gui_component('label', jPanelOpt, [], '<HTML><FONT color="#B40000">Error: No anatomical atlases available.');
+                    else
+                        % Create list
+                        jList = java_create('javax.swing.JList');
+                        jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
+                        jList.setVisibleRowCount(-1);
+                        jList.setCellRenderer(BstStringListRenderer(fontSize));
+                        % Comment
+                        gui_component('label', jPanelOpt, [], 'Select anatomical parcellations:');
+                        % Horizontal glue
+                        gui_component('label', jPanelOpt, 'hfill', ' ', [],[],[],[]);
+                        % Atlas selection box
+                        jCombo = gui_component('combobox', jPanelOpt, 'right', [], {AnatAtlasList(:,1)}, [], []);
+                        % Try to re-use previously defined atlas
+                        iDefault = [];
+                        if ~isempty(option.Value) && iscell(option.Value) && (size(option.Value,2) >= 2) && ischar(option.Value{1,1})
+                            iPrev = find(strcmpi(option.Value{1,1}, AnatAtlasList(:,1)));
+                            if ~isempty(iPrev)
+                                iDefault = iPrev;
+                            end
+                        end
+                        if isempty(iDefault)
+                            iDefault = iAnatAtlasList;
+                        end
+                        % Set current atlas
+                        jCombo.setSelectedIndex(iDefault - 1);
+                        AtlasSelection_Callback(iProcess, optNames{iOpt}, AnatAtlasList, 0, jCombo, jList, []);
+                        drawnow;
+                        % Set callbacks
+                        java_setcb(jCombo, 'ItemStateChangedCallback', @(h,ev)AtlasSelection_Callback(iProcess, optNames{iOpt}, AnatAtlasList, 1, jCombo, jList, ev));
+                        java_setcb(jList,  'ValueChangedCallback', @(h,ev)ScoutSelection_Callback(iProcess, optNames{iOpt}, AnatAtlasList, jCombo, jList, [], ev));
+                        % Create scroll panel
+                        jScroll = javax.swing.JScrollPane(jList);
+                        jPanelOpt.add('br hfill vfill', jScroll);
+                        % Set preferred size for the container
+                        prefPanelSize = java_scaled('dimension', 250,180);
+                    end
 
             end
             jPanelOpt.setPreferredSize(prefPanelSize);
@@ -2239,8 +2281,49 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
 
 
+    %% ===== OPTIONS: GET ANATOMY ATLAS LIST =====
+    function [AnatAtlasList, iAnatAtlasList] = GetAnatAtlasList(sProcess, optName)
+        import org.brainstorm.list.*;
+        % Initialize returned list
+        AnatAtlasList = {};
+        iAnatAtlasList = [];
+        % Get the current file
+        if isfield(sProcess.options.(optName), 'InputTypesB') && ~isempty(sFiles2)
+            curFile = sFiles2(1);
+        else
+            curFile = sFiles(1);
+        end
+        if isempty(curFile)
+            return;
+        end
+        if isempty(curFile.SubjectFile)
+            return
+        end
+        % Read the subject structure
+        sSubject = bst_get('Subject', curFile.SubjectFile);
+        iAnatAtlases = find(cellfun(@(c) ~isempty(strfind(c, '_volatlas')) || ~isempty(strfind(c, 'tissues')), {sSubject.Anatomy.FileName}));
+        if isempty(iAnatAtlases)
+            return
+        end
+        % Get the names of all parcels in each anatomical atlas
+        AnatAtlasList = cell(length(iAnatAtlases),2);
+        for ix = 1 : length(iAnatAtlases)
+            iAnatAtlas = iAnatAtlases(ix);
+            AnatAtlasList{ix,1} = sSubject.Anatomy(iAnatAtlas).Comment;
+            tmp = load(file_fullpath(sSubject.Anatomy(iAnatAtlas).FileName), 'Labels');
+            if ~isempty(fields(tmp))
+                AnatAtlasList{ix,2} = tmp.Labels(:,2)';
+            else
+                AnatAtlasList{ix,2} = [];
+            end
+        end
+        % Selected anat atlas
+        iAnatAtlasList = 1;
+    end
+
+
     %% ===== OPTIONS: ATLAS SELECTION CALLBACK =====
-    function AtlasSelection_Callback(iProcess, optName, AtlasList, jCombo, jList, ev)
+    function AtlasSelection_Callback(iProcess, optName, AtlasList, selectAllScouts, jCombo, jList, ev)
         import org.brainstorm.list.*;
         % Skip deselected event
         if ~isempty(ev) && (ev.getStateChange() ~= ev.SELECTED)
@@ -2279,7 +2362,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 end
             end
             % If a previous scout selection was not found: select all the scouts
-            if isempty(iSelScouts)
+            if isempty(iSelScouts) || selectAllScouts
                 iSelScouts = 1:length(ScoutNames);
             end
             % Select scouts in the list

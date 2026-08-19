@@ -1681,6 +1681,11 @@ switch (lower(action))
                     fcnPopupProjectSources(0);
                     fcnPopupScoutTimeSeries(jPopup);
                 end
+                
+                % Plot FastGraphs
+                if ~isempty(AllMod) && ismember('SEEG', AllMod) && strcmpi(DataType, 'recordings')
+                    gui_component('MenuItem', jPopup, [], 'Plot FastGraphs', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)panel_process_select('ShowPanelForFile', GetAllFilenames(bstNodes, 'data'), 'process_fastgraph'));
+                end
                
 %% ===== POPUP: STAT/DATA =====
             case 'pdata'
