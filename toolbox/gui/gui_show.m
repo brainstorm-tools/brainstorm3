@@ -225,8 +225,8 @@ else
 end
 
 
-%% SHOWN MODAL JAVA WINDOWS
-if strcmpi(contType, 'JavaWindow') && isModal
+%% ===== SHOW JAVA WINDOWS =====
+if strcmpi(contType, 'JavaWindow')
     java_call(jWindow, 'setVisible', 'Z', 1);
 end
 
