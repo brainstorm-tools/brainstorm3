@@ -251,8 +251,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             isRaw = (length(FileNames{iFile}) > 9) && ~isempty(strfind(FileNames{iFile}, 'data_0raw'));
             if isRaw
                 % Get sFile structure
-                FileMat = in_bst_data(FileNames{iFile}, 'F');
+                FileMat = in_bst_data(FileNames{iFile}, 'F', 'DisplayUnits');
                 sFile = FileMat.F;
+                sFile.DisplayUnits = FileMat.DisplayUnits;
                 % Read channel file
                 ChannelFile = bst_get('ChannelFileForStudy', FileNames{iFile});
                 ChannelMat = in_bst_channel(ChannelFile);
