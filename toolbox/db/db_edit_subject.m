@@ -53,20 +53,15 @@ panelSubjectEditor = panel_subject_editor('CreatePanel');
 % Get handles to panel objects
 ctrl = get(panelSubjectEditor, 'sControls');
 
-% Title for panel: start with the first subject of the list to edit
-iSubject = iSubjectsList(1);
-panelTitle = sprintf('Edit subject #%d',iSubject);
-if (iSubject > nbSubjects)
-    panelTitle = sprintf('Create subject #%d',iSubject);
-end
-
-% Update values in panel
-UpdatePanel();
-
 % Set the 'Save' button callback
 java_setcb(ctrl.jButtonSave, 'ActionPerformedCallback', @updateSubjectModifications);
 % Show panel
-gui_show(panelSubjectEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
+panelContainer = gui_show(panelSubjectEditor, 'JavaWindow', 'Edit subject', [], 1, 0, 0);
+
+% Start with the first subject of the list to edit
+iSubject = iSubjectsList(1);
+UpdatePanel();
+
 
 
 %% =================================================================================
@@ -81,10 +76,12 @@ gui_show(panelSubjectEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
         
         % EDITING EXISTING SUBJECT
         if ~isNewSubject
+            panelTitle = sprintf('Edit subject #%d',iSubject);
             % Get subject
             sSubject = bst_get('Subject', iSubject, 1);
         % NEW SUBJECT
         else
+            panelTitle = sprintf('Create subject #%d',iSubject);
             % Create new subject subject
             sSubject = db_template('Subject');
             sSubject.Name     = sprintf('Subject%02d', iSubject);
@@ -94,6 +91,8 @@ gui_show(panelSubjectEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
             sSubject.UseDefaultChannel = ProtocolInfo.UseDefaultChannel;
         end
 
+        % Window title
+        panelContainer.handle{1}.setTitle(panelTitle);
         % Subject description
         ctrl.jTextSubjectName.setText(sSubject.Name);
         ctrl.jTextSubjectComments.setText(sSubject.Comments);

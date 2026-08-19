@@ -108,16 +108,16 @@ end
 
 % Set the 'Save' button callback
 java_setcb(ctrl.jButtonSave, 'ActionPerformedCallback', @updateProtocolModificiations);
-% Check that panel preferred size is not wider that 450px
-jHandle = get(panelProtocolEditor, 'jHandle');
+% Show panel
+panelContainer = gui_show(panelProtocolEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
+drawnow;
+% Check that panel is not wider that 450px
 InterfaceScaling = bst_get('InterfaceScaling');
 MAX_WIDTH = round(450 * InterfaceScaling / 100);
-if (jHandle.getPreferredSize().getWidth() > MAX_WIDTH)
-    newDim = java.awt.Dimension(MAX_WIDTH, jHandle.getPreferredSize().getHeight());
-    jHandle.setPreferredSize(newDim);
+if (panelContainer.handle{1}.getSize().getWidth() > MAX_WIDTH)
+    newDim = java.awt.Dimension(MAX_WIDTH, panelContainer.handle{1}.getSize().getHeight());
+    panelContainer.handle{1}.setSize(newDim);   
 end
-% Show panel
-gui_show(panelProtocolEditor, 'JavaWindow', panelTitle, [], 1, 0, 0);
 
 
 %% =================================================================================
