@@ -37,7 +37,7 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
 
     % Read the TSV file
     [channelValue, tsvCols] = in_tsv(ChannelFile, {'name', 'type', 'source', 'detector', 'wavelength_nominal', 'status', 'component'}, 0);
-    if isempty(channelValue) || isempty(channelValue{1, 'name'})
+    if isempty(channelValue)
         disp('BIDS> Error: Invalid _channels.tsv file.');
         ChannelMat = []; ChannelStatus = [];
         return;
@@ -64,11 +64,11 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
 
     for iChannel = 1:nChan
         
-        channel_type = upper(channelValue{iChannel, 'type'});
+        channel_type = upper(char(channelValue{iChannel, 'type'}));
         if any(strcmp(channel_type, {'NIRSCWAMPLITUDE', 'NIRSCWOPTICALDENSITY', 'NIRSCWHBO', 'NIRSCWHBR'}))
-            channel_name = parse_name(channelValue{iChannel, 'name'});
+            channel_name = parse_name(char(channelValue{iChannel, 'name'}));
         else
-            channel_name = channelValue{iChannel, 'name'};
+            channel_name = char(channelValue{iChannel, 'name'});
         end
 
         switch(channel_type)
@@ -109,7 +109,7 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
 
 
         if ~isempty(tsvOptodes)
-            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(tsvOptodes, channelValue{iChannel, 'source'}, channelValue{iChannel, 'detector'});
+            ChannelMat.Channel(iChannel).Loc = getOptodesCoordinate(tsvOptodes, char(channelValue{iChannel, 'source'}), char(channelValue{iChannel, 'detector'}));
         end 
     end
 
@@ -167,7 +167,7 @@ function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName
     end
 
     % Read optodes coordinate
-    iSource = find(strcmp(tsvOptodes(:, 'name'),   sourceName));
+    iSource = find(strcmp(tsvOptodes{:, 'name'},sourceName));
     if isempty(iSource) 
         warning('Unable to find source %s in optodes.tsv', sourceName)
         return;
@@ -185,7 +185,7 @@ function coordinates = getOptodesCoordinate(tsvOptodes, sourceName, detectorName
         return;
     end
 
-    iDetector = find(strcmp(tsvOptodes(:, 'name'), detectorName));
+    iDetector = find(strcmp(tsvOptodes{:, 'name'}, detectorName));
     if isempty(iDetector) 
         warning('Unable to find detector %s in optodes.tsv', detectorName)
         return;
