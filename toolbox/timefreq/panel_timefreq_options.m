@@ -443,8 +443,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         if ~isempty(hFigWavelet) && ishandle(hFigWavelet)
             close(hFigWavelet);
         end
-        % Release mutex and keep the panel opened
+        % Release mutex
         bst_mutex('release', panelName);
+        % Unblock thread if container is a modal JavaWindow
+        bstPanel = bst_get('Panel', panelName);
+        jContainer = get(bstPanel, 'container');
+        if strcmpi(jContainer.type, 'JavaWindow') && isjava(jContainer.handle{1}) && jContainer.handle{1}.isModal == 1
+            java_call(jContainer.handle{1}, 'setVisible', 'Z', 0);
+        end
     end
 
 %% ===== UPDATE PANEL =====
