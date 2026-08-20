@@ -28,6 +28,7 @@ function out_channel_bids_nirs(BstChannelFile, OutputChannelFile, file_units, st
 % =============================================================================@
 %
 % Authors: Jacob Busgang, 2025
+%          Edouard Delaire, 2026
 
 if nargin < 3
     file_units = '';
@@ -116,4 +117,3 @@ end
 writetable(T, OutputChannelFile, 'FileType', 'text', 'Delimiter','\t' );
 
 end
-
