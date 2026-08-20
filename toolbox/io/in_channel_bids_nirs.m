@@ -61,7 +61,6 @@ function [ChannelMat, ChannelStatus] = in_channel_bids_nirs(ChannelFile, OptodeF
     [ChannelMat.Channel.Loc] = deal([0;0;0]);
     
     isValidChannel = true(1, nChan);
-    status         = ones(1, nChan);
 
     for iChannel = 1:nChan
         
