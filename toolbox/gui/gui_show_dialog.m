@@ -64,8 +64,13 @@ isAlwaysOnTop = 1;
 isMaximized = 0;
 gui_show(bstPanel, 'JavaWindow', panelTitle, [], isModal, isAlwaysOnTop, isMaximized, winPos);
 
-% Wait for the end of execution
-bst_mutex('waitfor', panelName);
+% Wait the panel to be closed
+if isModal
+    % Wait is done through the modal container
+else
+    % Wait for the end of execution (mutex release)
+    bst_mutex('waitfor', panelName);
+end
 
 % Restore progress bar
 if isProgressBarHidden
@@ -87,6 +92,7 @@ else
     % User closed panel
     panelContents = [];
 end
+
 
 
 
