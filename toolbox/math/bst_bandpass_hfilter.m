@@ -245,9 +245,14 @@ end
 % Mirror signals
 if (FiltSpec.mirror)
     x = [fliplr(x(:,1:M)), x, fliplr(x(:,end-M+1:end))];
-    % Zero-padding
+% Constant-padding
 else
-    x = [zeros(nChan,M), x, zeros(nChan,M)] ;
+    % Use replicate padding. Average within the boundary to limit impact
+    % of first / last sample that might be noisy. 
+    padLeft = mean(x(:,1:iE99), 2) .* ones(nChan,M);
+    padRight = mean(x(:,(end-iE99+1):end), 2) .* ones(nChan,M);
+
+    x = [padLeft, x, padRight] ;
 end
 
 % Filter signals
