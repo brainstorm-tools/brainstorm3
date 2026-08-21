@@ -140,7 +140,7 @@ dsFactor = newNbVertices / size(TessMat.Vertices, 1);
 
 
 %% ===== RESAMPLE =====
-bst_progress('start', 'Resample surface', ['Resampling surface: ' TessMat.Comment '...']);
+bst_progress('text', 'Resample surface', ['Resampling surface: ' TessMat.Comment '...']);
 % Resampling methods
 switch (Method)
     % ===== REDUCEPATCH =====

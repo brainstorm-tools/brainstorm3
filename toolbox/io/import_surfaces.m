@@ -138,15 +138,17 @@ end
 
 %% ===== LOAD EACH SURFACE =====
 % Process all the selected surfaces
+bst_progress('start', 'Importing tesselation', '', 0, length(SurfaceFiles));
+
 for iFile = 1:length(SurfaceFiles)
     TessFile = SurfaceFiles{iFile};
-    
+
     % ===== LOAD SURFACE FILE =====
-    bst_progress('start', 'Importing tesselation', ['Loading file "' TessFile '"...']);
+    bst_progress('text', ['Loading file "' TessFile '"...']);
+
     % Load surfaces(s)
     [Tess, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels);
     if isempty(Tess)
-        bst_progress('stop');
         return
     end
     
@@ -230,11 +232,14 @@ for iFile = 1:length(SurfaceFiles)
     OutputSurfacesFiles{end+1} = BstTessFile;
     % Return number of vertices
     nVertices(end+1) = length(NewTess.Vertices);
+
+    bst_progress('inc', 1);
 end
 
 % Save database
 db_save();
 bst_progress('stop');
+
 end   
 
 
