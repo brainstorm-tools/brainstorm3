@@ -92,6 +92,26 @@ for i = 1:length(iProtocols)
     % Reload protocol
     if isReload
         db_reload_database(iProtocols(i));
+        % TODO: CHECK BROKEN LINKS TO RAW DATA
+        %      - Get all raw data files (data_0raw....)
+        %      - Check which ones are links to external data:
+        %         (Not .mat, and dir is diff from dir for the raw data file)
+        %      - Make a list of broken links (absolute path to file exist)
+        %      - IF brokenlist NOT empty
+        %        - Try to fix first path as in in_bst_data L131
+        %          (Maybe expose that code part, so it can return the fixed_path)
+        %        - IF path was fixed
+        %           - Remove it from brokenlist
+        %           - FOR broken IN brokenlist
+        %             - Apply same fix to other broken links, when suitable
+        %             - IF path was fixed
+        %                - Remove it from brokenlist
+        %      - WHILE brokenlist NOT empty AND numel(brokenlist) < SomeReasonableNumberOfLinksToFix
+        %        - Ask user if they want to fix broken links NOW
+        %          - Ask User to select the new path for first broken link
+        %          - IF path was fixed
+        %             - Apply same fix to other broken links, remove them from brokenlist
+
     % Protocol loaded successfully: Copy protoco.mat fields in memory
     else
         GlobalData.DataBase.ProtocolInfo(iProtocols(i)).iStudy            = ProtocolMat.ProtocolInfo.iStudy;
