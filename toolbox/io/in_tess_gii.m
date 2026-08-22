@@ -30,8 +30,6 @@ function TessMat = in_tess_gii(TessFile)
 %
 % Authors: Francois Tadel, 2012-2017
 
-import sun.misc.BASE64Decoder;
-
 % Read GII file
 [sXml, Values] = in_gii(TessFile);
 % Initialize matrices
