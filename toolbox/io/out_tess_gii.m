@@ -61,19 +61,14 @@ if isSPM && ~isempty(TessFile)
 end
 
 % ===== ENCODE DATA =====
-import sun.misc.BASE64Encoder;
-% Initialize Base64 encoder
-encoder = BASE64Encoder();
 % Encode vertices: millimeters
 Vertices = single(TessMat.Vertices' .* 1000);
 Vertices = typecast(Vertices(:), 'uint8');
-Vertices = char(encoder.encodeBuffer(Vertices));
-Vertices((Vertices == 10) | (Vertices == 13)) = [];
+Vertices = bst_base64('encode', Vertices);
 % Encode faces: 0-based array
 Faces = int32(TessMat.Faces' - 1);
 Faces = typecast(Faces(:), 'uint8');
-Faces = char(encoder.encodeBuffer(Faces));
-Faces((Faces == 10) | (Faces == 13)) = [];
+Faces = bst_base64('encode', Faces);
  
 % ===== CREATE XML STRING =====   
 % Create XML file from a template

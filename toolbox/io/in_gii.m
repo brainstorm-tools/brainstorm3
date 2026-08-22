@@ -21,8 +21,6 @@ function [sXml, Values] = in_gii(GiiFile)
 %
 % Authors: Francois Tadel, 2017
 
-import sun.misc.BASE64Decoder;
-
 % Read XML file
 sXml = in_xml(GiiFile);
 
@@ -56,8 +54,7 @@ for iArray = 1:nArrays
             
         case {'Base64Binary', 'GZipBase64Binary'}
             % Base64 decoding
-            decoder = BASE64Decoder();
-            Values{iArray} = decoder.decodeBuffer(sXml.GIFTI.DataArray(iArray).Data.text);
+            Values{iArray} = bst_base64('decode', sXml.GIFTI.DataArray(iArray).Data.text);
             % Unpack gzipped stream
             if strcmpi(sXml.GIFTI.DataArray(iArray).Encoding, 'GZipBase64Binary')
                 Values{iArray} = dunzip(Values{iArray});
