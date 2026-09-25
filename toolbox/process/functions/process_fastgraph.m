@@ -304,7 +304,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Set limits for axes before linking for improved performance
     xlim(hFastGraphAxes, [seegData.Time(1), seegData.Time(end)]*1000);
     ylims = ylim(hFastGraphAxes);
-    ylims = cat(1,ylims{:});
+    if iscell(ylims)
+        ylims = cat(1,ylims{:});
+    end
     ylim(hFastGraphAxes, [min(ylims(:,1)), max(ylims(:,2))]);
     linkaxes(hFastGraphAxes, 'xy');
     % Set axis labels
