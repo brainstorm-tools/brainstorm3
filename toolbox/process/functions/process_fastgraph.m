@@ -229,8 +229,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % 3. If no parcel was selected, select parcels from selected regions
         if isempty(OPTIONS.AnatAtlasParcels)
             regionSelIds = regexprep(OPTIONS.Regions, '^.*\((.*?)\).*$', '$1');
-            isKeep = ismember(sMriAtlas.Labels{:, 4}, regionSelIds);
-            OPTIONS.AnatAtlasParcels = sMriAtlas.Labels{isKeep, 1}';
+            isKeep = ismember(sMriAtlas.Labels(:, 4), regionSelIds);
+            OPTIONS.AnatAtlasParcels = sMriAtlas.Labels(isKeep, 2)';
         end
     end
     % Add Parcel 'N/A'
