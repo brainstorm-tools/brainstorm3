@@ -265,13 +265,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     set(gcf, 'Position', get(0,'Screensize'));
     nFastGraphs = length(sInputs);
     hFastGraphAxes = gobjects(nFastGraphs, 0);
-    % Subplot grid dimensions
-    nCols = ceil(sqrt(nFastGraphs));
-    nRows = ceil((nFastGraphs) / nCols);
-    % Subplot spacing and margins
-    gap = [0.075 0.0175];
-    horzMargin = 0.03;
-    vertMargin = 0.015;
+    fastGraphTitles = cell(nFastGraphs, 1);
+    % Subplot positions and sizes
+    [axesX, axesY, axesSize] = figure_timefreq('GetLayoutPositions', hFig, sInputs, 0);
 
     % ===== Get data and Plot each FastGraph and  =====
     bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
@@ -291,8 +287,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Sort L and R indices using the selected metric and time window
         seegData = SortHemiIndices(seegData, OPTIONS);
 
-        % Create the subplot with custom spacing 
-        hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
+        % Define position of the plot in the figure
+        XData = axesX(iFastGraph) + [-.5,.5] * axesSize(1);
+        YData = axesY(iFastGraph) + [-.5,.5] * axesSize(2);
+        hFastGraphAxes(iFastGraph) = subplot('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)]);
+
         % Plot the FastGraph for the current stimulation pair
         [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(stimLoc, seegData, seegLocInfo, OPTIONS);
         % Apply edge transparency to the subplot
