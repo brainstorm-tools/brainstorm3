@@ -234,7 +234,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     % Add Parcel 'N/A'
-    sMriAtlas.Labels(end+1, :) = {0, 'N/A', [0,0,0], 'N/A'};
+    sMriAtlas.Labels(end+1, 1:3) = {0, 'N/A', [0,0,0]};
 
     % === Anatomical labels for SEEG contacts
     [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.AnatAtlas);
@@ -251,10 +251,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [seegLocInfo.Parcel] = deal(chanTableWithAtlas{2:end, iCol});
     [~, iAnatAtlasLabel] = ismember({seegLocInfo.Parcel}, sMriAtlas.Labels(:,2));
     [seegLocInfo.Color] = deal(sMriAtlas.Labels{iAnatAtlasLabel,3});
-    % Keep only used labels in sMriAtlas
-    iLabelKeep = [sMriAtlas.Labels{unique(iAnatAtlasLabel), 1}];
+    % Keep only plotted parcels
+    plotParcels = intersect([sMriAtlas.Labels(unique(iAnatAtlasLabel), 2)], OPTIONS.AnatAtlasParcels);
+    [~, iPlotParcel] = ismember(plotParcels, sMriAtlas.Labels(:,2));
+    iLabelKeep = [sMriAtlas.Labels{unique(iPlotParcel), 1}];
     sMriAtlas.Cube(~ismember(sMriAtlas.Cube, iLabelKeep)) = 0;
-    sMriAtlas.Labels = sMriAtlas.Labels(unique(iAnatAtlasLabel), :);
+    sMriAtlas.Labels = sMriAtlas.Labels(unique(iPlotParcel), :);
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
