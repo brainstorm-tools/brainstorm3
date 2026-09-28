@@ -263,12 +263,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     hFig.Visible = 'off';
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
-    % Reserve one extra subplot for the legend (brain figure)
     nFastGraphs = length(sInputs);
     hFastGraphAxes = gobjects(nFastGraphs, 0);
     % Subplot grid dimensions
-    nCols = ceil(sqrt(nFastGraphs+1));
-    nRows = ceil((nFastGraphs+1) / nCols);
+    nCols = ceil(sqrt(nFastGraphs));
+    nRows = ceil((nFastGraphs) / nCols);
     % Subplot spacing and margins
     gap = [0.075 0.0175];
     horzMargin = 0.03;
