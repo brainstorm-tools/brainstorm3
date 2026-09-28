@@ -195,49 +195,45 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     sInputs  = sInputs(sStimLocIdxs.All);
     stimLocs = stimLocs(sStimLocIdxs.All, :);
 
-    % === Get sAnatAtlas information
+    % === Get Anatomy Atlas information
     sSubject = bst_get('Subject', sInputs(1).SubjectName);
     iAnatAtlas = find(strcmp(OPTIONS.AnatAtlas, {sSubject.Anatomy.Comment}));
     if isempty(iAnatAtlas)
         errMsg = 'TODO: Anat Atlas was not found in Subject';
         return
     end
-    sAnatAtlas = load(file_fullpath(sSubject.Anatomy(iAnatAtlas).FileName), 'Labels');
-    % Colors in sAnataAtlas.Labels are in the 0-255 range, convert them to 0-1 range
-    sAnatAtlas.Labels(:, 3) = cellfun(@(x) x / 255, sAnatAtlas.Labels(:, 3), 'UniformOutput', false);
+    sMriAtlas = bst_memory('LoadMri', sSubject.Anatomy(iAnatAtlas).FileName);
 
     % Handle Region color scheme
     if strcmpi(OPTIONS.ColorScheme, 'region')
-        % 1. Get Region for each Parcel in sAnatAtlas. Cortical version of atlas used as reference
-        [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, OPTIONS.AnatAtlas, sAnatAtlas);
+        % 1. Get Region for each Parcel in sMriAtlas. Cortical version of atlas used as reference
+        [sMriAtlas, errMsg] = GetParcelRegion(sSubject, OPTIONS.AnatAtlas, sMriAtlas);
         if ~isempty(errMsg)
             % Error
         end
-        % 2. Update colors in sAnatAtlas by Parcel region
-        defaultScoutColors = panel_scout('GetScoutsColorTable');
+        % 2. Update colors in sMriAtlas by Parcel region
+        defaultScoutColors = round(panel_scout('GetScoutsColorTable') * 255);
         allRegionIds = regexprep(OPTIONS.AllRegions, '^.*\((.*?)\).*$', '$1');
         regionColorTable = allRegionIds';
         regionColorTable(1:7, 2) = num2cell(defaultScoutColors(1:7, :), 2); % PF, F, C, P, T, O and L
-        regionColorTable{  8, 2} = [220, 220, 220] / 255; % White
-        regionColorTable{  9, 2} = [ 44, 152, 254] / 255; % CSF
-        regionColorTable{ 10, 2} = [130, 130, 130] / 255; % Other
+        regionColorTable{  8, 2} = [220, 220, 220]; % White
+        regionColorTable{  9, 2} = [ 44, 152, 254]; % CSF
+        regionColorTable{ 10, 2} = [130, 130, 130]; % Other
         for iRegion = 1 : size(regionColorTable, 1)
-            iAnatAtlasLabel = ismember(sAnatAtlas.Labels(:,4), regionColorTable{iRegion, 1});
+            iAnatAtlasLabel = ismember(sMriAtlas.Labels(:,4), regionColorTable{iRegion, 1});
             if any(iAnatAtlasLabel)
-                [sAnatAtlas.Labels{iAnatAtlasLabel, 3}] = deal(regionColorTable{iRegion, 2});
+                [sMriAtlas.Labels{iAnatAtlasLabel, 3}] = deal(regionColorTable{iRegion, 2});
             end
         end
         % 3. If no parcel was selected, select parcels from selected regions
         if isempty(OPTIONS.AnatAtlasParcels)
             regionSelIds = regexprep(OPTIONS.Regions, '^.*\((.*?)\).*$', '$1');
-            isKeep = ismember(sAnatAtlas.Labels{:, 4}, regionSelIds);
-            OPTIONS.AnatAtlasParcels = sAnatAtlas.Labels{isKeep, 1}';
+            isKeep = ismember(sMriAtlas.Labels{:, 4}, regionSelIds);
+            OPTIONS.AnatAtlasParcels = sMriAtlas.Labels{isKeep, 1}';
         end
     end
-    % Add Parcel 'N/A': Name and Color
-    iNA = size(sAnatAtlas.Labels, 1) + 1;
-    sAnatAtlas.Labels{iNA,2} = 'N/A';
-    sAnatAtlas.Labels{iNA,3} = [0,0,0];
+    % Add Parcel 'N/A'
+    sMriAtlas.Labels(end+1, :) = {0, 'N/A', [0,0,0], 'N/A'};
 
     % === Anatomical labels for SEEG contacts
     [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.AnatAtlas);
@@ -252,8 +248,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     seegLocInfo = repmat(struct('Name', '', 'Parcel', '', 'Color', []), nSeegChan, 1);
     [seegLocInfo.Name]   = deal(chanTableWithAtlas{2:end, 1});
     [seegLocInfo.Parcel] = deal(chanTableWithAtlas{2:end, iCol});
-    [~, iAnatAtlasLabel] = ismember({seegLocInfo.Parcel}, sAnatAtlas.Labels(:,2));
-    [seegLocInfo.Color] = deal(sAnatAtlas.Labels{iAnatAtlasLabel,3});
+    [~, iAnatAtlasLabel] = ismember({seegLocInfo.Parcel}, sMriAtlas.Labels(:,2));
+    [seegLocInfo.Color] = deal(sMriAtlas.Labels{iAnatAtlasLabel,3});
+    % Keep only used labels in sMriAtlas
+    iLabelKeep = [sMriAtlas.Labels{unique(iAnatAtlasLabel), 1}];
+    sMriAtlas.Cube(~ismember(sMriAtlas.Cube, iLabelKeep)) = 0;
+    sMriAtlas.Labels = sMriAtlas.Labels(unique(iAnatAtlasLabel), :);
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
@@ -314,21 +314,37 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ylabel(hFastGraphAxes, 'Voltage (mV)');
     % Line and label to distinguish hemispheres
     SetHemisphereLabels(hFastGraphAxes);
+    % Show figure
+    hFig.Visible = 'on';
 
     % === Plot brain legend ===
     bst_progress('set', 100);
     bst_progress('text', 'Plotting legend...');
-    % Generate a brain snapshot for display
-    % imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS);
-    % Create the legend subplot with the same spacing settings
-    axBrain = subtightplot(nRows, nCols, nRows*nCols, gap, horzMargin, vertMargin);
-    % Plot the reference panel with the cortex snapshot and axis labels
-    % PlotLegend(axBrain, imgCortex, round(hFastGraphAxes(1).XLim), hFastGraphAxes(1).YLim);
+    % MRI viewer, showing SEEG electrodes and anatomical parcellation used for FastGraph plots
+    hFig = panel_ieeg('DisplayChannelsMri', ChannelFiles{1}, 'SEEG', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    % Add atlas that corresponds to the legend
+    TessInfo = getappdata(hFig, 'Surface');
+    iTess = length(TessInfo);
+    % Build a colormap with all the labels
+    labelInd = cat(1, sMriAtlas.Labels{:,1});
+    labelRGB = cat(1, sMriAtlas.Labels{:,3});
+    colormapLabels = zeros(max(labelInd) + 1, 3); % Starting from 1 instead of zero, so labelInd can index colormapLabels
+    colormapLabels(labelInd + 1,:) = labelRGB;
+    % Assemble 4D RGB volume
+    TessInfo(iTess).OverlayCube = uint8(cat(4, ...
+        reshape(colormapLabels(sMriAtlas.Cube + 1, 1), size(sMriAtlas.Cube)), ...
+        reshape(colormapLabels(sMriAtlas.Cube + 1, 2), size(sMriAtlas.Cube)), ...
+        reshape(colormapLabels(sMriAtlas.Cube + 1, 3), size(sMriAtlas.Cube))));
+    % Labels
+    TessInfo(iTess).OverlayCubeLabels = sMriAtlas.Cube;
+    TessInfo(iTess).OverlayLabels = sMriAtlas.Labels;
+    TessInfo(iTess).isOverlayAtlas = 1;
+    TessInfo(iTess).DataMinMax = [0,255];
+    % Update surface definition and colormap
+    setappdata(hFig, 'Surface', TessInfo);
+    panel_surface('UpdateSurfaceColormap', hFig, iTess);
     % Close progress
     bst_progress('stop');
-
-    % Show figure
-    hFig.Visible = 'on';
 end
 
 %% ===== GET STIMULATION SITE CONTACT LOCATION =====
@@ -585,7 +601,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
                 fprintf('%-*s - %s\n', strMaxLen, seegLocInfo(contactIdxs(i)).Name, seegLocInfo(contactIdxs(i)).Parcel);
                 isAllContactsExcluded = 0;
             end
-            hAreaPlot(i).FaceColor = seegLocInfo(contactIdxs(i)).Color;
+            hAreaPlot(i).FaceColor = seegLocInfo(contactIdxs(i)).Color / 255;
         end
         if isAllContactsExcluded
             fprintf('Nothing plotted. All contacts lie within the stimulation-site exclusion zone.\n');
@@ -627,7 +643,7 @@ end
 
 
 %% ===== GET REGION FOR PARCEL =====
-function [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sAnatAtlas)
+function [sMriAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sMriAtlas)
     errMsg = [];
     % 1. Search for cortical version of anatomical atlas to retrieve region labels
     sSurf = load(file_fullpath(sSubject.Surface(sSubject.iCortex).FileName), 'Atlas');
@@ -641,17 +657,17 @@ function [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sAnatAt
     end
     sSurfAtlas = sSurf.Atlas(iAnatAtlas);
     % Normalize labels from anatomical atlas and surface atlas
-    anatAtlasLabels = lower(strrep(sAnatAtlas.Labels(:, 2),  ' ', ''));
+    anatAtlasLabels = lower(strrep(sMriAtlas.Labels(:, 2),  ' ', ''));
     surfAtlasLabels = lower(strrep({sSurfAtlas.Scouts.Label}, ' ', ''));
 
-    % 2. Obtain region for each parcel in sAnatAtlas
+    % 2. Obtain region for each parcel in sMriAtlas
     for iAnatAtlasLabel = 1 : length(anatAtlasLabels)
         anatAtlasLabel = anatAtlasLabels{iAnatAtlasLabel};
         iScoutFound = find(strcmpi(anatAtlasLabel, surfAtlasLabels));
         % Match
         if ~isempty(iScoutFound)
             % Region without hemisphere indicator
-            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
+            sMriAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
             continue
         end
         % Try some common fixes for the label
@@ -661,80 +677,24 @@ function [sAnatAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sAnatAt
         iScoutFound = find(strcmpi(anatAtlasLabel2, surfAtlasLabels));
         if ~isempty(iScoutFound)
             % Region without hemisphere indicator
-            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
+            sMriAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
             continue
         end
         % White matter
         if ~isempty(regexp(anatAtlasLabel, '^white[l|r]?$', 'once'))
-            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'White';
+            sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'White';
             continue
         end
         % CSF
         if strcmpi(anatAtlasLabel, 'csf')
-            sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'CSF';
+            sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'CSF';
             continue
         end
         % Other
-        sAnatAtlas.Labels{iAnatAtlasLabel, 4} = 'Other';
+        sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'Other';
     end
 end
 
-%% ===== GENERATE IMAGE FOR LEGEND =====
-% Render the cortex surface with only the scouts selected from the GUI and
-% color them either by region or by label
-function imgCortex = GenerateCortexSnapshot(sInputs, OPTIONS)
-    % Default output
-    imgCortex = [];
-    % Load cortex
-    sSubject = bst_get('Subject', sInputs(1).SubjectName);
-    CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
-    sCortex = bst_memory('LoadSurface', CortexFile);
-    % Resolve selected scouts from GUI options
-    [~, iSelectedScouts, iAtlas] = ResolveScoutSelection(sCortex, OPTIONS);
-    if isempty(iAtlas) || isempty(iSelectedScouts)
-        return;
-    end
-    % Open cortex figure
-    hFigSurf = view_surface(CortexFile);
-    figure_3d('SetStandardView', hFigSurf, 'left');
-    bst_figures('SetBackgroundColor', hFigSurf, [1 1 1]);
-    % Select atlas
-    panel_scout('SetCurrentAtlas', iAtlas);    
-    % Color scouts by region or individual label
-    isRegionColor = strcmpi(OPTIONS.ColorScheme, 'region');
-    panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, isRegionColor);
-    % Show only selected scouts
-    panel_scout('SetSelectedScouts', iSelectedScouts);
-    % Set background color
-    bst_figures('SetBackgroundColor', hFigSurf, [1 1 1]);
-    % Capture and crop the cortex image
-    img = out_figure_image(hFigSurf);
-    isBackground = all(img == 255, 3);
-    imgCortex = img(any(~isBackground, 2), any(~isBackground, 1), :);
-    % Close figure
-    close(hFigSurf);
-end
-
-%% ===== PLOT LEGEND =====
-% Show the reference cortex image using the same axes layout as the plots
-function PlotLegend(axLegend, brainImg, xLim, yLim)
-    % Configure legend axes
-    set(axLegend, ...
-        'XLim', xLim, ...
-        'YLim', yLim, ...
-        'XAxisLocation', 'bottom');
-    axLegend.XLabel.String = 'Time (ms)';
-    axLegend.YLabel.String = 'Voltage (mV)';
-    % Create overlay axes for the cortex image
-    hFig = ancestor(axLegend, 'figure');
-    axImg = axes('Parent', hFig, 'Units', 'pixels', 'Color', 'none');
-    imshow(brainImg, 'Parent', axImg);
-    axis(axImg, 'off');
-    axis(axLegend, 'manual');
-    % Position the image initially and after resizing
-    UpdateLegendImage(axLegend, axImg, brainImg);
-    hFig.SizeChangedFcn = @(~,~) UpdateLegendImage(axLegend, axImg, brainImg);
-end
 
 %% ===== DECORATE FASTGRAPH AXES =====
 % Add the zero-reference line and L/R hemisphere labels
@@ -759,23 +719,3 @@ function SetHemisphereLabels(hFastGraphAxes)
     end
 end
 
-
-%% ===== UPDATE LEGEND IMAGE =====
-% Update the overlay image position so it stays centered inside the
-% legend subplot when the figure is resized or moved across screens
-function UpdateLegendImage(axSubplotLegend, axImg, brainImg)
-    % Axes position in pixels
-    axPos = getpixelposition(axSubplotLegend);
-    % Original image dimensions
-    imgSize = size(brainImg);
-    imgH = imgSize(1);
-    imgW = imgSize(2);
-    % Scale while preserving image aspect ratio
-    scale = 0.75 * min(axPos(3) / imgW, axPos(4) / imgH);
-    newW = imgW * scale;
-    newH = imgH * scale;
-    % Center inside the legend subplot
-    xLeft = axPos(1) + (axPos(3) - newW) / 2;
-    yBottom = axPos(2) + (axPos(4) - newH) / 2;
-    set(axImg, 'Units', 'pixels', 'Position', [xLeft, yBottom, newW, newH]);
-end
