@@ -28,6 +28,7 @@ function varargout = process_fastgraph( varargin )
 % Authors: Kenneth N. Taylor, 2020
 %          John C. Mosher, 2020          
 %          Chinmay Chinara, 2026
+%          Raymundo Cassani, 2026
 
 eval(macro_method);
 end
@@ -292,7 +293,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Create the subplot with custom spacing 
         hFastGraphAxes(iFastGraph) = subtightplot(nRows, nCols, iFastGraph, gap, horzMargin, vertMargin);
         % Plot the FastGraph for the current stimulation pair
-        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(sInput, stimLoc, seegData, seegLocInfo, OPTIONS);
+        [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(stimLoc, seegData, seegLocInfo, OPTIONS);
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
@@ -347,6 +348,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     bst_progress('stop');
 end
 
+
 %% ===== GET STIMULATION SITE CONTACT LOCATION =====
 % Get the midpoint location of each stimulation pair in Comment
 function stimLocs = GetStimLocs(sInputs, ChannelMat)
@@ -378,6 +380,7 @@ function stimLocs = GetStimLocs(sInputs, ChannelMat)
         end
     end
 end
+
 
 %% ===== LAPRAP STYLE LOCATION SORTING =====
 % Get indices of location sorted in (L)eft side (A)nterior to (P)osterior (LAP), 
@@ -422,6 +425,7 @@ function sSortedLocIdxs = SortLAPRAP(contactLocs)
     sSortedLocIdxs.All = [sSortedLocIdxs.Left, sSortedLocIdxs.Right];
 end
 
+
 %% ===== LOAD AND FILTER SEEG DATA =====
 % Load each selected SEEG block and optionally exclude contacts based on
 % distance from the stimulation site
@@ -461,6 +465,7 @@ function seegData = GetSeegData(sInput, stimLoc, ChannelMat, OPTIONS)
     end
 end
 
+
 %% ===== SORT CONTACTS INTO LEFT/RIGHT HEMISPHERE =====
 % Sort SEEG contacts into left and right hemisphere groups
 function sContactGroupLocIdxs = SortSeegContacts(ChannelMat)
@@ -483,6 +488,7 @@ function sContactGroupLocIdxs = SortSeegContacts(ChannelMat)
     % Use coordinates to split contacts by hemisphere
     sContactGroupLocIdxs = SortLAPRAP(contactLocs);
 end
+
 
 %% ===== WITHIN-HEMISPHERE SORTING OF INDICES =====
 % Sort left and right indices for SEEG data within a selected time
@@ -526,11 +532,12 @@ function seegData = SortHemiIndices(seegData, OPTIONS)
     end
 end
 
+
 %% ===== PLOT FASTGRAPH =====
 % Create one FastGraph subplot.
 % Left-hemisphere SEEG channels are plotted as positive stacked areas
 % Right-hemisphere SEEG channels are plotted as negative stacked areas
-function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegData, seegLocInfo, OPTIONS)
+function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(stimLoc, seegData, seegLocInfo, OPTIONS)
     % Initialize output handles
     hLeftAreaPlot  = [];
     hRightAreaPlot = [];
@@ -619,6 +626,7 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(sInput, stimLoc, seegDa
     end
     fprintf('\n');
 end
+
 
 %% ===== FASTGRAPH TITLE =====
 % Build the title shown above each subplot using the stimulation pair and
