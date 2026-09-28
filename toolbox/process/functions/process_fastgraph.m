@@ -190,7 +190,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Sort ONLY SEEG Contacts using Location or Group name into Left | Right groups
     sContactLocIdxs = SortSeegContacts(ChannelMat);
     % Sort stimulus location from each Input into Left | Right groups, Anterior->Posterior within group
-    stimLocs = GetStimLocs(sInputs, ChannelMat);
+    [stimLocs, contacts1] = GetStimLocs(sInputs, ChannelMat);
     sStimLocIdxs = SortLAPRAP(stimLocs);
     % Sort Inputs and StimLocs by their Stimulus location: I.e. SubPlot order
     sInputs  = sInputs(sStimLocIdxs.All);
@@ -294,11 +294,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
         % Plot the FastGraph for the current stimulation pair
         [hLeftAreaPLot, hRightAreaPLot] = PlotFastgraph(stimLoc, seegData, seegLocInfo, OPTIONS);
+
         % Apply edge transparency to the subplot
         set(hLeftAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
         set(hRightAreaPLot,'edgealpha', OPTIONS.EdgeAlpha);
-        % Add the stimulation pair and atlas parcels label as the subplot title
-        AddFastgraphTitle(sInput, seegLocInfo);
+
+        % Title for plot: Comment + Parcel for stim contact1
+        contact1Parcel = '?';
+        iContact1 = find(strcmp({seegLocInfo.Name}, contacts1{iFastGraph}), 1);
+        if ~isempty(iContact1)
+            contact1Parcel = seegLocInfo(iContact1).Parcel;
+        end
+        fastGraphTitles{iFastGraph} = sprintf('%s\n%s', sInput.Comment, contact1Parcel);
     end
 
     % === Common feature on FastGraph plots ===
@@ -315,6 +322,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ylabel(hFastGraphAxes, 'Voltage (mV)');
     % Line and label to distinguish hemispheres
     SetHemisphereLabels(hFastGraphAxes);
+    % Add titles for each subplot
+    AddFastgraphTitles(hFastGraphAxes, fastGraphTitles);
     % Show figure
     hFig.Visible = 'on';
 
@@ -351,9 +360,11 @@ end
 
 %% ===== GET STIMULATION SITE CONTACT LOCATION =====
 % Get the midpoint location of each stimulation pair in Comment
-function stimLocs = GetStimLocs(sInputs, ChannelMat)
+function [stimLocs, contacts1, contacts2] = GetStimLocs(sInputs, ChannelMat)
     % Preallocate one [x y z] SCS midpoint per stimulation pair
     stimLocs = zeros(numel(sInputs), 3);
+    contacts1 = cell(numel(sInputs), 1);
+    contacts2 = cell(numel(sInputs), 1);
     % Get channel names once for lookup
     chanNames = {ChannelMat.Channel.Name};
 
@@ -374,6 +385,8 @@ function stimLocs = GetStimLocs(sInputs, ChannelMat)
         iContact2 = find(strcmp(chanNames, contact2), 1);
         % Compute midpoint only if both contacts exist
         if ~isempty(iContact1) && ~isempty(iContact2)
+            contacts1{k} = contact1;
+            contacts1{k} = contact2;
             loc1 = ChannelMat.Channel(iContact1).Loc(:)';
             loc2 = ChannelMat.Channel(iContact2).Loc(:)';
             stimLocs(k, :) = (loc1 + loc2) / 2;
@@ -632,28 +645,6 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(stimLoc, seegData, seeg
 end
 
 
-%% ===== FASTGRAPH TITLE =====
-% Build the title shown above each subplot using the stimulation pair and
-% the atlas label associated with the first contact
-function AddFastgraphTitle(sInput, seegLocInfo)
-    % Split the comment into the two parts
-    parts = strsplit(sInput.Comment, '-');
-    % Clean extracted comment
-    contact1 = strtrim(parts{1});
-    % Get the contact names
-    contact1Parts = strsplit(contact1);
-    contact1 = contact1Parts{end};
-    % Look up atlas label for the first contact
-    iContact1 = find(strcmp({seegLocInfo.Name}, contact1), 1);
-    if ~isempty(iContact1)
-        contact1AtlasParcelLabel = seegLocInfo(iContact1).Parcel;
-    else
-        contact1AtlasParcelLabel = '?';
-    end
-    title(sprintf('%s\n%s', sInput.Comment, contact1AtlasParcelLabel),'fontsize', 8);
-end
-
-
 %% ===== GET REGION FOR PARCEL =====
 function [sMriAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sMriAtlas)
     errMsg = [];
@@ -728,6 +719,28 @@ function SetHemisphereLabels(hFastGraphAxes)
             % Place text L/R above and below 0 mV line
             text(xPositionText,  yPositionText, 'L', textProperties{:});
             text(xPositionText, -yPositionText, 'R', textProperties{:});
+    end
+end
+
+
+%% ===== FASTGRAPH TITLE =====
+% Add title for each subplot
+function AddFastgraphTitles(hFastGraphAxes, fastGraphTitles)
+    % Positions for elements, assumes all hFastGraphAxes have the same XY Limits
+    XLim = hFastGraphAxes(1).XLim;
+    YLim = hFastGraphAxes(1).YLim;
+    xPositionText = XLim(1) + (0.5  * diff(XLim));
+    yPositionText = YLim(2);
+    % Add 0 mV line and labels for L and R hemispheres
+    for iAxes = 1 : length(hFastGraphAxes)
+        textProperties = { ...
+            'Parent',              hFastGraphAxes(iAxes), ...
+            'FontSize',            10, ...
+            'HorizontalAlignment', 'center', ...
+            'VerticalAlignment',   'top', ...
+            'FontWeight',          'bold'};
+        % Place title text
+        text(xPositionText, yPositionText, fastGraphTitles{iAxes}, textProperties{:});
     end
 end
 
