@@ -261,6 +261,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== Create figure for FastGraph =====
     hFig = figure;
     hFig.Visible = 'off';
+    hFig.Tag     = 'FastGraph';
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
     nFastGraphs = length(sInputs);

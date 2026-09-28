@@ -28,6 +28,7 @@ function tutorial_fastgraph(tutorial_dir, reports_dir)
 %
 % Authors: Chinmay Chinara, 2026
 %          John C. Mosher, 2026
+%          Raymundo Cassani, 2026
 
 
 %% ===== PARSE INPUTS =====
@@ -46,15 +47,13 @@ SubjectName = 'Subject01';
 %% ===== FILES TO IMPORT =====
 % Build the path of the files to import
 tutorial_dir = bst_fullfile(tutorial_dir, 'tutorial_fastgraph');
-MriFilePre   = bst_fullfile(tutorial_dir, 'anatomy',    'pre_T1.nii.gz');
-MriCat12Path = bst_fullfile(tutorial_dir, 'anatomy',    'cat12');
+AnatDir      = bst_fullfile(tutorial_dir, 'anatomy');
 BaselineFile = bst_fullfile(tutorial_dir, 'recordings', 'Baseline.edf');
 ElecPosFile  = bst_fullfile(tutorial_dir, 'recordings', 'Subject01_electrodes_mm.tsv');
 % Check if the folder contains the required files
-if ~file_exist(MriFilePre) || ~file_exist(BaselineFile) || ~file_exist(ElecPosFile)
+if ~file_exist(BaselineFile) || ~file_exist(ElecPosFile)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file tutorial_fastgraph.zip.']);
 end
-isMriSegmented = file_exist(bst_fullfile(MriCat12Path, 'Subject01.nii'));
 
 
 %% ===== CREATE PROTOCOL =====
@@ -72,39 +71,17 @@ gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 bst_report('Start');
 
 
-%% ===== IMPORT MRI AND CT VOLUMES =====
-if ~isMriSegmented
-    % Process: Import MRI
-    bst_process('CallProcess', 'process_import_mri', [], [], ...
-        'subjectname', SubjectName, ...
-        'voltype',     'mri', ...
-        'comment',     'pre_T1', ...
-        'mrifile',     {MriFilePre, 'ALL'}, ...
-        'nas',         [107, 176, 105], ...
-        'lpa',         [ 34,  89,  74], ...
-        'rpa',         [175,  89,  74]);
-    % Process: Segment MRI with CAT12
-    bst_process('CallProcess', 'process_segment_cat12', [], [], ...
-        'subjectname', SubjectName, ...
-        'nvertices',   15000, ...
-        'tpmnii',      {'', 'Nifti1'}, ...
-        'sphreg',      1, ... % Use spherical registration
-        'vol',         0, ... % No volume parcellations
-        'extramaps',   0, ... % No additional cortical maps
-        'cerebellum',  0);
-else
-    % Process: Import anatomy folder
-    bst_process('CallProcess', 'process_import_anatomy', [], [], ...
-        'subjectname', SubjectName, ...
-        'mrifile',     {MriCat12Path, 'CAT12'}, ...
-        'nvertices',   15000, ...
-        'nas',         [107, 176, 105], ...
-        'lpa',         [ 34,  89,  74], ...
-        'rpa',         [175,  89,  74]);
-end
-% Get filename for imported volumes
-[sSubject, iSubject] = bst_get('Subject', SubjectName);
-% Reference MRI
+%% ===== IMPORT ANATOMY =====
+% Process: Import anatomy folder
+bst_process('CallProcess', 'process_import_anatomy', [], [], ...
+    'subjectname', SubjectName, ...
+    'mrifile',     {AnatDir, 'FreeSurfer'}, ...
+    'nvertices',   15000, ...
+    'nas',         [131, 207,  90], ...
+    'lpa',         [ 57, 116,  98], ...
+    'rpa',         [189, 114, 101]);
+% Get filename for imported MRI volume
+sSubject = bst_get('Subject', SubjectName);
 DbMriFilePre = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 
 
@@ -209,18 +186,30 @@ sFilesAvgB3R_B4R = bst_process('CallProcess', 'process_select_tag', sFilesAvg, [
     'search', 2, ...  % Search the file names
     'select', 1);  % Select only the files with the tag
 
+% Selected averaged files
 sFilesAvg2 = [sFilesAvgB3L_B4L, sFilesAvgA11R_A12R, sFilesAvgB3R_B4R];
 
+
+%% ===== FASTGRAPH PLOTS =====
 % Process: Plot FastGraphs
 bst_process('CallProcess', 'process_fastgraph', sFilesAvg2, [], ...
-    'scouts',        {'Desikan-Killiany', {}}, ...
+    'parcels',       {'Desikan-Killiany', {}}, ...
     'colorscheme',   'region', ...           % Region
     'region',        {'Prefrontal (PF)', 'Frontal (F)', 'Central (C)', 'Parietal (P)', 'Temporal (T)', 'Occipital (O)', 'Limbic (L)'}, ...
-    'sortmethod',    'rms', ...              % Root Mean Square
+    'sortmethod',    'rms', ...           % Root Mean Square
     'sortwindow',    [0.060, 0.250], ...  % Range (middle latency) to sort the data (in ms)
     'excluderadius', 20, ...              % Exclusion zone radius (in mm)
     'plotwindow',    [-0.100, 0.900], ... % Plot window (in ms)
     'edgealpha',     0.05);               % Plot, edge transparency
+
+% Snapshot: Current MRIViewer
+hFig = bst_figures('GetFiguresByType', 'MriViewer');
+bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph', hFig.Position);
+close(hFig);
+% Snapshot: FastGraph plots
+hFig = findall(groot, 'Type', 'figure', 'Tag', 'FastGraph');
+bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph', hFig.Position);
+close(hFig);
 
 
 %% ===== SAVE AND DISPLAY REPORT =====
