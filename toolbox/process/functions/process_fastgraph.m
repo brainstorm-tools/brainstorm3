@@ -306,6 +306,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             contact1Parcel = seegLocInfo(iContact1).Parcel;
         end
         fastGraphTitles{iFastGraph} = sprintf('%s\n%s', sInput.Comment, contact1Parcel);
+
+        % Callback to select contact if possible
+        hFastGraphAxes(iFastGraph).ButtonDownFcn = @(src, event) bst_figures('SetSelectedRows', contacts1(iFastGraph));
     end
 
     % === Common feature on FastGraph plots ===
