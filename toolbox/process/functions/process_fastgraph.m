@@ -611,6 +611,10 @@ function [hLeftAreaPlot, hRightAreaPlot] = PlotFastgraph(stimLoc, seegData, seeg
                 isAllContactsExcluded = 0;
             end
             hAreaPlot(i).FaceColor = seegLocInfo(contactIdxs(i)).Color / 255;
+            hAreaPlot(i).DisplayName = seegLocInfo(contactIdxs(i)).Parcel;
+            % Add parcel name in data tip text
+            nameParcel = repmat({seegLocInfo(contactIdxs(i)).Parcel}, length(timeMs), 1);
+            hAreaPlot(i).DataTipTemplate.DataTipRows(end+1) = dataTipTextRow('Parcel:', nameParcel);
         end
         if isAllContactsExcluded
             fprintf('Nothing plotted. All contacts lie within the stimulation-site exclusion zone.\n');
