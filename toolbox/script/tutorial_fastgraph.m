@@ -223,8 +223,6 @@ bst_process('CallProcess', 'process_fastgraph', sFilesAvg2, [], ...
     'edgealpha',     0.05);               % Plot, edge transparency
 
 
-
-
 %% ===== SAVE AND DISPLAY REPORT =====
 ReportFile = bst_report('Save', []);
 if ~isempty(reports_dir) && ~isempty(ReportFile)
