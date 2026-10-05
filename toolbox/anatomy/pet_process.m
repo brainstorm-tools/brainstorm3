@@ -1,5 +1,5 @@
-function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject)
-% PET_PROCESS: Script PET processing pipeline (SUVR rescale and/or masking) with minimal redundant saving.
+function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, roiName, maskROI, applyMask, doProject, pvcOpts)
+% PET_PROCESS: Script PET processing pipeline (PVC, SUVR rescale, masking) with minimal redundant saving.
 %
 % INPUTS:
 %   - PetFile   : PET file path
@@ -8,6 +8,18 @@ function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, 
 %   - maskROI   : Name of the ROI for masking (string, can be empty)
 %   - applyMask : Logical, true to apply mask, false otherwise
 %   - doProject : Logical, true to project PET to surface, false otherwise
+%   - pvcOpts   : (optional) Structure controlling PVC / smoothing / SUVR (see pet_pvc.m).
+%                  If provided, PVC is applied before SUVR rescaling. Fields:
+%                  .method     'mg' (default, Mueller-Gartner via pet_pvc) | 'gtm' (pet_pvc>ComputeGtm) |
+%                              'none' (SKIP PVC).
+%                  .fwhm       PSF FWHM in mm for PVC (auto from scanner metadata if omitted).
+%                  .SmoothFWHM Gaussian volume smoothing FWHM (mm) applied BEFORE SUVR (default 0).
+%                  .SuvrOpts   struct passed to ComputeSuvr (e.g. struct('Erode',0,'Robust','mean')).
+%
+%                  VLPP-STYLE (non-PVC, smoothed) run: pvcOpts = struct('method','none',
+%                  'SmoothFWHM',6, 'SuvrOpts',struct('Erode',0,'Robust','mean')). This reproduces
+%                  the Villeneuve Lab PET pipeline (smooth + plain-reference SUVR, no PVC):
+%                  https://github.com/villeneuvelab/vlpp
 %
 % OUTPUTS:
 %   - MriFileOut    : Output MRI file path (string)
@@ -51,6 +63,9 @@ errMsg = '';
 if nargin < 6 || isempty(doProject)
     doProject = 0;
 end
+if nargin < 7
+    pvcOpts = [];
+end
 
 try
     % Get Subject for PET file
@@ -65,17 +80,57 @@ try
     sMri = in_mri_bst(PetFile);
     orgComment = sMri.Comment;
 
-    % --- SUVR Rescale ---
-    if ~isempty(roiName)
-        [~, sMriRescale, errMsgRescale, fileTagRescale] = mri_rescale(sMri, sAtlas, roiName);
-        if ~isempty(errMsgRescale)
-            errMsg = errMsgRescale;
+    % --- Partial Volume Correction (before SUVR) ---
+    % pvcOpts.method='none' SKIPS PVC (e.g. a VLPP-style non-PVC smoothed pipeline, see header
+    % + https://github.com/villeneuvelab/vlpp). 'mg' (default) -> pet_pvc; 'gtm' -> pet_pvc>ComputeGtm.
+    doPvc = ~isempty(pvcOpts) && ~(isfield(pvcOpts,'method') && strcmpi(pvcOpts.method,'none'));
+    if doPvc
+        % Get reference MRI for tissue segmentation
+        if isfield(sSubject, 'iAnatomy') && ~isempty(sSubject.iAnatomy)
+            MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        else
+            MriFileRef = sSubject.Anatomy(1).FileName;
+        end
+        % FWHM: explicit if provided, else [] -> pet_pvc auto-derives from scanner/metadata.
+        if isfield(pvcOpts, 'fwhm'), pvcFwhm = pvcOpts.fwhm; else, pvcFwhm = []; end
+        % Run PVC - saves corrected PET to database, returns new file path
+        [PvcFile, errMsgPvc] = pet_pvc(PetFile, MriFileRef, pvcFwhm, pvcOpts);
+        if ~isempty(errMsgPvc)
+            errMsg = ['PVC failed: ' errMsgPvc];
             return;
         end
-        sMri = sMriRescale;
-        fileTag = fileTagRescale;
+        % Continue processing with the PVC-corrected file
+        PetFile = PvcFile;
+        sMri = in_mri_bst(PetFile);
+        orgComment = sMri.Comment;
+    end
+
+    % --- Optional Gaussian volume smoothing BEFORE SUVR (VLPP-style; default off) ---
+    smoothTag = '';
+    if ~isempty(pvcOpts) && isfield(pvcOpts,'SmoothFWHM') && ~isempty(pvcOpts.SmoothFWHM) && any(pvcOpts.SmoothFWHM(:) > 0)
+        sMri.Cube = local_gauss3(double(sMri.Cube(:,:,:,1)), pvcOpts.SmoothFWHM, sMri.Voxsize);
+        sMri = bst_history('add', sMri, 'smooth', sprintf('Gaussian volume smoothing FWHM=%g mm', pvcOpts.SmoothFWHM(1)));
+        smoothTag = sprintf('_smooth%g', pvcOpts.SmoothFWHM(1));
+    end
+
+    % --- SUVR Rescale (robust reference: erosion + trimmed mean, via ComputeSuvr) ---
+    if ~isempty(roiName)
+        % Resolve the reference ROI to a binary mask (same atlas/region path as before),
+        % then normalize via ComputeSuvr. Default = eroded + trimmed mean; pvcOpts.SuvrOpts can
+        % override (e.g. Erode=0, Robust='mean' for a plain VLPP-style cerebellar reference).
+        [~, ~, errMsgMask, ~, binMask] = mri_mask(sMri, sAtlas, roiName, 1);
+        if ~isempty(errMsgMask)
+            errMsg = errMsgMask;
+            return;
+        end
+        suvrOpts = struct('RefMask', binMask);
+        if ~isempty(pvcOpts) && isfield(pvcOpts,'SuvrOpts') && isstruct(pvcOpts.SuvrOpts)
+            sf = fieldnames(pvcOpts.SuvrOpts); for ii=1:numel(sf), suvrOpts.(sf{ii}) = pvcOpts.SuvrOpts.(sf{ii}); end
+        end
+        [sMri, ~] = ComputeSuvr(sMri, [], suvrOpts);
+        fileTag = [smoothTag '_suvr'];
     else
-        fileTag = '';
+        fileTag = smoothTag;
     end
 
     % --- Masking (if requested) ---
@@ -144,7 +199,11 @@ try
         % Use the subject's name as the condition
         Condition = 'PET';
         DisplayUnits = '';
-        ProjFrac = [0.1 0.4 0.5];
+        % Mid-centered depth profile [white mid pial] = [0.1 0.8 0.1]. A synthetic
+        % surface-recovery benchmark shows a mid-dominant sample recovers cortical uptake best and is least sensitive to
+        % cortical thickness, whereas a pial- or white-skewed profile pulls in CSF or
+        % white-matter signal (the latter was the old reversed-order bug).
+        ProjFrac = [0.1 0.8 0.1];
         [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, DisplayUnits, ProjFrac);
         if ~isempty(errProj)
             errMsg = ['PET processed, but projection failed: ', errProj];
@@ -154,6 +213,19 @@ try
 catch ME
     errMsg = ME.message;
 end
+end
+
+% ===== 3D separable Gaussian volume smoothing (FWHM mm), toolbox-free (mirrors pet_pvc>ComputeGtm) =====
+function vol = local_gauss3(vol, fwhm_mm, voxsize_mm)
+    if isscalar(fwhm_mm),  fwhm_mm  = fwhm_mm  * [1 1 1]; end
+    if isempty(voxsize_mm) || any(voxsize_mm == 0), voxsize_mm = [1 1 1]; end
+    sig = fwhm_mm / 2.35482;
+    for d = 1:3
+        sv = sig(min(d,numel(sig))) / voxsize_mm(d); r = max(1, ceil(3*sv)); x = -r:r;
+        k = exp(-(x.^2)/(2*sv^2)); k = k/sum(k);
+        sh = ones(1,3); sh(d) = numel(k);
+        vol = convn(vol, reshape(k, sh), 'same');
+    end
 end
 
 
