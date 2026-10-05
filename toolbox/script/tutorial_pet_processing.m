@@ -90,21 +90,31 @@ close(hFigMri);
 disp([10 'DEMO> 2. Import and process PET volumes' 10]);
 PetFiles = {Pet1File, Pet2File};
 for iPet = 1 : length(PetFiles)
-    % Process: Import PET
-    bst_process('CallProcess', 'process_import_mri', [], [], ...
-        'subjectname', SubjectName, ...
-        'voltype',     'pet', ...  % PET
-        'comment',     '', ...
-        'mrifile',     {PetFiles{iPet}, 'Nifti1'});
-    % Imported PET (last volume)
-    sSubject = bst_get('Subject', SubjectName);
-    impPetFile = sSubject.Anatomy(end).FileName;
+    % Import PET volume
+    impPetFile = import_mri(iSubject, PetFiles{iPet}, [], 0, 0, 'PET');
+    % Update PET name
+    [~, fbase, fExt] = bst_fileparts(PetFiles{iPet});
+    if strcmpi(fExt, '.gz')
+        [~, fbase] = bst_fileparts(fbase);
+    end
+    [sSubject, iSubject, iAnatomy] = bst_get('MriFile', impPetFile);
+    sSubject.Anatomy(iAnatomy).Comment = fbase;
+    s.Comment = fbase;
+    bst_save(file_fullpath(impPetFile), s, [], 1);
+    bst_set('Subject', iSubject, sSubject);
+    panel_protocols('UpdateNode', 'Subject', iSubject);
     % Align and aggregate PET volume
     PetAggFile = mri_realign(impPetFile, 'spm_realign', 0, 'mean');
     % Co-register and reslice PET volume
     PetAggCoregFile = mri_coregister(PetAggFile, MriFile, 'spm', 1);
+    % Partial volume correction (Muller-Gartner, FWHM=6mm)
+    [PetPvcFile, errPvc] = pet_pvc(PetAggCoregFile, MriFile, 6);
+    if ~isempty(errPvc)
+        disp(['BST> PVC failed: ' errPvc '. Continuing without PVC.']);
+        PetPvcFile = PetAggCoregFile;
+    end
     % Compute SUVR, and project to surface
-    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetAggCoregFile, 'ASEG', 'Cortex', 'Brainmask', 1, 1);
+    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetPvcFile, 'ASEG', 'Cortex', 'Brainmask', 1, 1);
 
     % Figure: Aligned, aggregated, co-registered PET overlayed on MRI
     hFigPetOvr = view_mri(MriFile, PetAggCoregFile);

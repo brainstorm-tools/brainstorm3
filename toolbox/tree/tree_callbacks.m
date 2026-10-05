@@ -3304,11 +3304,15 @@ function fcnPetProcessing(jPopup, sSubject, iAnatomy)
     jMenu = gui_component('Menu', jPopup, [], 'PET processing', IconLoader.ICON_VOLPET);
     if length(iAnatomy) == 1
         PetFile = sSubject.Anatomy(iAnatomy).FileName;
+        % === PET METADATA ===
+        gui_component('MenuItem', jMenu, [], 'PET information', IconLoader.ICON_VOLPET, [], @(h,ev)PetInfo_Callback(PetFile));
+        AddSeparator(jMenu);
         % === PET IMPORT ===
         gui_component('MenuItem', jMenu, [], 'Realign frames', IconLoader.ICON_VOLPET, [], @(h,ev)PetImportProcess_Callback(PetFile));
         % === PET PROCESSING ===
         AddSeparator(jMenu);
         gui_component('MenuItem', jMenu, [], 'Compute SUVR', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@gui_show_dialog, 'PET processing options', @panel_process_pet, 1, [], PetFile));
+        gui_component('MenuItem', jMenu, [], 'Partial volume correction', IconLoader.ICON_VOLPET, [], @(h,ev)PetPvc_Callback(PetFile, sSubject));
         gui_component('MenuItem', jMenu, [], 'Project volume to surface', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)bst_call(@mri_interp_vol2tess, PetFile, [], 'PET'));
     end
 end
@@ -3328,6 +3332,132 @@ function PetImportProcess_Callback(PetFile)
     if ~isempty(petopts)
         % Realign, smooth and aggregate
         mri_realign(PetFile, petopts.align, petopts.fwhm, petopts.aggregate);
+    end
+end
+
+
+%% ===== PET INFORMATION =====
+function PetInfo_Callback(PetFile)
+    % Load only the PET metadata field (avoid loading the full 4D cube)
+    FileName = file_fullpath(PetFile);
+    warning('off', 'MATLAB:load:variableNotFound');
+    w = load(FileName, 'PET');
+    warning('on', 'MATLAB:load:variableNotFound');
+    % No metadata available (e.g. imported before metadata capture was added)
+    if ~isfield(w, 'PET') || isempty(w.PET) || ~isfield(w.PET, 'Source') || strcmp(w.PET.Source, 'none')
+        java_dialog('msgbox', ['<HTML>No PET metadata is stored in this volume.<BR>' ...
+            'It may have been imported before PET metadata capture was added,<BR>' ...
+            'or no BIDS JSON / usable header was found at import.'], 'PET information');
+        return;
+    end
+    java_dialog('msgbox', PetInfoHtml(w.PET), 'PET information');
+end
+
+% Format a PET metadata struct as an HTML report for java_dialog('msgbox').
+function str = PetInfoHtml(PET)
+    nl = '<BR>';
+    s = {'<HTML>'};
+    s{end+1} = ['<B>Source:</B> ' petStr(PET.Source) nl];
+    s{end+1} = ['<B>Tracer:</B> ' petStr(PET.Tracer.Name) ' (' petStr(PET.Tracer.Radionuclide) ...
+                '), units: ' petStr(PET.Tracer.Units) nl];
+    s{end+1} = ['<B>Injected:</B> ' petNum(PET.Injection.InjectedRadioactivity) ' ' ...
+                petStr(PET.Injection.InjectedRadioactivityUnits) ', mode: ' petStr(PET.Injection.Mode) nl];
+    s{end+1} = ['<B>TimeZero:</B> ' petStr(PET.Injection.TimeZero) ...
+                ',&nbsp; ScanStart: ' petNum(PET.Injection.ScanStart) ' s' ...
+                ',&nbsp; InjectionStart: ' petNum(PET.Injection.InjectionStart) ' s' nl];
+    if ~isempty(PET.Frames.CoverageMinPI)
+        s{end+1} = ['<B>Coverage:</B> ' petNum(PET.Frames.CoverageMinPI(1)) ' &ndash; ' ...
+                    petNum(PET.Frames.CoverageMinPI(2)) ' min post-injection' nl];
+    end
+    s{end+1} = ['<B>Decay corrected:</B> ' petBool(PET.Decay.ImageDecayCorrected) nl];
+    s{end+1} = ['<B>Scanner:</B> ' petStr(PET.Scanner.Manufacturer) ' ' petStr(PET.Scanner.Model) nl];
+    s{end+1} = ['<B>Recon:</B> ' petStr(PET.Scanner.ReconMethod) ', filter: ' ...
+                petStr(PET.Scanner.ReconFilterType) nl];
+    s{end+1} = ['<B>Frames:</B> ' num2str(PET.Frames.N) nl];
+    % Per-frame timing table
+    ts = PET.Frames.TimesStart;
+    du = PET.Frames.Duration;
+    mt = PET.Frames.MidTimes;
+    inj = PET.Injection.InjectionStart;
+    if ~isempty(ts)
+        s{end+1} = ['<TABLE BORDER=1 CELLPADDING=2><TR><TH>#</TH><TH>start (s)</TH>' ...
+                    '<TH>dur (s)</TH><TH>mid (s)</TH><TH>min p.i.</TH></TR>'];
+        for i = 1:numel(ts)
+            d = ''; m = ''; pmin = '';
+            if ~isempty(du) && (numel(du) >= i), d = petNum(du(i)); end
+            if ~isempty(mt) && (numel(mt) >= i), m = petNum(mt(i)); end
+            if ~isempty(mt) && (numel(mt) >= i) && ~isempty(inj), pmin = petNum((mt(i) - inj) / 60); end
+            s{end+1} = ['<TR><TD>' num2str(i) '</TD><TD>' petNum(ts(i)) '</TD><TD>' d ...
+                        '</TD><TD>' m '</TD><TD>' pmin '</TD></TR>'];
+        end
+        s{end+1} = '</TABLE>';
+    end
+    s{end+1} = '</HTML>';
+    str = [s{:}];
+end
+
+function s = petStr(v)
+    if isempty(v),       s = 'n/a';
+    elseif ischar(v),    s = v;
+    else,                s = num2str(v);
+    end
+end
+
+function s = petNum(v)
+    if isempty(v) || ~isnumeric(v), s = 'n/a';
+    else,                           s = num2str(v);
+    end
+end
+
+function s = petBool(v)
+    if isempty(v),                  s = 'n/a';
+    elseif islogical(v) || isnumeric(v)
+        if v, s = 'yes'; else, s = 'no'; end
+    elseif ischar(v),               s = v;
+    else,                           s = 'n/a';
+    end
+end
+
+
+%% ===== PET PVC CALLBACK =====
+function PetPvc_Callback(PetFile, sSubject)
+    % Get reference MRI
+    if isfield(sSubject, 'iAnatomy') && ~isempty(sSubject.iAnatomy)
+        MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    else
+        MriFileRef = sSubject.Anatomy(1).FileName;
+    end
+    % Default FWHM from PET metadata (scanner model + recon filter); generic fallback
+    PET = [];
+    try
+        w = load(file_fullpath(PetFile), 'PET');
+        if isfield(w, 'PET'), PET = w.PET; end
+    catch
+    end
+    [defFwhm, fwhmSrc] = pet_helper('ScannerFwhm', PET);
+    % Ask for FWHM (pre-filled from metadata)
+    res = java_dialog('input', ...
+        ['<HTML>PSF FWHM in mm for partial volume correction.<BR>' ...
+         'Default from scanner metadata: <B>' num2str(defFwhm) ' mm</B> &nbsp;(' fwhmSrc ').<BR>' ...
+         'Override only if you know the effective resolution differs.<BR><BR>' ...
+         'PSF FWHM (mm):'], ...
+        'Partial Volume Correction', [], num2str(defFwhm));
+    if isempty(res)
+        return;
+    end
+    fwhm = str2double(res);
+    if isnan(fwhm) || fwhm <= 0
+        bst_error('FWHM must be a positive number.', 'PET PVC');
+        return;
+    end
+    % Run PVC
+    bst_progress('start', 'PET PVC', 'Running partial volume correction...');
+    [MriFilePvc, errMsg] = pet_pvc(PetFile, MriFileRef, fwhm);
+    bst_progress('stop');
+    if ~isempty(errMsg)
+        bst_error(errMsg, 'PET PVC');
+    else
+        disp(['BST> PVC corrected PET saved as: ' MriFilePvc]);
     end
 end
 
