@@ -188,6 +188,14 @@ else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
 
+% PET: capture tracer / timing / scanner metadata into the data model
+% (BIDS JSON sidecar if available, NIfTI header as fallback). This makes the
+% metadata a first-class, inspectable part of the PET volume that all downstream
+% PET steps (windowing, SUVR, surface projection) read from.
+if isPet && ~iscell(MriFile)
+    sMri.PET = pet_helper('ReadMetadata', MriFile, sMri);
+end
+
 
 %% ===== DELETE TEMPORARY FILES =====
 if ~isempty(TmpDir)
