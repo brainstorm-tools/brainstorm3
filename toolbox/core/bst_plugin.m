@@ -215,10 +215,10 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
 
     % === ANATOMY: PETPVE12 ===
     PlugDesc(end+1)              = GetStruct('petpve12');
-    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Version        = 'cdd9748';   % Last commit of GGonEsc/petpve12 (GPL-3.0), 2021-08-18
     PlugDesc(end).Category       = 'Anatomy';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/GGonEsc/petpve12/archive/refs/heads/master.zip';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/GGonEsc/petpve12/archive/cdd97484652b64629a49293556bcfc58ebe89b27.zip';
     PlugDesc(end).URLinfo        = 'https://multimodalneuroimaging.wordpress.com/software/';
     PlugDesc(end).TestFile       = 'tbx_cfg_petpve12.m';
     PlugDesc(end).ReadmeFile     = 'Contents.m';
