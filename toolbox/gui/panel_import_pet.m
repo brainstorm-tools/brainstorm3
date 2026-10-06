@@ -64,7 +64,7 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames, dispRegistration)
     % Smooth
     jPanelSmooth = gui_river([0, 0], [2, 0, 0, 0]);
     jCheckSmooth = gui_component('checkbox', jPanelSmooth, 'br', 'Apply smoothing');
-    jCheckSmooth.setSelected(isMultiFrame);
+    jCheckSmooth.setSelected(0);   % Off by default: smoothing degrades the resolution that PVC must model
     jCheckSmooth.setEnabled(isMultiFrame);
     jPanelFwhm = gui_river([0, 0], [0, 15, 0, 0]);
     jLabelFwhm = gui_component('label', jPanelFwhm, 'br', 'FWHM (mm): ');

@@ -9,6 +9,10 @@ function varargout = pet_helper(varargin)
 %    - [fwhm, src] = pet_helper('ScannerFwhm', PET, defaultFwhm) :
 %        Scanner PSF FWHM (mm) from the scanner model and reconstruction filter
 %        in the PET metadata (fallback: defaultFwhm, 6 mm)
+%    - [fwhm, src] = pet_helper('PsfFwhm', PET)
+%    - [fwhm, src] = pet_helper('PsfFwhm', PET, fwhmScanner) :
+%        Effective PSF FWHM (mm): scanner resolution (fwhmScanner, or stored at import)
+%        and the smoothing recorded in PET.SmoothFwhm, added in quadrature
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -313,4 +317,58 @@ end
 
 function s = local_str(v)
     if ischar(v), s = v; elseif isempty(v), s = ''; else, s = num2str(v); end
+end
+
+
+%% ===== EFFECTIVE PSF =====
+function [fwhm, src] = PsfFwhm(PET, fwhmScanner)
+% Effective PSF FWHM (mm) of a PET volume: scanner resolution + recorded smoothing.
+%
+% The scanner resolution is resolved once at import (ReadMetadata + ScannerFwhm) and
+% stored as PET.PsfFwhm, so that it survives realignment, co-registration and reslicing. Any
+% Gaussian smoothing applied afterwards (import "Apply smoothing", mri_realign FWHM, pet_process
+% SmoothFWHM) is recorded in PET.SmoothFwhm and added in quadrature:
+%
+%     FWHM_eff = sqrt( FWHM_scanner^2 + sum_k FWHM_smooth(k)^2 )
+%
+% USAGE:  [fwhm, src] = pet_helper('PsfFwhm', PET)
+%         [fwhm, src] = pet_helper('PsfFwhm', PET, fwhmScanner)
+%
+% INPUTS:
+%   PET         : sMri.PET metadata struct (may be [] for volumes without metadata).
+%   fwhmScanner : (optional) scanner FWHM in mm given by the user; overrides PET.PsfFwhm.
+%                 The recorded smoothing is still added.
+%
+% OUTPUTS:
+%   fwhm : effective isotropic PSF FWHM in mm.
+%   src  : human-readable provenance string (for the history and the command window).
+%
+% SEE ALSO: ScannerFwhm, ReadMetadata, pet_pvc
+
+    if (nargin < 2), fwhmScanner = []; end
+    % Scanner resolution: user value > value stored at import > lookup now (older files)
+    if ~isempty(fwhmScanner)
+        fwhm0 = double(fwhmScanner(1));
+        src   = sprintf('%.1f mm (user)', fwhm0);
+    elseif isstruct(PET) && isfield(PET, 'PsfFwhm') && ~isempty(PET.PsfFwhm)
+        fwhm0 = double(PET.PsfFwhm(1));
+        if isfield(PET, 'PsfSource') && ~isempty(PET.PsfSource)
+            src = PET.PsfSource;
+        else
+            src = sprintf('%.1f mm (stored at import)', fwhm0);
+        end
+    else
+        [fwhm0, src] = ScannerFwhm(PET);
+    end
+    % Recorded smoothing, added in quadrature
+    fwhm = fwhm0;
+    if isstruct(PET) && isfield(PET, 'SmoothFwhm') && ~isempty(PET.SmoothFwhm)
+        sm = double(PET.SmoothFwhm(:));
+        sm = sm(isfinite(sm) & (sm > 0));
+        if ~isempty(sm)
+            fwhm = sqrt(fwhm0^2 + sum(sm.^2));
+            src  = sprintf('%.2f mm = sqrt(%.1f^2 + smoothing %s^2) [scanner: %s]', ...
+                           fwhm, fwhm0, mat2str(sm'), src);
+        end
+    end
 end
