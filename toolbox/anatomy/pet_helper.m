@@ -239,14 +239,15 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
 % Estimate effective PET image resolution (PSF FWHM, mm) from metadata.
 %
 % BIDS PET (and the NIfTI header) carry NO explicit image-resolution / PSF field,
-% so the effective in-brain FWHM is INFERRED from the scanner MODEL (a curated
-% lookup of published effective resolutions) combined with any applied
+% so the FWHM is INFERRED from the scanner MODEL (a curated lookup of the published
+% NEMA spatial resolution, matched exactly on the model name) combined with any applied
 % reconstruction Gaussian post-filter (ReconFilterType / ReconFilterSize). When the
 % scanner cannot be identified from the metadata, a generic fallback (~6 mm, typical
 % clinical PET) is returned so partial-volume correction still has a sane default.
 %
-% The lookup values are approximate published effective in-brain resolutions and are
-% meant as sensible defaults; pass an explicit FWHM to pet_pvc to override.
+% The lookup values are published NEMA resolutions (references in the table below) and
+% are meant as sensible defaults; pass an explicit FWHM to pet_pvc to override.
+% Smoothing applied after reconstruction is NOT included here: see PsfFwhm.
 %
 % USAGE:  [fwhm, src] = pet_helper('ScannerFwhm', PET)
 %         [fwhm, src] = pet_helper('ScannerFwhm', PET, defaultFwhm)
@@ -259,7 +260,7 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
 %   fwhm : estimated isotropic PSF FWHM in mm.
 %   src  : human-readable provenance string (for logging / GUI).
 %
-% SEE ALSO: ReadMetadata, pet_pvc
+% SEE ALSO: PsfFwhm, ReadMetadata, pet_pvc
 
     if (nargin < 2) || isempty(defaultFwhm), defaultFwhm = 6; end
     fwhm = defaultFwhm;
@@ -269,28 +270,36 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
         return;
     end
     model = local_str(local_getf(PET.Scanner, 'Model'));
-    manuf = local_str(local_getf(PET.Scanner, 'Manufacturer'));
-    hay   = lower([model ' ' manuf]);
+    % Exact matching on the normalized model name (lower case, letters and digits only), so that
+    % a short key cannot match an unrelated scanner (e.g. "mct" inside another model name).
+    key = lower(regexprep(model, '[^a-zA-Z0-9]', ''));
 
-    % Curated scanner -> intrinsic effective in-brain FWHM (mm). Order specific->general;
-    % first matching key wins. Values are approximate published figures.
+    % Curated scanner -> intrinsic resolution (mm): NEMA NU-2 transaxial spatial resolution
+    % (FWHM at 1 cm from the centre of the field of view), from the published performance
+    % evaluation of each system. The effective in-brain resolution of a reconstructed image
+    % can be worse (reconstruction, motion); pass an explicit FWHM to override.
+    %  - HRRT: de Jong et al. (2007), Phys Med Biol 52:1505-1526
+    %  - Biograph Vision: van Sluis et al. (2019), J Nucl Med 60:1031-1036
+    %  - Biograph mMR: Delso et al. (2011), J Nucl Med 52:1914-1922
+    %  - Biograph mCT: Jakoby et al. (2011), Phys Med Biol 56:2375-2389
+    %  - Discovery MI: Hsu et al. (2017), J Nucl Med 58:1511-1518
+    %  - SIGNA PET/MR: Grant et al. (2016), Med Phys 43:2334-2343
+    %  - Vereos: Zhang et al. (2018), EJNMMI Res 8:97
     tbl = { ...
-        {'hrrt','high-resolution research','high resolution research'}, 2.5; ...
-        {'vision quadra','biograph vision','vision'},                   3.6; ...
-        {'biograph mmr','mmr'},                                         4.3; ...
-        {'biograph mct','mct'},                                         4.4; ...
-        {'discovery mi','dmi'},                                         4.2; ...
-        {'discovery'},                                                  5.0; ...
-        {'signa'},                                                      4.4; ...
-        {'vereos'},                                                     4.0; ...
-        {'biograph'},                                                   4.4; ...
-        {'ecat'},                                                       6.0  ...
+        'HRRT',            {'hrrt', 'ecathrrt', 'highresolutionresearchtomograph'},                     2.5; ...
+        'Biograph Vision', {'biographvision', 'biographvision600', 'biographvisionquadra'},             3.6; ...
+        'Biograph mMR',    {'biographmmr', 'mmr'},                                                      4.3; ...
+        'Biograph mCT',    {'biographmct', 'biograph128mct', 'biograph64mct', 'biographmctflow', 'mct'}, 4.4; ...
+        'Discovery MI',    {'discoverymi', 'discoverymidr'},                                            4.2; ...
+        'SIGNA PET/MR',    {'signapetmr', 'signa'},                                                     4.4; ...
+        'Vereos',          {'vereos', 'vereospetct'},                                                   4.0  ...
     };
     intr = []; label = '';
-    for i = 1:size(tbl,1)
-        keys = tbl{i,1};
-        if any(cellfun(@(k) ~isempty(strfind(hay, k)), keys)) %#ok<STREMP>
-            intr = tbl{i,2}; label = upper(keys{1}); break;
+    if ~isempty(key)
+        for i = 1:size(tbl,1)
+            if ismember(key, tbl{i,2})
+                intr = tbl{i,3}; label = tbl{i,1}; break;
+            end
         end
     end
     if isempty(intr)
