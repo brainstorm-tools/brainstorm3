@@ -10,14 +10,20 @@ function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, 
 %   - doProject : Logical, true to project PET to surface, false otherwise
 %   - pvcOpts   : (optional) Structure controlling PVC / smoothing / SUVR (see pet_pvc.m).
 %                  If provided, PVC is applied before SUVR rescaling. Fields:
-%                  .method     'mg' (default, Mueller-Gartner via pet_pvc) | 'gtm' (pet_pvc>ComputeGtm) |
+%                  .method     'gtm' (default, pet_pvc>ComputeGtm) | 'mg' (Muller-Gartner, PETPVE12) |
 %                              'none' (SKIP PVC).
-%                  .fwhm       PSF FWHM in mm for PVC (auto from scanner metadata if omitted).
-%                  .SmoothFWHM Gaussian volume smoothing FWHM (mm) applied BEFORE SUVR (default 0).
-%                  .SuvrOpts   struct passed to ComputeSuvr (e.g. struct('Erode',0,'Robust','mean')).
+%                  .fwhm       scanner PSF FWHM in mm for PVC ([] or omitted: stored at import
+%                              from the scanner metadata, 6 mm if unknown). Recorded smoothing
+%                              is added in quadrature (pet_helper('PsfFwhm')).
+%                  .SmoothFWHM Gaussian volume smoothing FWHM (mm) applied AFTER PVC and
+%                              BEFORE SUVR (default 0). Recorded in PET.SmoothFwhm.
+%                  .SuvrOpts   struct passed to ComputeSuvr. Default: robust reference (1-voxel
+%                              erosion + 10% trimmed mean). struct('Reference','plain') gives
+%                              the previous behaviour (plain mean over the region, mri_rescale).
+%                  The intermediate PVC volume is kept in the database ("| PVC GTM <fwhm>mm").
 %
 %                  VLPP-STYLE (non-PVC, smoothed) run: pvcOpts = struct('method','none',
-%                  'SmoothFWHM',6, 'SuvrOpts',struct('Erode',0,'Robust','mean')). This reproduces
+%                  'SmoothFWHM',6, 'SuvrOpts',struct('Reference','plain')). This reproduces
 %                  the Villeneuve Lab PET pipeline (smooth + plain-reference SUVR, no PVC):
 %                  https://github.com/villeneuvelab/vlpp
 %
@@ -82,7 +88,7 @@ try
 
     % --- Partial Volume Correction (before SUVR) ---
     % pvcOpts.method='none' SKIPS PVC (e.g. a VLPP-style non-PVC smoothed pipeline, see header
-    % + https://github.com/villeneuvelab/vlpp). 'mg' (default) -> pet_pvc; 'gtm' -> pet_pvc>ComputeGtm.
+    % + https://github.com/villeneuvelab/vlpp). 'gtm' (default) or 'mg': pet_pvc.
     doPvc = ~isempty(pvcOpts) && ~(isfield(pvcOpts,'method') && strcmpi(pvcOpts.method,'none'));
     if doPvc
         % Get reference MRI for tissue segmentation
@@ -110,6 +116,11 @@ try
     if ~isempty(pvcOpts) && isfield(pvcOpts,'SmoothFWHM') && ~isempty(pvcOpts.SmoothFWHM) && any(pvcOpts.SmoothFWHM(:) > 0)
         sMri.Cube = local_gauss3(double(sMri.Cube(:,:,:,1)), pvcOpts.SmoothFWHM, sMri.Voxsize);
         sMri = bst_history('add', sMri, 'smooth', sprintf('Gaussian volume smoothing FWHM=%g mm', pvcOpts.SmoothFWHM(1)));
+        % Record the smoothing so that a later PVC of this volume adds it to the PSF
+        if isfield(sMri, 'PET') && isstruct(sMri.PET)
+            if ~isfield(sMri.PET, 'SmoothFwhm'), sMri.PET.SmoothFwhm = []; end
+            sMri.PET.SmoothFwhm(end+1) = pvcOpts.SmoothFWHM(1);
+        end
         smoothTag = sprintf('_smooth%g', pvcOpts.SmoothFWHM(1));
     end
 
@@ -199,11 +210,7 @@ try
         % Use the subject's name as the condition
         Condition = 'PET';
         DisplayUnits = '';
-        % Mid-centered depth profile [white mid pial] = [0.1 0.8 0.1]. A synthetic
-        % surface-recovery benchmark shows a mid-dominant sample recovers cortical uptake best and is least sensitive to
-        % cortical thickness, whereas a pial- or white-skewed profile pulls in CSF or
-        % white-matter signal (the latter was the old reversed-order bug).
-        ProjFrac = [0.1 0.8 0.1];
+        ProjFrac = [0.1 0.4 0.5];
         [SurfaceFileOut, errProj] = mri_interp_vol2tess(MriFileOut, refMriFile, Condition, DisplayUnits, ProjFrac);
         if ~isempty(errProj)
             errMsg = ['PET processed, but projection failed: ', errProj];
@@ -252,9 +259,15 @@ function [sMriSuvr, info] = ComputeSuvr(sMriPet, sAseg, Opts)
 %   sMriPet : (PVC'd) static PET MRI struct, resliced to the anatomy grid.
 %   sAseg   : ASEG volume atlas struct (.Cube of integer labels) on the same grid. May be []
 %             if Opts.RefMask is supplied.
-%   Opts    : .RefMask (precomputed binary reference mask; overrides RefLabels/sAseg)
+%   Opts    : .Reference 'robust' (default) | 'plain'
+%                 'robust': reference = 10% trimmed mean of the reference region eroded by
+%                           1 voxel (positive finite voxels only). DEFAULT since this version.
+%                 'plain' : reference = plain mean of all voxels of the region, no erosion:
+%                           the previous behaviour (mri_rescale), for backward compatibility.
+%             .RefMask (precomputed binary reference mask; overrides RefLabels/sAseg)
 %             .RefLabels (default [8 47]) .Erode (voxels, 1) .Robust ('trim'|'mean'|'median')
-%             .TrimPct (each-tail fraction for 'trim', 0.10).
+%             .TrimPct (each-tail fraction for 'trim', 0.10). Erode/Robust/TrimPct apply
+%             to 'robust' only.
 %
 % OUTPUTS:
 %   sMriSuvr : SUVR volume (Cube ./ reference), Comment/History updated.
@@ -263,15 +276,17 @@ function [sMriSuvr, info] = ComputeSuvr(sMriPet, sAseg, Opts)
 % SEE ALSO: pet_process, pet_pvc, mri_rescale
 
     if (nargin<3)||isempty(Opts), Opts=struct(); end
-    Def=struct('RefMask',[],'RefLabels',[8 47],'Erode',1,'Robust','trim','TrimPct',0.10);
+    Def=struct('Reference','robust','RefMask',[],'RefLabels',[8 47],'Erode',1,'Robust','trim','TrimPct',0.10);
     fn=fieldnames(Def); for i=1:numel(fn), if ~isfield(Opts,fn{i}), Opts.(fn{i})=Def.(fn{i}); end; end
 
     cube = double(sMriPet.Cube(:,:,:,1));
     % Reference mask: precomputed (any region, from the caller) or built from ASEG labels.
     if ~isempty(Opts.RefMask)
         mask = logical(Opts.RefMask);
+        refDesc = 'mask';
     elseif ~isempty(sAseg)
         mask = ismember(sAseg.Cube, Opts.RefLabels);
+        refDesc = ['labels ' mat2str(Opts.RefLabels)];
     else
         error('pet_process:SuvrRef', 'Provide Opts.RefMask, or sAseg + Opts.RefLabels.');
     end
@@ -279,12 +294,22 @@ function [sMriSuvr, info] = ComputeSuvr(sMriPet, sAseg, Opts)
         error('pet_process:SuvrGrid', 'PET grid %s != reference mask grid %s (reslice PET to anatomy first).', ...
               mat2str(size(cube)), mat2str(size(mask)));
     end
-    er = mask; for k=1:Opts.Erode, er = local_erode(er); end
-    if nnz(er) < 50, er = mask; end                      % erosion too aggressive -> fall back
-
-    vals = cube(er); vals = vals(isfinite(vals) & vals>0);
-    if isempty(vals)
-        error('pet_process:SuvrEmptyref', 'Reference region contains no positive finite PET values.');
+    isPlain = strcmpi(Opts.Reference, 'plain');
+    if isPlain
+        % Backward compatible: plain mean over the whole region (as mri_rescale)
+        er = mask;
+        vals = cube(mask);
+        if isempty(vals) || all(vals == 0) || ~all(isfinite(vals))
+            error('pet_process:SuvrEmptyref', 'Reference region is empty, all zero or not finite.');
+        end
+        Opts.Erode = 0; Opts.Robust = 'mean';
+    else
+        er = mask; for k=1:Opts.Erode, er = local_erode(er); end
+        if nnz(er) < 50, er = mask; end                  % erosion too aggressive -> fall back
+        vals = cube(er); vals = vals(isfinite(vals) & vals>0);
+        if isempty(vals)
+            error('pet_process:SuvrEmptyref', 'Reference region contains no positive finite PET values.');
+        end
     end
     vs = sort(vals); t = round(Opts.TrimPct*numel(vs));
     if (2*t >= numel(vs)), t = 0; end                    % too few voxels to trim
@@ -299,12 +324,12 @@ function [sMriSuvr, info] = ComputeSuvr(sMriPet, sAseg, Opts)
     sMriSuvr.Cube = double(sMriPet.Cube) ./ ref;         % double: an integer cube would round the SUVR
     sMriSuvr.Comment = [sMriPet.Comment '_suvr'];
     sMriSuvr = bst_history('add', sMriSuvr, 'suvr', sprintf( ...
-        'SUVR ref=%.4g (labels %s, erode %d, %s); mask %d->%d vox', ...
-        ref, mat2str(Opts.RefLabels), Opts.Erode, Opts.Robust, nnz(mask), nnz(er)));
+        'SUVR ref=%.4g (%s reference, %s, erode %d, %s); mask %d->%d vox', ...
+        ref, lower(Opts.Reference), refDesc, Opts.Erode, Opts.Robust, nnz(mask), nnz(er)));
 
     info = struct('RefValue',ref,'nVoxMask',nnz(mask),'nVoxEroded',nnz(er), ...
                   'RefMean',mean(vals),'RefMedian',median(vals),'RefTrim',refTrim, ...
-                  'Erode',Opts.Erode,'Robust',Opts.Robust);
+                  'Erode',Opts.Erode,'Robust',Opts.Robust,'Reference',lower(Opts.Reference));
 end
 
 function e = local_erode(m)

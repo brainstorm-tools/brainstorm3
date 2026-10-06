@@ -77,17 +77,26 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     if ~isempty(idxCerebellum)
         jComboROI.setSelectedIndex(idxCerebellum - 1); % Java indices start at 0
     end
+    % --- Reference estimator ---
+    gui_component('label', jPanelRescale, 'br', 'Reference:');
+    jComboRef = gui_component('combobox', jPanelRescale, 'tab', [], ...
+        {{'Robust (1-voxel erosion, 10% trimmed mean)', 'Plain mean (as in previous versions)'}});
 
     % ==== PVC PANEL ====
     jPanelPvc = gui_river([2, 2], [0, 10, 10, 10], 'Partial volume correction');
-    gui_component('label', jPanelPvc, 'br', ...
-        sprintf('<HTML><FONT color="#777777">%s</FONT><BR></HTML>', '(Muller-Gartner method, requires SPM12 + PETPVE12)'));
     jCheckPvc = gui_component('checkbox', jPanelPvc, 'br', 'Apply PVC');
     jCheckPvc.setSelected(false);
-    % PSF FWHM
-    jLabelFwhm = gui_component('label', jPanelPvc, 'br', 'PSF FWHM (mm):');
-    jTextFwhm = gui_component('text', jPanelPvc, 'tab', '6');
+    % Method: GTM (default, no plugin) or Muller-Gartner (SPM12 + PETPVE12)
+    jLabelMethod = gui_component('label', jPanelPvc, 'br', 'Method:');
+    jComboMethod = gui_component('combobox', jPanelPvc, 'tab', [], ...
+        {{'GTM (regional, Desikan-Killiany)', 'Muller-Gartner (requires SPM12 + PETPVE12)'}});
+    jLabelMethod.setEnabled(false);
+    jComboMethod.setEnabled(false);
+    % PSF FWHM: "auto" = stored at import from the scanner metadata (6 mm if unknown)
+    jLabelFwhm = gui_component('label', jPanelPvc, 'br', 'Scanner PSF FWHM (mm):');
+    jTextFwhm = gui_component('text', jPanelPvc, 'tab', 'auto');
     jTextFwhm.setPreferredSize(java.awt.Dimension(50, 22));
+    jTextFwhm.setToolTipText('<HTML>"auto": from the scanner metadata stored at import (6 mm if unknown).<BR>Recorded smoothing is added in quadrature.');
     jLabelFwhm.setEnabled(false);
     jTextFwhm.setEnabled(false);
     % CSF zeroing
@@ -116,7 +125,10 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
     jPanelPvc.add('br', jPanelAdvanced);
     % Callbacks: PVC checkbox enables/disables all PVC controls
     java_setcb(jCheckPvc, 'ActionPerformedCallback', @(h, ev)PvcCheckChanged_Callback( ...
-        jCheckPvc, jLabelFwhm, jTextFwhm, jCheckCsfZero, jCheckAdvanced, jPanelAdvanced, ...
+        jCheckPvc, jLabelMethod, jComboMethod, jLabelFwhm, jTextFwhm, jCheckCsfZero, jCheckAdvanced, jPanelAdvanced, ...
+        jLabelGmThresh, jTextGmThresh, jLabelWmMethod, jComboWmMethod, jLabelWmThresh, jTextWmThresh));
+    java_setcb(jComboMethod, 'ActionPerformedCallback', @(h, ev)PvcCheckChanged_Callback( ...
+        jCheckPvc, jLabelMethod, jComboMethod, jLabelFwhm, jTextFwhm, jCheckCsfZero, jCheckAdvanced, jPanelAdvanced, ...
         jLabelGmThresh, jTextGmThresh, jLabelWmMethod, jComboWmMethod, jLabelWmThresh, jTextWmThresh));
     % Callback: Advanced toggle shows/hides advanced panel
     java_setcb(jCheckAdvanced, 'ActionPerformedCallback', @(h, ev)jPanelAdvanced.setVisible(jCheckAdvanced.isSelected()));
@@ -170,7 +182,9 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
                'jComboROIMask',  jComboROIMask, ...
                'jCheckMask',     jCheckMask, ...
                'jCheckProject',  jCheckProject, ...
+               'jComboRef',      jComboRef, ...
                'jCheckPvc',      jCheckPvc, ...
+               'jComboMethod',   jComboMethod, ...
                'jTextFwhm',      jTextFwhm, ...
                'jCheckCsfZero',  jCheckCsfZero, ...
                'jCheckAdvanced', jCheckAdvanced, ...
@@ -217,13 +231,27 @@ function ButtonOK_Callback(panelName)
     doPvc         = ctrl.jCheckPvc.isSelected();
 
     % Gather PVC options
-    pvcOpts = struct();
+    pvcOpts = struct('method', 'none');
+    if (ctrl.jComboRef.getSelectedIndex() == 1)
+        pvcOpts.SuvrOpts = struct('Reference', 'plain');
+    else
+        pvcOpts.SuvrOpts = struct('Reference', 'robust');
+    end
     if doPvc
+        if (ctrl.jComboMethod.getSelectedIndex() == 1)
+            pvcOpts.method = 'mg';
+        else
+            pvcOpts.method = 'gtm';
+        end
         fwhmStr = strtrim(char(ctrl.jTextFwhm.getText()));
-        pvcOpts.fwhm = str2double(fwhmStr);
-        if isnan(pvcOpts.fwhm) || pvcOpts.fwhm <= 0
-            bst_error('PSF FWHM must be a positive number.', 'PET Processing');
-            return;
+        if isempty(fwhmStr) || strcmpi(fwhmStr, 'auto')
+            pvcOpts.fwhm = [];
+        else
+            pvcOpts.fwhm = str2double(fwhmStr);
+            if isnan(pvcOpts.fwhm) || pvcOpts.fwhm <= 0
+                bst_error('PSF FWHM must be a positive number, or "auto".', 'PET Processing');
+                return;
+            end
         end
         pvcOpts.csfZeroing  = ctrl.jCheckCsfZero.isSelected();
         pvcOpts.gmThresh    = str2double(char(ctrl.jTextGmThresh.getText()));
@@ -244,11 +272,7 @@ function ButtonOK_Callback(panelName)
         end
 
         % Call pet_process pipeline with PVC and projection options
-        if doPvc
-            [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject, pvcOpts);
-        else
-            [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject);
-        end
+        [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, atlas, roi, maskROI, isMaskChecked, doProject, pvcOpts);
 
         if ~isempty(errMsg)
             bst_error(errMsg, 'PET Processing');
@@ -266,12 +290,16 @@ function ButtonOK_Callback(panelName)
 end
 
 %% ===== CALLBACK: PVC checkbox changed =====
-function PvcCheckChanged_Callback(jCheckPvc, jLabelFwhm, jTextFwhm, jCheckCsfZero, ...
+function PvcCheckChanged_Callback(jCheckPvc, jLabelMethod, jComboMethod, jLabelFwhm, jTextFwhm, jCheckCsfZero, ...
         jCheckAdvanced, jPanelAdvanced, jLabelGmThresh, jTextGmThresh, ...
         jLabelWmMethod, jComboWmMethod, jLabelWmThresh, jTextWmThresh)
-    isEnabled = jCheckPvc.isSelected();
-    jLabelFwhm.setEnabled(isEnabled);
-    jTextFwhm.setEnabled(isEnabled);
+    isPvc = jCheckPvc.isSelected();
+    jLabelMethod.setEnabled(isPvc);
+    jComboMethod.setEnabled(isPvc);
+    jLabelFwhm.setEnabled(isPvc);
+    jTextFwhm.setEnabled(isPvc);
+    % Muller-Gartner options: only for the Muller-Gartner method
+    isEnabled = isPvc && (jComboMethod.getSelectedIndex() == 1);
     jCheckCsfZero.setEnabled(isEnabled);
     jCheckAdvanced.setEnabled(isEnabled);
     if ~isEnabled
