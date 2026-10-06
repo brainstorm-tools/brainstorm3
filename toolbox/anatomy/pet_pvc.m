@@ -1,13 +1,15 @@
-function [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
-% PET_PVC: Partial volume correction for PET volumes using PETPVE12 (Muller-Gartner method).
+function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
+% PET_PVC: Partial volume correction for PET volumes (GTM, or Muller-Gartner with PETPVE12).
 %
 % USAGE:
 %   [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm)
-%   [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
+%   [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, pvcOpts)
 %
 % DESCRIPTION:
-%   Performs partial volume correction on a PET volume using the Muller-Gartner
-%   method implemented in PETPVE12. The function:
+%   Two methods, selected with pvcOpts.method:
+%   - 'gtm' (DEFAULT): Rousset geometric transfer matrix on the subject's parcellation,
+%     native Brainstorm code, no plugin needed (see ComputeGtm). Regional values: regTable.
+%   - 'mg': voxelwise Muller-Gartner method implemented in PETPVE12. The function:
 %     1. Exports the reference MRI to NIfTI in a temp directory
 %     2. Runs SPM Segment on the MRI to produce probabilistic tissue maps (c1, c2, c3)
 %     3. Exports the PET volume to NIfTI in the same temp directory
@@ -18,8 +20,13 @@ function [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm, pvcO
 % INPUTS:
 %   - PetFile    : PET MRI file to correct (Brainstorm relative path)
 %   - MriFileRef : Reference MRI file for tissue segmentation (Brainstorm relative path)
-%   - fwhm       : PSF FWHM in mm (scalar or [x y z] vector)
+%   - fwhm       : scanner PSF FWHM in mm (scalar), or [] to use the value stored with the
+%                  PET at import (PET.PsfFwhm; 6 mm when the scanner was not identified).
+%                  Smoothing recorded in PET.SmoothFwhm is added in quadrature (pet_helper('PsfFwhm')).
 %   - pvcOpts    : (optional) Structure with additional PVC options:
+%       .method      : 'gtm' (default) | 'mg'
+%       (GTM)          .AtlasComment, .minVox: see ComputeGtm
+%       (Muller-Gartner):
 %       .gmThresh    : GM threshold for masking (default: 0.5)
 %       .csfZeroing  : If 1, assume CSF signal = 0 (default: 1)
 %       .wmcsfMethod : WM/CSF constant estimation method (default: 'threshold')
@@ -30,8 +37,9 @@ function [MriFilePvc, errMsg, fileTag] = pet_pvc(PetFile, MriFileRef, fwhm, pvcO
 %   - MriFilePvc : Relative path to the PVC-corrected PET file in Brainstorm DB
 %   - errMsg     : Error message, if any
 %   - fileTag    : File tag used for output file
+%   - regTable   : GTM only: regional observed and corrected values (see ComputeGtm)
 %
-% REQUIRES:
+% REQUIRES (Muller-Gartner only):
 %   - SPM12 plugin (for tissue segmentation)
 %   - PETPVE12 plugin (for Muller-Gartner PVC)
 
@@ -60,35 +68,46 @@ MriFilePvc = [];
 errMsg = '';
 fileTag = '_pvc';
 
+regTable = [];
 % ===== PARSE INPUTS =====
-if nargin < 3 || isempty(fwhm)
-    % No FWHM supplied: derive it from the PET metadata (scanner model + recon
-    % filter), falling back to a generic clinical value if the scanner is unknown.
-    PET = [];
-    try
-        w = load(file_fullpath(PetFile), 'PET');
-        if isfield(w, 'PET'), PET = w.PET; end
-    catch
-    end
-    [fwhm, fwhmSrc] = pet_helper('ScannerFwhm', PET);
-    fprintf('BST> PET PVC: PSF FWHM = %.1f mm [%s]\n', fwhm, fwhmSrc);
+if (nargin < 3)
+    fwhm = [];
 end
-% Expand scalar FWHM to 3D vector
-if isscalar(fwhm)
-    fwhm = [fwhm fwhm fwhm];
-end
-% Default PVC options
-if nargin < 4 || isempty(pvcOpts)
-    pvcOpts = struct();
-end
-% ===== METHOD DISPATCH =====
-% GTM (regional Rousset) is a native path - corrects all regions, needs neither SPM nor
-% PETPVE12 (uses the subject's parcellation directly). MG (default) continues below.
-if isfield(pvcOpts, 'method') && strcmpi(pvcOpts.method, 'gtm')
-    [MriFilePvc, errMsg] = ComputeGtm(PetFile, fwhm, pvcOpts);
-    fileTag = '_gtmpvc';
+if ~isempty(fwhm) && (~isnumeric(fwhm) || any(~isfinite(fwhm(:))) || any(fwhm(:) <= 0))
+    errMsg = 'PSF FWHM must be a positive number (mm).';
     return;
 end
+% Default PVC options
+if (nargin < 4) || isempty(pvcOpts)
+    pvcOpts = struct();
+end
+if ~isfield(pvcOpts, 'method') || isempty(pvcOpts.method)
+    pvcOpts.method = 'gtm';
+end
+% ===== METHOD DISPATCH =====
+% GTM (regional Rousset, default) is a native path - corrects all regions, needs neither SPM
+% nor PETPVE12 (uses the subject's parcellation directly). It resolves the PSF itself.
+switch lower(pvcOpts.method)
+    case 'gtm'
+        [MriFilePvc, errMsg, regTable] = ComputeGtm(PetFile, fwhm, pvcOpts);
+        fileTag = '_gtmpvc';
+        return;
+    case 'mg'
+        % Continue below
+    otherwise
+        errMsg = ['Unknown PVC method: ' pvcOpts.method];
+        return;
+end
+% Effective PSF: scanner resolution (given, or stored at import) + recorded smoothing
+PET = [];
+try
+    w = load(file_fullpath(PetFile), 'PET');
+    if isfield(w, 'PET'), PET = w.PET; end
+catch
+end
+[fwhm, fwhmSrc] = pet_helper('PsfFwhm', PET, fwhm);
+fprintf('BST> PET PVC: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
+fwhm = [fwhm fwhm fwhm];
 if ~isfield(pvcOpts, 'gmThresh')    || isempty(pvcOpts.gmThresh),    pvcOpts.gmThresh    = 0.5;         end
 if ~isfield(pvcOpts, 'csfZeroing')  || isempty(pvcOpts.csfZeroing),  pvcOpts.csfZeroing  = 1;           end
 if ~isfield(pvcOpts, 'wmcsfMethod') || isempty(pvcOpts.wmcsfMethod), pvcOpts.wmcsfMethod = 'threshold'; end
@@ -244,6 +263,9 @@ try
     sMriPvc.SCS    = sMriPet.SCS;
     sMriPvc.NCS    = sMriPet.NCS;
     sMriPvc.Header = sMriPet.Header;
+    if isfield(sMriPet, 'PET')
+        sMriPvc.PET = sMriPet.PET;
+    end
 
     % ===== CLEAN UP TEMP DIRECTORY =====
     file_delete(TmpDir, 1, 1);
@@ -265,10 +287,10 @@ try
     MriFilePvcFull = file_unique(fullfile(folder, [newBase, ext]));
     MriFilePvc = file_short(MriFilePvcFull);
     % Update comment
-    sMriPvc.Comment = file_unique([sMriPet.Comment, fileTag], {sSubject.Anatomy.Comment});
+    sMriPvc.Comment = file_unique(sprintf('%s | PVC MG %.1fmm', sMriPet.Comment, fwhm(1)), {sSubject.Anatomy.Comment});
     % Add history entry
     sMriPvc = bst_history('add', sMriPvc, 'pvc', ...
-        sprintf('Partial volume correction (Muller-Gartner, FWHM=[%g %g %g]mm)', fwhm(1), fwhm(2), fwhm(3)));
+        sprintf('Partial volume correction (Muller-Gartner, FWHM=%.2fmm [%s])', fwhm(1), fwhmSrc));
     % Save new MRI in Brainstorm format
     sMriPvc = out_mri_bst(sMriPvc, MriFilePvcFull);
     % Register new MRI in subject
@@ -322,20 +344,30 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
 %
 % INPUTS:
 %   PetFile : static (3D) PET volume in the Brainstorm DB.
-%   fwhm    : PSF FWHM in mm (scalar). [] -> derived from PET metadata (pet_helper('ScannerFwhm')).
-%   gtmOpts : (optional) .AtlasComment (default 'Desikan-Killiany'), .minVox (default 50).
+%   fwhm    : scanner PSF FWHM in mm (scalar). [] -> from the PET metadata (PET.PsfFwhm, stored
+%             at import). Smoothing recorded in PET.SmoothFwhm is added in quadrature
+%             (pet_helper('PsfFwhm')).
+%   gtmOpts : (optional) .AtlasComment (default 'Desikan-Killiany'), .minVox (default 50):
+%             labels smaller than minVox voxels are merged into one "brain rest" region.
+%
+% NOTES:
+%   - Voxels where the PET is not finite (outside the PET field of view) are excluded from
+%     the regional means and are NaN in the output.
+%   - Computing W takes one 3D Gaussian convolution per region: about one minute for the
+%     ~100 regions of Desikan-Killiany on a 256^3 grid; finer atlases scale linearly.
 %
 % OUTPUTS:
 %   MriFileGtm : relative path to the corrected (piecewise-constant) volume node.
 %   errMsg     : error message, if any.
-%   regTable   : struct with .id .nvox .observed .corrected (per region).
+%   regTable   : struct with .id .name .nvox .observed .corrected (per region). Special ids:
+%                -1 extracerebral (or rest, without scalp), -2 air, -3 brain rest (small labels).
 %
 % SEE ALSO: pet_pvc, pet_helper
 %
 % Reference: Rousset OG, Ma Y, Evans AC. Correction for partial volume effects in PET:
 %            principle and validation. J Nucl Med 1998;39:904-911.
 
-    MriFileGtm = ''; errMsg = ''; regTable = struct('id',{},'nvox',{},'observed',{},'corrected',{});
+    MriFileGtm = ''; errMsg = ''; regTable = struct('id',{},'name',{},'nvox',{},'observed',{},'corrected',{});
     if (nargin < 2), fwhm = []; end
     if (nargin < 3) || isempty(gtmOpts), gtmOpts = struct(); end
     if ~isfield(gtmOpts,'AtlasComment') || isempty(gtmOpts.AtlasComment), gtmOpts.AtlasComment = 'Desikan-Killiany'; end
@@ -358,18 +390,25 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         if ~isequal(size(L), cubeSize), error('Parcellation grid does not match PET grid.'); end
 
         % ----- PSF -----
-        if isempty(fwhm)
-            PET = []; try w = load(file_fullpath(PetFile),'PET'); if isfield(w,'PET'), PET = w.PET; end; catch; end
-            [fwhm, fwhmSrc] = pet_helper('ScannerFwhm', PET);
-            fprintf('BST> PET GTM: PSF FWHM = %.1f mm [%s]\n', fwhm, fwhmSrc);
+        if ~isempty(fwhm) && (any(~isfinite(fwhm(:))) || any(fwhm(:) <= 0))
+            error('PSF FWHM must be a positive number (mm).');
         end
-        if isscalar(fwhm), fwhm = [fwhm fwhm fwhm]; end
-        if any(~isfinite(fwhm)) || any(fwhm <= 0), error('PSF FWHM must be a positive number (mm).'); end
+        PET = [];
+        if isfield(sMriPet, 'PET'), PET = sMriPet.PET; end
+        [fwhm, fwhmSrc] = pet_helper('PsfFwhm', PET, fwhm);
+        fprintf('BST> PET GTM: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
+        fwhm = [fwhm fwhm fwhm];
+        isFov = isfinite(pet);                       % outside the PET field of view: excluded
 
         % ----- regions (complete partition: labels >= minVox, everything else -> "rest" id 0) -----
         bst_progress('text', 'Building GTM regions...');
         ids = unique(L(:)); ids = ids(ids ~= 0);
         keep = ids(arrayfun(@(id) nnz(L==id) >= gtmOpts.minVox, ids));
+        small = setdiff(ids, keep);
+        if ~isempty(small)                           % small labels -> one "brain rest" region
+            keep = [keep(:); -3];
+            L(ismember(L, small)) = -3;
+        end
         nKeep = numel(keep);
         Lr = zeros(cubeSize);                        % relabelled: 1..nKeep = kept brain regions
         for r = 1:nKeep, Lr(L==keep(r)) = r; end
@@ -391,13 +430,17 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
             R = nKeep + 1;
             fprintf('BST> PET GTM: no scalp surface -> single rest region (extracerebral not modeled).\n');
         end
-        idx = cell(R,1); n = zeros(R,1);
-        for i = 1:R, idx{i} = find(Lr==i); n(i) = numel(idx{i}); end
+        idx = cell(R,1); idxAll = cell(R,1); n = zeros(R,1);
+        for i = 1:R
+            idxAll{i} = find(Lr==i);                 % all voxels: source of spill-over
+            idx{i} = idxAll{i}(isFov(idxAll{i}));    % voxels in the field of view: averaged
+            n(i) = numel(idx{i});
+        end
         % Drop empty regions (e.g. no air voxels when the head fills the field of view):
         % an empty region gives a 0/0 mean and turns the whole solution into NaN.
         isEmptyReg = (n == 0);
         if any(isEmptyReg)
-            idx(isEmptyReg) = []; n(isEmptyReg) = []; regIds(isEmptyReg) = []; R = numel(n);
+            idx(isEmptyReg) = []; idxAll(isEmptyReg) = []; n(isEmptyReg) = []; regIds(isEmptyReg) = []; R = numel(n);
         end
 
         % ----- GTM matrix + observed means -----
@@ -405,7 +448,7 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         W = zeros(R,R); m = zeros(R,1);
         for i = 1:R, m(i) = sum(pet(idx{i})) / n(i); end
         for j = 1:R
-            mj = zeros(cubeSize); mj(idx{j}) = 1;
+            mj = zeros(cubeSize); mj(idxAll{j}) = 1;
             hrj = local_gauss3(mj, fwhm, voxsize);
             for i = 1:R, W(i,j) = sum(hrj(idx{i})) / n(i); end
         end
@@ -422,29 +465,22 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         % ----- piecewise-constant corrected volume -----
         Cout = zeros(cubeSize, 'single');
         for i = 1:R, Cout(idx{i}) = t(i); end
+        Cout(~isFov) = NaN;
         sGtm = sMriPet;                              % inherit geometry (same grid -> aligned)
         sGtm.Cube = Cout;
+        if isfield(sGtm, 'Histogram'), sGtm.Histogram = []; end   % recomputed on display
 
         % ----- region table -----
         for i = 1:R
-            regTable(i) = struct('id', regIds(i), 'nvox', n(i), 'observed', m(i), 'corrected', t(i)); %#ok<AGROW>
+            regTable(i) = struct('id', regIds(i), 'name', local_regname(regIds(i), sAtl, headMask), ...
+                                 'nvox', n(i), 'observed', m(i), 'corrected', t(i)); %#ok<AGROW>
         end
 
         % ----- save as anatomy node -----
-        fileTag = '_gtmpvc';
-        sGtm.Comment = file_unique([sMriPet.Comment fileTag], {sSubject.Anatomy.Comment});
-        sGtm = bst_history('add', sGtm, 'gtm', sprintf('Rousset GTM PVC, FWHM=%gmm, %d regions, cond=%.1e', fwhm(1), R, 1/max(c,eps)));
-        [folder, base, ext] = fileparts(file_fullpath(PetFile));
-        u = find(base=='_',1,'last');
-        if ~isempty(u), newBase = [base(1:u-1) fileTag base(u:end)]; else, newBase = [base fileTag]; end
-        MriFileGtmFull = file_unique(fullfile(folder, [newBase ext]));
-        MriFileGtm = file_short(MriFileGtmFull);
-        out_mri_bst(sGtm, MriFileGtmFull);
-        iAnatomy = length(sSubject.Anatomy) + 1;
-        sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
-        sSubject.Anatomy(iAnatomy).FileName = MriFileGtm;
-        sSubject.Anatomy(iAnatomy).Comment  = file_unique([sMriPet.Comment fileTag], {sSubject.Anatomy.Comment});
-        bst_set('Subject', iSubject, sSubject);
+        sGtm.Comment = sprintf('%s | PVC GTM %.1fmm', sMriPet.Comment, fwhm(1));
+        sGtm = bst_history('add', sGtm, 'gtm', sprintf('Rousset GTM PVC, FWHM=%.2fmm [%s], %d regions, cond=%.1e', ...
+                           fwhm(1), fwhmSrc, R, 1/max(c,eps)));
+        MriFileGtm = db_add(iSubject, sGtm, 0);
         panel_protocols('UpdateNode', 'Subject', iSubject);
         db_save();
     catch ME
@@ -453,6 +489,21 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
     if ~isProgress, bst_progress('stop'); end
 end
 
+
+function name = local_regname(id, sAtl, headMask)
+% Region name from the atlas labels (Labels: {value, name, color} rows), or the special regions.
+    switch id
+        case -1, if isempty(headMask), name = 'Rest (outside the brain)'; else, name = 'Extracerebral'; end
+        case -2, name = 'Air';
+        case -3, name = 'Brain rest (small labels)';
+        otherwise
+            name = sprintf('Label %d', id);
+            if isfield(sAtl, 'Labels') && iscell(sAtl.Labels) && (size(sAtl.Labels,2) >= 2)
+                iLab = find(cellfun(@(v) isequal(double(v), id), sAtl.Labels(:,1)), 1);
+                if ~isempty(iLab), name = sAtl.Labels{iLab,2}; end
+            end
+    end
+end
 
 function headMask = local_headmask(sSubject, sMriRef, cubeSize)
 % Voxelize the subject's scalp ("head mask") surface into a filled binary head mask on
