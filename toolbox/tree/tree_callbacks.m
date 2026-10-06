@@ -3427,37 +3427,62 @@ function PetPvc_Callback(PetFile, sSubject)
     else
         MriFileRef = sSubject.Anatomy(1).FileName;
     end
-    % Default FWHM from PET metadata (scanner model + recon filter); generic fallback
-    PET = [];
-    try
-        w = load(file_fullpath(PetFile), 'PET');
-        if isfield(w, 'PET'), PET = w.PET; end
-    catch
+    % Ask for the method: GTM (default, no plugin) or Muller-Gartner (SPM12 + PETPVE12)
+    [res, isCancel] = java_dialog('question', ['<HTML><B>Partial volume correction method</B><BR><BR>' ...
+        '- <U><B>GTM</B></U>: regional geometric transfer matrix (Rousset) on the Desikan-Killiany<BR>' ...
+        '&nbsp;&nbsp;&nbsp;parcellation. No plugin needed. Regional values are listed in the command window.<BR>' ...
+        '- <U><B>Muller-Gartner</B></U>: voxelwise, gray matter only. Requires SPM12 and PETPVE12.<BR><BR></HTML>'], ...
+        'Partial volume correction', [], {'GTM', 'Muller-Gartner'}, 'GTM');
+    if isCancel || isempty(res)
+        return;
     end
-    [defFwhm, fwhmSrc] = pet_helper('ScannerFwhm', PET);
-    % Ask for FWHM (pre-filled from metadata)
+    if strcmpi(res, 'GTM'), method = 'gtm'; else, method = 'mg'; end
+    % Default FWHM: scanner resolution stored at import (6 mm if unknown) + recorded smoothing
+    PET = [];
+    warning('off', 'MATLAB:load:variableNotFound');
+    w = load(file_fullpath(PetFile), 'PET');
+    warning('on', 'MATLAB:load:variableNotFound');
+    if isfield(w, 'PET'), PET = w.PET; end
+    [defFwhm, fwhmSrc] = pet_helper('PsfFwhm', PET);
+    [~, scanSrc] = pet_helper('PsfFwhm', PetWithoutSmoothing(PET));
     res = java_dialog('input', ...
-        ['<HTML>PSF FWHM in mm for partial volume correction.<BR>' ...
-         'Default from scanner metadata: <B>' num2str(defFwhm) ' mm</B> &nbsp;(' fwhmSrc ').<BR>' ...
-         'Override only if you know the effective resolution differs.<BR><BR>' ...
-         'PSF FWHM (mm):'], ...
-        'Partial Volume Correction', [], num2str(defFwhm));
+        ['<HTML>Scanner PSF FWHM in mm (leave "auto" to use the scanner metadata).<BR>' ...
+         'Scanner: <B>' scanSrc '</B><BR>' ...
+         'Effective PSF used: <B>' fwhmSrc '</B><BR>' ...
+         'Smoothing recorded in the history is added in quadrature.<BR><BR>' ...
+         'Scanner PSF FWHM (mm):'], ...
+        'Partial volume correction', [], 'auto');
     if isempty(res)
         return;
     end
-    fwhm = str2double(res);
-    if isnan(fwhm) || fwhm <= 0
-        bst_error('FWHM must be a positive number.', 'PET PVC');
-        return;
+    if strcmpi(strtrim(res), 'auto')
+        fwhm = [];
+    else
+        fwhm = str2double(res);
+        if isnan(fwhm) || (fwhm <= 0)
+            bst_error('FWHM must be a positive number, or "auto".', 'PET PVC');
+            return;
+        end
     end
     % Run PVC
     bst_progress('start', 'PET PVC', 'Running partial volume correction...');
-    [MriFilePvc, errMsg] = pet_pvc(PetFile, MriFileRef, fwhm);
+    [MriFilePvc, errMsg, ~, regTable] = pet_pvc(PetFile, MriFileRef, fwhm, struct('method', method));
     bst_progress('stop');
     if ~isempty(errMsg)
         bst_error(errMsg, 'PET PVC');
-    else
-        disp(['BST> PVC corrected PET saved as: ' MriFilePvc]);
+        return;
+    end
+    disp(['BST> PVC corrected PET saved as: ' MriFilePvc ' (effective PSF ' num2str(defFwhm) ' mm if "auto")']);
+    % GTM: regional values in the command window
+    if ~isempty(regTable)
+        disp(struct2table(regTable));
+    end
+end
+
+% PET metadata without the recorded smoothing (to display the scanner resolution alone)
+function PET = PetWithoutSmoothing(PET)
+    if isstruct(PET) && isfield(PET, 'SmoothFwhm')
+        PET.SmoothFwhm = [];
     end
 end
 
