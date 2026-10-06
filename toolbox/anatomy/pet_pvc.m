@@ -480,8 +480,8 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         sGtm.Comment = sprintf('%s | PVC GTM %.1fmm', sMriPet.Comment, fwhm(1));
         sGtm = bst_history('add', sGtm, 'gtm', sprintf('Rousset GTM PVC, FWHM=%.2fmm [%s], %d regions, cond=%.1e', ...
                            fwhm(1), fwhmSrc, R, 1/max(c,eps)));
-        MriFileGtm = db_add(iSubject, sGtm, 0);
-        panel_protocols('UpdateNode', 'Subject', iSubject);
+        % Reload the subject: the next call (pet_process, SUVR) looks the new file up in the database
+        MriFileGtm = db_add(iSubject, sGtm, 1);
         db_save();
     catch ME
         errMsg = ME.message;
