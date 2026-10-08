@@ -1,7 +1,13 @@
-function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
+function [sFile, ChannelMat] = in_fopen_ctf(ds_directory, ImportOptions)
 % IN_FOPEN_CTF: Open a CTF file, and get all the data and channel information.
 %
 % USAGE:  [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
+%         [sFile, ChannelMat] = in_fopen_ctf(ds_directory, ImportOptions)
+%
+% INPUT:
+%     - ds_directory  : Full path to a .ds directory
+%     - ImportOptions : Import options structure (look in db_template.m)
+%       => Fields used: DisplayMessages (passed to ctf_get_files as the interactivity flag)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -29,8 +35,14 @@ function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
 if ~isdir(ds_directory)
     ds_directory = bst_fileparts(ds_directory);
 end
+if (nargin < 2) || isempty(ImportOptions)
+    % No ImportOptions: let ctf_get_files fall back to the GUI-state heuristic
+    isInteractive = [];
+else
+    isInteractive = ImportOptions.DisplayMessages;
+end
 % Get dataset name and file paths
-[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory );
+[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory, 1, isInteractive );
 % Read header file
 [header, ChannelMat] = ctf_read_res4(res4_file);
 if isempty(header)
