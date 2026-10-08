@@ -211,7 +211,14 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jCheckCrossPlatformJLF.setSelected(bst_get('UseCrossPlatformJLF'));
         end
         if ~isempty(jCheckSmooth)
-            jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
+            if (bst_get('MatlabVersion') < 2302)
+                % Smoothing can be ON/OFF for Matlab >= 2014b and < 2023b
+                jCheckSmooth.setSelected(bst_get('GraphicsSmoothing') > 0);
+            else
+                % Smoothing is always ON for Matlab >= 2023b
+                jCheckSmooth.setSelected(1);
+                jCheckSmooth.setEnabled(0);
+            end
         end
         if ~isempty(jCheckSystemCopy)
             jCheckSystemCopy.setSelected(bst_get('SystemCopy'));
