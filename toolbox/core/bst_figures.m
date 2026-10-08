@@ -197,8 +197,8 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
             otherwise
                 error(['Invalid figure type : ', FigureId.Type]);
         end
-        % Set graphics smoothing (Matlab >= 2014b)
-        if (bst_get('MatlabVersion') >= 804)
+        % Set graphics smoothing (Matlab >= 2014b), after 2023b smoothing is always ON
+        if (bst_get('MatlabVersion') >= 804) && (bst_get('MatlabVersion') < 2302)
             if bst_get('GraphicsSmoothing')
                 set(hFig, 'GraphicsSmoothing', 'on');
             else
