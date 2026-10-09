@@ -32,53 +32,42 @@ function y = bst_base64(action, x)
 % =============================================================================@
 %
 % Authors: Bhushan Thombre, 2026
+%          Raymundo Cassani, 2026
+
+y = [];
+
+% Note: Using `eval` allows using `import` inside an IF statement,
+%       otherwise it runs before the statement. See `import` help
+[tEncoder, dEncoder] = methodsview('sun.misc.BASE64Encoder', 'noui');
+[tDecoder, dDecoder] = methodsview('sun.misc.BASE64Decoder', 'noui');
+
+% API JDK > 8
+if isempty(tEncoder) || isempty(dEncoder) || isempty(tDecoder) || isempty(dDecoder)
+    % sun.misc.BASE64Decoder and sun.misc.BASE64Encoder have been removed in JDK 9;
+    % instead, use java.util.Base64
+    % https://docs.oracle.com/javase/9/migrate/toc.htm#JSMIG-GUID-B96BD00F-12A4-493A-9907-2FFE8DA6748C
+    eval('import java.util.Base64.getDecoder');
+    eval('import java.util.Base64.getEncoder');
+    encoder = getEncoder();
+    decoder = getDecoder();
+    encode  = @encoder.encode;
+    decode  = @decoder.decode;
+
+% API JDK = 8
+else
+    eval('import sun.misc.BASE64Decoder');
+    eval('import sun.misc.BASE64Encoder');
+    decoder = BASE64Decoder();
+    decode  = @decoder.decodeBuffer;
+    encoder = BASE64Encoder();
+    encode  = @encoder.encodeBuffer;
+end
 
 switch lower(action)
-    % ===== DECODE =====
-    case 'decode'
-        % Convert to a simple char row, remove all the white spaces and line breaks
-        x = char(x);
-        x = x(:)';
-        x(x <= 32) = [];
-        if isempty(x)
-            y = zeros(0, 1, 'int8');
-            return;
-        end
-        try
-            % Java >= 8
-            y = java.util.Base64.getMimeDecoder().decode(java.lang.String(x));
-        catch
-            try
-                % Matlab >= R2016b, no Java needed
-                y = typecast(matlab.net.base64decode(x), 'int8');
-            catch
-                % Java <= 8
-                decoder = sun.misc.BASE64Decoder();
-                y = decoder.decodeBuffer(x);
-            end
-        end
-        y = y(:);
-        
-    % ===== ENCODE =====
     case 'encode'
-        x = typecast(x(:), 'int8');
-        try
-            % Java >= 8
-            y = char(java.util.Base64.getEncoder().encodeToString(x));
-        catch
-            try
-                % Matlab >= R2016b, no Java needed
-                y = char(matlab.net.base64encode(typecast(x, 'uint8')));
-            catch
-                % Java <= 8
-                encoder = sun.misc.BASE64Encoder();
-                y = char(encoder.encode(x));
-            end
-        end
-        % Remove the line breaks possibly added by the encoder
-        y = y(:)';
-        y((y == 10) | (y == 13)) = [];
-        
+        y = encode(x);
+    case 'decode'
+        y = decode(x);
     otherwise
         error(['Unsupported action: ' action]);
 end
