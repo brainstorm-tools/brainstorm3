@@ -113,3 +113,11 @@ See: [Git tools rewriting history](https://git-scm.com/book/en/v2/Git-Tools-Rewr
     Once you have created a PR, we will start a [review](https://docs.github.com/en/github/collaborating-with-pull-requests/reviewing-changes-in-pull-requests/about-pull-request-reviews) on the changes and provide feedback to have all the proposed changes inline with Brainstorm. When your PR is approved, the next step is to [merge](https://docs.github.com/en/github/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/merging-a-pull-request) your work to the official Brainstorm repo.
 
 **Do not hesitate in [contacting us](#contact) if you have any question.**
+
+## Use of AI tools
+
+The use of AI tools as help to development is welcomed. Whatever tools you use, the contribution is totally **yours**: you are expected to understand, to have reviewed, and to be able to explain the proposed changes. Like any other contribution, AI-assisted contributions must meet quality and style standards. Keep in mind that we strongly suggest to first discuss the change you wish to make.
+
+If a **significant part** of your contribution was generated with AI, please mention it in your Pull Request. This will help us review the PR with the right context. A significant part could be a largely AI-written feature, process or file. Trivial AI assistance such as a quick autocomplete or a couple of generated lines do not need any disclosure.
+
+> :warning: Please refrain from submitting AI-generated code that you have not read and understood. This applies equally to AI agents: a human must review and take responsibility for proposed changes. PRs should not be autonomously opened by an agent without that oversight.

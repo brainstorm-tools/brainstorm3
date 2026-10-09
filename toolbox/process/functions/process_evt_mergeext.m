@@ -1,8 +1,8 @@
 function varargout = process_evt_mergeext( varargin )
-% PROCESS_EVT_MERGEEXT: Merge expended events with same label if they overlap
+% PROCESS_EVT_MERGEEXT: Merge extended events with same label if they overlap or are adjecent
 %
 % USAGE:  OutputFiles = process_evt_mergeext('Run', sProcess, sInputs)
-%              events = process_evt_mergeext('Compute', events)
+%              events = process_evt_mergeext('Compute', events, [mergeGapTime])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -49,6 +49,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.evtnames.Comment = 'Event names process (separated with commas):';
     sProcess.options.evtnames.Type    = 'text';
     sProcess.options.evtnames.Value   = '';
+    % Merge adjacent extended events
+    sProcess.options.adjacent.Comment = 'Also merge adjacent extended events (gap of 1 sample)';
+    sProcess.options.adjacent.Type    = 'checkbox';
+    sProcess.options.adjacent.Value   = 0;
     % Delete original events
     sProcess.options.delete.Comment = 'Delete the original events';
     sProcess.options.delete.Type    = 'checkbox';
@@ -69,7 +73,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % Get options
     EvtNames = strtrim(sProcess.options.evtnames.Value);
-    isDelete = sProcess.options.delete.Value;
+    isAdjacent = sProcess.options.adjacent.Value;
+    isDelete   = sProcess.options.delete.Value;
+
     % Split names
     if ~isempty(EvtNames)
         EvtNames = strtrim(str_split(EvtNames, ',;'));
@@ -83,9 +89,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
             sEvents = DataMat.F.events;
+            sfreq   = DataMat.F.prop.sfreq;
         else
             DataMat = in_bst_data(sInputs(iFile).FileName, 'Events', 'Time');
             sEvents = DataMat.Events;
+            sfreq   = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
         % Filter for extended events
         iEvtExt = find(cellfun(@(x) (size(x, 1) == 2), {sEvents.times}));
@@ -115,9 +123,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             [~, iEvtExt] = ismember(ValidEvtNames, {sEvents.label});
         end
-
+        % Gap tolerance to merge extended events
+        mergeGapSamples = 0;
+        if isAdjacent
+            % Adjacent, one sample gap
+            mergeGapSamples = 1;
+        end
+        % Gap in time with rounding guard
+        mergeGapTime = (mergeGapSamples / sfreq);
+        mergeGapTime = mergeGapTime + (0.5 / sfreq);
         % Call the merging function
-        [sEventsMerged, ixModified] = Compute(sEvents(iEvtExt));
+        [sEventsMerged, ixModified] = Compute(sEvents(iEvtExt), mergeGapTime);
         isModified = ~isempty(ixModified);
         % Append new event groups, add " | merge_ext"
         if ~isDelete
@@ -148,7 +164,10 @@ end
 
 
 %% ===== GROUP EVENTS =====
-function [sEventsMerged, ixModified] = Compute(sEvents)
+function [sEventsMerged, ixModified] = Compute(sEvents, mergeGapTime)
+    if nargin < 2 || isempty(mergeGapTime)
+        mergeGapTime = 0;
+    end
     sEventsMerged = repmat(db_template('event'), 0);
     ixModified    = [];
     evtNamesModified = {};
@@ -158,7 +177,8 @@ function [sEventsMerged, ixModified] = Compute(sEvents)
         nOccur = size(sEvent.times, 2);
         oldIni = sEvent.times(1,:);
         oldFin = sEvent.times(2,:);
-        oldTimes = [oldIni, oldFin];
+        % Extend end of events by merge gap time
+        oldTimes = [oldIni, oldFin + mergeGapTime];
         oldFlag  = [repmat(1,1,nOccur), repmat(2,1,nOccur)];
         oldChans = [sEvent.channels, sEvent.channels];
         oldNotes = [sEvent.notes, sEvent.notes];
@@ -216,7 +236,8 @@ function [sEventsMerged, ixModified] = Compute(sEvents)
                         iDelTime = [iDelTime, iTime];
                     end
                     if nOpen == 0
-                        newFin(end+1) = oldTimes(iTime);
+                        % Remove merge gap time from the end of event
+                        newFin(end+1) = oldTimes(iTime) - mergeGapTime;
                         iDelTime = [iDelTime, iTime];
                     end
                 end

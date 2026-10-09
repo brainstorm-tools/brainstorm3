@@ -1,4 +1,4 @@
-function [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
+function [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
 % IN_FREAD: Read a block a data in any recordings file previously opened with in_fopen().
 %
 % USAGE:  [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions);
@@ -215,14 +215,6 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
-        % Load display units
-        if ~isempty(sFile.filename)
-            DataMat = load(sFile.filename, 'DisplayUnits');
-            if isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
-                DisplayUnits = DataMat.DisplayUnits;
-            end
-        end
-
     case 'EEG-INTAN'
         F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-PLEXON'
@@ -247,6 +239,10 @@ end
 % Remove channels that were not supposed to be read
 if isChanRange && ~isempty(iChanRemove)
     F(iChanRemove,:) = [];
+end
+% Display units
+if isfield(sFile, 'header') && isfield(sFile.header, 'displayunits') && ~isempty(sFile.header.displayunits)
+    DisplayUnits = sFile.header.displayunits;
 end
 
 

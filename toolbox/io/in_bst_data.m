@@ -58,6 +58,10 @@ else
     if ismember('F', FieldsToRead) && ~ismember('ChannelFlag', FieldsToRead)
         FieldsToRead{end + 1} = 'ChannelFlag';
     end
+    % If there is F without DisplayUnits, add it
+    if ismember('F', FieldsToRead) && ~ismember('DisplayUnits', FieldsToRead)
+        FieldsToRead{end + 1} = 'DisplayUnits';
+    end
     % If reading Time in a raw file: need F (=sFile)
     if isRaw && ismember('Time', FieldsToRead) && ~ismember('F', FieldsToRead)
         FieldsToRead{end + 1} = 'F';
@@ -91,6 +95,13 @@ end
 % ===== RAW: MISSING FIELD t0 IN F =====
 if isRaw && ismember('F', FieldsToRead) && ~isfield(DataMat.F, 't0')
     DataMat.F.t0 = [];
+end
+
+% ===== RAW: MISSING OR EMPTY FIELD displayunits IN F.header =====
+if isRaw && ismember('F', FieldsToRead) && isfield(DataMat.F, 'header') && ...
+        (~isfield(DataMat.F.header, 'displayunits') || isempty(DataMat.F.header.displayunits)) && ...
+        isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
+    DataMat.F.header.displayunits = DataMat.DisplayUnits;
 end
 
 % ===== MISSING FIELDS =====

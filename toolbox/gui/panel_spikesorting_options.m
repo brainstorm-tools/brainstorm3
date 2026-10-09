@@ -104,6 +104,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
             % Release mutex and keep the panel opened
             bst_mutex('release', panelName);
+            gui_release_dialog(panelName);
         end
     end
 
@@ -117,6 +118,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             java_dialog('error', 'Could not find spike-sorter''s parameters file.');
             bstPanelNew = [];
             bst_mutex('release', panelName);
+            gui_release_dialog(panelName);
             return;
         end
         % Read options file

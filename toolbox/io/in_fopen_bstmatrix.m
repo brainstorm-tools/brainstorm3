@@ -84,6 +84,9 @@ sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)
     sFile.events = DataMat(1).Events;
 end
+if isfield(DataMat(1), 'DisplayUnits') && ~isempty(DataMat(1).DisplayUnits)
+    sFile.header.displayunits = DataMat(1).DisplayUnits;
+end
 sFile.header.F    = DataMat(1).F;
 sFile.channelflag = DataMat(1).ChannelFlag;
 
