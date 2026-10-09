@@ -1061,7 +1061,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 jByteStream = java.io.ByteArrayOutputStream();
                 javax.imageio.ImageIO.write(jImage, 'png', jByteStream);
                 % Encode PNG image in Base64
-                strImage = bst_base64('encode', jByteStream.toByteArray());
+                jStringImage = bst_base64('encode', jByteStream.toByteArray());
                 % Display image in HTML
                 html = [html, Comment];
                 if ~isempty(FileNames)
@@ -1069,7 +1069,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 else
                     html = [html, '<BR>'];
                 end
-                html = [html, '<IMG src="data:image/png;base64,' strImage '" /><BR><BR>'];
+                html = [html, '<IMG src="data:image/png;base64,' char(jStringImage) '" /><BR><BR>'];
             end
         end
         
