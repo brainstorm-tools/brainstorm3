@@ -260,6 +260,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 
 %% ===== OPTION CHANGED =====

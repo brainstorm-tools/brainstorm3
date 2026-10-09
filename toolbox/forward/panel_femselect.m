@@ -103,6 +103,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     function ButtonOk_Callback(varargin)
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 end
 
