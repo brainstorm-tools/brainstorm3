@@ -117,7 +117,7 @@ if isempty(templateDir) || ~isdir(templateDir) || isempty(dir(bst_fullfile(templ
     error(['Invalid template directory : "' strrep(templateDir, '\', '\\') '".']);
 end
 % Progress bar
-bst_progress('start', 'Import template', 'Copying template files...');
+bst_progress('text', 'Copying template files...');
 % Remove all the files of the previous default anatomy
 file_delete(bst_fullfile(targetDir, '*.bin'), 1);
 file_delete(bst_fullfile(targetDir, '*.bak'), 1);
