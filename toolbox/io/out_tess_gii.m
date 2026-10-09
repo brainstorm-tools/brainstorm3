@@ -64,12 +64,12 @@ end
 % Encode vertices: millimeters
 Vertices = single(TessMat.Vertices' .* 1000);
 Vertices = typecast(Vertices(:), 'uint8');
-Vertices = char(bst_base64('encode', Vertices));
+Vertices = bst_base64('encode', Vertices);
 Vertices((Vertices == 10) | (Vertices == 13)) = [];
 % Encode faces: 0-based array
 Faces = int32(TessMat.Faces' - 1);
 Faces = typecast(Faces(:), 'uint8');
-Faces = char(bst_base64('encode', Faces));
+Faces = bst_base64('encode', Faces);
 Faces((Faces == 10) | (Faces == 13)) = [];
  
 % ===== CREATE XML STRING =====   

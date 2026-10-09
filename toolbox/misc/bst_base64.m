@@ -1,18 +1,9 @@
 function y = bst_base64(action, x)
 % BST_BASE64: Encode or decode Base64 data, independently from the Java version.
 %
-% USAGE:  bytes = bst_base64('decode', str)    % str  : char array (line breaks allowed)
-%                                              % bytes: int8 vector
-%           str = bst_base64('encode', bytes)  % bytes: int8/uint8 vector (or Java byte[])
-%                                              % str  : char array (no line breaks)
+% USAGE:  y = bst_base64('encode', x)      % x : char vector,   y : int8 column vector
+%         y = bst_base64('decode', x)      % x : int8 vector,   y : char row vector
 %
-% DESCRIPTION:
-%     The classes sun.misc.BASE64Decoder and sun.misc.BASE64Encoder used previously were
-%     internal JDK classes, removed in Java 9. Recent versions of Matlab ship with a newer
-%     JDK, in which they are not available anymore ("Unable to find or import
-%     'sun.misc.BASE64Decoder'"). This function uses java.util.Base64 instead (Java >= 8),
-%     with fallbacks for older environments.
-
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -50,22 +41,23 @@ if isempty(tEncoder) || isempty(dEncoder) || isempty(tDecoder) || isempty(dDecod
     eval('import java.util.Base64.getEncoder');
     encoder = getEncoder();
     decoder = getDecoder();
-    encode  = @encoder.encode;
-    decode  = @decoder.decode;
-
+    encode  = @encoder.encode;       % Returns int8 with a trailing '\n'
+    decode  = @decoder.decode;       % Returns int8
 % API JDK = 8
 else
     eval('import sun.misc.BASE64Decoder');
     eval('import sun.misc.BASE64Encoder');
     decoder = BASE64Decoder();
-    decode  = @decoder.decodeBuffer;
     encoder = BASE64Encoder();
-    encode  = @encoder.encodeBuffer;
+    encode  = @encoder.encodeBuffer; % Returns Java string
+    decode  = @decoder.decodeBuffer; % Returns int8
 end
 
 switch lower(action)
     case 'encode'
-        y = encode(x);
+        % To char array without trailing '\n'
+        y = strtrim(char(encode(x)));
+        y = y(:)';
     case 'decode'
         y = decode(x);
     otherwise
