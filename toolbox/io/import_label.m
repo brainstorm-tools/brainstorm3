@@ -24,8 +24,6 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 %
 % Authors: Francois Tadel, 2012-2022
 
-import sun.misc.BASE64Decoder;
-
 
 %% ===== GET FILES =====
 sAllAtlas = repmat(db_template('Atlas'), 0);
