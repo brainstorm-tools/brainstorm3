@@ -667,6 +667,11 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     end
     % Compute head model
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+    if  ~isempty(errMessage)
+        OPTIONS = [];
+        return;
+    end
+
     if  ~isempty(warning_message)
         for iMessage = 1:length(warning_message)
             warning(warning_message{iMessage});
