@@ -44,116 +44,171 @@ function [stable, transient, stablePoints, transientPoints, dEnergy] = ...
 % Setup: get displacement energy
 [syed, triangleAreas] = geometry_tesselation(Faces, Vertices, dimension);
 dEnergy = zeros(1, size(flowField,3));
-for m = 1:size(flowField,3);
-  v12 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)).^2,2) / 4;
-  v23 = sum((flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
-  v13 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
-  dEnergy(m) = sum(triangleAreas.*(v12+v23+v13));
+% dEnergy2 = zeros(1, size(flowField,3));
+for m = 1:size(flowField,3)
+%     v12 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)).^2,2) / 4;
+%     v23 = sum((flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
+%     v13 = sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,3),:,m)).^2,2) / 4;
+%     dEnergy(m) = sum(triangleAreas.*(v12+v23+v13));
+    
+    % Version Leo, 16/03/2020
+    dEnergy(m) = sum(triangleAreas.*sum((flowField(Faces(:,1),:,m)+flowField(Faces(:,2),:,m)+flowField(Faces(:,3),:,m)).^2,2));
 end
 dEnergy = sqrt(dEnergy); % Get square root for easier visualization
 
 % Find local minima
-minima = local_extrema(dEnergy, false, 1, length(dEnergy));
-minima = sortrows([dEnergy(minima); minima]')'; minima = minima(2,:);
+[s, minima] = local_extrema(dEnergy, false, 1, length(dEnergy));
+minima = sortrows([s(minima); minima]')'; minima = minima(2,:);
 
 % Find local maxima
-maxima = local_extrema(dEnergy, true, 1, length(dEnergy));
-maxima = sortrows([-dEnergy(maxima); maxima]')'; maxima = maxima(2,:);
+[s2, maxima] = local_extrema(dEnergy, true, 1, length(dEnergy));
+maxima = sortrows([-s2(maxima); maxima]')'; maxima = maxima(2,:);
 
 % Display displacement energy and locations of maxima/minima
 if displayFlag
-  figure; hEnergy = axes;
-  plot(hEnergy, interval, dEnergy, 'Color', [0 0 0])
-  axis([interval(1) interval(end) 0 max(dEnergy)]);
+  figure;
+  hEnergy = axes;
+  plot(hEnergy, interval, s, 'Color', [0 0 0])
+  axis([interval(1) interval(end) 0 max(s)]);
   hold(hEnergy, 'on');
-  plot(hEnergy, interval(minima), dEnergy(minima), 'g*', ...
-    interval(maxima), dEnergy(maxima), 'r*');
+  plot(hEnergy, interval(minima), s(minima), 'g*', ...
+    interval(maxima), s(maxima), 'r*');
   hold(hEnergy, 'off');
   xlabel('Time (ms)')
-  ylabel('\partial Energy')
+  ylabel('\partial Energy filtered')
 end
 
 % Find transient and stable (defined as not-transient) states
-transient = transient_states(dEnergy, maxima, minima);
+% Leo 19/03/2020
+transient = transient_states(s, maxima, minima);
 transient = sortrows(transient);
-stable = stable_states(dEnergy, maxima, minima, transient);
+stable = stable_states(s, maxima, minima, transient);
 stable = sortrows(stable);
 
 % Get list of transient and stable state intervals
+% Il faut revoir clean_flow_states.
 extrema = clean_flow_states(transient, stable, samplingInterval);
-transient = extrema(extrema(:,3) > 1-eps, 1:2); transientPoints = [];
-for m = 1:length(transient)
+transient = extrema(extrema(:,4) > 1-eps, 1:2); transientPoints = [];
+for m = 1:size(transient,1)
   transientPoints = [transientPoints transient(m,1):transient(m,2)];
 end
-stable = extrema(extrema(:,3) < eps, 1:2); stablePoints = [];
-for m = 1:length(stable)
+stable = extrema(extrema(:,4) < eps, 1:2); stablePoints = [];
+for m = 1:size(stable,1)
   stablePoints = [stablePoints stable(m,1):stable(m,2)];
 end
 
 % Display microstate interval on displaced energy curve
 if displayFlag
   for m = 1:size(extrema,1)
-    if abs(extrema(m,3)) < eps
+    if abs(extrema(m,4)) < eps
       type = 'g';
-    elseif extrema(m,3) > 1-eps
+    elseif extrema(m,4) > 1-eps
       type = 'r';
     end
     
     hold(hEnergy, 'on');
     area(hEnergy, interval(extrema(m,1):extrema(m,2)), ...
-      dEnergy(extrema(m,1):extrema(m,2)), 'FaceColor', type);
+      s(extrema(m,1):extrema(m,2)), 'FaceColor', type);
     hold(hEnergy, 'off');
   end
 end
 
+% Uncomment following lines to display the unfilterd/original figure.
+% if displayFlag
+%     figure;
+%     h2Energy = axes;
+%     plot(h2Energy, interval, dEnergy, 'Color', [0 0 0])
+%     axis([interval(1) interval(end) 0 max(dEnergy)]);
+%     hold(h2Energy, 'on');
+%     plot(h2Energy, interval(minima), dEnergy(minima), 'g*', ...
+%       interval(maxima), dEnergy(maxima), 'r*');
+%       hold(h2Energy, 'off');
+%     xlabel('Time (ms)')
+%     ylabel('\partial Energy')
+% end
+% 
+% if displayFlag
+%   for m = 1:size(extrema,1)
+%     if abs(extrema(m,4)) < eps
+%       type = 'g';
+%     elseif extrema(m,4) > 1-eps
+%       type = 'r';
+%     end
+%     
+%     hold(h2Energy, 'on');
+%     area(h2Energy, interval(extrema(m,1):extrema(m,2)), ...
+%       dEnergy(extrema(m,1):extrema(m,2)), 'FaceColor', type);
+%     hold(h2Energy, 'off');
+%   end
+% end
 
 end
 
 %% ===== CLEAN SMALL INTERVALS =====
 function extrema = clean_flow_states(transient, stable, samplingInterval)
 
-minInterval = floor(0.002/samplingInterval);
+% Swallow intervals that are short of length and small relative distance
+% with those of longer length
+
+% Short interval detection size
+
+minInterval = floor(3*0.0017/samplingInterval);
 if minInterval < 1
   minInterval = 1;
 end
 
-% Swallow intervals that are of short length into intervals of longer length
+% Relative distance threshold
+
+maximum = max(transient(:,3));
+minimum = min(transient(:,3));
+threshold = 0.075*(maximum-minimum);
+
+% Swallow intervals
+
 extrema = sortrows([transient ones(size(transient,1), 1); ...
   stable zeros(size(stable,1), 1)]);
+
 for m = 2:size(extrema,1)
-  if extrema(m,2) < extrema(m,1) + minInterval
-    if extrema(m-1,2) > extrema(m,1) - minInterval
-      if extrema(m,2)-extrema(m,1) > extrema(m-1,2)-extrema(m-1,1)
-        tag = extrema(m,3);
-      else
-        tag = extrema(m-1,3);
-      end
-      extrema(m-1,2) = extrema(m,2); % 2nd interval's beginning is 1st interval
-      extrema(m,1) = extrema(m-1,1); % 1st interval's end is 2nd interval
-      extrema(m-1,3) = tag; % Both get same label ...
-      extrema(m,3) = tag; % ... of the bigger interval
-    elseif m < size(extrema,1) && extrema(m,2) > extrema(m+1,1) - minInterval
-      if extrema(m,2)-extrema(m,1) > extrema(m+1,2)-extrema(m+1,1)
-        tag = extrema(m,3);
-      else
-        tag = extrema(m+1,3);
-      end
-      extrema(m,2) = extrema(m+1,2); % 2nd interval's beginning is 1st interval
-      extrema(m+1,1) = extrema(m,1); % 1st interval's end is 2nd interval
-      extrema(m,3) = tag; % Both get same label ...
-      extrema(m+1,3) = tag; % ... of the bigger interval
-    else
-      extrema(m,1) = max(extrema(m,1) - minInterval, 1); % 2nd interval's beginning is 1st interval
-      extrema(m,2) = min(extrema(m,2) + minInterval, length(dEnergy)); % 1st interval's end is 2nd interval
+  if extrema(m,2) < extrema(m,1) + minInterval % Small sized interval
+      % We test the previous interval is close and the relative difference is small
+    if (extrema(m-1,2) > extrema(m,1) - minInterval) && (abs(extrema(m,3)-extrema(m-1,3))<threshold)
+        % We then test the next interval
+         if m < size(extrema,1) && extrema(m,2) > extrema(m+1,1) - minInterval ...
+        && (abs(extrema(m,3)-extrema(m-1,3))<threshold)
+            % If both the previous and next interval meet the distance and
+            % relative difference conditions, we merge them all together
+            tag = extrema(m-1,4);
+            extrema(m,1) = extrema(m-1,1); % middle interval's beginning is 1st interval's beginning
+            extrema(m+1,1) = extrema(m-1,1); % 3rd interval's beginning is 1st interval's beginning
+            extrema(m-1,2) = extrema(m+1,2); % 1st interval's end is 3rd interval's beginning
+            extrema(m,2) = extrema(m+1,2); % middle interval's end is 3rd interval's beginning
+            extrema(m,4) = tag;
+            % We don't actualize the local extremas because we won't be
+            % using them after this function
+         else
+            % If only the previous interval meets the condition, we merge both
+            % in the state which lasts the longer
+            if extrema(m,2)-extrema(m,1) >= extrema(m-1,2)-extrema(m-1,1)
+                tag = extrema(m,4);
+            else
+                tag = extrema(m-1,4);
+            end
+            extrema(m-1,2) = extrema(m,2); % 2nd interval's beginning is 1st interval
+            extrema(m,1) = extrema(m-1,1); % 1st interval's end is 2nd interval
+            extrema(m-1,4) = tag; % Both get same label ...
+            extrema(m,4) = tag; % ... of the bigger interval
+            % We don't actualize the local extremas because we won't be
+            % using them after this function
+         end
     end
   end
 end
 
 % Merge consecutive states of the same type
 for m = 2:size(extrema,1)
-  if abs(extrema(m,3)-extrema(m-1,3)) < eps
+  if abs(extrema(m,4)-extrema(m-1,4)) < eps
     n = m+1;
-    while n <= size(extrema,1) && abs(extrema(n,3)-extrema(n-1,3)) < eps
+    while n <= size(extrema,1) && abs(extrema(n,4)-extrema(n-1,4)) < eps
       n = n+1;
     end      
     extrema((m-1):(n-2),2) = extrema(n-1,2); % 2nd interval's beginning is 1st interval
@@ -216,7 +271,7 @@ for m = 1:length(maxima)
   end
   
   % Label microstate
-  transient = [transient; begin stop];
+  transient = [transient; begin stop value];
 end
 
 end
@@ -286,14 +341,14 @@ for m = 1:length(minima)
   
   % Label microstate
   if stop-begin >= 1
-    stable = [stable; begin stop];
+    stable = [stable; begin stop -value];
   end
 end
 
 end
 
 %% ===== LOCAL EXTREMA OF A CURVE =====
-function extrema = local_extrema(signal, maxOrMin, tStart, tEnd)
+function [s, extrema] = local_extrema(signal, maxOrMin, tStart, tEnd)
 % LOCAL_MINIMA 	Find locations of local extrema in signal
 % INPUTS:
 %   signal            - curve for which we find maxima OR minima
@@ -304,25 +359,35 @@ function extrema = local_extrema(signal, maxOrMin, tStart, tEnd)
 % OUTPUTS:
 %   extrema           - Locations of local extrema
 
-% Preprocessing: smoothing of signal for initial extrema
+% Preprocessing: smoothing of signal for initial extrema. We will use a
+% binomial convolution filter (Gaussian approximation) of size 12 
+% (calculated for filtering the signal at 30Hz). We use the mirror 
+% technique for the signal at the extremities.
+
+%Leo  19/03/2020
+
 if maxOrMin % Local maxima == local minima of negative
   signal = -1*signal;
 end
-valleys = []; smoothingFilter = [1 1 1]/3; s = signal;
+valleys = [];
+% Création of the convolution filter
+smoothingFilter = (1);
+for i = 1:6
+    smoother = (1/4)*[1 2 1];
+    smoothingFilter = conv(smoothingFilter, smoother);
+end
+% On créé le signal 'miroir sur lequel on va appliquer le filtre
+x = size(signal,2);
+s = zeros(1, x+2*6);
+s(7:6+x) = signal;
+for i = 1:6
+    s(i) = signal(7-i);
+    s(size(s,2)+1-i) = signal(x-6+i);
+end
 s = conv(s, smoothingFilter, 'same');
-s(tStart) = signal(tStart); s(tEnd) = signal(tEnd);
-s = conv(s, smoothingFilter, 'same');
-s(tStart) = signal(tStart); s(tEnd) = signal(tEnd);
-s = conv(s, smoothingFilter, 'same');
-s(tStart) = signal(tStart); s(tEnd) = signal(tEnd);
-s = conv(s, smoothingFilter, 'same');
-s(tStart) = signal(tStart); s(tEnd) = signal(tEnd);
-s = conv(s, smoothingFilter, 'same');
-s(tStart) = signal(tStart); s(tEnd) = signal(tEnd);
+s = s(7:6+x);
 
-% Find local minima (of flipped signal if maxima desired)
-
-for t = (tStart+2):(tEnd-1)
+for t = (tStart+1):(tEnd-1)
   if s(t) < s(t-1) 
     if s(t) < s(t+1) % Definite dip
       valleys(end+1) = t;
@@ -342,13 +407,15 @@ extrema = [];
 for m = 1:length(valleys)
   jitter = valleys(m) + (-2:2);
   jitter = jitter(1 <= jitter & jitter <= length(signal));
-  [syed, idx] = min(signal(jitter));
+  [syed, idx] = min(s(jitter));
   extrema(m) = idx + jitter(1) - 1;
 end
 
 % Don't use first or last time as extremum
 extrema(extrema <= tStart | extrema >= tEnd) = [];
 extrema = unique(extrema);
+
+% plot(hEnergy, extrema, s(extrema), 'g*');
 
 end
 
@@ -420,25 +487,5 @@ if dimension == 3
 else
     FaceNormals = [];
 end
-
-% % Calculate normals to surface at each vertex (from normals at each face)
-% VertNormals = zeros(size(Vertices,1),3);
-% bst_progress('start', 'Optical Flow', ...
-%   'Computing normals to surface at every vertex ...', 1, size(Faces,1));
-% for facesIdx=1:size(Faces,1); 
-%   VertNormals(Faces(facesIdx,:),:) = ...
-%     VertNormals(Faces(facesIdx,:),:) + ...
-%     repmat(FaceNormals(facesIdx,:), [3 1]);
-%   
-%   if mod(facesIdx,20) == 0
-%     bst_progress('inc', 20); % Update progress bar
-%   end
-% end 
-% bst_progress('stop');
-% 
-% % Normalize perpendicular-to-surface vectors for each vertex
-% VertNormals = VertNormals ./ ...
-%   repmat(sqrt(sum(VertNormals.^2,2)),1,3);
-% VertNormals(isnan(VertNormals)) = 0; % For pathological anatomy
 
 end
