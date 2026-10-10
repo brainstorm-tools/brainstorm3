@@ -1,5 +1,5 @@
 function tutorial_pet_processing(tutorial_dir, reports_dir)
-% TUTORIAL_INTRODUCTION: Script that run the PET processing tutorial
+% TUTORIAL_PET_PROCESSING: Script that runs the PET processing tutorial
 %
 % INPUTS: 
 %    - tutorial_dir : Directory where the tutorial_pet_processing.zip file has been unzipped
@@ -87,7 +87,7 @@ close(hFigMri);
 
 %% ===== 3. IMPORT AND PROCESS PET VOLUMES =================================
 %  =============================================================================
-disp([10 'DEMO> 2. Import and process PET volumes' 10]);
+disp([10 'DEMO> 3. Import and process PET volumes' 10]);
 PetFiles = {Pet1File, Pet2File};
 for iPet = 1 : length(PetFiles)
     % Process: Import PET
@@ -111,8 +111,8 @@ for iPet = 1 : length(PetFiles)
     end
     % Regional values before (observed) and after (corrected) GTM
     disp(struct2table(regTable));
-    % Compute SUVR, and project to surface
-    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetPvcFile, 'ASEG', 'Cortex', 'Brainmask', 1, 1);
+    % Compute SUVR (reference: cerebellum; mask: cortex, as on the tutorial page), and project to surface
+    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetPvcFile, 'ASEG', 'Cerebellum', 'Cortex', 1, 1);
 
     % Figure: Aligned, aggregated, co-registered PET overlayed on MRI
     hFigPetOvr = view_mri(MriFile, PetAggCoregFile);

@@ -3,8 +3,10 @@ function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, 
 %
 % INPUTS:
 %   - PetFile   : PET file path
-%   - AtlasFile : Name of anatomical Atlas
-%   - roiName   : Name of the ROI for SUVR rescale (string, can be empty)
+%   - AtlasName : Anatomical atlas: its comment in the subject (e.g. 'ASEG') or its file path
+%   - roiName   : Name of the ROI for SUVR rescale (string, can be empty). The SUVR always uses
+%                 the robust reference (1-voxel erosion + 10% trimmed mean), also without pvcOpts;
+%                 pvcOpts.SuvrOpts = struct('Reference','plain') gives the plain mean.
 %   - maskROI   : Name of the ROI for masking (string, can be empty)
 %   - applyMask : Logical, true to apply mask, false otherwise
 %   - doProject : Logical, true to project PET to surface, false otherwise

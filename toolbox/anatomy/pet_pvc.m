@@ -19,7 +19,9 @@ function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, 
 %
 % INPUTS:
 %   - PetFile    : PET MRI file to correct (Brainstorm relative path)
-%   - MriFileRef : Reference MRI file for tissue segmentation (Brainstorm relative path)
+%   - MriFileRef : Reference MRI file for SPM tissue segmentation (Brainstorm relative path).
+%                  Muller-Gartner only: GTM ignores it and uses the subject's parcellation
+%                  (pvcOpts.AtlasComment, default 'Desikan-Killiany').
 %   - fwhm       : scanner PSF FWHM in mm (scalar), or [] to use the value stored with the
 %                  PET at import (PET.PsfFwhm; 6 mm when the scanner was not identified).
 %                  Smoothing recorded in PET.SmoothFwhm is added in quadrature (pet_helper('PsfFwhm')).
@@ -36,7 +38,9 @@ function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, 
 % OUTPUTS:
 %   - MriFilePvc : Relative path to the PVC-corrected PET file in Brainstorm DB
 %   - errMsg     : Error message, if any
-%   - fileTag    : File tag used for output file
+%   - fileTag    : Muller-Gartner: tag inserted in the output file name ('_pvc').
+%                  GTM: '_gtmpvc' only labels the method; the file is named by db_add and
+%                  its comment ends with '| PVC GTM <fwhm>mm'.
 %   - regTable   : GTM only: regional observed and corrected values (see ComputeGtm)
 %
 % REQUIRES (Muller-Gartner only):
