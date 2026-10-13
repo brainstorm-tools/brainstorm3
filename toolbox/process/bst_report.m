@@ -1040,8 +1040,6 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
         % ===== IMAGES =====
         if ~isempty(iImages)
             html = [html '<H2>Snapshots</H2>' 10];
-            % Create Base64 encoder
-            encoder = sun.misc.BASE64Encoder();
             % Loop on all the images
             for i = 1:length(iImages)
                 iMsg      = iImages(i);
@@ -1062,8 +1060,8 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 % Convert image to PNG
                 jByteStream = java.io.ByteArrayOutputStream();
                 javax.imageio.ImageIO.write(jImage, 'png', jByteStream);
-                % Encode PNG image in Base64
-                jStringImage = encoder.encode(jByteStream.toByteArray());
+                % Encode PNG image in Base64 char array
+                charImage = bst_base64('encode', jByteStream.toByteArray());
                 % Display image in HTML
                 html = [html, Comment];
                 if ~isempty(FileNames)
@@ -1071,7 +1069,7 @@ function html = PrintToHtml(Reports, isFullReport, isOnlyText)
                 else
                     html = [html, '<BR>'];
                 end
-                html = [html, '<IMG src="data:image/png;base64,' char(jStringImage) '" /><BR><BR>'];
+                html = [html, '<IMG src="data:image/png;base64,' charImage '" /><BR><BR>'];
             end
         end
         
