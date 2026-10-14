@@ -1,8 +1,7 @@
-function varargout = process_evt_classify_nested( varargin )
-% process_evt_classify_nested:   Classify nested events based on the outer
-% events.
+function varargout = process_evt_nested( varargin )
+% process_evt_nested: Combine nested events based on the outer events.
 %
-% USAGE:  OutputFiles = process_evt_classify_nested('Run', sProcess, sInputs)
+% USAGE:  OutputFiles = process_evt_nested('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -31,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() 
     % Description the process
-    sProcess.Comment     = 'Classify nested events';
+    sProcess.Comment     = 'Combine nested events';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 55;
