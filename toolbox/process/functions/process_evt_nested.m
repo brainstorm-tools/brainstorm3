@@ -93,6 +93,7 @@ function OutputFiles = Run(sProcess, sInput)
         sFile.Time = DataMat.Time;
     else
         DataMat = in_bst_data(sInput.FileName, {'Time', 'Events'});
+        sFile.Time   = DataMat.Time;
         sFile.events = DataMat.Events;
         sFile.epochs = [];
     end
