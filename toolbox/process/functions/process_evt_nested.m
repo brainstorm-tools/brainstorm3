@@ -33,7 +33,7 @@ function sProcess = GetDescription()
     sProcess.Comment     = 'Combine nested events';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 55;
+    sProcess.Index       = 52.2;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw', 'matrix'};
