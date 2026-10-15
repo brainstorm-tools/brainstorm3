@@ -111,7 +111,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
 end
 
 % Default anatomy template
-TemplateName = 'ICBM152_2023b';
+TemplateName = 'ICBM152_2026';
 
 % Default action : start
 if (nargin == 0)

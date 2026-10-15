@@ -22,8 +22,13 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' and 'duneuro'  
-%     .ECOGMethod:    'openmeeg' and 'duneuro' 
+%     .SEEGMethod: Method used to compute the forward model for SEEG sensors.
+%         - 'homogeneous' : Infinite homogeneous medium
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
+%     .ECOGMethod: Method used to compute the forward model for ECOG sensors.
+%         - 'openmeeg'    : OpenMEEG forward model
+%         - 'duneuro'     : DUNEuro forward model
 %     .NIRSMethod:    'import'
 %
 %     ======= METHODS OPTIONS =============================================
@@ -508,7 +513,7 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
         || ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'plugins/duneuro_logo.png');
+    bst_progress('setpluginlogo', 'duneuro');
     % Run duneuro FEM computation
     if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
         [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
@@ -541,6 +546,13 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     Gain(~isnan(Gain_dn)) = Gain_dn(~isnan(Gain_dn));
 end
 
+%% ===== COMPUTE: SEEG INFINITE HOMOGENEOUS MEDIUM HEADMODEL =====
+if strcmp('homogeneous', OPTIONS.SEEGMethod)
+    Gain(iSeeg, :) = bst_seeg_homogeneous(OPTIONS.GridLoc, OPTIONS.Channel(iSeeg), sSurfInner, OPTIONS);
+    strHistory =  [strHistory, ' | ', 'Homogeneous medium (SEEG)', ...
+                               ' | ', sprintf('Conductivity: %1.3f S/m', OPTIONS.Conductivity), ...
+                               ' | ', sprintf('Min dist. betweem SEEG contact and dipoles: %1.3f mm', OPTIONS.MinSeegDipoleDist)];
+end
 
 %% ===== COMPUTE: BRAINSTORM HEADMODELS =====
 Param = [];
@@ -660,6 +672,11 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
     end
     % Compute head model
     [gain_nirs, errMessage, warning_message] = process_nst_import_head_model('Compute', OPTIONS);
+    if  ~isempty(errMessage)
+        OPTIONS = [];
+        return;
+    end
+
     if  ~isempty(warning_message)
         for iMessage = 1:length(warning_message)
             warning(warning_message{iMessage});

@@ -20,6 +20,7 @@ function varargout = process_cutstim( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2010-2017
+%          Raymundo Cassani, 2026
 
 eval(macro_method);
 end
@@ -28,7 +29,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Cut stimulation artifact';
+    sProcess.Comment     = 'Remove stimulation artifact';
     sProcess.FileTag     = 'cutstim';
     sProcess.Category    = 'Filter';
     sProcess.SubGroup    = 'Artifacts';
@@ -65,6 +66,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.method.Type    = 'combobox_label';
     sProcess.options.method.Value   = {'linear', {'linear', 'spline', 'pchip', 'v5cubic', 'makima'; ...
                                                   'linear', 'spline', 'pchip', 'v5cubic', 'makima'}};
+    sProcess.options.method.Controller = struct('spline', 'Spline');
+    % === Spline: time buffer taken on each side of the artifact window for interpolation
+    sProcess.options.splinebuffer.Comment = 'Spline interpolation buffer around artifact time window: <BR> (Buffer = 0, entire signal is used)';
+    sProcess.options.splinebuffer.Type    = 'value';
+    sProcess.options.splinebuffer.Value   = {0.000, 'ms', 0};
+    sProcess.options.splinebuffer.Class   = 'Spline';
 end
 
 
@@ -105,6 +112,11 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     else
         Method = 'linear';
     end
+    if strcmpi(Method, 'spline') && isfield(sProcess.options, 'splinebuffer') && isfield(sProcess.options.splinebuffer, 'Value') && iscell(sProcess.options.splinebuffer.Value) && ~isempty(sProcess.options.splinebuffer.Value) && ~isempty(sProcess.options.splinebuffer.Value{1})
+        SplineBuffer = sProcess.options.splinebuffer.Value{1};
+    else
+        SplineBuffer = [];
+    end
     
     % Check inputs
     if isempty(TimeBounds)
@@ -131,19 +143,38 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             sInput = [];
             return;
         end
-        % Find event in the list
-        iEvt = find(strcmpi({sFile.events.label}, EvtName));
-        if isempty(iEvt) || (size(sFile.events(iEvt).times,2) == 0)
+        % Find input event in file
+        iEvts = find(strcmpi({sFile.events.label}, EvtName));
+        % If not found with exact names, try searching interpreting strings as regular expressions
+        if isempty(iEvts)
+            iEvts = find(~cellfun(@isempty, regexp({sFile.events.label}, EvtName)));
+        end
+        % Error if no events are found, or none of the found events have occurrences
+        if isempty(iEvts) || all(arrayfun(@(x) size(x.times,2), sFile.events(iEvts)) == 0)
             bst_report('Error', sProcess, [], ['Event not found:' EvtName]);
             sInput = [];
             return;
         end
-        % Extended events: Use as is
-        if (size(sFile.events(iEvt).times, 1) == 2)
-            cutSegments = sFile.events(iEvt).times';
-        % Simple events: Use the time window definition
-        else
-            cutSegments = bst_bsxfun(@plus, [sFile.events(iEvt).times', sFile.events(iEvt).times'], TimeBounds);
+        warningMsg = '';
+        cutSegmentsAll = [];
+        for ix = 1 : length(iEvts)
+            iEvt = iEvts(ix);
+            % Report found event with zero occurences
+            if (size(sFile.events(iEvt).times,2) == 0) && (~isRaw || (sInput.iBlockCol == 1 && sInput.iBlockRow == 1))
+                warningMsg = [warningMsg, sprintf('Event "%s" has zero occurrences', sFile.events(iEvt).label), 10];
+            end
+            % Extended events: Use as is
+            if (size(sFile.events(iEvt).times, 1) == 2)
+                cutSegments = sFile.events(iEvt).times';
+            % Simple events: Use the time window definition
+            else
+                cutSegments = bst_bsxfun(@plus, [sFile.events(iEvt).times', sFile.events(iEvt).times'], TimeBounds);
+            end
+            cutSegmentsAll = [cutSegmentsAll; cutSegments];
+        end
+        cutSegments = cutSegmentsAll;
+        if ~isempty(warningMsg)
+            bst_report('Warning', sProcess, [], warningMsg);
         end
     end
     % Default segment: around zero
@@ -162,15 +193,18 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         end
         % Get all the indices except but the removed time window
         iValid = setdiff(1:Ntime, iTime);
+        if ~isempty(SplineBuffer) && SplineBuffer ~= 0
+            % Use artifact-time-window +- SplineBuffer for interpolation
+            splineBufferSmp = round(SplineBuffer./diff(sInput.TimeVector(1:2)));
+            iValid = intersect(iValid, (iTime(1) - splineBufferSmp) : (iTime(end) + splineBufferSmp));
+        end
         if isempty(iValid)
             bst_report('Error', sProcess, [], 'No valid time segment left in the file.');
             sInput = [];
             return;
         end
         % Reinterpolate values for the removed time window
-        for iChan = 1:Nchan
-            sInput.A(iChan,iTime) = interp1(iValid, sInput.A(iChan,iValid), iTime, Method);
-        end
+        sInput.A(:,iTime) = interp1(iValid, sInput.A(:,iValid)', iTime, Method)';
     end
     
     % Do not keep the Std field in the output

@@ -149,7 +149,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
-    if isempty(SubjectName)
+    if isempty(SubjectName) && ~isempty(sInputs.SubjectName)
+        SubjectName = sInputs.SubjectName;
+    elseif isempty(SubjectName)
         bst_report('Error', sProcess, sInputs, 'Subject name is empty.');
         return
     end

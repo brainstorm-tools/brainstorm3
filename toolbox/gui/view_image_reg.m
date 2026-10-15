@@ -105,7 +105,7 @@ elseif ~isempty(FileName)
         case {'timefreq', 'ptimefreq'}
             [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', FileName);
         case {'matrix', 'pmatrix'}
-            iDS = bst_memory('GetDataSetMatrix', FileName);
+            [iDS, iMatrix] = bst_memory('GetDataSetMatrix', FileName);
     end
     if isempty(iDS)
         iDS = bst_memory('GetDataSetStudy', StudyFile);
@@ -158,6 +158,17 @@ if ~isempty(FileName) && strcmpi(file_gettype(FileName), 'timefreq') && ~isempty
     set(hAxes, 'DataAspectRatio', [1 1 1]);
     title(hAxes, DisplayUnits)
     DisplayUnits = '';
+end
+% For temporal generalization decoding: use equal axes
+if ~isempty(FileName) && strcmpi(file_gettype(FileName), 'matrix') && ~isempty(strfind(FileName, '_temporalgen'))
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesImage');
+    set(hAxes, 'DataAspectRatio', [1 1 1]);
+    title(hAxes, GlobalData.DataSet(iDS).Matrix(iMatrix).Description);
+    if isempty(DisplayUnits)
+        DisplayUnits = 'Decoding accuracy (%)';
+    end
+    % Origin: bottom-right corner
+    axis(hAxes, 'xy');
 end
 
 

@@ -74,8 +74,10 @@ else
 end
 
 
-%% ===== GET ACQUISITION DATE =====
-if ~isempty(sFileIn.acq_date)
+%% ===== GET ACQUISITION DATE AND TIME =====
+if ~isempty(sFileIn.t0)
+    acq_date = datetime(sFileIn.t0);
+elseif ~isempty(sFileIn.acq_date)
     acq_date = datetime(sFileIn.acq_date);
 elseif isRawEdf && isfield(sFileIn.header, 'startdate') && isfield(sFileIn.header, 'starttime')
     acq_date  = datetime([sFileIn.header.startdate, ' ', sFileIn.header.starttime], 'InputFormat','dd.MM.uu HH.mm.ss');

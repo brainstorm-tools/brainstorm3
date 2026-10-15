@@ -30,6 +30,7 @@ if ischar(s)
     s = strtrim(strrep(s, char(0), ''));
 end
 % Check various input formats
+% 'datestr' output defaults to the English language ('en_US')
 try
     if ~isempty(dateFormat) && strcmpi(dateFormat, 'posix')
         strDate = datestr(double(s) ./ 86400 + datenum(1970,1,1,0,0,0), 'dd-mmm-yyyy');
@@ -49,6 +50,9 @@ try
         strDate = datestr(datenum(s, 'dd-mmm-yyyy'), 'dd-mmm-yyyy');
     elseif isequal(find(s == '-'), [5 8]) && ((length(s) == 10) || (length(s) == 19))
         strDate = datestr(datenum(s, 'yyyy-mm-dd'), 'dd-mmm-yyyy');
+    elseif isequal(find(s == 'T'), 11) && (length(s) >= 19) % YYYY-MM-DDThh:mm:ss[.SSS]
+        s = s(1:10);
+        strDate = str_date(s, 'yyyy-mm-dd');
     else
         strDate = [];
     end

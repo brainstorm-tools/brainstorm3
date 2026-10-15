@@ -38,10 +38,14 @@ snirfdata = jsnirfcreate();
 
 % Set meta data
 snirfdata.SNIRFData.metaDataTags.LengthUnit = 'm';
-if isfield(DataMat,'acq_date') && ~isempty(DataMat.acq_date)
-    MeasurementDate = datetime(DataMat.acq_date);
+if isfield(DataMat,'T0') && ~isempty(DataMat.T0)
+    MeasurementDate = datetime(DataMat.T0);
     snirfdata.SNIRFData.metaDataTags.MeasurementDate  = datestr(MeasurementDate, 'yyyy-mm-dd');
     snirfdata.SNIRFData.metaDataTags.MeasurementTime  = datestr(MeasurementDate, 'HH:MM:SS');
+elseif isfield(DataMat,'acq_date') && ~isempty(DataMat.acq_date)
+    MeasurementDate = datetime(DataMat.acq_date);
+    snirfdata.SNIRFData.metaDataTags.MeasurementDate  = datestr(MeasurementDate, 'yyyy-mm-dd');
+    snirfdata.SNIRFData.metaDataTags.MeasurementTime  = '00:00:00';
 end
 
 nirs_channels = strcmpi({ChannelMatOut.Channel.Type}, 'NIRS')';
@@ -108,7 +112,7 @@ end
 
 % Set Measurment list
 
-isProcessed = ~isempty(DataMat.DisplayUnits) && ( contains(DataMat.DisplayUnits, {'OD', 'mol'}) );
+isProcessed = ~isempty(DataMat.DisplayUnits);
 if isProcessed
     snirfdata.SNIRFData.data.measurementList.dataTypeLabel = '';
 end
@@ -184,7 +188,7 @@ end
 if any(evt_include)
     snirfdata.SNIRFData.stim = snirfdata.SNIRFData.stim(evt_include);
 else
-    snirfdata.SNIRFData = rmfield(snirfdata.SNIRFData,'stim');
+    snirfdata.SNIRFData.stim = struct('name', '', 'data', zeros(0, 3));
 end
 % Save snirf file. 
 savesnirf(snirfdata, ExportFile);
@@ -193,13 +197,14 @@ end
 
 
 function [dataType, dataTypeLabel] = getDataType(Channel, Unit)
-
+    
+    measure_types = nst_measure_types();
     [isrc, idet, chan_measures, measure_type] = nst_unformat_channels({Channel.Name});
     
     if isempty(Unit)
         dataType        = 1;
-        dataTypeLabel   = '';
-    elseif contains(Unit, 'OD')
+        dataTypeLabel   = '';        
+    elseif measure_type == measure_types.WAVELENGTH || contains(Unit, 'OD')
         dataType        = 99999;
         dataTypeLabel   = 'dOD';
     elseif contains(chan_measures, {'HbO', 'HbR', 'HbT'})

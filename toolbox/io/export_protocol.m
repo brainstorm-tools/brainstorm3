@@ -1,10 +1,10 @@
-function export_protocol(iProtocol, iSubject, OutputFile)
+function export_protocol(iProtocol, iSubjects, OutputFile)
 % EXPORT_PROTOCOL: Export a protocol into a zip file.
 % 
-% USAGE:  export_protocol(iProtocol, iSubject, OutputFile) 
-%         export_protocol(iProtocol, iSubject)        : Ask for the output filename
-%         export_protocol(iProtocol)                  : Export all the subjects of protocol, ask for the output filename
-%         export_protocol()                           : Export current protocol, ask for the output filename
+% USAGE:  export_protocol(iProtocol, iSubjects, OutputFile)
+%         export_protocol(iProtocol, iSubjects)        : Ask for the output filename
+%         export_protocol(iProtocol)                   : Export all the subjects of protocol, ask for the output filename
+%         export_protocol()                            : Export current protocol, ask for the output filename
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,7 +24,9 @@ function export_protocol(iProtocol, iSubject, OutputFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2012-2015
+%          Martin Cousineau, 2019
+%          Raymundo Cassani, 2026
 
 global GlobalData;
 
@@ -33,7 +35,7 @@ if (nargin < 3)
     OutputFile = [];
 end
 if (nargin < 2)
-    iSubject = [];
+    iSubjects = [];
 end
 if (nargin < 1) || isempty(iProtocol)
     iProtocol = bst_get('iProtocol');
@@ -52,11 +54,13 @@ if isempty(OutputFile)
     % Get default directories
     LastUsedDirs = bst_get('LastUsedDirs');
 	% Default output filename
-    if isempty(iSubject)
+    if isempty(iSubjects)
         OutputFile = bst_fullfile(LastUsedDirs.ExportProtocol, file_standardize([ProtocolInfo.Comment, '.zip']));
-    else
-        sSubject = bst_get('Subject', iSubject);
+    elseif length(iSubjects) == 1
+        sSubject = bst_get('Subject', iSubjects);
         OutputFile = bst_fullfile(LastUsedDirs.ExportProtocol, file_standardize([ProtocolInfo.Comment, '_', sSubject.Name, '.zip']));
+    else
+        OutputFile = bst_fullfile(LastUsedDirs.ExportProtocol, file_standardize([ProtocolInfo.Comment, '_', num2str(length(iSubjects)), '_Subjects', '.zip']));
     end
     % File selection
     OutputFile = java_getfile('save', 'Export protocol', OutputFile, 'single', 'files', ...
@@ -82,7 +86,7 @@ cd(bst_fileparts(ProtocolInfo.SUBJECTS, 1));
 [tmp__, anatFolder] = bst_fileparts(ProtocolInfo.SUBJECTS, 1);
 [tmp__, dataFolder] = bst_fileparts(ProtocolInfo.STUDIES, 1);
 % Build list of files to zip
-if isempty(iSubject)
+if isempty(iSubjects)
     % Add the entire subject folder
     ListZip = {anatFolder};
     % List files in studies: add all files
@@ -93,9 +97,6 @@ if isempty(iSubject)
         end
     end
 else
-    % Get default study for this subject
-    sSubject = bst_get('Subject', iSubject, 1);
-    sStudy   = bst_get('AnalysisIntraStudy', iSubject);
     % Create a temporary protocol.mat for future database update information
     ProtocolMat = struct();
     ProtocolMat.ProtocolInfo      = GlobalData.DataBase.ProtocolInfo(iProtocol);
@@ -108,23 +109,37 @@ else
     StudyDir = ProtocolMat.ProtocolInfo.STUDIES;
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'STUDIES');
     ProtocolMat.ProtocolInfo = rmfield(ProtocolMat.ProtocolInfo, 'SUBJECTS');
-    ProtocolMat.ProtocolSubjects.Subject = ProtocolMat.ProtocolSubjects.Subject(iSubject);
-    [sStudies, iStudies] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject.FileName, 'default_study', 'intra_subject');
-    ProtocolMat.ProtocolStudies.Study = ProtocolMat.ProtocolStudies.Study(iStudies);
+    % List files for Default Subject, Default Study and Inter Study
+    ListZip = {bst_fullfile(anatFolder, bst_get('DirDefaultSubject')), ...
+               bst_fullfile(dataFolder, bst_get('DirDefaultStudy')),   ...
+               bst_fullfile(dataFolder, bst_get('DirAnalysisInter'))};
+    % Aggregate iStudies for selected Subjects
+    iStudies = [];
+    for ix = 1 : length(iSubjects)
+        % Get default study for this subject
+        sSubject = bst_get('Subject', iSubjects(ix), 1);
+        sStudy   = bst_get('AnalysisIntraStudy', iSubjects(ix));
+        % Studies for this subject
+        [~, iStudiesSub] = bst_get('StudyWithSubject', ProtocolMat.ProtocolSubjects.Subject(iSubjects(ix)).FileName, 'default_study', 'intra_subject');
+        iStudies = [iStudies, iStudiesSub];
+        % Add all files for this subject
+        ListZip = [ListZip, ...
+                   {bst_fullfile(anatFolder, bst_fileparts(sSubject.FileName)), ...
+                    bst_fullfile(dataFolder, bst_fileparts(bst_fileparts(sStudy.FileName))), ...
+                   }, ...
+                  ];
+    end
+    % Keep required Subjects and their Studies
+    ProtocolMat.ProtocolSubjects.Subject = ProtocolMat.ProtocolSubjects.Subject(iSubjects);
+    ProtocolMat.ProtocolStudies.Study    = ProtocolMat.ProtocolStudies.Study(iStudies);
     ProtocolFile = bst_fullfile(dataFolder, 'protocol.mat');
     bst_save(ProtocolFile, ProtocolMat, 'v7');
-    % List all files that might be useful for this subject
-    ListZip = {bst_fullfile(anatFolder, bst_fileparts(sSubject.FileName)), ...
-               bst_fullfile(anatFolder, bst_get('DirDefaultSubject')), ...
-               bst_fullfile(dataFolder, bst_fileparts(bst_fileparts(sStudy.FileName))), ...
-               bst_fullfile(dataFolder, bst_get('DirDefaultStudy')), ...
-               bst_fullfile(dataFolder, bst_get('DirAnalysisInter')), ...
-               ProtocolFile};
+    ListZip = [ListZip, {ProtocolFile}];
 end
 % Zip
 zip(OutputFile, ListZip);
 % Restore protocol file
-if ~isempty(iSubject)
+if ~isempty(iSubjects)
     % Remove temporary protocol file
     file_delete(bst_fullfile(StudyDir, 'protocol.mat'), 1);
     % Save again the original one

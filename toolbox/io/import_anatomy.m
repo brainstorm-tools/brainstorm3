@@ -1,5 +1,7 @@
 function import_anatomy(iSubject, isAuto)
-% IMPORT_ANATOMY: Import a full anatomy folder in interactive mode (BrainVISA, BrainSuite, FreeSurfer, CIVET, SimNIBS)
+% IMPORT_ANATOMY: Import a full anatomy folder in interactive mode
+%
+% Supported formats: FreeSurfer, BrainSuite, BrainVISA, CAT, CIVET, HCPv3, SimNIBS, BESA-MRI
 %
 % USAGE:  import_anatomy(iSubject, isAuto=0)
 
@@ -26,6 +28,16 @@ function import_anatomy(iSubject, isAuto)
 % Parse inputs
 if (nargin < 2) || isempty(isAuto)
     isAuto = 0;
+end
+
+% Get subject directory
+sSubject = bst_get('Subject', iSubject);
+% Ask for confirmation if existing anatomy
+if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
+    if ~java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
+        'Are you sure you want to delete the previous MRI and surfaces ?' 10 10], 'Import anatomy')
+        return;
+    end
 end
 
 % Get default import directory and formats

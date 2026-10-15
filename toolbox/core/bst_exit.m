@@ -1,6 +1,6 @@
 function status = bst_exit()
 % BST_EXIT: Exit Brainstorm
-% Save database, remove callbacks, close windows, reset environment.
+% Save database, remove callbacks, close windows, reset environment, stop containers
 %
 % Return : 1 if exited
 %          0 if Brainstorm was not started
@@ -97,6 +97,15 @@ if (GlobalData.Program.GuiLevel >= 0)
 end
 % Release Brainstorm global mutex
 bst_mutex('release', 'Brainstorm');
+
+
+%% ===== STOP CONTAINERS =====
+PlugDesc = bst_plugin('GetInstalled');
+for iPlug = 1 : length(PlugDesc)
+    if bst_plugin('IsContainer', PlugDesc(iPlug))
+        bst_plugin('Unload', PlugDesc(iPlug), 0);
+    end
+end
 
 
 %% ===== SAVE DATABASE =====

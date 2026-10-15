@@ -1,4 +1,4 @@
-function [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
+function [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
 % IN_FREAD: Read a block a data in any recordings file previously opened with in_fopen().
 %
 % USAGE:  [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions);
@@ -215,14 +215,6 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
-        % Load display units
-        if ~isempty(sFile.filename)
-            DataMat = load(sFile.filename, 'DisplayUnits');
-            if isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
-                DisplayUnits = DataMat.DisplayUnits;
-            end
-        end
-
     case 'EEG-INTAN'
         F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-PLEXON'
@@ -247,6 +239,10 @@ end
 % Remove channels that were not supposed to be read
 if isChanRange && ~isempty(iChanRemove)
     F(iChanRemove,:) = [];
+end
+% Display units
+if isfield(sFile, 'header') && isfield(sFile.header, 'displayunits') && ~isempty(sFile.header.displayunits)
+    DisplayUnits = sFile.header.displayunits;
 end
 
 
@@ -312,10 +308,13 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
             isProjected = sum(Projector ~= 0, 2) > 1;
             if any(isProjected(iChannels))
                 % If there are projectors involved and only subselection of channels:
-                % We must have all data needed to apply the projector, otherwise it doesn't make sense
-                missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
-                if ~isempty(missingChannels)
-                    bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']);
+                % We must have all data needed by the requested channels to apply the projector, otherwise it doesn't make sense
+                % Identify requested channels that are missing data to apply projector
+                iChannelsMissingData = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+                if ~isempty(iChannelsMissingData)
+                    channelNames = cellfun(@(x) ['"', x, '"'], {ChannelMat.Channel(iChannelsMissingData).Name}, 'UniformOutput', 0);
+                    wrnStr = ['channel' repmat('s', double(length(iChannelsMissingData) > 1)), ': ' strjoin(channelNames, ', ')];
+                    bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for ' wrnStr ', first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']);
                 else
                     F = Projector(iChannels, iChannels) * F;
                 end

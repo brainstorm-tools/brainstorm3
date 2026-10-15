@@ -137,6 +137,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jToggleAllTimes.setSelected(1);
         jButtonSetSel = gui_component('Button', jPanelOptions, '', 'Set', Insets(1,5,1,5), 'Set the current time as the preferred time for the loaded group(s)', @SetSelectedTime_Callback);
         jButtonSetSel.setFocusable(0);
+        jToggleCurSlices = gui_component('Checkbox', jPanelOptions, 'br', 'Show only on current slices', [], 'Show only dipoles on the current slices', @(h,ev)FireUpdateDisplayOptions);
+        jToggleCurSlices.setSelected(0);
     jPanelNew.add(jPanelOptions);
     
     % ===== PANEL: COLOR =====
@@ -197,6 +199,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jSliderConfVol',        jSliderConfVol, ...
                                   'jToggleSelTimes',       jToggleSelTimes, ...
                                   'jButtonSetSel',         jButtonSetSel, ...
+                                  'jToggleCurSlices',      jToggleCurSlices, ...
                                   'jTitleDipSize',         jTitleDipSize, ...
                                   'jSliderDipSize',        jSliderDipSize, ...
                                   'jTitleTailWidth',       jTitleTailWidth, ...
@@ -393,6 +396,7 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     DipolesInfo.DisplayAllTime = 0;
     DipolesInfo.DisplayMaxGoodness = 0;
     DipolesInfo.DisplaySelTimes = 0;
+    DipolesInfo.DisplayCurrentSlice = 0;
     
     % Get Dipoles description in figure
     DipolesApp = getappdata(hFig, 'Dipoles');
@@ -475,6 +479,17 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     % Show maximum goodness of selected dipoles
     if ctrl.jToggleMaxGoodness.isSelected()
         DipolesInfo.DisplayMaxGoodness = 1;
+    end
+    % Shows only dipoles on current slices
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    if ~isempty(sMri)
+        ctrl.jToggleCurSlices.setVisible(1);
+        if ctrl.jToggleCurSlices.isSelected()
+            DipolesInfo.DisplayCurrentSlice = 1;
+        end
+    else
+        ctrl.jToggleCurSlices.setSelected(0);
+        ctrl.jToggleCurSlices.setVisible(0);
     end
 end
 
@@ -880,6 +895,10 @@ function PlotSelectedDipoles(hFig)
             end
         end
     end
+    % Display only dipoles on current slices
+    if DipolesInfo.DisplayCurrentSlice
+        DisplayDipolesInSlices(hFig, 'current');
+    end
     % Force updating this figure before upd
     drawnow
 end
@@ -1024,3 +1043,92 @@ end
 
 
 
+%% ===== DISPLAY DIPOLES IN TARGET SLICES =====
+% DisplayDipolesInSlices(hFig, slices, refSlices)
+% Show only the dipoles that belong to the target MRI slice
+%   hFig      : 3D figure showing MRI slices
+%   slices    : 'all',     show all dipoles regardless the current slide (Default)
+%               'current', show only dipoles that belong to the current slices
+%               [X, Y, Z], show only dipoles that belong to these slices, set dimension to NaN to ignore it
+%               []         hide all dipoles regardless the current slide
+%   refSlices : dipoles will be shown in the referece slices that are closest to 'slices'
+%               If absent, refSlices are all the slices in the volume
+function DisplayDipolesInSlices(hFig, slices, refSlices)
+    % Only for 3D figures with MRI
+    FigureId = getappdata(hFig, 'FigureId');
+    [sMri, TessInfo, iTess] = panel_surface('GetSurfaceMri', hFig);
+    if ~strcmpi(FigureId.Type, '3DViz') || isempty(sMri)
+        return
+    end
+    % Parse 'slices'
+    isValidSlice = isnumeric(slices) || ischar(slices);
+    if nargin < 2 || ~isValidSlice
+        slices = 'all';
+    end
+    % Reference slices
+    if nargin < 3 || isempty(refSlices)
+        mriSize = size(sMri.Cube);
+        for iDim = 1 : 3
+            tmp = [1:mriSize(iDim)];
+            if (iDim == 2) || (iDim == 3)
+                tmp = bst_flip(tmp,2);
+            end
+            refSlices{iDim} = tmp;
+        end
+    end
+    if ~iscell(refSlices)
+        refSlices = {refSlices};
+    end
+    % Get dipole graphic elements
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+    hPoints = [findobj(hAxes, 'Tag', 'DipolesLoc'); findobj(hAxes, 'Tag', 'DipolesOrient')];
+    if isempty(hPoints)
+        return
+    end
+    % Handle char slices input
+    if ischar(slices)
+        % Restore mode: make all dipoles visible again
+        if strcmpi(slices, 'all')
+            set(hPoints, 'Visible', 'on');
+            return
+        % Get current
+        elseif strcmpi(slices, 'current')
+            slices = TessInfo(iTess).CutsPosition;
+        % Ignore
+        else
+            return
+        end
+    end
+    % Hide all dipoles
+    set(hPoints, 'Visible', 'off');
+    % Handle '[]' input
+    if isnumeric(slices) && isempty(slices)
+        return
+    end
+
+    % Get all graphics positions in voxels
+    x = get(hPoints, 'XData');
+    y = get(hPoints, 'YData');
+    z = get(hPoints, 'ZData');
+    if ~iscell(x)
+        x = {x}; y = {y}; z = {z};
+    end
+    locs = [cellfun(@(v) v(1), x), cellfun(@(v) v(1), y), cellfun(@(v) v(1), z)];
+    locs = cs_convert(sMri, 'scs', 'voxel', locs);
+
+    % Dimensions to check
+    dims = find(~isnan(slices));
+    slices = slices(dims);
+    refSlices = refSlices(dims);
+    locs = locs(:,dims);
+
+    % Check distance for each dimension
+    isObjVisible = false(length(hPoints), length(dims));
+    for iDim = 1 : length(dims)
+        iClosestSlide = bst_closest(locs(:, iDim)', refSlices{iDim});
+        isObjVisible(:, iDim) = refSlices{iDim}(iClosestSlide) == slices(iDim);
+    end
+    % Set to visible selected objects
+    isObjVisible = any(isObjVisible, 2);
+    set(hPoints(isObjVisible), 'Visible', 'on');
+end

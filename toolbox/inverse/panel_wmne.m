@@ -316,6 +316,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS, DataTypes)  %#ok<DEFNU>
     function ButtonOk_Callback(varargin)       
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 
 %% ===== UPDATE PANEL =====

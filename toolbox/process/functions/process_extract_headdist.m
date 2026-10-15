@@ -67,7 +67,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Load input file
         DataMat = in_bst_data(sInputs(iInput).FileName);
         % Check for CTF.
-        if ~strcmp(DataMat.Device, 'CTF')
+        if ~any(strcmpi(strsplit(DataMat.Device, ','), 'CTF'))
             bst_report('Error', sProcess, sInputs(iInput), 'Extract head distance is currently only available for CTF data.');
         end
         % Channel file for Study

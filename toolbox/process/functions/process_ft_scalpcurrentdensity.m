@@ -106,7 +106,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
-    bst_plugin('SetProgressLogo', 'fieldtrip');
+    bst_progress('setpluginlogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     Conductivity = 0.33; % Default value
@@ -232,7 +232,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     db_add_data(iOutputStudy, MatFile, DataMat);
     OutputFiles{1} = MatFile;
     % Remove logo
-    bst_plugin('SetProgressLogo', []);
+    bst_progress('removeimage');
 end
 
 

@@ -15,6 +15,7 @@ function varargout = figure_timeseries( varargin )
 %                figure_timeseries('ResetView',                   hFig)
 %                figure_timeseries('ResetViewLinked',             hFig)
 %                figure_timeseries('DisplayFigurePopup',          hFig, menuTitle=[], curTime=[])
+%                figure_timeseries('UpdateXAxisTimeLabels,        hFig, action=['update', 'toggle'])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -921,6 +922,7 @@ function FigureMouseWheelCallback(hFig, event)
     % Regular scroll
     else
         FigureScroll(hFig, event.VerticalScrollCount, 'horizontal');
+        UpdateXAxisTimeLabels(hFig, 'update');
     end
 end
 
@@ -1520,6 +1522,11 @@ function FigureKeyPressedCallback(hFig, ev)
         case 'v'           
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
+            end
+        % CTRL+X : Toogle time X axis mode
+        case 'x'
+            if isControl && isFullDataFile
+                UpdateXAxisTimeLabels(hFig, 'toggle')
             end
         % Y : Scale to fit Y axis
         case 'y'
@@ -2169,52 +2176,11 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
     jPopup = java_create('javax.swing.JPopupMenu');
     % Add wall clock time for continuous EDF files in the title of the popup
     dateTitle = '';
-    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && isequal(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile)
-        sFile = GlobalData.DataSet(iDS).Measures.sFile;
-        % EDF: Wall-clock time
-        if strcmpi(sFile.format, 'EEG-EDF') && isfield(sFile.header, 'startdate') && isfield(sFile.header, 'starttime') && ~isempty(sFile.header.startdate) && ~isempty(sFile.header.starttime)
-            % Read time and date from the fields in the header
-            recdate = sFile.header.startdate;
-            rectime = sFile.header.starttime;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            rectime(~ismember(sFile.header.starttime, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            rectime = str2num(rectime);
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(2000 + recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Nihon Kohden: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-NK') && isfield(sFile.header, 'startdate') && ~isempty(sFile.header.startdate)
-            % Read date from the fields in the header
-            recdate = sFile.header.startdate;
-            recdate(~ismember(sFile.header.startdate, '1234567890')) = ' ';
-            recdate = str2num(recdate);
-            % Get timestamp of the current data block
-            iEpoch = GlobalData.FullTimeWindow.CurrentEpoch;
-            ts = sFile.header.ctl(1).data(iEpoch).timestamp;
-            rectime(3) = rem(ts, 60);
-            rectime(2) = rem(ts - rectime(3), 3600) / 60;
-            rectime(1) = (ts - rectime(2)*60 - rectime(3)) / 3600;
-            % Valid times where found
-            if (length(recdate) == 3) && (length(rectime) == 3) && ~isequal(recdate, [1 1 1]) && ~isequal(recdate, [0 0 0])
-                dstart = datenum(recdate(3), recdate(2), recdate(1), rectime(1), rectime(2), rectime(3));
-                dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-                dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-            end
-        % Spike2 SMR: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
-            t = sFile.header.timedate;
-            dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        % Micromed TRC: Wall clock time
-        elseif strcmpi(sFile.format, 'EEG-MICROMED') && isfield(sFile.header, 'acquisition') && isfield(sFile.header.acquisition, 'sec')
-            acq = sFile.header.acquisition;
-            dstart = datenum(acq.year, acq.month, acq.day, acq.hour, acq.min, acq.sec);
-            dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
-            dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
-        end
+    if strcmpi(FigId.Type, 'DataTimeSeries') && ~isempty(FigId.Modality) && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) && ...
+            isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') && ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+        currentTs = datetime(GlobalData.DataSet(iDS).Measures.sFile.t0) + seconds(GlobalData.UserTimeWindow.CurrentTime);
+        currentTs.Format = 'dd-MMM-yyyy HH:mm:ss.SSS';
+        dateTitle = char(currentTs, '', 'en_US');
     end
     % Menu title
     if ~isempty(menuTitle) || ~isempty(dateTitle)
@@ -2502,6 +2468,7 @@ function DisplayConfigMenu(hFig, jParent)
     TsInfo = getappdata(hFig, 'TsInfo');
     FigureId = GlobalData.DataSet(iDS).Figure(iFig).Id;
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+    isT0 = ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ~isempty(GlobalData.DataSet(iDS).Measures.sFile.t0);
     isSource = ~isempty(FigureId.Modality) && ismember(FigureId.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'});
     % Get all other figures
     hFigAll = bst_figures('GetFiguresByType', FigureId.Type);
@@ -2539,18 +2506,34 @@ function DisplayConfigMenu(hFig, jParent)
         end
 
     % === X-AXIS ===
-    if isRaw || strcmpi(FigureId.Type, 'Spectrum')
+    if isRaw || isT0 || strcmpi(FigureId.Type, 'Spectrum')
         % Menu name
         if strcmpi(FigureId.Type, 'Spectrum')
             strX = 'Frequency';
         else
             strX = 'Time';
         end
+        % Time axis options
         jMenu = gui_component('Menu', jPopup, [], strX, IconLoader.ICON_X);
-        % Axis resolution
         if strcmpi(FigureId.Type, 'DataTimeSeries')
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            % Axis resolution
+            if isRaw
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+            end
+            if isRaw && isT0
+                jMenu.addSeparator();
+            end
+            % Time display mode
+            if isT0
+                if isempty(TsInfo.TimestampZero)
+                    strTime = 'Display time as absolute time (HH:MM:ss)';
+                else
+                    strTime = 'Display time as relative time';
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], strTime, IconLoader.ICON_LOADING, [], @(h,ev)UpdateXAxisTimeLabels(hFig, 'toggle'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, KeyEvent.CTRL_MASK));
+            end
         end
         % Log scale
         if strcmpi(FigureId.Type, 'Spectrum')
@@ -2588,7 +2571,7 @@ function DisplayConfigMenu(hFig, jParent)
             % Set fixed resolution
             if isRaw
                 jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Set axes resolution...', IconLoader.ICON_MATRIX, [], @(h,ev)SetResolution(iDS, iFig));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK)); 
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_MASK));
             end
             % Uniform amplitude scales
             if ~isRaw && (length(hFigAll) > 1)
@@ -3157,6 +3140,10 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
             PlotRawTimeBar(iDS, iFig);
         end
     end
+
+    % ===== UPDATE X AXIS TIME DISPLAY =====
+    UpdateXAxisTimeLabels(hFig, 'update');
+
     % ===== SCALE BAR =====
     % For column displays: add a scale display
     if ~TsInfo.NormalizeAmp && strcmpi(TsInfo.DisplayMode, 'column') && (nAxes == 1)
@@ -4316,6 +4303,65 @@ function SetResolution(iDS, iFig, newResX, newResY)
 end
 
 
+%% ===== UPDATE X AXIS TIME DISPLAY =====
+function UpdateXAxisTimeLabels(hFig, action)
+    global GlobalData;
+
+    if nargin < 2 || isempty(action)
+        action = 'update';
+    end
+
+    % Get current figure structure
+    [hFig, ~, iDS] = bst_figures('GetFigure', hFig);
+    hAxes = findobj(hFig, 'Tag', 'AxesGraph');
+    TsInfo = getappdata(hFig, 'TsInfo');
+    FigureId = getappdata(hFig, 'FigureId');
+    % Just for DataTimeseries with t0
+    if ~strcmpi(FigureId.Type, 'DataTimeSeries') || ...
+       ~isfield(GlobalData.DataSet(iDS).Measures.sFile, 't0') || ...
+       isempty(GlobalData.DataSet(iDS).Measures.sFile.t0)
+        return
+    end
+
+    % Update TimestampZero in Figure TsInfo data
+    if strcmpi(action, 'update') && ~isempty(TsInfo.TimestampZero) && ~strcmpi(TsInfo.TimestampZero, GlobalData.DataSet(iDS).Measures.sFile.t0)
+        TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        setappdata(hFig, 'TsInfo', TsInfo);
+    elseif strcmpi(action, 'toggle')
+        if isempty(TsInfo.TimestampZero)
+            TsInfo.TimestampZero = GlobalData.DataSet(iDS).Measures.sFile.t0;
+        else
+            TsInfo.TimestampZero = [];
+        end
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+
+    % Reset to default tick mode (relative time)
+    set(hAxes, 'XTickMode', 'auto', 'XTickLabelMode', 'auto');
+    % Display as relative time (from the recording start)
+    if isempty(TsInfo.TimestampZero)
+        % Do nothing
+    % Display as absolute time [yyyy-MM-ddT]HH:mm:ss.SSS
+    else
+        % Get tick values and current labels
+        tickValues = hAxes.XTick;
+        tickLabels = get(hAxes, 'xTickLabel');
+        tickTimeStamps = datetime(TsInfo.TimestampZero) + seconds(tickValues);
+        % Find number of decimals for seconds from tickLabels
+        tmp = regexp(tickLabels, '\.(\d*)$', 'tokens');
+        tmp = [tmp{:}];
+        d = max([cellfun(@(x) length(x{1}), tmp),0]);
+        tickFormat = 'HH:mm:ss';
+        if d > 0
+            tickFormat = [tickFormat, '.' repmat('S', 1, d)];
+        end
+        tickTimeStamps.Format = tickFormat;
+        tickLabels = arrayfun(@char, tickTimeStamps, 'UniformOutput', 0);
+        hAxes.XTickLabel = tickLabels;
+    end
+end
+
+
 %% ===== SET AUTO SCALE =====
 function SetAutoScale(hFig, isAutoScale)
     % If passed event structure (callback function): get calling object status
@@ -4700,12 +4746,14 @@ function PlotEventsDots_TimeBar(hFig)
     cla(hRawTimeBar);
     % Get the raw events and time axes
     events = panel_record('GetEvents');
+    if isempty(events)
+        return;
+    end
+    % Select only non-hidden events
+    events = events([events.select] == 1);
+
     % Loop on all the events types
     for iEvt = 1:length(events)
-        % If event is hidden
-        if isequal(events(iEvt).select, 0)
-            continue;
-        end
         % No occurrences: nothing to draw
         nOccur = size(events(iEvt).times, 2);
         if (nOccur == 0)

@@ -19,8 +19,7 @@ function [NewFiles, iStudyImport] = import_data(DataFiles, ChannelMat, FileForma
 %                      Must be specified if iStudyInit is not defined.
 %                      In this case, default study is created for the target subject.
 %    - ImportOptions : Structure that describes how to import the recordings.
-%    - DateOfStudy   : String 'dd-MMM-yyyy' or 'yyyy-MM-ddTHH:mm:ss'
-%                      force Study entries created in the database to use this acquisition date
+%    - DateOfStudy   : String 'dd-MMM-yyyy' force Study entries created in the database to use this acquisition date
 %
 % NOTE : Some data filenames can be interpreted as subjects/conditions/run :
 %    - cell<i>_<conditionName>_obs<j>.erp     : subject #j, condition #i, conditionName

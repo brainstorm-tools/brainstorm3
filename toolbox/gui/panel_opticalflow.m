@@ -191,6 +191,7 @@ function [bstPanelNew, panelName] = CreatePanel(TimeVector) %#ok<DEFNU>
 %% ===== RUN BUTTON =====
     function ButtonRun_Callback(varargin)
         bst_mutex('release', panelName); % Release the MUTEX
+        gui_release_dialog(panelName);
     end
 
 %% ===== UPDATE HHD =====

@@ -66,9 +66,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jCheckLayerSelect = javaArray('javax.swing.JCheckBox', nLayers);
         % Loop on each layer
         for i = 1:nLayers
-            gui_component('label', jPanelLayers, 'br', [LayerNames{i} ':'], [], [], [], []);
-            jCheckLayerSelect(i) = gui_component('checkbox', jPanelLayers, 'tab', '');
+            jCheckLayerSelect(i) = gui_component('checkbox', jPanelLayers, 'br', '');
             jCheckLayerSelect(i).setSelected(1);
+            gui_component('label', jPanelLayers, 'tab', LayerNames{i}, [], [], [], []);
         end
     jPanelNew.add(jPanelLayers);
 
@@ -103,6 +103,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     function ButtonOk_Callback(varargin)
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 end
 

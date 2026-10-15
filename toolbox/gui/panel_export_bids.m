@@ -131,8 +131,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % Save new options
         bst_set('ExportBidsOptions', ExportBidsOptions);
         
-        % Release mutex to close the panel
+        % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 
 %% ===== UPDATE PANEL =====

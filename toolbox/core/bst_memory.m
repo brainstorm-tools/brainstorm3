@@ -630,8 +630,10 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         % Is loaded dataset
         iDS = GetDataSetData(DataFile, 0);
         % Load file
-        if isempty(iDS)
-            bst_progress('start', 'Loading raw file', 'Reading file header...');
+        if isempty(iDS) || isReloadForced
+            if ~isReloadForced
+                bst_progress('start', 'Loading raw file', 'Reading file header...');
+            end
             MeasuresMat = in_bst_data(DataFile, 'F', 'ChannelFlag', 'ColormapType', 'DisplayUnits');
             sFile = MeasuresMat.F;
         else
@@ -687,7 +689,7 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             bst_save(file_fullpath(DataFile), DataMat, 'v6', 1);
         end
     else
-        MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits');
+        MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits', 'T0');
         Time = MeasuresMat.Time;
         % Duplicate time if only one time frame
         if (length(Time) == 1)
@@ -700,6 +702,10 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
             sFile.events = MeasuresMat.Events;
         else
             sFile.events = repmat(db_template('event'), 0);
+        end
+        % Store timestamp for time 0s
+        if isfield(MeasuresMat, 'T0')
+            sFile.t0 = MeasuresMat.T0;
         end
         sFile.format       = 'BST';
         sFile.filename     = DataFile;
@@ -1621,6 +1627,12 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
     % If dataset for target file already exists, just return its index
     if ~isForceReload && ~isempty(iDS) && ~isempty(iTimefreq)
+        % Check if this fake parent file is already created
+        ParentFile = strrep(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FileName, '.mat', '$.mat');
+        if ~isempty(GlobalData.DataSet(iDS).Results)
+            iResults = find(file_compare({GlobalData.DataSet(iDS).Results.FileName}, ParentFile) ...
+                & (cellfun(@length, {GlobalData.DataSet(iDS).Results.GridLoc}) == length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc)));
+        end
         return
     end
     

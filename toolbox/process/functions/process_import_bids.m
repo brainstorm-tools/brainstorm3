@@ -691,8 +691,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 end
                                 fDate = datetime('now');
                             end
-                            fDate.Format = 'yyyy-MM-dd''T''HH:mm:ss';
-                            tsvDates{iDate} = char(fDate);
+                            fDate.Format = 'dd-MMM-yyyy';
+                            tsvDates{iDate} = char(fDate, '', 'en_US');
                         end
                     end
                 end

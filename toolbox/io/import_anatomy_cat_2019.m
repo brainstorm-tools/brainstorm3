@@ -151,7 +151,7 @@ end
 if ~isInstalled
     return;
 end
-bst_plugin('SetProgressLogo', 'cat12');
+bst_progress('setpluginlogo', 'cat12');
 % CAT path
 CatExeDir = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
 % FSAverage surfaces in CAT12 program folder
@@ -564,7 +564,7 @@ if isInteractive
     figure_3d('SetStandardView', hFig, 'left');
 end
 % Close progress bar
-bst_plugin('SetProgressLogo', []);
+bst_progress('removeimage');
 if ~isProgress
     bst_progress('stop');
 end
