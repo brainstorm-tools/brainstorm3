@@ -1,7 +1,7 @@
 function [Gain, errMsg] = bst_duneuro2026(cfg)
 % BST_DUNEURO: Call Duneuro to compute a FEM solution for Brainstorm.
 %
-% USAGE:  [Gain, errMsg] = bst_duneuro(cfg)
+% USAGE:  [Gain, errMsg] = bst_duneuro2026(cfg)
 % NOTE: online viewer of hdf5 files : https://myhdf5.hdfgroup.org/
 
 % @=============================================================================
@@ -24,24 +24,31 @@ function [Gain, errMsg] = bst_duneuro2026(cfg)
 %
 % Authors: Takfarinas Medani, 2019-2026
 %          Juan Garcia-Prieto, 2019-2021
-%          Francois Tadel 2020-2023
+%          Francois Tadel, 2020-2023
+%          Raymundo Cassani, 2026
 
 % Initialize returned values
 Gain = [];
-%% ===== INSTALL AND GET THE EXECUTABLE =====
-% ***** ToDo: Define how to check the container *******
-% Install/load duneuro container
-% Install/load duneuro plugin TODO:
-% Note: For the current version of this function, we assume that the appropriate container is installed.
-% Three possible runners are possible:  
-% - via docker
-% - via podman
-% - via apptainer
-runner =  cfg.containerRunner;
-% Get DUNEuro container executable
-% NOTE: temporary place for the containers
-% https://github.com/users/MalteHoel/packages/container/package/duneuro_in_docker_testing
+
+%% ===== INSTALL DUNEURO-DOCKER PLUGIN =====
+plugName = 'duneuro-docker';
+bst_progress('text', ['Calling ' plugName]);
+% Ensure container plugin: Installs and/or Loads
+% Install container plugin === Import image into container engine
+% Load    container plugin === Run container in standby (name ['bst_' plugName])
+ensureRes = bst_plugin('Ensure', plugName);
+% Reload to clean up temporary files
+if ensureRes == 0
+    bst_plugin('Unload', plugName, 0);
+    bst_plugin('Load', plugName, 0);
+end
+% Retrieve info of container
+[errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' plugName]);
+if ~isempty(errMsg)
+    return
+end
 bst_plugin('SetProgressLogo', 'duneuro');
+
 
 %% ===== SENSORS =====
 % Select modality for DUNEuro
@@ -118,7 +125,7 @@ elseif strcmp(dnModality,'meeg') && (sum(cfg.FemSelect) ~= length(unique(FemMat.
 end
 
 % Get temp folder
-TmpDir = bst_get('BrainstormTmpDir', 0, 'duneuro');
+TmpDir = containerInfo.volumes{1,1};
 
 % Display message
 bst_progress('text', 'DUNEuro: Writing temporary files...');
@@ -347,24 +354,26 @@ if  length(cfg.GridLoc) >= 100000
     leadfield_config.chunk_size = '100000';
 end
 
-%% ===== RUN DUNEURO ======
-bst_progress('text', 'DUNEuro: Computing leadfield...');
-% disp(['DUNEURO> System call: ' callStr]);
-tic;
+%% ===== RUN DUNEURO IN CONTAINER ======
 % Call DUNEuro and Compute transfer matrix
-[status, errMsg ] = bst_run_duneuro_task(TmpDir, transfer_matrix_config, runner);
-transferMatrix_time = toc;
-
+bst_progress('text', 'DUNEuro: Computing transfer matrix...');
 tic;
-% Call DUNEuro and Compute the Leadfield
-[status, errMsg ] = bst_run_duneuro_task(TmpDir, leadfield_config, runner);
-leadField_time = toc;
-
-if (status ~= 0)
-    errMsg = 'Error during the DUNEuro computation, see logs in the command window.';
-    return;
+errMsg = bst_run_duneuro_task(TmpDir, transfer_matrix_config, containerInfo);
+if ~isempty(errMsg)
+    return
 end
-disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
+
+% Call DUNEuro and Compute the Leadfield
+bst_progress('text', 'DUNEuro: Computing leadfield...');
+tic;
+errMsg = bst_run_duneuro_task(TmpDir, leadfield_config, containerInfo);
+if ~isempty(errMsg)
+    return
+end
+
+fprintf('\n');
+fprintf('DUNEURO> FEM computation completed in: %0.1f s\n', toc);
+
 
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
@@ -390,8 +399,9 @@ if isMeg % The MEG is not fully tested as we need to convert from integration po
     Gain(cfg.iMeg,:) = GainMeg; 
 end 
 
-% Remove logo
-bst_plugin('SetProgressLogo', []);
+% Unload container plugin === Stop container and Delete bind files
+bst_plugin('Unload', plugName, 0);
+
 end
 
 %% =================================================================================
@@ -560,58 +570,35 @@ function [iOk, errMsg] = bstdn_write_source_space(duneuro_io_dir, dipole_positio
 end
 
 
-function [status, errMsg ] = bst_run_duneuro_task(duneuro_io_dir, config, runner)
-    status = 0; errMsg  = '';
-    task_name = config.name;
-    
-    config_file_path = fullfile(duneuro_io_dir, 'config.ini');
-    io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
-    
-    % first write config file
-    file_handle = fopen(config_file_path, 'wt');
-    
-    fprintf(file_handle, ['[task_info]\ntask_list=' task_name '\n\n[' task_name '_config]\n']);
-    
+function errMsg = bst_run_duneuro_task(duneuro_io_dir, config, containerInfo)
+    % === CREATE CONFIG FILE ===
+    file_handle = fopen(fullfile(duneuro_io_dir, 'config.ini'), 'wt');
+    fprintf(file_handle, ['[task_info]\ntask_list=' config.name '\n\n[' config.name '_config]\n']);
+    config = rmfield(config, 'name');
     config_keys = fieldnames(config);
     for i = 1:length(config_keys)
-      current_key = config_keys{i};
-      current_value = config.(current_key);
-      
-      % write everything except the task name 
-      if ~strcmp(current_key, 'name')
-        fprintf(file_handle, [current_key '=' current_value '\n']);
-      end
+        fprintf(file_handle, [config_keys{i} '=' config.(config_keys{i}) '\n']);
     end
-    
     fclose(file_handle);
     
-    % now execute system call to start the container
-    if strcmp(runner, 'docker')
-        
-      runner_system_call = ['docker run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-    elseif strcmp(runner, 'podman')
-      % if we run podman in rootless mode, we need to make the IO directory writable 
-      % for the container user
-      duneuro_container_uid = '50000'; % this uid is explicitely set in the Dockerfile
-      change_ownership_in_container_command = ['podman unshare chown ' duneuro_container_uid ':' duneuro_container_uid ' -R ' duneuro_io_dir];
-      container_command = ['podman run -t --rm -v ' duneuro_io_dir ':/duneuro/external_mount ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-      change_ownership_back_command = ['podman unshare chown 0:0 -R ' duneuro_io_dir];
-      runner_system_call = [change_ownership_in_container_command ' && ' container_command ' && ' change_ownership_back_command];
-    elseif strcmp(runner, 'apptainer')
-      % runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount docker://ghcr.io/maltehoel/duneuro_in_docker_testing:wip'];
-      %runner_system_call = ['apptainer run --bind ' duneuro_io_dir ':/duneuro/external_mount duneuro_testing.sif'];
-       
-      %system('bash -lc "module load apptainer && which apptainer"')
-        runner_system_call = ...
-    ['bash -lc "module load apptainer && apptainer run --bind ' ...
-     duneuro_io_dir ':/duneuro/external_mount duneuro_testing.sif"'];
-
-% status = system(runner_system_call);
-
+    % === RUN COMMAND IN CONTAINER =====
+    if containerInfo.isRunning
+        % Create a symbolic link /duneuro/external_mount pointing to /data
+        dataPath = containerInfo.volumes{1,2};
+        command = ['ln -s ' dataPath ' /duneuro/external_mount'];
+        errMsg = bst_containers('ExecInContainer', containerInfo.name, command);
+        % Execute duneuro_container_driver.py
+        if isempty(errMsg)
+            command = 'python3 /duneuro/driver/duneuro_container_driver.py';
+            errMsg = bst_containers('ExecInContainer', containerInfo.name, command);
+        end
+        if ~isempty(errMsg)
+            errMsg = [errMsg 10 'Error during the DUNEuro computation, see logs in the command window.'];
+        end
     else
-      errMsg = 'unknown runner';
-       return;
+        errMsg = 'Container is not running';
     end
-    
-    status = system(runner_system_call);
+    if ~isempty(errMsg)
+        return
+    end
 end
