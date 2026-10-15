@@ -446,7 +446,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         sMethod.Comment = strrep(sMethod.Comment, 'homogeneous',     'Homogeneous medium');
         sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
-        sMethod.Comment = strrep(sMethod.Comment, 'duneuro2026',         'DUNEuro FEM 2026');
+        sMethod.Comment = strrep(sMethod.Comment, 'duneuro2026',     'DUNEuro FEM 2026');
         % Grid type
         if strcmpi(sMethod.HeadModelType, 'volume')
             sMethod.Comment = [sMethod.Comment ' (volume)'];
@@ -729,9 +729,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                 return;
             end
             OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM(1)).FileName;
-            % Interactive interface to set the OpenMEEG options
+            % Interactive interface to set the DUNEuro options
             if OPTIONS.Interactive
-                DuneuroOptions = gui_show_dialog('DUNEuro Options', @panel_duneuro, 1, [], OPTIONS);
+                DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);
                 if isempty(DuneuroOptions)
                     bst_progress('stop');
                     return;
@@ -741,7 +741,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             end
         end
         
-        % ===== DUNEURO =====
+        % ===== DUNEURO 2026 =====
         if isDuneuro2026
             % Get default FEM head model
             if isempty(sSubject.iFEM)
@@ -749,9 +749,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                 return;
             end
             OPTIONS.FemFile = sSubject.Surface(sSubject.iFEM(1)).FileName;
-            % Interactive interface to set the OpenMEEG options
+            % Interactive interface to set the DUNEuro 2026 options
             if OPTIONS.Interactive
-                DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro2026, 1, [], OPTIONS);
+                DuneuroOptions = gui_show_dialog('DUNEuro 2026 options', @panel_duneuro2026, 1, [], OPTIONS);
                 if isempty(DuneuroOptions)
                     bst_progress('stop');
                     return;
@@ -760,6 +760,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                 OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
             end
         end
+
         % ===== COMPUTE HEADMODEL =====
         % Start process
         [OPTIONS, errMessage] = bst_headmodeler(OPTIONS);

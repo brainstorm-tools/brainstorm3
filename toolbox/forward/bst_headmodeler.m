@@ -509,8 +509,7 @@ end
 
 
 %% ===== COMPUTE: DUNEURO =====
-if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}) ...
-        || ismember('duneuro2026', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
+if any(ismember({'duneuro', 'duneuro2026'}, {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod}))
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
     bst_progress('setpluginlogo', 'duneuro');

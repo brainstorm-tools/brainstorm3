@@ -80,10 +80,10 @@ cfgDef.UseIntegrationPoint = 1;
 cfgDef.EnableCacheMemory = 0;
 cfgDef.MegPerBlockOfSensor = 0; % ToDo
 % DN2026
-cfgDef.containerRunner = 'docker'; % ToDo
-[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
-cfgDef.SrcModel2026      =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
+cfgDef.containerRunner    = 'docker'; % ToDo
+cfgDef.SrcModel2026       =  'multipolar_venant';  %  'multipolar_venant', 'local_subtraction', 'partial_integration'
 cfgDef.residual_reduction = '1e-16'; % for the transfer matrix
+[cfgDef.NbOfThread, cfgDef.NbOfThreadMax] = GetThreads();
 %From Malte: 
 % 1) a derivation of the EEG and MEG scaling factors to get the output in volt and tesla. The short version is the following:
 % If you measure distances in meter, conductivites in Siemens/meter, and dipole moments in Amperemeter, then the following setting
@@ -98,6 +98,9 @@ if (nargin == 0) || isempty(cfg)
 end
 % Add missing values
 cfg = struct_copy_fields(cfg, cfgDef, 0);
+
+
+
 % % The reste is not needed... we keep it just in case
 % % subpart [analytic_solution]
 % cfg.minifile.solution.analytic_solution.radii = [1 2 3 4 ];
@@ -143,6 +146,7 @@ cfg = struct_copy_fields(cfg, cfgDef, 0);
 % fprintf(fid, 'type  = %s\n',cfg.minifile.wrapper.outputtreecompare.type);
 % fprintf(fid, 'absolute  = %s\n',cfg.minifile.wrapper.outputtreecompare.absolute);
 end
+
 
 %% ===== THREAD DETECTION FUNCTION =====
 function [nThreadOptimal,  nPhysical] = GetThreads()
