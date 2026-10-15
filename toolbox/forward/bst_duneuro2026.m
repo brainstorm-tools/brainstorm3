@@ -409,9 +409,9 @@ end
 %  =================================================================================
 function [iOk, errMsg] = dnbst_write_volume_conductor(duneuro_io_dir, FemMat, tensors)
     iOk = 0; errMsg = '';
-    nodes = FemMat.Vertices; 
-    elements = FemMat.Elements - 1; 
-    labels = FemMat.Tissue - 1; 
+    nodes    = FemMat.Vertices;
+    elements = cast(FemMat.Elements - 1, 'int32');
+    labels   = cast(FemMat.Tissue - 1,   'int32');
     io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
 
     % get information about the input data
