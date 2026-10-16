@@ -20,21 +20,22 @@ function varargout = process_ft_sourceanalysis_dics(varargin )
 % =============================================================================@
 %
 % Authors: Vahab YoussofZadeh, Francois Tadel, 2021
+% Updates: Vahab YoussofZadeh, 2026
 
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description the process
-    sProcess.Comment     = 'FieldTrip: ft_sourceanalysis (DICS)';
+    sProcess.Comment     = 'FieldTrip: DICS beamformer';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 357;
     sProcess.Description = 'https://github.com/vyoussofzadeh/DICS-beamformer-for-Brainstorm';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
-    sProcess.OutputTypes = {'data'};
+    sProcess.OutputTypes = {'results'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
@@ -56,7 +57,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.baseline.Value   = [];
     
     % Label: Frequency
-    sProcess.options.label2.Comment = '<BR><B>Frequency of interset:</B>';
+    sProcess.options.label2.Comment = '<BR><B>Frequency of interest:</B>';
     sProcess.options.label2.Type    = 'label';
     % Enter the FOI in the data in Hz, eg, 22:
     sProcess.options.foi.Comment = 'FOI:';
@@ -66,12 +67,42 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tpr.Comment = 'Tapering freq:';
     sProcess.options.tpr.Type    = 'value';
     sProcess.options.tpr.Value   = {4, 'Hz', 0};
+    
+    % Label: Source orientation
+    sProcess.options.label_ori.Comment = '<BR><B>Source orientation:</B>';
+    sProcess.options.label_ori.Type    = 'label';
+
+    % Source orientation option
+    %   - max-power: keep the 3-orientation leadfield and let FieldTrip select
+    %                the dominant orientation with cfg.dics.fixedori = 'yes'.
+    %   - headmodel: project the 3-orientation leadfield onto Brainstorm's
+    %                GridOrient/cortical-normal direction before DICS.
+    sProcess.options.orient.Comment = { ...
+        'Maximum-power orientation', ...
+        'Head-model / cortical-normal orientation', ...
+        'Orientation:'; ...
+        'max-power', ...
+        'headmodel', ...
+        ''};
+    sProcess.options.orient.Type  = 'radio_linelabel';
+    sProcess.options.orient.Value = 'max-power';
+
+    % Label: DICS regularization
+    sProcess.options.label_reg.Comment = '<BR><B>DICS regularization:</B>';
+    sProcess.options.label_reg.Type    = 'label';
+
+    % Regularization applied when estimating the common DICS filter.
+    % FieldTrip expects this as a percentage string, eg, '5%%'.
+    % Enter 5 for '5%%'. Enter 100 to reproduce the previous hard-coded value.
+    sProcess.options.reg.Comment = 'Regularization lambda:';
+    sProcess.options.reg.Type    = 'value';
+    sProcess.options.reg.Value   = {5, '%', 1};
 
     % Label: Contrast
     sProcess.options.label4.Comment = '<BR><B>Contrasting analysis:</B>'; % Contrast between pre and post, across trials
     sProcess.options.label4.Type    = 'label';
     % Contrast
-    sProcess.options.method.Comment = {'Subtraction (post-pre)', 'Permutation-stats (post-vs-pre)', 'Contrasting:'; ...
+    sProcess.options.method.Comment = {'DICS dB contrast (post/pre)', 'Permutation-stats (post-vs-pre)', 'Contrasting:'; ...
                                        'subtraction', 'permutation', ''};
     sProcess.options.method.Type    = 'radio_linelabel';
     sProcess.options.method.Value   = 'subtraction';
@@ -100,12 +131,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
 end
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess) 
 Comment = sProcess.Comment;
 end
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs) 
     OutputFiles = {};
     % Initialize FieldTrip
     [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
@@ -116,14 +147,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % ===== GET OPTIONS =====
     % Inverse options
-    Method   = sProcess.options.method.Value;
-    Modality = sProcess.options.sensortype.Value{1};
-    ShowTfr  = sProcess.options.showtfr.Value;
-    MaxFreq  = sProcess.options.maxfreq.Value{1};
-    Baseline = sProcess.options.baseline.Value{1};
-    PostStim = sProcess.options.poststim.Value{1};
-    FOI      = sProcess.options.foi.Value{1};
-    TprFreq  = sProcess.options.tpr.Value{1};
+    Method     = sProcess.options.method.Value;
+    Modality   = sProcess.options.sensortype.Value{1};
+    ShowTfr    = sProcess.options.showtfr.Value;
+    MaxFreq    = sProcess.options.maxfreq.Value{1};
+    Baseline   = sProcess.options.baseline.Value{1};
+    PostStim   = sProcess.options.poststim.Value{1};
+    FOI        = sProcess.options.foi.Value{1};
+    TprFreq    = sProcess.options.tpr.Value{1};
+    OrientMode = lower(sProcess.options.orient.Value);
+    RegPercent = sProcess.options.reg.Value{1};
+    
+    ErdsMode   = lower(sProcess.options.erds.Value);
+    EffectMode = lower(sProcess.options.effect.Value);
+    EffectTag  = sprintf('%s(%s)', EffectMode, ErdsMode);
+    
+    if isempty(RegPercent) || ~isscalar(RegPercent) || ~isnumeric(RegPercent) || ...
+            ~isfinite(RegPercent) || RegPercent < 0
+        bst_report('Error', sProcess, sInputs, ...
+            'DICS regularization lambda must be a non-negative percentage.');
+        return;
+    end
+    DicsLambda = local_format_dics_lambda(RegPercent);
+    
     % Progress bar
     bst_progress('start', 'ft_sourceanalysis', 'Loading input files...', 0, 2*length(sInputs));
 
@@ -143,7 +189,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Load bad channels from all the input files
     isChannelGood = [];
     for iInput = 1:length(sInputs)
-        DataFile = sInputs(1).FileName;
+        DataFile = sInputs(iInput).FileName;
         DataMat = load(file_fullpath(DataFile), 'ChannelFlag');
         if isempty(isChannelGood)
             isChannelGood = (DataMat.ChannelFlag == 1);
@@ -175,8 +221,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Load head model
     HeadModelFile = sStudyChan.HeadModel(sStudyChan.iHeadModel).FileName;
     HeadModelMat = in_bst_headmodel(HeadModelFile);
-    % Convert head model to FieldTrip format
-    [ftHeadmodel, ftLeadfield, iChannelsData] = out_fieldtrip_headmodel(HeadModelMat, ChannelMat, iChannelsData, 1);
+    % Convert head model to FieldTrip format.
+    % Exclude MEG reference channels to keep the leadfield matched to the
+    % selected data channels.
+    [ftHeadmodel, ftLeadfield, iChannelsData] = out_fieldtrip_headmodel( ...
+        HeadModelMat, ChannelMat, iChannelsData, 0);
+
+    % Prepare the leadfield according to the user-selected orientation mode.
+    % max-power: keep [nChannels x 3] leadfields and use cfg.dics.fixedori later.
+    % headmodel: project [nChannels x 3] leadfields onto unit GridOrient vectors.
+    ftLeadfield = local_prepare_leadfield_orientation(ftLeadfield, HeadModelMat, OrientMode);
 
     % ===== LOAD: DATA =====
     % Template FieldTrip structure for all trials
@@ -249,8 +303,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     cfg.foilim    = [2 cfg_main.fmax];
     cfg.tapsmofrq = 1;
     cfg.taper     = 'hanning';
-    f_data.bsl = do_fft(cfg, ep_data.bsl); f_data.bsl.elec = cfg_main.sens;
-    f_data.pst = do_fft(cfg, ep_data.pst); f_data.pst.elec = cfg_main.sens;
+    f_data.bsl = local_attach_sensors(do_fft(cfg, ep_data.bsl), cfg_main.sens, Modality);
+    f_data.pst = local_attach_sensors(do_fft(cfg, ep_data.pst), cfg_main.sens, Modality);
 
     
     % ===== FIELDTRIP: PSD SENSOR SPACE =====
@@ -271,73 +325,76 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         cfg.tapsmofrq = 1;
     end
 
-    f_data.app = do_fft(cfg, ep_data.app); f_data.app.elec = cfg_main.sens;
-    f_data.bsl = do_fft(cfg, ep_data.bsl); f_data.bsl.elec = cfg_main.sens;
-    f_data.pst = do_fft(cfg, ep_data.pst); f_data.pst.elec = cfg_main.sens;
-
-    
+    f_data.app = local_attach_sensors(do_fft(cfg, ep_data.app), cfg_main.sens, Modality);
+    f_data.bsl = local_attach_sensors(do_fft(cfg, ep_data.bsl), cfg_main.sens, Modality);
+    f_data.pst = local_attach_sensors(do_fft(cfg, ep_data.pst), cfg_main.sens, Modality);
+        
     % ===== SOURCE ANALYSIS =====
     switch Method
         case 'subtraction'
             cfg = [];
             cfg.method = 'dics';
-            cfg.dics.lambda = '100%';
-            cfg.sourcemodel  = ftLeadfield;
-            cfg.frequency    = f_data.app.freq;
-            cfg.headmodel = ftHeadmodel;
+            cfg.dics.lambda = DicsLambda;
+            cfg.sensortype  = 'MEG';
+            cfg.sourcemodel = ftLeadfield;
+            cfg.frequency   = f_data.app.freq;
+            cfg.headmodel   = ftHeadmodel;
             cfg.dics.keepfilter = 'yes';
-            cfg.dics.fixedori    = 'yes'; % project on axis of most variance using SVD
+            
+            cfg = local_set_dics_fixedori(cfg, ftLeadfield, OrientMode);
             sourceavg = ft_sourceanalysis(cfg, f_data.app);
-
+            
             cfg = [];
             cfg.method = 'dics';
-            cfg.dics.lambda = '0%';
+            cfg.dics.lambda = DicsLambda;  % reused filter; kept for provenance/consistency
             cfg.sourcemodel        = ftLeadfield;
             cfg.sourcemodel.filter = sourceavg.avg.filter;
-            cfg.dics.fixedori    = 'yes'; % project on axis of most variance using SVD
             cfg.headmodel = ftHeadmodel;
-            s_data.bsl      = ft_sourceanalysis(cfg, f_data.bsl);
-            s_data.pst      = ft_sourceanalysis(cfg, f_data.pst);
-
+            
+            cfg = local_set_dics_fixedori(cfg, ftLeadfield, OrientMode);
+            s_data.bsl = ft_sourceanalysis(cfg, f_data.bsl);
+            s_data.pst = ft_sourceanalysis(cfg, f_data.pst);
+            
             switch sProcess.options.erds.Value
                 case 'erd'
                     cfg = [];
                     cfg.parameter = 'pow';
-                    cfg.operation = 'log10(x1/x2)'; % sourceA divided by sourceB
+                    cfg.operation = '10*log10(x1/x2)'; % sourceA divided by sourceB
                     source_diff_dics = ft_math(cfg, s_data.pst, s_data.bsl);
                     source_diff_dics.pow(isnan(source_diff_dics.pow))=0;
                     source_diff_dics.pow(source_diff_dics.pow>0)=0;
                 case 'ers'
                     cfg = [];
                     cfg.parameter = 'pow';
-                    cfg.operation = 'log10(x1/x2)'; % sourceA divided by sourceB
+                    cfg.operation = '10*log10(x1/x2)'; % sourceA divided by sourceB
                     source_diff_dics = ft_math(cfg, s_data.pst, s_data.bsl);
                     source_diff_dics.pow(isnan(source_diff_dics.pow))=0;
                     source_diff_dics.pow(source_diff_dics.pow<0)=0;
                 case 'both'
                     cfg = [];
                     cfg.parameter = 'pow';
-                    cfg.operation = 'log10(x1/x2)'; % sourceA divided by sourceB
+                    cfg.operation = '10*log10(x1/x2)'; % sourceA divided by sourceB
                     source_diff_dics = ft_math(cfg,s_data.pst,s_data.bsl);
                     source_diff_dics.pow(isnan(source_diff_dics.pow))=0;
             end
-
+            
         case 'permutation'
             cfg = [];
             cfg.method = 'dics';
-            cfg.dics.lambda = '100%';
+            cfg.dics.lambda = DicsLambda;
             cfg.frequency    = f_data.app.freq;
             cfg.headmodel = ftHeadmodel;
             cfg.sourcemodel  = ftLeadfield;
             cfg.dics.keepfilter = 'yes';
-            cfg.dics.fixedori    = 'yes'; % project on axis of most variance using SVD
+            cfg = local_set_dics_fixedori(cfg, ftLeadfield, OrientMode);
             sourceavg = ft_sourceanalysis(cfg, f_data.app);
 
             cfg = [];
             cfg.method = 'dics';
+            cfg.dics.lambda = DicsLambda;  % reused filter; kept for provenance/consistency
             cfg.sourcemodel        = ftLeadfield;
             cfg.sourcemodel.filter = sourceavg.avg.filter;
-            cfg.dics.fixedori    = 'yes'; % project on axis of most variance using SVD
+            cfg = local_set_dics_fixedori(cfg, ftLeadfield, OrientMode);
             cfg.rawtrial = 'yes';
             cfg.headmodel = ftHeadmodel;
             s_data.bsl      = ft_sourceanalysis(cfg, f_data.bsl);
@@ -356,103 +413,243 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             stats2.stat(stats2.stat>0)=0;
             stats2.stat(isnan(stats2.stat))=0;
     end
-
     
-    % ===== SAVE RESULTS =====
-    % === CREATE OUTPUT STRUCTURE ===
-    bst_progress('text', 'Saving source file...');
-    bst_progress('inc', 1);
-    % Output study
-    if (length(sInputs) == 1)
-        iStudyOut = sInputs(1).iStudy;
-        RefDataFile = sInputs(iChanInputs(iInput)).FileName;
-    else
-        [tmp, iStudyOut] = bst_process('GetOutputStudy', sProcess, sInputs);
-        RefDataFile = [];
-    end
-    % Create structure
-    ResultsMat = db_template('resultsmat');
-    ResultsMat.ImagingKernel = [];
-    switch Method
-        case 'subtraction'
-            switch sProcess.options.effect.Value
-                case 'abs'
-                    source_diff_dics.pow = abs((source_diff_dics.pow));
-                case 'raw'
-                    source_diff_dics.pow = source_diff_dics.pow;
-            end
-            ResultsMat.ImageGridAmp  = source_diff_dics.pow;
-            ResultsMat.cfg           = source_diff_dics.cfg;
+    %%
+%%
+% ===== SAVE RESULTS =====
+bst_progress('text', 'Saving source file...');
+bst_progress('inc', 1);
 
-        case 'permutation'
-            switch sProcess.options.effect.Value
-                case 'abs'
-                    stats2.stat = abs((stats2.stat));
-                case 'raw'
-                    stats2.stat = stats2.stat;
-            end
-            ResultsMat.ImageGridAmp  = stats2.stat;
-            ResultsMat.cfg           = stat.cfg;
-    end
-    ResultsMat.nComponents   = 1;
-    ResultsMat.Function      = Method;
-    ResultsMat.Time          = 1;
-    ResultsMat.DataFile      = RefDataFile;
-    ResultsMat.HeadModelFile = HeadModelFile;
-    ResultsMat.HeadModelType = HeadModelMat.HeadModelType;
-    ResultsMat.ChannelFlag   = DataMat.ChannelFlag;
-    ResultsMat.GoodChannel   = iChannelsData;
-    ResultsMat.SurfaceFile   = HeadModelMat.SurfaceFile;
-    ResultsMat.nAvg          = DataMat.nAvg;
-    ResultsMat.Leff          = DataMat.Leff;
-    ResultsMat.Comment       = ['DICS: ' Method, ' ',num2str(FOI),'Hz ', sprintf('%1.3fs-%1.3fs', PostStim)];
-    switch lower(ResultsMat.HeadModelType)
-        case 'volume'
-            ResultsMat.GridLoc    = HeadModelMat.GridLoc;
-        case 'surface'
-            ResultsMat.GridLoc    = [];
-        case 'mixed'
-            ResultsMat.GridLoc    = HeadModelMat.GridLoc;
-            ResultsMat.GridOrient = HeadModelMat.GridOrient;
-    end
-    ResultsMat = bst_history('add', ResultsMat, 'compute', ['ft_sourceanalysis: ' Method ' ' Modality ' ']);
+% Output study
+if (length(sInputs) == 1)
+    iStudyOut   = sInputs(1).iStudy;
+    RefDataFile = sInputs(1).FileName;
+else
+    [~, iStudyOut] = bst_process('GetOutputStudy', sProcess, sInputs);
+    RefDataFile = [];
+end
 
-    % === SAVE OUTPUT FILE ===
-    % Output filename
-    OutputDir = bst_fileparts(file_fullpath(DataFile));
-    ResultFile = bst_process('GetNewFilename', OutputDir, ['results_', Method, '_', Modality]);
-    % Save new file structure
-    bst_save(ResultFile, ResultsMat, 'v6');
+% Effect labels for provenance
+ErdsMode   = lower(sProcess.options.erds.Value);
+EffectMode = lower(sProcess.options.effect.Value);
+EffectTag  = sprintf('%s(%s)', EffectMode, ErdsMode);
 
-    % ===== REGISTER NEW FILE =====
-    % Create new results structure
-    newResult = db_template('results');
-    newResult.Comment       = ResultsMat.Comment;
-    newResult.FileName      = file_short(ResultFile);
-    newResult.DataFile      = ResultsMat.DataFile;
-    newResult.isLink        = 0;
-    newResult.HeadModelType = ResultsMat.HeadModelType;
-    % Get output study
-    sStudyOut = bst_get('Study', iStudyOut);
-    % Add new entry to the database
-    iResult = length(sStudyOut.Result) + 1;
-    sStudyOut.Result(iResult) = newResult;
-    % Update Brainstorm database
-    bst_set('Study', iStudyOut, sStudyOut);
-    % Store output filename
-    OutputFiles{end+1} = newResult.FileName;
-    % Expand data node
-    panel_protocols('SelectNode', [], newResult.FileName);
+% Get result map
+switch Method
+    case 'subtraction'
+        switch EffectMode
+            case 'abs'
+                source_diff_dics.pow = abs(source_diff_dics.pow);
+            case 'raw'
+                source_diff_dics.pow = source_diff_dics.pow;
+        end
+        ResultMap = source_diff_dics.pow;
+        ResultCfg = source_diff_dics.cfg;
 
-    % Delete the temporary files
-    file_delete(TmpDir, 1, 1);
-    % Save database
-    db_save();
-    % Hide progress bar
-    bst_progress('stop');
+    case 'permutation'
+        switch EffectMode
+            case 'abs'
+                stats2.stat = abs(stats2.stat);
+            case 'raw'
+                stats2.stat = stats2.stat;
+        end
+        ResultMap = stats2.stat;
+        ResultCfg = stat.cfg;
+end
+
+% Create Brainstorm result structure
+ResultsMat = db_template('resultsmat');
+ResultsMat.ImagingKernel = [];
+ResultsMat.ImageGridAmp  = ResultMap;
+ResultsMat.cfg           = ResultCfg;
+
+ResultsMat.nComponents   = 1;
+ResultsMat.Function      = 'DICS';
+ResultsMat.Time          = mean(PostStim);
+ResultsMat.DataFile      = RefDataFile;
+ResultsMat.HeadModelFile = HeadModelFile;
+ResultsMat.HeadModelType = HeadModelMat.HeadModelType;
+
+% Use first input metadata, not the last DataMat from the loop
+FirstDataMat = in_bst_data(sInputs(1).FileName, 'ChannelFlag', 'nAvg', 'Leff');
+ResultsMat.ChannelFlag = FirstDataMat.ChannelFlag;
+ResultsMat.GoodChannel = iChannelsData;
+
+if isfield(HeadModelMat, 'SurfaceFile')
+    ResultsMat.SurfaceFile = HeadModelMat.SurfaceFile;
+end
+if isfield(FirstDataMat, 'nAvg') && ~isempty(FirstDataMat.nAvg)
+    ResultsMat.nAvg = FirstDataMat.nAvg;
+else
+    ResultsMat.nAvg = length(sInputs);
+end
+if isfield(FirstDataMat, 'Leff')
+    ResultsMat.Leff = FirstDataMat.Leff;
+end
+
+ResultsMat.Comment = sprintf( ...
+    'DICS: %s | %s | %s | lambda=%s | %g Hz | %1.3f-%1.3f s', ...
+    Method, OrientMode, EffectTag, DicsLambda, FOI, PostStim(1), PostStim(2));
+
+% Save processing options
+ResultsMat.Options = struct();
+ResultsMat.Options.Method = Method;
+ResultsMat.Options.OrientationMode = OrientMode;
+ResultsMat.Options.ErdsMode = ErdsMode;
+ResultsMat.Options.EffectMode = EffectMode;
+ResultsMat.Options.EffectTag = EffectTag;
+ResultsMat.Options.DicsLambda = DicsLambda;
+ResultsMat.Options.DicsRegularizationPercent = RegPercent;
+ResultsMat.Options.FOI = FOI;
+ResultsMat.Options.TaperSmoothing = TprFreq;
+ResultsMat.Options.BaselineWindow = Baseline;
+ResultsMat.Options.PostStimWindow = PostStim;
+ResultsMat.Options.ContrastExpression = '10*log10(post/baseline)';
+
+switch lower(ResultsMat.HeadModelType)
+    case 'volume'
+        ResultsMat.GridLoc = HeadModelMat.GridLoc;
+    case 'surface'
+        ResultsMat.GridLoc = [];
+    case 'mixed'
+        ResultsMat.GridLoc    = HeadModelMat.GridLoc;
+        ResultsMat.GridOrient = HeadModelMat.GridOrient;
+end
+
+ResultsMat = bst_history('add', ResultsMat, 'compute', ...
+    ['ft_sourceanalysis: DICS ' Method ...
+    ' modality=' Modality ...
+    ' orientation=' OrientMode ...
+    ' effect=' EffectTag ...
+    ' lambda=' DicsLambda]);
+
+% Save output file in the output study folder
+sStudyOut = bst_get('Study', iStudyOut);
+OutputDir = bst_fileparts(file_fullpath(sStudyOut.FileName));
+ResultFile = bst_process('GetNewFilename', OutputDir, ['results_dics_', Method, '_', Modality]);
+
+% Save result file
+bst_save(ResultFile, ResultsMat, 'v6');
+
+% Register in Brainstorm database
+db_add_data(iStudyOut, ResultFile, ResultsMat);
+
+% Return output
+OutputFiles{end+1} = file_short(ResultFile);
+
+% Delete temporary files
+file_delete(TmpDir, 1, 1);
+
+% Stop progress bar
+bst_progress('stop');
 end
 
 
+%% ===== DICS REGULARIZATION =====
+function DicsLambda = local_format_dics_lambda(RegPercent)
+    % Brainstorm GUI value is entered as percent. FieldTrip expects a string,
+    % for example 5 -> '5%%'.
+    DicsLambda = sprintf('%g%%', RegPercent);
+end
+
+
+%% ===== LEADFIELD ORIENTATION =====
+function ftLeadfield = local_prepare_leadfield_orientation(ftLeadfield, HeadModelMat, OrientMode)
+    OrientMode = lower(OrientMode);
+    nSources = numel(ftLeadfield.leadfield);
+
+    switch OrientMode
+        case 'headmodel'
+            % Project each free-orientation leadfield [nChannels x 3]
+            % onto Brainstorm's unit head-model orientation, usually the
+            % cortical surface normal. After this step, each leadfield is
+            % scalar [nChannels x 1], so cfg.dics.fixedori is not needed.
+            if ~isfield(HeadModelMat, 'GridOrient') || isempty(HeadModelMat.GridOrient)
+                error('Head-model orientation was selected, but HeadModelMat.GridOrient is empty.');
+            end
+
+            gridOrient = HeadModelMat.GridOrient;
+            if isequal(size(gridOrient), [3, nSources])
+                gridOrient = gridOrient';
+            elseif ~isequal(size(gridOrient), [nSources, 3])
+                error('GridOrient must be [nSources x 3] or [3 x nSources].');
+            end
+
+            for iSource = 1:nSources
+                Li = ftLeadfield.leadfield{iSource};
+                if isempty(Li)
+                    continue;
+                end
+                if size(Li, 2) == 1
+                    % Already fixed orientation.
+                    continue;
+                elseif size(Li, 2) ~= 3
+                    error('Leadfield for source %d must have 1 or 3 orientations.', iSource);
+                end
+
+                normal = gridOrient(iSource, :)';
+                normalNorm = norm(normal);
+                if ~isfinite(normalNorm) || normalNorm <= eps
+                    ftLeadfield.leadfield{iSource} = [];
+                    if isfield(ftLeadfield, 'inside') && numel(ftLeadfield.inside) >= iSource
+                        ftLeadfield.inside(iSource) = false;
+                    end
+                    continue;
+                end
+
+                normal = normal ./ normalNorm;
+                ftLeadfield.leadfield{iSource} = Li * normal;
+            end
+
+        case 'max-power'
+            % Keep the original free-orientation leadfield [nChannels x 3].
+            % FieldTrip will select the dominant orientation when
+            % cfg.dics.fixedori = 'yes' is set in local_set_dics_fixedori().
+
+        otherwise
+            error('Unknown source orientation mode: %s.', OrientMode);
+    end
+end
+
+%% ===== FIELDTRIP DICS ORIENTATION FLAG =====
+function cfg = local_set_dics_fixedori(cfg, ftLeadfield, OrientMode)
+    % Use FieldTrip's fixedori only for max-power orientation and only when
+    % the leadfield is still free-orientation. If the leadfield has already
+    % been projected onto GridOrient, fixedori is redundant and is omitted.
+    if strcmpi(OrientMode, 'max-power') && local_has_free_orientation(ftLeadfield)
+        cfg.dics.fixedori = 'yes';
+    end
+end
+
+
+%% ===== CHECK LEADFIELD ORIENTATION FORMAT =====
+function isFree = local_has_free_orientation(ftLeadfield)
+    isFree = false;
+    for iSource = 1:numel(ftLeadfield.leadfield)
+        Li = ftLeadfield.leadfield{iSource};
+        if ~isempty(Li)
+            isFree = (size(Li, 2) == 3);
+            return;
+        end
+    end
+end
+
+%% ===== ATTACH SENSOR STRUCTURE TO FREQ DATA =====
+function freq = local_attach_sensors(freq, sens, Modality)
+    % FieldTrip expects MEG sensors in .grad and EEG/ECoG/SEEG electrodes in .elec.
+    switch upper(Modality)
+        case {'MEG', 'MEG GRAD', 'MEG MAG'}
+            freq.grad = sens;
+            if isfield(freq, 'elec')
+                freq = rmfield(freq, 'elec');
+            end
+        case {'EEG', 'SEEG', 'ECOG'}
+            freq.elec = sens;
+            if isfield(freq, 'grad')
+                freq = rmfield(freq, 'grad');
+            end
+    end
+end
 
 %% ===== TIME-FREQUENCY =====
 function [time_of_interest,freq_of_interest] = do_tfr_plot(cfg_main, tfr)
@@ -560,23 +757,20 @@ function [time_of_interest,freq_of_interest] = do_tfr_plot(cfg_main, tfr)
     end
 end
 
-
 function [freq,ff, psd,tapsmofrq] = do_fft(cfg_mian, data)
-    cfg              = [];
-    cfg.method       = 'mtmfft';
-    cfg.output       = 'fourier';
-    cfg.keeptrials   = 'yes';
-    cfg.foilim       = cfg_mian.foilim;
-    cfg.tapsmofrq    = cfg_mian.tapsmofrq;
-    cfg.taper        = cfg_mian.taper;
-    cfg.pad          = 4;
-    freq             = ft_freqanalysis(cfg, data);
-    psd = squeeze(mean(mean(abs(freq.fourierspctrm),2),1));
-    ff = linspace(1, cfg.foilim(2), length(psd));
-
-    tapsmofrq = cfg.tapsmofrq;
+cfg              = [];
+cfg.method       = 'mtmfft';
+cfg.output       = 'fourier';
+cfg.keeptrials   = 'yes';
+cfg.foilim       = cfg_mian.foilim;
+cfg.tapsmofrq    = cfg_mian.tapsmofrq;
+cfg.taper        = cfg_mian.taper;
+cfg.pad          = 4;
+freq             = ft_freqanalysis(cfg, data);
+psd = squeeze(mean(mean(abs(freq.fourierspctrm).^2, 2), 1));
+ff = linspace(1, cfg.foilim(2), length(psd));
+tapsmofrq = cfg.tapsmofrq;
 end
-
 
 function stat = do_source_stat_montcarlo(s_data)
     cfg = [];
