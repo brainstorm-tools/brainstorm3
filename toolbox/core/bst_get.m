@@ -234,6 +234,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 global GlobalData;
 if ((nargin >= 1) && ischar(varargin{1}))
     contextName = varargin{1};
+elseif ((nargin >= 1) && isstring(varargin{1}))
+    contextName = char(varargin{1});
 else
     return
 end
