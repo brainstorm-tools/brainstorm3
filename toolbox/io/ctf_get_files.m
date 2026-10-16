@@ -1,9 +1,12 @@
-function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory, verbose)
+function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory, verbose, isInteractive)
 % CTF_GET_FILES: Get the name and files of a CTF .DS directory.
 %
 % INPUT: 
-%     - ds_directory : Full path to a .ds CTF directory
-%     - verbose      : Whether to display information in the command window (by default)
+%     - ds_directory  : Full path to a .ds CTF directory
+%     - verbose       : Whether to display information in the command window (by default)
+%     - isInteractive : Whether the caller can show interactive dialogs (e.g. when several .pos
+%                       files are found). If not provided, default to the current GUI state
+%                       (Brainstorm GUI running and verbose>=1), for backwards compatibility.
 % OUTPUT:
 %     - DataSetName  : Name of the input CTF dataset
 %     - meg4_files   : Cell array of full paths to the recordings files (.meg4, .1_meg4, .2_meg4, ...)
@@ -36,6 +39,13 @@ function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, ba
 % Parse arguments
 if nargin < 2
     verbose = 1;
+end
+if (nargin < 3) || isempty(isInteractive)
+    % Backwards compatible default: interactive only if a Brainstorm GUI session is running
+    global GlobalData;
+    isInteractive = (verbose >= 1) && ~isempty(GlobalData) && isstruct(GlobalData) && ...
+                    isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'GuiLevel') && ...
+                    (GlobalData.Program.GuiLevel >= 0);
 end
 
 % ===== .MEG4 =====
@@ -126,35 +136,49 @@ end
 
 % Get dataset name and path
 [dspath, dsname] = bst_fileparts(ds_directory);
-% Return polhemus file
-pos_file = [];
+% Candidate head shape files for this dataset (several are possible)
+posCandidates = [];
 if (length(posDir) == 1)
-    pos_file = bst_fullfile(ds_directory, posDir(1).name);
+    posCandidates = {bst_fullfile(ds_directory, posDir(1).name)};
 elseif (length(posDir) > 1)
-    error('Two Polhemus files in the same folder.');
+    % Several Polhemus files in the same folder
+    posCandidates = cellfun(@(c)bst_fullfile(ds_directory, c), {posDir.name}, 'UniformOutput', 0);
 % Check for BIDS version: .pos is in the same folder as the .ds
 else
     % Attempt #1: sub-subid_headshape.pos
     iUnder = find(dsname == '_', 1);
     if ~isempty(iUnder) && (iUnder > 1) && file_exist(bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos']))
-        pos_file = bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos']);
+        posCandidates = {bst_fullfile(dspath, [dsname(1:iUnder-1), '_headshape.pos'])};
     end
     % Attempt #2: Any .pos with a name that starts with the .ds name (excluded "_meg")
-    if isempty(pos_file)
-        posDir = dir(strrep(ds_directory, '_meg.ds', '_*.pos'));
-        if (length(posDir) == 1)
-            pos_file = bst_fullfile(dspath, posDir(1).name);
+    % Only for BIDS-style "*_meg.ds" folders: otherwise the pattern would be the directory
+    % itself and dir() would return all its contents, not just .pos files.
+    if isempty(posCandidates)
+        posPattern = strrep(ds_directory, '_meg.ds', '_*.pos');
+        if ~strcmp(posPattern, ds_directory)
+            posDir = dir(posPattern);
+            if ~isempty(posDir)
+                posCandidates = cellfun(@(c)bst_fullfile(dspath, c), {posDir.name}, 'UniformOutput', 0);
+            end
         end
     end
     % Attempt #3: Any .pos with a name that starts with the subject id
-    if isempty(pos_file)
+    % (e.g. BIDS: sub-subid_ses-sesid_headshape.pos and sub-subid_ses-sesid_electrodes.pos
+    %  next to the .ds folder)
+    if isempty(posCandidates)
         posDir = dir(bst_fullfile(dspath, [dsname(1:iUnder-1), '*.pos']));
-        if (length(posDir) == 1)
-            pos_file = bst_fullfile(dspath, posDir(1).name);
-        elseif (length(posDir) >= 2) && verbose
-            disp(['CTF> Warning: Multiple .pos head shape points found in: ' dspath]);
+        if ~isempty(posDir)
+            posCandidates = cellfun(@(c)bst_fullfile(dspath, c), {posDir.name}, 'UniformOutput', 0);
         end
     end
+end
+% Select the head shape file: if several candidates are found, pick the best one
+% (see select_pos_file for details); interactive sessions confirm with the user.
+pos_file = [];
+if (length(posCandidates) == 1)
+    pos_file = posCandidates{1};
+elseif (length(posCandidates) > 1)
+    pos_file = select_pos_file('SelectPosFile', posCandidates, verbose, isInteractive);
 end
 
 % Report which file is used
