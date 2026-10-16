@@ -294,7 +294,7 @@ if ~isempty(TessLhFile)
     BstTessLhFile = BstTessLhFile{1};
     % Load atlases
     if ~isempty(AnnotLhFiles)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading atlases: left pial...');
         [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
         if ~isempty(err)
             disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
@@ -303,14 +303,14 @@ if ~isempty(TessLhFile)
     end
     % Load sphere
     if ~isempty(TessLsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS', 0);
         if ~isempty(err)
             errorMsg = [errorMsg err];
         end
     end
     if ~isempty(TessLRsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading contralateral sphere: left pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading contralateral sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLhFile, TessLRsphFile, 'FS', 1);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -318,7 +318,7 @@ if ~isempty(TessLhFile)
     end
 
     % Downsample
-    bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left pial...');
+    bst_progress('text', 'Import FreeSurfer folder', 'Downsampling: left pial...');
     [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
 end
 % Right pial
@@ -328,7 +328,7 @@ if ~isempty(TessRhFile)
     BstTessRhFile = BstTessRhFile{1};
     % Load atlases
     if ~isempty(AnnotRhFiles)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading atlases: right pial...');
         [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
         if ~isempty(err)
             disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
@@ -337,7 +337,7 @@ if ~isempty(TessRhFile)
     end
     % Load sphere
     if ~isempty(TessRsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS', 0);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -346,7 +346,7 @@ if ~isempty(TessRhFile)
     
     % Load sphere
     if ~isempty(TessRLsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading contralateral sphere: right pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading contralateral sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRhFile, TessRLsphFile, 'FS', 1);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -355,7 +355,7 @@ if ~isempty(TessRhFile)
 
 
     % Downsample
-    bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right pial...');
+    bst_progress('text', 'Import FreeSurfer folder', 'Downsampling: right pial...');
     [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
 end
 % Left white matter
@@ -365,7 +365,7 @@ if ~isempty(TessLwFile)
     BstTessLwFile = BstTessLwFile{1};
     % Load atlases
     if ~isempty(AnnotLhFiles)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left white...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading atlases: left white...');
         [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
         if ~isempty(err)
             disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
@@ -373,14 +373,14 @@ if ~isempty(TessLwFile)
         end
     end
     if ~isempty(TessLsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS', 0);
         if ~isempty(err)
             errorMsg = [errorMsg err];
         end
     end
     if ~isempty(TessLRsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading contralateral sphere: left pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading contralateral sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLwFile, TessLRsphFile, 'FS', 1);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -388,7 +388,7 @@ if ~isempty(TessLwFile)
     end
 
     % Downsample
-    bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left white...');
+    bst_progress('text', 'Import FreeSurfer folder', 'Downsampling: left white...');
     [BstTessLwLowFile, iLwLow, xLwLow] = tess_downsize(BstTessLwFile, nVertHemi, 'reducepatch');
 end
 % Right white matter
@@ -398,7 +398,7 @@ if ~isempty(TessRwFile)
     BstTessRwFile = BstTessRwFile{1};
     % Load atlases
     if ~isempty(AnnotRhFiles)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right white...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading atlases: right white...');
         [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
         if ~isempty(err)
             disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
@@ -407,7 +407,7 @@ if ~isempty(TessRwFile)
     end
     % Load sphere
     if ~isempty(TessRsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS', 0);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -416,7 +416,7 @@ if ~isempty(TessRwFile)
     
     % Load sphere
     if ~isempty(TessRLsphFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Loading contralateral sphere: right pial...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Loading contralateral sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRwFile, TessRLsphFile, 'FS', 1);
         if ~isempty(err)
             errorMsg = [errorMsg err];
@@ -424,7 +424,7 @@ if ~isempty(TessRwFile)
     end
 
     % Downsample
-    bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right white...');
+    bst_progress('text', 'Import FreeSurfer folder', 'Downsampling: right white...');
     [BstTessRwLowFile, iRwLow, xRwLow] = tess_downsize(BstTessRwFile, nVertHemi, 'reducepatch');
 end
 % Process error messages
@@ -452,13 +452,13 @@ BstTessLmFile = [];
 BstTessRmFile = [];
 % Do not compute without volume atlases, to make a very light default import
 if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
-    bst_progress('start', 'Import FreeSurfer folder', 'Generating mid-surface...');
+    bst_progress('text', 'Import FreeSurfer folder', 'Generating mid-surface...');
     % Average pial and white surfaces
     [BstTessLmFile, ~, errMsgL] = tess_average({BstTessLhFile, BstTessLwFile});
     [BstTessRmFile, ~, errMsgR] = tess_average({BstTessRhFile, BstTessRwFile});
     % If computed: downsample the surfaces
     if ~isempty(BstTessLmFile) && ~isempty(BstTessRmFile)
-        bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
+        bst_progress('text', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
         [BstTessLmLowFile, iLmLow, xLmLow] = tess_downsize(BstTessLmFile, nVertHemi, 'reducepatch');
         [BstTessRmLowFile, iRmLow, xRmLow] = tess_downsize(BstTessRmFile, nVertHemi, 'reducepatch');
     else
@@ -615,6 +615,9 @@ panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 db_save();
 % Unload everything
 bst_memory('UnloadAll', 'Forced');
+% Close progress bar
+bst_progress('stop');
+
 % Give a graphical output for user validation
 if isInteractive
     % Display the downsampled cortex + head + ASEG
@@ -626,8 +629,7 @@ if isInteractive
     % Set orientation
     figure_3d('SetStandardView', hFig, 'left');
 end
-% Close progress bar
-bst_progress('stop');
+
 
 
 
