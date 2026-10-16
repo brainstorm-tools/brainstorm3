@@ -680,6 +680,18 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
                                     'build.gradle', 'gradle.properties', 'gradlew', 'gradlew.bat', ...
                                     'settings.gradle', '.codeclimate.yml', '.gitignore'};
 
+    % === EVENTS: SPIKENET-bst ===
+    PlugDesc(end+1)              = GetStruct('spikenet');
+    PlugDesc(end).Version        = 'github-main';
+    PlugDesc(end).Category       = 'Events';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/Edouard2laire/spikenet-bst/archive/refs/heads/main.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/Edouard2laire/spikenet-bst';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a -- to check
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_detect_spike.m';
 
     % === fNIRS: NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
