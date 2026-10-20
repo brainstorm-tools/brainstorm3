@@ -580,8 +580,14 @@ function errMsg = bst_run_duneuro_task(duneuro_io_dir, config, containerInfo)
         fprintf(file_handle, [config_keys{i} '=' config.(config_keys{i}) '\n']);
     end
     fclose(file_handle);
-    
-    % === RUN COMMAND IN CONTAINER =====
+
+    % === SET PERMISSIONS FOR FILES ===
+    % This is needed for the Docker Engine case
+    if ~ispc && ~ismac
+        system(sprintf('chmod -R a+rw "%s"', duneuro_io_dir));
+    end
+
+    % === RUN COMMAND IN CONTAINER ===
     if containerInfo.isRunning
         % Create a symbolic link /duneuro/external_mount pointing to /data
         dataPath = containerInfo.volumes{1,2};
