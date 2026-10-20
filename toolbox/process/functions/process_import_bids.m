@@ -497,7 +497,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid);
                 case 'CIVET'
                     errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid, 0);
-                % case 'MiDeFace' 
+                case 'MiDeFace' % Keep to suppress error message
                     % This is done later since we need the primary MRI to be imported to align the surface.
                     % errorMsg = import_anatomy_mideface(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMri);
                 otherwise
@@ -542,7 +542,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                     % Load or generate head surface
                     if strcmpi(SubjectAnatFormat{iSubj}, 'MiDeFace')
-                        errorMsg = import_anatomy_mideface(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMri);
+                        errMsg = import_anatomy_mideface(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMri);
+                        if ~isempty(errMsg)
+                            errorMsg = [errorMsg, 10, errMsg];
+                        end
                     else
                         tess_isohead(iSubject, 15000, 0, 0);
                     end

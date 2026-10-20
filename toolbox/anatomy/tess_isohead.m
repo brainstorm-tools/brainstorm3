@@ -278,6 +278,11 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
         view_mri_slices(headmask, 'x', nDebugVisSlices); title('Center spread');
     end
 
+    % Verify if anything is left, e.g. if bad threshold was provided, as it would crash below.
+    if max(headmask(:)) < 1
+        bst_error('Empty head mask. Check MRI histogram and threshold.', 'Head surface', 0);
+        return;
+    end
 
     %% ===== CREATE SURFACE =====
     % Compute isosurface
@@ -293,10 +298,10 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
             [sHead.Vertices, sHead.Faces, regions, holes] = vol2surf(headmask, ...
                 1:size(headmask,1), 1:size(headmask,2), 1:size(headmask,3), opt, dofix, method); % ,isovalues
             if size(regions, 1) > 1
-                bst_error('Multiple regions returned.\n');
+                bst_error('Multiple regions returned.', 'Head surface', 0);
                 return;
             elseif ~isempty(holes)
-                bst_error('Holes present.\n');
+                bst_error('Holes present.', 'Head surface', 0);
                 return;
             end
             % Remove region label

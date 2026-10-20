@@ -3,7 +3,8 @@ function [isSuccess, OutFilesMri, OutFilesMeg, List] = bst_save_coregistration(i
     % Save MRI-MEG coregistration info in imported raw BIDS dataset, or MRI fiducials only if not BIDS.
     % IMPORTANT: isSuccess currently not working, can often be true despite skipping studies or subjects.
     %
-    %   [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iStudies, isBids=<detect>)
+    %   [isSuccess, OutFilesMri, OutFilesMeg] = bst_save_coregistration(iStudies, isBids=<detect>, 
+    %         RecreateMegCoordJson, isOverwrite, isDryRun)
     % 
     % Save MRI-MEG coregistration by adding AnatomicalLandmarkCoordinates to the
     % _T1w.json MRI metadata, in 0-indexed voxel coordinates, and to the
@@ -11,8 +12,12 @@ function [isSuccess, OutFilesMri, OutFilesMeg, List] = bst_save_coregistration(i
     % The points used are the anatomical fiducials marked in Brainstorm on the MRI
     % that define the Brainstorm subject coordinate system (SCS).
     % 
-    % iStudies is a list of Brainstorm study indices.  Shown e.g. in pop-up when hovering over a
-    % study folder (or data file within it) in the tree.
+    % iStudies determines which files to process. It can be:
+    %   1. a list of Brainstorm study indices, shown e.g. in pop-up when hovering over a
+    %      study folder (or data file within it) in the tree.
+    %   2. a list of raw data files, e.g. after adding them to the Brainstorm Process1 panel,
+    %      right-click > copy list to clipboard.
+    %   3. empty: all files in the current protocol will be processed.
     %
     % RecreateMegCoordJson: if true, this file will be deleted and recreated with
     % BidsBuildRecordingFiles before adding coregistration info to it (was added because fiducial
@@ -27,12 +32,13 @@ function [isSuccess, OutFilesMri, OutFilesMeg, List] = bst_save_coregistration(i
     % Discussion about saving MRI-MEG coregistration in BIDS:
     % https://groups.google.com/g/bids-discussion/c/BeyUeuNGl7I
 
+    % TODO: convert to Brainstorm process
     % TODO: some dependencies from BIDS code
     % TODO: apply isOverwrite to other things?, for now, only MRI json
 
     % This could become an option, depending on where this process is called form.
     isInteractive = true;
-    % Another potential option, to back up json files under derivatives
+    % Another potential option, to backup json files under derivatives
     isBackup = true;
     % Hidden option to only look at first sessions.
     isOnlyFirstSes = true;
@@ -56,6 +62,11 @@ function [isSuccess, OutFilesMri, OutFilesMeg, List] = bst_save_coregistration(i
         iSubjects = 1:nSub;
         sStudies = [];
     else
+        % If input is from bst_process, get study indices.
+        if isstruct(iStudies)
+            sInputs = iStudies;
+            iStudies = [sInputs.iStudy];
+        end
         sStudies = bst_get('Study', iStudies);
         for iiStudy = 1:numel(iStudies)
             [~, iSubForStudies(iiStudy)] = bst_get('Subject', sStudies(iiStudy).BrainStormSubject);
@@ -90,7 +101,8 @@ function [isSuccess, OutFilesMri, OutFilesMeg, List] = bst_save_coregistration(i
             continue;
         end
         sMri = load(file_fullpath(sSubjects.Subject(iSub).Anatomy(sSubjects.Subject(iSub).iAnatomy).FileName));
-        ImportedFile = strrep(sMri.History{1,3}, 'Import from: ', '');
+        iHistoryImport = find(strcmp(sMri.History(:,2), 'import'), 1);
+        ImportedFile = strrep(sMri.History{iHistoryImport,3}, 'Import from: ', '');
         if ~exist(ImportedFile, 'file')
             warning('Imported anatomy file not found. Skipping subject %s.', sSubjects.Subject(iSub).Name);
             continue;

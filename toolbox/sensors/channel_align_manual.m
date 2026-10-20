@@ -385,7 +385,8 @@ gChanAlign.HeadPointsFidLoc     = HeadPointsFidLoc;
 gChanAlign.HeadPointsHpiLoc     = HeadPointsHpiLoc;
 gChanAlign.HeadPointsMarkersSel  = [];
 gChanAlign.hHeadPointsMarkersSel = [];
-gChanAlign.isHeadCoils         = isHeadCoils;
+gChanAlign.isHeadCoils     = isHeadCoils;
+gChanAlign.isAuto          = false;
 if isHeadCoils
     gChanAlign.hHeadCoilsMarkers   = hHeadCoilsMarkers;
     gChanAlign.hHeadCoilsLabels    = hHeadCoilsLabels;
@@ -629,6 +630,8 @@ function ComputeTransformation(val)
     ApplyTransformation(iSelChan, Rnew, Tnew, Rescale);
     % Update display 
     UpdatePoints(iSelChan);
+    % Indicate manual change
+    gChanAlign.isAuto = false;
 end
 
 
@@ -770,8 +773,10 @@ function UpdatePoints(iSelChan)
     if gChanAlign.isHeadPoints
         % Extra head points
         set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
-        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
-            % Update distance color
+        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat') && ...
+                isvalid(gChanAlign.hSurfacePatch)
+            % Update distance color, if surface still present. (Need to remove surface to be able to
+            % select points manually inside it.)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
@@ -995,8 +1000,13 @@ function [ChannelMat, newtransf, iChanModified] = GetCurrentChannelMat(isAll)
     ChannelMat.Comment = str_remove_parenth(ChannelMat.Comment, '(');
     ChannelMat.Comment = [ChannelMat.Comment, sprintf(' (%d)', length(ChannelMat.Channel))];
 
-    % History: Align channel files manually
-    ChannelMat = bst_history('add', ChannelMat, 'align', 'Align channels manually:');
+    % History: Align channels
+    if gChanAlign.isAuto
+        AlignMsg = 'Refining the registration using the head points:';
+    else
+        AlignMsg = 'Align channels manually:';
+    end
+    ChannelMat = bst_history('add', ChannelMat, 'align', AlignMsg);
     % History: Rotation + translation
     ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Rotation: [%1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f]', Rfinal'));
     ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Translation: [%1.3f,%1.3f,%1.3f]', Tfinal));
@@ -1327,6 +1337,8 @@ function RefineWithHeadPoints(varargin)
     ApplyTransformation(iSelChan, Rnew, Tnew(:)', []);
     % Update display
     UpdatePoints(iSelChan);
+    % Note that automatic registration was done
+    gChanAlign.isAuto = true;
 end
 
 

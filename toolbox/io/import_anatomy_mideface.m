@@ -92,6 +92,8 @@ function errorMsg = import_anatomy_mideface(iSubject, FsDir, nVertices, isIntera
     % Find surface
     TessFile = file_find(FsDir, 'head.surf', 2);
     if isempty(TessFile)
+        % TODO: Look for other head surface files. Need to add loop below if we do this.
+        % TessFile = file_find(FsDir, 'head*.surf', 2);        
         errorMsg = [errorMsg 'head.surf file was not found' 10];
     end
 

@@ -44,8 +44,9 @@ function [R, T, newP, distFinal] = bst_meshfit(Vertices, Faces, P, Outliers)
 %          Marc Lalancette, 2022
 
 % Coordinates are in m.
+% Usual Brainstorm cost function would be no penalization for inside and no square distance.
 PenalizeInside = true;
-SquareDistCost = false;
+SquareDistCost = false; % squaring in mm units, for increased cost above 1 mm.
 if nargin < 4 || isempty(Outliers)
     Outliers = 0;
 end
@@ -110,8 +111,8 @@ end
 % Better cost function for points fitting: higher cost for points inside the
 % head > 1mm, (better distance calculation).
     function [Cost, Dist] = CostFunction(Params)
-        [~,~,Points] = Transform(Params, P);
-        Dist = PointSurfDistance(Points);
+        [~,~,Points] = Transform(Params, P); % P in m, Params in mm & deg
+        Dist = PointSurfDistance(Points); % in m
         if PenalizeInside
             isInside = inpolyhedron(Faces, Vertices, Points, 'FaceNormals', FaceNormals, 'FlipNormals', true);
             %patch('Faces',Faces,'Vertices',Vertices); hold on; light; axis equal;
