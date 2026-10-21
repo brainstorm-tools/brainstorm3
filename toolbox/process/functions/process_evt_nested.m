@@ -42,12 +42,12 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
 
 
-    sProcess.options.label1.Comment = ['<HTML><B>Opperation:</B> Opperation between the events (A) and events (B).' ...
-                                        '<BR> Event A must be an extended event </HTML>'];
+    sProcess.options.label1.Comment = ['<HTML><B>Opperation:</B> Opperation between the nested events (B) and the extended nesting events (A).' ...
+                                        '<BR> Event A must be an extended event. </HTML>'];
     sProcess.options.label1.Type = 'label';
 
 
-    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A^B when A and B occurs ssimultaneously  </FONT>', ...
+    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A^B when A and B occurs simultaneously  </FONT>', ...
         'Difference: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A-B when A is occuring but not B </FONT>' ; ...
         'intersection', 'difference'};
     sProcess.options.method.Type    = 'radio_label';
@@ -56,19 +56,20 @@ function sProcess = GetDescription()
     sProcess.options.label2.Comment = '<B>Events:</B>';
     sProcess.options.label2.Type = 'label';
 
-    sProcess.options.inner_events.Comment = 'Event A <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
-    sProcess.options.inner_events.Type    = 'text';
-    sProcess.options.inner_events.Value   = '';
-
-    sProcess.options.outer_events.Comment = 'Event B <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
+    sProcess.options.outer_events.Comment = 'Event A <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
     sProcess.options.outer_events.Type    = 'text';
     sProcess.options.outer_events.Value   = '';
 
-    sProcess.options.label3.Comment = '<B>Partial nesting:</B> <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; How to handle event with duration spanning multiple classssifying events </FONT>';
+    sProcess.options.inner_events.Comment = 'Event B <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
+    sProcess.options.inner_events.Type    = 'text';
+    sProcess.options.inner_events.Value   = '';
+
+
+    sProcess.options.label3.Comment = '<B>Partial nesting:</B> <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; An epoch of B is considered partially nested if it is intersecting multiples events A </FONT>';
     sProcess.options.label3.Type = 'label';
 
-    sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove event overlapping with multiple classifying events</FONT>', ...
-                                                  'Split event: <FONT color=#7F7F7F>Split the event accros each classsifying event</FONT>' ; ...
+    sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove epochs that are partially nested</FONT>', ...
+                                                  'Split event: <FONT color=#7F7F7F>Split epochs between the different events B</FONT>' ; ...
                                                     'reject', 'split'};
     sProcess.options.partial_nesting.Type    = 'radio_label';
     sProcess.options.partial_nesting.Value   = 'split';
@@ -148,7 +149,7 @@ function OutputFiles = Run(sProcess, sInput)
     
     isExtended = areEventExtended(sEventsOuter);
     if ~all(isExtended)
-        bst_report('Error', sProcess, sInput, sprintf('All classifying events must be extended events. The following events are ssimple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
+        bst_report('Error', sProcess, sInput, sprintf('All classifying events must be extended events. The following events are simple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
         return;
     end
     
