@@ -229,7 +229,7 @@ function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
         case 'intersection'
             separator = '^';
         case 'difference'
-            separator = '^';
+            separator = '-';
         otherwise
             error('Unknown opperation %', method)
     end
@@ -288,56 +288,56 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     % (extended event = true/ false, operation = intersection / difference)
 
     isExtended = areEventExtended(sEventsInner);
-    if strcmp(method, 'intersection') && ~isExtended
-        for iTime = 1:size(sEventsInner.times, 2)
-            [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
-            
-            % Find which classifying event is occurring at that time
-            event_mask = mask(:, idx_time);
-            [~, iEvent] = max(event_mask, [], 1);
-            iEvent = unique(iEvent);
-
-            % Assign time
-            newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
-            newEvents(iEvent).epochs(end+1) = 1;
-        end
-    elseif strcmp(method, 'intersection') && isExtended
-        for iTime = 1:size(sEventsInner.times, 2)
-
-            idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iTime));
-
-            event_mask = mask(:, idx_time);
-            [~, iEvent] = max(event_mask, [], 1);
-            iEvent = unique(iEvent);
-            
-            isOverlapping = length(iEvent) > 1;
-            
-            if ~isOverlapping
-                newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
-                newEvents(iEvent).epochs(end+1) = 1;
-            else
-                if strcmp(partial_nesting, 'reject')
-                    iEvent = length(sEventsOuter) + 1; 
+    if ~isExtended
+        if strcmp(method, 'intersection') 
+            for iTime = 1:size(sEventsInner.times, 2)
+                [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
+                
+                % Find which classifying event is occurring at that time
+                event_mask = mask(:, idx_time);
+                [~, iEvent] = max(event_mask, [], 1);
+                iEvent = unique(iEvent);
     
+                % Assign time
+                newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
+                newEvents(iEvent).epochs(end+1) = 1;
+            end
+
+        else
+            error('%s is not supported for simple events', method);
+        end
+    else 
+        if strcmp(method, 'intersection')
+            for iTime = 1:size(sEventsInner.times, 2)
+    
+                idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iTime));
+    
+                event_mask = mask(:, idx_time);
+                [~, iEvent] = max(event_mask, [], 1);
+                iEvent = unique(iEvent);
+                
+                isOverlapping = length(iEvent) > 1;
+                
+                if ~isOverlapping
                     newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
                     newEvents(iEvent).epochs(end+1) = 1;
                 else
-                    for jEvent = iEvent
-                        new_time = mask2Time(Time(idx_time), event_mask(jEvent, :));
-                        newEvents(jEvent).times  = [newEvents(jEvent).times, new_time];
-                        newEvents(jEvent).epochs = [newEvents(jEvent).epochs , ones(size(new_time, 2), 1)];
+                    if strcmp(partial_nesting, 'reject')
+                        iEvent = length(sEventsOuter) + 1; 
+        
+                        newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
+                        newEvents(iEvent).epochs(end+1) = 1;
+                    else
+                        for jEvent = iEvent
+                            new_time = mask2Time(Time(idx_time), event_mask(jEvent, :));
+                            newEvents(jEvent).times  = [newEvents(jEvent).times, new_time];
+                            newEvents(jEvent).epochs = [newEvents(jEvent).epochs , ones(size(new_time, 2), 1)];
+                        end
                     end
                 end
             end
         end
-    elseif strcmp(method, 'difference') && ~isExtended
-         % doesn't make sense
-    elseif strcmp(method, 'difference') && isExtended
-        % Todo
-    else
-        % Not possible
     end
-
     newEvents = newEvents(1:length(sEventsOuter));
 end
 
