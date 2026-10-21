@@ -78,19 +78,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         java_setcb(jButtonTime(i), 'KeyPressedCallback', @(h,ev)TimeKeyCallback(ev));
     end
     % Buttons tooltips
-    jButtonTime(3).setToolTipText('<HTML><TABLE><TR><TD>Previous sample</TD></TR><TR><TD>Related shortcuts: <BR><B> - [ARROW LEFT]<BR> - [ARROW DOWN]</B></TD></TR> </TABLE>');
-    jButtonTime(4).setToolTipText('<HTML><TABLE><TR><TD>Next sample</TD></TR><TR><TD>Related shortcuts: <BR><B> - [ARROW RIGHT]<BR> - [ARROW UP]</B></TD></TR></TABLE>');
+    jButtonTime(3).setToolTipText('<HTML>Previous sample<BR><BR>Related shortcuts: <BR><B> - [ARROW LEFT]<BR> - [ARROW DOWN]</B>');
+    jButtonTime(4).setToolTipText('<HTML>Next sample<BR><BR>Related shortcuts: <BR><B> - [ARROW RIGHT]<BR> - [ARROW UP]</B>');
     % Different shortcuts for MacOS
     if strncmp(computer,'MAC',3)
-        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+Fn+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+Fn+F4]</B> : Half page<BR><B> - [SHIFT+Fn+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
-        jButtonTime(2).setToolTipText('<HTML><TABLE><TR><TD>Previous sample (x10)</TD></TR><TR><TD>Shortcut: <B>[Fn+ARROW DOWN]</B></TD></TR></TABLE>');
-        jButtonTime(5).setToolTipText('<HTML><TABLE><TR><TD>Next sample (x10)</TD></TR><TR><TD>Shortcut: <B>[Fn+ARROW UP]]</B></TD></TR></TABLE>');
-        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+SHIFT+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [Fn+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [Fn+F4]</B> : Half page<BR><B> - [Fn+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
+        jButtonTime(1).setToolTipText('<HTML>Previous epoch/page/file<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+SHIFT+ARROW LEFT]<BR> &nbsp; [SHIFT+ARROW DOWN]<BR> &nbsp; [SHIFT+Fn+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [SHIFT+Fn+F4]</B> : Half page<BR><B> &nbsp; [SHIFT+Fn+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+Fn+ARROW DOWN]</B>: -10 pages');
+        jButtonTime(2).setToolTipText('<HTML>Previous sample (x10)<BR><BR><B> &nbsp; [Fn+ARROW DOWN]</B>');
+        jButtonTime(5).setToolTipText('<HTML>Next sample (x10)<BR><BR><B> &nbsp; [Fn+ARROW UP]]</B>');
+        jButtonTime(6).setToolTipText('<HTML>Next epoch/page/file<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+SHIFT+ARROW RIGHT]<BR> &nbsp; [SHIFT+ARROW UP]<BR> &nbsp; [Fn+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [Fn+F4]</B> : Half page<BR><B> &nbsp; [Fn+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+FN+ARROW UP]</B>: +10 pages');
     else
-        jButtonTime(1).setToolTipText('<HTML><TABLE><TR><TD>Previous epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW LEFT]<BR> - [SHIFT+ARROW DOWN]<BR> - [SHIFT+F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [SHIFT+F4]</B> : Half page<BR><B> - [SHIFT+F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE DOWN]</B>: -10 pages</TD></TR></TABLE>');
-        jButtonTime(2).setToolTipText('<HTML><TABLE><TR><TD>Previous sample (x10)</TD></TR><TR><TD>Shortcut: <B>[PAGE DOWN]</B></TD></TR></TABLE>');
-        jButtonTime(5).setToolTipText('<HTML><TABLE><TR><TD>Next sample (x10)</TD></TR><TR><TD>Shortcut: <B>[PAGE UP]</B></TD></TR></TABLE>');
-        jButtonTime(6).setToolTipText('<HTML><TABLE><TR><TD>Next epoch/page/file</TD></TR><TR><TD>Related shortcuts:<BR><B> - [CTRL+ARROW RIGHT]<BR> - [SHIFT+ARROW UP]<BR> - [F3]</B></TD></TR> <TR><TD>Other scrolling options:<BR><B> - [F4]</B> : Half page<BR><B> - [F6]</B> : Full page with no overlap<BR><B> - [CTRL+PAGE UP]</B>: +10 pages</TD></TR></TABLE>');
+        jButtonTime(1).setToolTipText('<HTML>Previous epoch/page/file<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+ARROW LEFT]<BR> &nbsp; [SHIFT+ARROW DOWN]<BR> &nbsp; [SHIFT+F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [SHIFT+F4]</B> : Half page<BR><B> &nbsp; [SHIFT+F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+PAGE DOWN]</B>: -10 pages');
+        jButtonTime(2).setToolTipText('<HTML>Previous sample (x10)<BR><BR><B> &nbsp; [PAGE DOWN]</B>');
+        jButtonTime(5).setToolTipText('<HTML>Next sample (x10)<BR><BR><B> &nbsp; [PAGE UP]</B>');
+        jButtonTime(6).setToolTipText('<HTML>Next epoch/page/file<BR><BR>Related shortcuts:<BR><B> &nbsp; [CTRL+ARROW RIGHT]<BR> &nbsp; [SHIFT+ARROW UP]<BR> &nbsp; [F3]</B><BR><BR>Other scrolling options:<BR><B> &nbsp; [F4]</B> : Half page<BR><B> &nbsp; [F6]</B> : Full page with no overlap<BR><B> &nbsp; [CTRL+PAGE UP]</B>: +10 pages');
     end
     jTextCurrent.setToolTipText('<HTML>Current time <B>[editable]</B>');
     
