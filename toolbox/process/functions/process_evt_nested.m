@@ -73,6 +73,12 @@ function sProcess = GetDescription()
     sProcess.options.partial_nesting.Type    = 'radio_label';
     sProcess.options.partial_nesting.Value   = 'split';
 
+    sProcess.options.label4.Comment = '<B>Minimum duration:</B> <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Filter out short events</FONT>';
+    sProcess.options.label4.Type = 'label';
+
+    sProcess.options.minimum_duration.Comment = 'Minimum duration';
+    sProcess.options.minimum_duration.Type    = 'value';
+    sProcess.options.minimum_duration.Value   = {30, 's', 1};
 end
 
 
@@ -98,11 +104,10 @@ function OutputFiles = Run(sProcess, sInput)
         return;
     end
 
-    % Method for partial nesting {'reject', 'split'}
+    %  get options
     partial_nesting = sProcess.options.partial_nesting.Value;
-
-    % Method
     method = sProcess.options.method.Value;
+    minimum_duration = sProcess.options.minimum_duration.Value{1};
 
     % ===== GET FILE DESCRIPTOR =====
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -151,7 +156,17 @@ function OutputFiles = Run(sProcess, sInput)
     mask = event2mask(sFile.Time, sEventsOuter);
     for iEvent = 1:length(sEventsInner)
         newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, partial_nesting, method);
-        sFile.events = [sFile.events , newEvents];
+        
+        for iNewEvent = 1:length(newEvents)
+            if minimum_duration > 0
+                newEvents(iNewEvent) = removeShortEpoch(newEvents(iNewEvent), minimum_duration);
+            end
+            
+            % If there is at least one epoch, we add the event
+            if length(newEvents(iNewEvent).epochs) >= 1
+                sFile.events(end+1) = newEvents(iNewEvent);
+            end
+        end
     end
 
 
@@ -364,4 +379,16 @@ function isExtended = areEventExtended(sEvents)
         isExtended(iEvent) = size(sEvents(iEvent).times, 1) == 2;
     end
 
+end
+
+
+function newEvents = removeShortEpoch(newEvents, minimum_duration)
+    if ~areEventExtended(newEvents)
+        durations = zeros(1, length(newEvents.epochs));
+    else
+        durations = newEvents.times(2, :) -  newEvents.times(1, :);
+    end
+    
+    newEvents.times = newEvents.times(:, durations >= minimum_duration);
+    newEvents.epochs = newEvents.epochs(durations >= minimum_duration);
 end
