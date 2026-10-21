@@ -267,7 +267,7 @@ if ~isempty(bstOptions)
         isDbLoaded = 1;
     end
     % Get saved colormaps
-    if (GuiLevel == 1)
+    if (GuiLevel >= 0)
         % Get default colormaps list
         sDefColormaps = bst_colormaps('Initialize');
     
@@ -338,7 +338,7 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesTo
     panel_montage('LoadDefaultMontages');
 end
 % Check that default iEEG electrode models are loaded
-if (GuiLevel == 1)
+if (GuiLevel >= 0)
     infoMsg = panel_ieeg('UpdateDefaultElectrodeModels');
     if ~isempty(infoMsg)
         disp(infoMsg);
