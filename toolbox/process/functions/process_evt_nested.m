@@ -307,47 +307,52 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
             error('%s is not supported for simple events', method);
         end
     else 
-        if strcmp(method, 'intersection')
+        % Generate binary mask for the event, then compute intersection
+        inner_mask = event2mask(Time, sEventsInner);
 
-            % Generate binarry mask for the event and compute the
-            % intersection 
-            inner_mask = event2mask(Time, sEventsInner);
-            intersection = mask .* repmat(inner_mask, size(mask, 1), 1);
+        % To compute the difference, we jut invert the mask
+        if strcmp(method, 'difference')
+            inner_mask = ~inner_mask;
+        end
+        
+        % Compute intersection
+        intersection = mask .* repmat(inner_mask, size(mask, 1), 1);
 
-            % Remove inner event overlapping multiple outer events
-            if strcmp(partial_nesting, 'reject')
-                for iOccurance = 1:size(sEventsInner.times, 2)
-                    idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iOccurance));
+        % Remove inner event overlapping multiple outer events
+        if strcmp(partial_nesting, 'reject')
+            for iOccurance = 1:size(sEventsInner.times, 2)
+                idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iOccurance));
 
-                    event_mask = mask(:, idx_time);
-                    [~, iEvent] = max(event_mask, [], 1);
-                    iEvent = unique(iEvent);
-                
-                    isOverlapping = length(iEvent) > 1;
-                    if isOverlapping
-                        intersection(:, idx_time) = 0;
-                    end
+                event_mask = mask(:, idx_time);
+                [~, iEvent] = max(event_mask, [], 1);
+                iEvent = unique(iEvent);
+            
+                isOverlapping = length(iEvent) > 1;
+                if isOverlapping
+                    intersection(:, idx_time) = 0;
                 end
-            end
-
-            % Generate events
-            for iEvent = 1:length(newEvents)
-                new_time = mask2Time(Time, intersection(iEvent, :));
-
-                if isempty(new_time)
-                    continue;
-                end
-
-                newEvents(iEvent).times  = [newEvents(iEvent).times, new_time];
-                newEvents(iEvent).epochs = [newEvents(iEvent).epochs , ones(size(new_time, 2), 1)];
             end
         end
+
+        % Generate events
+        for iEvent = 1:length(newEvents)
+            new_time = mask2Time(Time, intersection(iEvent, :));
+
+            if isempty(new_time)
+                continue;
+            end
+
+            newEvents(iEvent).times  = [newEvents(iEvent).times, new_time];
+            newEvents(iEvent).epochs = [newEvents(iEvent).epochs , ones(size(new_time, 2), 1)];
+        end
     end
+
+    % Remove unclassified events
     newEvents = newEvents(1:length(sEventsOuter));
 end
 
 function isExtended = areEventExtended(sEvents)
-% areEventExtended: Return wether the events sEvents are extended (true) or
+% areEventExtended: Return whether the events sEvents are extended (true) or
 % simple events. isExtended is a vector that is 1 x nEvents
 
     isExtended = false(1, length(sEvents));
