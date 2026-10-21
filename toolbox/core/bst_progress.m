@@ -456,8 +456,8 @@ end
 
 %% ===== ADD COMPONENTS =====
     function UpdateConstraints(isImage)
-        import java.awt.GridBagConstraints;
-        import java.awt.Insets;
+        eval('import java.awt.GridBagConstraints');
+        eval('import java.awt.Insets');
         % Remove all components
         pBar.jPanel.removeAll();
         % Generic constraints
