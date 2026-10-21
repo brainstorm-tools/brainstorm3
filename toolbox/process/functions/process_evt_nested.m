@@ -41,33 +41,37 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
-    sProcess.options.inner_events.Comment = 'Event to classify (seperated by comma)';
-    sProcess.options.inner_events.Type    = 'text';
-    sProcess.options.inner_events.Value   = '';
 
-    sProcess.options.outer_events.Comment = 'Classifying events (seperated by comma)';
-    sProcess.options.outer_events.Type    = 'text';
-    sProcess.options.outer_events.Value   = '';
-
-    sProcess.options.label1.Comment = 'Method';
+    sProcess.options.label1.Comment = ['<HTML><B>Opperation:</B> Opperation between the events (A) and events (B).' ...
+                                        '<BR> Event A must be an extended event </HTML>'];
     sProcess.options.label1.Type = 'label';
 
-    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Todo :) </FONT>', ...
-                                        'Difference: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; TODO </FONT>' ; ...
-                                        'intersection', 'difference'};
+
+    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A^B when A and B occurs ssimultaneously  </FONT>', ...
+        'Difference: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A-B when A is occuring but not B </FONT>' ; ...
+        'intersection', 'difference'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'intersection';
 
-
-    sProcess.options.label2.Comment = 'Partial nesting. <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; How to handle event with duration spanning multiple classssifying events </FONT>';
+    sProcess.options.label2.Comment = '<B>Events:</B>';
     sProcess.options.label2.Type = 'label';
+
+    sProcess.options.inner_events.Comment = 'Event A <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
+    sProcess.options.inner_events.Type    = 'text';
+    sProcess.options.inner_events.Value   = '';
+
+    sProcess.options.outer_events.Comment = 'Event B <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
+    sProcess.options.outer_events.Type    = 'text';
+    sProcess.options.outer_events.Value   = '';
+
+    sProcess.options.label3.Comment = '<B>Partial nesting:</B> <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; How to handle event with duration spanning multiple classssifying events </FONT>';
+    sProcess.options.label3.Type = 'label';
 
     sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove event overlapping with multiple classifying events</FONT>', ...
                                                   'Split event: <FONT color=#7F7F7F>Split the event accros each classsifying event</FONT>' ; ...
                                                     'reject', 'split'};
     sProcess.options.partial_nesting.Type    = 'radio_label';
     sProcess.options.partial_nesting.Value   = 'split';
-
 
 end
 
