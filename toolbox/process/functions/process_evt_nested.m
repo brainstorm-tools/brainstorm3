@@ -308,33 +308,38 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
         end
     else 
         if strcmp(method, 'intersection')
-            for iTime = 1:size(sEventsInner.times, 2)
-    
-                idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iTime));
-    
-                event_mask = mask(:, idx_time);
-                [~, iEvent] = max(event_mask, [], 1);
-                iEvent = unique(iEvent);
+
+            % Generate binarry mask for the event and compute the
+            % intersection 
+            inner_mask = event2mask(Time, sEventsInner);
+            intersection = mask .* repmat(inner_mask, size(mask, 1), 1);
+
+            % Remove inner event overlapping multiple outer events
+            if strcmp(partial_nesting, 'reject')
+                for iOccurance = 1:size(sEventsInner.times, 2)
+                    idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iOccurance));
+
+                    event_mask = mask(:, idx_time);
+                    [~, iEvent] = max(event_mask, [], 1);
+                    iEvent = unique(iEvent);
                 
-                isOverlapping = length(iEvent) > 1;
-                
-                if ~isOverlapping
-                    newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
-                    newEvents(iEvent).epochs(end+1) = 1;
-                else
-                    if strcmp(partial_nesting, 'reject')
-                        iEvent = length(sEventsOuter) + 1; 
-        
-                        newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
-                        newEvents(iEvent).epochs(end+1) = 1;
-                    else
-                        for jEvent = iEvent
-                            new_time = mask2Time(Time(idx_time), event_mask(jEvent, :));
-                            newEvents(jEvent).times  = [newEvents(jEvent).times, new_time];
-                            newEvents(jEvent).epochs = [newEvents(jEvent).epochs , ones(size(new_time, 2), 1)];
-                        end
+                    isOverlapping = length(iEvent) > 1;
+                    if isOverlapping
+                        intersection(:, idx_time) = 0;
                     end
                 end
+            end
+
+            % Generate events
+            for iEvent = 1:length(newEvents)
+                new_time = mask2Time(Time, intersection(iEvent, :));
+
+                if isempty(new_time)
+                    continue;
+                end
+
+                newEvents(iEvent).times  = [newEvents(iEvent).times, new_time];
+                newEvents(iEvent).epochs = [newEvents(iEvent).epochs , ones(size(new_time, 2), 1)];
             end
         end
     end
