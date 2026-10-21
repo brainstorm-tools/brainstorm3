@@ -116,9 +116,17 @@ function OutputFiles = Run(sProcess, sInput)
     missing_events = union(missing_events_inner, missing_events_outer);
     if ~isempty(missing_events)
         bst_report('Warning', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
+    elseif issempty(sEventsInner) ||  isempty(sEventsOuter)
+        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
+        return;
     end
     
-
+    isExtended = areEventExtended(sEventsOuter);
+    if ~all(isExtended)
+        bst_report('Error', sProcess, sInput, sprintf('All classifying events must be extended events. The following events are ssimple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
+        return;
+    end
+    
     % Create binary mask for the outer events
     mask = event2mask(sFile.Time, sEventsOuter);
     for iEvent = 1:length(sEventsInner)
@@ -229,4 +237,15 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, allow
     if ~allow_artial
         newEvents = newEvents(1:length(sEventsOuter));
     end
+end
+
+function isExtended = areEventExtended(sEvents)
+% areEventExtended: Return wether the events sEvents are extended (true) or
+% simple events. isExtended is a vector that is 1 x nEvents
+
+    isExtended = false(1, length(sEvents));
+    for iEvent = 1:length(sEvents)
+        isExtended(iEvent) = size(sEvents(iEvent).times, 1) == 2;
+    end
+
 end
