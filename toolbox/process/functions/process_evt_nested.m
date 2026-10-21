@@ -41,19 +41,33 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
-    % Event name
     sProcess.options.inner_events.Comment = 'Event to classify (seperated by comma)';
     sProcess.options.inner_events.Type    = 'text';
     sProcess.options.inner_events.Value   = '';
 
-    % Event name
     sProcess.options.outer_events.Comment = 'Classifying events (seperated by comma)';
     sProcess.options.outer_events.Type    = 'text';
     sProcess.options.outer_events.Value   = '';
 
-    sProcess.options.allow_partial.Comment = 'Allow partial nesting';
-    sProcess.options.allow_partial.Type    = 'checkbox';
-    sProcess.options.allow_partial.Value   = 1;
+    sProcess.options.label1.Comment = 'Method';
+    sProcess.options.label1.Type = 'label';
+
+    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Todo :) </FONT>', ...
+                                        'Difference: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; TODO </FONT>' ; ...
+                                        'intersection', 'difference'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'intersection';
+
+
+    sProcess.options.label2.Comment = 'Partial nesting. <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; How to handle event with duration spanning multiple classssifying events </FONT>';
+    sProcess.options.label2.Type = 'label';
+
+    sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove event overlapping with multiple classifying events</FONT>', ...
+                                                  'Split event: <FONT color=#7F7F7F>Split the event accros each classsifying event</FONT>' , ...
+                                                    'reject', 'split'};
+    sProcess.options.partial_nesting.Type    = 'radio_label';
+    sProcess.options.partial_nesting.Value   = 'split';
+
 
 end
 
@@ -80,9 +94,11 @@ function OutputFiles = Run(sProcess, sInput)
         return;
     end
 
-    % Allow partial nesting
-    allow_partial = sProcess.options.allow_partial.Value;
+    % Method for partial nesting {'reject', 'split'}
+    partial_nesting = sProcess.options.partial_nesting.Value;
 
+    % Method
+    method = sProcess.options.method.Value;
 
     % ===== GET FILE DESCRIPTOR =====
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -116,7 +132,7 @@ function OutputFiles = Run(sProcess, sInput)
     missing_events = union(missing_events_inner, missing_events_outer);
     if ~isempty(missing_events)
         bst_report('Warning', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
-    elseif issempty(sEventsInner) ||  isempty(sEventsOuter)
+    elseif isempty(sEventsInner) ||  isempty(sEventsOuter)
         bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
         return;
     end
@@ -130,7 +146,7 @@ function OutputFiles = Run(sProcess, sInput)
     % Create binary mask for the outer events
     mask = event2mask(sFile.Time, sEventsOuter);
     for iEvent = 1:length(sEventsInner)
-        newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, allow_partial);
+        newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, partial_nesting, method);
         sFile.events = [sFile.events , newEvents];
     end
 
@@ -186,57 +202,119 @@ function mask = event2mask(Time, sEvents)
 end
 
 
-function newEvents = createNewEvents(sEventsInner,  sEventsOuter)
+function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method)
     newEvents = repmat(db_template('event'), 1, 1 + length(sEventsOuter));
 
-    for iEvents = 1:length(sEventsOuter)
-        newEvents(iEvents).label = sprintf('%s/%s', sEventsInner.label, sEventsOuter(iEvents).label);
-        newEvents(iEvents).color = sEventsOuter(iEvents).color;
+    switch method
+        case 'intersection'
+            separator = '^';
+        case 'difference'
+            separator = '^';
+        otherwise
+            error('Unknown opperation %', method)
+    end
+    
+    if areEventExtended(sEventsInner)
+        switch partial_nesting
+            case 'split'
+                suffix = '_T';
+            case 'reject'
+                suffix = '_F';
+            otherwise
+                error('Unknown partial nesting %', partial_nesting)
+        end
+    else
+        suffix = '';
     end
 
-    newEvents(end).label = sprintf('%s/%s', sEventsInner.label, 'unknown');
-    newEvents(end).color = [0, 0, 0];
+    for iEvents = 1:length(sEventsOuter)
+        newEvents(iEvents).label = sprintf('%s%s%s%s', sEventsInner.label, separator, sEventsOuter(iEvents).label, suffix);
+        newEvents(iEvents).color = sEventsOuter(iEvents).color;
+    end
     
+    newEvents(end).label = sprintf('%s%s%s%s', sEventsInner.label, separator, 'unknown', suffix);
+    newEvents(end).color = [0, 0, 0];
 end
 
 
-function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, allow_artial)
+function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, partial_nesting, method)
+% classifyEvents
+% out        |--------------------|     |----------| 
+% inp               *    *            *         *
+% inx             |----------|        |-----|          |---------|
+% 
+% ^  = Intersection
+% -  = Differences
+% _T = partial_nesting = split
+% _F = partial_nesting = reject
+% 
+% So the resulting events would be 
+% inp^out           *    *                      *
+% inx^out_T       |----------|          |---|          
+% inx^out_F       |----------|
+% 
+% inp-out                             *          
+% inx-out_T                           |-|              |---------|
+% inx-out_F                                            |---------|
 
-    newEvents = createNewEvents(sEventsInner,  sEventsOuter);
+    newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method);
     
     % Add one row to the mask for the other case 
     % Ensure that all time point belongs to one category
     isClasified = max(mask, [], 1);
     mask = [mask ; 1 - isClasified];
+    
+    % Compute each of the following 4 case separately 
+    % (extended event = true/ false, operation = intersection / difference)
 
-    for iTime = 1:size(sEventsInner.times, 2)
-        
-        if size(sEventsInner.times, 1) == 2
-            idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iTime));
-        else
+    isExtended = areEventExtended(sEventsInner);
+    if strcmp(method, 'intersection') && ~isExtended
+        for iTime = 1:size(sEventsInner.times, 2)
             [~, idx_time] = min(abs(Time - sEventsInner.times(1, iTime))); 
-        end
-
-        event_mask = mask(:, idx_time);
-        [~, iEvent] = max(event_mask, [], 1);
-        iEvent = unique(iEvent);
             
-        if any(sum(event_mask) ~= 1) || length(iEvent) > 1
-            % event is not fully nested
-            iEvent = length(sEventsOuter) + 1;          
-        end
+            % Find which classifying event is occurring at that time
+            event_mask = mask(:, idx_time);
+            [~, iEvent] = max(event_mask, [], 1);
+            iEvent = unique(iEvent);
 
-        if size(sEventsInner.times, 1) == 2
-            newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
-        else
+            % Assign time
             newEvents(iEvent).times(end+1) = sEventsInner.times(iTime);
+            newEvents(iEvent).epochs(end+1) = 1;
         end
-        newEvents(iEvent).epochs(end+1) = 1;
+    elseif strcmp(method, 'intersection') && isExtended
+        for iTime = 1:size(sEventsInner.times, 2)
+
+            idx_time = panel_time('GetTimeIndices', Time, sEventsInner.times(:, iTime));
+
+            event_mask = mask(:, idx_time);
+            [~, iEvent] = max(event_mask, [], 1);
+            iEvent = unique(iEvent);
+            
+            isOverlapping = any(sum(event_mask) ~= 1) || length(iEvent) > 1;
+            
+            if ~isOverlapping
+                newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
+                newEvents(iEvent).epochs(end+1) = 1;
+            else
+                if strcmp(partial_nesting, 'reject')
+                    iEvent = length(sEventsOuter) + 1; 
+    
+                    newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
+                    newEvents(iEvent).epochs(end+1) = 1;
+                else
+                    error('Todo: handle splitting')
+                end
+            end
+        end
+    elseif strcmp(method, 'difference') && ~isExtended
+         % doesn't make sense
+    elseif strcmp(method, 'difference') && isExtended
+        % Todo
+    else
+        % Not possible
     end
 
-    if ~allow_artial
-        newEvents = newEvents(1:length(sEventsOuter));
-    end
+    newEvents = newEvents(1:length(sEventsOuter));
 end
 
 function isExtended = areEventExtended(sEvents)
