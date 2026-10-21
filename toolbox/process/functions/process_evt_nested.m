@@ -63,7 +63,7 @@ function sProcess = GetDescription()
     sProcess.options.label2.Type = 'label';
 
     sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove event overlapping with multiple classifying events</FONT>', ...
-                                                  'Split event: <FONT color=#7F7F7F>Split the event accros each classsifying event</FONT>' , ...
+                                                  'Split event: <FONT color=#7F7F7F>Split the event accros each classsifying event</FONT>' ; ...
                                                     'reject', 'split'};
     sProcess.options.partial_nesting.Type    = 'radio_label';
     sProcess.options.partial_nesting.Value   = 'split';
@@ -201,6 +201,26 @@ function mask = event2mask(Time, sEvents)
 
 end
 
+function event_time = mask2Time(Time, mask)
+    % mask2Time; find the event start and end from the mask. mask is a
+    % binary vector. The event start at each transition from 0 to 1 and end
+    % at each transition from 1 to 0.
+
+
+    tmp = diff(mask); 
+    start_segment = find(tmp == 1) + 1; 
+    end_segment   = find(tmp == -1);
+
+    if length(start_segment) ==  length(end_segment) -1
+        start_segment = [1 start_segment];
+    end     
+    if length(start_segment) ==  length(end_segment) +1
+        end_segment = [ end_segment length(Time)];
+    end  
+
+    event_time  = [ Time(start_segment) ;  Time(end_segment)  ];
+
+end
 
 function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method)
     newEvents = repmat(db_template('event'), 1, 1 + length(sEventsOuter));
@@ -290,7 +310,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
             [~, iEvent] = max(event_mask, [], 1);
             iEvent = unique(iEvent);
             
-            isOverlapping = any(sum(event_mask) ~= 1) || length(iEvent) > 1;
+            isOverlapping = length(iEvent) > 1;
             
             if ~isOverlapping
                 newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
@@ -302,7 +322,11 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
                     newEvents(iEvent).times(:, end+1) = sEventsInner.times(:, iTime);
                     newEvents(iEvent).epochs(end+1) = 1;
                 else
-                    error('Todo: handle splitting')
+                    for jEvent = iEvent
+                        new_time = mask2Time(Time(idx_time), event_mask(jEvent, :));
+                        newEvents(jEvent).times  = [newEvents(jEvent).times, new_time];
+                        newEvents(jEvent).epochs = [newEvents(jEvent).epochs , ones(size(new_time, 2), 1)];
+                    end
                 end
             end
         end
