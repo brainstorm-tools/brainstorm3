@@ -103,10 +103,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
         javaaddpath(BstJar);
     else
-        disp('');
-        disp('BST> Error: Brainstorm cannot be started without Java.');
-        disp(MSG.message);
-        rethrow(MSG);
+        disp('BST> Warning: Starting Brainstorm without java. Some function might not be available.');
     end
 end
 

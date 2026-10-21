@@ -220,8 +220,7 @@ disp('BST> Loading configuration file...');
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
 CurrentDbVersion = 5.03;
-% Get default colormaps list
-sDefColormaps = bst_colormaps('Initialize');
+
 isDbLoaded = 0;
 % If file exists: load it
 if file_exist(dbFile)
@@ -268,13 +267,20 @@ if ~isempty(bstOptions)
         isDbLoaded = 1;
     end
     % Get saved colormaps
-    if isfield(bstOptions, 'Colormaps') && isstruct(bstOptions.Colormaps)
-        fNames = fieldnames(sDefColormaps);
-        if (length(fieldnames(bstOptions.Colormaps)) ~= length(fNames)) || ~isequal(fieldnames(bstOptions.Colormaps.(fNames{1})), fieldnames(sDefColormaps.(fNames{1})))
-            disp('BST> Colormap structure was updated. Fixing...');
-        else
-            GlobalData.Colormaps = bstOptions.Colormaps;
+    if (GuiLevel == 1)
+        % Get default colormaps list
+        sDefColormaps = bst_colormaps('Initialize');
+    
+        if isfield(bstOptions, 'Colormaps') && isstruct(bstOptions.Colormaps)
+            fNames = fieldnames(sDefColormaps);
+            if (length(fieldnames(bstOptions.Colormaps)) ~= length(fNames)) || ~isequal(fieldnames(bstOptions.Colormaps.(fNames{1})), fieldnames(sDefColormaps.(fNames{1})))
+                disp('BST> Colormap structure was updated. Fixing...');
+            else
+                GlobalData.Colormaps = bstOptions.Colormaps;
+            end
         end
+    else
+        sDefColormaps = [];
     end
     % Clone control
     if isfield(bstOptions, 'CloneLock') && ~isempty(bstOptions.CloneLock)
@@ -318,7 +324,7 @@ if GlobalData.DataBase.DbVersion == 0
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
 end
 % Check that Colormaps are defined
-if isempty(GlobalData.Colormaps)
+if isempty(GlobalData.Colormaps) && ~isempty(sDefColormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
@@ -332,11 +338,12 @@ if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember(montagesTo
     panel_montage('LoadDefaultMontages');
 end
 % Check that default iEEG electrode models are loaded
-infoMsg = panel_ieeg('UpdateDefaultElectrodeModels');
-if ~isempty(infoMsg)
-    disp(infoMsg);
+if (GuiLevel == 1)
+    infoMsg = panel_ieeg('UpdateDefaultElectrodeModels');
+    if ~isempty(infoMsg)
+        disp(infoMsg);
+    end
 end
-
 
 %% ===== INTERNET CONNECTION =====
 % Check internet connection
@@ -394,16 +401,17 @@ end
 
 
 %% ===== START BRAINSTORM GUI =====
-% Get screen configuration
-GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
 % Create main window (skipped in server mode)
 if (GuiLevel >= 0)
     disp('BST> Initializing user interface...');
-end
-gui_initialize();
-% Abort if something went wrong
-if isempty(GlobalData.Program.GUI)
-    return;
+    % Get screen configuration
+    GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
+
+    gui_initialize();
+    % Abort if something went wrong
+    if isempty(GlobalData.Program.GUI)
+        return;
+    end
 end
 
 
@@ -498,8 +506,9 @@ end
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
 disp('BST> Reading process folder...');
-panel_process_select('ParseProcessFolder', 1);
-
+if (GuiLevel == 1)
+    panel_process_select('ParseProcessFolder', 1);
+end
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
 % Download ICBM152 template if missing
@@ -749,12 +758,12 @@ end
 % Open a new file to track if Brainstorm is opened
 fid = fopen(StartFile, 'w');
 fwrite(fid, ['Brainstorm started: ' datestr(now) 10]);
-fwrite(fid, ['User: ' char(java.lang.System.getProperty('user.name')) 10]);
+fwrite(fid, ['User: ' char(getenv('USER')) 10]);
 try
     jLocalHost = java.net.InetAddress.getLocalHost();
     fwrite(fid, ['Host: ' char(jLocalHost.getHostName()) ' / ' char(jLocalHost.getHostAddress()) ' (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 catch
-    fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
+    %fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 end
 fclose(fid);
 
@@ -782,8 +791,9 @@ if ~isempty(strfind(TmpDir, '/home/bic/'))
 end
 
 % Empty temporary folder with confirmation (if nogui/server: display warning)
-gui_brainstorm('EmptyTempFolder', 1);
-
+if (bst_get('GuiLevel') == 1)
+    gui_brainstorm('EmptyTempFolder', 1);
+end
 
 %% ===== PREPARE BUG REPORTING =====
 % % Get current configuration
