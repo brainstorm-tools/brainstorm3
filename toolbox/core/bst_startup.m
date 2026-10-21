@@ -762,7 +762,7 @@ try
     jLocalHost = java.net.InetAddress.getLocalHost();
     fwrite(fid, ['Host: ' char(jLocalHost.getHostName()) ' / ' char(jLocalHost.getHostAddress()) ' (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 catch
-    %fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
+    fwrite(fid, ['Host: Unknown (' bst_get('OsName') ')' 10]);
 end
 fclose(fid);
 
@@ -790,7 +790,7 @@ if ~isempty(strfind(TmpDir, '/home/bic/'))
 end
 
 % Empty temporary folder with confirmation (if nogui/server: display warning)
-if (bst_get('GuiLevel') == 1)
+if (bst_get('GuiLevel') >= 0)
     gui_brainstorm('EmptyTempFolder', 1);
 end
 
