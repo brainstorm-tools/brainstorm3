@@ -51,9 +51,9 @@ function sProcess = GetDescription()
     sProcess.options.outer_events.Type    = 'text';
     sProcess.options.outer_events.Value   = '';
 
-    sProcess.options.ignore_overlapping.Comment = 'Only classify fully nested events (ignore event that are not fully contained within the larger event)';
-    sProcess.options.ignore_overlapping.Type    = 'checkbox';
-    sProcess.options.ignore_overlapping.Value   = 1;
+    sProcess.options.allow_partial.Comment = 'Allow partial nesting';
+    sProcess.options.allow_partial.Type    = 'checkbox';
+    sProcess.options.allow_partial.Value   = 1;
 
 end
 
@@ -76,12 +76,12 @@ function OutputFiles = Run(sProcess, sInput)
     outerEventsName = cellfun(@(x) strtrim(x),  strsplit(sProcess.options.outer_events.Value, ','),  'UniformOutput',  false);
 
     if isempty(innerEventsName) || isempty(outerEventsName)
-        bst_report('Error', sProcess, [], 'Missing event names.');
+        bst_report('Warning', sProcess, sInput, 'No event to classsssify.');
         return;
     end
 
-    % Ignore bad segmens 
-    ignore_overlapping = sProcess.options.ignore_overlapping.Value;
+    % Allow partial nesting
+    allow_partial = sProcess.options.allow_partial.Value;
 
 
     % ===== GET FILE DESCRIPTOR =====
@@ -106,7 +106,7 @@ function OutputFiles = Run(sProcess, sInput)
 
     % If no markers are present in this file
     if isempty(sFile.events)
-        bst_report('Error', sProcess, sInput, 'This file does not contain any event.');
+        bst_report('Warning', sProcess, sInput, 'This file does not contain any event. skipping');
         return;
     end
 
@@ -115,15 +115,14 @@ function OutputFiles = Run(sProcess, sInput)
 
     missing_events = union(missing_events_inner, missing_events_outer);
     if ~isempty(missing_events)
-        bst_report('Error', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
-        return;
+        bst_report('Warning', sProcess, sInput, sprintf('The following events were not found in the file: %s.', strjoin(missing_events, ', ')));
     end
     
 
     % Create binary mask for the outer events
     mask = event2mask(sFile.Time, sEventsOuter);
     for iEvent = 1:length(sEventsInner)
-        newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, ignore_overlapping);
+        newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, allow_partial);
         sFile.events = [sFile.events , newEvents];
     end
 
@@ -193,7 +192,7 @@ function newEvents = createNewEvents(sEventsInner,  sEventsOuter)
 end
 
 
-function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, ignore_overlapping)
+function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, allow_artial)
 
     newEvents = createNewEvents(sEventsInner,  sEventsOuter);
     
@@ -227,7 +226,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, ignor
         newEvents(iEvent).epochs(end+1) = 1;
     end
 
-    if ignore_overlapping
+    if ~allow_artial
         newEvents = newEvents(1:length(sEventsOuter));
     end
 end
