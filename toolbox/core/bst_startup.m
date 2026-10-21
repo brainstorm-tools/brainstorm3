@@ -506,9 +506,8 @@ end
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
 disp('BST> Reading process folder...');
-if (GuiLevel == 1)
-    panel_process_select('ParseProcessFolder', 1);
-end
+panel_process_select('ParseProcessFolder', 1);
+
 
 %% ===== INSTALL ANATOMY TEMPLATE =====
 % Download ICBM152 template if missing
