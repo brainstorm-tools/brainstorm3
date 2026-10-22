@@ -104,7 +104,7 @@ if ~isempty(grad)
             % Error that "inverse" option is not support anymore in ft_apply_montage
             if ~isempty(strfind(ME.message, '"inverse"')) && ~isempty(strfind(ME.message, 'FT_INVERSE_MONTAGE'))
                 tmp_inv_montage = ft_inverse_montage(grad.balance.(mont));
-                grad.tra = tmp_inv_montage.tra * grad.tra;
+                grad = ft_apply_montage(grad, tmp_inv_montage, 'keepunused', 'yes');
             else
                 rethrow(ME)
             end
