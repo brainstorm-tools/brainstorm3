@@ -291,6 +291,12 @@ function DisplaySpec(sfreq)
     else
         XFreqLim = [0, min(max(5*LowPass, sfreq/8), max(Freqs))] ; 
     end
+    % Number of decimals for frequency resolution: 3 digits or first two non-zero digits
+    if mod(dF, 1) == 0
+        dF_nDec = 1;
+    else
+        dF_nDec = max(3, -floor(log10(abs(dF - floor(dF)))) + 1);
+    end
 
     % Filter description: Left panel
     strFilter1 = ['<HTML>Linear phase <B>FIR filter</B>' '<BR>'];
@@ -320,7 +326,7 @@ function DisplaySpec(sfreq)
     strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Transient (99% energy): &nbsp;&nbsp;<B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
-    strFilter2 = [strFilter2 'Frequency resolution: &nbsp;&nbsp;<B>' num2str(dF, '%1.3f') ' Hz</B><BR>'];
+    strFilter2 = [strFilter2 'Frequency resolution: &nbsp;&nbsp;<B>' num2str(dF, ['%1.' num2str(dF_nDec) 'f']) ' Hz</B><BR>'];
     
     hFig = HFilterDisplay(Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
 
