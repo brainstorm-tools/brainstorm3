@@ -667,8 +667,6 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
         OPTIONS.VoronoiFile = voronoi_fn;
         OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
-    elseif strcmp(OPTIONS.HeadModelType, 'volume')
-        
     end
     
     % Use defined options
