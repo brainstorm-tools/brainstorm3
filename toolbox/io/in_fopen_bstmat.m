@@ -68,6 +68,9 @@ end
 if isfield(DataMat(1), 'T0') && ~isempty(DataMat(1).T0)
     sFile.t0 = DataMat(1).T0;
 end
+if isfield(DataMat(1), 'DisplayUnits') && ~isempty(DataMat(1).DisplayUnits)
+    sFile.header.displayunits = DataMat(1).DisplayUnits;
+end
 sFile.header.F    = DataMat(1).F;
 sFile.channelflag = DataMat(1).ChannelFlag;
 

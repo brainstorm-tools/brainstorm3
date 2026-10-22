@@ -110,9 +110,9 @@ switch lower(DisplayMode)
             if iscell(sMat.Description{1,1})
                 sMat.Description{1,1} = sMat.Description{1,1}{1};
             end
-            if (size(sMat.Description,1) == size(sMat.Value,1))
+            if (size(sMat.Description,1) == size(Value,1))
                 sMat.Description = sMat.Description(:,1);
-            elseif (size(sMat.Description,2) == size(sMat.Value,1))
+            elseif (size(sMat.Description,2) == size(Value,1))
                 sMat.Description = sMat.Description(1,:);
             end
         end

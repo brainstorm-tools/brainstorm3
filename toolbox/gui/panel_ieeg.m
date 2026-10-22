@@ -645,6 +645,7 @@ function UpdateModelList(elecType)
     for i = 1:length(elecModels)
         ctrl.jComboModel.addItem(BstListItem('', '', elecModels{i}, i));
     end
+    drawnow;
     % Restore callback
     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
 end
@@ -963,6 +964,7 @@ function SetSelectedElectrodes(iSelElec)
         ctrl.jListElec.scrollRectToVisible(selRect);
         ctrl.jListElec.repaint();
     end
+    drawnow;
     % Restore JList callback
     java_setcb(ctrl.jListElec, 'ValueChangedCallback', jListCallback_bak);
     % Update panel fields
@@ -1060,6 +1062,7 @@ function SetSelectedContacts(iSelCont)
         ctrl.jListCont.scrollRectToVisible(selRect);
         ctrl.jListCont.repaint();
     end
+    drawnow;
     % Restore JList callback
     java_setcb(ctrl.jListCont, 'ValueChangedCallback', jListCallback_bak);
     sContacts = GetSelectedContacts();

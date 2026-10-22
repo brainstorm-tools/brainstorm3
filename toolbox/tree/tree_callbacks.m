@@ -560,161 +560,175 @@ switch (lower(action))
 
 %% ===== POPUP: SUBJECT =====
             case 'subject'
-                % Get subject
-                iSubject = bstNodes(1).getStudyIndex(); 
-                sSubject = bst_get('Subject', iSubject);
-                % === EDIT SUBJECT ===
-                % If subject is not default subject (if subject index is not 0)
-                if ~bst_get('ReadOnly') && (iSubject > 0)
-                    gui_component('MenuItem', jPopup, [], 'Edit subject', IconLoader.ICON_EDIT, [], @(h,ev)db_edit_subject(iSubject));
+                % Get subjects
+                iSubject = [];
+                for iNode = 1 : length(bstNodes)
+                    iSubject = [iSubject, bstNodes(iNode).getStudyIndex()];
                 end
-                % If subject node is not a node linked to "Default anatomy"
-                if ~bst_get('ReadOnly') && ((iSubject == 0) || ~sSubject.UseDefaultAnat)
-                    AddSeparator(jPopup);
-                    % === IMPORT ===
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
-                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
-                    gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'CT Import'));
-                    gui_component('MenuItem', jPopup, [], 'Import PET', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'PET Import'));
-                    gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
-                    gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
-                    gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate primitive surface', IconLoader.ICON_SURFACE, [],@(h,ev)bst_call(@tess_generate_primitive, iSubject));
-                    AddSeparator(jPopup);
-                    % === ANATOMY TEMPLATE ===
-                    % Get registered Brainstorm anatomy defaults
-                    sTemplates = bst_get('AnatomyDefaults');
-                    % Create menus
-                    jMenuDefaults   = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefMni     = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefUsc     = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefFs      = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
-                    jMenuDefOthers  = gui_component('Menu', jMenuDefaults, [], 'Others', IconLoader.ICON_ANATOMY, [], []);
-                    % Add an item per Template available
-                    for i = 1:length(sTemplates)
-                        % Local or download?
-                        if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
-                            Comment = ['Download: ' sTemplates(i).Name];
-                        else
-                            Comment = sTemplates(i).Name;
-                        end
-                        % Sub-group
-                        if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
-                            jParent = jMenuDefMni;
-                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
-                            jParent = jMenuDefUsc;
-                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
-                            jParent = jMenuDefFs;
-                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
-                            jParent = jMenuDefInfants;
-                        else
-                            jParent = jMenuDefOthers;
-                        end
-                        % Create item
-                        gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
+                % Options for ONE Subject
+                if length(iSubject) == 1
+                    iSubject = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    % === EDIT SUBJECT ===
+                    % If subject is not default subject (if subject index is not 0)
+                    if ~bst_get('ReadOnly') && (iSubject > 0)
+                        gui_component('MenuItem', jPopup, [], 'Edit subject', IconLoader.ICON_EDIT, [], @(h,ev)db_edit_subject(iSubject));
                     end
-                    % Create new template
-                    AddSeparator(jMenuDefaults);
-                    gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
-                    gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
-                    
-                    % === MNI ATLASES ===
-                    % Get list of templates registered in Brainstorm
-                    sMniAtlases = bst_get('MniAtlasDefaults');
-                    jMenuSchaefer = [];
-                    % Add MNI parcellation
-                    jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI parcellation', IconLoader.ICON_ANATOMY, [], []);
-                    for i = 1:length(sMniAtlases)
-                        % Local or download?
-                        if ~isempty(strfind(sMniAtlases(i).FilePath, 'http://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'https://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'ftp://'))
-                            Comment = ['Download: ' sMniAtlases(i).Name];
-                        else
-                            Comment = sMniAtlases(i).Name;
-                        end
-                        % Submenus
-                        if ~isempty(strfind(Comment, 'Schaefer2018_'))
-                            if isempty(jMenuSchaefer)
-                                jMenuSchaefer = gui_component('Menu', jMenuMniVol, [], 'Schaefer2018', IconLoader.ICON_ANATOMY, [], []);
+                    % If subject node is not a node linked to "Default anatomy"
+                    if ~bst_get('ReadOnly') && ((iSubject == 0) || ~sSubject.UseDefaultAnat)
+                        AddSeparator(jPopup);
+                        % === IMPORT ===
+                        gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
+                        gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));
+                        gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
+                        gui_component('MenuItem', jPopup, [], 'Import CT', IconLoader.ICON_VOLCT, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'CT Import'));
+                        gui_component('MenuItem', jPopup, [], 'Import PET', IconLoader.ICON_VOLPET, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1, 1, 'PET Import'));
+                        gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
+                        gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
+                        gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'Generate primitive surface', IconLoader.ICON_SURFACE, [],@(h,ev)bst_call(@tess_generate_primitive, iSubject));
+                        AddSeparator(jPopup);
+                        % === ANATOMY TEMPLATE ===
+                        % Get registered Brainstorm anatomy defaults
+                        sTemplates = bst_get('AnatomyDefaults');
+                        % Create menus
+                        jMenuDefaults   = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefMni     = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefUsc     = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefFs      = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefOthers  = gui_component('Menu', jMenuDefaults, [], 'Others', IconLoader.ICON_ANATOMY, [], []);
+                        % Add an item per Template available
+                        for i = 1:length(sTemplates)
+                            % Local or download?
+                            if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
+                                Comment = ['Download: ' sTemplates(i).Name];
+                            else
+                                Comment = sTemplates(i).Name;
                             end
-                            jMenuMniSub = jMenuSchaefer;
-                        else
-                            jMenuMniSub = jMenuMniVol;
+                            % Sub-group
+                            if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
+                                jParent = jMenuDefMni;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
+                                jParent = jMenuDefUsc;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
+                                jParent = jMenuDefFs;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
+                                jParent = jMenuDefInfants;
+                            else
+                                jParent = jMenuDefOthers;
+                            end
+                            % Create item
+                            gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
                         end
-                        % Create item
-                        gui_component('MenuItem', jMenuMniSub, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
-                    end
-                    AddSeparator(jMenuMniVol);
-                    gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
+                        % Create new template
+                        AddSeparator(jMenuDefaults);
+                        gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
+                        gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
 
-                    % === MRI SEGMENTATION ===
-                    fcnMriSegment(jPopup, sSubject, iSubject, [], 0, 0, 0);
-                    % === DEFACE MRI ===
-                    gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
-                    % === SEEG/ECOG ===
-                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
-                    % Export menu (added later)
-                    if (iSubject ~= 0)
-                        jMenuExport{1} = gui_component('MenuItem', [], [], 'Export subject',  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
-                        jMenuExport{2} = 'separator';
+                        % === MNI ATLASES ===
+                        % Get list of templates registered in Brainstorm
+                        sMniAtlases = bst_get('MniAtlasDefaults');
+                        jMenuSchaefer = [];
+                        % Add MNI parcellation
+                        jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI parcellation', IconLoader.ICON_ANATOMY, [], []);
+                        for i = 1:length(sMniAtlases)
+                            % Local or download?
+                            if ~isempty(strfind(sMniAtlases(i).FilePath, 'http://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'https://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'ftp://'))
+                                Comment = ['Download: ' sMniAtlases(i).Name];
+                            else
+                                Comment = sMniAtlases(i).Name;
+                            end
+                            % Submenus
+                            if ~isempty(strfind(Comment, 'Schaefer2018_'))
+                                if isempty(jMenuSchaefer)
+                                    jMenuSchaefer = gui_component('Menu', jMenuMniVol, [], 'Schaefer2018', IconLoader.ICON_ANATOMY, [], []);
+                                end
+                                jMenuMniSub = jMenuSchaefer;
+                            else
+                                jMenuMniSub = jMenuMniVol;
+                            end
+                            % Create item
+                            gui_component('MenuItem', jMenuMniSub, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
+                        end
+                        AddSeparator(jMenuMniVol);
+                        gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
+
+                        % === MRI SEGMENTATION ===
+                        fcnMriSegment(jPopup, sSubject, iSubject, [], 0, 0, 0);
+                        % === DEFACE MRI ===
+                        gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
+                        % === SEEG/ECOG ===
+                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
                     end
+                end
+                % Export menu (added later), for all selected subjects, except Default anatomy
+                iSubject = setdiff(iSubject, 0);
+                if ~isempty(iSubject)
+                    jMenuExport{1} = gui_component('MenuItem', [], [], ['Export subject' repmat('s', 1, (length(iSubject) > 1))] ,  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
+                    jMenuExport{2} = 'separator';
                 end
                 
 %% ===== POPUP: STUDYSUBJECT =====
             case 'studysubject'
-                % Get subject
-                iStudy = bstNodes(1).getStudyIndex();
-                iSubject = bstNodes(1).getItemIndex();
-                sSubject = bst_get('Subject', iSubject);
-                % If node is a directory node
-                isDirNode = (bstNodes(1).getStudyIndex() == 0);
-                % === EDIT SUBJECT ===
-                if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jPopup, [], 'Edit subject', IconLoader.ICON_EDIT, [], @(h,ev)db_edit_subject(iSubject));
+                % Get subjects
+                iSubject = [];
+                for iNode = 1 : length(bstNodes)
+                    iSubject = [iSubject, bstNodes(iNode).getItemIndex()];
                 end
-                % === ADD CONDITION ===
-                if ~bst_get('ReadOnly') && isDirNode
-                    gui_component('MenuItem', jPopup, [], 'New folder', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)db_add_condition(sSubject.Name));
-                end
-                % === IMPORT DATA ===
-                if ~bst_get('ReadOnly')
-                    AddSeparator(jPopup);
-                    if isDirNode
-                        gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw, [], [], iSubject));
+                % Options for ONE Subject
+                if length(iSubject) == 1
+                    iStudy = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    % If node is a directory node
+                    isDirNode = (bstNodes(1).getStudyIndex() == 0);
+                    % === EDIT SUBJECT ===
+                    if ~bst_get('ReadOnly')
+                        gui_component('MenuItem', jPopup, [], 'Edit subject', IconLoader.ICON_EDIT, [], @(h,ev)db_edit_subject(iSubject));
                     end
-                    gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject));
-                    AddSeparator(jPopup);
-                end
-                % === IMPORT CHANNEL / COMPUTE HEADMODEL ===
-                % If not global default Channel + Headmodel
-                if ~bst_get('ReadOnly')
-                    if (sSubject.UseDefaultChannel ~= 2)
-                        fcnPopupImportChannel(bstNodes, jPopup, 0);
-                        fcnPopupMenuGoodBad();
-                        fcnPopupClusterTimeSeries();
-                        fcnPopupComputeHeadmodel();
-                        fncPopupMenuNoiseCov(0);
-                    else
-                        fcnPopupMenuGoodBad();
-                        fcnPopupClusterTimeSeries();
+                    % === ADD CONDITION ===
+                    if ~bst_get('ReadOnly') && isDirNode
+                        gui_component('MenuItem', jPopup, [], 'New folder', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)db_add_condition(sSubject.Name));
+                    end
+                    % === IMPORT DATA ===
+                    if ~bst_get('ReadOnly')
+                        AddSeparator(jPopup);
+                        if isDirNode
+                            gui_component('MenuItem', jPopup, [], 'Review raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@import_raw, [], [], iSubject));
+                        end
+                        gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject));
                         AddSeparator(jPopup);
                     end
+                    % === IMPORT CHANNEL / COMPUTE HEADMODEL ===
+                    % If not global default Channel + Headmodel
+                    if ~bst_get('ReadOnly')
+                        if (sSubject.UseDefaultChannel ~= 2)
+                            fcnPopupImportChannel(bstNodes, jPopup, 0);
+                            fcnPopupMenuGoodBad();
+                            fcnPopupClusterTimeSeries();
+                            fcnPopupComputeHeadmodel();
+                            fncPopupMenuNoiseCov(0);
+                        else
+                            fcnPopupMenuGoodBad();
+                            fcnPopupClusterTimeSeries();
+                            AddSeparator(jPopup);
+                        end
+                    end
+                    % === SOURCES/TIMEFREQ ===
+                    if ~bst_get('ReadOnly')
+                        fcnPopupComputeSources();
+                        % fcnPopupProjectSources(0);
+                    end
+                    fcnPopupScoutTimeSeries(jPopup);
+                    AddSeparator(jPopup);
+                    % === SEEG IMPLANTATION ===
+                    if ~isempty(sSubject.Anatomy) && ~strcmpi(sSubject.Name, bst_get('NormalizedSubjectName'))
+                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
+                    end
                 end
-                % === SOURCES/TIMEFREQ ===
-                if ~bst_get('ReadOnly')
-                    fcnPopupComputeSources();
-                    % fcnPopupProjectSources(0);
-                end
-                fcnPopupScoutTimeSeries(jPopup);
-                AddSeparator(jPopup);
-                % === SEEG IMPLANTATION ===
-                if ~isempty(sSubject.Anatomy) && ~strcmpi(sSubject.Name, bst_get('NormalizedSubjectName'))
-                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateImplantation', sSubject));
-                end
-                % Export menu (added later)
-                jMenuExport = gui_component('MenuItem', [], [], 'Export subject', IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
+                % Export menu (added later), for all selected subjects
+                jMenuExport = gui_component('MenuItem', [], [], ['Export subject' repmat('s', 1, (length(iSubject) > 1))] ,  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
                 
 %% ===== POPUP: CONDITION =====
             case {'condition', 'rawcondition'}
@@ -2534,8 +2548,10 @@ switch (lower(action))
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
-                    AddSeparator(jPopup);
-		    gui_component('MenuItem', jPopup, [], 'Review as raw', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw(filenameFull, 'BST-MATRIX', iSubject));
+                    if strcmpi(nodeType, 'matrix')
+                        AddSeparator(jPopup);
+		                gui_component('MenuItem', jPopup, [], 'Review as raw', IconLoader.ICON_RAW_DATA, [], @(h,ev)import_raw(filenameFull, 'BST-MATRIX', iSubject));
+                    end
                 else
                     gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', 'none'));
                 end

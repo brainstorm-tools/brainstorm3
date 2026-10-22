@@ -1,3 +1,12 @@
+September 2026
+- IO: Add support for micapipe .gii L/R pairs as source files
+- DSP: Zero-phase filter, replace zero padding with constant padding
+- GUI: Use natural sort when sorting events by Name
+- Events: Add option to allow merging adjacent extended events
+- Distrib: Script to run the tutorial Machine learning: Decoding / MVPA
+- Distrib: Add AI tools usage guidelines in 'CONTRIBUTING.md'
+- Viz: Improve visualization of decoding results
+--------------------------------------------------------------
 July 2026
 - Anatomy: Add support for ITK-SnAP `.label` files for MRI atlases
 - IO: Improve handling of matrix files with row and col names (i.e. tables)

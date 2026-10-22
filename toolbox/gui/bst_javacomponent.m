@@ -162,6 +162,13 @@ else
     end
     % Tooltip
     if ~isempty(compTooltip)
+        % Tooltips do not render HTML content
+        if bst_get('MatlabVersion') >= 2501
+            % Keep line breaks
+            compTooltip = regexprep(compTooltip, '<br\s*/?>', '\n', 'ignorecase');
+            % HTML to plain text
+            compTooltip = sprintf(str_striptag(compTooltip));
+        end
         set(hComp, 'Tooltip', compTooltip);
     end
     % Callback

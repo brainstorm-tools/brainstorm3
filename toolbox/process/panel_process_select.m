@@ -717,7 +717,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         % Update processes list
         UpdateProcessesList();
         % Select last process added
+        java_setcb(jListProcess, 'ValueChangedCallback', []);
         jListProcess.setSelectedIndex(iSelProc - 1);
+        java_setcb(jListProcess, 'ValueChangedCallback', @ListProcess_ValueChangedCallback);
         % Force update of options for "select" button (it does not change the selection in the JList)
         UpdateProcessOptions();
         % Check if pipeline is valid
@@ -1659,6 +1661,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         if ~isempty(jParent)
             jParent.pack();
         end
+        drawnow();
         % Stopping the update
         isUpdatingPipeline = 0;
     end
