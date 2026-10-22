@@ -419,12 +419,12 @@ else
     end
 end
 % Check for any sensor located "inside" the inner skull (that shouldn't be there)
-allLoc = [OPTIONS.Channel([iMeg iEeg, iNirs]).Loc];
+allLoc = [OPTIONS.Channel([iMeg iEeg]).Loc];
 if ~isempty(allLoc)
     iVertInside = find(inpolyhd(allLoc, sSurfInner.Vertices, sSurfInner.Faces));
     % Warning if there are some sensors inside
     if ~isempty(iVertInside)
-        errMessage = ['Some EEG, MEG  or NIRS sensors are located inside the brain volume.' 10 ...
+        errMessage = ['Some EEG, or MEG sensors are located inside the brain volume.' 10 ...
                       'You should check the positions of the sensors and the type of the channels.' 10 10 ...
                       'Position: Right-click on the channel file > MRI registration > Edit.' 10 ...
                       'Type: Right-click on the channel file > Edit channel file.'];
@@ -433,9 +433,20 @@ if ~isempty(allLoc)
         return;
     end
 end
+
+allLoc = [OPTIONS.Channel(iNirs).Loc]';
+if ~isempty(allLoc)
+    sSurfScalp = bst_memory('LoadSurface', OPTIONS.HeadFile);
+    ChanLocPrj = channel_project_scalp(sSurfScalp.Vertices, allLoc);
+    if any(sqrt(sum( (ChanLocPrj - allLoc).^2, 2)) > 0.001)
+        bst_error(['One or more nirs sensors are not placed on the scalp.' 10 ...
+                   'Project the sensors to the scalp surface before computing the head model.']);
+        return
+    end
+end
+
 % Initialize empty gain matrix
 Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
-        
         
 %% ===== COMPUTE: OPENMEEG =====
 if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
