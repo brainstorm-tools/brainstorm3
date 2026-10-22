@@ -628,11 +628,7 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-    if ~strcmp(OPTIONS.HeadModelType, 'surface')
-        errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
-        OPTIONS = [];
-        return;
-    end
+
     % Check NIRSTORM plugin
     [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nirstorm');
     if ~isInstalled
@@ -640,6 +636,7 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         OPTIONS = [];
         return;
     end
+
     % Check version, update if needed
     if bst_plugin('CompareVersions', PlugDesc.Version, '0.9.1') < 0
         if PlugDesc.isManaged
@@ -647,14 +644,22 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
             bst_plugin('Install',   'nirstorm');
         end
     end
+
     % Get Subject
     sSubject = bst_get('SurfaceFile', OutSurfaceFile);
-    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+    
     % Subject Informations 
     OPTIONS.SubjectName = sSubject.Name;
     OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    OPTIONS.VoronoiFile = voronoi_fn;
-    OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+
+    if strcmp(OPTIONS.HeadModelType, 'surface')
+        voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+        OPTIONS.VoronoiFile = voronoi_fn;
+        OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    elseif strcmp(OPTIONS.HeadModelType, 'volume')
+        
+    end
+    
     % Use defined options
     if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
         sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);
