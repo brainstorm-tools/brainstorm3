@@ -203,15 +203,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         elseif isNirs && ~isMeg && ~isEeg && ~isEcog && ~isSeeg
             jCheckMethodNIRS.setSelected(1);
         end
-        % Disable NIRS for other than surface head model
-        if isNirs
-            if jRadioGridVolume.isSelected() || jRadioGridMixed.isSelected()
-                jCheckMethodNIRS.setSelected(0);
-                jCheckMethodNIRS.setEnabled(0);
-            else
-                jCheckMethodNIRS.setEnabled(1);
-            end
-        end
+
         % MEG/EEG Checkbox
         isMegSel  = isMeg && jCheckMethodMEG.isSelected();
         isEegSel  = isEeg && jCheckMethodEEG.isSelected();

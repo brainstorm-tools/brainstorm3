@@ -419,12 +419,12 @@ else
     end
 end
 % Check for any sensor located "inside" the inner skull (that shouldn't be there)
-allLoc = [OPTIONS.Channel([iMeg iEeg, iNirs]).Loc];
+allLoc = [OPTIONS.Channel([iMeg iEeg]).Loc];
 if ~isempty(allLoc)
     iVertInside = find(inpolyhd(allLoc, sSurfInner.Vertices, sSurfInner.Faces));
     % Warning if there are some sensors inside
     if ~isempty(iVertInside)
-        errMessage = ['Some EEG, MEG  or NIRS sensors are located inside the brain volume.' 10 ...
+        errMessage = ['Some EEG, or MEG sensors are located inside the brain volume.' 10 ...
                       'You should check the positions of the sensors and the type of the channels.' 10 10 ...
                       'Position: Right-click on the channel file > MRI registration > Edit.' 10 ...
                       'Type: Right-click on the channel file > Edit channel file.'];
@@ -433,9 +433,9 @@ if ~isempty(allLoc)
         return;
     end
 end
+
 % Initialize empty gain matrix
 Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
-        
         
 %% ===== COMPUTE: OPENMEEG =====
 if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
@@ -628,11 +628,7 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-    if ~strcmp(OPTIONS.HeadModelType, 'surface')
-        errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
-        OPTIONS = [];
-        return;
-    end
+
     % Check NIRSTORM plugin
     [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nirstorm');
     if ~isInstalled
@@ -640,6 +636,7 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         OPTIONS = [];
         return;
     end
+
     % Check version, update if needed
     if bst_plugin('CompareVersions', PlugDesc.Version, '0.9.1') < 0
         if PlugDesc.isManaged
@@ -647,14 +644,20 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
             bst_plugin('Install',   'nirstorm');
         end
     end
+
     % Get Subject
     sSubject = bst_get('SurfaceFile', OutSurfaceFile);
-    voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+    
     % Subject Informations 
     OPTIONS.SubjectName = sSubject.Name;
     OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    OPTIONS.VoronoiFile = voronoi_fn;
-    OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+
+    if strcmp(OPTIONS.HeadModelType, 'surface')
+        voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
+        OPTIONS.VoronoiFile = voronoi_fn;
+        OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
+    end
+    
     % Use defined options
     if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
         sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);
