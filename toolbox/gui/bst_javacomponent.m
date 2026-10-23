@@ -110,7 +110,7 @@ switch(JavacomponentStatus)
     
     % ===== NEW >= 2019b =====
     % Newer matlab versions: use dedicated functions
-    case [1,2]
+    case {1,2}
     switch (compType)
         case 'label'
             hComp = uicontrol(hParent, ...
