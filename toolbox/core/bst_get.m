@@ -380,7 +380,7 @@ switch contextName
                 userDir = char(java.lang.System.getProperty('user.home'));
             end
         catch
-            userDir = '';
+            userDir = getenv('HOME');
         end
         if isempty(userDir)
             userDir = bst_get('BrainstormHomeDir');
