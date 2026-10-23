@@ -276,7 +276,7 @@ if isMeg
     % coil_to_channel_transform = eye(length(MegChannels));
     coil_to_channel_transform = MegChannels(:,8:end);
     dnbst_write_magnetometers(TmpDir, MegChannels(:,2:4), MegChannels(:,5:7), coil_to_channel_transform);
-    build_coil_to_channel_transform_matrix(MegChannels);
+    build_coil_to_channel_transform_matrix(TmpDir, MegChannels);
 end
 
 %% ===== CONDUCTIVITY MODEL =====
@@ -494,7 +494,8 @@ function [iOk, errMsg] = dnbst_write_magnetometers(duneuro_io_dir, coil_position
     iOk = 1;
 end
 
-function MEGChannelTransform = build_coil_to_channel_transform_matrix(MegChannels)
+function MEGChannelTransform = build_coil_to_channel_transform_matrix(duneuro_io_dir, MegChannels)
+    io_file_path = fullfile(duneuro_io_dir, 'duneuro_io.hdf5');
     nb_magnetic_field_values = size(MegChannels, 1);
 
     % Extract channel indices and weights
