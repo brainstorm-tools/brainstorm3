@@ -82,7 +82,7 @@ if isMeg
     for iChan = 1:length(cfg.iMeg)
         sChan = cfg.Channel(cfg.iMeg(iChan));
         for iInteg = 1:size(sChan.Loc, 2)
-            MegChannels = [MegChannels; iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight];
+            MegChannels = [MegChannels; iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg)];
         end
     end
     % In the case where the MEG integration points are used
