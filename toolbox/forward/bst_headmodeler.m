@@ -434,17 +434,6 @@ if ~isempty(allLoc)
     end
 end
 
-allLoc = [OPTIONS.Channel(iNirs).Loc]';
-if ~isempty(allLoc)
-    sSurfScalp = bst_memory('LoadSurface', OPTIONS.HeadFile);
-    ChanLocPrj = channel_project_scalp(sSurfScalp.Vertices, allLoc);
-    if any(sqrt(sum( (ChanLocPrj - allLoc).^2, 2)) > 0.001)
-        bst_error(['One or more nirs sensors are not placed on the scalp.' 10 ...
-                   'Project the sensors to the scalp surface before computing the head model.']);
-        return
-    end
-end
-
 % Initialize empty gain matrix
 Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
         
