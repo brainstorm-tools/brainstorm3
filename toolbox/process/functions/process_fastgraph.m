@@ -195,6 +195,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Sort Inputs and StimLocs by their Stimulus location: I.e. SubPlot order
     sInputs  = sInputs(sStimLocIdxs.All);
     stimLocs = stimLocs(sStimLocIdxs.All, :);
+    contacts1= contacts1(sStimLocIdxs.All, :);
 
     % === Get Anatomy Atlas information
     sSubject = bst_get('Subject', sInputs(1).SubjectName);
