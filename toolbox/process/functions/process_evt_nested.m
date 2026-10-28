@@ -101,7 +101,7 @@ function OutputFiles = Run(sProcess, sInput)
     outerEventsName = cellfun(@(x) strtrim(x),  strsplit(sProcess.options.outer_events.Value, ','),  'UniformOutput',  false);
 
     if isempty(innerEventsName) || isempty(outerEventsName)
-        bst_report('Warning', sProcess, sInput, 'No event to classsssify.');
+        bst_report('Warning', sProcess, sInput, 'No event to combine. skipping');
         return;
     end
 
