@@ -1813,10 +1813,19 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion,
         % If the plugin is not managed by Brainstorm: do not check versions
         if ~OldPlugDesc.isManaged
             isUpdate = 0;
-        % If the requested version is higher
-        elseif ~isempty(minVersion) && (CompareVersions(minVersion, OldPlugDesc.Version) > 0)
-            isUpdate = 1;
-            strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
+        % Handle requested version
+        elseif ~isempty(minVersion)
+            % If the requested version is the 'latest'
+            if strcmpi(minVersion, 'latest')
+                isUpdate = 1;
+                strUpdate = '(re)install lastest version.';
+            % If the requested version is higher
+            elseif CompareVersions(minVersion, OldPlugDesc.Version) > 0
+                isUpdate = 1;
+                strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
+            else
+                isUpdate = 0;
+            end
         % If an update is available and auto-updates are requested
         elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && ...                                            % If updates are enabled
                 ((isGithubSnapshot(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
