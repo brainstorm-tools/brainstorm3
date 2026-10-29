@@ -1413,6 +1413,13 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug).Path = PlugPath;
             PlugDesc(iPlug).isLoaded = 0;
             PlugDesc(iPlug).isManaged = 1;
+            % Container plugin installed: Check if it is loaded aka running
+            if IsContainer(SearchPlugs(iSearch))
+                [containerErr, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc(iPlug).Name]);
+                if isempty(containerErr)
+                    PlugDesc(iPlug).isLoaded = containerInfo.isRunning;
+                end
+            end
         % Plugin installed: Custom path
         elseif isfield(PluginCustomPath, PlugName) && ~isempty(PluginCustomPath.(PlugName)) && file_exist(PluginCustomPath.(PlugName))
             iPlug = length(PlugDesc) + 1;
@@ -2578,7 +2585,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose, ignoreRequiredPlug
     end
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
-    if ~isCompiled
+    if ~isCompiled || ~isContainer
         % Handle case symbolic link
         try
             PlugHomeDir = builtin('_canonicalizepath', PlugHomeDir);
