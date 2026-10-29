@@ -223,7 +223,7 @@ if isPlugs
         % Add only the plugins designed only the plugins designed to be compiled with Brainstorm
         if (PlugDesc(iPlug).CompiledStatus == 2) && ~ismember(PlugDesc(iPlug).Name, {'fieldtrip', 'spm12'})
             % Install plugin (if not installed yet)
-            [isInstalled, errMsg, PlugInst] = bst_plugin('Install', PlugDesc(iPlug).Name);
+            [isInstalled, errMsg, PlugInst] = bst_plugin('Install', PlugDesc(iPlug).Name, [], [], 1);
             if ~isInstalled
                 error(['Could not install plugin "' PlugDesc(iPlug).Name '": ' 10 errMsg]);
             end

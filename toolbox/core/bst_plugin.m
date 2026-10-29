@@ -15,11 +15,11 @@ function [varargout] = bst_plugin(varargin)
 %                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
 %           [isOk, errMsg] = bst_plugin('AddUserDefDesc',       RegMethod, jsonLocation=[])  % Register user-defined plugin definition
 %           [isOk, errMsg] = bst_plugin('RemoveUserDefDesc'     PlugName)                    % Remove user-defined plugin definition
-% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
+% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1, ignoreRequiredPlugs=0)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('UnloadInteractive',    PlugName/PlugDesc)
-% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[]) % Install and Load a plugin and its dependencies
+% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[], ignoreRequiredPlugs=0) % Install and Load a plugin and its dependencies
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice',PlugNames, isInteractive=0)  % Install at least one of the input plugins
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive',   PlugName)
 %           [isOk, errMsg] = bst_plugin('Uninstall',            PlugName, isInteractive=0, isDependencies=1)
@@ -1686,11 +1686,14 @@ end
 
 
 %% ===== INSTALL =====
-% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, isInteractive=0, minVersion=[])
-function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
+% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, isInteractive=0, minVersion=[], ignoreRequiredPlugs=0)
+function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion, ignoreRequiredPlugs)
     % Returned variables
     isOk = 0;
     % Parse inputs
+    if (nargin < 4) || isempty(ignoreRequiredPlugs)
+        ignoreRequiredPlugs = 0;
+    end
     if (nargin < 3) || isempty(minVersion)
         minVersion = [];
     elseif isnumeric(minVersion)
@@ -1762,7 +1765,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
       
     % === PROCESS DEPENDENCIES ===
     % Check required plugins
-    if ~isempty(PlugDesc.RequiredPlugs)
+    if ~isempty(PlugDesc.RequiredPlugs) && ~ignoreRequiredPlugs
         bst_progress('text', ['Processing dependencies for ' PlugName '...']);
         disp(['BST> Processing dependencies: ' PlugName ' requires: ' sprintf('%s ', PlugDesc.RequiredPlugs{:,1})]);
         % Get the list of plugins that need to be installed
@@ -1984,7 +1987,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     
     % === LOAD PLUGIN ===
     % Load plugin
-    [isOk, errMsg, PlugDesc] = Load(PlugDesc);
+    [isOk, errMsg, PlugDesc] = Load(PlugDesc, [], ignoreRequiredPlugs);
     if ~isOk
         bst_progress('removeimage');
         return;
@@ -2375,9 +2378,12 @@ end
 
 
 %% ===== LOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose=1)
-function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
+% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose=1, ignoreRequiredPlugs=0)
+function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose, ignoreRequiredPlugs)
     % Parse inputs
+    if (nargin < 3) || isempty(ignoreRequiredPlugs)
+        ignoreRequiredPlugs = 0;
+    end
     if (nargin < 2) || isempty(isVerbose)
         isVerbose = 1;
     end
@@ -2500,7 +2506,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     end
     
     % Load required plugins
-    if ~isempty(PlugDesc.RequiredPlugs)
+    if ~isempty(PlugDesc.RequiredPlugs) && ~ignoreRequiredPlugs
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
             % disp(['BST> Loading required plugin: ' PlugDesc.RequiredPlugs{iPlug,1}]);
             [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug,1}, isVerbose);
