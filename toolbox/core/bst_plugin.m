@@ -2734,20 +2734,20 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
                 end
             end
         end
-        % Stop container
-        if isContainer
-            % Retrieve info of container
-            [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
-            if isempty(errMsg)
-                errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
-            end
-            if ~isempty(errMsg)
-                return
-            end
-            % Delete temporary files
-            for iVolume = 1 : size(containerInfo.volumes, 1)
-                file_delete(containerInfo.volumes{iVolume,1}, 1, 1);
-            end
+    end
+    % Stop container
+    if isContainer
+        % Retrieve info of container
+        [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+        if isempty(errMsg)
+            errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
+        end
+        if ~isempty(errMsg)
+            return
+        end
+        % Delete temporary files
+        for iVolume = 1 : size(containerInfo.volumes, 1)
+            file_delete(containerInfo.volumes{iVolume,1}, 1, 1);
         end
     end
     
@@ -3244,6 +3244,10 @@ function MenuUpdate(jMenu, fontSize)
             % Main menu: Icon
             if isCompiled && isInstalled
                 menuIcon = IconLoader.ICON_GOOD;
+                % Container plugins can be Running (Loaded) or Not (Unloaded) in Compiled
+                if isContainer && ~isLoaded
+                    menuIcon = IconLoader.ICON_BAD;
+                end
             elseif isLoaded   % Loaded
                 menuIcon = IconLoader.ICON_GOOD;
             elseif isInstalled   % Not loaded
@@ -3284,8 +3288,8 @@ function MenuUpdate(jMenu, fontSize)
                 j.custompath.setText('Path not set');
             end
             % Load/Unload
-            j.load.setEnabled(isInstalled && ~isLoaded && ~isCompiled);
-            j.unload.setEnabled(isLoaded && ~isCompiled);
+            j.load.setEnabled(isInstalled && ~isLoaded && (~isCompiled || isContainer));
+            j.unload.setEnabled(isLoaded && (~isCompiled || isContainer));
             % Web
             j.web.setEnabled(~isempty(Plug.URLinfo));
             % Extra menus: Update availability
