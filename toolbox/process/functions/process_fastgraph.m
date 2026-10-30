@@ -146,9 +146,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % Get options
     OPTIONS = GetOptions(sProcess);
+    isRegionScheme = strcmpi(OPTIONS.ColorScheme, 'region');
     
     % ===== Check regions for 'region' color scheme =====
-    if strcmpi(OPTIONS.ColorScheme, 'region') && isempty(OPTIONS.Regions)
+    if isRegionScheme && isempty(OPTIONS.Regions)
         bst_report('Error', sProcess, [], 'No region selected. Select at least one region to run the analysis.');
         return;
     end
@@ -203,19 +204,22 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     sSubject = bst_get('Subject', sInputs(1).SubjectName);
     iAnatAtlas = find(strcmp(OPTIONS.AnatAtlas, {sSubject.Anatomy.Comment}));
     if isempty(iAnatAtlas)
-        errMsg = 'TODO: Anat Atlas was not found in Subject';
+        bst_report('Error', sProcess, sInputs, ...
+                   sprintf('Anatomical atlas "%s" was not found for Subject "%s".\n', OPTIONS.AnatAtlas, sInputs(1).SubjectName));
         return
     end
     sMriAtlas = bst_memory('LoadMri', sSubject.Anatomy(iAnatAtlas).FileName);
+    sSurf     = bst_memory('LoadSurface', sSubject.Surface(sSubject.iCortex).FileName);
+    % 1. Get Region for each Parcel in sMriAtlas
+    [sMriAtlas, iAtlasSurf, iScoutAtlasSurf, errMsg] = GetParcelRegion(sSurf, OPTIONS.AnatAtlas, sMriAtlas);
+    % Abort if 'region' color scheme and error at getting region labels
+    if isRegionScheme && ~isempty(errMsg)
+        bst_report('Error', sProcess, sInputs, errMsg);
+        return
+    end
 
     % Handle Region color scheme
-    if strcmpi(OPTIONS.ColorScheme, 'region')
-        % 1. Get Region for each Parcel in sMriAtlas. Cortical version of atlas used as reference
-        [sMriAtlas, errMsg] = GetParcelRegion(sSubject, OPTIONS.AnatAtlas, sMriAtlas);
-        if ~isempty(errMsg)
-            bst_report('Error', sProcess, sInputs, errMsg);
-            return
-        end
+    if isRegionScheme
         % 2. Update colors in sMriAtlas by Parcel region
         defaultScoutColors = round(panel_scout('GetScoutsColorTable') * 255);
         allRegionIds = regexprep(OPTIONS.AllRegions, '^.*\((.*?)\).*$', '$1');
@@ -245,6 +249,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Add Parcel 'N/A'
     sMriAtlas.Labels(end+1, 1:3) = {0, 'N/A', [0,0,0]};
+    if ~isempty(iScoutAtlasSurf)
+       iScoutAtlasSurf(end+1) = 0;
+    end
 
     % === Anatomical labels for SEEG contacts
     [~, chanTableWithAtlas] = export_channel_atlas(ChannelFiles{1}, 'SEEG', [], 5, 0, 0, OPTIONS.AnatAtlas);
@@ -264,21 +271,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Keep only plotted parcels
     plotParcels = intersect([sMriAtlas.Labels(unique(iAnatAtlasLabel), 2)], OPTIONS.AnatAtlasParcels);
     [~, iPlotParcel] = ismember(plotParcels, sMriAtlas.Labels(:,2));
-    iLabelKeep = [sMriAtlas.Labels{unique(iPlotParcel), 1}];
+    iPlotParcel = sort(iPlotParcel);
+    if ~isempty(iScoutAtlasSurf)
+       iScoutAtlasSurf = iScoutAtlasSurf(iPlotParcel);
+    end
+    iLabelKeep = [sMriAtlas.Labels{iPlotParcel, 1}];
     sMriAtlas.Cube(~ismember(sMriAtlas.Cube, iLabelKeep)) = 0;
-    sMriAtlas.Labels = sMriAtlas.Labels(unique(iPlotParcel), :);
+    sMriAtlas.Labels = sMriAtlas.Labels(iPlotParcel, :);
 
     % ===== Create figure for FastGraph =====
     hFig = figure;
     hFig.Visible = 'off';
     hFig.Tag     = 'FastGraph';
+    hFig.CloseRequestFcn = @(src, event) UnloadAllClose(src);
     % Maximize figure
     set(gcf, 'Position', get(0,'Screensize'));
     nFastGraphs = length(sInputs);
     hFastGraphAxes = gobjects(nFastGraphs, 0);
     fastGraphTitles = cell(nFastGraphs, 1);
-    % Subplot positions and sizes
-    [axesX, axesY, axesSize] = figure_timefreq('GetLayoutPositions', hFig, sInputs, 0);
+    % Subplot positions and sizes (nFastGraphs + 1 subplot for cortex)
+    nPlots = nFastGraphs+1;
+    nCols = ceil(sqrt(nPlots));
+    nRows = ceil(nPlots / nCols);
+    % Subplot positions and sizes (nFastGraphs + 1 subplot for cortex)
+    [axesX, axesY, axesSize] = figure_timefreq('GetLayoutPositions', hFig, [1:(nRows*nCols)], 0);
 
     % ===== Get data and Plot each FastGraph and  =====
     bst_progress('start', 'Process', 'Plotting FastGraphs...', 0, 100);
@@ -338,6 +354,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SetHemisphereLabels(hFastGraphAxes);
     % Add titles for each subplot
     AddFastgraphTitles(hFastGraphAxes, fastGraphTitles);
+    % Plot brain legend
+    if isempty(iScoutAtlasSurf)
+        bst_report('Warning', sProcess, sInputs, ...
+            sprintf('Could not find cortical atlas associated with the anatomical atlas %s', OPTIONS.AnatAtlas));    
+    elseif ~any(iScoutAtlasSurf)
+        bst_report('Warning', sProcess, sInputs, ...
+            sprintf('Could not find any cortical scouts associated with the parcelations in the anatomical atlas %s', OPTIONS.AnatAtlas));
+    else
+        XData = axesX(end) + [-.5,.5] * axesSize(1);
+        YData = axesY(end) + [-.5,.5] * axesSize(2);
+        hCortexAxes = subplot('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)]);
+        PlotCortexScouts(hCortexAxes, sSubject, iAtlasSurf, iScoutAtlasSurf, isRegionScheme);
+    end
     % Show figure
     hFig.Visible = 'on';
 
@@ -660,58 +689,61 @@ end
 
 
 %% ===== GET REGION FOR PARCEL =====
-function [sMriAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sMriAtlas)
+function [sMriAtlas, iAtlasSurf, iScoutAtlasSurf, errMsg] = GetParcelRegion(sSurf, AnatAtlasName, sMriAtlas)
+    iScoutAtlasSurf =[];
     errMsg = [];
     % 1. Search for cortical version of anatomical atlas to retrieve region labels
-    sSurf = load(file_fullpath(sSubject.Surface(sSubject.iCortex).FileName), 'Atlas');
-    iAnatAtlas = find(strcmp(AnatAtlasName, {sSurf.Atlas.Name}));
-    if isempty(iAnatAtlas)
-        errMsg = sprintf(['The anatomical atlas "%s" does not have a cortical version,\n', ...
+    iAtlasSurf = find(strcmp(AnatAtlasName, {sSurf.Atlas.Name}));
+    if isempty(iAtlasSurf)
+        errMsg = sprintf(['The anatomical atlas "%s" does not have a cortical version.\n', ...
                           'which is needed to assign a region to each anatomical parcellation.\n\n', ...
                           'Try Colors scheme = Parcel.'], AnatAtlasName);
         return
-    elseif length(iAnatAtlas) > 1
+    elseif length(iAtlasSurf) > 1
         errMsg = sprintf(['Two or more cortical atlases have the same name "%s".\n, ...' ...
                           'Rename them to be unique.'], AnatAtlasName);
         return
     end
-    sSurfAtlas = sSurf.Atlas(iAnatAtlas);
+    sSurfAtlas = sSurf.Atlas(iAtlasSurf);
     % Normalize labels from anatomical atlas and surface atlas
     anatAtlasLabels = lower(strrep(sMriAtlas.Labels(:, 2),  ' ', ''));
     surfAtlasLabels = lower(strrep({sSurfAtlas.Scouts.Label}, ' ', ''));
+    iScoutAtlasSurf = zeros(1, length(anatAtlasLabels));
 
     % 2. Obtain region for each parcel in sMriAtlas
     for iAnatAtlasLabel = 1 : length(anatAtlasLabels)
         anatAtlasLabel = anatAtlasLabels{iAnatAtlasLabel};
+        % Try to match anatAtlasLabel to a Scout in the Surface atlas
         iScoutFound = find(strcmpi(anatAtlasLabel, surfAtlasLabels));
-        % Match
-        if ~isempty(iScoutFound)
-            % Region without hemisphere indicator
-            sMriAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
-            continue
-        end
         % Try some common fixes for the label
-        anatAtlasLabel2 = anatAtlasLabel;
-        anatAtlasLabel2 = strrep(anatAtlasLabel2, 'antcing',  'anteriorcingulate');
-        anatAtlasLabel2 = strrep(anatAtlasLabel2, 'midfront', 'middlefrontal');
-        iScoutFound = find(strcmpi(anatAtlasLabel2, surfAtlasLabels));
+        if isempty(iScoutFound)
+            anatAtlasLabel2 = anatAtlasLabel;
+            anatAtlasLabel2 = strrep(anatAtlasLabel2, 'antcing',  'anteriorcingulate');
+            anatAtlasLabel2 = strrep(anatAtlasLabel2, 'midfront', 'middlefrontal');
+            iScoutFound = find(strcmpi(anatAtlasLabel2, surfAtlasLabels));
+        end
+
+        % Region using Surface Scout as reference
         if ~isempty(iScoutFound)
             % Region without hemisphere indicator
             sMriAtlas.Labels{iAnatAtlasLabel, 4} = sSurfAtlas.Scouts(iScoutFound(1)).Region(2:end);
-            continue
+            iScoutAtlasSurf(iAnatAtlasLabel) = iScoutFound(1);
+            % User color of surface Scout
+            sMriAtlas.Labels{iAnatAtlasLabel, 3} = sSurfAtlas.Scouts(iScoutFound(1)).Color *255;
+
+        % Region using anatAtlasLabel
+        else
+            % White matter
+            if ~isempty(regexp(anatAtlasLabel, '^white[l|r]?$', 'once'))
+                sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'White';
+            % CSF
+            elseif strcmpi(anatAtlasLabel, 'csf')
+                sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'CSF';
+            % Other
+            else
+                sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'Other';
+            end
         end
-        % White matter
-        if ~isempty(regexp(anatAtlasLabel, '^white[l|r]?$', 'once'))
-            sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'White';
-            continue
-        end
-        % CSF
-        if strcmpi(anatAtlasLabel, 'csf')
-            sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'CSF';
-            continue
-        end
-        % Other
-        sMriAtlas.Labels{iAnatAtlasLabel, 4} = 'Other';
     end
 end
 
@@ -761,3 +793,28 @@ function AddFastgraphTitles(hFastGraphAxes, fastGraphTitles)
     end
 end
 
+
+%% ===== PLOT CORTEX SCOUTS =====
+function PlotCortexScouts(hCortexAxes, sSubject, iAtlasSurf, iScoutAtlasSurf, isRegionScheme)
+    % Generate 3D figure: Surface + Scouts
+    hFigSurf = view_surface(sSubject.Surface(sSubject.iCortex).FileName,[], [], 'NewFigure');
+    set(hFigSurf, 'Position', [200,200,800,500]);
+    figure_3d('SetStandardView', hFigSurf, 'left');
+    hAxes = findobj(hFigSurf, 'Tag', 'Axes3D');
+    zoom(hAxes, 1.5);
+    panel_scout('SetCurrentAtlas', iAtlasSurf);
+    panel_scout('SetScoutsOptions', 0, 0, 1, 'select', 0, 1, 0, isRegionScheme);
+    panel_scout('SetSelectedScouts', iScoutAtlasSurf(iScoutAtlasSurf ~=0 ));
+    bst_figures('SetBackgroundColor', hFigSurf, [1 1 1]);
+    img = out_figure_image(hFigSurf);
+    close(hFigSurf);
+    imshow(img, 'Parent', hCortexAxes);
+    axis(hCortexAxes, 'image');
+end
+
+
+%% ===== CALLBACK CLOSE FIGURE =====
+function UnloadAllClose(hFig)
+    bst_memory('UnloadAll', 'Forced');
+    delete(hFig);
+end
