@@ -324,6 +324,12 @@ function [fwhm, src, isKnown] = ScannerFwhm(PET, defaultFwhm)
         fwhm = sqrt(intr^2 + double(fs)^2);
         src  = sprintf('%.1f mm (%s %.1fmm + %.1fmm recon Gaussian)', fwhm, label, intr, fs);
     end
+    % Reconstruction with PSF modelling (resolution recovery, e.g. "OSEM-PSF", "TrueX"): the image
+    % resolution can be finer than the NEMA value. The value is kept; the user is told.
+    reconWords = regexp(lower(local_str(local_getf(PET.Scanner, 'ReconMethod'))), '[a-z0-9]+', 'match');
+    if any(ismember({'psf', 'truex', 'sharpir'}, reconWords))
+        src = [src ', PSF-modelling reconstruction: the effective resolution may be finer'];
+    end
 end
 
 
