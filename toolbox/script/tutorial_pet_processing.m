@@ -104,8 +104,11 @@ for iPet = 1 : length(PetFiles)
     % Co-register and reslice PET volume
     PetAggCoregFile = mri_coregister(PetAggFile, MriFile, 'spm', 1);
     % Partial volume correction: GTM on the Desikan-Killiany parcellation (default method).
-    % The scanner PSF was read from the PET metadata at import (6 mm if not available).
-    [PetPvcFile, errPvc, ~, regTable] = pet_pvc(PetAggCoregFile, MriFile, [], struct('method', 'gtm'));
+    % PSF FWHM of the scanner: these volumes were acquired on a Siemens HRRT (2.5 mm). The tutorial
+    % files have no BIDS sidecar, so the scanner cannot be read from the metadata: give it here.
+    % With BIDS data, use [] to take the value found from the scanner model at import.
+    PsfFwhm = 2.5;
+    [PetPvcFile, errPvc, ~, regTable] = pet_pvc(PetAggCoregFile, MriFile, PsfFwhm, struct('method', 'gtm'));
     if ~isempty(errPvc)
         error(['Partial volume correction failed: ' errPvc]);
     end
