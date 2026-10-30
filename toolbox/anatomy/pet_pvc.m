@@ -355,7 +355,8 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
 %             at import). Smoothing recorded in PET.SmoothFwhm is added in quadrature
 %             (pet_helper('PsfFwhm')).
 %   gtmOpts : (optional) .AtlasComment (default 'Desikan-Killiany'), .minVox (default 50):
-%             labels smaller than minVox voxels are merged into one "brain rest" region.
+%             the voxels of labels smaller than minVox voxels are given to the adjacent regions
+%             (a region that small is too unstable to correct on its own).
 %
 % NOTES:
 %   - Voxels where the PET is not finite (outside the PET field of view) are excluded from
@@ -367,7 +368,7 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
 %   MriFileGtm : relative path to the corrected (piecewise-constant) volume node.
 %   errMsg     : error message, if any.
 %   regTable   : struct with .id .name .nvox .observed .corrected (per region). Special ids:
-%                -1 extracerebral (or rest, without scalp), -2 air, -3 brain rest (small labels).
+%                -1 extracerebral (or rest, without scalp), -2 air.
 %
 % SEE ALSO: pet_pvc, pet_helper
 %
@@ -381,6 +382,9 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
     if ~isfield(gtmOpts,'minVox')       || isempty(gtmOpts.minVox),       gtmOpts.minVox = 50; end
 
     isProgress = bst_progress('isVisible');
+        % Small labels are not regions of their own: a GTM region of a few dozen voxels amplifies
+        % any mismatch of the model (PSF, registration) into extreme values. Their voxels are given
+        % to the adjacent regions.
     if ~isProgress, bst_progress('start', 'PET GTM', 'Loading volumes...'); end
     try
         % ----- load PET + parcellation -----
@@ -415,9 +419,8 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         ids = unique(L(:)); ids = ids(ids ~= 0);
         keep = ids(arrayfun(@(id) nnz(L==id) >= gtmOpts.minVox, ids));
         small = setdiff(ids, keep);
-        if ~isempty(small)                           % small labels -> one "brain rest" region
-            keep = [keep(:); -3];
-            L(ismember(L, small)) = -3;
+        if ~isempty(small)
+            L = local_absorb_small(L, small);
         end
         nKeep = numel(keep);
         Lr = zeros(cubeSize);                        % relabelled: 1..nKeep = kept brain regions
@@ -514,7 +517,6 @@ function name = local_regname(id, sAtl, headMask)
     switch id
         case -1, if isempty(headMask), name = 'Rest (outside the brain)'; else, name = 'Extracerebral'; end
         case -2, name = 'Air';
-        case -3, name = 'Brain rest (small labels)';
         otherwise
             name = sprintf('Label %d', id);
             if isfield(sAtl, 'Labels') && iscell(sAtl.Labels) && (size(sAtl.Labels,2) >= 2)
@@ -527,6 +529,33 @@ end
 function headMask = local_headmask(sSubject, sMriRef, cubeSize)
 % Voxelize the subject's scalp ("head mask") surface into a filled binary head mask on
 % the reference grid. Returns [] if no scalp surface is available.
+function L = local_absorb_small(L, small)
+% Give each voxel of a small label the label of an adjacent voxel of a kept region, growing inwards
+% (6-connectivity) until all are given; voxels with no kept region nearby go to the rest (label 0).
+    sz = size(L);
+    iSmall = find(ismember(L, small));
+    L(iSmall) = NaN;                                 % not given yet
+    offsets = [1, -1, sz(1), -sz(1), sz(1)*sz(2), -sz(1)*sz(2)];
+    while ~isempty(iSmall)
+        newLab = NaN(size(iSmall));
+        for o = offsets
+            nb = iSmall + o;
+            isIn = (nb >= 1) & (nb <= numel(L));
+            lab = NaN(size(iSmall));
+            lab(isIn) = L(nb(isIn));
+            isNew = isnan(newLab) & ~isnan(lab) & (lab ~= 0);
+            newLab(isNew) = lab(isNew);
+        end
+        isSet = ~isnan(newLab);
+        if ~any(isSet)
+            break;
+        end
+        L(iSmall(isSet)) = newLab(isSet);
+        iSmall = iSmall(~isSet);
+    end
+    L(iSmall) = 0;
+end
+
     headMask = [];
     if ~isfield(sSubject,'Surface') || isempty(sSubject.Surface), return; end
     iScalp = find(strcmpi({sSubject.Surface.SurfaceType}, 'Scalp'), 1);
