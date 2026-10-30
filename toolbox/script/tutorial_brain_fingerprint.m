@@ -137,7 +137,7 @@ for iSubject = 1 : nSubjects
             'scoutfunc',   1, ...  % Mean
             'win_std',     0, ...
             'edit',        struct(...
-                 'Comment',         'Scouts,Power', ...
+                 'Comment',         ['Scouts Power, Segment' num2str(iSegment)], ...
                  'TimeBands',       [], ...
                  'Freqs',           [], ...
                  'ClusterFuncTime', 'before', ...
@@ -230,6 +230,7 @@ sSimilarityMat.DataType     = 'matrix';
 sSimilarityMat.Time     = [0, 1];
 sSimilarityMat.RefRowNames = cellfun(@(x) ['Train ', x], SubjectNames, 'UniformOutput', false);
 sSimilarityMat.RowNames    = cellfun(@(x) ['Validation ', x], SubjectNames, 'UniformOutput', false);
+sSimilarityMat.Options     = bst_connectivity();
 % Output filename
 SimilarityFile = bst_process('GetNewFilename', bst_fileparts(sOutputStudy.FileName), 'timefreq_connectn_corr');
 % Save file
@@ -315,6 +316,12 @@ bst_process('CallProcess', 'process_snapshot', DiffFile, [], ...
     'type',           'data', ...  % Recordings time series
     'time',           0, ...
     'Comment',        'Differentiability');
+
+% Configure colormap for ICC screenshots
+% Colormap: Sequential > "magma"
+bst_colormaps('SetColormapName', 'source', 'cmap_magma');
+% Range: [min, max]
+bst_colormaps('SetColormapRealMin', 'source', 1);
 
 for iBand = 1 : nBands
     % Process: Snapshot: Sources (one time)

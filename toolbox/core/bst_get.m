@@ -142,6 +142,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
 %    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2019b), 0 otherwise
+%    - bst_get('JavacomponentStatus')   : 0 = javacomponent is available, 1 = use figure+uicontrol, 2 = figure accepts UI elements
 %    - bst_get('SystemMemory')          : Amount of Total and Available physical memory (RAM), in MiB
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
@@ -294,6 +295,26 @@ switch contextName
     case 'isJavacomponent'
         % After Matlab 2019b, javacomponent() and JavaFrame property have been deprecated
         argout1 = (bst_get('MatlabVersion') <= 906);
+
+    case 'JavacomponentStatus'
+        MatlabVersion = bst_get('MatlabVersion');
+        % For Matlab <  2019b,
+        % Using javacomponent() does not produce warnings
+        if MatlabVersion < 907 % < 2019b
+            argout1 = 0;
+
+        % For Matlab >= 2019b, javacomponent() and JavaFrame property have been deprecated
+        % Using javacomponent() triggers the warning: MATLAB:ui:javacomponent:FunctionToBeRemoved
+        % It is possible to use figure() + uicontrols
+        elseif MatlabVersion < 2501 % 2019b <= Matlab < 2025a
+            argout1 = 1;
+
+        % For Matlab >= 2025b, javacomponent() and JavaFrame property have been deprecated
+        % Using javacomponent() triggers the warning: MATLAB:ui:javacomponent:BridgeForWebFigures
+        % It is possible to use figure() + UI elements
+        else
+            argout1 = 2;
+        end
         
     case 'SystemMemory'
         % [RamTotal_MiB, RamAvailable_MiB] = bst_get('SystemMemory')

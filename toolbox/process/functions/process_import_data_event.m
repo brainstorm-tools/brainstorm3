@@ -175,7 +175,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
-    if isempty(SubjectName) && ~isempty(sInput.SubjectName)
+    if ~isempty(SubjectName) && ~isempty(sInputs.SubjectName) && ~isDirectImport
+        if ~strcmp(SubjectName, sInputs.SubjectName)
+            bst_report('Error', sProcess, sInputs, 'Provided Subject name and Subject name from data file do not match.');
+            return
+        end
+    elseif isempty(SubjectName) && ~isempty(sInputs.SubjectName)
         SubjectName = sInput.SubjectName;
     elseif isempty(SubjectName)
         bst_report('Error', sProcess, sInput, 'Subject name is empty.');

@@ -2141,7 +2141,7 @@ function EventTypesSort(SortMode)
     % Orber by...
     switch lower(SortMode)
         case 'name'
-            [tmp,iOrder] = sort({events.label});
+            [tmp,iOrder] = sort_nat({events.label});
         case 'time'
             firstTime = zeros(1,length(events));
             for iEvt = 1:length(events)

@@ -114,13 +114,15 @@ if isempty(SourceFiles)
         [~, baseSourceFiles, extSourceFiles] = cellfun(@(std) bst_fileparts(std), SourceFiles, 'UniformOutput', false);
         shortSourceFiles = strcat(baseSourceFiles, extSourceFiles);
         % Find left- and right-hemisphere files
-        leftFileIxs  = find(cellfun(@(std) ~isempty(regexp(std,'(lh\.|_left)', 'once')), shortSourceFiles));
-        rightFileIxs = find(cellfun(@(std) ~isempty(regexp(std,'(rh\.|_right)', 'once')), shortSourceFiles));
+        expLeft  = '(lh\.|_left|\.L\.)';
+        expRight = '(rh\.|_right|\.R\.)';
+        leftFileIxs  = find(cellfun(@(std) ~isempty(regexp(std, expLeft,  'once')), shortSourceFiles));
+        rightFileIxs = find(cellfun(@(std) ~isempty(regexp(std, expRight, 'once')), shortSourceFiles));
         % Check for paired files
         if ~isempty(leftFileIxs) && ~isempty(rightFileIxs) && isempty(intersect(leftFileIxs, rightFileIxs))
             SourceFiles1 = [];
-            cleanLeftNames  = cellfun(@(std) strrep(strrep(std, 'lh.', ''), '_left', ''), shortSourceFiles(leftFileIxs), 'UniformOutput', false);
-            cleanRightNames = cellfun(@(std) strrep(strrep(std, 'rh.', ''), '_right', '') , shortSourceFiles(rightFileIxs), 'UniformOutput', false);
+            cleanLeftNames  = cellfun(@(std) regexprep(std, expLeft,  ''), shortSourceFiles(leftFileIxs),  'UniformOutput', false);
+            cleanRightNames = cellfun(@(std) regexprep(std, expRight, ''), shortSourceFiles(rightFileIxs), 'UniformOutput', false);
             % Intersect of clean names must be the same
             if isequal(sort(cleanLeftNames), sort(cleanRightNames))
                 % Find corresponding right file
@@ -128,7 +130,7 @@ if isempty(SourceFiles)
                     cleanLeftName = cleanLeftNames{iLeft};
                     rightFileIx   = strcmp(cleanLeftName, cleanRightNames);
                     SourceFiles1{end+1} = SourceFiles{leftFileIxs(iLeft)};
-                    SourceFiles2{end+1}  = SourceFiles{rightFileIxs(rightFileIx)};
+                    SourceFiles2{end+1} = SourceFiles{rightFileIxs(rightFileIx)};
                 end
                 SourceFiles = SourceFiles1;
             else
@@ -235,12 +237,14 @@ for iFile = 1:length(SourceFiles)
             Comment = strrep(Comment, 'surface_', '');
             Comment = strrep(Comment, 'volume_', '');
         end
-        % If the two files are imported: remove .lh and .rh
+        % If the two files are imported: remove hemisphere tag
         if ~isempty(SourceFiles2)
             Comment = strrep(Comment, 'rh.', '');
             Comment = strrep(Comment, 'lh.', '');
             Comment = strrep(Comment, '_left', '');
             Comment = strrep(Comment, '_right', '');
+            Comment = strrep(Comment, '.L.', '.');
+            Comment = strrep(Comment, '.R.', '.');
         end
     end
     % Stat file or regular map

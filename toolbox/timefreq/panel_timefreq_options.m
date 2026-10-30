@@ -445,6 +445,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % Release mutex and keep the panel opened
         bst_mutex('release', panelName);
+        gui_release_dialog(panelName);
     end
 
 %% ===== UPDATE PANEL =====
@@ -689,28 +690,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         transient = 2.32 * (sOptions.MorletFwhmTc / 3) ./ sOptions.MorletFc;
 
         % Plot the values
-        isJavacomponent = bst_get('isJavacomponent');
-        if isJavacomponent
-            hFigWavelet = figure(...
-                'MenuBar',     'none', ...
-                'Toolbar',     'none', ...
-                'NumberTitle', 'off', ...
-                'Name',        'Morlet wavelet', ...
-                'Pointer',     'arrow');
-            hAxes1 = axes();
-            hAxes2 = axes();
-            hAxes3 = axes();
-        else
-            bst_progress('start', 'Morlet wavelets', 'Opening figure...');
-            hFigWavelet = uifigure(...
-                'NumberTitle', 'off', ...
-                'Name',        'Morlet wavelet', ...
-                'Pointer',     'arrow', ...
-                'AutoResizeChildren', 'on');
-            hAxes1 = axes(hFigWavelet);
-            hAxes2 = axes(hFigWavelet);
-            hAxes3 = axes(hFigWavelet);
-        end
+        hFigWavelet = figure(...
+            'MenuBar',     'none', ...
+            'Toolbar',     'none', ...
+            'NumberTitle', 'off', ...
+            'Name',        'Morlet wavelet', ...
+            'Pointer',     'arrow');
+        hAxes1 = axes();
+        hAxes2 = axes();
+        hAxes3 = axes();
         fontSize = bst_get('FigFont');
         % Frequency resolution
         plot(hAxes1, f, FWHM_f);
@@ -753,21 +741,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             'HorizontalAlignment', 'left', ...
             'Parent',              hAxes3);
         % Text
-        strDesc = ['<HTML>The complex Morlet wavelet is a Gaussian weighted sinusoid (blue for real values, ' ...
+        strDesc = ['The complex Morlet wavelet is a Gaussian weighted sinusoid (blue for real values, ' ...
                    'red for imaginary values). It has point spread function with Gaussian shape both ' ...
                    'in time (temporal resolution) and in frequency (spectral resolution). Resolution is ' ...
                    'given in units of FWHM (full width half maximum) for several frequencies.'];
-        if isJavacomponent
-            [jLabelDesc, hLabelDesc] = javacomponent(javax.swing.JLabel(strDesc), [0 0 1 1], hFigWavelet);
-            set(hLabelDesc, 'Units', 'Normalized', 'Position', [.01, .0, .99, .13], 'BackgroundColor', get(hFigWavelet, 'Color'));
-            bgColor = get(hFigWavelet, 'Color');
-            jLabelDesc.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
-        else
-            figPos = get(hFigWavelet, 'Position');
-            hLabelDesc = uihtml(hFigWavelet, 'Position', [5, 5, figPos(3)*.99, figPos(4)*.13], 'HTMLSource', strDesc);
-            drawnow;
-            bst_progress('stop');
-        end
+        annotation(hFigWavelet, 'textbox', [.05, .05, .90, .10], 'String', strDesc, 'EdgeColor', 'none');
+        bst_progress('stop');
     end
 
 %% ===== CREATE TIME BANDS =====

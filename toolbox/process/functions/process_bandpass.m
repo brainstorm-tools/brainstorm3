@@ -291,6 +291,12 @@ function DisplaySpec(sfreq)
     else
         XFreqLim = [0, min(max(5*LowPass, sfreq/8), max(Freqs))] ; 
     end
+    % Number of decimals for frequency resolution: 3 digits or first two non-zero digits
+    if mod(dF, 1) == 0
+        dF_nDec = 1;
+    else
+        dF_nDec = max(3, -floor(log10(abs(dF - floor(dF)))) + 1);
+    end
 
     % Filter description: Left panel
     strFilter1 = ['<HTML>Linear phase <B>FIR filter</B>' '<BR>'];
@@ -320,7 +326,7 @@ function DisplaySpec(sfreq)
     strFilter2 = [strFilter2 'Transient (full): &nbsp;&nbsp;<B>' num2str(FiltSpec.order / 2 / sfreq, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Transient (99% energy): &nbsp;&nbsp;<B>' num2str(FiltSpec.transient, '%1.3f') ' s</B><BR>'];
     strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
-    strFilter2 = [strFilter2 'Frequency resolution: &nbsp;&nbsp;<B>' num2str(dF, '%1.3f') ' Hz</B><BR>'];
+    strFilter2 = [strFilter2 'Frequency resolution: &nbsp;&nbsp;<B>' num2str(dF, ['%1.' num2str(dF_nDec) 'f']) ' Hz</B><BR>'];
     
     hFig = HFilterDisplay(Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
 
@@ -349,12 +355,8 @@ else
     figure(hFig);
 end
 % Disable the Java-related warnings after 2019b
-% MATLAB >= 2019b and MATLAB <= 2024b
-if (bst_get('MatlabVersion') >= 907 && bst_get('MatlabVersion') <= 2402)
+if bst_get('MatlabVersion') >= 907
     warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
-% MATLAB >= 2025a
-elseif (bst_get('MatlabVersion') >= 2501)
-    warning('off', 'MATLAB:ui:javacomponent:BridgeForWebFigures');
 end
 
 % Plot frequency response
@@ -401,19 +403,26 @@ text(transient .* 1.1, YLimImpz(2), '99% energy', ...
     'HorizontalAlignment', 'left', ...
     'Parent',              hAxesImpz);
 
-% Display left panel
-[jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(strFilter1), [0 0 1 1], hFig);
-set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
-bgColor = get(hFig, 'Color');
-jLabel1.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
-jLabel1.setVerticalAlignment(javax.swing.JLabel.TOP);
+if bst_get('JavacomponentStatus') == 2
+    strFilter1 = strrep(strFilter1, '<HTML>', '<p style="font-family:arial;font-size: 12px;">');
+    strFilter2 = strrep(strFilter2, '<HTML>', '<p style="font-family:arial;font-size: 12px;">');
+    hLabel1 = uihtml(hFig, 'HTMLSource', strFilter1);
+    hLabel2 = uihtml(hFig, 'HTMLSource', strFilter2);
+else
+    % Display left panel
+    [jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(strFilter1), [0 0 1 1], hFig);
+    set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
+    bgColor = get(hFig, 'Color');
+    jLabel1.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+    jLabel1.setVerticalAlignment(javax.swing.JLabel.TOP);
+    % Display right panel
+    [jLabel2, hLabel2] = javacomponent(javax.swing.JLabel(strFilter2), [0 0 1 1], hFig);
+    set(hLabel2, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label2');
+    bgColor = get(hFig, 'Color');
+    jLabel2.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+    jLabel2.setVerticalAlignment(javax.swing.JLabel.TOP);
 
-% Display right panel
-[jLabel2, hLabel2] = javacomponent(javax.swing.JLabel(strFilter2), [0 0 1 1], hFig);
-set(hLabel2, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label2');
-bgColor = get(hFig, 'Color');
-jLabel2.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
-jLabel2.setVerticalAlignment(javax.swing.JLabel.TOP);
+end
 
 % Set resize function
 set(hFig, bst_get('ResizeFunction'), @ResizeCallback);

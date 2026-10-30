@@ -262,24 +262,29 @@ switch action
         addpath(fullfile(BrainstormHomeDir, 'deploy'));
         % Options
         if (nargin > 1)
-            if strcmpi(varargin{2}, 'noplugs')
-                isPlugs = 0;
-            else
-                error('Usage: brainstorm compile [noplugs]');
+            switch lower(varargin{2})
+                case 'noplugs'
+                    plugsStatus = 0;
+                case 'plugs'
+                    plugsStatus = 1;
+                case 'latestplugs'
+                    plugsStatus = 2;
+                otherwise
+                    error('Usage: brainstorm compile [noplugs|plugs|latestplugs]');
             end
         else
-            isPlugs = 1;
+            plugsStatus = 1;
         end
         % Matlab < 2020a: Old compilation function using deploytool
         if (bst_get('MatlabVersion') < 908)
             addpath(fullfile(BrainstormHomeDir, 'deploy', 'deprecated'));
-            if isPlugs
+            if plugsStatus
                 bst_deploy_java('2');
             else
                 bst_deploy_java('1');
             end
         else
-            bst_compile(isPlugs);
+            bst_compile(plugsStatus);
         end
         
     otherwise

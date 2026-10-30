@@ -155,7 +155,7 @@ function jnirs = detectAndFixError(jnirs)
         jnirs.nirs.probe.detectorLabels = {};
     end
     % Events. Convert cell array to struct array
-    if iscell(jnirs.nirs.stim)
+    if isfield(jnirs.nirs,'stim') && iscell(jnirs.nirs.stim)
        jnirs.nirs.stim =  cell2mat(jnirs.nirs.stim);
     end
 
@@ -555,6 +555,7 @@ function [Channel, good_aux] = readAuxChannels(jnirs, nSample)
     error_list  = {};
     for iAux = 1:nAux
         if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
+                && isfield(jnirs.nirs.aux(iAux), 'time') ...
                 && length(jnirs.nirs.data.time) == length(jnirs.nirs.aux(iAux).time) ...
                 && isequal(expendTime(jnirs.nirs.data.time, nSample), expendTime(jnirs.nirs.aux(iAux).time,nSample)) ...
                 && ( ~isfield(jnirs.nirs.aux(iAux), 'timeOffset') ||  jnirs.nirs.aux(iAux).timeOffset == 0)

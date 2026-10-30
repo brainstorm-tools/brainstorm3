@@ -136,8 +136,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         fExt = Filters{iFilter, 1}{1};
     end
     % Check if Study and Subject names will be added in output filenames
-    addConditionToFileName = ~isequal(sInputs(:).Condition);
-    addSubjectToFileName   = ~isequal(sInputs(:).SubjectName);
+    if length(sInputs) > 1
+        addConditionToFileName = ~isequal(sInputs(:).Condition);
+        addSubjectToFileName   = ~isequal(sInputs(:).SubjectName);
+    else
+        addConditionToFileName = 0;
+        addSubjectToFileName   = 0;
+    end
     % Export files
     for iInput = 1 : length(sInputs)
         % Name for one file is already clean of tags

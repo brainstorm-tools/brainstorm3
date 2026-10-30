@@ -2,7 +2,7 @@ function hComp = bst_javacomponent(hParent, compType, compPos, compText, compIco
 % BST_JAVACOMPONENT: Adds a component to a Matlab figure (buttons, ...)
 
 % DESCRIPTION:
-%    Replaces deprecated javacomponent in versions of Matlab >= 2020a
+%    Replaces deprecated javacomponent in versions of Matlab >= 2019b
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -57,9 +57,12 @@ if (sum(bgColor) < 0.5)
     bgColor = [.8 .8 .8];
 end
 
+JavacomponentStatus = bst_get('JavacomponentStatus');
+switch(JavacomponentStatus)
+
 % ===== OLD: JAVACOMPONENTS ======
 % Older version of Matlab (< 2019b): use java components
-if bst_get('isJavacomponent')
+    case 0
     switch (compType)
         case 'label'
             jComp = java_create('javax.swing.JLabel');
@@ -105,9 +108,9 @@ if bst_get('isJavacomponent')
     set(hComp, 'Units', 'pixels');
     
     
-% ===== NEW >= 2019b =====
-% Newer matlab versions: use dedicated functions
-else
+    % ===== NEW >= 2019b =====
+    % Newer matlab versions: use dedicated functions
+    case {1,2}
     switch (compType)
         case 'label'
             hComp = uicontrol(hParent, ...
@@ -162,6 +165,13 @@ else
     end
     % Tooltip
     if ~isempty(compTooltip)
+        % Tooltips do not render HTML content
+        if bst_get('MatlabVersion') >= 2501
+            % Keep line breaks
+            compTooltip = regexprep(compTooltip, '<br\s*/?>', '\n', 'ignorecase');
+            % HTML to plain text
+            compTooltip = sprintf(str_striptag(compTooltip));
+        end
         set(hComp, 'Tooltip', compTooltip);
     end
     % Callback

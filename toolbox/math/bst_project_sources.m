@@ -1,7 +1,7 @@
-function OutputFiles = bst_project_sources( ResultsFile, destSurfFile, isAbsoluteValues, isInteractive )
+function OutputFiles = bst_project_sources( ResultsFile, destSurfFile, isAbsoluteValues, isInteractive, destStudyName )
 % BST_PROJECT_SOURCES: Project source files on a different surface (currents or timefreq).
 %
-% USAGE:  OutputFiles = bst_project_sources( ResultsFile, DestSurfFile, isAbsoluteValues=0, isInteractive=1 )
+% USAGE:  OutputFiles = bst_project_sources( ResultsFile, DestSurfFile, isAbsoluteValues=0, isInteractive=1, destStudyName=[] )
 % 
 % INPUT:
 %    - ResultsFile      : Relative path to sources file to reproject
@@ -9,6 +9,7 @@ function OutputFiles = bst_project_sources( ResultsFile, destSurfFile, isAbsolut
 %    - isAbsoluteValues : If 1, interpolate absolute values of the sources instead of relative values
 %    - isInteractive    : If 1, displays questions and dialog boxes
 %                         If 0, consider that it is running from the process interface
+%    - destStudyName    : Destination study Name. If empty use the Name of the ResultsFile Study. Subject = destSurfFile Subject
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -36,6 +37,9 @@ if (nargin < 4) || isempty(isInteractive)
 end
 if (nargin < 3) || isempty(isAbsoluteValues)
     isAbsoluteValues = 0;
+end
+if (nargin < 4) || isempty(destStudyName) || ~ischar(destStudyName)
+    destStudyName = '';
 end
 
 %% ===== GROUP BY SURFACES =====
@@ -176,6 +180,8 @@ for iGroup = 1:nGroup
             sDestSubj = bst_get('NormalizedSubject');
             sDestSubj.Name = bst_get('NormalizedSubjectName');
         end
+    else
+        sDestSubj = sSrcSubj;
     end
     
     % ===== PROCESS EACH FILE =====
@@ -195,24 +201,29 @@ for iGroup = 1:nGroup
         % ===== OUTPUT STUDY =====
         % Get source study
         [sSrcStudy, iSrcStudy] = bst_get('AnyFile', ResultsFile);
-        % If result has to be save in "group analysis" subject
-        if ~isSameSubject
-            % New condition name
-            NewCondition = strrep(sSrcStudy.Condition{1}, '@raw', '');
+        iDestStudy = [];
+        if isempty(destStudyName)
+            % Use the source study as output study
+            if isSameSubject
+                sDestStudy = sSrcStudy;
+                iDestStudy = iSrcStudy;
+            % Same Name as srcStudy (w/o ^@raw)
+            else
+                destStudyName = regexprep(sSrcStudy.Condition{1}, '^@raw', '');
+            end
+        end
+        % Get or create destination Study
+        if isempty(iDestStudy)
             % Get condition
-            [sDestStudy, iDestStudy] = bst_get('StudyWithCondition', [sDestSubj.Name '/' NewCondition]);
+            [sDestStudy, iDestStudy] = bst_get('StudyWithCondition', [sDestSubj.Name '/' destStudyName]);
             % Create condition if doesnt exist
             if isempty(iDestStudy)
-                iDestStudy = db_add_condition(sDestSubj.Name, NewCondition, 0);
+                iDestStudy = db_add_condition(sDestSubj.Name, destStudyName, 0);
                 if isempty(iDestStudy)
-                    error(['Cannot create condition: "' normSubjName '/' NewCondition '".']);
+                    error(['Cannot create condition: "' sDestSubj.Name '/' destStudyName '".']);
                 end
                 sDestStudy = bst_get('Study', iDestStudy);
             end
-        % Else: use the source study as output study
-        else
-            sDestStudy = sSrcStudy;
-            iDestStudy = iSrcStudy;
         end
 
         % ===== LOAD INPUT FILE =====

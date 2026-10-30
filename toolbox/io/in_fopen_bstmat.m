@@ -52,7 +52,11 @@ sFile.format   = 'BST-DATA';
 sFile.device   = 'Brainstorm';
 sFile.comment  = DataMat(1).Comment;
 sFile.prop.times   = [DataMat(1).Time(1), DataMat(1).Time(end)];
-sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
+if length(DataMat(1).Time) >= 2
+    sFile.prop.sfreq   = 1 ./ (DataMat(1).Time(2) - DataMat(1).Time(1));
+else
+    sFile.prop.sfreq    = NaN;
+end
 sFile.prop.currCtfComp = 3;
 sFile.prop.destCtfComp = 3;
 if isfield(DataMat(1), 'Events') && ~isempty(DataMat(1).Events)
@@ -63,6 +67,9 @@ if isfield(DataMat(1), 'acq_date') && ~isempty(DataMat(1).acq_date)
 end
 if isfield(DataMat(1), 'T0') && ~isempty(DataMat(1).T0)
     sFile.t0 = DataMat(1).T0;
+end
+if isfield(DataMat(1), 'DisplayUnits') && ~isempty(DataMat(1).DisplayUnits)
+    sFile.header.displayunits = DataMat(1).DisplayUnits;
 end
 sFile.header.F    = DataMat(1).F;
 sFile.channelflag = DataMat(1).ChannelFlag;
