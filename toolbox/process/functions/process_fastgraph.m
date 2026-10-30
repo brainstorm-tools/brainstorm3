@@ -60,7 +60,9 @@ sProcess.options.colorscheme.Controller = struct('region', 'region');
 regionsStr = {'Prefrontal (PF)', 'Frontal (F)',   'Central (C)', 'Parietal (P)', ...
               'Temporal (T)',    'Occipital (O)', 'Limbic (L)',  'White', ...
               'CSF',            'Other'};
-sProcess.options.region.Comment = [regionsStr, {'<HTML><B>Select regions to include:</B>'}];
+sProcess.options.region.Comment = [regionsStr, {['<HTML><B>Select regions to include:</B><BR><I><FONT color="#777777">', ...
+                                                 '(Only anatomical parcellations from selected regions will be included)', ...
+                                                 '</FONT></I>']}];
 sProcess.options.region.Type    = 'list_horizontal';
 sProcess.options.region.Value   = regionsStr;
 sProcess.options.region.Class   = 'region';
@@ -211,7 +213,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % 1. Get Region for each Parcel in sMriAtlas. Cortical version of atlas used as reference
         [sMriAtlas, errMsg] = GetParcelRegion(sSubject, OPTIONS.AnatAtlas, sMriAtlas);
         if ~isempty(errMsg)
-            % Error
+            bst_report('Error', sProcess, sInputs, errMsg);
+            return
         end
         % 2. Update colors in sMriAtlas by Parcel region
         defaultScoutColors = round(panel_scout('GetScoutsColorTable') * 255);
@@ -227,10 +230,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 [sMriAtlas.Labels{iAnatAtlasLabel, 3}] = deal(regionColorTable{iRegion, 2});
             end
         end
-        % 3. If no parcel was selected, select parcels from selected regions
-        if isempty(OPTIONS.AnatAtlasParcels)
-            regionSelIds = regexprep(OPTIONS.Regions, '^.*\((.*?)\).*$', '$1');
-            isKeep = ismember(sMriAtlas.Labels(:, 4), regionSelIds);
+        % 3. Filter parcels according selected regions
+        regionSelIds = regexprep(OPTIONS.Regions, '^.*\((.*?)\).*$', '$1');
+        % Keep all parcels for selected regions
+        isKeep = ismember(sMriAtlas.Labels(:, 4), regionSelIds);
+        % If parcels are selected: Only keep parcels within the selected regions
+        if ~isempty(OPTIONS.AnatAtlasParcels)
+            isKeep = ismember(OPTIONS.AnatAtlasParcels, sMriAtlas.Labels(isKeep, 2)');
+            OPTIONS.AnatAtlasParcels = OPTIONS.AnatAtlasParcels(isKeep);
+        % If no parcel was selected, select parcels from selected regions
+        else
             OPTIONS.AnatAtlasParcels = sMriAtlas.Labels(isKeep, 2)';
         end
     end
@@ -657,10 +666,13 @@ function [sMriAtlas, errMsg] = GetParcelRegion(sSubject, AnatAtlasName, sMriAtla
     sSurf = load(file_fullpath(sSubject.Surface(sSubject.iCortex).FileName), 'Atlas');
     iAnatAtlas = find(strcmp(AnatAtlasName, {sSurf.Atlas.Name}));
     if isempty(iAnatAtlas)
-        errMsg = 'Anatomical atlas does not have cortical version. Needed for regions. Try Parcel colors.';
+        errMsg = sprintf(['The anatomical atlas "%s" does not have a cortical version,\n', ...
+                          'which is needed to assign a region to each anatomical parcellation.\n\n', ...
+                          'Try Colors scheme = Parcel.'], AnatAtlasName);
         return
     elseif length(iAnatAtlas) > 1
-        errMsg = 'Two or more surface atlases have the same name, you should rename them to be unique';
+        errMsg = sprintf(['Two or more cortical atlases have the same name "%s".\n, ...' ...
+                          'Rename them to be unique.'], AnatAtlasName);
         return
     end
     sSurfAtlas = sSurf.Atlas(iAnatAtlas);
