@@ -151,7 +151,9 @@ for is = 1:length(iStudies)
             % If the channel is already considered as EEG, do not change its type, otherwise set it to EEG
             if ~ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
                 ChannelMat.Channel(ic).Type = 'EEG';
-            elseif ismember(LocChannelMat.Channel(idef).Type, {'SEEG','ECOG'})
+            end
+            % Check for type in the imported external file
+            if ismember(LocChannelMat.Channel(idef).Type, {'SEEG','ECOG'})
                 ChannelMat.Channel(ic).Type = LocChannelMat.Channel(idef).Type;
             end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;

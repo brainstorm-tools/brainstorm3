@@ -156,6 +156,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         iStarts = find(strncmp({sEvents.label}, defStimStartLabel, length(defStimStartLabel)));
         iStops  = find(strncmp({sEvents.label}, defStimStopLabel,  length(defStimStopLabel)));
         if isempty(iStarts) || isempty(iStops)
+            % Return the raw file
+            OutputFiles{end+1} = sInputs(iFile).FileName;
             continue
         end
         % Start/Stop labels must be given in pairs, ignore single labels
