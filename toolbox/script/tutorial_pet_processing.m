@@ -1,5 +1,5 @@
 function tutorial_pet_processing(tutorial_dir, reports_dir)
-% TUTORIAL_INTRODUCTION: Script that run the PET processing tutorial
+% TUTORIAL_PET_PROCESSING: Script that runs the PET processing tutorial
 %
 % INPUTS: 
 %    - tutorial_dir : Directory where the tutorial_pet_processing.zip file has been unzipped
@@ -87,7 +87,7 @@ close(hFigMri);
 
 %% ===== 3. IMPORT AND PROCESS PET VOLUMES =================================
 %  =============================================================================
-disp([10 'DEMO> 2. Import and process PET volumes' 10]);
+disp([10 'DEMO> 3. Import and process PET volumes' 10]);
 PetFiles = {Pet1File, Pet2File};
 for iPet = 1 : length(PetFiles)
     % Process: Import PET
@@ -103,8 +103,19 @@ for iPet = 1 : length(PetFiles)
     PetAggFile = mri_realign(impPetFile, 'spm_realign', 0, 'mean');
     % Co-register and reslice PET volume
     PetAggCoregFile = mri_coregister(PetAggFile, MriFile, 'spm', 1);
-    % Compute SUVR, and project to surface
-    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetAggCoregFile, 'ASEG', 'Cortex', 'Brainmask', 1, 1);
+    % Partial volume correction: GTM on the Desikan-Killiany parcellation (default method).
+    % PSF FWHM of the scanner: these volumes were acquired on a Siemens HRRT (2.5 mm). The tutorial
+    % files have no BIDS sidecar, so the scanner cannot be read from the metadata: give it here.
+    % With BIDS data, use [] to take the value found from the scanner model at import.
+    PsfFwhm = 2.5;
+    [PetPvcFile, errPvc, ~, regTable] = pet_pvc(PetAggCoregFile, MriFile, PsfFwhm, struct('method', 'gtm'));
+    if ~isempty(errPvc)
+        error(['Partial volume correction failed: ' errPvc]);
+    end
+    % Regional values before (observed) and after (corrected) GTM
+    disp(struct2table(regTable));
+    % Compute SUVR (reference: cerebellum; mask: cortex, as on the tutorial page), and project to surface
+    [PetSuvrFile, ~, suvrSurfFile] = pet_process(PetPvcFile, 'ASEG', 'Cerebellum', 'Cortex', 1, 1);
 
     % Figure: Aligned, aggregated, co-registered PET overlayed on MRI
     hFigPetOvr = view_mri(MriFile, PetAggCoregFile);
