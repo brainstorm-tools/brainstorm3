@@ -24,10 +24,8 @@ function [MriFileOut, errMsg, SurfaceFileOut] = pet_process(PetFile, AtlasName, 
 %                              the previous behaviour (plain mean over the region, mri_rescale).
 %                  The intermediate PVC volume is kept in the database ("| PVC GTM <fwhm>mm").
 %
-%                  VLPP-STYLE (non-PVC, smoothed) run: pvcOpts = struct('method','none',
-%                  'SmoothFWHM',6, 'SuvrOpts',struct('Reference','plain')). This reproduces
-%                  the Villeneuve Lab PET pipeline (smooth + plain-reference SUVR, no PVC):
-%                  https://github.com/villeneuvelab/vlpp
+%                  Smoothed SUVR without PVC: pvcOpts = struct('method','none', 'SmoothFWHM',6,
+%                  'SuvrOpts',struct('Reference','plain')).
 %
 % OUTPUTS:
 %   - MriFileOut    : Output MRI file path (string)
@@ -89,8 +87,8 @@ try
     orgComment = sMri.Comment;
 
     % --- Partial Volume Correction (before SUVR) ---
-    % pvcOpts.method='none' SKIPS PVC (e.g. a VLPP-style non-PVC smoothed pipeline, see header
-    % + https://github.com/villeneuvelab/vlpp). 'gtm' (default) or 'mg': pet_pvc.
+    % pvcOpts.method='none' skips PVC (e.g. smoothed SUVR without PVC, see header).
+    % 'gtm' (default) or 'mg': pet_pvc.
     doPvc = ~isempty(pvcOpts) && ~(isfield(pvcOpts,'method') && strcmpi(pvcOpts.method,'none'));
     if doPvc
         % Get reference MRI for tissue segmentation
@@ -113,7 +111,7 @@ try
         orgComment = sMri.Comment;
     end
 
-    % --- Optional Gaussian volume smoothing BEFORE SUVR (VLPP-style; default off) ---
+    % --- Optional Gaussian volume smoothing BEFORE SUVR (default off) ---
     smoothTag = '';
     if ~isempty(pvcOpts) && isfield(pvcOpts,'SmoothFWHM') && ~isempty(pvcOpts.SmoothFWHM) && any(pvcOpts.SmoothFWHM(:) > 0)
         sMri.Cube = local_gauss3(double(sMri.Cube(:,:,:,1)), pvcOpts.SmoothFWHM, sMri.Voxsize);
@@ -130,7 +128,7 @@ try
     if ~isempty(roiName)
         % Resolve the reference ROI to a binary mask (same atlas/region path as before),
         % then normalize via ComputeSuvr. Default = eroded + trimmed mean; pvcOpts.SuvrOpts can
-        % override (e.g. Erode=0, Robust='mean' for a plain VLPP-style cerebellar reference).
+        % override (e.g. Reference='plain' for the plain mean over the region).
         [~, ~, errMsgMask, ~, binMask] = mri_mask(sMri, sAtlas, roiName, 1);
         if ~isempty(errMsgMask)
             errMsg = errMsgMask;
