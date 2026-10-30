@@ -3443,26 +3443,31 @@ function PetPvc_Callback(PetFile, sSubject)
     w = load(file_fullpath(PetFile), 'PET');
     warning('on', 'MATLAB:load:variableNotFound');
     if isfield(w, 'PET'), PET = w.PET; end
-    [defFwhm, fwhmSrc] = pet_helper('PsfFwhm', PET);
-    [~, scanSrc] = pet_helper('PsfFwhm', PetWithoutSmoothing(PET));
+    [~, fwhmSrc] = pet_helper('PsfFwhm', PET);
+    [scanFwhm, scanSrc, isKnown] = pet_helper('PsfFwhm', PetWithoutSmoothing(PET));
+    if isKnown
+        strScanner = ['Scanner: <B>' scanSrc '</B><BR>'];
+    else
+        strScanner = ['<FONT color="#C00000"><B>Scanner not identified from the PET metadata.</B><BR>' ...
+                      sprintf('%.1f mm is a generic default, not the resolution of your scanner.<BR>', scanFwhm) ...
+                      'A PSF larger than the true resolution over-corrects (negative regional values).<BR>' ...
+                      'Enter the PSF FWHM of your scanner and reconstruction.</FONT><BR>'];
+    end
     res = java_dialog('input', ...
-        ['<HTML>Scanner PSF FWHM in mm (leave "auto" to use the scanner metadata).<BR>' ...
-         'Scanner: <B>' scanSrc '</B><BR>' ...
+        ['<HTML>' strScanner ...
          'Effective PSF used: <B>' fwhmSrc '</B><BR>' ...
          'Smoothing recorded in the history is added in quadrature.<BR><BR>' ...
          'Scanner PSF FWHM (mm):'], ...
-        'Partial volume correction', [], 'auto');
+        'Partial volume correction', [], num2str(scanFwhm));
     if isempty(res)
         return;
     end
-    if strcmpi(strtrim(res), 'auto')
-        fwhm = [];
-    else
-        fwhm = str2double(res);
-        if isnan(fwhm) || (fwhm <= 0)
-            bst_error('FWHM must be a positive number, or "auto".', 'PET PVC');
-            return;
-        end
+    fwhm = str2double(res);
+    if strcmpi(strtrim(res), 'auto') || (fwhm == scanFwhm)
+        fwhm = [];   % Value from the metadata: keep its source in the history
+    elseif isnan(fwhm) || (fwhm <= 0)
+        bst_error('FWHM must be a positive number.', 'PET PVC');
+        return;
     end
     % Run PVC
     bst_progress('start', 'PET PVC', 'Running partial volume correction...');
@@ -3472,7 +3477,7 @@ function PetPvc_Callback(PetFile, sSubject)
         bst_error(errMsg, 'PET PVC');
         return;
     end
-    disp(['BST> PVC corrected PET saved as: ' MriFilePvc ' (effective PSF ' num2str(defFwhm) ' mm if "auto")']);
+    disp(['BST> PVC corrected PET saved as: ' MriFilePvc]);
     % GTM: regional values in the command window
     if ~isempty(regTable)
         disp(struct2table(regTable));

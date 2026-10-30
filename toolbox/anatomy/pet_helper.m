@@ -235,22 +235,23 @@ end
 
 
 %% ===== SCANNER RESOLUTION =====
-function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
+function [fwhm, src, isKnown] = ScannerFwhm(PET, defaultFwhm)
 % Estimate effective PET image resolution (PSF FWHM, mm) from metadata.
 %
 % BIDS PET (and the NIfTI header) carry NO explicit image-resolution / PSF field,
 % so the FWHM is INFERRED from the scanner MODEL (a curated lookup of the published
-% NEMA spatial resolution, matched exactly on the model name) combined with any applied
+% NEMA spatial resolution, matched on the words of the model name) combined with any applied
 % reconstruction Gaussian post-filter (ReconFilterType / ReconFilterSize). When the
 % scanner cannot be identified from the metadata, a generic fallback (~6 mm, typical
-% clinical PET) is returned so partial-volume correction still has a sane default.
+% clinical PET) is returned, and isKnown is false: callers must tell the user that the value
+% is a generic default, not the resolution of their scanner.
 %
 % The lookup values are published NEMA resolutions (references in the table below) and
 % are meant as sensible defaults; pass an explicit FWHM to pet_pvc to override.
 % Smoothing applied after reconstruction is NOT included here: see PsfFwhm.
 %
-% USAGE:  [fwhm, src] = pet_helper('ScannerFwhm', PET)
-%         [fwhm, src] = pet_helper('ScannerFwhm', PET, defaultFwhm)
+% USAGE:  [fwhm, src, isKnown] = pet_helper('ScannerFwhm', PET)
+%         [fwhm, src, isKnown] = pet_helper('ScannerFwhm', PET, defaultFwhm)
 %
 % INPUT:
 %   PET         : sMri.PET metadata struct (see ReadMetadata). May be [].
@@ -258,21 +259,26 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
 %
 % OUTPUT:
 %   fwhm : estimated isotropic PSF FWHM in mm.
-%   src  : human-readable provenance string (for logging / GUI).
+%   src     : human-readable provenance string (for logging / GUI).
+%   isKnown : true if the scanner was identified, false if fwhm is the generic fallback.
 %
 % SEE ALSO: PsfFwhm, ReadMetadata, pet_pvc
 
     if (nargin < 2) || isempty(defaultFwhm), defaultFwhm = 6; end
     fwhm = defaultFwhm;
     src  = sprintf('fallback %.1f mm (scanner not identified)', defaultFwhm);
+    isKnown = false;
 
     if isempty(PET) || ~isstruct(PET) || ~isfield(PET, 'Scanner')
         return;
     end
     model = local_str(local_getf(PET.Scanner, 'Model'));
-    % Exact matching on the normalized model name (lower case, letters and digits only), so that
-    % a short key cannot match an unrelated scanner (e.g. "mct" inside another model name).
-    key = lower(regexprep(model, '[^a-zA-Z0-9]', ''));
+    % Words of the model name (lower case, letters and digits), plus the whole name without
+    % separators. A scanner matches when all the words of one of its keys are present as whole
+    % words: "High-Resolution Research Tomograph (HRRT, CTI/Siemens)" matches {'hrrt'}, while a
+    % short key cannot match inside another word (e.g. "mct" in "SuperMCT9000").
+    words = regexp(lower(model), '[a-z0-9]+', 'match');
+    words = [words, {lower(regexprep(model, '[^a-zA-Z0-9]', ''))}];
 
     % Curated scanner -> intrinsic resolution (mm): NEMA NU-2 transaxial spatial resolution
     % (FWHM at 1 cm from the centre of the field of view), from the published performance
@@ -285,19 +291,20 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
     %  - Discovery MI: Hsu et al. (2017), J Nucl Med 58:1511-1518
     %  - SIGNA PET/MR: Grant et al. (2016), Med Phys 43:2334-2343
     %  - Vereos: Zhang et al. (2018), EJNMMI Res 8:97
+    % Keys: each key is a set of words that must all be present.
     tbl = { ...
-        'HRRT',            {'hrrt', 'ecathrrt', 'highresolutionresearchtomograph'},                     2.5; ...
-        'Biograph Vision', {'biographvision', 'biographvision600', 'biographvisionquadra'},             3.6; ...
-        'Biograph mMR',    {'biographmmr', 'mmr'},                                                      4.3; ...
-        'Biograph mCT',    {'biographmct', 'biograph128mct', 'biograph64mct', 'biographmctflow', 'mct'}, 4.4; ...
-        'Discovery MI',    {'discoverymi', 'discoverymidr'},                                            4.2; ...
-        'SIGNA PET/MR',    {'signapetmr', 'signa'},                                                     4.4; ...
-        'Vereos',          {'vereos', 'vereospetct'},                                                   4.0  ...
+        'HRRT',            {{'hrrt'}, {'high','resolution','research','tomograph'}, {'highresolutionresearchtomograph'}}, 2.5; ...
+        'Biograph Vision', {{'biograph','vision'}, {'biographvision'}, {'biographvision600'}, {'biographvisionquadra'}}, 3.6; ...
+        'Biograph mMR',    {{'mmr'}, {'biographmmr'}},                                                              4.3; ...
+        'Biograph mCT',    {{'mct'}, {'biographmct'}, {'biograph128mct'}, {'biograph64mct'}, {'biographmctflow'}},  4.4; ...
+        'Discovery MI',    {{'discovery','mi'}, {'discoverymi'}, {'discoverymidr'}},                               4.2; ...
+        'SIGNA PET/MR',    {{'signa'}, {'signapetmr'}},                                                             4.4; ...
+        'Vereos',          {{'vereos'}, {'vereospetct'}},                                                           4.0  ...
     };
     intr = []; label = '';
-    if ~isempty(key)
+    if ~isempty(model)
         for i = 1:size(tbl,1)
-            if ismember(key, tbl{i,2})
+            if any(cellfun(@(k) all(ismember(k, words)), tbl{i,2}))
                 intr = tbl{i,3}; label = tbl{i,1}; break;
             end
         end
@@ -308,6 +315,7 @@ function [fwhm, src] = ScannerFwhm(PET, defaultFwhm)
 
     fwhm = intr;
     src  = sprintf('%.1f mm (%s, model lookup)', intr, label);
+    isKnown = true;
 
     % Combine with an applied reconstruction Gaussian post-filter, if present.
     ft = lower(local_str(local_getf(PET.Scanner, 'ReconFilterType')));
@@ -330,7 +338,7 @@ end
 
 
 %% ===== EFFECTIVE PSF =====
-function [fwhm, src] = PsfFwhm(PET, fwhmScanner)
+function [fwhm, src, isKnown] = PsfFwhm(PET, fwhmScanner)
 % Effective PSF FWHM (mm) of a PET volume: scanner resolution + recorded smoothing.
 %
 % The scanner resolution is resolved once at import (ReadMetadata + ScannerFwhm) and
@@ -340,8 +348,8 @@ function [fwhm, src] = PsfFwhm(PET, fwhmScanner)
 %
 %     FWHM_eff = sqrt( FWHM_scanner^2 + sum_k FWHM_smooth(k)^2 )
 %
-% USAGE:  [fwhm, src] = pet_helper('PsfFwhm', PET)
-%         [fwhm, src] = pet_helper('PsfFwhm', PET, fwhmScanner)
+% USAGE:  [fwhm, src, isKnown] = pet_helper('PsfFwhm', PET)
+%         [fwhm, src, isKnown] = pet_helper('PsfFwhm', PET, fwhmScanner)
 %
 % INPUTS:
 %   PET         : sMri.PET metadata struct (may be [] for volumes without metadata).
@@ -350,24 +358,37 @@ function [fwhm, src] = PsfFwhm(PET, fwhmScanner)
 %
 % OUTPUTS:
 %   fwhm : effective isotropic PSF FWHM in mm.
-%   src  : human-readable provenance string (for the history and the command window).
+%   src     : human-readable provenance string (for the history and the command window).
+%   isKnown : false if the scanner resolution is the generic fallback (scanner not identified);
+%             true if it was given by the user or found from the scanner model.
 %
 % SEE ALSO: ScannerFwhm, ReadMetadata, pet_pvc
 
     if (nargin < 2), fwhmScanner = []; end
-    % Scanner resolution: user value > value stored at import > lookup now (older files)
+    % Scanner resolution: user value > value found at import > lookup now. A value stored as
+    % the fallback is looked up again, so that a scanner added to the lookup is used.
+    isStored = isstruct(PET) && isfield(PET, 'PsfFwhm') && ~isempty(PET.PsfFwhm);
+    if isStored
+        if isfield(PET, 'PsfKnown') && ~isempty(PET.PsfKnown)
+            isStoredKnown = logical(PET.PsfKnown);
+        else
+            isStoredKnown = ~(isfield(PET, 'PsfSource') && strncmp(PET.PsfSource, 'fallback', 8));
+        end
+    end
     if ~isempty(fwhmScanner)
         fwhm0 = double(fwhmScanner(1));
         src   = sprintf('%.1f mm (user)', fwhm0);
-    elseif isstruct(PET) && isfield(PET, 'PsfFwhm') && ~isempty(PET.PsfFwhm)
+        isKnown = true;
+    elseif isStored && isStoredKnown
         fwhm0 = double(PET.PsfFwhm(1));
         if isfield(PET, 'PsfSource') && ~isempty(PET.PsfSource)
             src = PET.PsfSource;
         else
             src = sprintf('%.1f mm (stored at import)', fwhm0);
         end
+        isKnown = true;
     else
-        [fwhm0, src] = ScannerFwhm(PET);
+        [fwhm0, src, isKnown] = ScannerFwhm(PET);
     end
     % Recorded smoothing, added in quadrature
     fwhm = fwhm0;

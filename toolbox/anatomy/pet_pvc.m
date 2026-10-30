@@ -109,8 +109,11 @@ try
     if isfield(w, 'PET'), PET = w.PET; end
 catch
 end
-[fwhm, fwhmSrc] = pet_helper('PsfFwhm', PET, fwhm);
+[fwhm, fwhmSrc, isKnown] = pet_helper('PsfFwhm', PET, fwhm);
 fprintf('BST> PET PVC: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
+if ~isKnown
+    WarnGenericFwhm(fwhm);
+end
 fwhm = [fwhm fwhm fwhm];
 if ~isfield(pvcOpts, 'gmThresh')    || isempty(pvcOpts.gmThresh),    pvcOpts.gmThresh    = 0.5;         end
 if ~isfield(pvcOpts, 'csfZeroing')  || isempty(pvcOpts.csfZeroing),  pvcOpts.csfZeroing  = 1;           end
@@ -399,8 +402,11 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         end
         PET = [];
         if isfield(sMriPet, 'PET'), PET = sMriPet.PET; end
-        [fwhm, fwhmSrc] = pet_helper('PsfFwhm', PET, fwhm);
+        [fwhm, fwhmSrc, isKnown] = pet_helper('PsfFwhm', PET, fwhm);
         fprintf('BST> PET GTM: PSF FWHM = %.2f mm [%s]\n', fwhm, fwhmSrc);
+        if ~isKnown
+            WarnGenericFwhm(fwhm);
+        end
         fwhm = [fwhm fwhm fwhm];
         isFov = isfinite(pet);                       % outside the PET field of view: excluded
 
@@ -493,6 +499,15 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
     if ~isProgress, bst_progress('stop'); end
 end
 
+
+%% ===== WARNING: GENERIC PSF =====
+function WarnGenericFwhm(fwhm)
+% The scanner was not identified and no FWHM was given: the correction uses a generic default.
+    disp(['BST> WARNING: PET scanner not identified and no PSF FWHM given: using the generic default ' ...
+          sprintf('%.1f mm.', fwhm) 10 ...
+          'BST>          A PSF larger than the true resolution over-corrects (negative or extreme regional' 10 ...
+          'BST>          values). Give the scanner PSF FWHM (input "fwhm" of pet_pvc, or pvcOpts.fwhm).']);
+end
 
 function name = local_regname(id, sAtl, headMask)
 % Region name from the atlas labels (Labels: {value, name, color} rows), or the special regions.

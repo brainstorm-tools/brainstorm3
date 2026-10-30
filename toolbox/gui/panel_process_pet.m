@@ -92,11 +92,27 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
         {{'GTM (regional, Desikan-Killiany)', 'Muller-Gartner (requires SPM12 + PETPVE12)'}});
     jLabelMethod.setEnabled(false);
     jComboMethod.setEnabled(false);
-    % PSF FWHM: "auto" = stored at import from the scanner metadata (6 mm if unknown)
+    % PSF FWHM: scanner resolution found at import from the PET metadata, shown with its source
+    PET = [];
+    warning('off', 'MATLAB:load:variableNotFound');
+    w = load(file_fullpath(PetFile), 'PET');
+    warning('on', 'MATLAB:load:variableNotFound');
+    if isfield(w, 'PET') && isstruct(w.PET)
+        PET = w.PET;
+        PET.SmoothFwhm = [];   % Scanner only: the recorded smoothing is added by pet_pvc
+    end
+    [scanFwhm, scanSrc, isFwhmKnown] = pet_helper('PsfFwhm', PET);
     jLabelFwhm = gui_component('label', jPanelPvc, 'br', 'Scanner PSF FWHM (mm):');
-    jTextFwhm = gui_component('text', jPanelPvc, 'tab', 'auto');
+    jTextFwhm = gui_component('text', jPanelPvc, 'tab', num2str(scanFwhm));
     jTextFwhm.setPreferredSize(java.awt.Dimension(50, 22));
-    jTextFwhm.setToolTipText('<HTML>"auto": from the scanner metadata stored at import (6 mm if unknown).<BR>Recorded smoothing is added in quadrature.');
+    jTextFwhm.setToolTipText('<HTML>Resolution of the scanner and reconstruction.<BR>Smoothing recorded in the history is added in quadrature.');
+    if isFwhmKnown
+        strFwhm = ['<HTML><FONT color="#777777">Scanner: ' scanSrc '</FONT>'];
+    else
+        strFwhm = ['<HTML><FONT color="#C00000"><B>Scanner not identified:</B> ' sprintf('%g', scanFwhm) ...
+                   ' mm is a generic default.<BR>Enter the PSF FWHM of your scanner.</FONT>'];
+    end
+    gui_component('label', jPanelPvc, 'br', strFwhm);
     jLabelFwhm.setEnabled(false);
     jTextFwhm.setEnabled(false);
     % CSF zeroing
@@ -191,7 +207,9 @@ function [bstPanelNew, panelName] = CreatePanel(PetFile, varargin)
                'jTextGmThresh',  jTextGmThresh, ...
                'jComboWmMethod', jComboWmMethod, ...
                'jTextWmThresh',  jTextWmThresh, ...
-               'PetFile',        PetFile));
+               'PetFile',        PetFile, ...
+               'ScanFwhm',       scanFwhm, ...
+               'IsFwhmKnown',    isFwhmKnown));
 end
 
 %% ===== CALLBACK: Atlas changed =====
@@ -244,14 +262,18 @@ function ButtonOK_Callback(panelName)
             pvcOpts.method = 'gtm';
         end
         fwhmStr = strtrim(char(ctrl.jTextFwhm.getText()));
-        if isempty(fwhmStr) || strcmpi(fwhmStr, 'auto')
-            pvcOpts.fwhm = [];
-        else
-            pvcOpts.fwhm = str2double(fwhmStr);
-            if isnan(pvcOpts.fwhm) || pvcOpts.fwhm <= 0
-                bst_error('PSF FWHM must be a positive number, or "auto".', 'PET Processing');
+        pvcOpts.fwhm = str2double(fwhmStr);
+        if strcmpi(fwhmStr, 'auto') || (pvcOpts.fwhm == ctrl.ScanFwhm)
+            pvcOpts.fwhm = [];   % Value from the metadata: keep its source in the history
+            % Scanner not identified: the generic default must be confirmed
+            if ~ctrl.IsFwhmKnown && ~java_dialog('confirm', ['The PET scanner was not identified from the metadata.' 10 10 ...
+                    sprintf('Use the generic default PSF FWHM of %g mm?', ctrl.ScanFwhm) 10 ...
+                    'A PSF larger than the true resolution over-corrects (negative regional values).'], 'Partial volume correction')
                 return;
             end
+        elseif isnan(pvcOpts.fwhm) || (pvcOpts.fwhm <= 0)
+            bst_error('PSF FWHM must be a positive number.', 'PET Processing');
+            return;
         end
         pvcOpts.csfZeroing  = ctrl.jCheckCsfZero.isSelected();
         pvcOpts.gmThresh    = str2double(char(ctrl.jTextGmThresh.getText()));

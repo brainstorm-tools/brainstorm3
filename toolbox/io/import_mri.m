@@ -196,10 +196,14 @@ if isPet && ~iscell(MriFile)
     sMri.PET = pet_helper('ReadMetadata', MriFile, sMri);
     % Resolve the scanner resolution now, while the scanner metadata is at hand, and store it
     % with the volume (PET.PsfFwhm). Falls back to 6 mm when the scanner is not identified.
-    [sMri.PET.PsfFwhm, sMri.PET.PsfSource] = pet_helper('ScannerFwhm', sMri.PET);
+    [sMri.PET.PsfFwhm, sMri.PET.PsfSource, sMri.PET.PsfKnown] = pet_helper('ScannerFwhm', sMri.PET);
     sMri.PET.SmoothFwhm = [];   % Gaussian smoothing applied after import (see pet_helper('PsfFwhm'))
     sMri = bst_history('add', sMri, 'import', ['PET scanner resolution (PSF FWHM): ' sMri.PET.PsfSource]);
     disp(['BST> PET scanner resolution (PSF FWHM): ' sMri.PET.PsfSource]);
+    if ~sMri.PET.PsfKnown
+        disp(['BST> WARNING: PET scanner not identified from the metadata. Partial volume correction needs' 10 ...
+              'BST>          the scanner resolution: enter its PSF FWHM, the generic default is a guess.']);
+    end
 end
 
 
