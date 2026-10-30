@@ -38,9 +38,8 @@ function [MriFilePvc, errMsg, fileTag, regTable] = pet_pvc(PetFile, MriFileRef, 
 % OUTPUTS:
 %   - MriFilePvc : Relative path to the PVC-corrected PET file in Brainstorm DB
 %   - errMsg     : Error message, if any
-%   - fileTag    : Muller-Gartner: tag inserted in the output file name ('_pvc').
-%                  GTM: '_gtmpvc' only labels the method; the file is named by db_add and
-%                  its comment ends with '| PVC GTM <fwhm>mm'.
+%   - fileTag    : tag inserted in the output file name: '_pvc' (Muller-Gartner), '_gtmpvc' (GTM).
+%                  The output keeps the '_volpet' tag of the input (shown as a PET volume).
 %   - regTable   : GTM only: regional observed and corrected values (see ComputeGtm)
 %
 % REQUIRES (Muller-Gartner only):
@@ -279,39 +278,10 @@ try
 
     % ===== SAVE IN BRAINSTORM DATABASE =====
     bst_progress('text', 'Saving corrected PET volume...');
-    [sSubject, iSubject] = bst_get('MriFile', PetFile);
-    if isempty(sSubject) || ~isfield(sSubject, 'Anatomy')
-        error('Could not find subject for the provided PET file.');
-    end
-    % Build output file path
-    [folder, base, ext] = fileparts(file_fullpath(PetFile));
-    lastUnderscore = find(base == '_', 1, 'last');
-    if ~isempty(lastUnderscore)
-        newBase = [base(1:lastUnderscore-1), fileTag, base(lastUnderscore:end)];
-    else
-        newBase = [base, fileTag];
-    end
-    MriFilePvcFull = file_unique(fullfile(folder, [newBase, ext]));
-    MriFilePvc = file_short(MriFilePvcFull);
-    % Update comment
-    sMriPvc.Comment = file_unique(sprintf('%s | PVC MG %.1fmm', sMriPet.Comment, fwhm(1)), {sSubject.Anatomy.Comment});
-    % Add history entry
+    sMriPvc.Comment = sprintf('%s | PVC MG %.1fmm', sMriPet.Comment, fwhm(1));
     sMriPvc = bst_history('add', sMriPvc, 'pvc', ...
         sprintf('Partial volume correction (Muller-Gartner, FWHM=%.2fmm [%s])', fwhm(1), fwhmSrc));
-    % Save new MRI in Brainstorm format
-    sMriPvc = out_mri_bst(sMriPvc, MriFilePvcFull);
-    % Register new MRI in subject
-    iAnatomy = length(sSubject.Anatomy) + 1;
-    sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
-    sSubject.Anatomy(iAnatomy).FileName = MriFilePvc;
-    sSubject.Anatomy(iAnatomy).Comment  = sMriPvc.Comment;
-    % Update subject structure
-    bst_set('Subject', iSubject, sSubject);
-    % Refresh tree
-    panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
-    % Save database
-    db_save();
+    MriFilePvc = SavePetVolume(sMriPvc, PetFile, fileTag);
 
 catch ME
     errMsg = ME.message;
@@ -382,13 +352,10 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
     if ~isfield(gtmOpts,'minVox')       || isempty(gtmOpts.minVox),       gtmOpts.minVox = 50; end
 
     isProgress = bst_progress('isVisible');
-        % Small labels are not regions of their own: a GTM region of a few dozen voxels amplifies
-        % any mismatch of the model (PSF, registration) into extreme values. Their voxels are given
-        % to the adjacent regions.
     if ~isProgress, bst_progress('start', 'PET GTM', 'Loading volumes...'); end
     try
         % ----- load PET + parcellation -----
-        [sSubject, iSubject] = bst_get('MriFile', PetFile);
+        sSubject = bst_get('MriFile', PetFile);
         if isempty(sSubject), error('Subject not found for PET file.'); end
         sMriPet = in_mri_bst(PetFile);
         pet = double(sMriPet.Cube(:,:,:,1));
@@ -415,6 +382,9 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         isFov = isfinite(pet);                       % outside the PET field of view: excluded
 
         % ----- regions (complete partition: labels >= minVox, everything else -> "rest" id 0) -----
+        % Small labels are not regions of their own: a GTM region of a few dozen voxels amplifies
+        % any mismatch of the model (PSF, registration) into extreme values. Their voxels are given
+        % to the adjacent regions.
         bst_progress('text', 'Building GTM regions...');
         ids = unique(L(:)); ids = ids(ids ~= 0);
         keep = ids(arrayfun(@(id) nnz(L==id) >= gtmOpts.minVox, ids));
@@ -493,13 +463,46 @@ function [MriFileGtm, errMsg, regTable] = ComputeGtm(PetFile, fwhm, gtmOpts)
         sGtm.Comment = sprintf('%s | PVC GTM %.1fmm', sMriPet.Comment, fwhm(1));
         sGtm = bst_history('add', sGtm, 'gtm', sprintf('Rousset GTM PVC, FWHM=%.2fmm [%s], %d regions, cond=%.1e', ...
                            fwhm(1), fwhmSrc, R, 1/max(c,eps)));
-        % Reload the subject: the next call (pet_process, SUVR) looks the new file up in the database
-        MriFileGtm = db_add(iSubject, sGtm, 1);
-        db_save();
+        MriFileGtm = SavePetVolume(sGtm, PetFile, '_gtmpvc');
     catch ME
         errMsg = ME.message;
     end
     if ~isProgress, bst_progress('stop'); end
+end
+
+
+%% ===== SAVE CORRECTED PET =====
+function MriFileOut = SavePetVolume(sMriOut, PetFile, fileTag)
+% Save a corrected volume next to the input PET and register it in the subject. The file is named
+% after the input with fileTag inserted before the last tag, so that it keeps the "_volpet" tag
+% and is shown and processed as a PET volume.
+    [sSubject, iSubject] = bst_get('MriFile', PetFile);
+    if isempty(sSubject) || ~isfield(sSubject, 'Anatomy')
+        error('Could not find subject for the provided PET file.');
+    end
+    % Build output file path
+    [folder, base, ext] = fileparts(file_fullpath(PetFile));
+    lastUnderscore = find(base == '_', 1, 'last');
+    if ~isempty(lastUnderscore)
+        newBase = [base(1:lastUnderscore-1), fileTag, base(lastUnderscore:end)];
+    else
+        newBase = [base, fileTag];
+    end
+    MriFileOutFull = file_unique(fullfile(folder, [newBase, ext]));
+    MriFileOut = file_short(MriFileOutFull);
+    sMriOut.Comment = file_unique(sMriOut.Comment, {sSubject.Anatomy.Comment});
+    % Save new MRI in Brainstorm format
+    out_mri_bst(sMriOut, MriFileOutFull);
+    % Register new MRI in subject (in memory, so that the next call in the same session finds it)
+    iAnatomy = length(sSubject.Anatomy) + 1;
+    sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
+    sSubject.Anatomy(iAnatomy).FileName = MriFileOut;
+    sSubject.Anatomy(iAnatomy).Comment  = sMriOut.Comment;
+    bst_set('Subject', iSubject, sSubject);
+    % Refresh tree
+    panel_protocols('UpdateNode', 'Subject', iSubject);
+    panel_protocols('SelectNode', [], 'anatomy', iSubject, iAnatomy);
+    db_save();
 end
 
 
@@ -526,9 +529,6 @@ function name = local_regname(id, sAtl, headMask)
     end
 end
 
-function headMask = local_headmask(sSubject, sMriRef, cubeSize)
-% Voxelize the subject's scalp ("head mask") surface into a filled binary head mask on
-% the reference grid. Returns [] if no scalp surface is available.
 function L = local_absorb_small(L, small)
 % Give each voxel of a small label the label of an adjacent voxel of a kept region, growing inwards
 % (6-connectivity) until all are given; voxels with no kept region nearby go to the rest (label 0).
@@ -556,6 +556,9 @@ function L = local_absorb_small(L, small)
     L(iSmall) = 0;
 end
 
+function headMask = local_headmask(sSubject, sMriRef, cubeSize)
+% Voxelize the subject's scalp ("head mask") surface into a filled binary head mask on
+% the reference grid. Returns [] if no scalp surface is available.
     headMask = [];
     if ~isfield(sSubject,'Surface') || isempty(sSubject.Surface), return; end
     iScalp = find(strcmpi({sSubject.Surface.SurfaceType}, 'Scalp'), 1);
