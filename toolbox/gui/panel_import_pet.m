@@ -107,7 +107,7 @@ function [bstPanelNew, panelName] = CreatePanel(nFrames, dispRegistration)
     % === BUTTONS ===
     jPanelButtons = gui_river([2 0], [0 5 0 5]);
     gui_component('button', jPanelButtons, 'br right', 'Cancel', [], [], @ButtonCancel_Callback);
-    gui_component('button', jPanelButtons, '', 'Import', [], [], @ButtonImport_Callback);
+    gui_component('button', jPanelButtons, '', 'Import', [], [], @ButtonContinue_Callback);
     jPanelMain.add('br right', jPanelButtons);
     % === Panel Layout  ===
     if ~isempty(jCheckAlign)
