@@ -204,11 +204,11 @@ bst_process('CallProcess', 'process_fastgraph', sFilesAvg2, [], ...
 
 % Snapshot: Current MRIViewer
 hFig = bst_figures('GetFiguresByType', 'MriViewer');
-bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph', hFig.Position);
+bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph');
 close(hFig);
 % Snapshot: FastGraph plots
 hFig = findall(groot, 'Type', 'figure', 'Tag', 'FastGraph');
-bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph', hFig.Position);
+bst_report('Snapshot', hFig, sFilesAvg2, 'FastGraph', [100, 100, 1280, 720]);
 close(hFig);
 
 
