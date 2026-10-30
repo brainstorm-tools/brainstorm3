@@ -391,7 +391,7 @@ function [stimLocs, contacts1, contacts2] = GetStimLocs(sInputs, ChannelMat)
         % Compute midpoint only if both contacts exist
         if ~isempty(iContact1) && ~isempty(iContact2)
             contacts1{k} = contact1;
-            contacts1{k} = contact2;
+            contacts2{k} = contact2;
             loc1 = ChannelMat.Channel(iContact1).Loc(:)';
             loc2 = ChannelMat.Channel(iContact2).Loc(:)';
             stimLocs(k, :) = (loc1 + loc2) / 2;
