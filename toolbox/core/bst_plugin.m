@@ -723,7 +723,7 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'NEWS';
-    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test', 'tutorials'};
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
     % === sEEG: GARDEL ===
