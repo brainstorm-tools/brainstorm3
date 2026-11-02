@@ -708,6 +708,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test', 'tutorials'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
     % === fNIRS: MCXLAB CL ===
@@ -720,6 +722,8 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test', 'tutorials'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
     % === sEEG: GARDEL ===
