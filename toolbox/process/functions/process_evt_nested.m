@@ -97,18 +97,17 @@ function OutputFiles = Run(sProcess, sInput)
     % Return all the input files
     OutputFiles = {};   
 
-
     % ===== GET OPTIONS =====
     % Combination string
-    innerEventsName = cellfun(@(x) strtrim(x),  strsplit(sProcess.options.inner_events.Value, ','),  'UniformOutput',  false);
-    outerEventsName = cellfun(@(x) strtrim(x),  strsplit(sProcess.options.outer_events.Value, ','),  'UniformOutput',  false);
+    innerEventsName = cellfun(@(x) strtrim(x), strsplit(sProcess.options.inner_events.Value, ','),  'UniformOutput',  false);
+    outerEventsName = cellfun(@(x) strtrim(x), strsplit(sProcess.options.outer_events.Value, ','),  'UniformOutput',  false);
 
     if isempty(innerEventsName) || isempty(outerEventsName)
         bst_report('Warning', sProcess, sInput, 'No event to combine. skipping');
         return;
     end
 
-    %  get options
+    % Get options
     partial_nesting = sProcess.options.partial_nesting.Value;
     method = sProcess.options.method.Value;
     minimum_duration = sProcess.options.minimum_duration.Value{1};
@@ -124,11 +123,10 @@ function OutputFiles = Run(sProcess, sInput)
         DataMat = in_bst_data(sInput.FileName, {'Time', 'Events'});
         sFile.Time   = DataMat.Time;
         sFile.events = DataMat.Events;
-        sFile.epochs = [];
     end
 
     % Process only continuous files
-    if ~isempty(sFile.epochs)
+    if isRaw && ~isempty(sFile.epochs)
         bst_report('Error', sProcess, sInput, 'This function can only process continuous recordings (no epochs). Skipping File...');
         return;
     end
@@ -139,8 +137,8 @@ function OutputFiles = Run(sProcess, sInput)
         return;
     end
 
-    [sEventsInner, missing_events_inner] = getEvents(sFile.events, innerEventsName);
-    [sEventsOuter, missing_events_outer] = getEvents(sFile.events, outerEventsName);
+    [sEventsInner, missing_events_inner] = GetEvents(sFile.events, innerEventsName);
+    [sEventsOuter, missing_events_outer] = GetEvents(sFile.events, outerEventsName);
 
     missing_events = union(missing_events_inner, missing_events_outer);
     if ~isempty(missing_events)
@@ -150,20 +148,20 @@ function OutputFiles = Run(sProcess, sInput)
         return;
     end
     
-    isExtended = areEventExtended(sEventsOuter);
+    isExtended = AreEventExtended(sEventsOuter);
     if ~all(isExtended)
         bst_report('Error', sProcess, sInput, sprintf('All classifying events must be extended events. The following events are simple events %s', strjoin({sEventsOuter(~isExtended).label}, ', '  )));
         return;
     end
     
     % Create binary mask for the outer events
-    mask = event2mask(sFile.Time, sEventsOuter);
+    mask = Event2Mask(sFile.Time, sEventsOuter);
     for iEvent = 1:length(sEventsInner)
-        newEvents = classifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, partial_nesting, method);
+        newEvents = ClassifyEvent(sFile.Time, sEventsInner(iEvent), mask, sEventsOuter, partial_nesting, method);
         
         for iNewEvent = 1:length(newEvents)
             if minimum_duration > 0
-                newEvents(iNewEvent) = removeShortEpoch(newEvents(iNewEvent), minimum_duration);
+                newEvents(iNewEvent) = RemoveShortEpoch(newEvents(iNewEvent), minimum_duration);
             end
             
             % If there is at least one epoch, we add the event
@@ -188,7 +186,7 @@ function OutputFiles = Run(sProcess, sInput)
     OutputFiles{end+1} = sInput.FileName;
 end
 
-function [events, missing_events] = getEvents(sEvents, eventNames)
+function [events, missing_events] = GetEvents(sEvents, eventNames)
 % Return the events based on their name
 
     event_idx = zeros(1, length(eventNames));
@@ -210,7 +208,7 @@ function [events, missing_events] = getEvents(sEvents, eventNames)
     events = sEvents(event_idx);
 end
 
-function mask = event2mask(Time, sEvents)
+function mask = Event2Mask(Time, sEvents)
 % create a binary mask of the events. 
 
     mask = false(length(sEvents), length(Time));
@@ -224,8 +222,8 @@ function mask = event2mask(Time, sEvents)
 
 end
 
-function event_time = mask2Time(Time, mask)
-    % mask2Time; find the event start and end from the mask. mask is a
+function event_time = Mask2Time(Time, mask)
+    % Find the event start and end from the mask. mask is a
     % binary vector. The event start at each transition from 0 to 1 and end
     % at each transition from 1 to 0.
 
@@ -245,7 +243,7 @@ function event_time = mask2Time(Time, mask)
 
 end
 
-function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method)
+function newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method)
     newEvents = repmat(db_template('event'), 1, 1 + length(sEventsOuter));
 
     switch method
@@ -257,7 +255,7 @@ function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
             error('Unknown opperation %', method)
     end
     
-    if areEventExtended(sEventsInner)
+    if AreEventExtended(sEventsInner)
         switch partial_nesting
             case 'split'
                 suffix = '_T';
@@ -280,7 +278,7 @@ function newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesti
 end
 
 
-function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, partial_nesting, method)
+function newEvents = ClassifyEvent(Time, sEventsInner, mask, sEventsOuter, partial_nesting, method)
 % classifyEvents
 % out        |--------------------|     |----------| 
 % inp               *    *            *         *
@@ -300,7 +298,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
 % inx-out_T                           |-|              |---------|
 % inx-out_F                                            |---------|
 
-    newEvents = createNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method);
+    newEvents = CreateNewEvents(sEventsInner,  sEventsOuter,  partial_nesting, method);
     
     % Add one row to the mask for the other case 
     % Ensure that all time point belongs to one category
@@ -310,7 +308,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     % Compute each of the following 4 case separately 
     % (extended event = true/ false, operation = intersection / difference)
 
-    isExtended = areEventExtended(sEventsInner);
+    isExtended = AreEventExtended(sEventsInner);
     if ~isExtended
         if strcmp(method, 'intersection') 
             for iTime = 1:size(sEventsInner.times, 2)
@@ -331,7 +329,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
         end
     else 
         % Generate binary mask for the event, then compute intersection
-        inner_mask = event2mask(Time, sEventsInner);
+        inner_mask = Event2Mask(Time, sEventsInner);
 
         % To compute the difference, we jut invert the mask
         if strcmp(method, 'difference')
@@ -359,7 +357,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
 
         % Generate events
         for iEvent = 1:length(newEvents)
-            new_time = mask2Time(Time, intersection(iEvent, :));
+            new_time = Mask2Time(Time, intersection(iEvent, :));
 
             if isempty(new_time)
                 continue;
@@ -374,7 +372,7 @@ function newEvents = classifyEvent(Time, sEventsInner, mask, sEventsOuter, parti
     newEvents = newEvents(1:length(sEventsOuter));
 end
 
-function isExtended = areEventExtended(sEvents)
+function isExtended = AreEventExtended(sEvents)
 % areEventExtended: Return whether the events sEvents are extended (true) or
 % simple events. isExtended is a vector that is 1 x nEvents
 
@@ -386,8 +384,8 @@ function isExtended = areEventExtended(sEvents)
 end
 
 
-function newEvents = removeShortEpoch(newEvents, minimum_duration)
-    if ~areEventExtended(newEvents)
+function newEvents = RemoveShortEpoch(newEvents, minimum_duration)
+    if ~AreEventExtended(newEvents)
         durations = zeros(1, length(newEvents.epochs));
     else
         durations = newEvents.times(2, :) -  newEvents.times(1, :);
