@@ -41,31 +41,34 @@ function sProcess = GetDescription()
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
 
+    % Event operation
+    sProcess.options.label1.Comment = ['<HTML><B>Operation</B> between nested events <B>A</B>, and extended nesting events <B>B</B>.' ...
+                                       '</HTML>'];
+    sProcess.options.label1.Type    = 'label';
 
-    sProcess.options.label1.Comment = ['<HTML><B>Opperation:</B> Opperation between the nested events (B) and the extended nesting events (A).' ...
-                                        '<BR> Event A must be an extended event. </HTML>'];
-    sProcess.options.label1.Type = 'label';
-
-
-    sProcess.options.method.Comment = { 'Interection: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A^B when A and B occurs simultaneously  </FONT>', ...
-        'Difference: <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; create A-B when A is occuring but not B </FONT>' ; ...
-        'intersection', 'difference'};
+    sProcess.options.method.Comment = { ['Intersection: &nbsp;&nbsp;&nbsp;' ...
+                                          'Create event <B>A^B</B> for occurrences of <B>A</B> during <B>B</B>'], ...
+                                         ['Difference: &nbsp;&nbsp;&nbsp;&nbsp;' ...
+                                          'Create event <B>A-B</B> for occurrences of <B>A</B> outside of <B>B</B>'] ; ...
+                                        'intersection', 'difference'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'intersection';
-
-    sProcess.options.label2.Comment = '<B>Events:</B>';
-    sProcess.options.label2.Type = 'label';
-
-    sProcess.options.outer_events.Comment = 'Event A <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
+    % Events
+    sProcess.options.label2.Comment = ['<B>Events</B><BR>', ...
+                                       '<FONT color=#7F7F7F>(Separate multiple events using comma)</FONT><BR>'];
+    sProcess.options.label2.Type    = 'label';
+    % Nested events
+    sProcess.options.inner_events.Comment = 'Events A';
+    sProcess.options.inner_events.Type    = 'text';
+    sProcess.options.inner_events.Value   = '';
+    % Nesting events
+    sProcess.options.outer_events.Comment = 'Events B';
     sProcess.options.outer_events.Type    = 'text';
     sProcess.options.outer_events.Value   = '';
 
-    sProcess.options.inner_events.Comment = 'Event B <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; Separate multiple events using comma</FONT>';
-    sProcess.options.inner_events.Type    = 'text';
-    sProcess.options.inner_events.Value   = '';
 
-
-    sProcess.options.label3.Comment = '<B>Partial nesting:</B> <FONT color=#7F7F7F>&nbsp;&nbsp;&nbsp; An epoch of B is considered partially nested if it is intersecting multiples events A </FONT>';
+    sProcess.options.label3.Comment = ['<B>Partial nesting</B><BR>', ...
+                                       '<FONT color=#7F7F7F>Consider occurrences of <B>A</B> partially nested in events <B>A</B></FONT>'];
     sProcess.options.label3.Type = 'label';
 
     sProcess.options.partial_nesting.Comment = { 'Reject event: <FONT color=#7F7F7F>Remove epochs that are partially nested</FONT>', ...
