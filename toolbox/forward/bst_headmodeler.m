@@ -433,9 +433,9 @@ if ~isempty(allLoc)
         return;
     end
 end
-
 % Initialize empty gain matrix
 Gain = NaN * zeros(length(OPTIONS.Channel), Dims * nv);
+        
         
 %% ===== COMPUTE: OPENMEEG =====
 if ismember('openmeeg', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
@@ -636,7 +636,6 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
         OPTIONS = [];
         return;
     end
-
     % Check version, update if needed
     if bst_plugin('CompareVersions', PlugDesc.Version, '0.9.1') < 0
         if PlugDesc.isManaged
@@ -644,20 +643,16 @@ if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
             bst_plugin('Install',   'nirstorm');
         end
     end
-
     % Get Subject
     sSubject = bst_get('SurfaceFile', OutSurfaceFile);
-    
     % Subject Informations 
     OPTIONS.SubjectName = sSubject.Name;
     OPTIONS.MriFile     = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-
     if strcmp(OPTIONS.HeadModelType, 'surface')
         voronoi_fn = process_nst_compute_voronoi('get_voronoi_fn', sSubject);
         OPTIONS.VoronoiFile = voronoi_fn;
         OPTIONS.CortexFile  = sSubject.Surface(sSubject.iCortex ).FileName;
     end
-    
     % Use defined options
     if ~isfield(OPTIONS, 'FluenceFolder') ||  ~isfield(OPTIONS, 'smoothing_method')  ||  ~isfield(OPTIONS, 'smoothing_fwhm')
         sOptions = gui_show_dialog('NIRS headmodel options', @panel_headmodel_nirstorm);

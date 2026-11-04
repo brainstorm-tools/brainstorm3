@@ -203,7 +203,6 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         elseif isNirs && ~isMeg && ~isEeg && ~isEcog && ~isSeeg
             jCheckMethodNIRS.setSelected(1);
         end
-
         % MEG/EEG Checkbox
         isMegSel  = isMeg && jCheckMethodMEG.isSelected();
         isEegSel  = isEeg && jCheckMethodEEG.isSelected();
