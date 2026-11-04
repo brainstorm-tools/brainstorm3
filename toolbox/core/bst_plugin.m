@@ -700,26 +700,30 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === fNIRS: MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
-    PlugDesc(end).Version        = '2024.07.23';
+    PlugDesc(end).Version        = '2026.11.01';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlab-allinone-git20240723.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/v2026/mcxlab-allinone-v2026.zip';
     PlugDesc(end).TestFile       = 'mcxlab.m';
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test', 'tutorials'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
     % === fNIRS: MCXLAB CL ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
-    PlugDesc(end).Version        = '2024.07.23';
+    PlugDesc(end).Version        = '2026.11.01';
     PlugDesc(end).Category       = 'fNIRS';
-    PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlabcl-allinone-git20240723.zip';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/v2026/mcxlabcl-allinone-v2026.zip';
     PlugDesc(end).TestFile       = 'mcxlabcl.m';
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
     % === sEEG: GARDEL ===
