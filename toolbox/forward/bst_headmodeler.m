@@ -628,7 +628,11 @@ end
 
 %% ===== COMPUTE: NIRSTORM HEADMODELS =====
 if (~isempty(OPTIONS.NIRSMethod) && strcmpi(OPTIONS.NIRSMethod, {'import'}))
-
+    if ~strcmp(OPTIONS.HeadModelType, 'surface') || ~strcmp(OPTIONS.HeadModelType, 'volume')
+        errMessage = sprintf('%s headmodel is not supported for NIRS', OPTIONS.HeadModelType);
+        OPTIONS = [];
+        return;
+    end
     % Check NIRSTORM plugin
     [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nirstorm');
     if ~isInstalled
