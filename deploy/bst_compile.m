@@ -1,10 +1,12 @@
- function bst_compile(isPlugs)
+ function bst_compile(plugsStatus)
 % BST_COMPILE - Brainstorm compilation script (MATLAB >= 2020a)
 %
 % USAGE:  bst_compile(isPlugins=1)
 %
 % INPUTS:
-%    - isPlugs : If 1, include all the registered plugins
+%    - plugsStatus : 0, Do not add plugings
+%                    1, Include all the registered plugins
+%                    2, Include all the registered plugins updated to latest version
 %
 % REQUIREMENTS:
 %    - Installation of OpenJDK 8 (Matlab doesn't support anything later than this)
@@ -29,13 +31,19 @@
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2011-2023
+%          Raymundo Cassani, 2026
 
       
 %% ===== PARSE INPUTS =====
-if (nargin < 1) || isempty(isPlugs)
-    isPlugs = 1;
+if (nargin < 1) || isempty(plugsStatus)
+    plugsStatus = 1;
 end
 
+% Minimal version for plugins
+minVersion = [];  % Current installed
+if plugsStatus == 2
+    minVersion = 'latest';
+end
 
 %% ===== START BRAINSTORM =====
 % Get JDK installation dir
@@ -167,17 +175,17 @@ end
 %% ===== CREATE SPMTRIP FOLDER =====
 % Extract some functions from SPM12 and FieldTrip to be compiled with Brainstorm
 spmtripDir = fullfile(bst_get('BrainstormUserDir'), 'spmtrip');
-if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
+if strcmpi(minVersion, 'latest') || (plugsStatus > 0 && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file'))
     disp(['COMPILE> SPMTRIP folder not found: ' spmtripDir]);
     disp('COMPILE> Running bst_spmtrip... (to disable this, call bst_compile with argument "noplugs")');
     % Initialize FieldTrip
-    [isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip');
+    [isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip', 0, minVersion);
     if ~isInstalled
         error(['Could not install FieldTrip: ' errMsg]);
     end
     FieldTripDir = fullfile(PlugFt.Path, PlugFt.SubFolder);
     % Initialize SPM
-    [isInstalled, errMsg, PlugSpm] = bst_plugin('Install', 'spm12');
+    [isInstalled, errMsg, PlugSpm] = bst_plugin('Install', 'spm12', 0, minVersion);
     if ~isInstalled
         error(['Could not install SPM12: ' errMsg]);
     end
@@ -196,8 +204,7 @@ if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
 end
 
 
-
-% === COMPILING ===
+%% === COMPILING ===
 % Start timer
 tCompile = tic;
 disp('COMPILE> Starting Matlab Compiler...');
@@ -214,16 +221,21 @@ strCall = ['mcc ' ...
     '-a "' fullfile(bstDir, 'java') '" ' ...
     '-a "' fullfile(bstDir, 'toolbox') '" '];
 % Add plugins folders
-if isPlugs
+if plugsStatus
     % Add SPM+FieldTrip
     strCall = [strCall '-a "' spmtripDir '" '];
+    % Unload all plugins (to avoid mixups in the dependency search)
+    PlugDesc = bst_plugin('GetLoaded');
+    for iPlug = 1:length(PlugDesc)
+        bst_plugin('Unload', PlugDesc);
+    end
     % Get plugins to compile with the application
     PlugDesc = bst_plugin('GetSupported');
     for iPlug = 1:length(PlugDesc)
         % Add only the plugins designed only the plugins designed to be compiled with Brainstorm
         if (PlugDesc(iPlug).CompiledStatus == 2) && ~ismember(PlugDesc(iPlug).Name, {'fieldtrip', 'spm12'})
             % Install plugin (if not installed yet)
-            [isInstalled, errMsg, PlugInst] = bst_plugin('Install', PlugDesc(iPlug).Name);
+            [isInstalled, errMsg, PlugInst] = bst_plugin('Install', PlugDesc(iPlug).Name, 0, minVersion, 1);
             if ~isInstalled
                 error(['Could not install plugin "' PlugDesc(iPlug).Name '": ' 10 errMsg]);
             end
@@ -254,9 +266,6 @@ if isPlugs
             strCall = [strCall '-a "' fullfile(PlugInst.Path, 'plugin.mat') '" '];
             % Load plugin
             bst_plugin('Load', PlugDesc(iPlug).Name);
-        % Unload all the other plugins (to avoid mixups in the dependency search)
-        else
-            bst_plugin('Unload', PlugDesc(iPlug).Name);
         end
     end
 end
@@ -302,7 +311,6 @@ else
     jarExePath = '/bin/jar'; 
 end
 system([cdCall ' "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
-
 
 
 %% ===== PACKAGE ZIP =====
@@ -351,8 +359,9 @@ end
 % end
 % Done
 stopTime = toc(tCompile);
+fprintf('\n')
 if (stopTime > 60)
-    disp(sprintf('COMPILE> Done in %dmin\n', round(stopTime/60)));
+    fprintf('COMPILE> Done in %dmin\n\n', round(stopTime/60));
 else
     fprintf('COMPILE> Done in %ds\n\n', round(stopTime));
 end

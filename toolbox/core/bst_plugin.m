@@ -15,11 +15,11 @@ function [varargout] = bst_plugin(varargin)
 %                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
 %           [isOk, errMsg] = bst_plugin('AddUserDefDesc',       RegMethod, jsonLocation=[])  % Register user-defined plugin definition
 %           [isOk, errMsg] = bst_plugin('RemoveUserDefDesc'     PlugName)                    % Remove user-defined plugin definition
-% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
+% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1, ignoreRequiredPlugs=0)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('UnloadInteractive',    PlugName/PlugDesc)
-% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[]) % Install and Load a plugin and its dependencies
+% [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[], ignoreRequiredPlugs=0) % Install and Load a plugin and its dependencies
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice',PlugNames, isInteractive=0)  % Install at least one of the input plugins
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallInteractive',   PlugName)
 %           [isOk, errMsg] = bst_plugin('Uninstall',            PlugName, isInteractive=0, isDependencies=1)
@@ -700,26 +700,30 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     
     % === fNIRS: MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
-    PlugDesc(end).Version        = '2024.07.23';
+    PlugDesc(end).Version        = '2026.11.01';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlab-allinone-git20240723.zip';
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/v2026/mcxlab-allinone-v2026.zip';
     PlugDesc(end).TestFile       = 'mcxlab.m';
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test', 'tutorials'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
 
     % === fNIRS: MCXLAB CL ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
-    PlugDesc(end).Version        = '2024.07.23';
+    PlugDesc(end).Version        = '2026.11.01';
     PlugDesc(end).Category       = 'fNIRS';
-    PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/git20240723/mcxlabcl-allinone-git20240723.zip';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://mcx.space/nightly/release/v2026/mcxlabcl-allinone-v2026.zip';
     PlugDesc(end).TestFile       = 'mcxlabcl.m';
     PlugDesc(end).URLinfo        = 'https://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'NEWS';
+    PlugDesc(end).DeleteFiles    = {'octave', 'examples', 'test'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
 
     % === sEEG: GARDEL ===
@@ -1413,6 +1417,13 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugDesc(iPlug).Path = PlugPath;
             PlugDesc(iPlug).isLoaded = 0;
             PlugDesc(iPlug).isManaged = 1;
+            % Container plugin installed: Check if it is loaded aka running
+            if IsContainer(SearchPlugs(iSearch))
+                [containerErr, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc(iPlug).Name]);
+                if isempty(containerErr)
+                    PlugDesc(iPlug).isLoaded = containerInfo.isRunning;
+                end
+            end
         % Plugin installed: Custom path
         elseif isfield(PluginCustomPath, PlugName) && ~isempty(PluginCustomPath.(PlugName)) && file_exist(PluginCustomPath.(PlugName))
             iPlug = length(PlugDesc) + 1;
@@ -1686,11 +1697,14 @@ end
 
 
 %% ===== INSTALL =====
-% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, isInteractive=0, minVersion=[])
-function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
+% USAGE:  [isOk, errMsg, PlugDesc] = bst_plugin('Install', PlugName, isInteractive=0, minVersion=[], ignoreRequiredPlugs=0)
+function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion, ignoreRequiredPlugs)
     % Returned variables
     isOk = 0;
     % Parse inputs
+    if (nargin < 4) || isempty(ignoreRequiredPlugs)
+        ignoreRequiredPlugs = 0;
+    end
     if (nargin < 3) || isempty(minVersion)
         minVersion = [];
     elseif isnumeric(minVersion)
@@ -1762,7 +1776,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
       
     % === PROCESS DEPENDENCIES ===
     % Check required plugins
-    if ~isempty(PlugDesc.RequiredPlugs)
+    if ~isempty(PlugDesc.RequiredPlugs) && ~ignoreRequiredPlugs
         bst_progress('text', ['Processing dependencies for ' PlugName '...']);
         disp(['BST> Processing dependencies: ' PlugName ' requires: ' sprintf('%s ', PlugDesc.RequiredPlugs{:,1})]);
         % Get the list of plugins that need to be installed
@@ -1810,10 +1824,19 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         % If the plugin is not managed by Brainstorm: do not check versions
         if ~OldPlugDesc.isManaged
             isUpdate = 0;
-        % If the requested version is higher
-        elseif ~isempty(minVersion) && (CompareVersions(minVersion, OldPlugDesc.Version) > 0)
-            isUpdate = 1;
-            strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
+        % Handle requested version
+        elseif ~isempty(minVersion)
+            % If the requested version is the 'latest'
+            if strcmpi(minVersion, 'latest')
+                isUpdate = 1;
+                strUpdate = '(re)install lastest version.';
+            % If the requested version is higher
+            elseif CompareVersions(minVersion, OldPlugDesc.Version) > 0
+                isUpdate = 1;
+                strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
+            else
+                isUpdate = 0;
+            end
         % If an update is available and auto-updates are requested
         elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && ...                                            % If updates are enabled
                 ((isGithubSnapshot(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
@@ -1984,7 +2007,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     
     % === LOAD PLUGIN ===
     % Load plugin
-    [isOk, errMsg, PlugDesc] = Load(PlugDesc);
+    [isOk, errMsg, PlugDesc] = Load(PlugDesc, [], ignoreRequiredPlugs);
     if ~isOk
         bst_progress('removeimage');
         return;
@@ -2375,9 +2398,12 @@ end
 
 
 %% ===== LOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose=1)
-function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
+% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose=1, ignoreRequiredPlugs=0)
+function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose, ignoreRequiredPlugs)
     % Parse inputs
+    if (nargin < 3) || isempty(ignoreRequiredPlugs)
+        ignoreRequiredPlugs = 0;
+    end
     if (nargin < 2) || isempty(isVerbose)
         isVerbose = 1;
     end
@@ -2500,7 +2526,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     end
     
     % Load required plugins
-    if ~isempty(PlugDesc.RequiredPlugs)
+    if ~isempty(PlugDesc.RequiredPlugs) && ~ignoreRequiredPlugs
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
             % disp(['BST> Loading required plugin: ' PlugDesc.RequiredPlugs{iPlug,1}]);
             [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug,1}, isVerbose);
@@ -2563,7 +2589,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
     end
     % Do not modify path in compiled mode
     isCompiled = bst_iscompiled();
-    if ~isCompiled
+    if ~isCompiled || ~isContainer
         % Handle case symbolic link
         try
             PlugHomeDir = builtin('_canonicalizepath', PlugHomeDir);
@@ -2712,20 +2738,20 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
                 end
             end
         end
-        % Stop container
-        if isContainer
-            % Retrieve info of container
-            [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
-            if isempty(errMsg)
-                errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
-            end
-            if ~isempty(errMsg)
-                return
-            end
-            % Delete temporary files
-            for iVolume = 1 : size(containerInfo.volumes, 1)
-                file_delete(containerInfo.volumes{iVolume,1}, 1, 1);
-            end
+    end
+    % Stop container
+    if isContainer
+        % Retrieve info of container
+        [errMsg, containerInfo] = bst_containers('GetContainerInfo', ['bst_' PlugDesc.Name]);
+        if isempty(errMsg)
+            errMsg = bst_containers('StopContainer', ['bst_' PlugDesc.Name], 1);
+        end
+        if ~isempty(errMsg)
+            return
+        end
+        % Delete temporary files
+        for iVolume = 1 : size(containerInfo.volumes, 1)
+            file_delete(containerInfo.volumes{iVolume,1}, 1, 1);
         end
     end
     
@@ -3222,6 +3248,10 @@ function MenuUpdate(jMenu, fontSize)
             % Main menu: Icon
             if isCompiled && isInstalled
                 menuIcon = IconLoader.ICON_GOOD;
+                % Container plugins can be Running (Loaded) or Not (Unloaded) in Compiled
+                if isContainer && ~isLoaded
+                    menuIcon = IconLoader.ICON_BAD;
+                end
             elseif isLoaded   % Loaded
                 menuIcon = IconLoader.ICON_GOOD;
             elseif isInstalled   % Not loaded
@@ -3262,8 +3292,8 @@ function MenuUpdate(jMenu, fontSize)
                 j.custompath.setText('Path not set');
             end
             % Load/Unload
-            j.load.setEnabled(isInstalled && ~isLoaded && ~isCompiled);
-            j.unload.setEnabled(isLoaded && ~isCompiled);
+            j.load.setEnabled(isInstalled && ~isLoaded && (~isCompiled || isContainer));
+            j.unload.setEnabled(isLoaded && (~isCompiled || isContainer));
             % Web
             j.web.setEnabled(~isempty(Plug.URLinfo));
             % Extra menus: Update availability
