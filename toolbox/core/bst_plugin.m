@@ -213,6 +213,23 @@ function PlugDesc = GetSupported(SelPlug, UserDefVerbose)
     PlugDesc(end).ImageSource    = ['docker.io/brainstormtools/auto-resection-mask:' PlugDesc(end).Version];
     PlugDesc(end).CompiledStatus = 1;
 
+    % === ANATOMY: PETPVE12 ===
+    PlugDesc(end+1)              = GetStruct('petpve12');
+    PlugDesc(end).Version        = 'cdd9748';   % Last commit of GGonEsc/petpve12 (GPL-3.0), 2021-08-18
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/GGonEsc/petpve12/archive/cdd97484652b64629a49293556bcfc58ebe89b27.zip';
+    PlugDesc(end).URLinfo        = 'https://multimodalneuroimaging.wordpress.com/software/';
+    PlugDesc(end).TestFile       = 'tbx_cfg_petpve12.m';
+    PlugDesc(end).ReadmeFile     = 'Contents.m';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).InstalledFcn   = 'LinkSpmToolbox(1, ''petpve12'');';
+    PlugDesc(end).UninstalledFcn = 'LinkSpmToolbox(0, ''petpve12'');';
+    PlugDesc(end).LoadedFcn      = 'LinkSpmToolbox(2, ''petpve12'');';
+    PlugDesc(end).UnloadedFcn    = 'LinkSpmToolbox(0, ''petpve12'');';
+    PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://github.com/GGonEsc/petpve12/blob/master/help/PETPVE12_manual.pdf'', ''-browser'')'};
+
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
