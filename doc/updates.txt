@@ -1,3 +1,10 @@
+October 2026
+- GUI: Refactor GUI elements for Matlab >= 2026b
+- Container: Better support in standalone version
+- IO: Correct sensor order on undoing montages importing FieldTrip channel data
+- Distrib: Compilation with Matlab 2026b
+- Distrib: brainstorm.jar compatible with JDK 8, 9 and 11
+--------------------------------------------------------------
 September 2026
 - IO: Add support for micapipe .gii L/R pairs as source files
 - DSP: Zero-phase filter, replace zero padding with constant padding
