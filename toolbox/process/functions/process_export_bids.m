@@ -220,7 +220,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors);
+    % Create dataset_description.json
+    CreateDatasetDescription(outputFolder, overwrite, datasetMetadata, authors, 'raw');
+    
     firstAcq = [];
     lastAcq = [];
     StimChannelNames = {};
@@ -240,7 +242,9 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         isMeg = isCtf || isElekta;
         isEeg = strncmpi(sFile.format, 'EEG-', 4) || ismember('EEG', sInputs(iInput).ChannelTypes);
         isEegBids = ismember(sFile.format, {'EEG-EDF', 'EEG-BRAINAMP', 'EEG-EEGLAB', 'EEG-BDF'});
-        if ~isMeg && ~isEeg
+        isNirs    = ismember('NIRS', sInputs(iInput).ChannelTypes);
+
+        if ~isMeg && ~isEeg && ~isNirs
             disp(['Skipping file "' sFile.filename '" due to unsupported format...']);
             continue;
         end
@@ -401,12 +405,18 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 taskName = ExtractCtfTaskname(sFile);
             elseif isElekta
                 taskName = ExtractFifTaskname(sFile);
+            else
+                tokens = regexp(rawName,'task-([a-zA-Z0-9]+)','tokens');
+                if ~isempty(tokens)
+                    taskName = tokens{1}{1};
+                end
             end
             
             % Otherwise, extract task name from condition
             if isempty(taskName)
                 taskName = regexprep(rawName,'[^a-zA-Z0-9]','');
             end
+
         end
         if ~isempty(runId) && ~isempty(FormatId(runId, runScheme))
             rest = [rest '_run-' FormatId(runId, runScheme)];
@@ -452,6 +462,26 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 EventNames{end + 1} = event;
             end
         end
+
+
+        %% Prepare coordinate structure
+        coorddata = struct();
+        
+        SCSfields = fieldnames(ChannelMat.SCS);
+        field_to_keep = {'LPA', 'NAS', 'RPA'};        
+        field_to_remove = setdiff(SCSfields, field_to_keep);
+        SCSprint = rmfield(ChannelMat.SCS, field_to_remove);
+        coorddata = addField(coorddata, 'FiducialsCoordinates', SCSprint);
+        coorddata = addField(coorddata, 'FiducialsCoordinateUnits', 'm'); 
+        coorddata = addField(coorddata, 'FiducialsCoordinateSystem', 'CTF');  
+        coorddata = addField(coorddata, 'FiducialsCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+        
+        if isNirs
+            coorddata = addField(coorddata, 'NIRSCoordinateSystem', 'CTF'); % Make sure it isnt CapRAS
+            coorddata = addField(coorddata, 'NIRSCoordinateSystemDescription', 'Scanner-based RAS coordinates matching the description for ScanRAS at: https://bids-specification.readthedocs.io/en/stable/appendices/coordinate-systems.html');
+            coorddata = addField(coorddata, 'NIRSCoordinateUnits', 'mm');
+        end
+        
         
         %% Prepare metadata structure
         metadata = megMetadata;
@@ -468,6 +498,14 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             metadata = addField(metadata, 'DigitizedHeadPoints', bool2str(hasHeadPoints));
         elseif isEeg
             metadata = addField(metadata, 'EEGReference', eegReference);
+        elseif isNirs
+            % Extract Optode Identities
+            [isrcs, idets] = nst_unformat_channels({ChannelMat.Channel(strcmp({ChannelMat.Channel.Type},'NIRS')).Name});
+            
+            metadata = addField(metadata, 'NIRSChannelCount',     length(isrcs));
+            metadata = addField(metadata, 'NIRSSourceOptodeCount',  length(unique(isrcs)));
+            metadata = addField(metadata, 'NIRSDetectorOptodeCount',length(unique(idets)));
+            
         end
 
         % Extract format-specific metadata
@@ -488,35 +526,44 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isEeg
             modFolder = 'eeg';
             modSuffix = '_eeg';
+        elseif isNirs 
+            modFolder = 'nirs';
+            modSuffix = '_nirs';  
         else
             modFolder = 'data';
             modSuffix = [];
         end
-        megFolder = bst_fullfile(sessionFolder, modFolder);
-        if exist(megFolder, 'dir') ~= 7
-            mkdir(megFolder);
+        
+        dataFolder = bst_fullfile(sessionFolder, modFolder);
+        if exist(dataFolder, 'dir') ~= 7
+            mkdir(dataFolder);
         end
 
-        newName = [prefixTask taskName rest modSuffix];
         % Copy raw file to output folder
         if isCtf
             rawExt = '.ds';
         elseif isEeg && ~isEegBids
             rawExt = '.eeg';
+        elseif isNirs 
+            rawExt = '.snirf';
         end
-        newPath = bst_fullfile(megFolder, [newName, rawExt]);
-        if exist(newPath, 'file') == 0 || overwrite
+        
+        baseName = [prefixTask taskName rest];
+        newName = [baseName modSuffix];
+        newPath = bst_fullfile(dataFolder, [newName, rawExt]);
+        
+        if ~exist(newPath, 'file') || overwrite
             if isCtf
                 % Rename internal DS files
                 dsFolder = fileparts(sFile.filename);
-                tempPath = bst_fullfile(megFolder, [rawName, rawExt]);
+                tempPath = bst_fullfile(dataFolder, [rawName, rawExt]);
                 file_copy(dsFolder, tempPath);
                 if ~strcmp(tempPath, newPath)
                     ctf_rename_ds(tempPath, newPath, []);
                 end
                 % Save Polhemus file
                 if hasHeadPoints
-                    posFile = bst_fullfile(megFolder, [prefix '_headshape.pos']);
+                    posFile = bst_fullfile(dataFolder, [prefix '_headshape.pos']);
                     out_channel_pos(sInput.ChannelFile, posFile);
                 end
                 % Remove internal Polhemus files
@@ -526,6 +573,12 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Convert unsupported formats to EDF.
                 disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
+            elseif isNirs 
+
+                export_data(sInput.FileName, [], newPath, 'NIRS-SNIRF');
+                export_channel(sInput.ChannelFile, bst_fullfile(dataFolder, [prefix, '_optodes.tsv']), 'BIDS-NIRS-ALS-MM', 0);
+                out_channel_bids_nirs(sInput.ChannelFile, bst_fullfile(dataFolder, [baseName, '_channels.tsv']), DataMat.DisplayUnits, DataMat.F.channelflag);
+
             else
                 % Copy raw data file
                 file_copy(sFile.filename, newPath);
@@ -534,22 +587,30 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Copy header file
                     VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
                     if file_exist(VhdrFile)
-                        file_copy(VhdrFile, bst_fullfile(megFolder, [newName, '.vhdr']));
+                        file_copy(VhdrFile, bst_fullfile(dataFolder, [newName, '.vhdr']));
                     end
                     % Copy marker file
                     VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
                     if file_exist(VmrkFile)
-                        file_copy(VmrkFile, bst_fullfile(megFolder, [newName, '.vmrk']));
+                        file_copy(VmrkFile, bst_fullfile(dataFolder, [newName, '.vmrk']));
                     end
                 end
             end
+
             % Create JSON sidecar
-            jsonFile = bst_fullfile(megFolder, [newName '.json']);
-            CreateMegJson(jsonFile, metadata);
+            jsonFile = bst_fullfile(dataFolder, [newName '.json']);
+            WriteJson(jsonFile, metadata);
             
             % Create session TSV file
             tsvFile = bst_fullfile(sessionFolder, [prefix '_scans.tsv']);
             CreateSessionTsv(tsvFile, newPath, dateOfStudy)
+
+            % Create event TSV file
+            out_events_bids(sFile, bst_fullfile(dataFolder, [baseName, '_events.tsv']));
+
+            % Create coordinates JSON
+            jsonCoord = bst_fullfile(dataFolder, [prefix '_coordsystem.json']);
+            WriteJson(jsonCoord, coorddata);
         end
         
         bst_progress('inc', 1);
@@ -726,17 +787,32 @@ function id = GetLastId(parentFolder, prefix)
     end
 end
 
-function CreateMegJson(jsonFile, metadata)
+function WriteJson(jsonFile, metadata)
     fid = fopen(jsonFile, 'wt');
+
+    if fid < 0
+        error('Unable to write %s', jsonFile);
+    end
+
     jsonText = bst_jsonencode(metadata);
     fprintf(fid, strrep(jsonText, '%', '%%'));
     fclose(fid);
 end
 
-function CreateDatasetDescription(parentFolder, overwrite, description, authors)
+function CreateDatasetDescription(parentFolder, overwrite, description, authors, FileType)
+    
     if nargin < 3
         description = struct();
     end
+
+    if nargin < 4
+        authors = '';
+    end
+
+    if nargin < 4
+        FileType = 'raw';
+    end
+
 
     jsonFile = bst_fullfile(parentFolder, 'dataset_description.json');
     if exist(jsonFile, 'file') == 2 && ~overwrite
@@ -746,12 +822,10 @@ function CreateDatasetDescription(parentFolder, overwrite, description, authors)
     ProtocolInfo = bst_get('ProtocolInfo');
     description = addField(description, 'Name', ProtocolInfo.Comment);
     description = addField(description, 'BIDSVersion', '1.1.1');
+    description = addField(description, 'DatasetType', FileType);
     description = addField(description, 'Authors', strtrim(str_split(authors,',')));
     
-    fid = fopen(jsonFile, 'wt');
-    jsonText = bst_jsonencode(description);
-    fprintf(fid, jsonText);
-    fclose(fid);
+    WriteJson(jsonFile, description);
 end
 
 function CreateDatasetReadme(parentFolder, overwrite, OPTIONS, firstAcq, lastAcq, AllChannelNames, AllEventNames)
