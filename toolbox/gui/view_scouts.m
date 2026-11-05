@@ -163,6 +163,7 @@ issloreta      = 0;
 DisplayUnits   = [];
 Freqs          = [];
 % Process each Results file
+bst_progress('start', 'Display scouts time series', 'Loading results file: ...', 0, length(ResultsFiles));
 for iResFile = 1:length(ResultsFiles)
     % Is stat
     isStat = ismember(FileType{iResFile}, {'presults', 'ptimefreq'});
@@ -170,7 +171,7 @@ for iResFile = 1:length(ResultsFiles)
     isPsd = isTimefreq && (~isempty(strfind(ResultsFiles{iResFile}, '_psd')) || ~isempty(strfind(ResultsFiles{iResFile}, '_fft')));
     
     % ===== GET/CREATE RESULTS DATASET =====
-    bst_progress('start', 'Display scouts time series', ['Loading results file: "' ResultsFiles{iResFile} '"...']);
+    bst_progress('text', ['Loading results file: "' ResultsFiles{iResFile} '"...']);
     % Load results
     if ~isTimefreq
         [iDS, iResult] = bst_memory('LoadResultsFileFull', ResultsFiles{iResFile});
@@ -483,6 +484,8 @@ for iResFile = 1:length(ResultsFiles)
             end
         end
     end
+
+    bst_progress('inc', 1);
 end
 
 

@@ -94,13 +94,23 @@ for i=1:size(Filters, 1)
 end
 
 % If a progress bar is displayed : hide it while displaying the file selector
-pBar = GlobalData.Program.ProgressBar;
-if ~isempty(pBar) && isfield(pBar, 'jWindow') && java_call(pBar.jWindow, 'isVisible')
-    pBarHidden = 1;
-    bst_progress('hide');
-else
-    pBarHidden = 0;
+% To check
+pBars = GlobalData.Program.ProgressBar;
+pBarHidden = false(1, length(pBars));
+for iBar = 1:length(pBars)
+    
+    if isfield(pBars{iBar}, 'jWindow') && java_call(pBars{iBar}.jWindow, 'isVisible')
+        % Remove the "always on top" status
+        java_call(pBars{iBar}.jWindow, 'setAlwaysOnTop', 'Z', 0);
+        java_call(pBars{iBar}.jWindow, 'setFocusable',   'Z', 1);
+        java_call(pBars{iBar}.jWindow, 'setFocusableWindowState', 'Z', 1);
+        % Hide window
+        java_call(pBars{iBar}.jWindow, 'setVisible', 'Z', 0);
+        pBarHidden(iBar) =  true;
+    end
 end
+jBstFrame = bst_get('BstFrame');
+jBstFrame.setCursor([]);
 
 
 %% ===== HIDE MODAL WINDOWS =====
@@ -247,11 +257,22 @@ if ~isempty(jBstFrame)
     end
 end
 % Restore progress bar
-if pBarHidden
-    bst_progress('show');
+if any(pBarHidden)
+    for iBar = 1:length(pBarHidden)
+        if ~pBarHidden(iBar) 
+            continue;
+        end
+
+        % Set as "always on top"
+        java_call(pBars{iBar}.jWindow, 'setAlwaysOnTop', 'Z', 1);
+        java_call(pBars{iBar}.jWindow, 'setFocusable',   'Z', 0);
+        java_call(pBars{iBar}.jWindow, 'setFocusableWindowState', 'Z', 0);
+        % Show window
+        java_call(pBars{iBar}.jWindow, 'setVisible', 'Z', 1);
+    end
+
+    jBstFrame.setCursor(java_create('java.awt.Cursor', 'I', java.awt.Cursor.WAIT_CURSOR));
 end
-
-
 
 %% ===== CALLBACK FUNCTION =====
     function FileSelectorAction(h, ev)
