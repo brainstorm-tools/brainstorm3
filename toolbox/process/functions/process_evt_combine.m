@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Combine stim/response';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
-    sProcess.Index       = 53;
+    sProcess.Index       = 52.1;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers?highlight=%28Combine+stim%2Fresponse%29#Events';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'raw', 'matrix'};
