@@ -2095,6 +2095,83 @@ function sModels = GetElectrodeModels(list)
         sMod(7).ContactSpacing  = 0.00443;
         sMod(7).ElecLength      = 0.0685;
         sModels = [sModels, sMod];
+
+        % === ALCIS ===
+        % Common values
+        sTemplate = db_template('intraelectrode');
+        sTemplate.Type = 'SEEG';
+        sTemplate.ContactDiameter = 0.0008;
+        sTemplate.ContactLength   = 0.002;
+        sTemplate.ElecDiameter    = 0.0007;
+        % All models
+        sMod = repmat(sTemplate, 1, 12);
+        sMod(1).Model           = 'Alcis 2069-EPC-05C-35';
+        sMod(1).ContactNumber   = 5;
+        sMod(1).ContactSpacing  = 0.0035;
+        sMod(1).ElecLength      = 0.100;
+        sMod(2).Model           = 'Alcis 2069-EPC-08C-35';
+        sMod(2).ContactNumber   = 8;
+        sMod(2).ContactSpacing  = 0.0035;
+        sMod(2).ElecLength      = 0.100;
+        sMod(3).Model           = 'Alcis 2069-EPC-10C-35';
+        sMod(3).ContactNumber   = 10;
+        sMod(3).ContactSpacing  = 0.0035;
+        sMod(3).ElecLength      = 0.100;
+        sMod(4).Model           = 'Alcis 2069-EPC-12C-35';
+        sMod(4).ContactNumber   = 12;
+        sMod(4).ContactSpacing  = 0.0035;
+        sMod(4).ElecLength      = 0.100;
+        sMod(5).Model           = 'Alcis 2069-EPC-15C-35';
+        sMod(5).ContactNumber   = 15;
+        sMod(5).ContactSpacing  = 0.0035;
+        sMod(5).ElecLength      = 0.100;
+        sMod(6).Model           = 'Alcis 2069-EPC-15C-35-3G-07';
+        sMod(6).ContactNumber   = 15;
+        sMod(6).ContactSpacing  = [repmat(0.0035, 1, 4), ...
+                                          0.009,         ...
+                                   repmat(0.0035, 1, 4), ...
+                                          0.009,         ...
+                                   repmat(0.0035, 1, 4)];
+        sMod(6).ElecLength      = 0.100;
+        sMod(7).Model           = 'Alcis 2069-EPC-15C-35-3G-11';
+        sMod(7).ContactNumber   = 15;
+        sMod(7).ContactSpacing  = [repmat(0.0035, 1, 4), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 4), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 4)];
+        sMod(7).ElecLength      = 0.100;
+        sMod(8).Model           = 'Alcis 2069-EPC-15E-20';
+        sMod(8).ContactNumber   = 15;
+        sMod(8).ContactSpacing  = [       0.0025, ...
+                                   repmat(0.0020, 1, 13)];
+        sMod(8).ContactLength   = [       0.0020, ...
+                                   repmat(0.0010, 1, 14)];
+        sMod(8).ElecLength      = 0.100;
+        sMod(9).Model           = 'Alcis 2069-EPC-18C-35';
+        sMod(9).ContactNumber   = 18;
+        sMod(9).ContactSpacing  = 0.0035;
+        sMod(9).ElecLength      = 0.100;
+        sMod(10).Model          = 'Alcis 2069-EPC-18C-35-3G-11';
+        sMod(10).ContactNumber  = 18;
+        sMod(10).ContactSpacing = [repmat(0.0035, 1, 5), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 5), ...
+                                          0.013,         ...
+                                   repmat(0.0035, 1, 5)];
+        sMod(10).ElecLength     = 0.100;
+        sMod(11).Model          = 'Alcis 2069-EPC-18C-40';
+        sMod(11).ContactNumber  = 18;
+        sMod(11).ContactSpacing = 0.0040;
+        sMod(11).ElecLength     = 0.100;
+        sMod(12).Model          = 'Alcis 2069-EPC-18E-20';
+        sMod(12).ContactNumber  = 18;
+        sMod(12).ContactSpacing = [       0.0025, ...
+                                   repmat(0.0020, 1, 16)];
+        sMod(12).ContactLength  = [       0.0020, ...
+                                   repmat(0.0010, 1, 17)];
+        sMod(12).ElecLength     = 0.100;
+        sModels = [sModels, sMod];
     end
 end
 
