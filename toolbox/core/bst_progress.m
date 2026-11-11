@@ -45,12 +45,7 @@ function pBar = bst_progress(varargin)
 %
 % Authors: Francois Tadel, 2008-2013
 
-% JAVA imports
-import org.brainstorm.icon.*;
-import java.awt.Dimension;
-
 global GlobalData;
-
 
 %% ===== PARSE INPUTS =====
 if ((nargin >= 1) && ischar(varargin{1}))
@@ -86,6 +81,12 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Pr
 else
     pBar = [];
 end
+
+% JAVA imports
+eval('import org.brainstorm.icon.*');
+eval('import java.awt.Dimension');
+
+
 % Get Brainstorm GUI context
 jBstFrame = bst_get('BstFrame');
 if isempty(jBstFrame)
@@ -455,8 +456,8 @@ end
 
 %% ===== ADD COMPONENTS =====
     function UpdateConstraints(isImage)
-        import java.awt.GridBagConstraints;
-        import java.awt.Insets;
+        eval('import java.awt.GridBagConstraints');
+        eval('import java.awt.Insets');
         % Remove all components
         pBar.jPanel.removeAll();
         % Generic constraints

@@ -50,6 +50,8 @@ more off
 
 % Compiled version
 isCompiled = exist('isdeployed', 'builtin') && isdeployed;
+isJavaAvailable = isempty(javachk('jvm'));
+
 if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
     % Some versions of the compiler use different subfolders: search for the doc folder
@@ -77,7 +79,7 @@ else
 end
 
 % Set dynamic JAVA CLASS PATH
-if ~exist('org.brainstorm.tree.BstNode', 'class')
+if isJavaAvailable && ~exist('org.brainstorm.tree.BstNode', 'class')
     % Brainstorm jar file
     BstJar = fullfile(BrainstormHomeDir, 'java', 'brainstorm.jar');
     UpdateFile = fullfile(BrainstormHomeDir, 'java', 'outdated_jar.txt');
@@ -97,16 +99,12 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
         disp('BST> Downloading brainstorm.jar...');
         bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
-    % Add Brainstorm JARs to classpath
-    MSG = javachk('jvm');
-    if isempty(MSG)
+
+    if isJavaAvailable
         javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
         javaaddpath(BstJar);
     else
-        disp('');
-        disp('BST> Error: Brainstorm cannot be started without Java.');
-        disp(MSG.message);
-        rethrow(MSG);
+        disp('BST> Warning: Starting Brainstorm without java. Some function might not be available.');
     end
 end
 
@@ -157,7 +155,11 @@ switch action
         disp('Adding all Brainstorm directories to local path...');
         bst_set_path(BrainstormHomeDir);
     case 'startjava'
-        disp('Starting Java...');
+        if isJavaAvailable
+            disp('Starting Java...');
+        else
+            error('Java is not available')
+        end
     case {'info', 'website'}
         web('https://neuroimage.usc.edu/brainstorm/', '-browser');
     case 'forum'
